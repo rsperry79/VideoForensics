@@ -12,11 +12,14 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
+using Device = VideoForensics.Data.Common.Entities.Device;
+using Location = VideoForensics.Data.Common.Entities.Location;
+
 namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 {
     /// <summary>
     /// The runner claims one queued job, runs it through the executor, and records the outcome. The executor maps a
-    /// job to the account-scoped provider service for its kind.
+    /// job to the account-scoped provider services for its kind.
     /// </summary>
     public class DownloadJobRunnerTests
     {
@@ -82,60 +85,11 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task DownloadJobExecutor_Videos_CredentialsNotRestored_ReturnsErrorWithoutPulling()
-        {
-            DownloadJob job = BuildJob(DownloadJobKind.Videos);
-            var auth = new Mock<IProviderAuthService>();
-            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-            var events = new Mock<IEventPullService>();
-            DownloadJobExecutor executor = CreateExecutor(AccountRepositoryFor(job), new Mock<ISnapshotSyncService>().Object, events.Object, ("Ring", auth.Object));
-
-            DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
-
-            Assert.Equal("Saved credentials could not be restored.", outcome.ErrorMessage);
-            events.Verify(e => e.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task DownloadJobExecutor_Videos_Succeeds_PullsEventsForRangeAndMapsMediaCounts()
-        {
-            DownloadJob job = BuildJob(DownloadJobKind.Videos);
-            var auth = new Mock<IProviderAuthService>();
-            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            var events = new Mock<IEventPullService>();
-            events.Setup(e => e.PullAccountEventsAsync(job.ProviderAccountId, job.StartDateUtc, job.EndDateUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new EventPullResult(MediaFilesDownloaded: 6, FeedsFailed: 0));
-            DownloadJobExecutor executor = CreateExecutor(AccountRepositoryFor(job), new Mock<ISnapshotSyncService>().Object, events.Object, ("Ring", auth.Object));
-
-            DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
-
-            Assert.Null(outcome.ErrorMessage);
-            Assert.Equal(6, outcome.FilesDownloaded);
-            Assert.Equal(0, outcome.FilesFailed);
-        }
-
-        [Fact]
-        public async Task DownloadJobExecutor_Videos_DeviceFeedFailed_ReportsErrorWithCount()
-        {
-            DownloadJob job = BuildJob(DownloadJobKind.Videos);
-            var auth = new Mock<IProviderAuthService>();
-            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            var events = new Mock<IEventPullService>();
-            events.Setup(e => e.PullAccountEventsAsync(job.ProviderAccountId, job.StartDateUtc, job.EndDateUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new EventPullResult(MediaFilesDownloaded: 2, FeedsFailed: 1));
-            DownloadJobExecutor executor = CreateExecutor(AccountRepositoryFor(job), new Mock<ISnapshotSyncService>().Object, events.Object, ("Ring", auth.Object));
-
-            DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
-
-            Assert.Equal("1 device feed(s) failed.", outcome.ErrorMessage);
-        }
-
-        [Fact]
         public async Task DownloadJobExecutor_Snapshots_AccountMissing_ReturnsErrorOutcome()
         {
             var accounts = new Mock<IProviderAccountRepository>();
             accounts.Setup(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccount?)null);
-            DownloadJobExecutor executor = CreateExecutor(accounts.Object, new Mock<ISnapshotSyncService>().Object, new Mock<IEventPullService>().Object);
+            DownloadJobExecutor executor = CreateExecutor(accounts.Object, new Mock<ISnapshotSyncService>().Object);
 
             DownloadJobOutcome outcome = await executor.ExecuteAsync(BuildJob(DownloadJobKind.Snapshots), CancellationToken.None);
 
@@ -146,21 +100,99 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task DownloadJobExecutor_Snapshots_Succeeds_MapsSnapshotCountsToOutcome()
         {
             DownloadJob job = BuildJob(DownloadJobKind.Snapshots);
-            var accounts = new Mock<IProviderAccountRepository>();
-            accounts.Setup(a => a.GetAsync(job.ProviderAccountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ProviderAccount { Id = job.ProviderAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow });
             var auth = new Mock<IProviderAuthService>();
             auth.Setup(a => a.RestoreFromSavedCredentialsAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             var snapshots = new Mock<ISnapshotSyncService>();
             snapshots.Setup(s => s.SyncAccountSnapshotsAsync(job.ProviderAccountId, job.StartDateUtc, job.EndDateUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 3, DevicesSucceeded: 2, SnapshotsSaved: 5, DevicesFailed: 1));
-            DownloadJobExecutor executor = CreateExecutor(accounts.Object, snapshots.Object, new Mock<IEventPullService>().Object, ("Ring", auth.Object));
+            DownloadJobExecutor executor = CreateExecutor(AccountRepositoryFor(job).Object, snapshots.Object, ("Ring", auth.Object));
 
             DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
 
             Assert.Null(outcome.ErrorMessage);
             Assert.Equal(5, outcome.FilesDownloaded);
             Assert.Equal(1, outcome.FilesFailed);
+        }
+
+        [Fact]
+        public async Task DownloadJobExecutor_Videos_CredentialsNotRestored_ReturnsErrorWithoutDownloading()
+        {
+            DownloadJob job = BuildVideoJob();
+            var auth = new Mock<IProviderAuthService>();
+            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            var media = new Mock<IMediaDownloadService>();
+            DownloadJobExecutor executor = CreateExecutor(AccountRepositoryFor(job).Object, new Mock<ISnapshotSyncService>().Object, new[] { ("Ring", auth.Object) }, ("Ring", media.Object));
+
+            DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
+
+            Assert.Equal("Saved credentials could not be restored.", outcome.ErrorMessage);
+            media.Verify(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DownloadJobExecutor_Videos_AllDevices_DownloadsEachIntoItsSubfolderForTheRange()
+        {
+            DownloadJob job = BuildVideoJob();
+            var media = new Mock<IMediaDownloadService>();
+            media.Setup(m => m.DownloadVideosAsync("1001", Path.Combine(job.OutputPath!, "1001"), job.StartDateUtc, job.EndDateUtc, "loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DownloadResult(Success: true, FilesDownloaded: 3));
+            media.Setup(m => m.DownloadVideosAsync("1002", Path.Combine(job.OutputPath!, "1002"), job.StartDateUtc, job.EndDateUtc, "loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DownloadResult(Success: true, FilesDownloaded: 4));
+            DownloadJobExecutor executor = CreateVideoExecutor(job, media.Object, DevicesFor("1001", "1002"));
+
+            DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
+
+            Assert.Null(outcome.ErrorMessage);
+            Assert.Equal(7, outcome.FilesDownloaded);
+            Assert.Equal(0, outcome.FilesFailed);
+        }
+
+        [Fact]
+        public async Task DownloadJobExecutor_Videos_OneDeviceFails_ContinuesAndReportsCount()
+        {
+            DownloadJob job = BuildVideoJob();
+            var media = new Mock<IMediaDownloadService>();
+            media.Setup(m => m.DownloadVideosAsync("1001", It.IsAny<string>(), job.StartDateUtc, job.EndDateUtc, "loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DownloadResult(Success: false, ErrorMessage: "boom"));
+            media.Setup(m => m.DownloadVideosAsync("1002", It.IsAny<string>(), job.StartDateUtc, job.EndDateUtc, "loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DownloadResult(Success: true, FilesDownloaded: 4));
+            DownloadJobExecutor executor = CreateVideoExecutor(job, media.Object, DevicesFor("1001", "1002"));
+
+            DownloadJobOutcome outcome = await executor.ExecuteAsync(job, CancellationToken.None);
+
+            Assert.Equal(4, outcome.FilesDownloaded);
+            Assert.Equal(1, outcome.FilesFailed);
+            Assert.Equal("1 device(s) failed.", outcome.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task DownloadJobExecutor_Videos_FilesDownloaded_AdvancesWatermarkToJobEnd()
+        {
+            DownloadJob job = BuildVideoJob();
+            var media = new Mock<IMediaDownloadService>();
+            media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), job.StartDateUtc, job.EndDateUtc, "loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DownloadResult(Success: true, FilesDownloaded: 2));
+            var accounts = AccountRepositoryFor(job);
+            DownloadJobExecutor executor = CreateVideoExecutor(job, media.Object, DevicesFor("1001"), accounts.Object);
+
+            _ = await executor.ExecuteAsync(job, CancellationToken.None);
+
+            accounts.Verify(a => a.UpdateAsync(It.Is<ProviderAccount>(p => p.LastDownloadTimeUtc == job.EndDateUtc), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task DownloadJobExecutor_Videos_NothingDownloaded_DoesNotMoveWatermark()
+        {
+            DownloadJob job = BuildVideoJob();
+            var media = new Mock<IMediaDownloadService>();
+            media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), job.StartDateUtc, job.EndDateUtc, "loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DownloadResult(Success: true, FilesDownloaded: 0));
+            var accounts = AccountRepositoryFor(job);
+            DownloadJobExecutor executor = CreateVideoExecutor(job, media.Object, DevicesFor("1001"), accounts.Object);
+
+            _ = await executor.ExecuteAsync(job, CancellationToken.None);
+
+            accounts.Verify(a => a.UpdateAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         private static DownloadJobRunner CreateRunner()
@@ -172,8 +204,18 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private static DownloadJobExecutor CreateExecutor(
             IProviderAccountRepository accounts,
             ISnapshotSyncService snapshots,
-            IEventPullService events,
             params (string Key, IProviderAuthService Service)[] keyedAuth)
+        {
+            return CreateExecutor(accounts, snapshots, keyedAuth, mediaKey: null);
+        }
+
+        private static DownloadJobExecutor CreateExecutor(
+            IProviderAccountRepository accounts,
+            ISnapshotSyncService snapshots,
+            (string Key, IProviderAuthService Service)[] keyedAuth,
+            (string Key, IMediaDownloadService Service)? mediaKey,
+            IAccountDeviceRepository? devices = null,
+            ILocationRepository? locations = null)
         {
             var services = new ServiceCollection();
             foreach ((string key, IProviderAuthService service) in keyedAuth)
@@ -181,15 +223,67 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 _ = services.AddKeyedSingleton(key, service);
             }
 
-            return new DownloadJobExecutor(accounts, snapshots, events, services.BuildServiceProvider(), NullLogger<DownloadJobExecutor>.Instance);
+            if (mediaKey is { } media)
+            {
+                _ = services.AddKeyedSingleton(media.Key, media.Service);
+            }
+
+            return new DownloadJobExecutor(
+                accounts,
+                snapshots,
+                devices ?? new Mock<IAccountDeviceRepository>().Object,
+                locations ?? new Mock<ILocationRepository>().Object,
+                services.BuildServiceProvider(),
+                NullLogger<DownloadJobExecutor>.Instance);
         }
 
-        private static IProviderAccountRepository AccountRepositoryFor(DownloadJob job)
+        private static DownloadJobExecutor CreateVideoExecutor(
+            DownloadJob job,
+            IMediaDownloadService media,
+            IReadOnlyList<Device> devices,
+            IProviderAccountRepository? accounts = null)
+        {
+            var auth = new Mock<IProviderAuthService>();
+            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            var deviceRepository = new Mock<IAccountDeviceRepository>();
+            deviceRepository.Setup(d => d.ListByProviderAccountAsync(job.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync(devices);
+
+            var locationRepository = new Mock<ILocationRepository>();
+            locationRepository.Setup(l => l.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Location { Id = LocationId, ProviderLocationId = "loc-1", Name = "Front" });
+
+            return CreateExecutor(
+                accounts ?? AccountRepositoryFor(job).Object,
+                new Mock<ISnapshotSyncService>().Object,
+                new[] { ("Ring", auth.Object) },
+                ("Ring", media),
+                deviceRepository.Object,
+                locationRepository.Object);
+        }
+
+        private static readonly Guid LocationId = Guid.Parse("00000000-0000-0000-0000-00000000000a");
+
+        private static IReadOnlyList<Device> DevicesFor(params string[] providerDeviceIds)
+        {
+            return providerDeviceIds
+                .Select(id => new Device { Id = Guid.NewGuid(), ProviderDeviceId = id, Name = $"Cam {id}", Type = "Camera", LocationId = LocationId })
+                .ToList();
+        }
+
+        private static Mock<IProviderAccountRepository> AccountRepositoryFor(DownloadJob job)
         {
             var accounts = new Mock<IProviderAccountRepository>();
             accounts.Setup(a => a.GetAsync(job.ProviderAccountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProviderAccount { Id = job.ProviderAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow });
-            return accounts.Object;
+            return accounts;
+        }
+
+        private static DownloadJob BuildVideoJob()
+        {
+            DownloadJob job = BuildJob(DownloadJobKind.Videos);
+            job.OutputPath = Path.Combine(Path.GetTempPath(), "vf-download-job-tests");
+            return job;
         }
 
         private static DownloadJob BuildJob(DownloadJobKind kind)
