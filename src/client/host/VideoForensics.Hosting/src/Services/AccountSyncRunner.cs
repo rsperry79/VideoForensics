@@ -304,14 +304,14 @@ namespace VideoForensics.Client.Hosting.Services
             // An explicit period wins; otherwise since the last successful auth. A null end date means now.
             DateTime? historyStart = fullHistory ? DateTime.UtcNow.AddYears(-1) : null;
             DateTime? requestedFrom = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
-            if (AccountSyncRunner.WasLimited(requestedFrom, DateTime.UtcNow))
+
+            // A custom range (explicit start, not full history) is batched in seven-day windows instead, so the one-week limit does not apply.
+            bool customRange = !fullHistory && request?.FromUtc is not null;
+            if (!customRange && AccountSyncRunner.WasLimited(requestedFrom, DateTime.UtcNow))
             {
                 _activity.Append($"{initial.ProviderName}: history limited to one week per pull");
                 _logger.LogInformation("Sync start limited to one week back for {ProviderName} account", initial.ProviderName);
             }
-
-            DateTime? from = AccountSyncRunner.OneWeekFloor(requestedFrom, DateTime.UtcNow);
-            DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
             // The first sync backfills a year in one-week windows, oldest first, so a long history is pulled in bounded calls.
@@ -319,11 +319,26 @@ namespace VideoForensics.Client.Hosting.Services
             EventPullResult counts;
             if (fullHistory)
             {
-                (counts, weeklyError) = await PullWeeklyAsync(eventPullService, accountId, cancellationToken);
+                (counts, weeklyError) = await PullWeeklyAsync(eventPullService, accountId, AccountSyncRunner.WeeklyWindows(DateTime.UtcNow), cancellationToken);
+            }
+            else if (request?.FromUtc is { } customFrom)
+            {
+                // The custom range is batched too, and reaches back at most one year: an older start is clamped to one year before its end.
+                DateTime customEnd = request.ToUtc ?? DateTime.UtcNow;
+                DateTime yearFloor = customEnd.AddYears(-1);
+                if (customFrom < yearFloor)
+                {
+                    customFrom = yearFloor;
+                    _activity.Append($"{initial.ProviderName}: history limited to one year per request");
+                    _logger.LogInformation("Sync start limited to one year back for {ProviderName} account", initial.ProviderName);
+                }
+
+                (counts, weeklyError) = await PullWeeklyAsync(eventPullService, accountId, AccountSyncRunner.WeeklyWindows(customFrom, customEnd), cancellationToken);
             }
             else
             {
-                counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+                DateTime? from = AccountSyncRunner.OneWeekFloor(requestedFrom, DateTime.UtcNow);
+                counts = await eventPullService.PullAccountEventsAsync(accountId, from, request?.ToUtc, cancellationToken);
             }
 
             LogPullCounts(initial.ProviderName, counts);
@@ -372,14 +387,24 @@ namespace VideoForensics.Client.Hosting.Services
         /// </summary>
         internal static IReadOnlyList<(DateTime From, DateTime To)> WeeklyWindows(DateTime nowUtc)
         {
+            return WeeklyWindows(nowUtc.AddYears(-1), nowUtc);
+        }
+
+        /// <summary>
+        /// Contiguous windows of at most seven days covering [<paramref name="from"/>, <paramref name="to"/>], oldest first.
+        /// The last window ends exactly at <paramref name="to"/>; empty when there is nothing to cover.
+        /// Why: a pull is bounded to seven days per call, so a long range never becomes one unbounded provider request.
+        /// </summary>
+        internal static IReadOnlyList<(DateTime From, DateTime To)> WeeklyWindows(DateTime from, DateTime to)
+        {
             var windows = new List<(DateTime From, DateTime To)>();
-            DateTime start = nowUtc.AddYears(-1);
-            while (start < nowUtc)
+            DateTime start = from;
+            while (start < to)
             {
                 DateTime end = start.AddDays(7);
-                if (end > nowUtc)
+                if (end > to)
                 {
-                    end = nowUtc;
+                    end = to;
                 }
 
                 windows.Add((start, end));
@@ -390,14 +415,14 @@ namespace VideoForensics.Client.Hosting.Services
         }
 
         /// <summary>
-        /// Pulls the backfill one week at a time. Discovery repeats every week, so devices and locations take the largest
-        /// count rather than a sum; events and failed feeds are summed across the weeks.
+        /// Pulls the given windows one at a time, oldest first. Discovery repeats every window, so devices and locations take the largest
+        /// count rather than a sum; events and failed feeds are summed across the windows.
         /// </summary>
-        private async Task<(EventPullResult Counts, string? Error)> PullWeeklyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
+        private async Task<(EventPullResult Counts, string? Error)> PullWeeklyAsync(IEventPullService eventPullService, Guid accountId, IReadOnlyList<(DateTime From, DateTime To)> windows, CancellationToken cancellationToken)
         {
             int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
             string? firstError = null;
-            foreach ((DateTime from, DateTime to) in WeeklyWindows(DateTime.UtcNow))
+            foreach ((DateTime from, DateTime to) in windows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 EventPullResult week = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
