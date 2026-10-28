@@ -112,13 +112,27 @@ if (inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.Window
     // Files renamed aside by the previous apply (the exe and dlls that were in use) can be deleted now.
     VideoForensics.Client.Hosting.Updates.UpdateApplier.DeleteLeftoverFiles(AppContext.BaseDirectory);
 
+    // Only SYSTEM and Administrators may write the folder this service applies updates from as SYSTEM.
+    VideoForensics.Client.Platform.Windows.UpdatesFolderAcl.Ensure(updatesRoot);
+
+    // The apply below ends with an exit that the service manager must turn into a restart. If that cannot be guaranteed,
+    // leave the staged package alone: a stopped service is worse than an old version.
+    VideoForensics.Client.Platform.Windows.ServiceRecoveryResult recovery = await new VideoForensics.Client.Platform.Windows.WindowsServiceRecoveryConfigurator(
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Platform.Windows.WindowsServiceRecoveryConfigurator>.Instance)
+        .EnsureAsync("VideoForensics", CancellationToken.None);
+    if (!recovery.Success)
+    {
+        Log.Error("Service recovery is not configured ({Message}); staged updates will not be applied", recovery.Message);
+    }
+
     var startupApplier = new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
         new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
         new VideoForensics.Client.Hosting.Updates.UpdateApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>.Instance),
         Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>.Instance);
     string runningVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0";
-    VideoForensics.Client.Hosting.Updates.StartupUpdateResult updateResult =
-        await startupApplier.TryApplyStagedAsync(updatesRoot, AppContext.BaseDirectory, runningVersion, allowDevUpdatePackages, CancellationToken.None);
+    VideoForensics.Client.Hosting.Updates.StartupUpdateResult updateResult = recovery.Success
+        ? await startupApplier.TryApplyStagedAsync(updatesRoot, AppContext.BaseDirectory, runningVersion, allowDevUpdatePackages, CancellationToken.None)
+        : new VideoForensics.Client.Hosting.Updates.StartupUpdateResult(VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None, "recovery not configured", null);
 
     if (updateResult.Outcome == VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.Applied)
     {
@@ -126,7 +140,7 @@ if (inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.Window
         await Log.CloseAndFlushAsync();
 
         // This process still has the old files mapped, so it must not keep running. A non-zero exit triggers the
-        // service's SCM recovery action (restart), which must be configured by the installer before this is switched on.
+        // service's SCM recovery action (restart); the recovery settings were ensured above.
         Environment.Exit(1);
     }
     else if (updateResult.Outcome != VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None)

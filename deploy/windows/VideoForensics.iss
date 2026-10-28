@@ -216,6 +216,8 @@ Name: "{group}\Optional Tools\Tools Readme"; Filename: "{app}\Tools\README.txt";
 Filename: "sc.exe"; Parameters: "create VideoForensics binPath= ""{app}\VideoForensics.Client.WebApp.exe"" start= auto DisplayName= ""VideoForensics"""; Components: server; Check: IsFreshInstall; Flags: runhidden; StatusMsg: "Registering VideoForensics service..."
 Filename: "sc.exe"; Parameters: "description VideoForensics ""VideoForensics web application and API server"""; Components: server; Check: IsFreshInstall; Flags: runhidden
 Filename: "sc.exe"; Parameters: "failure VideoForensics reset= 86400 actions= restart/5000/restart/5000/restart/5000"; Components: server; Check: IsFreshInstall; Flags: runhidden
+; failureflag makes a non-zero exit (not only a crash) trigger the restart actions; in-place updates exit this way.
+Filename: "sc.exe"; Parameters: "failureflag VideoForensics 1"; Components: server; Check: IsFreshInstall; Flags: runhidden
 
 ; DB init / admin-account creation / network-tier config all now run directly from
 ; CurStepChanged(ssPostInstall) in [Code] (via RunDbSetupTool), NOT as [Run] entries - moving them
