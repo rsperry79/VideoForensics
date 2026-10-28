@@ -30,11 +30,8 @@ public class NavGroups_Tests
         Assert.Equal("Media", group.Text);
         Assert.Equal("/media", group.Path);
 
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/media", itemPaths);
-        Assert.DoesNotContain("/collect", itemPaths);
-        Assert.DoesNotContain("/analyze", itemPaths);
-        Assert.Contains("/chat", itemPaths);
+        // Media has no sub menu: Signal history and Chat moved under Cases.
+        Assert.Equal(new[] { "/media" }, group.Items.Select(i => i.Path).ToList());
     }
 
     [Fact]
@@ -53,12 +50,13 @@ public class NavGroups_Tests
     public void Cases_GroupHasCorrectProperties()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "cases");
-        Assert.Equal("Cases", group.Text);
+        Assert.Equal("Review", group.Text);
         Assert.Equal("/cases", group.Path);
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/cases", itemPaths);
-        Assert.Contains("/cases/new", itemPaths);
+        Assert.Contains("/signal-history", itemPaths);
+        Assert.Contains("/chat", itemPaths);
         Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/analyze/chain-of-custody", itemPaths);
         Assert.DoesNotContain("/analyze/validate/integrity", itemPaths);
@@ -157,18 +155,10 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void CaseNew_RequiresReviewRole()
+    public void CaseNew_IsNotInTheMenu()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "cases");
-        NavItem newCaseItem = group.Items.First(i => i.Path == "/cases/new");
-
-        // Should NOT be visible to ReadOnly
-        var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
-        Assert.False(newCaseItem.IsVisible(readOnlyCtx));
-
-        // Should be visible to Review
-        var reviewCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false);
-        Assert.True(newCaseItem.IsVisible(reviewCtx));
+        // A manual case starts from Signal history, not from the menu.
+        Assert.DoesNotContain(NavGroups.All.SelectMany(g => g.Items), i => i.Path == "/cases/new");
     }
 
     [Fact]

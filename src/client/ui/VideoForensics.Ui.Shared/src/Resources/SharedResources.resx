@@ -170,6 +170,9 @@
   <data name="Cases" xml:space="preserve">
     <value>Cases</value>
   </data>
+  <data name="Review" xml:space="preserve">
+    <value>Review</value>
+  </data>
   <data name="Sources" xml:space="preserve">
     <value>Sources</value>
   </data>

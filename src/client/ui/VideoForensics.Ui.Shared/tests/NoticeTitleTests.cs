@@ -27,7 +27,7 @@ public class NoticeTitleTests
     [Fact]
     public void ReviewLink_IsNullForOtherNoticesOrWithoutAPath()
     {
-        Assert.Null(NoticeActions.ReviewLink("SignalDeviation", "/analyze/chain-of-custody"));
+        Assert.Null(NoticeActions.ReviewLink("DeviceOffline", "/accounts/abc/sync"));
         Assert.Null(NoticeActions.ReviewLink("ChainOfCustodyIntegrityFailed", null));
     }
 }

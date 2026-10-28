@@ -69,15 +69,14 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         [
             new("media", "Media", "/media",
             [
-                new("Media", "/media"),
-                new("Signal history", "/signal-history"),
-                new("Chat Assistant", "/chat")
+                new("Media", "/media")
             ]),
 
-            new("cases", "Cases", "/cases",
+            new("cases", "Review", "/cases",
             [
                 new("All Cases", "/cases"),
-                new("New Case", "/cases/new"),
+                new("Signal history", "/signal-history"),
+                new("Chat Assistant", "/chat"),
                 new("Analyze", "/analyze",
                     Children:
                     [
@@ -234,4 +233,4 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             return items;
         }
     }
-}
+}
