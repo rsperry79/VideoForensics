@@ -43,20 +43,20 @@ else
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
                     <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
-                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => _snapshotRssiIntervalSeconds = v" />
+                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => { _snapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
                 </div>
                 <div class="mb-3">
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
-                    <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" Min="1" Step="1" />
+                    <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="1" Step="1" />
                 </div>
                 <div class="mb-3">
                     <label for="snapshot-rollup-interval">@L["SnapshotRollupIntervalLabel"]</label>
-                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" Min="1" Step="1" />
+                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="1" Step="1" />
                 </div>
 
                 <div class="mb-3">
                     <label for="is-enabled">
-                        <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" TChecked="bool" />
+                        <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" @bind-Checked:after="QueueAutoSave" TChecked="bool" />
                         @L["EnableSync"]
                     </label>
                 </div>
@@ -65,7 +65,7 @@ else
 
                 <div class="mb-3">
                     <label for="use-advanced-jamming">
-                        <SfCheckBox ID="use-advanced-jamming" @bind-Checked="_useAdvancedJammingSchedule" TChecked="bool" />
+                        <SfCheckBox ID="use-advanced-jamming" @bind-Checked="_useAdvancedJammingSchedule" @bind-Checked:after="QueueAutoSave" TChecked="bool" />
                         @L["AdvancedJammingSchedule"]
                     </label>
                 </div>
@@ -124,22 +124,22 @@ else
                                             {
                                                 <tr>
                                                     <td>
-                                                        <SfDropDownList TValue="int" TItem="(int Value, string Display)" DataSource="@_dayOfWeekOptions" @bind-Value="window.DayOfWeek">
+                                                        <SfDropDownList TValue="int" TItem="(int Value, string Display)" DataSource="@_dayOfWeekOptions" @bind-Value="window.DayOfWeek" @bind-Value:after="QueueAutoSave">
                                                             <DropDownListFieldSettings Text="Display" Value="Value"></DropDownListFieldSettings>
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.StartMinuteOfDay">
+                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.StartMinuteOfDay" @bind-Value:after="QueueAutoSave">
                                                             <DropDownListFieldSettings Text="@nameof(TimeOption.Display)" Value="@nameof(TimeOption.Minutes)"></DropDownListFieldSettings>
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.EndMinuteOfDay">
+                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.EndMinuteOfDay" @bind-Value:after="QueueAutoSave">
                                                             <DropDownListFieldSettings Text="@nameof(TimeOption.Display)" Value="@nameof(TimeOption.Minutes)"></DropDownListFieldSettings>
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => window.SnapshotRssiIntervalSeconds = v" />
+                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => { window.SnapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
                                                     </td>
                                                     <td>
                                                         <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
@@ -158,9 +158,6 @@ else
                     </div>
                 }
 
-                <div class="mt-4">
-                    <SfButton type="submit" CssClass="e-primary" Disabled="@_isBusy" Content="@(_isBusy ? L["Saving"] : L["Save"])" />
-                </div>
             </EditForm>
         </div>
     </div>
@@ -171,6 +168,11 @@ else
 @code {
     [Parameter]
     public Guid Id { get; set; }
+
+    /// <summary>Pause after the last settings change before the schedule is saved.</summary>
+    private static readonly TimeSpan AutoSaveDelay = TimeSpan.FromSeconds(1);
+
+    private CancellationTokenSource? _autoSaveCts;
 
     private SyncSchedule? _schedule;
     private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
@@ -405,6 +407,7 @@ else
 
     private void AddWindow()
     {
+        QueueAutoSave();
         if (_jammingWindows == null)
         {
             _jammingWindows = [];
@@ -426,6 +429,7 @@ else
 
     private void RemoveWindow(JammingScheduleWindow window)
     {
+        QueueAutoSave();
         _jammingWindows?.Remove(window);
     }
 
@@ -506,6 +510,33 @@ else
         6 => L["Saturday"],
         _ => L["Unknown"]
     };
+
+    /// <summary>
+    /// Restarts the auto-save countdown on every settings change. Saving waits for a short pause, so a run of edits
+    /// (typing a number, nudging a spinner) produces one write rather than one per keystroke.
+    /// </summary>
+    private void QueueAutoSave()
+    {
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        _autoSaveCts = new CancellationTokenSource();
+        _ = AutoSaveAfterPauseAsync(_autoSaveCts.Token);
+    }
+
+    private async Task AutoSaveAfterPauseAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(AutoSaveDelay, token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer change restarted the countdown.
+            return;
+        }
+
+        await InvokeAsync(SaveScheduleAsync);
+    }
 
     private async Task SaveScheduleAsync()
     {

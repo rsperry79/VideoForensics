@@ -1,4 +1,4 @@
-@page "/accounts/{Id:guid}/sync/history"
+@page "/accounts/{Id:guid}/history"
 @inherits AccountTabPageBase
 @using VideoForensics.Client.Ui.Shared.Services
 
@@ -104,8 +104,7 @@ else
         {
             (L["BreadcrumbAccounts"], "/accounts"),
             (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"),
-            (L["TabSync"], $"/accounts/{Id}/sync"),
-            (L["SyncHistoryTitle"], null),
+            (L["TabHistory"], null),
         };
         // Render the account header first; the history loads after it and doesn't hold it up.
         StateHasChanged();
