@@ -54,7 +54,7 @@
     <value>To:</value>
   </data>
   <data name="RunReport" xml:space="preserve">
-    <value>Run Report</value>
+    <value>Refresh report</value>
   </data>
   <data name="ChainIntegrityVerified" xml:space="preserve">
     <value>Chain integrity verified</value>
