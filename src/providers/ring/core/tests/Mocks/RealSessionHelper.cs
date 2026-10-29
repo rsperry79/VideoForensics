@@ -102,6 +102,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
                 : authService.GetAuthStatusDetails();
         }
 
+        /// <summary>The same composition root the helper builds. Live tests that need the saved database resolve repositories from it.</summary>
+        public static IServiceProvider Services => ServiceProviderLazy.Value;
+
         // Probed once per test process: restoring a session calls the Ring API, so every live test must not repeat it.
         private static readonly Lazy<bool> CredentialsPresent = new(ProbeSavedCredentials);
 
