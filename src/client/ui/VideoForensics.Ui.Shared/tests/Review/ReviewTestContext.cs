@@ -16,6 +16,7 @@ using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Utils.Testing;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -68,6 +69,18 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The page-level timeline feeder's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewTimelineFeeder>> FeederLogger { get; } = new();
 
+    /// <summary>The provider accounts the ownership repositories report. Tests add accounts here before rendering.</summary>
+    protected List<ProviderAccount> Accounts { get; } = [];
+
+    /// <summary>The locations linked to each provider account. A device belongs to an account through its location.</summary>
+    protected Dictionary<Guid, List<Location>> LocationsByAccount { get; } = [];
+
+    /// <summary>When true, the provider-account repository throws, so the ownership load fails.</summary>
+    protected bool OwnershipFails { get; set; }
+
+    /// <summary>The page's logger, so a test can check what was logged.</summary>
+    protected Mock<ILogger<ReviewPage>> PageLogger { get; } = new();
+
     /// <summary>The page's localizer, resolved the way the page resolves it.</summary>
     protected IStringLocalizer<ReviewPage> L => Services.GetRequiredService<IStringLocalizer<ReviewPage>>();
 
@@ -95,12 +108,89 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddSingleton(TabLogger.Object);
         _ = Services.AddSingleton(FeederLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddSingleton(PageLogger.Object);
+        Mock<IProviderAccountRepository> accountRepository = ConfigureAccountRepository();
+        Mock<ILocationRepository> locationRepository = ConfigureLocationRepository();
+        Mock<IUserRepository> userRepository = ConfigureUserRepository();
+        _ = Services.AddScoped(_ => accountRepository.Object);
+        _ = Services.AddScoped(_ => locationRepository.Object);
+        _ = Services.AddScoped(_ => userRepository.Object);
+        _ = Services.AddScoped<DeviceOwnershipService>();
 
         _ = DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => Devices.ToList());
 
         SignInOperatorAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>Adds a provider account with the given provider name and returns it.</summary>
+    protected ProviderAccount AddAccount(string providerName)
+    {
+        var account = new ProviderAccount
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            ProviderName = providerName,
+            LinkedUtc = FixedNowUtc,
+        };
+        Accounts.Add(account);
+        LocationsByAccount[account.Id] = [];
+        return account;
+    }
+
+    /// <summary>Links a location to an account, so devices at that location belong to the account.</summary>
+    protected Location LinkLocation(ProviderAccount account)
+    {
+        var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-" + Guid.NewGuid().ToString("N"), Name = "Location" };
+        LocationsByAccount[account.Id].Add(location);
+        return location;
+    }
+
+    private Mock<IProviderAccountRepository> ConfigureAccountRepository()
+    {
+        var repository = new Mock<IProviderAccountRepository>();
+        _ = repository
+            .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                if (OwnershipFails)
+                {
+                    throw new InvalidOperationException("ownership unavailable");
+                }
+
+                return (IReadOnlyList<ProviderAccount>)Accounts.ToList();
+            });
+        return repository;
+    }
+
+    private Mock<ILocationRepository> ConfigureLocationRepository()
+    {
+        var repository = new Mock<ILocationRepository>();
+        _ = repository
+            .Setup(r => r.ListByProviderAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid accountId, CancellationToken _) => LocationsFor(accountId));
+        return repository;
+    }
+
+    private IReadOnlyList<Location> LocationsFor(Guid accountId)
+    {
+        if (LocationsByAccount.TryGetValue(accountId, out List<Location>? locations))
+        {
+            return locations.ToList();
+        }
+
+        return Array.Empty<Location>();
+    }
+
+    private static Mock<IUserRepository> ConfigureUserRepository()
+    {
+        // No user rows: the ownership service labels each account with its provider name.
+        var repository = new Mock<IUserRepository>();
+        _ = repository
+            .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+        return repository;
     }
 
     /// <summary>Adds <paramref name="count"/> devices named "Camera 1..n" to the repository double.</summary>

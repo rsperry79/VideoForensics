@@ -83,9 +83,6 @@
   <data name="Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
-  <data name="FilterAvailableLater" xml:space="preserve">
-    <value>Filters arrive in a later update</value>
-  </data>
   <data name="ActionsAvailableLater" xml:space="preserve">
     <value>Actions arrive in a later update</value>
   </data>
@@ -181,5 +178,26 @@
   </data>
   <data name="EventType_person" xml:space="preserve">
     <value>Person</value>
+  </data>
+  <data name="FilterTitle" xml:space="preserve">
+    <value>Filter cameras</value>
+  </data>
+  <data name="FilterProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="FilterAllProviders" xml:space="preserve">
+    <value>All providers</value>
+  </data>
+  <data name="FilterAccount" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="FilterAllAccounts" xml:space="preserve">
+    <value>All accounts</value>
+  </data>
+  <data name="FilterMatchingCameras" xml:space="preserve">
+    <value>{0} cameras match</value>
+  </data>
+  <data name="FilterActive" xml:space="preserve">
+    <value>Filter active</value>
   </data>
 </root>

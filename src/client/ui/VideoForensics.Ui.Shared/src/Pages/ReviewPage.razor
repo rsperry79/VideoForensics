@@ -1,5 +1,6 @@
 @page "/media/review"
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Extensions
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
@@ -15,6 +16,8 @@
 @inject ScopeState ScopeState
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
+@inject DeviceOwnershipService OwnershipService
+@inject ILogger<ReviewPage> Logger
 @inject IStringLocalizer<ReviewPage> L
 
 @if (_isLoading)
@@ -33,12 +36,12 @@ else
         <ReviewTimelinePanel />
     </PageRightPanelContent>
 
-    <ReviewTopBar State="State" Devices="_deviceIds" DeviceNames="_deviceNames" />
+    <ReviewTopBar State="State" Devices="_visibleIds" DeviceNames="_deviceNames" AllDeviceIds="_deviceIds" Ownership="_ownership" />
 
     @if (State.ActiveTab == ReviewTab.Timeline)
     {
         <section class="review-tab-panel" data-testid="review-tab-timeline">
-            <ReviewTimelineTab State="State" Devices="_deviceIds" DeviceNames="_deviceNames" />
+            <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
         </section>
     }
     else if (State.ActiveTab == ReviewTab.Events)
@@ -63,6 +66,14 @@ else
     private IReadOnlyList<Guid> _deviceIds = [];
     private IReadOnlyDictionary<Guid, string> _deviceNames = new Dictionary<Guid, string>();
 
+    // Accounts and device ownership, from the same service the scope rail uses. Null when the load failed,
+    // in which case every camera stays visible.
+    private DeviceOwnershipSnapshot? _ownership;
+
+    // The cameras left after the Provider and Account filters, and the filters they were computed for.
+    private IReadOnlyList<Guid> _visibleIds = [];
+    private (string? Provider, Guid? Account) _appliedFilters;
+
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnReviewStateChanged;
@@ -78,6 +89,8 @@ else
                 device => device.Id,
                 device => DeviceLabel.For(device.Name, device.ProviderDeviceId));
 
+            await LoadOwnershipAsync(devices);
+
             ReadUrlOnce();
             _urlParsed = true;
             WriteBackUrl();
@@ -87,23 +100,72 @@ else
     }
 
     /// <summary>
-    /// Seeds the state from the query string. Cameras the user cannot see are dropped; with none left, the page
-    /// falls back to the global scope's cameras, then to the first nine devices.
+    /// Loads the provider accounts and device ownership the Provider and Account filters use. A failed load is
+    /// logged (type and message only) and leaves <see cref="_ownership"/> null, so every camera stays visible.
+    /// </summary>
+    private async Task LoadOwnershipAsync(IReadOnlyList<Device> devices)
+    {
+        DeviceOwnershipSnapshot snapshot = await OwnershipService.LoadAsync(devices, CancellationToken.None);
+        if (snapshot.LoadError is not null)
+        {
+            Logger.LogWarning(
+                "Could not load review device ownership, showing every camera: {ExceptionType}: {Message}",
+                snapshot.LoadError.GetType().FullName,
+                snapshot.LoadError.Message);
+            _ownership = null;
+            return;
+        }
+
+        _ownership = snapshot;
+    }
+
+    /// <summary>Recomputes the visible cameras for the current Provider and Account filters.</summary>
+    private void ComputeVisibleCameras()
+    {
+        _visibleIds = ReviewDeviceFilter.VisibleDeviceIds(_deviceIds, _ownership?.Ownership, State.ProviderFilter, State.AccountFilter);
+        _appliedFilters = (State.ProviderFilter, State.AccountFilter);
+    }
+
+    /// <summary>
+    /// After a Provider or Account change, drops selected cameras the filter hides. If that empties the selection,
+    /// the first visible cameras (up to the tile limit) are selected instead.
+    /// </summary>
+    private void ReconcileCameras()
+    {
+        ComputeVisibleCameras();
+
+        IReadOnlyList<Guid> kept = ReviewDeviceFilter.ClampCameras(State.CameraIds, _visibleIds);
+        if (kept.Count == 0)
+        {
+            kept = _visibleIds.Take(CameraSync.MaxTiles).ToList();
+        }
+
+        if (!kept.SequenceEqual(State.CameraIds))
+        {
+            State.SetCameras(kept);
+        }
+    }
+
+    /// <summary>
+    /// Seeds the state from the query string. The filters are read first, so cameras the filters hide are dropped;
+    /// with none left, the page falls back to the global scope's cameras, then to the first nine visible devices.
     /// </summary>
     private void ReadUrlOnce()
     {
         ReviewUrlState url = ReviewUrl.Parse(CurrentQuery());
-        HashSet<Guid> known = _deviceIds.ToHashSet();
+        State.SetFilters(url.Provider, url.Account);
+        ComputeVisibleCameras();
+        HashSet<Guid> visible = _visibleIds.ToHashSet();
 
-        List<Guid> cameras = url.Devices.Where(known.Contains).ToList();
+        List<Guid> cameras = url.Devices.Where(visible.Contains).ToList();
         if (cameras.Count == 0)
         {
-            cameras = ScopeState.Current.DeviceIds.Where(known.Contains).ToList();
+            cameras = ScopeState.Current.DeviceIds.Where(visible.Contains).ToList();
         }
 
         if (cameras.Count == 0)
         {
-            cameras = _deviceIds.Take(CameraSync.MaxTiles).ToList();
+            cameras = _visibleIds.Take(CameraSync.MaxTiles).ToList();
         }
 
         State.SetCameras(cameras);
@@ -115,13 +177,17 @@ else
 
         State.SetCursor(url.CursorUtc);
         State.SetTab(url.Tab);
-        State.SetFilters(url.Provider, url.Account);
     }
 
     private void OnReviewStateChanged()
     {
         if (_urlParsed)
         {
+            if ((State.ProviderFilter, State.AccountFilter) != _appliedFilters)
+            {
+                ReconcileCameras();
+            }
+
             WriteBackUrl();
         }
 

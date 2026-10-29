@@ -49,18 +49,73 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_FilterAndActions_AreDisabledWithALocalizedTooltip()
+    public void ReviewTopBar_Actions_StaysDisabledWithALocalizedTooltip()
     {
         // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
         // Assert
-        IElement filter = cut.Find("[data-testid='review-filter']");
         IElement actions = cut.Find("[data-testid='review-actions']");
-        Assert.True(filter.HasAttribute("disabled"));
         Assert.True(actions.HasAttribute("disabled"));
-        Assert.Equal(L["FilterAvailableLater"].Value, filter.GetAttribute("title"));
         Assert.Equal(L["ActionsAvailableLater"].Value, actions.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_FilterButton_IsEnabledAndTogglesThePanel()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        Assert.False(cut.Find("[data-testid='review-filter']").HasAttribute("disabled"));
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-panel']"));
+
+        // Act
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-filter-panel']"));
+
+        // Act again
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-panel']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_NoFilterSet_ShowsNoActiveIndicator()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-active']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_ProviderFilterSet_ShowsTheActiveIndicator()
+    {
+        // Arrange
+        ReviewState.SetFilters("Ring", null);
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        IElement indicator = cut.Find("[data-testid='review-filter-active']");
+        Assert.Equal(L["FilterActive"].Value, indicator.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_AccountFilterSet_ShowsTheActiveIndicator()
+    {
+        // Arrange
+        ReviewState.SetFilters(null, Guid.NewGuid());
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-filter-active']"));
     }
 
     [Fact]

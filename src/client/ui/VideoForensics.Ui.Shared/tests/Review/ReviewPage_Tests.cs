@@ -1,6 +1,9 @@
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Moq;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -218,5 +221,127 @@ public class ReviewPage_Tests : ReviewTestContext
         // Assert: the tab change unmounts the timeline tab, but the page-level feeder keeps the model filled
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-tab-events']")));
         Assert.Single(TimelineModel.Clips);
+    }
+
+    [Fact]
+    public void ReviewPage_ProviderQuery_SeedsTheFilterAndOffersOnlyThatProvidersCameras()
+    {
+        // Arrange
+        (Guid ringDevice, Guid wyzeDevice) = SetUpRingAndWyze();
+        NavigateToReview("provider=Wyze");
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert
+        Assert.Equal("Wyze", ReviewState.ProviderFilter);
+        Assert.Equal([wyzeDevice], ReviewState.CameraIds);
+        Assert.DoesNotContain(ringDevice, ReviewState.CameraIds);
+        Assert.Single(cut.FindAll("[data-testid='review-camera-button']"));
+    }
+
+    [Fact]
+    public void ReviewPage_AccountQuery_SeedsTheAccountFilter()
+    {
+        // Arrange
+        ProviderAccount ring = AddAccount("Ring");
+        AddDevices(2);
+        Devices[0].LocationId = LinkLocation(ring).Id;
+        NavigateToReview("account=" + ring.Id.ToString("D"));
+
+        // Act
+        _ = Render<ReviewPage>();
+
+        // Assert
+        Assert.Equal(ring.Id, ReviewState.AccountFilter);
+        Assert.Equal([Devices[0].Id], ReviewState.CameraIds);
+    }
+
+    [Fact]
+    public void ReviewPage_CameraSelectorOpened_OffersOnlyVisibleCameras()
+    {
+        // Arrange
+        (Guid ringDevice, Guid wyzeDevice) = SetUpRingAndWyze();
+        NavigateToReview("provider=Ring");
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Act
+        cut.Find("[data-testid='review-camera-button']").Click();
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
+    }
+
+    [Fact]
+    public void ReviewPage_FilterChangedAwayFromSelectedCameras_DropsThemAndKeepsTheRest()
+    {
+        // Arrange
+        (Guid ringDevice, Guid wyzeDevice) = SetUpRingAndWyze();
+        NavigateToReview();
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+        ReviewState.SetCameras([ringDevice, wyzeDevice]);
+
+        // Act
+        cut.Find("[data-testid='review-filter']").Click();
+        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
+        cut.Find("[data-testid='review-filter-apply']").Click();
+
+        // Assert
+        Assert.Equal([ringDevice], ReviewState.CameraIds);
+    }
+
+    [Fact]
+    public void ReviewPage_FilterLeavesNoSelectedCamera_SelectsTheVisibleCameras()
+    {
+        // Arrange
+        (Guid ringDevice, Guid wyzeDevice) = SetUpRingAndWyze();
+        NavigateToReview();
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+        ReviewState.SetCameras([ringDevice]);
+
+        // Act
+        cut.Find("[data-testid='review-filter']").Click();
+        cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
+        cut.Find("[data-testid='review-filter-apply']").Click();
+
+        // Assert
+        Assert.Equal([wyzeDevice], ReviewState.CameraIds);
+    }
+
+    [Fact]
+    public void ReviewPage_OwnershipLoadFails_TreatsEveryDeviceAsVisibleAndLogsAWarning()
+    {
+        // Arrange
+        AddAccount("Ring");
+        AddDevices(3);
+        OwnershipFails = true;
+        NavigateToReview("provider=Ring");
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert
+        Assert.Equal(Devices.Select(d => d.Id), ReviewState.CameraIds);
+        PageLogger.Verify(
+            logger => logger.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) => state.ToString()!.Contains("InvalidOperationException", StringComparison.Ordinal) && state.ToString()!.Contains("ownership unavailable", StringComparison.Ordinal)),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+        Assert.Single(cut.FindAll("[data-testid='review-camera-button']"));
+    }
+
+    /// <summary>Ring owns Devices[0]; Wyze owns Devices[1]. Returns the Ring and Wyze devices.</summary>
+    private (Guid Ring, Guid Wyze) SetUpRingAndWyze()
+    {
+        ProviderAccount ring = AddAccount("Ring");
+        ProviderAccount wyze = AddAccount("Wyze");
+        AddDevices(2);
+        Devices[0].LocationId = LinkLocation(ring).Id;
+        Devices[1].LocationId = LinkLocation(wyze).Id;
+        return (Devices[0].Id, Devices[1].Id);
     }
 }

@@ -1,6 +1,8 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IDisposable
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ReviewPage> L
@@ -20,7 +22,20 @@
             <option value="week" selected="@(CurrentPreset == RangePreset.Last7Days)">@L["RangeLast7Days"]</option>
         </select>
 
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" disabled title="@L["FilterAvailableLater"]">@L["Filter"]</button>
+        <div class="position-relative">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" aria-expanded="@_filterOpen" @onclick="OnToggleFilter">
+                @L["Filter"]
+                @if (FilterActive)
+                {
+                    <span class="badge rounded-pill text-bg-primary ms-1" data-testid="review-filter-active" aria-label="@L["FilterActive"]" title="@L["FilterActive"]">&#8226;</span>
+                }
+            </button>
+
+            @if (_filterOpen)
+            {
+                <ReviewFilterPanel State="State" AllDeviceIds="AllDeviceIds" Ownership="Ownership" OnClose="OnFilterClosed" />
+            }
+        </div>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-actions" disabled title="@L["ActionsAvailableLater"]">@L["Actions"]</button>
     </div>
 
@@ -43,9 +58,17 @@
     [Parameter, EditorRequired]
     public ReviewPageState State { get; set; } = default!;
 
-    /// <summary>Every camera the user can see, in display order.</summary>
+    /// <summary>The cameras the page offers after the Provider and Account filters, in display order.</summary>
     [Parameter]
     public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Every camera before any filter. The filter panel counts matches against it.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> AllDeviceIds { get; set; } = [];
+
+    /// <summary>Accounts and device ownership for the filter panel. Null when the ownership load failed.</summary>
+    [Parameter]
+    public DeviceOwnershipSnapshot? Ownership { get; set; }
 
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
@@ -54,6 +77,11 @@
     /// <summary>The clock the range presets end at. Tests pass a fixed clock; the page uses the system clock.</summary>
     [Parameter]
     public Func<DateTime> UtcNow { get; set; } = static () => DateTime.UtcNow;
+
+    private bool _filterOpen;
+
+    /// <summary>True while a Provider or Account filter narrows the cameras, so the Filter button shows an indicator.</summary>
+    private bool FilterActive => State.ProviderFilter is not null || State.AccountFilter is not null;
 
     private enum RangePreset
     {
@@ -88,6 +116,16 @@
     private void OnStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnToggleFilter()
+    {
+        _filterOpen = !_filterOpen;
+    }
+
+    private void OnFilterClosed()
+    {
+        _filterOpen = false;
     }
 
     private void OnBack()
