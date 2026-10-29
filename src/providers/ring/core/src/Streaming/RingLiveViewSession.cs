@@ -34,6 +34,11 @@ namespace VideoForensics.Providers.Ring.Streaming
         private readonly Timer _bitrateTimer;
         private long _rtpBytesAccumulated;
 
+        // ICE candidates gathered before the offer is sent. Guarded by _iceGate, which also guards _offerSent.
+        private readonly object _iceGate = new();
+        private readonly List<(string Candidate, int MLineIndex)> _pendingIce = new();
+        private bool _offerSent;
+
         /// <summary>
         /// Raised for each received, already-decoded video frame.
         /// </summary>
@@ -94,7 +99,8 @@ namespace VideoForensics.Providers.Ring.Streaming
 
             var videoFormats = new List<VideoFormat>
             {
-                new(VideoCodecsEnum.H264, 96, 90000, "packetization-mode=1")
+                // The profile and level match the reference client's offer. Ring's pipeline needs them to start.
+                new(VideoCodecsEnum.H264, 96, 90000, "packetization-mode=1;profile-level-id=640029;level-asymmetry-allowed=1")
             };
             var audioFormats = new List<AudioFormat>
             {
@@ -102,7 +108,8 @@ namespace VideoForensics.Providers.Ring.Streaming
             };
 
             _pc.addTrack(new MediaStreamTrack(videoFormats, MediaStreamStatusEnum.RecvOnly));
-            _pc.addTrack(new MediaStreamTrack(audioFormats, MediaStreamStatusEnum.RecvOnly));
+            // Sendrecv, as the reference client offers: Ring's pipeline expects the audio return path to be negotiated.
+            _pc.addTrack(new MediaStreamTrack(audioFormats, MediaStreamStatusEnum.SendRecv));
 
             _pc.OnVideoFrameReceived += (ep, timestamp, frame, format) => OnVideoFrameReceived?.Invoke(ep, timestamp, frame, format);
             _pc.OnAudioFrameReceived += frame => OnAudioFrameReceived?.Invoke(frame);
@@ -122,10 +129,22 @@ namespace VideoForensics.Providers.Ring.Streaming
 
             _pc.onicecandidate += candidate =>
             {
-                if (candidate != null)
+                if (candidate == null)
                 {
-                    _ = _signaling.SendIceCandidateAsync(_doorbotId, candidate.candidate, candidate.sdpMLineIndex);
+                    return;
                 }
+
+                // Ring rejects a session whose ICE arrives before its live_view offer, so candidates found earlier wait here.
+                lock (_iceGate)
+                {
+                    if (!_offerSent)
+                    {
+                        _pendingIce.Add((candidate.candidate, candidate.sdpMLineIndex));
+                        return;
+                    }
+                }
+
+                _ = _signaling.SendIceCandidateAsync(_doorbotId, candidate.candidate, candidate.sdpMLineIndex);
             };
 
             _signaling.OnSdpAnswer += sdp =>
@@ -148,6 +167,19 @@ namespace VideoForensics.Providers.Ring.Streaming
             RTCSessionDescriptionInit offer = _pc.createOffer(null);
             await _pc.setLocalDescription(offer);
             await _signaling.SendOfferAsync(_doorbotId, offer.sdp);
+
+            List<(string Candidate, int MLineIndex)> pending;
+            lock (_iceGate)
+            {
+                _offerSent = true;
+                pending = new List<(string Candidate, int MLineIndex)>(_pendingIce);
+                _pendingIce.Clear();
+            }
+
+            foreach ((string candidate, int mLineIndex) in pending)
+            {
+                _ = _signaling.SendIceCandidateAsync(_doorbotId, candidate, mLineIndex);
+            }
         }
 
         public async Task CloseAsync()
