@@ -74,9 +74,6 @@
   <data name="ReportingFormatSection" xml:space="preserve">
     <value>Reporting Format &amp; Redaction</value>
   </data>
-  <data name="LoggingSection" xml:space="preserve">
-    <value>Logging</value>
-  </data>
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
   </data>

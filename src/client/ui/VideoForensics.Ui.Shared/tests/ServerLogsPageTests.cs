@@ -4,6 +4,8 @@ using AngleSharp.Html.Dom;
 
 using Bunit;
 
+using Moq;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -241,7 +243,12 @@ public abstract class ServerLogsPageTestBase : BunitContext
         _ = Services.AddSingleton<TimeProvider>(Time);
 
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(_ => ConfigMock.Object);
+        _ = Services.AddScoped(_ => ConfigToolsMock.Object);
     }
+
+    protected Mock<IForensicsConfiguration> ConfigMock { get; } = new();
+    protected Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator> ConfigToolsMock { get; } = new();
 
     protected FakeLogViewerService Logs { get; } = new();
     protected ManualTimeProvider Time { get; } = new();

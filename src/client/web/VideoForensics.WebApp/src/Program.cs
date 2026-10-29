@@ -75,9 +75,11 @@ var storageProvider = new StorageLocationProvider();
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
 
+// The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
+ServerLogLevel serverLogLevel = new();
+
 Log.Logger = new LoggerConfiguration()
-    // Every level is recorded. The Server Logs filters only change what is shown, so Trace is kept for later review.
-    .MinimumLevel.Verbose()
+    .MinimumLevel.ControlledBy(serverLogLevel.Switch)
     // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
     // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
@@ -98,6 +100,7 @@ Log.Logger = new LoggerConfiguration()
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         shared: true)
+    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -221,9 +224,12 @@ builder.WebHost.UseUrls([]);
 
 // Serilog is already configured above with file sinks. Optionally enable additional sinks
 // (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
+// Serilog writes the console, so the framework's own console provider is dropped to avoid printing every line twice.
+builder.Logging.ClearProviders();
 builder.Logging.SetMinimumLevel(LogLevel.Trace);
-// The Server Logs history reads the daily audit files in logsDir; they hold every level recorded above.
+// The Server Logs history reads the daily audit files in logsDir, which hold the levels the saved setting allows.
 builder.Services.AddSingleton(new LogFileDirectory(logsDir));
+builder.Services.AddSingleton(serverLogLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
@@ -673,6 +679,20 @@ builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
 WebApplication app = builder.Build();
+
+// Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
+using (IServiceScope levelScope = app.Services.CreateScope())
+{
+    try
+    {
+        IForensicsConfiguration savedConfig = await levelScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
+        serverLogLevel.Apply(savedConfig.LogLevel);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
 
 // Debug trace of every Ring API call: method, path and query, and status. Response bodies are not logged because
 // they hold camera and account data; enable the "VideoForensics.Providers.Ring.Api" category at Debug to see the trace.

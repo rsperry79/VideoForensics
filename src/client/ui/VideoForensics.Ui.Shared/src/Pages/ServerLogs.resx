@@ -137,4 +137,10 @@
   <data name="HideException" xml:space="preserve">
     <value>Hide exception</value>
   </data>
+  <data name="RecordingLevelLabel" xml:space="preserve">
+    <value>Recording level</value>
+  </data>
+  <data name="RecordingLevelHelp" xml:space="preserve">
+    <value>The lowest level the console and the audit log files record. Changes apply at once. The Min level filter below only changes what this page shows.</value>
+  </data>
 </root>

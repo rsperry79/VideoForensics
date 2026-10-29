@@ -11,8 +11,20 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     /// need SuperAdminLocal; the other settings need Admin. A denied change returns a failed result, not an exception,
     /// so the page can show the reason.
     /// </summary>
-    public sealed class GuardedConfigToolsOrchestrator(IConfigToolsOrchestrator inner, ICircuitOperatorGate gate) : IConfigToolsOrchestrator
+    public sealed class GuardedConfigToolsOrchestrator(IConfigToolsOrchestrator inner, ICircuitOperatorGate gate, ServerLogLevel? serverLogLevel = null) : IConfigToolsOrchestrator
     {
+        public async Task<(bool Success, string Message)> SetLoggingLevelAsync(IForensicsConfiguration config, string level, CancellationToken ct = default)
+        {
+            (bool Success, string Message) result = await Run(AccessPolicy.Admin, () => inner.SetLoggingLevelAsync(config, level, ct));
+            if (result.Success)
+            {
+                // The saved level is applied now, so the console and audit files follow it without a restart.
+                serverLogLevel?.Apply(level);
+            }
+
+            return result;
+        }
+
         public Task<(bool Success, string Message)> SetRetentionDaysAsync(IForensicsConfiguration config, int days, CancellationToken ct = default)
         {
             return Run(AccessPolicy.Admin, () => inner.SetRetentionDaysAsync(config, days, ct));
@@ -41,11 +53,6 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
         public Task<(bool Success, string Message)> SetKeyStorageProviderAsync(IForensicsConfiguration config, KeyStorageProvider provider, CancellationToken ct = default)
         {
             return Run(AccessPolicy.SuperAdminLocal, () => inner.SetKeyStorageProviderAsync(config, provider, ct));
-        }
-
-        public Task<(bool Success, string Message)> SetLoggingLevelAsync(IForensicsConfiguration config, string level, CancellationToken ct = default)
-        {
-            return Run(AccessPolicy.Admin, () => inner.SetLoggingLevelAsync(config, level, ct));
         }
 
         public Task<(bool Success, string Message)> SetReportFormatAsync(IForensicsConfiguration config, string format, CancellationToken ct = default)

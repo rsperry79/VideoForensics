@@ -123,18 +123,6 @@ else
             </div>
         </div>
     </div>
-
-    <h6 class="mt-4 mb-2">@L["LoggingSection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-row gap-2 align-items-center">
-            <SfDropDownList TValue="string" TItem="string" @bind-Value="_loggingLevel" Enabled="@CanAdmin" DataSource="@(new[] { "Debug", "Information", "Warning", "Error", "Critical" })" Style="max-width: 200px;" />
-            <SfButton Content="@L["SaveButton"]" OnClick="SaveLoggingLevelAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
-            @if (_loggingLevelMessage is not null)
-            {
-                <span style="@(_loggingLevelSuccess ? "color: green;" : "color: red;")">@_loggingLevelMessage</span>
-            }
-        </div>
-    </div>
 }
 
 @code {
@@ -154,10 +142,6 @@ else
     private bool _redactionLevelSuccess;
     private string? _redactionLevelMessage;
 
-    private string _loggingLevel = "Information";
-    private bool _loggingLevelSuccess;
-    private string? _loggingLevelMessage;
-
     protected override async Task OnInitializedAsync()
     {
         try
@@ -168,7 +152,6 @@ else
             {
                 _reportFormat = Config.ReportOutputFormat;
                 _redactionLevel = Config.RedactionLevel;
-                _loggingLevel = Config.LogLevel;
             }
         }
         finally
@@ -235,8 +218,4 @@ else
         (_redactionLevelSuccess, _redactionLevelMessage) = await ConfigTools.SetRedactionLevelAsync(Config, _redactionLevel, CancellationToken.None);
     }
 
-    private async Task SaveLoggingLevelAsync()
-    {
-        (_loggingLevelSuccess, _loggingLevelMessage) = await ConfigTools.SetLoggingLevelAsync(Config, _loggingLevel, CancellationToken.None);
-    }
 }
