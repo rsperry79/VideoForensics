@@ -25,6 +25,22 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="ReportSettingsAccess">New lowest operator level for changing report settings: "SuperAdmin" or "Admin".</param>
     public record UpdateReportPermissionsRequest(string ReportSettingsAccess);
 
+    /// <summary>Current email-integration permissions.</summary>
+    /// <param name="EmailSettingsAccess">Lowest operator level that may change email settings: "SuperAdmin" (the default) or "Admin".</param>
+    public record EmailPermissionsDto(string EmailSettingsAccess);
+
+    /// <summary>Request to change who may change email settings.</summary>
+    /// <param name="EmailSettingsAccess">New lowest operator level for changing email settings: "SuperAdmin" or "Admin".</param>
+    public record UpdateEmailPermissionsRequest(string EmailSettingsAccess);
+
+    /// <summary>Current notification-settings permissions.</summary>
+    /// <param name="NotificationSettingsAccess">Lowest operator level that may change notification settings: "SuperAdmin" (the default) or "Admin".</param>
+    public record NotificationPermissionsDto(string NotificationSettingsAccess);
+
+    /// <summary>Request to change who may change notification settings.</summary>
+    /// <param name="NotificationSettingsAccess">New lowest operator level for changing notification settings: "SuperAdmin" or "Admin".</param>
+    public record UpdateNotificationPermissionsRequest(string NotificationSettingsAccess);
+
     /// <summary>Request to change provider-account permissions.</summary>
     /// <param name="ProviderAccountEditAccess">New lowest operator level for editing provider accounts: "Admin" or "SuperAdmin".</param>
     public record UpdateProviderPermissionsRequest(string ProviderAccountEditAccess);

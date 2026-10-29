@@ -68,6 +68,24 @@
   <data name="ReportsSuperAdminOption" xml:space="preserve">
     <value>Super Admin only (default)</value>
   </data>
+  <data name="EmailSection" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="EmailDescription" xml:space="preserve">
+    <value>Choose who may open the Email settings page and change the mail server, sender and recipient used for alert emails. Super Admins can always change them.</value>
+  </data>
+  <data name="EmailLabel" xml:space="preserve">
+    <value>Who may change email settings</value>
+  </data>
+  <data name="NotificationsSection" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="NotificationsDescription" xml:space="preserve">
+    <value>Choose who may open the Notifications settings page and change which events count as urgent and how push alerts are sent. Super Admins can always change them.</value>
+  </data>
+  <data name="NotificationsLabel" xml:space="preserve">
+    <value>Who may change notification settings</value>
+  </data>
   <data name="Save" xml:space="preserve">
     <value>Save</value>
   </data>
