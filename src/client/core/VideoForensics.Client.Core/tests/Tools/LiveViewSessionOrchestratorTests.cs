@@ -67,11 +67,13 @@ namespace VideoForensics.Client.Core.Tests.Tools
                 new NullLiveViewTelemetryPublisher());
         }
 
+        private static readonly Guid RingAccountId = Guid.Parse("0f0f0f0f-0000-4000-8000-0000000000aa");
+
         private static Mock<ILiveViewCapableProvider> ProviderNamed(string name)
         {
             var provider = new Mock<ILiveViewCapableProvider>();
             _ = provider.SetupGet(p => p.ProviderName).Returns(name);
-            _ = provider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = provider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Mock<ILiveViewConnection>().Object);
             return provider;
         }
@@ -81,7 +83,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             var locationRepository = new Mock<ILocationRepository>();
             _ = locationRepository
                 .Setup(r => r.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([new ProviderAccount { ProviderName = accountProvider }]);
+                .ReturnsAsync([new ProviderAccount { Id = RingAccountId, ProviderName = accountProvider }]);
 
             var sp = new Mock<IServiceProvider>();
             _ = sp.Setup(s => s.GetService(typeof(ILocationRepository))).Returns(locationRepository.Object);
@@ -115,8 +117,8 @@ namespace VideoForensics.Client.Core.Tests.Tools
             _ = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, Guid.NewGuid(), CancellationToken.None);
 
             // Assert
-            ring.Verify(p => p.StartLiveViewAsync("doorbot:1", It.IsAny<CancellationToken>()), Times.Once);
-            uniview.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            ring.Verify(p => p.StartLiveViewAsync("doorbot:1", RingAccountId, It.IsAny<CancellationToken>()), Times.Once);
+            uniview.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
             _budgetGuardMock.Verify(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -154,7 +156,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
 
             var mockConnection = new Mock<ILiveViewConnection>();
             var mockProvider = new Mock<ILiveViewCapableProvider>();
-            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockConnection.Object);
 
             _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
@@ -222,7 +224,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             // Assert
             Assert.NotNull(result);
             Assert.Equal(existingSessionId, result.Id);
-            mockProvider.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockProvider.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -270,7 +272,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             // Act & Assert
             InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None));
-            mockProvider.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockProvider.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

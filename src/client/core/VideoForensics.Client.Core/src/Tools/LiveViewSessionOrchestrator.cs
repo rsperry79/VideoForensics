@@ -387,9 +387,19 @@ namespace VideoForensics.Client.Core.Tools
             IReadOnlyList<ProviderAccount> accounts = await locationRepository.ListProviderAccountsForLocationAsync(device.LocationId, ct);
             ILiveViewCapableProvider[] registered = scope.ServiceProvider.GetServices<ILiveViewCapableProvider>().ToArray();
 
-            ILiveViewCapableProvider? provider = registered.FirstOrDefault(p =>
-                accounts.Any(a => string.Equals(a.ProviderName, p.ProviderName, StringComparison.OrdinalIgnoreCase)));
-            if (provider is null)
+            ILiveViewCapableProvider? provider = null;
+            ProviderAccount? account = null;
+            foreach (ILiveViewCapableProvider candidate in registered)
+            {
+                account = accounts.FirstOrDefault(a => string.Equals(a.ProviderName, candidate.ProviderName, StringComparison.OrdinalIgnoreCase));
+                if (account is not null)
+                {
+                    provider = candidate;
+                    break;
+                }
+            }
+
+            if (provider is null || account is null)
             {
                 string known = accounts.Count > 0 ? string.Join(", ", accounts.Select(a => a.ProviderName)) : "unknown";
                 throw new NotSupportedException($"Live view not supported for provider {known}. No capable provider found.");
@@ -405,7 +415,7 @@ namespace VideoForensics.Client.Core.Tools
 
             // Start the provider connection
             _logger.LogDebug("Starting live view connection for device {DeviceName}", device.Name);
-            ILiveViewConnection? connection = await provider.StartLiveViewAsync(device.ProviderDeviceId, ct);
+            ILiveViewConnection? connection = await provider.StartLiveViewAsync(device.ProviderDeviceId, account.Id, ct);
 
             // Create and persist the session in Starting state
             var session = new LiveViewSession

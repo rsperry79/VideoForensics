@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid id, CancellationToken _) => new LiveViewSession { Id = id, State = LiveViewSessionState.Active, TriggerReason = LiveViewTriggerReason.Manual });
             _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = _providerMock.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _providerMock.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_connectionMock.Object);
 
             SetupWritesToList();
