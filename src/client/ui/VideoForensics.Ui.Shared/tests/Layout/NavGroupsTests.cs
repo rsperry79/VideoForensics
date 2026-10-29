@@ -143,7 +143,6 @@ public class NavGroups_Tests
         Assert.Contains("/settings", itemPaths);
         Assert.Contains("/settings/infrastructure", itemPaths);
         Assert.Contains("/settings/operators", itemPaths);
-        Assert.Contains("/settings/devices", itemPaths);
         Assert.Contains("/settings/network", itemPaths);
         Assert.Contains("/settings/storage", itemPaths);
         Assert.Contains("/settings/update-check", itemPaths);
@@ -201,18 +200,10 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void SecurityDevices_RequiresSuperAdminRole()
+    public void PairedDevices_IsNotInTheMenu()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem devicesItem = group.Items.First(i => i.Path == "/settings/devices");
-
-        // Should NOT be visible to Admin
-        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
-        Assert.False(devicesItem.IsVisible(adminCtx));
-
-        // Should be visible to SuperAdmin on the Local tier
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
-        Assert.True(devicesItem.IsVisible(superAdminCtx));
+        // Paired devices are not used; the page and its route remain for the links that still point at it.
+        Assert.DoesNotContain(NavGroups.All.SelectMany(g => g.Items), i => i.Path == "/settings/devices");
     }
 
     [Fact]

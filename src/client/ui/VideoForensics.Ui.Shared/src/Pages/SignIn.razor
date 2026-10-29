@@ -58,7 +58,7 @@
                     <!-- A future provider block (e.g. external sign-in buttons) goes here, above the form fields. -->
                     <div class="d-flex flex-column gap-2">
                         <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" HtmlAttributes="_usernameAttributes" />
-                        <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordLabel"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                        <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordLabel"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" HtmlAttributes="_passwordAttributes" />
                         <div>
                             <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Style="width:100%" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
                         </div>
@@ -119,6 +119,7 @@
     private string _username = string.Empty;
     /// <summary>Marks the username field as a username for password managers and passkey autofill (conditional UI).</summary>
     private readonly Dictionary<string, object> _usernameAttributes = new() { { "autocomplete", "username webauthn" }, { "name", "username" } };
+    private readonly Dictionary<string, object> _passwordAttributes = new() { { "autocomplete", "current-password" }, { "name", "password" } };
     private string _password = string.Empty;
     private bool _isSigningInWithPassword;
     private bool _isSigningInWithPasskey;

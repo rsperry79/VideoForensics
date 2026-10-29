@@ -18,6 +18,10 @@
 
 <h4 class="mb-4">@L["Title"]</h4>
 
+<style>
+    .accounts-clickable-rows .e-row { cursor: pointer; }
+</style>
+
 <PageRightPanelContent>
     <div class="right-panel-section">
         <small style="font-weight: bold;">@L["FilterProviders"]</small>
@@ -60,7 +64,8 @@ else
         }
         else
         {
-            <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true" AutoFit="true">
+            <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true" AutoFit="true" CssClass="accounts-clickable-rows">
+                <GridEvents TValue="AccountRow" RowSelected="OnAccountRowSelected"></GridEvents>
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
@@ -90,14 +95,6 @@ else
                             @{
                                 var row = (AccountRow)context;
                                 <LocalTimeText Value="@row.Account.LastSuccessfulAuthUtc" Fallback="-" />
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false">
-                        <Template>
-                            @{
-                                var row = (AccountRow)context;
-                                <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" CssClass="e-info" />
                             }
                         </Template>
                     </GridColumn>
@@ -504,8 +501,8 @@ else
         NavigationManager.NavigateTo("/accounts/add");
     }
 
-    private void GoToAccountDetailsAsync(Guid accountId)
+    private void OnAccountRowSelected(RowSelectEventArgs<AccountRow> args)
     {
-        NavigationManager.NavigateTo($"/accounts/{accountId}");
+        NavigationManager.NavigateTo($"/accounts/{args.Data.Account.Id}");
     }
 }

@@ -1,3 +1,5 @@
+using System.Text;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Infrastructure;
@@ -271,6 +273,53 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.Ok(new { contactEmail = request.ContactEmail.Trim(), useStaging = request.UseStaging });
             });
 
+            // Whether a certificate is stored for the Internet hostname, when it expires, and whether renewal is due.
+            _ = group.MapGet("/certificate-status", async (
+                ILetsEncryptCertificateStore store,
+                IForensicsConfiguration config,
+                CancellationToken ct) =>
+            {
+                IssuedCertificate? issued = await store.GetCertificateAsync(ct);
+                return Results.Ok(new
+                {
+                    hostname = InternetHost(config),
+                    issued = issued is not null,
+                    notAfter = issued?.NotAfter,
+                    renewalDue = issued is not null && CertificateRenewalPolicy.IsRenewalDue(issued.NotAfter, DateTimeOffset.UtcNow)
+                });
+            });
+
+            // Downloads the public certificate chain. The private key is never sent; it stays encrypted in the store.
+            _ = group.MapGet("/certificate/download", async (
+                ILetsEncryptCertificateStore store,
+                IForensicsConfiguration config,
+                CancellationToken ct) =>
+            {
+                IssuedCertificate? issued = await store.GetCertificateAsync(ct);
+                if (issued is null)
+                {
+                    return Results.NotFound(new { error = "No certificate has been issued yet." });
+                }
+
+                byte[] chain = Encoding.UTF8.GetBytes(LetsEncryptCertificateManager.PublicChainPem(issued.PemBundle));
+                return Results.File(chain, "application/x-pem-file", $"{InternetHost(config) ?? "certificate"}-chain.pem");
+            });
+
+            // Removes the stored certificate and Let's Encrypt account. Until a new certificate is requested, Kestrel
+            // presents its default one, so this changes what the server presents and is step-up gated.
+            _ = group.MapPost("/certificate/reset", async (
+                LetsEncryptCertificateManager certificates,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                await certificates.ResetAsync(ct);
+                await AuditAsync(auditLog, tierResolver, context, SecurityAuditEventTypes.CertificateReset,
+                    "Let's Encrypt certificate and account removed", ct);
+                return Results.Ok();
+            }).AddEndpointFilter<StepUpEndpointFilter>();
+
             // Stops the tunnel and deletes both stored Cloudflare tokens. The configured address is kept so
             // that re-connecting only needs the tokens again.
             _ = group.MapPost("/disconnect", async (
@@ -306,6 +355,12 @@ namespace VideoForensics.Client.WebApp.Api
             return Uri.TryCreate($"https://{value}", UriKind.Absolute, out Uri? uri)
                         && uri.Host == value?.Trim().TrimEnd('.').ToLowerInvariant()
                         && uri.Host.Contains('.', StringComparison.Ordinal);
+        }
+
+        /// <summary>The host of the saved Internet address, or null when none is configured.</summary>
+        internal static string? InternetHost(IForensicsConfiguration config)
+        {
+            return Uri.TryCreate(config.InternetServerUrl, UriKind.Absolute, out Uri? url) ? url.Host : null;
         }
 
         /// <summary>Builds the lower-case public hostname from a validated prefix and domain.</summary>

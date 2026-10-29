@@ -2893,6 +2893,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("EncryptionWarningDismissed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid>("OperatorId")
                         .HasColumnType("TEXT");
 

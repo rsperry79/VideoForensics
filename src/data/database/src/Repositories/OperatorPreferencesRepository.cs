@@ -54,6 +54,32 @@ namespace VideoForensics.Data.Database.Repositories
             _ = await db.SaveChangesAsync(ct);
         }
 
+        public async Task SetEncryptionWarningDismissedAsync(Guid operatorId, bool dismissed, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
+            OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
+
+            if (existing != null)
+            {
+                existing.EncryptionWarningDismissed = dismissed;
+                existing.UpdatedAtUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                _ = await db.OperatorPreferences.AddAsync(new OperatorPreferences
+                {
+                    Id = Guid.NewGuid(),
+                    OperatorId = operatorId,
+                    ThemeMode = "System",
+                    UiMode = "Standard",
+                    EncryptionWarningDismissed = dismissed,
+                    UpdatedAtUtc = DateTime.UtcNow
+                }, ct);
+            }
+
+            _ = await db.SaveChangesAsync(ct);
+        }
+
         public async Task<OperatorPreferences> SetUiModeAsync(Guid operatorId, string uiMode, bool locked, CancellationToken ct)
         {
             // Validate uiMode

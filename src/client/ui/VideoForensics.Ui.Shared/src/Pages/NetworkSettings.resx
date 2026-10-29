@@ -383,4 +383,64 @@
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
   </data>
+  <data name="CertificateStatusIssued" xml:space="preserve">
+    <value>Certificate for {0} is valid until {1}.</value>
+  </data>
+  <data name="CertificateStatusNone" xml:space="preserve">
+    <value>No certificate has been issued yet.</value>
+  </data>
+  <data name="CertificateStatusRenewalDue" xml:space="preserve">
+    <value>Renewal is due. Request a certificate to renew it.</value>
+  </data>
+  <data name="DownloadCertificateButton" xml:space="preserve">
+    <value>Download certificate</value>
+  </data>
+  <data name="CertificateDownloadFailed" xml:space="preserve">
+    <value>Downloading the certificate failed: {0}</value>
+  </data>
+  <data name="ResetCertificateButton" xml:space="preserve">
+    <value>Reset certificate</value>
+  </data>
+  <data name="ResetCertificateSucceeded" xml:space="preserve">
+    <value>Certificate and Let's Encrypt account removed. The server presents its default certificate until a new one is requested.</value>
+  </data>
+  <data name="ResetCertificateFailed" xml:space="preserve">
+    <value>Resetting the certificate failed: {0}</value>
+  </data>
+  <data name="NetworkTierHelp" xml:space="preserve">
+    <value>Choose which networks can reach this server. Widening the tier asks you to confirm first.</value>
+  </data>
+  <data name="InternalUrlHeading" xml:space="preserve">
+    <value>Internal URL</value>
+  </data>
+  <data name="InternalUrlHelp" xml:space="preserve">
+    <value>The address other devices on your local network use to reach this server. Defaults to this machine's DNS name, not localhost. The name must resolve before it can be saved.</value>
+  </data>
+  <data name="InternalUrlLabel" xml:space="preserve">
+    <value>Internal URL</value>
+  </data>
+  <data name="InternalUrlSaved" xml:space="preserve">
+    <value>Internal URL saved.</value>
+  </data>
+  <data name="InternalUrlSaveFailed" xml:space="preserve">
+    <value>Saving the internal URL failed: {0}</value>
+  </data>
+  <data name="ServerPortsHeading" xml:space="preserve">
+    <value>Server ports</value>
+  </data>
+  <data name="ServerPortsHelp" xml:space="preserve">
+    <value>Ports this server listens on. Each must be free or already used by this server. Changes take effect after the server restarts.</value>
+  </data>
+  <data name="HttpPortLabel" xml:space="preserve">
+    <value>HTTP port</value>
+  </data>
+  <data name="HttpsPortLabel" xml:space="preserve">
+    <value>HTTPS port</value>
+  </data>
+  <data name="ServerPortsSaved" xml:space="preserve">
+    <value>Ports saved. Restart the server to apply them.</value>
+  </data>
+  <data name="ServerPortsSaveFailed" xml:space="preserve">
+    <value>Saving the ports failed: {0}</value>
+  </data>
 </root>

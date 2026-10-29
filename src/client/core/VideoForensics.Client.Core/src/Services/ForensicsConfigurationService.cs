@@ -125,6 +125,9 @@ namespace VideoForensics.Client.Core.Services
                 config.NotificationRecipientEmail = await GetStringSetting("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 config.ConfiguredNetworkTier = await GetEnumSetting("ConfiguredNetworkTier", config.ConfiguredNetworkTier, cancellationToken);
                 config.InternetServerUrl = await GetStringSetting("InternetServerUrl", config.InternetServerUrl, cancellationToken);
+                config.InternalServerUrl = await GetStringSetting("InternalServerUrl", config.InternalServerUrl, cancellationToken);
+                config.ServerHttpPort = await GetIntSetting("ServerHttpPort", config.ServerHttpPort, cancellationToken);
+                config.ServerHttpsPort = await GetIntSetting("ServerHttpsPort", config.ServerHttpsPort, cancellationToken);
                 config.UniviewNvrHost = await GetStringSetting("UniviewNvrHost", config.UniviewNvrHost, cancellationToken);
                 config.UniviewFfmpegPath = await GetStringSetting("UniviewFfmpegPath", config.UniviewFfmpegPath, cancellationToken);
                 config.FfmpegBinDirectory = await GetStringSetting("FfmpegBinDirectory", config.FfmpegBinDirectory, cancellationToken);
@@ -191,6 +194,9 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 await _settingRepository!.SetAsync("ConfiguredNetworkTier", config.ConfiguredNetworkTier.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("InternalServerUrl", config.InternalServerUrl ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("ServerHttpPort", config.ServerHttpPort.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ServerHttpsPort", config.ServerHttpsPort.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? string.Empty, cancellationToken);

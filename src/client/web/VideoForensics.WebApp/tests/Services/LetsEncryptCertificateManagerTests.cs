@@ -43,5 +43,28 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             Assert.NotNull(holder.Current);
             Assert.Equal("CN=video.example.com", holder.Current!.Subject);
         }
+
+        [Fact]
+        public void CertificateHolder_Clear_RemovesCertificate()
+        {
+            IssuedCertificate bundle = CreatePemBundle(out _);
+            var holder = new CertificateHolder();
+            holder.Replace(LetsEncryptCertificateManager.ToX509(bundle));
+
+            holder.Clear();
+
+            Assert.Null(holder.Current);
+        }
+
+        [Fact]
+        public void LetsEncryptCertificateManager_PublicChainPem_OmitsPrivateKey()
+        {
+            IssuedCertificate bundle = CreatePemBundle(out _);
+
+            string chain = LetsEncryptCertificateManager.PublicChainPem(bundle.PemBundle);
+
+            Assert.Contains("-----BEGIN CERTIFICATE-----", chain, StringComparison.Ordinal);
+            Assert.DoesNotContain("PRIVATE KEY", chain, StringComparison.Ordinal);
+        }
     }
 }

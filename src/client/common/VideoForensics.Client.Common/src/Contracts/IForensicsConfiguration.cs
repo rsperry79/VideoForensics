@@ -71,6 +71,18 @@ namespace VideoForensics.Client.Common.Contracts
         string? InternetServerUrl { get; set; }
 
         /// <summary>
+        /// Address other devices on the local network use to reach this server. Null means the machine's DNS name
+        /// on the HTTP port, resolved when it is read. Saved only after the host name resolves.
+        /// </summary>
+        string? InternalServerUrl { get; set; }
+
+        /// <summary>HTTP listen port saved from the Network Access page. 0 means the urls configuration decides. Applies after a restart.</summary>
+        int ServerHttpPort { get; set; }
+
+        /// <summary>HTTPS listen port saved from the Network Access page. 0 means the urls configuration decides. Applies after a restart.</summary>
+        int ServerHttpsPort { get; set; }
+
+        /// <summary>
         /// Uniview NVR host address (IP address or hostname) for local-network downloads.
         /// Only used by the Uniview provider for connecting to a local Uniview NVR device.
         /// Optional; if not set, Uniview downloads will fail.
@@ -166,7 +178,7 @@ namespace VideoForensics.Client.Common.Contracts
         public KeyStorageProvider KeyStorageProvider { get; set; } = KeyStorageProvider.Auto;
         public int RetentionDaysDefault { get; set; } = 180;
         public string LogLevel { get; set; } = "Information";
-        public int MaxConcurrentDownloads { get; set; } = 10;
+        public int MaxConcurrentDownloads { get; set; } = 2;
         public string DownloadStartDate { get; set; } = "";
         public bool EnableHealthSync { get; set; } = true;
         public bool EnableElevatedPolling { get; set; } = false;
@@ -184,6 +196,9 @@ namespace VideoForensics.Client.Common.Contracts
         public string NotificationRecipientEmail { get; set; } = "";
         public NetworkTier ConfiguredNetworkTier { get; set; } = NetworkTier.Local;
         public string? InternetServerUrl { get; set; }
+        public string? InternalServerUrl { get; set; }
+        public int ServerHttpPort { get; set; }
+        public int ServerHttpsPort { get; set; }
         public string? UniviewNvrHost { get; set; }
         public string? UniviewFfmpegPath { get; set; }
         public string? FfmpegBinDirectory { get; set; }

@@ -188,6 +188,15 @@ builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics"
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
 builder.Host.UseSystemd();
 
+// The saved HTTP and HTTPS ports are read the same way as the tier, before Kestrel binds. A zero means nothing is
+// saved, so the urls configuration keeps deciding that listener's port.
+SavedServerPorts savedPorts = new ServerPortConfigReader(new StorageLocationProvider()).ReadSavedPorts();
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["ServerHttpPort"] = savedPorts.HttpPort.ToString(),
+    ["ServerHttpsPort"] = savedPorts.HttpsPort.ToString(),
+});
+
 IReadOnlyList<ListenEndpoint> listenEndpoints = ServerAddressResolver.ResolveListenEndpoints(builder.Configuration);
 
 // The certificate Kestrel presents on https listeners. Filled by LetsEncryptRenewalService; empty until then,

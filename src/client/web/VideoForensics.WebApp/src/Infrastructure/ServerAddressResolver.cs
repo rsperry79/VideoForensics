@@ -37,9 +37,42 @@ namespace VideoForensics.Client.WebApp.Infrastructure
         {
             var endpoints = ParseUrls(configuration)
                 .Where(u => string.Compare(u.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) == 0 || string.Compare(u.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) == 0)
-                .Select(u => new ListenEndpoint(u.Scheme, u.Port))
+                .Select(u => new ListenEndpoint(u.Scheme, SavedPort(configuration, u.Scheme) ?? u.Port))
                 .ToList();
-            return endpoints.Count > 0 ? endpoints : new[] { new ListenEndpoint("http", DefaultPort) };
+            if (endpoints.Count == 0)
+            {
+                endpoints.Add(new ListenEndpoint("http", DefaultPort));
+            }
+
+            // A saved HTTPS port adds an HTTPS listener when urls has none, so the setting works without editing urls.
+            int? savedHttps = SavedPort(configuration, Uri.UriSchemeHttps);
+            if (savedHttps is int httpsPort && endpoints.All(e => e.Scheme != "https"))
+            {
+                endpoints.Add(new ListenEndpoint("https", httpsPort));
+            }
+
+            return endpoints;
+        }
+
+        /// <summary>
+        /// The port saved on the Network Access page for a scheme, or null when none is saved. Program.cs copies the
+        /// saved ports into configuration before Kestrel binds, so a saved port replaces the one in the urls config.
+        /// </summary>
+        private static int? SavedPort(IConfiguration configuration, string scheme)
+        {
+            string key = string.Equals(scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) ? "ServerHttpsPort" : "ServerHttpPort";
+            return int.TryParse(configuration[key], out int port) && port > 0 ? port : null;
+        }
+
+        /// <summary>
+        /// True when no process is listening on the port. The caller accepts the port the server already holds before
+        /// asking this, because the server's own listener would otherwise count as in use.
+        /// </summary>
+        public static bool IsPortAvailable(int port)
+        {
+            return !System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties()
+                .GetActiveTcpListeners()
+                .Any(endpoint => endpoint.Port == port);
         }
 
         /// <summary>
@@ -101,6 +134,39 @@ namespace VideoForensics.Client.WebApp.Infrastructure
         public static int ResolveHttpPort(IConfiguration configuration)
         {
             return ResolveListenEndpoints(configuration).FirstOrDefault(e => string.Compare(e.Scheme, "http", StringComparison.Ordinal) == 0)?.Port ?? DefaultPort;
+        }
+
+        /// <summary>
+        /// The address other machines on the local network use by default: this machine's DNS name on the HTTP port.
+        /// Never localhost, which only resolves on this machine.
+        /// </summary>
+        public static string ResolveDefaultInternalUrl(IConfiguration configuration)
+        {
+            string host;
+            try
+            {
+                host = System.Net.Dns.GetHostEntry(Environment.MachineName).HostName;
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                host = Environment.MachineName;
+            }
+
+            return $"http://{host}:{ResolveHttpPort(configuration)}";
+        }
+
+        /// <summary>True when the host name resolves to at least one address. Checked on save so a typo is rejected before devices use it.</summary>
+        public static async Task<bool> IsResolvableAsync(string host, CancellationToken ct)
+        {
+            try
+            {
+                System.Net.IPAddress[] addresses = await System.Net.Dns.GetHostAddressesAsync(host, ct);
+                return addresses.Length > 0;
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                return false;
+            }
         }
 
         /// <summary>

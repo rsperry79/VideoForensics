@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             Assert.True(config.EnableSignalAnomalyReports);
             Assert.Equal("json", config.ReportOutputFormat);
             Assert.Equal(180, config.RetentionDaysDefault);
-            Assert.Equal(10, config.MaxConcurrentDownloads);
+            Assert.Equal(2, config.MaxConcurrentDownloads);
         }
 
         [Fact]

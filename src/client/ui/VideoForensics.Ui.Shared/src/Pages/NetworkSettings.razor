@@ -9,7 +9,9 @@
 @inject WebAuthnClient WebAuthn
 @inject StepUpService StepUp
 @using VideoForensics.Client.Ui.Shared.Layout
+@using Microsoft.JSInterop
 @inject IStringLocalizer<NetworkSettings> L
+@inject IJSRuntime JS
 @inject IForensicsConfiguration Config
 @inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 
@@ -53,7 +55,9 @@ else if (_loadError is not null)
 }
 else
 {
-    <div class="card mb-4"><div class="card-body">
+    <div class="mb-4">
+        <h5 class="mb-2">@L["NetworkTierLabel"]</h5>
+        <small class="text-muted d-block mb-2">@L["NetworkTierHelp"]</small>
         <div>
             <SfDropDownList TValue="NetworkTier" TItem="NetworkTierOption" DataSource="@_tierOptions" @bind-Value="_selectedTier" Style="max-width: 420px;">
                 <DropDownListFieldSettings Text="Text" Value="Value" />
@@ -74,27 +78,55 @@ else
         {
             <span style="color: @(_success ? "#4caf50" : "#f44336")" class="mt-3">@_message</span>
         }
-    </div></div>
+
+        @if (SessionState.IsSignedIn)
+        {
+            <h5 class="mt-4 mb-2">@L["InternalUrlHeading"]</h5>
+            <small class="text-muted d-block mb-2">@L["InternalUrlHelp"]</small>
+            <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                <input type="text" class="form-control" style="max-width: 420px;" aria-label="@L["InternalUrlLabel"]" placeholder="http://machine.local:5162" disabled="@(!CanAdmin)" @bind="_internalUrl" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveInternalUrlAsync" Disabled="@(!CanAdmin || _isInternalUrlSaving)" CssClass="e-primary" />
+            </div>
+            @if (_internalUrlMessage is not null)
+            {
+                <span style="@(_internalUrlSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_internalUrlMessage</span>
+            }
+
+            <h5 class="mt-4 mb-2">@L["ServerPortsHeading"]</h5>
+            <small class="text-muted d-block mb-2">@L["ServerPortsHelp"]</small>
+            <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                <label>@L["HttpPortLabel"]</label>
+                <input type="number" class="form-control" style="max-width: 120px;" min="1" max="65535" disabled="@(!CanAdmin)" @bind="_httpPort" />
+                <label>@L["HttpsPortLabel"]</label>
+                <input type="number" class="form-control" style="max-width: 120px;" min="1" max="65535" disabled="@(!CanAdmin)" @bind="_httpsPort" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveServerPortsAsync" Disabled="@(!CanAdmin || _isServerPortsSaving)" CssClass="e-primary" />
+            </div>
+            @if (_serverPortsMessage is not null)
+            {
+                <span style="@(_serverPortsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_serverPortsMessage</span>
+            }
+        }
+    </div>
 
     @if (SessionState.IsSignedIn)
     {
         <h5 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h5>
-        <div class="card mb-4"><div class="card-body p-4">
+        <div class="mb-4">
             <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
             @if (_mdnsMessage is not null)
             {
                 <span style="@(_mdnsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_mdnsMessage</span>
             }
-        </div></div>
+        </div>
     }
 
     @if (SessionState.IsSignedIn)
     {
         <h5 class="mt-4 mb-2">@L["DownloadsSection"]</h5>
-        <div class="card mb-4"><div class="card-body p-4">
+        <div class="mb-4">
             <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
                 <label>@L["MaxConcurrentDownloads"]</label>
-                <SfNumericTextBox TValue="int" @bind-Value="_maxConcurrentDownloads" Enabled="@CanAdmin" Style="max-width: 200px;" />
+                <SfNumericTextBox TValue="int" @bind-Value="_maxConcurrentDownloads" Enabled="@CanAdmin" Style="max-width: 200px;" HtmlAttributes="_maxConcurrentAttributes" />
                 <SfButton Content="@L["SaveButton"]" OnClick="SaveMaxConcurrentAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
                 @if (_maxConcurrentMessage is not null)
                 {
@@ -102,7 +134,7 @@ else
                 }
             </div>
             <small class="text-muted d-block mt-2">@L["MaxConcurrentDownloadsHelp"]</small>
-        </div></div>
+        </div>
     }
 
     <h5 class="mt-4 mb-2">@L["RemoteAccessSectionTitle"]</h5>
@@ -121,10 +153,6 @@ else
     }
     else
     {
-        <div class="d-flex flex-row gap-2 mb-2">
-            <SfButton Content="@L["RefreshButton"]" OnClick="LoadRemoteAccessStatusAsync" Disabled="@_isRemoteAccessLoading" CssClass="e-flat" />
-        </div>
-
         <div class="card mb-4">
             <div class="card-body p-4">
                 <div class="d-flex flex-column gap-2">
@@ -181,6 +209,23 @@ else
 
         <div class="card mb-4"><div class="card-body p-4">
             <strong class="d-block mb-2">@L["LetsEncryptHeading"]</strong>
+            @if (_leStatus is { } status)
+            {
+                <p class="mb-2">
+                    @if (status.Issued)
+                    {
+                        @L["CertificateStatusIssued", status.Hostname ?? "-", status.NotAfter?.ToString("yyyy-MM-dd") ?? "-"]
+                        @if (status.RenewalDue)
+                        {
+                            <span class="text-warning">@L["CertificateStatusRenewalDue"]</span>
+                        }
+                    }
+                    else
+                    {
+                        @L["CertificateStatusNone"]
+                    }
+                </p>
+            }
             <div class="mb-2" style="max-width: 420px;">
                 <label class="form-label mb-1" for="le-contact-email">@L["ContactEmailLabel"]</label>
                 <input id="le-contact-email" type="email" class="form-control" @bind="_leContactEmail" />
@@ -193,6 +238,8 @@ else
             <div class="d-flex gap-2 flex-wrap">
                 <SfButton Content="@L["SaveCertSettingsButton"]" OnClick="SaveCertificateSettingsAsync" Disabled="@_isLeBusy" CssClass="e-flat" />
                 <SfButton Content="@L["RequestCertificateButton"]" OnClick="RequestCertificateAsync" Disabled="@_isLeBusy" CssClass="e-primary" />
+                <SfButton Content="@L["DownloadCertificateButton"]" OnClick="DownloadCertificateAsync" Disabled="@(_isLeBusy || _leStatus is not { Issued: true })" CssClass="e-flat" />
+                <SfButton Content="@L["ResetCertificateButton"]" OnClick="ResetCertificateAsync" Disabled="@(_isLeBusy || _leStatus is not { Issued: true })" CssClass="e-danger" />
             </div>
             @if (_leMessage is not null)
             {
@@ -307,6 +354,9 @@ else
     private string? _mdnsMessage;
 
     private int _maxConcurrentDownloads;
+
+    // A bare number box is matched by browser autofill heuristics (it offered to save a "License Number"). This is a setting, not personal data.
+    private readonly Dictionary<string, object> _maxConcurrentAttributes = new() { { "autocomplete", "off" }, { "name", "maxConcurrentDownloads" } };
     private bool _maxConcurrentSuccess;
     private string? _maxConcurrentMessage;
 
@@ -359,6 +409,10 @@ else
     private bool _isLeBusy;
     private string? _leMessage;
     private bool _leSucceeded;
+    private CertificateStatus? _leStatus;
+    private const string LeDownloadModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/server-logs.js";
+
+    private sealed record CertificateStatus(string? Hostname, bool Issued, DateTimeOffset? NotAfter, bool RenewalDue);
 
     private string GetTunnelBadgeClass() => _tunnelStatus switch
     {
@@ -628,6 +682,21 @@ else
             _currentTier = Enum.Parse<NetworkTier>(body.GetProperty("configuredTier").GetString()!);
             _selectedTier = _currentTier;
             _pendingTier = null;
+
+            var internalUrlResponse = await client.GetAsync("api/network-settings/internal-url");
+            if (internalUrlResponse.IsSuccessStatusCode)
+            {
+                var internalUrlBody = await internalUrlResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                _internalUrl = NullableString(internalUrlBody, "internalServerUrl");
+            }
+
+            var portsResponse = await client.GetAsync("api/network-settings/server-ports");
+            if (portsResponse.IsSuccessStatusCode)
+            {
+                var portsBody = await portsResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                _httpPort = portsBody.TryGetProperty("httpPort", out var httpPortValue) && httpPortValue.ValueKind == System.Text.Json.JsonValueKind.Number ? httpPortValue.GetInt32() : 0;
+                _httpsPort = portsBody.TryGetProperty("httpsPort", out var httpsPortValue) && httpsPortValue.ValueKind == System.Text.Json.JsonValueKind.Number ? httpsPortValue.GetInt32() : 0;
+            }
         }
         catch (Exception ex)
         {
@@ -765,6 +834,7 @@ else
             _tunnelRecentLogLines = body.GetProperty("recentLogLines").EnumerateArray().Select(e => e.GetString() ?? "").ToList();
 
             await LoadCertificateSettingsAsync(client);
+            await LoadCertificateStatusAsync(client);
 
             // Passkeys only work on the tunnel address, so keep the passkey address pointed at it without asking.
             if (_tunnelPublicUrl is not null && !IsPasskeyOriginCurrent(_tunnelPublicUrl))
@@ -837,6 +907,165 @@ else
         }
     }
 
+    private async Task LoadCertificateStatusAsync(HttpClient client)
+    {
+        try
+        {
+            var response = await client.GetAsync("api/remote-access/certificate-status");
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            bool issued = body.GetProperty("issued").GetBoolean();
+            _leStatus = new CertificateStatus(
+                NullableString(body, "hostname"),
+                issued,
+                issued ? body.GetProperty("notAfter").GetDateTimeOffset() : null,
+                body.GetProperty("renewalDue").GetBoolean());
+        }
+        catch (Exception)
+        {
+            // The status line stays hidden; the actions report their own errors.
+        }
+    }
+
+    private async Task DownloadCertificateAsync()
+    {
+        _isLeBusy = true;
+        _leMessage = null;
+        try
+        {
+            var response = await CreateClient().GetAsync("api/remote-access/certificate/download");
+            if (!response.IsSuccessStatusCode)
+            {
+                SetLeMessage(await SafeReadErrorAsync(response) ?? L["CertificateDownloadFailed", response.StatusCode.ToString()], false);
+                return;
+            }
+
+            string pem = await response.Content.ReadAsStringAsync();
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", LeDownloadModule);
+            await module.InvokeVoidAsync("downloadText", $"{_leStatus?.Hostname ?? "certificate"}-chain.pem", pem);
+        }
+        catch (Exception ex)
+        {
+            SetLeMessage(L["CertificateDownloadFailed", ex.Message], false);
+        }
+        finally
+        {
+            _isLeBusy = false;
+        }
+    }
+
+    // Resetting changes what the server presents, so it needs a fresh passkey assertion like issuing does.
+    private async Task ResetCertificateAsync()
+    {
+        if (SessionState.SessionToken is null)
+        {
+            SetLeMessage(L["RemoteAccessSignInRequired"], false);
+            return;
+        }
+
+        _isLeBusy = true;
+        _leMessage = null;
+        try
+        {
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsync("api/remote-access/certificate/reset", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                SetLeMessage(await SafeReadErrorAsync(response) ?? L["ResetCertificateFailed", response.StatusCode.ToString()], false);
+                return;
+            }
+
+            SetLeMessage(L["ResetCertificateSucceeded"], true);
+            await LoadCertificateStatusAsync(CreateClient());
+        }
+        catch (Exception ex)
+        {
+            SetLeMessage(L["ResetCertificateFailed", ex.Message], false);
+        }
+        finally
+        {
+            _isLeBusy = false;
+        }
+    }
+
+    private string? _internalUrl;
+    private string? _internalUrlMessage;
+    private bool _internalUrlSuccess;
+    private bool _isInternalUrlSaving;
+
+    private async Task SaveInternalUrlAsync()
+    {
+        _isInternalUrlSaving = true;
+        _internalUrlMessage = null;
+        try
+        {
+            HttpResponseMessage response = await CreateClient().PostAsJsonAsync(
+                "api/network-settings/internal-url", new { internalServerUrl = _internalUrl });
+            if (!response.IsSuccessStatusCode)
+            {
+                _internalUrlMessage = await SafeReadErrorAsync(response) ?? L["InternalUrlSaveFailed", response.StatusCode.ToString()];
+                _internalUrlSuccess = false;
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _internalUrl = NullableString(body, "internalServerUrl");
+            _internalUrlMessage = L["InternalUrlSaved"];
+            _internalUrlSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _internalUrlMessage = L["InternalUrlSaveFailed", ex.Message];
+            _internalUrlSuccess = false;
+        }
+        finally
+        {
+            _isInternalUrlSaving = false;
+        }
+    }
+
+    private int _httpPort;
+    private int _httpsPort;
+    private string? _serverPortsMessage;
+    private bool _serverPortsSuccess;
+    private bool _isServerPortsSaving;
+
+    // The ports take effect after the server restarts, so the success message says so.
+    private async Task SaveServerPortsAsync()
+    {
+        _isServerPortsSaving = true;
+        _serverPortsMessage = null;
+        try
+        {
+            HttpResponseMessage response = await CreateClient().PostAsJsonAsync(
+                "api/network-settings/server-ports", new { httpPort = _httpPort, httpsPort = _httpsPort });
+            if (!response.IsSuccessStatusCode)
+            {
+                _serverPortsMessage = await SafeReadErrorAsync(response) ?? L["ServerPortsSaveFailed", response.StatusCode.ToString()];
+                _serverPortsSuccess = false;
+                return;
+            }
+
+            _serverPortsMessage = L["ServerPortsSaved"];
+            _serverPortsSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _serverPortsMessage = L["ServerPortsSaveFailed", ex.Message];
+            _serverPortsSuccess = false;
+        }
+        finally
+        {
+            _isServerPortsSaving = false;
+        }
+    }
+
     private async Task SaveCertificateSettingsAsync()
     {
         _isLeBusy = true;
@@ -886,6 +1115,7 @@ else
             }
 
             SetLeMessage(L["CertificateRequestSucceeded"], true);
+            await LoadCertificateStatusAsync(CreateClient());
         }
         catch (Exception ex)
         {

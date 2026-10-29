@@ -104,18 +104,17 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Provider Accounts", "/accounts", Section: "Sources"),
                 new("Query API", "/query", Section: "Sources"),
 
-                new("Security Events", "/settings/security-events", Section: "Security"),
-                new("Operators", "/settings/operators", Section: "Security"),
-                new("Permissions", "/settings/permissions", Section: "Security"),
                 new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
+                new("Operators", "/settings/operators", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
+                new("Permissions", "/settings/permissions", Section: "Security"),
                 new("Lockout Policy", "/settings/lockout-policy", Section: "Security"),
+                new("Security Events", "/settings/security-events", Section: "Security"),
                 new("Security Audit Log", "/settings/security-log", Section: "Security"),
 
                 new("Server Logs", "/settings/logs", Section: "Diagnostics & Updates"),
                 new("App Update", "/settings/update-check", Section: "Diagnostics & Updates"),
 
-                new("Paired Devices", "/settings/devices", Section: "Devices & Network"),
                 new("Network Access", "/settings/network", Section: "Devices & Network"),
                 new("Infrastructure", "/settings/infrastructure", Section: "Devices & Network"),
 

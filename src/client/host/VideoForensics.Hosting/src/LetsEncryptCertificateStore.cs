@@ -12,6 +12,8 @@ namespace VideoForensics.Client.Hosting
         Task SaveAccountAsync(AcmeAccountState account, CancellationToken ct);
         Task<IssuedCertificate?> GetCertificateAsync(CancellationToken ct);
         Task SaveCertificateAsync(IssuedCertificate certificate, CancellationToken ct);
+        /// <summary>Removes the stored account key and certificate. The contact email and staging choice are kept.</summary>
+        Task ClearCertificateAsync(CancellationToken ct);
         Task<string?> GetContactEmailAsync(CancellationToken ct);
         Task SetContactEmailAsync(string email, CancellationToken ct);
         /// <summary>Null when never set, so the caller can fall back to the configured default.</summary>
@@ -60,6 +62,13 @@ namespace VideoForensics.Client.Hosting
         {
             await SetEncryptedAsync(EncryptedCertificate, certificate.PemBundle, ct);
             await _settings.SetAsync(CertificateNotAfter, certificate.NotAfter.ToString("O", System.Globalization.CultureInfo.InvariantCulture), ct);
+        }
+
+        public async Task ClearCertificateAsync(CancellationToken ct)
+        {
+            await _settings.DeleteAsync(EncryptedAccountKey, ct);
+            await _settings.DeleteAsync(EncryptedCertificate, ct);
+            await _settings.DeleteAsync(CertificateNotAfter, ct);
         }
 
         public Task<string?> GetContactEmailAsync(CancellationToken ct)
@@ -111,6 +120,12 @@ namespace VideoForensics.Client.Hosting
         {
             // The previous certificate is not disposed: a handshake may still be using it.
             _current = certificate;
+        }
+
+        /// <summary>Forgets the certificate so Kestrel falls back to its default. The previous one is not disposed, for the same reason as <see cref="Replace"/>.</summary>
+        public void Clear()
+        {
+            _current = null;
         }
     }
 }

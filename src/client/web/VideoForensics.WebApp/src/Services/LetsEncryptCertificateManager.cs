@@ -95,6 +95,25 @@ namespace VideoForensics.Client.WebApp.Services
         }
 
         /// <summary>
+        /// Removes the stored certificate and account, and drops the one Kestrel presents so the default certificate takes over.
+        /// </summary>
+        public async Task ResetAsync(CancellationToken ct)
+        {
+            await _store.ClearCertificateAsync(ct).ConfigureAwait(true);
+            _holder.Clear();
+            _logger.LogInformation("Cleared the Let's Encrypt certificate and account");
+        }
+
+        /// <summary>Keeps only the CERTIFICATE blocks of a bundle, so the private key never leaves the server.</summary>
+        internal static string PublicChainPem(string bundle)
+        {
+            IEnumerable<string> blocks = CertRegex().Matches(bundle)
+                .Where(match => match.Groups[1].Value.EndsWith("CERTIFICATE", StringComparison.Ordinal))
+                .Select(match => match.Value);
+            return string.Join("\n", blocks) + "\n";
+        }
+
+        /// <summary>
         /// Re-imports the PEM bundle as a PKCS#12 certificate with an ephemeral key. Kestrel on Windows needs the
         /// private key in that form; a PEM-only certificate fails the handshake.
         /// </summary>

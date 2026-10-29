@@ -27,6 +27,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>"Locale" (default, the culture's own clock), "TwelveHour", or "TwentyFourHour". Applies to every displayed time.</summary>
         public string TimeFormat { get; set; } = "Locale";
 
+        /// <summary>True once the operator has dismissed the data-at-rest encryption warning on the Infrastructure settings page. Written only by <see cref="Contracts.IOperatorPreferencesRepository.SetEncryptionWarningDismissedAsync"/>.</summary>
+        public bool EncryptionWarningDismissed { get; set; }
+
         public DateTime UpdatedAtUtc { get; set; }
     }
 }
