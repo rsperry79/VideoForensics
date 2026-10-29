@@ -2,6 +2,9 @@ using AngleSharp.Dom;
 
 using Bunit;
 
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -89,6 +92,55 @@ public class ReviewViewNav_Tests : ReviewTestContext
 
         // Assert
         Assert.Equal("http://localhost/live-view", CurrentUri);
+    }
+
+    [Fact]
+    public void ReviewViewNav_LiveClick_WithAShownCamera_OpensLiveViewOnThatCamera()
+    {
+        // Arrange
+        var camera = Guid.NewGuid();
+        ReviewState.SetCameras([camera, Guid.NewGuid()]);
+        IRenderedComponent<ReviewViewNav> cut = RenderNav();
+
+        // Act
+        cut.Find("[data-testid='review-live']").Click();
+
+        // Assert
+        Assert.Equal($"http://localhost/live-view?device={camera}", CurrentUri);
+    }
+
+    [Fact]
+    public void ReviewViewNav_OnTheLivePage_HighlightsLiveAndNoTab()
+    {
+        // Arrange
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/live-view");
+
+        // Act
+        IRenderedComponent<ReviewViewNav> cut = RenderNav();
+
+        // Assert
+        Assert.Contains("active", cut.Find("[data-testid='review-live']").ClassName);
+        foreach (string tab in new[] { "timeline", "events", "detail" })
+        {
+            Assert.DoesNotContain("active", cut.Find($"[data-testid='review-tab-button-{tab}']").ClassName);
+        }
+    }
+
+    [Theory]
+    [InlineData("events", "http://localhost/media?tab=Events")]
+    [InlineData("detail", "http://localhost/media?tab=Detail")]
+    [InlineData("timeline", "http://localhost/media")]
+    public void ReviewViewNav_TabClickOnTheLivePage_NavigatesToTheReviewPageOnThatTab(string tab, string expected)
+    {
+        // Arrange
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/live-view");
+        IRenderedComponent<ReviewViewNav> cut = RenderNav();
+
+        // Act
+        cut.Find($"[data-testid='review-tab-button-{tab}']").Click();
+
+        // Assert
+        Assert.Equal(expected, CurrentUri);
     }
 
     [Fact]

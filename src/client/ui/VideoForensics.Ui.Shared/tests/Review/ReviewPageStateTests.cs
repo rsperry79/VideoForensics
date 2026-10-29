@@ -22,6 +22,41 @@ public class ReviewPageState_Tests
     }
 
     [Fact]
+    public void LastShownCameraId_NothingShownYet_IsNull()
+    {
+        Assert.Null(NewState().LastShownCameraId);
+    }
+
+    [Fact]
+    public void LastShownCameraId_CamerasSet_IsTheFirstCamera()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        List<Guid> ids = NewIds(3);
+
+        // Act
+        state.SetCameras(ids);
+
+        // Assert
+        Assert.Equal(ids[0], state.LastShownCameraId);
+    }
+
+    [Fact]
+    public void LastShownCameraId_CamerasLaterCleared_KeepsTheLastShownCamera()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        List<Guid> ids = NewIds(2);
+        state.SetCameras(ids);
+
+        // Act
+        state.SetCameras([]);
+
+        // Assert
+        Assert.Equal(ids[0], state.LastShownCameraId);
+    }
+
+    [Fact]
     public void Constructor_NoRangeGiven_SpansLast24HoursEndingNow()
     {
         // Arrange and Act

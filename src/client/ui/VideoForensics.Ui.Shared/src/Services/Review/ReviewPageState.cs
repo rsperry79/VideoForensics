@@ -32,6 +32,12 @@ public sealed class ReviewPageState
     /// <summary>Cameras shown on the page, in display order. At most <see cref="CameraSync.MaxTiles"/>.</summary>
     public IReadOnlyList<Guid> CameraIds => _cameraIds;
 
+    /// <summary>
+    /// The first camera of the most recent non-empty camera set. It outlives a later empty selection, so the Live link still
+    /// opens the camera that was last on screen.
+    /// </summary>
+    public Guid? LastShownCameraId { get; private set; }
+
     /// <summary>Start of the review window (UTC).</summary>
     public DateTime FromUtc { get; private set; }
 
@@ -156,6 +162,11 @@ public sealed class ReviewPageState
         }
 
         _cameraIds = distinct;
+        if (distinct.Count > 0)
+        {
+            LastShownCameraId = distinct[0];
+        }
+
         return true;
     }
 

@@ -30,6 +30,8 @@ public class LiveViewPageTests : BunitContext
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddLogging();
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>();
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository
@@ -71,6 +73,16 @@ public class LiveViewPageTests : BunitContext
             _ = Assert.Single(importCalls);
             Assert.Equal(ExpectedModulePath, importCalls[0]);
         });
+    }
+
+    [Fact]
+    public void LiveView_Rendered_RegistersTheViewNavInTheLeftPanel()
+    {
+        // Act
+        _ = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+
+        // Assert
+        Assert.NotNull(Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>().Content);
     }
 
     [Fact]

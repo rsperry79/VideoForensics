@@ -10,17 +10,17 @@
     <div class="d-flex flex-column gap-1" role="tablist" aria-label="@L["TabsLabel"]">
         @foreach (ReviewTab tab in Enum.GetValues<ReviewTab>())
         {
-            bool active = State.ActiveTab == tab;
+            bool active = !OnLivePage && State.ActiveTab == tab;
             <button type="button"
                     role="tab"
                     class="btn btn-sm text-start @(active ? "btn-primary active" : "btn-outline-secondary")"
                     aria-selected="@(active ? "true" : "false")"
                     data-testid="@TabTestId(tab)"
-                    @onclick="() => State.SetTab(tab)">@L[TabKey(tab)]</button>
+                    @onclick="() => OnTab(tab)">@L[TabKey(tab)]</button>
         }
     </div>
 
-    <button type="button" class="btn btn-sm btn-outline-secondary text-start" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
+    <button type="button" class="btn btn-sm text-start @(OnLivePage ? "btn-primary active" : "btn-outline-secondary")" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
 </nav>
 
 @code {
@@ -34,9 +34,23 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    // The nav also sits in the Live page's left panel. There the tabs lead back to the review page, and Live is the current view.
+    private bool OnLivePage => new Uri(NavigationManager.Uri).AbsolutePath.StartsWith("/live-view", StringComparison.OrdinalIgnoreCase);
+
+    private void OnTab(ReviewTab tab)
+    {
+        if (!OnLivePage)
+        {
+            State.SetTab(tab);
+            return;
+        }
+
+        NavigationManager.NavigateTo(tab == ReviewTab.Timeline ? "/media" : "/media?tab=" + tab);
+    }
+
     private void OnLive()
     {
-        NavigationManager.NavigateTo("/live-view");
+        NavigationManager.NavigateTo(State.LastShownCameraId is Guid camera ? $"/live-view?device={camera}" : "/live-view");
     }
 
     private static string TabKey(ReviewTab tab)

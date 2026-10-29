@@ -2,6 +2,7 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Client.Ui.Shared.Layout.LeftPanel
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
@@ -9,6 +10,7 @@
 @using VideoForensics.Client.Ui.Shared.Services
 @implements IAsyncDisposable
 
+@using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Components.Scope
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @inject ILiveViewSessionService LiveViewSessionService
@@ -34,6 +36,10 @@ else if (!_isAuthenticated)
 }
 else
 {
+    <PageLeftPanelContent>
+        <ReviewViewNav />
+    </PageLeftPanelContent>
+
     <PageRightPanelContent>
         <div class="right-panel-section">
             <small>@L["Title"]</small>
@@ -107,6 +113,10 @@ else
     private bool _isConnected = false;
     private bool _isToggling = false;
     private string? _selectedDeviceIdStr;
+
+    /// <summary>The camera to start with, passed by the review page's Live link.</summary>
+    [SupplyParameterFromQuery(Name = "device")]
+    public Guid? Device { get; set; }
     private Guid? _selectedSessionId;
     private string? _error;
     private Dictionary<string, string> DeviceOptions { get; set; } = new();
@@ -151,6 +161,7 @@ else
             _devices = devices.ToList();
             _visibleDevices = _devices;
             DeviceOptions = BuildDeviceOptions(_visibleDevices);
+            _selectedDeviceIdStr = LiveViewDeviceSelection.Initial(_devices, Device);
 
             // Load JavaScript module
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
