@@ -5,6 +5,7 @@ using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
@@ -85,4 +86,69 @@ public sealed class FakeReviewEventLoader : IReviewEventLoader
 
     /// <summary>One recorded page request.</summary>
     public sealed record EventLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, int Skip, int Take);
+}
+
+/// <summary>Device health change feed double. Tests push changes through <see cref="Changes"/>.</summary>
+public sealed class FakeDeviceHealthChangedSource : IDeviceHealthChangedSource
+{
+    /// <summary>The subject tests push changes into.</summary>
+    public Subject<DeviceHealthChangedDto> Changes { get; } = new();
+
+    /// <inheritdoc />
+    public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => Changes;
+}
+
+/// <summary>Detail loader double. Records each call; the responders decide the results, so a test can hold a call open.</summary>
+public sealed class FakeReviewDetailLoader : IReviewDetailLoader
+{
+    private readonly List<IReadOnlyList<Guid>> _detailCalls = [];
+    private readonly List<WindowLoadCall> _jammingCalls = [];
+    private readonly List<WindowLoadCall> _anomalyCalls = [];
+
+    /// <summary>The event ids of every detail call, in order.</summary>
+    public IReadOnlyList<IReadOnlyList<Guid>> DetailCalls => _detailCalls;
+
+    /// <summary>Every jamming load, in order.</summary>
+    public IReadOnlyList<WindowLoadCall> JammingCalls => _jammingCalls;
+
+    /// <summary>Every anomaly load, in order.</summary>
+    public IReadOnlyList<WindowLoadCall> AnomalyCalls => _anomalyCalls;
+
+    /// <summary>Produces the detail rows for a call. Defaults to none.</summary>
+    public Func<IReadOnlyCollection<Guid>, CancellationToken, Task<IReadOnlyDictionary<Guid, EventDetail>>> DetailResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail>());
+
+    /// <summary>Produces the jamming incidents for a call. Defaults to none.</summary>
+    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<JammingIncidentRecord>>> JammingResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([]);
+
+    /// <summary>Produces the anomalies for a call. Defaults to none.</summary>
+    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<ReviewAnomaly>>> AnomalyResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyList<ReviewAnomaly>>([]);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
+    {
+        _detailCalls.Add(eventIds.ToList());
+        return DetailResponder(eventIds, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        var call = new WindowLoadCall(deviceIds.ToList(), fromUtc, toUtc);
+        _jammingCalls.Add(call);
+        return JammingResponder(call, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ReviewAnomaly>> LoadAnomaliesAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        var call = new WindowLoadCall(deviceIds.ToList(), fromUtc, toUtc);
+        _anomalyCalls.Add(call);
+        return AnomalyResponder(call, ct);
+    }
+
+    /// <summary>One recorded jamming or anomaly load.</summary>
+    public sealed record WindowLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc);
 }

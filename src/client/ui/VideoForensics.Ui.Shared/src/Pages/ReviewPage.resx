@@ -200,4 +200,145 @@
   <data name="FilterActive" xml:space="preserve">
     <value>Filter active</value>
   </data>
+  <data name="DetailNoCameras" xml:space="preserve">
+    <value>Select a camera to see its details.</value>
+  </data>
+  <data name="DetailJammingTitle" xml:space="preserve">
+    <value>Suspected jamming</value>
+  </data>
+  <data name="DetailJammingLoading" xml:space="preserve">
+    <value>Loading suspected jamming.</value>
+  </data>
+  <data name="DetailJammingEmpty" xml:space="preserve">
+    <value>No suspected jamming in this time range.</value>
+  </data>
+  <data name="DetailJammingLoadFailed" xml:space="preserve">
+    <value>Could not load suspected jamming.</value>
+  </data>
+  <data name="DetailJammingAffected" xml:space="preserve">
+    <value>{0} events affected</value>
+  </data>
+  <data name="DetailAnomaliesTitle" xml:space="preserve">
+    <value>Anomalies</value>
+  </data>
+  <data name="DetailAnomaliesLoading" xml:space="preserve">
+    <value>Loading anomalies.</value>
+  </data>
+  <data name="DetailAnomaliesEmpty" xml:space="preserve">
+    <value>No anomalies in this time range.</value>
+  </data>
+  <data name="DetailAnomaliesLoadFailed" xml:space="preserve">
+    <value>Could not load anomalies.</value>
+  </data>
+  <data name="DetailLevelOneSigma" xml:space="preserve">
+    <value>Unusual (over 1 std dev)</value>
+  </data>
+  <data name="DetailLevelTwoSigma" xml:space="preserve">
+    <value>Very unusual (over 2 std devs)</value>
+  </data>
+  <data name="DetailEventsTitle" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="DetailEventsLoading" xml:space="preserve">
+    <value>Loading events.</value>
+  </data>
+  <data name="DetailEventsEmpty" xml:space="preserve">
+    <value>No events for the selected cameras in this time range.</value>
+  </data>
+  <data name="DetailEventsLoadFailed" xml:space="preserve">
+    <value>Could not load events.</value>
+  </data>
+  <data name="DetailEventsLoadMore" xml:space="preserve">
+    <value>Load more</value>
+  </data>
+  <data name="DetailEventsTotal" xml:space="preserve">
+    <value>{0} events</value>
+  </data>
+  <data name="DetailEventLoading" xml:space="preserve">
+    <value>Loading event details.</value>
+  </data>
+  <data name="DetailEventLoadFailed" xml:space="preserve">
+    <value>Could not load this event's details.</value>
+  </data>
+  <data name="DetailExpand" xml:space="preserve">
+    <value>Show event details</value>
+  </data>
+  <data name="DetailCollapse" xml:space="preserve">
+    <value>Hide event details</value>
+  </data>
+  <data name="DetailNone" xml:space="preserve">
+    <value>No detail recorded for this event.</value>
+  </data>
+  <data name="DetailFieldDescription" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="DetailFieldDetectionType" xml:space="preserve">
+    <value>Detection type</value>
+  </data>
+  <data name="DetailFieldConfidence" xml:space="preserve">
+    <value>Confidence</value>
+  </data>
+  <data name="DetailFieldAnomaly" xml:space="preserve">
+    <value>Anomaly</value>
+  </data>
+  <data name="DetailFieldSimilarity" xml:space="preserve">
+    <value>Similarity</value>
+  </data>
+  <data name="DetailFieldModelVersion" xml:space="preserve">
+    <value>Model version</value>
+  </data>
+  <data name="DetailFieldStreamBroken" xml:space="preserve">
+    <value>Stream broken</value>
+  </data>
+  <data name="DetailFieldOccurrences" xml:space="preserve">
+    <value>Occurrences</value>
+  </data>
+  <data name="DetailFieldZones" xml:space="preserve">
+    <value>Zones</value>
+  </data>
+  <data name="DetailFieldPeople" xml:space="preserve">
+    <value>People</value>
+  </data>
+  <data name="DetailFieldAlerts" xml:space="preserve">
+    <value>Security alerts</value>
+  </data>
+  <data name="JammingConfidence_Low" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="JammingConfidence_Medium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="JammingConfidence_High" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="JammingConfidence_Definite" xml:space="preserve">
+    <value>Definite</value>
+  </data>
+  <data name="DetectionType_human" xml:space="preserve">
+    <value>Human</value>
+  </data>
+  <data name="DetectionType_person" xml:space="preserve">
+    <value>Person</value>
+  </data>
+  <data name="DetectionType_motion" xml:space="preserve">
+    <value>Motion</value>
+  </data>
+  <data name="DetectionType_vehicle" xml:space="preserve">
+    <value>Vehicle</value>
+  </data>
+  <data name="DetectionType_animal" xml:space="preserve">
+    <value>Animal</value>
+  </data>
+  <data name="DetectionType_package" xml:space="preserve">
+    <value>Package</value>
+  </data>
+  <data name="DetectionType_package_delivery" xml:space="preserve">
+    <value>Package delivery</value>
+  </data>
+  <data name="DetectionType_other_motion" xml:space="preserve">
+    <value>Other motion</value>
+  </data>
+  <data name="DetectionType_loitering" xml:space="preserve">
+    <value>Loitering</value>
+  </data>
 </root>

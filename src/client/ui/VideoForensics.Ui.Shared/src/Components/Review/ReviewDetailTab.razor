@@ -1,0 +1,794 @@
+@implements IDisposable
+@using System.Globalization
+@using System.Reactive.Linq
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Signal
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject IReviewDetailLoader DetailLoader
+@inject IReviewEventLoader EventLoader
+@inject IServiceProvider ServiceProvider
+@inject IStringLocalizer<ReviewPage> L
+@inject ILogger<ReviewDetailTab> Logger
+
+<section class="review-tab-panel review-detail-tab" data-testid="review-tab-detail">
+    <div class="review-detail-section" data-testid="review-detail-jamming">
+        <h6>@L["DetailJammingTitle"]</h6>
+        @if (State.CameraIds.Count == 0)
+        {
+            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+        }
+        else if (_jammingError)
+        {
+            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-jamming-error">@L["DetailJammingLoadFailed"]</p>
+        }
+        else if (_jamming is null || !_jamming.Key.Matches(State))
+        {
+            <p class="review-events-message" role="status" data-testid="review-detail-jamming-loading">@L["DetailJammingLoading"]</p>
+        }
+        else if (_jamming.Items.Count == 0)
+        {
+            <p class="review-events-message" data-testid="review-detail-jamming-empty">@L["DetailJammingEmpty"]</p>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (JammingIncidentRecord incident in _jamming.Items)
+                {
+                    <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                            data-testid="review-detail-jamming-row" @onclick="() => NavigateTo(incident.DeviceId, incident.StartUtc)">
+                        <span class="review-event-camera">@CameraName(incident.DeviceId)</span>
+                        <span class="review-detail-range"><LocalTimeText Value="incident.StartUtc" Format="g" /></span>
+                        <span class="review-detail-range"><LocalTimeText Value="incident.EndUtc" Format="g" /></span>
+                        <span class="text-body-secondary">@L["DetailFieldConfidence"] @ConfidenceLabel(incident.Confidence)</span>
+                        <span class="text-body-secondary">@string.Format(L["DetailJammingAffected"].Value, incident.AffectedEventCount)</span>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="review-detail-section mt-3" data-testid="review-detail-anomalies">
+        <h6>@L["DetailAnomaliesTitle"]</h6>
+        @if (State.CameraIds.Count == 0)
+        {
+            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+        }
+        else if (_anomaliesError)
+        {
+            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-anomalies-error">@L["DetailAnomaliesLoadFailed"]</p>
+        }
+        else if (_anomalies is null || !_anomalies.Key.Matches(State))
+        {
+            <p class="review-events-message" role="status" data-testid="review-detail-anomalies-loading">@L["DetailAnomaliesLoading"]</p>
+        }
+        else if (_anomalies.Items.Count == 0)
+        {
+            <p class="review-events-message" data-testid="review-detail-anomalies-empty">@L["DetailAnomaliesEmpty"]</p>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (ReviewAnomaly anomaly in _anomalies.Items)
+                {
+                    <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                            data-testid="review-detail-anomaly-row" @onclick="() => NavigateTo(anomaly.DeviceId, anomaly.StartUtc)">
+                        <span class="review-event-camera">@CameraName(anomaly.DeviceId)</span>
+                        <span class="review-detail-range"><LocalTimeText Value="anomaly.StartUtc" Format="g" /></span>
+                        <span class="review-detail-range"><LocalTimeText Value="anomaly.EndUtc" Format="g" /></span>
+                        <span class="text-body-secondary">@LevelLabel(anomaly.Level)</span>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="review-detail-section mt-3" data-testid="review-detail-events">
+        <h6>@L["DetailEventsTitle"]</h6>
+        @if (State.CameraIds.Count == 0)
+        {
+            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+        }
+        else if (_eventsError)
+        {
+            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-events-error">@L["DetailEventsLoadFailed"]</p>
+        }
+        else if (_events is null || !_events.Key.Matches(State))
+        {
+            <p class="review-events-message" role="status" data-testid="review-detail-events-loading">@L["DetailEventsLoading"]</p>
+        }
+        else if (_events.Items.Count == 0)
+        {
+            <p class="review-events-message" data-testid="review-detail-events-empty">@L["DetailEventsEmpty"]</p>
+        }
+        else
+        {
+            <p class="review-events-total" data-testid="review-detail-events-total">@string.Format(L["DetailEventsTotal"].Value, _events.Total)</p>
+
+            <div class="list-group review-detail-event-list">
+                @foreach (Event evt in _events.Items)
+                {
+                    bool selected = evt.Id == State.SelectedEventId;
+                    bool expanded = evt.Id == _expandedId;
+                    <div class="review-detail-event" data-testid="review-detail-event">
+                        <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center @(selected ? "active" : string.Empty)"
+                                aria-expanded="@(expanded ? "true" : "false")"
+                                aria-label="@(expanded ? L["DetailCollapse"].Value : L["DetailExpand"].Value)"
+                                aria-current="@(selected ? "true" : null)"
+                                data-testid="review-event-toggle" data-event-id="@evt.Id.ToString("D")"
+                                @onclick="() => ToggleEventAsync(evt.Id)">
+                            <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
+                            <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
+                            <span class="review-event-type">@TypeLabel(evt.EventType)</span>
+                        </button>
+
+                        @if (expanded)
+                        {
+                            <div class="review-detail-event-body p-2" data-testid="review-detail-event-body" data-event-id="@evt.Id.ToString("D")">
+                                @if (_detailInFlight.Contains(evt.Id) || !_details.ContainsKey(evt.Id))
+                                {
+                                    @if (_detailFailed.Contains(evt.Id))
+                                    {
+                                        <p class="text-danger" role="alert" data-testid="review-detail-event-error">@L["DetailEventLoadFailed"]</p>
+                                    }
+                                    else
+                                    {
+                                        <p role="status" data-testid="review-detail-event-loading">@L["DetailEventLoading"]</p>
+                                    }
+                                }
+                                else if (_details[evt.Id] is not { } detail || !HasAnyDetail(detail))
+                                {
+                                    <p class="text-body-secondary" data-testid="review-detail-none">@L["DetailNone"]</p>
+                                }
+                                else
+                                {
+                                    @if (detail.Detection is { } det)
+                                    {
+                                        @if (!string.IsNullOrWhiteSpace(det.ShortDescription))
+                                        {
+                                            <p class="fw-semibold mb-1" data-testid="review-detail-short">@det.ShortDescription</p>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(det.FullDescription))
+                                        {
+                                            <p class="mb-2" data-testid="review-detail-full">@det.FullDescription</p>
+                                        }
+                                        <dl class="review-detail-fields small mb-2" data-testid="review-detail-fields">
+                                            @if (!string.IsNullOrWhiteSpace(det.DetectionType))
+                                            {
+                                                <dt>@L["DetailFieldDetectionType"]</dt>
+                                                <dd>@DetectionLabel(det.DetectionType)</dd>
+                                            }
+                                            @if (Percent(det.Confidence) is { } confidence)
+                                            {
+                                                <dt>@L["DetailFieldConfidence"]</dt>
+                                                <dd>@confidence</dd>
+                                            }
+                                            @if (Percent(det.Anomaly) is { } anomaly)
+                                            {
+                                                <dt>@L["DetailFieldAnomaly"]</dt>
+                                                <dd>@anomaly</dd>
+                                            }
+                                            @if (Percent(det.Similarity) is { } similarity)
+                                            {
+                                                <dt>@L["DetailFieldSimilarity"]</dt>
+                                                <dd>@similarity</dd>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(det.ModelVersion))
+                                            {
+                                                <dt>@L["DetailFieldModelVersion"]</dt>
+                                                <dd>@det.ModelVersion</dd>
+                                            }
+                                        </dl>
+                                        @if (det.StreamBroken == true)
+                                        {
+                                            <p class="text-warning small mb-2" data-testid="review-detail-stream-broken">@L["DetailFieldStreamBroken"]</p>
+                                        }
+                                    }
+
+                                    @if (detail.Occurrences.Count > 0)
+                                    {
+                                        <h6 class="small mt-2">@L["DetailFieldOccurrences"]</h6>
+                                        <div class="list-group mb-2">
+                                            @foreach (EventDetectionTypeOccurrence occurrence in detail.Occurrences.OrderBy(o => o.DetectedAtUtc))
+                                            {
+                                                <button type="button" class="list-group-item list-group-item-action py-1 small"
+                                                        data-testid="review-detail-occurrence" @onclick="() => NavigateTo(evt.DeviceId, occurrence.DetectedAtUtc)">
+                                                    <span>@DetectionLabel(occurrence.DetectionType)</span>
+                                                    <span class="review-detail-range"><LocalTimeText Value="occurrence.DetectedAtUtc" Format="g" /></span>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+
+                                    @if (detail.Zones.Count > 0)
+                                    {
+                                        <h6 class="small mt-2">@L["DetailFieldZones"]</h6>
+                                        <ul class="small mb-2" data-testid="review-detail-zones">
+                                            @foreach (EventDetectionZone zone in detail.Zones)
+                                            {
+                                                <li>@(zone.ZoneName ?? zone.ZoneId) @Percent(zone.Confidence)</li>
+                                            }
+                                        </ul>
+                                    }
+
+                                    @if (detail.People.Count > 0)
+                                    {
+                                        <h6 class="small mt-2">@L["DetailFieldPeople"]</h6>
+                                        <ul class="small mb-2" data-testid="review-detail-people">
+                                            @foreach (EventDetectedPerson person in detail.People)
+                                            {
+                                                <li>@(person.ProfileName ?? person.ProfileId) @Percent(person.Confidence)</li>
+                                            }
+                                        </ul>
+                                    }
+
+                                    @if (detail.SecurityAlerts.Count > 0)
+                                    {
+                                        <h6 class="small mt-2">@L["DetailFieldAlerts"]</h6>
+                                        <ul class="small mb-2" data-testid="review-detail-alerts">
+                                            @foreach (EventSecurityAlert alert in detail.SecurityAlerts)
+                                            {
+                                                <li>@alert.Severity @alert.AlertText</li>
+                                            }
+                                        </ul>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_events.Items.Count < _events.Total)
+            {
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-testid="review-events-load-more" disabled="@_eventsLoadingMore" @onclick="LoadMoreEventsAsync">@L["DetailEventsLoadMore"]</button>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly TimeSpan ReloadQuietPeriod = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>Most rows an evidence refresh re-queries. Matches the repository's take limit.</summary>
+    private const int MaxRefreshRows = 500;
+
+    /// <summary>The review state the tab reads and writes (cameras, range, selected event, cursor, tab).</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Display name for each camera id. A camera missing here shows its id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    private DetailKey? _key;
+    private IReadOnlySet<Guid> _shownDeviceIds = new HashSet<Guid>();
+    private bool _disposed;
+    private readonly CancellationTokenSource _disposeCts = new();
+
+    private Loaded<JammingIncidentRecord>? _jamming;
+    private bool _jammingError;
+    private CancellationTokenSource? _jammingCts;
+
+    private Loaded<ReviewAnomaly>? _anomalies;
+    private bool _anomaliesError;
+    private CancellationTokenSource? _anomaliesCts;
+
+    private LoadedEvents? _events;
+    private bool _eventsError;
+    private bool _eventsLoadingMore;
+    private CancellationTokenSource? _eventsCts;
+
+    private readonly Dictionary<Guid, EventDetail?> _details = [];
+    private readonly HashSet<Guid> _detailInFlight = [];
+    private readonly HashSet<Guid> _detailFailed = [];
+    private Guid? _expandedId;
+    private Guid? _autoExpandedFor;
+
+    private IDisposable? _evidenceSubscription;
+    private IDisposable? _healthSubscription;
+
+    protected override Task OnInitializedAsync()
+    {
+        State.OnChange += OnReviewStateChanged;
+
+        // Optional, like the events tab: a host with no realtime feed simply never refreshes from that source.
+        // Each throttle collapses a burst of changes into one re-query.
+        var evidence = ServiceProvider.GetService(typeof(IEvidenceChangedSource)) as IEvidenceChangedSource;
+        _evidenceSubscription = evidence?.EvidenceChanged
+            .Where(change => _shownDeviceIds.Contains(change.DeviceId))
+            .Throttle(ReloadQuietPeriod)
+            .Subscribe(change => { _ = InvokeAsync(() => RefreshEventsAsync()); });
+
+        var health = ServiceProvider.GetService(typeof(IDeviceHealthChangedSource)) as IDeviceHealthChangedSource;
+        _healthSubscription = health?.DeviceHealthChanged
+            .Where(change => _shownDeviceIds.Contains(change.DeviceId))
+            .Throttle(ReloadQuietPeriod)
+            .Subscribe(change => { _ = InvokeAsync(() => RefreshWindowsAsync()); });
+
+        ResetAll();
+        return Task.CompletedTask;
+    }
+
+    private void OnReviewStateChanged()
+    {
+        _ = InvokeAsync(OnReviewStateChangedAsync);
+    }
+
+    /// <summary>
+    /// A camera or range change reloads every section. A cursor, tab, or selection change keeps the lists and only
+    /// expands the selected event when it is on screen.
+    /// </summary>
+    private async Task OnReviewStateChangedAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (_key is null || !_key.Matches(State))
+        {
+            ResetAll();
+            return;
+        }
+
+        await ExpandSelectedAsync();
+        StateHasChanged();
+    }
+
+    private void ResetAll()
+    {
+        _key = CurrentKey();
+        _shownDeviceIds = _key.Cameras.ToHashSet();
+        _ = LoadJammingAsync(reset: true);
+        _ = LoadAnomaliesAsync(reset: true);
+        _ = LoadEventsAsync(LoadMode.Reset);
+    }
+
+    private Task RefreshEventsAsync()
+    {
+        if (_disposed || _events is null || !_events.Key.Matches(State))
+        {
+            return Task.CompletedTask;
+        }
+
+        return LoadEventsAsync(LoadMode.Refresh);
+    }
+
+    private Task RefreshWindowsAsync()
+    {
+        if (_disposed || _key is null || !_key.Matches(State))
+        {
+            return Task.CompletedTask;
+        }
+
+        _ = LoadJammingAsync(reset: false);
+        _ = LoadAnomaliesAsync(reset: false);
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadJammingAsync(bool reset)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _jammingCts?.Cancel();
+        _jammingCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _jammingCts = cts;
+        CancellationToken ct = cts.Token;
+
+        DetailKey key = CurrentKey();
+        _jammingError = false;
+        if (key.Cameras.Count == 0)
+        {
+            _jamming = null;
+            StateHasChanged();
+            return;
+        }
+
+        if (reset)
+        {
+            _jamming = null;
+            StateHasChanged();
+        }
+
+        try
+        {
+            IReadOnlyList<JammingIncidentRecord> rows = await DetailLoader.LoadJammingAsync(key.Cameras, key.FromUtc, key.ToUtc, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            _jamming = new Loaded<JammingIncidentRecord>(key, rows);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // A newer load or the disposal owns the section now.
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load suspected jamming: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _jamming = null;
+            _jammingError = true;
+        }
+
+        if (IsCurrent(cts))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAnomaliesAsync(bool reset)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _anomaliesCts?.Cancel();
+        _anomaliesCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _anomaliesCts = cts;
+        CancellationToken ct = cts.Token;
+
+        DetailKey key = CurrentKey();
+        _anomaliesError = false;
+        if (key.Cameras.Count == 0)
+        {
+            _anomalies = null;
+            StateHasChanged();
+            return;
+        }
+
+        if (reset)
+        {
+            _anomalies = null;
+            StateHasChanged();
+        }
+
+        try
+        {
+            IReadOnlyList<ReviewAnomaly> rows = await DetailLoader.LoadAnomaliesAsync(key.Cameras, key.FromUtc, key.ToUtc, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            _anomalies = new Loaded<ReviewAnomaly>(key, rows);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load anomalies: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _anomalies = null;
+            _anomaliesError = true;
+        }
+
+        if (IsCurrent(cts))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private Task LoadMoreEventsAsync()
+    {
+        if (_disposed || _events is null || _eventsLoadingMore || _events.Items.Count >= _events.Total)
+        {
+            return Task.CompletedTask;
+        }
+
+        return LoadEventsAsync(LoadMode.More);
+    }
+
+    /// <summary>
+    /// Runs one events page query, with the same cancel and stale-drop rules as the events tab. A refresh also
+    /// drops the cached detail of every row it re-read, so an open row shows fresh detail.
+    /// </summary>
+    private async Task LoadEventsAsync(LoadMode mode)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _eventsCts?.Cancel();
+        _eventsCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _eventsCts = cts;
+        CancellationToken ct = cts.Token;
+
+        DetailKey key = CurrentKey();
+        _eventsError = false;
+        if (key.Cameras.Count == 0)
+        {
+            _events = null;
+            _eventsLoadingMore = false;
+            StateHasChanged();
+            return;
+        }
+
+        int skip = 0;
+        int take = ReviewEventFilters.PageSize;
+        switch (mode)
+        {
+            case LoadMode.Reset:
+                _events = null;
+                break;
+            case LoadMode.Refresh:
+                take = Math.Clamp(_events?.Items.Count ?? 0, 1, MaxRefreshRows);
+                break;
+            case LoadMode.More:
+                skip = _events?.Items.Count ?? 0;
+                _eventsLoadingMore = true;
+                break;
+        }
+
+        if (mode == LoadMode.Reset)
+        {
+            StateHasChanged();
+        }
+
+        try
+        {
+            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, skip, take, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            _events = mode == LoadMode.More && _events is not null
+                ? _events with { Items = _events.Items.Concat(page.Items).ToList(), Total = page.TotalCount }
+                : new LoadedEvents(key, page.Items.ToList(), page.TotalCount);
+            _eventsLoadingMore = false;
+
+            if (mode == LoadMode.Refresh)
+            {
+                foreach (Event row in page.Items)
+                {
+                    _details.Remove(row.Id);
+                }
+
+                if (_expandedId is Guid expanded && _events.Items.Any(row => row.Id == expanded))
+                {
+                    await EnsureDetailAsync(expanded);
+                }
+            }
+
+            await ExpandSelectedAsync();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load review events for detail: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _events = null;
+            _eventsLoadingMore = false;
+            _eventsError = true;
+        }
+
+        if (IsCurrent(cts))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private Task ToggleEventAsync(Guid id)
+    {
+        _expandedId = _expandedId == id ? null : id;
+        return _expandedId is Guid expanded ? EnsureDetailAsync(expanded) : Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Expands the event the state has selected (from the Events tab), once per selection, when its row is on the first
+    /// page. Other rows keep their own toggle.
+    /// </summary>
+    private async Task ExpandSelectedAsync()
+    {
+        Guid? selected = State.SelectedEventId;
+        if (selected is null || selected == _autoExpandedFor || _events is null || !_events.Key.Matches(State))
+        {
+            return;
+        }
+
+        if (!_events.Items.Any(row => row.Id == selected))
+        {
+            return;
+        }
+
+        _autoExpandedFor = selected;
+        _expandedId = selected;
+        await EnsureDetailAsync(selected.Value);
+    }
+
+    /// <summary>Loads one event's detail unless it is cached or already loading. Only the event asked for is read.</summary>
+    private Task EnsureDetailAsync(Guid id)
+    {
+        if (_disposed || _details.ContainsKey(id) || !_detailInFlight.Add(id))
+        {
+            return Task.CompletedTask;
+        }
+
+        return LoadDetailAsync(id);
+    }
+
+    private async Task LoadDetailAsync(Guid id)
+    {
+        _detailFailed.Remove(id);
+        StateHasChanged();
+        try
+        {
+            IReadOnlyDictionary<Guid, EventDetail> rows = await DetailLoader.LoadEventDetailsAsync([id], _disposeCts.Token);
+            _details[id] = rows.TryGetValue(id, out EventDetail? detail) ? detail : null;
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not load event detail: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _detailFailed.Add(id);
+        }
+        finally
+        {
+            _detailInFlight.Remove(id);
+        }
+
+        if (!_disposed)
+        {
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Selects the camera and cursor, then switches to the Timeline tab, where the player lives. The camera is only
+    /// changed when it is not already the one and only selected camera.
+    /// </summary>
+    private void NavigateTo(Guid deviceId, DateTime cursorUtc)
+    {
+        bool alreadyOnlyCamera = State.CameraIds.Count == 1 && State.CameraIds[0] == deviceId;
+        if (!alreadyOnlyCamera)
+        {
+            State.SetCameras([deviceId]);
+        }
+
+        State.SetCursor(cursorUtc);
+        State.SetTab(ReviewTab.Timeline);
+    }
+
+    private bool IsCurrent(CancellationTokenSource cts)
+    {
+        return !_disposed && !cts.IsCancellationRequested;
+    }
+
+    private DetailKey CurrentKey()
+    {
+        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc);
+    }
+
+    private string CameraName(Guid deviceId)
+    {
+        return DeviceNames.TryGetValue(deviceId, out string? name) ? name : deviceId.ToString("D");
+    }
+
+    /// <summary>The localized label for a provider event type. A type with no label shows its raw string.</summary>
+    private string TypeLabel(string eventType)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
+        {
+            return L["EventTypeUnknown"].Value;
+        }
+
+        LocalizedString label = L["EventType_" + eventType.ToLowerInvariant()];
+        return label.ResourceNotFound ? eventType : label.Value;
+    }
+
+    /// <summary>The localized label for a Ring detection type. A type with no label shows its raw string.</summary>
+    private string DetectionLabel(string detectionType)
+    {
+        LocalizedString label = L["DetectionType_" + detectionType.ToLowerInvariant()];
+        return label.ResourceNotFound ? detectionType : label.Value;
+    }
+
+    private string ConfidenceLabel(JammingConfidenceLevel level)
+    {
+        return L["JammingConfidence_" + level.ToString()].Value;
+    }
+
+    private string LevelLabel(SignalDeviationLevel level)
+    {
+        LocalizedString label = L["DetailLevel" + level.ToString()];
+        return label.ResourceNotFound ? level.ToString() : label.Value;
+    }
+
+    /// <summary>A 0 to 1 score shown as a percentage, or null when the score is not recorded.</summary>
+    private static string? Percent(decimal? value)
+    {
+        return value is null ? null : ((double)value.Value).ToString("P0", CultureInfo.CurrentCulture);
+    }
+
+    /// <summary>True when the event has at least one detail row to show.</summary>
+    private static bool HasAnyDetail(EventDetail detail)
+    {
+        return detail.Detection is not null
+            || detail.Occurrences.Count > 0
+            || detail.Zones.Count > 0
+            || detail.People.Count > 0
+            || detail.SecurityAlerts.Count > 0;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        State.OnChange -= OnReviewStateChanged;
+        _evidenceSubscription?.Dispose();
+        _evidenceSubscription = null;
+        _healthSubscription?.Dispose();
+        _healthSubscription = null;
+        _jammingCts?.Cancel();
+        _jammingCts?.Dispose();
+        _anomaliesCts?.Cancel();
+        _anomaliesCts?.Dispose();
+        _eventsCts?.Cancel();
+        _eventsCts?.Dispose();
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+
+    private enum LoadMode
+    {
+        Reset,
+        Refresh,
+        More,
+    }
+
+    /// <summary>The cameras and range one load asked for. A section is only shown while this still matches the state.</summary>
+    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc)
+    {
+        public bool Matches(ReviewPageState state)
+        {
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc;
+        }
+    }
+
+    /// <summary>The items one section loaded, and the query that produced them.</summary>
+    private sealed record Loaded<T>(DetailKey Key, IReadOnlyList<T> Items);
+
+    /// <summary>The event rows shown, the total the server reported, and the query that produced them.</summary>
+    private sealed record LoadedEvents(DetailKey Key, IReadOnlyList<Event> Items, int Total);
+}
