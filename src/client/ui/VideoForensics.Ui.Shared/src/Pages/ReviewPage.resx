@@ -140,4 +140,46 @@
   <data name="ClipsLoadFailed" xml:space="preserve">
     <value>Clips could not be loaded. Change the cameras or time range to try again.</value>
   </data>
+  <data name="EventsNoCameras" xml:space="preserve">
+    <value>Select a camera to see its events.</value>
+  </data>
+  <data name="EventsEmpty" xml:space="preserve">
+    <value>No events for the selected cameras in this time range.</value>
+  </data>
+  <data name="EventsLoading" xml:space="preserve">
+    <value>Loading events...</value>
+  </data>
+  <data name="EventsLoadMore" xml:space="preserve">
+    <value>Load more</value>
+  </data>
+  <data name="EventsTotal" xml:space="preserve">
+    <value>{0} events</value>
+  </data>
+  <data name="EventsLoadFailed" xml:space="preserve">
+    <value>Events could not be loaded. Change the cameras or time range to try again.</value>
+  </data>
+  <data name="EventsListLabel" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="EventTypeUnknown" xml:space="preserve">
+    <value>Unknown event</value>
+  </data>
+  <data name="EventType_motion" xml:space="preserve">
+    <value>Motion</value>
+  </data>
+  <data name="EventType_ding" xml:space="preserve">
+    <value>Doorbell press</value>
+  </data>
+  <data name="EventType_doorbell" xml:space="preserve">
+    <value>Doorbell</value>
+  </data>
+  <data name="EventType_on_demand" xml:space="preserve">
+    <value>On demand</value>
+  </data>
+  <data name="EventType_alarm" xml:space="preserve">
+    <value>Alarm</value>
+  </data>
+  <data name="EventType_person" xml:space="preserve">
+    <value>Person</value>
+  </data>
 </root>

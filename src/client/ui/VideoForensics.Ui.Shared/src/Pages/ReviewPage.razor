@@ -43,9 +43,7 @@ else
     }
     else if (State.ActiveTab == ReviewTab.Events)
     {
-        <section class="review-tab-panel" data-testid="review-tab-events">
-            <p>@L["TabPlaceholder", L["TabEvents"].Value]</p>
-        </section>
+        <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
     }
     else
     {

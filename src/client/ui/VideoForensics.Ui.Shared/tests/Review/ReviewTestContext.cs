@@ -50,6 +50,12 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The clip loader double the timeline tab reads through.</summary>
     protected FakeReviewClipLoader ClipLoader { get; } = new();
 
+    /// <summary>The event loader double the events tab reads through.</summary>
+    protected FakeReviewEventLoader EventLoader { get; } = new();
+
+    /// <summary>The events tab's logger, so a test can check what was logged.</summary>
+    protected Mock<ILogger<ReviewEventsTab>> EventsLogger { get; } = new();
+
     /// <summary>The ticketed-URL double behind the review URL cache.</summary>
     protected FakeMediaContentUrlProvider UrlProvider { get; } = new();
 
@@ -84,6 +90,8 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddSingleton<IMediaContentUrlProvider>(UrlProvider);
         _ = Services.AddScoped(sp => new ReviewUrlCache(sp.GetRequiredService<IMediaContentUrlProvider>(), sp.GetRequiredService<TimeProvider>()));
         _ = Services.AddSingleton<IEvidenceChangedSource>(EvidenceSource);
+        _ = Services.AddSingleton<IReviewEventLoader>(EventLoader);
+        _ = Services.AddSingleton(EventsLogger.Object);
         _ = Services.AddSingleton(TabLogger.Object);
         _ = Services.AddSingleton(FeederLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));

@@ -4,6 +4,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
@@ -61,4 +62,27 @@ public sealed class FakeEvidenceChangedSource : IEvidenceChangedSource
 
     /// <inheritdoc />
     public IObservable<EvidenceChangedDto> EvidenceChanged => Changes;
+}
+
+/// <summary>Event loader double. Records each page request; <see cref="Responder"/> decides the result, so a test can hold a call open.</summary>
+public sealed class FakeReviewEventLoader : IReviewEventLoader
+{
+    private readonly List<EventLoadCall> _calls = [];
+
+    /// <summary>Every page request, in order.</summary>
+    public IReadOnlyList<EventLoadCall> Calls => _calls;
+
+    /// <summary>Produces the result of a call. Defaults to an empty page.</summary>
+    public Func<EventLoadCall, CancellationToken, Task<EventPage>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPage([], 0));
+
+    /// <inheritdoc />
+    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+    {
+        var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take);
+        _calls.Add(call);
+        return Responder(call, ct);
+    }
+
+    /// <summary>One recorded page request.</summary>
+    public sealed record EventLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, int Skip, int Take);
 }
