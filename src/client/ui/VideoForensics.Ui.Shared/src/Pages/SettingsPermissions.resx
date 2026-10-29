@@ -107,4 +107,13 @@
   <data name="LoadFailed" xml:space="preserve">
     <value>Could not load permissions: {0}</value>
   </data>
+  <data name="InfrastructureSection" xml:space="preserve">
+    <value>Infrastructure</value>
+  </data>
+  <data name="InfrastructureDescription" xml:space="preserve">
+    <value>Infrastructure settings include the log pipe and factory reset. Let admins open the Infrastructure page.</value>
+  </data>
+  <data name="InfrastructureLabel" xml:space="preserve">
+    <value>Who may open Infrastructure settings</value>
+  </data>
 </root>

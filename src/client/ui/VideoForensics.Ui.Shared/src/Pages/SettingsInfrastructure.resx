@@ -77,4 +77,22 @@
   <data name="AdminOnlySettingsNote" xml:space="preserve">
     <value>Only a SuperAdmin on this computer can change these settings.</value>
   </data>
+  <data name="DiagnosticsSection" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="LogPipeDescription" xml:space="preserve">
+    <value>Shows server logs in the VideoForensics.Utils.LogViewer console. Any local user on this computer can connect while this is on.</value>
+  </data>
+  <data name="LogPipeLabel" xml:space="preserve">
+    <value>Open the log pipe for LogViewer</value>
+  </data>
+  <data name="LogPipeSaved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="LogPipeSaveFailed" xml:space="preserve">
+    <value>Could not save the log pipe setting: {0}</value>
+  </data>
+  <data name="LogPipeLoadFailed" xml:space="preserve">
+    <value>Could not load the log pipe setting: {0}</value>
+  </data>
 </root>

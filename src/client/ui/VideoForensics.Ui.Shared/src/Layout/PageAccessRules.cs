@@ -30,6 +30,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>SuperAdmin, or Admin once a Super Admin has opened LLM settings to admins.</summary>
         LlmSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened the Infrastructure settings page to admins.</summary>
+        InfrastructureSettings,
     }
 
     /// <summary>
@@ -77,9 +80,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Approving credentials needs SuperAdminLocalOrPasskey (DeviceManagementEndpoints approve route); the
                 // list itself needs Admin, but the page exists only to act on approvals, so the stricter policy applies.
                 ["/admin/pending-credentials"] = AccessPolicy.SuperAdminLocalOrPasskey,
-                // In-process orchestrator calls (factory reset, key storage), not HTTP: no server policy backs this
-                // page, so the table is the only gate. Local tier is the conservative choice.
-                ["/settings/infrastructure"] = AccessPolicy.SuperAdminLocal,
+                // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
+                // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
+                ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/notifications"] = AccessPolicy.NotificationSettings,
                 ["/settings/security-log"] = AccessPolicy.Admin,
@@ -127,6 +130,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 AccessPolicy.EmailSettings => AllowsSetting(RestrictedSettings.Email, ctx),
                 AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
                 AccessPolicy.LlmSettings => AllowsSetting(RestrictedSettings.Llm, ctx),
+                AccessPolicy.InfrastructureSettings => AllowsSetting(RestrictedSettings.Infrastructure, ctx),
                 _ => false,
             };
         }

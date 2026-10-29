@@ -51,6 +51,7 @@ namespace VideoForensics.Client.WebApp.Api
             ("email", RestrictedSettings.Email),
             ("notifications", RestrictedSettings.Notifications),
             ("llm", RestrictedSettings.Llm),
+            ("infrastructure", RestrictedSettings.Infrastructure),
         ];
 
         private static async Task<IResult> GetSettingsAccessAsync(ISettingsAccessPolicy policy, CancellationToken ct)
@@ -59,7 +60,8 @@ namespace VideoForensics.Client.WebApp.Api
                 await policy.GetRequiredPolicyAsync(RestrictedSettings.Reports, ct) == AccessPolicy.Admin,
                 await policy.GetRequiredPolicyAsync(RestrictedSettings.Email, ct) == AccessPolicy.Admin,
                 await policy.GetRequiredPolicyAsync(RestrictedSettings.Notifications, ct) == AccessPolicy.Admin,
-                await policy.GetRequiredPolicyAsync(RestrictedSettings.Llm, ct) == AccessPolicy.Admin));
+                await policy.GetRequiredPolicyAsync(RestrictedSettings.Llm, ct) == AccessPolicy.Admin,
+                await policy.GetRequiredPolicyAsync(RestrictedSettings.Infrastructure, ct) == AccessPolicy.Admin));
         }
 
         private static async Task<IResult> GetAreaAsync(RestrictedSettings area, IAppSettingRepository settings, CancellationToken ct)
