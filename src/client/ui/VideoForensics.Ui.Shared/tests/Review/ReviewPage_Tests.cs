@@ -144,6 +144,21 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewPage_DetailTab_RendersTheDetailComponentInPlaceOfThePlaceholder()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview("tab=detail");
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert
+        Assert.Single(cut.FindComponents<ReviewDetailTab>());
+        Assert.DoesNotContain(L["TabPlaceholder", L["TabDetail"].Value].Value, cut.Find("[data-testid='review-tab-detail']").TextContent);
+    }
+
+    [Fact]
     public void ReviewPage_SignedIn_RegistersTheTimelinePanelWithTheRightPanel()
     {
         // Arrange
