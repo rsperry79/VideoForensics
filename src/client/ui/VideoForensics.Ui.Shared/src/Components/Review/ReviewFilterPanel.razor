@@ -5,7 +5,7 @@
 @using VideoForensics.Data.Common.Entities
 @inject IStringLocalizer<ReviewPage> L
 
-<div class="card shadow-sm p-2" role="dialog" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel" style="position: absolute; z-index: 1050; min-width: 16rem; top: 100%; right: 0;">
+<div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel" style="min-width: 16rem; top: 100%; right: 0;">
     <div class="small fw-semibold mb-2">@L["FilterTitle"]</div>
 
     <label class="form-label small mb-1" for="review-filter-provider-select">@L["FilterProvider"]</label>

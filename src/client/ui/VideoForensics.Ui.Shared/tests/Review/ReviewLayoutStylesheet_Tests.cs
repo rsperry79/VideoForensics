@@ -71,4 +71,27 @@ public class ReviewLayoutStylesheet_Tests
         Assert.NotEqual("0", left.Groups[1].Value.Trim());
         Assert.NotEqual("0px", left.Groups[1].Value.Trim());
     }
+
+    [Fact]
+    public void ReviewTopBarStylesheet_PopupBackdrop_SitsBelowThePopups()
+    {
+        // Arrange
+        string css = RepoFile.ReadUiSharedSource("Components/Review/ReviewTopBar.razor.css");
+
+        // Act
+        int backdrop = ZIndexOf(css, @"\.review-popup-backdrop\s*\{([^}]*)\}");
+        int popup = ZIndexOf(css, @"\.review-popup\s*\{([^}]*)\}");
+
+        // Assert
+        Assert.True(backdrop < popup, $"The backdrop z-index ({backdrop}) must be below the popup z-index ({popup}).");
+    }
+
+    private static int ZIndexOf(string css, string blockPattern)
+    {
+        Match block = Regex.Match(css, blockPattern);
+        Assert.True(block.Success, $"The stylesheet must contain a rule matching {blockPattern}.");
+        Match zIndex = Regex.Match(block.Groups[1].Value, @"z-index:\s*(\d+)");
+        Assert.True(zIndex.Success, $"The rule matching {blockPattern} must set z-index.");
+        return int.Parse(zIndex.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+    }
 }

@@ -4,6 +4,7 @@
 @using VideoForensics.Data.Common.Entities
 @implements IDisposable
 @inject PendingEvidenceTags PendingTags
+@inject ReviewPopupState Popups
 @inject IStringLocalizer<ReviewPage> L
 
 @if (ShouldShow)
@@ -15,16 +16,16 @@
                     class="btn btn-sm btn-outline-secondary"
                     data-testid="review-pending-tags-open"
                     aria-label="@L["PendingTagsOpen"]"
-                    aria-expanded="@_open"
+                    aria-expanded="@Popups.IsOpen(ReviewPopupState.Pending)"
                     title="@L["PendingTagsHelp"]"
                     @onclick="OnToggleOpen">
                 <span class="badge rounded-pill text-bg-secondary" data-testid="review-pending-tags-count">@L["PendingTagsCount", PendingTags.Count]</span>
             </button>
         }
 
-        @if (_open && PendingTags.Count > 0)
+        @if (Popups.IsOpen(ReviewPopupState.Pending) && PendingTags.Count > 0)
         {
-            <div class="card position-absolute p-2 shadow-sm" style="z-index: 1050; top: 100%; right: 0; min-width: 18rem;" role="dialog" aria-label="@L["PendingTagsOpen"]" data-testid="review-pending-tags-list">
+            <div class="card position-absolute p-2 shadow-sm review-popup" style="top: 100%; right: 0; min-width: 18rem;" role="dialog" aria-label="@L["PendingTagsOpen"]" data-testid="review-pending-tags-list">
                 @foreach (PendingTag tag in PendingTags.Items)
                 {
                     <div class="d-flex align-items-center justify-content-between gap-2 py-1" data-testid="review-pending-tag-row">
@@ -60,8 +61,6 @@
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
 
-    private bool _open;
-
     /// <summary>The attach notice the user has dismissed. Compared by reference, so a later attach shows again.</summary>
     private AttachResult? _dismissedAttach;
 
@@ -82,6 +81,12 @@
     {
         PendingTags.OnChange += OnPendingChanged;
         PendingTags.Attached += OnAttached;
+        Popups.OnChange += OnPopupChanged;
+    }
+
+    private void OnPopupChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void OnPendingChanged()
@@ -97,7 +102,7 @@
 
     private void OnToggleOpen()
     {
-        _open = !_open;
+        Popups.Toggle(ReviewPopupState.Pending);
     }
 
     private void Remove(PendingTag tag)
@@ -105,7 +110,7 @@
         _ = PendingTags.Remove(tag.Kind, tag.TargetId);
         if (PendingTags.Count == 0)
         {
-            _open = false;
+            Popups.Close(ReviewPopupState.Pending);
         }
     }
 
@@ -128,5 +133,6 @@
     {
         PendingTags.OnChange -= OnPendingChanged;
         PendingTags.Attached -= OnAttached;
+        Popups.OnChange -= OnPopupChanged;
     }
 }

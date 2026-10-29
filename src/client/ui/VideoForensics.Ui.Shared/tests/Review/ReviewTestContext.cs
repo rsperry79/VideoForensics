@@ -134,6 +134,7 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => ReviewState);
+        _ = Services.AddScoped<ReviewPopupState>();
         _ = Services.AddScoped<PendingEvidenceTags>();
         _ = Services.AddScoped(_ => TimelineModel);
         _ = Services.AddScoped<RightPanelContentService>();

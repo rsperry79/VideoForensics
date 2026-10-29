@@ -87,6 +87,30 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     }
 
     [Fact]
+    public async Task ReviewActionsMenu_MenuItems_UseTheDropdownItemClassNotAnInputLook()
+    {
+        // Arrange
+        SelectClipAtCursor();
+        IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
+        string[] items =
+        [
+            "review-action-tag",
+            "review-action-new-case",
+            "review-action-hold",
+            "review-action-verify",
+            "review-action-export",
+        ];
+
+        // Act and Assert
+        foreach (string item in items)
+        {
+            IElement element = cut.Find($"[data-testid='{item}']");
+            Assert.Contains("dropdown-item", element.ClassName);
+            Assert.DoesNotContain("btn-outline-secondary", element.ClassName);
+        }
+    }
+
+    [Fact]
     public async Task ReviewActionsMenu_ToggleClick_OpensThePopup()
     {
         // Arrange

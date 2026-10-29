@@ -236,4 +236,117 @@ public class ReviewTopBar_Tests : ReviewTestContext
         // Assert
         Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
     }
+
+    [Fact]
+    public void ReviewTopBar_FilterOpenedWhileActionsOpen_LeavesOnlyTheFilterPopup()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        cut.Find("[data-testid='review-actions']").Click();
+        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
+
+        // Act
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
+        Assert.Single(cut.FindAll("[data-testid='review-filter-panel']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_CameraOpenedWhileFilterOpen_ClosesTheFilterPanel()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Act
+        cut.Find("[data-testid='review-camera-button']").Click();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-panel']"));
+        Assert.Single(cut.FindAll("[data-testid='review-camera-popup']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_NoPopupOpen_RendersNoBackdrop()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_PopupOpen_RendersABackdrop()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Act
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_BackdropClicked_ClosesThePopup()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        cut.Find("[data-testid='review-camera-button']").Click();
+        Assert.Single(cut.FindAll("[data-testid='review-camera-popup']"));
+
+        // Act
+        cut.Find("[data-testid='review-popup-backdrop']").Click();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-camera-popup']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_EscapePressedOnTheTopBar_ClosesThePopup()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Act
+        cut.Find("[data-testid='review-top-bar']").KeyDown("Escape");
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-panel']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_OtherKeyPressedOnTheTopBar_KeepsThePopupOpen()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Act
+        cut.Find("[data-testid='review-top-bar']").KeyDown("a");
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-filter-panel']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_FilterApplied_ClosesThePanel()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        cut.Find("[data-testid='review-filter']").Click();
+
+        // Act
+        cut.Find("[data-testid='review-filter-apply']").Click();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-panel']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
 }

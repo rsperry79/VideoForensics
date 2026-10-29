@@ -8,6 +8,7 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 @inject ReviewCaseMode CaseMode
+@inject ReviewPopupState Popups
 @inject IStringLocalizer<ReviewPage> L
 
 @if (CaseMode.Active)
@@ -22,7 +23,13 @@
     </div>
 }
 
-<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
+<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar" @onkeydown="OnTopBarKeyDown">
+    @if (Popups.Open is not null)
+    {
+        @* Transparent full-page backdrop below the popups: a click outside any popup lands here and closes it. *@
+        <div class="review-popup-backdrop" data-testid="review-popup-backdrop" @onclick="ClosePopups"></div>
+    }
+
     <div class="d-flex align-items-center gap-2">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-back" @onclick="OnBackAsync">@L["Back"]</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
@@ -40,7 +47,7 @@
         <ReviewPendingTags DeviceNames="DeviceNames" />
 
         <div class="position-relative">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" aria-expanded="@_filterOpen" @onclick="OnToggleFilter">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" aria-expanded="@Popups.IsOpen(ReviewPopupState.Filter)" @onclick="OnToggleFilter">
                 @L["Filter"]
                 @if (FilterActive)
                 {
@@ -48,7 +55,7 @@
                 }
             </button>
 
-            @if (_filterOpen)
+            @if (Popups.IsOpen(ReviewPopupState.Filter))
             {
                 <ReviewFilterPanel State="State" AllDeviceIds="AllDeviceIds" Ownership="Ownership" OnClose="OnFilterClosed" />
             }
@@ -95,8 +102,6 @@
     [Parameter]
     public Func<DateTime> UtcNow { get; set; } = static () => DateTime.UtcNow;
 
-    private bool _filterOpen;
-
     /// <summary>True while a Provider or Account filter narrows the cameras, so the Filter button shows an indicator.</summary>
     private bool FilterActive => State.ProviderFilter is not null || State.AccountFilter is not null;
 
@@ -127,13 +132,31 @@
 
     protected override void OnInitialized()
     {
+        // A popup left open by an earlier visit to this page must not reopen with the bar.
+        Popups.Close();
         State.OnChange += OnStateChanged;
         CaseMode.OnChange += OnStateChanged;
+        Popups.OnChange += OnStateChanged;
     }
 
     private void OnStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Closes whichever popup is open. Used by the backdrop click.</summary>
+    private void ClosePopups()
+    {
+        Popups.Close();
+    }
+
+    /// <summary>Escape closes the open popup. The key event bubbles up from whichever control has focus inside the bar.</summary>
+    private void OnTopBarKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Popups.Close();
+        }
     }
 
     /// <summary>
@@ -148,12 +171,12 @@
 
     private void OnToggleFilter()
     {
-        _filterOpen = !_filterOpen;
+        Popups.Toggle(ReviewPopupState.Filter);
     }
 
     private void OnFilterClosed()
     {
-        _filterOpen = false;
+        Popups.Close(ReviewPopupState.Filter);
     }
 
     /// <summary>
@@ -217,5 +240,6 @@
     {
         State.OnChange -= OnStateChanged;
         CaseMode.OnChange -= OnStateChanged;
+        Popups.OnChange -= OnStateChanged;
     }
 }
