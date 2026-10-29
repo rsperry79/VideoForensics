@@ -321,7 +321,7 @@ the Inno Setup installer for end-user distribution, but keep the PowerShell scri
 
 `stage-update.ps1` publishes the current source and stages it as an update package in
 `%ProgramData%\VideoForensics\updates\<version>`. The running service notices it, restarts, verifies the package, and
-swaps the files in itself. A debug launch of the MAUI app runs this automatically and waits until the service is on the
+swaps the files in itself. The MAUI and Visual Studio debug launches run this automatically and wait until the service is on the
 new build, with no UAC prompt.
 
 One-time setup, as administrator (dev machines only: dev packages are unsigned and may reuse the running version):
@@ -341,33 +341,6 @@ sets its own restart-on-failure recovery.
 
 Progress and failures are in the service log. A package that fails verification is renamed `<version>.rejected` and
 `updates\status.json` records the last attempt. The previous version is kept in `updates\previous` for rollback.
-
-## Hot-Swapping the Service During Development (admin, legacy)
-
-`deploy/windows/hotswap-service.ps1` updates an **already-installed** service's binaries without a
-full installer round-trip — no Inno Setup compile, no re-registering the service, no UAC prompt
-beyond the script's own elevation. It stops the service, replaces the installed server files with the
-publish output (a mirror: files the new build no longer ships are removed), points the service at
-`VideoForensics.Client.WebApp.exe`, restarts it, then checks `http://localhost:5162` to confirm the new build
-actually came up. The `Desktop` folder and the installer extras (cloudflared, ffmpeg, ffprobe, unins000) are kept.
-
-**Running servers:** after the service stops, the script also stops any process still listening on
-port 5162 that runs from the installed binaries, the publish output, or this repo's WebApp build
-(`dotnet run`, debug runs). A listener from anywhere else, or one whose executable path it cannot read,
-is not stopped: the script fails and names the PID so you can stop it yourself.
-
-```powershell
-# Publish current source and swap it in, in one step
-.\deploy\windows\hotswap-service.ps1 -Build
-
-# Swap in an already-published output without rebuilding
-.\deploy\windows\hotswap-service.ps1 -PublishDir C:\Build\VideoForensics
-```
-
-**Data safety:** this script only ever touches `%ProgramFiles%\VideoForensics` (binaries). It never
-references `%ProgramData%\VideoForensics` (database, media, logs, keys) in any way — do not add such
-a reference to it. Requires the service to already be installed (run the Inno Setup installer once
-first); this is purely a fast-iteration tool for after that.
 
 ## Important Notes
 

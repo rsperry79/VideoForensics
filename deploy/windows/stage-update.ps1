@@ -5,7 +5,7 @@
 .DESCRIPTION
     Publishes VideoForensics.WebApp (with -Build) or takes an existing publish folder, builds manifest.json, and places the
     package in %ProgramData%\VideoForensics\updates\<version>. The running service notices the package, restarts, and
-    applies it (see StagedUpdateWatcher / StartupUpdateApplier). Replaces hotswap-service.ps1 for the dev loop.
+    applies it (see StagedUpdateWatcher / StartupUpdateApplier).
 
     Requires enable-dev-updates.ps1 to have been run once as administrator. That turns updates on for the service and
     lets your account write to the updates folder. Without it, this script fails with an access error.
@@ -29,6 +29,10 @@ param(
 
     [switch]$Build,
 
+    # Debug keeps the PDBs a Visual Studio attach needs.
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Release',
+
     [string]$UpdatesRoot = (Join-Path $env:ProgramData 'VideoForensics\updates')
 )
 
@@ -37,14 +41,14 @@ $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 . (Join-Path $PSScriptRoot 'stage-update-helpers.ps1')
 
 if (-not $PublishDir) {
-    $PublishDir = Join-Path $RepoRoot 'src\client\web\VideoForensics.WebApp\bin\Release\net10.0\win-x64\publish'
+    $PublishDir = Join-Path $RepoRoot "src\client\web\VideoForensics.WebApp\bin\$Configuration\net10.0\win-x64\publish"
 }
 
 try {
     if ($Build) {
-        Write-Host '>>> Publishing VideoForensics.WebApp (win-x64, self-contained)...' -ForegroundColor Cyan
+        Write-Host ">>> Publishing VideoForensics.WebApp ($Configuration, win-x64, self-contained)..." -ForegroundColor Cyan
         dotnet publish (Join-Path $RepoRoot 'src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj') `
-            -c Release -r win-x64 --self-contained true -o $PublishDir
+            -c $Configuration -r win-x64 --self-contained true -o $PublishDir
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet publish failed with exit code $LASTEXITCODE"
         }

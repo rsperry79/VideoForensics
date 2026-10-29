@@ -169,14 +169,14 @@ public class AccountsPage_Grid_Tests : AccountsPageTestBase
     }
 
     [Fact]
-    public void Accounts_GridRows_EachRowShowsOnlyDetailsButton()
+    public void Accounts_GridRows_HaveNoButtons()
     {
+        // A row click opens the account, so the grid carries no per-row Details button.
         IRenderedComponent<Accounts> cut = RenderPage();
 
         var buttonTexts = cut.FindAll("#active-accounts .e-gridcontent tbody td button").Select(b => b.TextContent.Trim()).ToList();
 
-        Assert.Equal(2, buttonTexts.Count(t => t == "Details"));
-        Assert.Equal(2, buttonTexts.Count);
+        Assert.Empty(buttonTexts);
     }
 
     [Fact]

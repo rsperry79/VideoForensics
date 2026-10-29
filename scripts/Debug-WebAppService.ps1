@@ -3,26 +3,18 @@
 Redeploys a Debug build of the VideoForensics WebApp and attaches Visual Studio to it.
 
 .DESCRIPTION
-By default the script runs dotnet build on the WebApp project and copies its build output (bin\Debug\net10.0), the
-same output Visual Studio produces. With -Publish it instead publishes a self-contained build to a temporary folder,
-matching deploy\Deploy-WebAppToProd.ps1. The output is copied into the service folder, the service is started, and the
-debugger of a running Visual Studio instance is attached to the service process.
+If the "VideoForensics" Windows service is installed, the build is staged as an update with
+deploy\windows\stage-update.ps1, the same path the MAUI debug launch uses. The running service applies the package
+and restarts, the script waits until the service answers its health check, and the debugger of a running Visual Studio
+instance is attached to the new service process. Staging needs enable-dev-updates.ps1 to have been run once as
+administrator. It does not need an elevated shell.
 
-If the "VideoForensics" Windows service is installed, its install folder is read from the service's
-executable path. The service is stopped if it is running, the build is copied into the service folder, and the
-service is started.
+If the service is not installed, the build is copied to -DebugDirectory (appsettings included, since no installed
+configuration exists) and started as a plain process, and the debugger attaches to that process. A previous process
+started from -DebugDirectory is stopped first. -Publish applies only in this case.
 
-If the service is not installed, the build is copied to -DebugDirectory (appsettings included, since no
-installed configuration exists) and started as a plain process, and the debugger attaches to that process.
-A previous process started from -DebugDirectory is stopped first.
-
-For an installed service, appsettings.json and appsettings.Development.json are not copied unless
--IncludeAppSettings is given, so the installed configuration is kept. Files already in the install folder
-that the build does not produce are kept (no /MIR).
-
-Installing the service is done with deploy\install-service.ps1. Redeploying an installed service needs an
-elevated PowerShell, and the attach needs an elevated Visual Studio because the service runs as LocalSystem.
-Use -WhatIf to build and list the copy without stopping, copying, starting, or attaching.
+The attach needs an elevated Visual Studio when the service runs as LocalSystem.
+Use -WhatIf to see what would happen without staging, copying, starting, or attaching.
 
 .PARAMETER ServiceName
 The Windows service that runs the WebApp.
@@ -31,19 +23,23 @@ The Windows service that runs the WebApp.
 Folder the build runs from when the service is not installed.
 
 .PARAMETER Configuration
-Build configuration to build or publish. Debug keeps the PDBs the debugger needs.
+Build configuration. Debug keeps the PDBs the debugger needs.
 
 .PARAMETER Publish
-Publish a self-contained build to a temporary folder instead of copying the Visual Studio build output.
-
-.PARAMETER IncludeAppSettings
-Also copy appsettings.json and appsettings.Development.json from the build when a service is installed.
+Without an installed service, publish a self-contained build to a temporary folder instead of copying the Visual Studio
+build output. Ignored when the service is installed, because staging always publishes.
 
 .PARAMETER SkipAttach
 Redeploy and start, but do not attach the debugger.
 
+.PARAMETER ReadyTimeoutSeconds
+How long to wait for the service to apply a staged build and answer its health check.
+
+.PARAMETER NoLogConsole
+Do not open the VideoForensics.Utils.Console window that shows the WebApp logger pipe output.
+
 .PARAMETER WhatIf
-Dry run: build (or publish) and list what would be copied, without stopping, copying, starting, or attaching.
+Dry run: nothing is staged, copied, stopped, started, or attached.
 
 .EXAMPLE
 .\Debug-WebAppService.ps1 -WhatIf
@@ -58,16 +54,22 @@ Dry run: build (or publish) and list what would be copied, without stopping, cop
 param(
     [string]$ServiceName = 'VideoForensics',
     [string]$DebugDirectory = (Join-Path $PSScriptRoot '..\artifacts\webapp-debug'),
+    [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
     [switch]$Publish,
-    [switch]$IncludeAppSettings,
-    [switch]$SkipAttach
+    [switch]$SkipAttach,
+    [int]$ReadyTimeoutSeconds = 120,
+    [switch]$NoLogConsole
 )
 
 $ErrorActionPreference = 'Stop'
 
 $project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
+$stageScript = (Resolve-Path (Join-Path $PSScriptRoot '..\deploy\windows\stage-update.ps1')).Path
+$updatesRoot = Join-Path $env:ProgramData 'VideoForensics\updates'
+$healthUrl = 'http://localhost:5162/healthz'
+$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\src\utils\console\src\VideoForensics.Utils.Console.csproj')).Path
 # The build output folder is the project's bin\<Configuration>\net10.0, the folder Visual Studio builds into.
 $buildOutput = Join-Path (Split-Path -Parent $project) "bin\$Configuration\net10.0"
 # The published executable is named after the project's AssemblyName, not the file name.
@@ -84,6 +86,48 @@ function Get-ServiceExecutablePath {
     if ($PathName -match '^\s*"([^"]+)"') { return $Matches[1] }
     if ($PathName -match '^\s*(.+?\.exe)(?=\s|$)') { return $Matches[1] }
     throw "Cannot read the executable from the service path: $PathName"
+}
+
+# True while a staged package is waiting for the service. Mirrors PendingUpdateProbe: a folder with a manifest.json that is
+# not a staging folder (leading '.'), the backup ("previous"), or a rejected package.
+function Test-PendingUpdate {
+    param([Parameter(Mandatory)][string]$UpdatesRoot)
+
+    if (-not (Test-Path $UpdatesRoot)) { return $false }
+    $pending = Get-ChildItem -Path $UpdatesRoot -Directory | Where-Object {
+        -not $_.Name.StartsWith('.') -and
+        $_.Name -ne 'previous' -and
+        -not $_.Name.EndsWith('.rejected', [StringComparison]::OrdinalIgnoreCase) -and
+        (Test-Path (Join-Path $_.FullName 'manifest.json'))
+    }
+    return [bool]$pending
+}
+
+function Test-WebAppHealthy {
+    param([Parameter(Mandatory)][string]$Url)
+
+    try {
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+        return $response.StatusCode -eq 200
+    }
+    catch {
+        return $false
+    }
+}
+
+# The service is ready once the package is consumed and the health check answers. The old instance keeps answering
+# until it restarts, so the staged package must be gone first.
+function Wait-ForStagedBuild {
+    param([Parameter(Mandatory)][int]$TimeoutSeconds)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (-not (Test-PendingUpdate -UpdatesRoot $updatesRoot) -and (Test-WebAppHealthy -Url $healthUrl)) {
+            return $true
+        }
+        Start-Sleep -Seconds 2
+    }
+    return $false
 }
 
 # Attaches the debugger of a running Visual Studio instance. Without an open instance the PID is reported
@@ -114,77 +158,80 @@ $useService = [bool]($service -and $serviceInfo)
 
 if ($useService) {
     $serviceExe = Get-ServiceExecutablePath -PathName $serviceInfo.PathName
-    $installDirectory = Split-Path -Parent $serviceExe
-    # The service still points at an older executable name (renamed assembly). Its path is repointed to
-    # the new name before the copy; otherwise the service would keep running the old file.
-    $repointService = (Split-Path -Leaf $serviceExe) -ne $exeName
+    # A service still pointing at an older executable name cannot take a staged update for the new name.
+    if ((Split-Path -Leaf $serviceExe) -ne $exeName) {
+        throw "Service $ServiceName runs $(Split-Path -Leaf $serviceExe), not $exeName. Reinstall the service with deploy\install-service.ps1, then rerun this script."
+    }
+    if ($WhatIfPreference) {
+        Write-Host "Dry run: would stage the $Configuration build with deploy\windows\stage-update.ps1, then wait for service $ServiceName to apply it and answer $healthUrl."
+        Write-Host 'Dry run only. Nothing was staged, stopped, started, or attached.'
+        exit 0
+    }
 }
 else {
     Write-Warning "Service '$ServiceName' is not installed. The build will run from $DebugDirectory instead."
     $installDirectory = $DebugDirectory
+    $runExe = Join-Path $installDirectory $exeName
 }
-$runExe = Join-Path $installDirectory $exeName
 
 $stage = $null
-if ($Publish) {
-    $stage = Join-Path $env:TEMP ('vf-debug-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-    $sourceDirectory = $stage
-    Write-Host "Publishing $project ($Configuration) to $stage"
-    # Self-contained, matching deploy\Deploy-WebAppToProd.ps1, so the copy has the same runtime layout.
-    dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
-    if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
-}
-else {
-    $sourceDirectory = $buildOutput
-    Write-Host "Building $project ($Configuration) into $buildOutput"
-    dotnet build $project -c $Configuration
-    if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
-}
-if (-not (Test-Path (Join-Path $sourceDirectory $exeName))) { throw "The build output has no $exeName in $sourceDirectory." }
-
-# robocopy exit codes 0-7 mean success; 8 and above mean a copy failed.
-$robocopyArgs = @($sourceDirectory, $installDirectory, '/E', '/NP', '/NDL')
-if ($useService -and -not $IncludeAppSettings) {
-    $robocopyArgs += @('/XF', 'appsettings.json', 'appsettings.Development.json')
-}
-
-if ($WhatIfPreference) {
-    if ($useService) {
-        Write-Host "Dry run: service $ServiceName runs from $installDirectory"
-        if ($repointService) { Write-Host "Dry run: service path would change to $exeName" }
+if (-not $useService) {
+    if ($Publish) {
+        $stage = Join-Path $env:TEMP ('vf-debug-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        $sourceDirectory = $stage
+        Write-Host "Publishing $project ($Configuration) to $stage"
+        # Self-contained, matching deploy\Deploy-WebAppToProd.ps1, so the copy has the same runtime layout.
+        dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
+        if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
     }
-    else { Write-Host "Dry run: no service; the build would run from $installDirectory" }
-    Write-Host "Dry run: files that would be copied to $installDirectory"
-    & robocopy @robocopyArgs /L
-    Write-Host "Dry run only. Nothing was stopped, copied, started, or attached. Source: $sourceDirectory"
-    # robocopy /L returns 1-3 for a normal listing; that is not a failure here.
-    exit 0
+    else {
+        $sourceDirectory = $buildOutput
+        Write-Host "Building $project ($Configuration) into $buildOutput"
+        dotnet build $project -c $Configuration
+        if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+    }
+    if (-not (Test-Path (Join-Path $sourceDirectory $exeName))) { throw "The build output has no $exeName in $sourceDirectory." }
+
+    if ($WhatIfPreference) {
+        Write-Host "Dry run: no service; the build would run from $installDirectory"
+        Write-Host "Dry run only. Nothing was stopped, copied, started, or attached. Source: $sourceDirectory"
+        exit 0
+    }
 }
 
 try {
+    # Show the WebApp logger output in its own window. The console retries until the logger's pipe appears, so it
+    # can open before the WebApp starts.
+    if (-not $NoLogConsole -and $PSCmdlet.ShouldProcess($logConsoleProject, 'Open logger console')) {
+        Write-Host 'Opening the logger console window'
+        Start-Process -FilePath 'dotnet' -ArgumentList @('run', '--project', $logConsoleProject) -WindowStyle Normal
+    }
+
+    $processId = $null
     if ($useService) {
         $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
         if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-            throw 'Run this script from an elevated PowerShell (Run as administrator).'
+            # Attaching to the LocalSystem service needs elevation anyway; say so before staging rather than after.
+            Write-Warning 'Not elevated: staging works, but attaching the debugger to the LocalSystem service needs an elevated Visual Studio.'
         }
 
-        if ($service.Status -eq 'Running') {
-            if ($PSCmdlet.ShouldProcess("service $ServiceName", 'Stop')) {
-                Write-Host "Stopping service $ServiceName"
-                Stop-Service -Name $ServiceName -Force
-                $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
+        if ($PSCmdlet.ShouldProcess("service $ServiceName", "Stage the $Configuration build")) {
+            Write-Host "Staging the $Configuration build with stage-update.ps1"
+            & $stageScript -Build -Configuration $Configuration
+            if ($LASTEXITCODE -ne 0) {
+                throw "stage-update.ps1 failed with exit code $LASTEXITCODE. If access was denied, run deploy\windows\enable-dev-updates.ps1 once as administrator."
             }
-        }
-        else {
-            Write-Host "Service $ServiceName is $($service.Status); nothing to stop."
+
+            Write-Host "Waiting for service $ServiceName to apply the staged build (up to $ReadyTimeoutSeconds s)"
+            if (-not (Wait-ForStagedBuild -TimeoutSeconds $ReadyTimeoutSeconds)) {
+                throw "Service $ServiceName did not apply the staged build and answer $healthUrl within $ReadyTimeoutSeconds s."
+            }
+            Write-Host "Service $ServiceName is running the staged build."
         }
 
-        if ($repointService -and $PSCmdlet.ShouldProcess("service $ServiceName", "Point to $exeName")) {
-            $newPath = Join-Path $installDirectory $exeName
-            Write-Host "Pointing service $ServiceName at $newPath"
-            $result = Invoke-CimMethod -InputObject $serviceInfo -MethodName Change -Arguments @{ PathName = "`"$newPath`"" }
-            if ($result.ReturnValue -ne 0) { throw "Changing the service path failed with code $($result.ReturnValue)." }
-        }
+        # Read the PID after the update: the service restarted, so the process from before does not count.
+        $processId = (Get-CimInstance Win32_Service -Filter "Name='$ServiceName'").ProcessId
+        if ($processId -le 0) { throw "Service $ServiceName reports no process ID after the update." }
     }
     else {
         # Stop only the copy this script started earlier, matched by its exact executable path.
@@ -197,28 +244,18 @@ try {
                 $process.WaitForExit(60000) | Out-Null
             }
         }
-    }
 
-    if ($PSCmdlet.ShouldProcess($installDirectory, 'Copy build')) {
-        Write-Host "Copying build to $installDirectory"
-        & robocopy @robocopyArgs
-        if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE." }
-    }
-
-    if ($useService) {
-        if ($PSCmdlet.ShouldProcess("service $ServiceName", 'Start')) {
-            Write-Host "Starting service $ServiceName"
-            Start-Service -Name $ServiceName
-            $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
-            Write-Host "Service $ServiceName is running."
+        if ($PSCmdlet.ShouldProcess($installDirectory, 'Copy build')) {
+            Write-Host "Copying build to $installDirectory"
+            # robocopy exit codes 0-7 mean success; 8 and above mean a copy failed.
+            & robocopy $sourceDirectory $installDirectory /E /NP /NDL
+            if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE." }
         }
-        # Read the PID after start: the service process did not exist before this run.
-        $processId = (Get-CimInstance Win32_Service -Filter "Name='$ServiceName'").ProcessId
-        if ($processId -le 0) { throw "Service $ServiceName reports no process ID after start." }
-    }
-    elseif ($PSCmdlet.ShouldProcess($runExe, 'Start')) {
-        Write-Host "Starting $runExe"
-        $processId = (Start-Process -FilePath $runExe -WorkingDirectory $installDirectory -PassThru).Id
+
+        if ($PSCmdlet.ShouldProcess($runExe, 'Start')) {
+            Write-Host "Starting $runExe"
+            $processId = (Start-Process -FilePath $runExe -WorkingDirectory $installDirectory -PassThru).Id
+        }
     }
 
     if (-not $SkipAttach -and $processId) {

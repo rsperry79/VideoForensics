@@ -56,7 +56,7 @@ public class AccountsPage_EditAccess_Tests : AccountsPageTestBase
         IRenderedComponent<Accounts> cut = RenderPage();
 
         // Wait for the grid so the check runs after the page has finished loading.
-        cut.WaitForAssertion(() => Assert.Contains(Services.GetRequiredService<IStringLocalizer<Accounts>>()["Details"], GatingPageHelpers.ButtonLabels(cut)));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("#active-accounts .e-gridcontent")));
         Assert.DoesNotContain(Services.GetRequiredService<IStringLocalizer<Accounts>>()["AddAccount"], GatingPageHelpers.ButtonLabels(cut));
     }
 
