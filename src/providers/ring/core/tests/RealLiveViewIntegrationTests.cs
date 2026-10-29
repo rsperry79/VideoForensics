@@ -86,7 +86,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                     $"Live view started but never connected within {MediaTimeout.TotalSeconds:0}s (last state: {lastState}). "
                     + $"Signaling messages received (method only): [{string.Join(", ", transport.ReceivedMethods)}]. "
                     + $"Sent methods in order: [{string.Join(", ", transport.SentMethods)}]. "
-                    + $"Offer media lines: [{string.Join(" | ", transport.SentOfferLines)}].");
+                    + $"ICE shapes: [{string.Join(", ", transport.SentIceShapes)}]. "
+                    + $"Offer lines: [{string.Join(" | ", transport.SentOfferLines)}].");
                 await liveView.CloseAsync();
             }
         }
@@ -106,14 +107,32 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             public List<string> ReceivedMethods { get; } = new();
 
+            /// <summary>Per ICE message: the candidate's type and transport, and its media index. No addresses or ports.</summary>
+            public List<string> SentIceShapes { get; } = new();
+
+            private static string IceShapeOf(string message)
+            {
+                using JsonDocument document = JsonDocument.Parse(message);
+                JsonElement body = document.RootElement.GetProperty("body");
+                string candidate = body.GetProperty("ice").GetString() ?? string.Empty;
+                string[] parts = candidate.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                string typ = parts.Length > 7 && parts[6] == "typ" ? parts[7] : "?";
+                string transport = parts.Length > 2 ? parts[2] : "?";
+                return $"m{body.GetProperty("mlineindex").GetInt32()}:{transport}:typ={typ}:fields={parts.Length}";
+            }
+
             public Task ConnectAsync(Uri uri, CancellationToken cancellationToken) => _inner.ConnectAsync(uri, cancellationToken);
 
             public Task SendAsync(string message, CancellationToken cancellationToken)
             {
-                SentMethods.Add(SentMethodOf(message));
-                if (message.Contains("\"live_view\"", StringComparison.Ordinal))
+                SentMethods.Add(SentMethodOf(message));                if (message.Contains("\"live_view\"", StringComparison.Ordinal))
                 {
                     SentOfferLines = OfferMediaLines(message);
+                }
+
+                if (message.Contains("\"ice\"", StringComparison.Ordinal))
+                {
+                    SentIceShapes.Add(IceShapeOf(message));
                 }
 
                 return _inner.SendAsync(message, cancellationToken);
@@ -135,15 +154,14 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 using JsonDocument document = JsonDocument.Parse(message);
                 string sdp = document.RootElement.GetProperty("body").GetProperty("sdp").GetString() ?? string.Empty;
+
+                // Every line except credentials and addresses, so the offer's structure can be compared with the reference's.
                 return sdp.Split("\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Where(line => line.StartsWith("m=", StringComparison.Ordinal)
-                        || line.StartsWith("a=rtpmap", StringComparison.Ordinal)
-                        || line.StartsWith("a=fmtp", StringComparison.Ordinal)
-                        || line.StartsWith("a=sendrecv", StringComparison.Ordinal)
-                        || line.StartsWith("a=recvonly", StringComparison.Ordinal)
-                        || line.StartsWith("a=sendonly", StringComparison.Ordinal)
-                        || line.StartsWith("a=setup", StringComparison.Ordinal)
-                        || line.StartsWith("a=mid", StringComparison.Ordinal))
+                    .Where(line => !line.StartsWith("a=ice-ufrag", StringComparison.Ordinal)
+                        && !line.StartsWith("a=ice-pwd", StringComparison.Ordinal)
+                        && !line.StartsWith("a=fingerprint", StringComparison.Ordinal)
+                        && !line.StartsWith("a=candidate", StringComparison.Ordinal)
+                        && !line.StartsWith("o=", StringComparison.Ordinal))
                     .ToList();
             }
 
