@@ -77,7 +77,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // (ReportSettingsGate) decides whether it offers controls, and the guarded orchestrator enforces it.
                 ["/settings/reports"] = AccessPolicy.Admin,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/software-paths"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
