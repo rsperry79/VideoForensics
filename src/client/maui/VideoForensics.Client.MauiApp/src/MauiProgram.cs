@@ -205,6 +205,8 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.DeviceOwnershipService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Client.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Cases.CaseState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewEvidenceTagger>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.IUiModeService, VideoForensics.Client.Ui.Shared.Services.UiModeService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Client.Ui.Shared.Formatting.SimpleHomeBuilder(

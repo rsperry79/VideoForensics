@@ -22,6 +22,8 @@
             <option value="week" selected="@(CurrentPreset == RangePreset.Last7Days)">@L["RangeLast7Days"]</option>
         </select>
 
+        <ReviewPendingTags DeviceNames="DeviceNames" />
+
         <div class="position-relative">
             <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" aria-expanded="@_filterOpen" @onclick="OnToggleFilter">
                 @L["Filter"]

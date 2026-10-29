@@ -341,4 +341,31 @@
   <data name="DetectionType_loitering" xml:space="preserve">
     <value>Loitering</value>
   </data>
+  <data name="PendingTagsCount" xml:space="preserve">
+    <value>{0} tagged</value>
+  </data>
+  <data name="PendingTagsHelp" xml:space="preserve">
+    <value>Tags are kept in memory until you open a case, then attached to it. They are lost if the session or connection restarts.</value>
+  </data>
+  <data name="PendingTagsOpen" xml:space="preserve">
+    <value>Pending tags</value>
+  </data>
+  <data name="PendingTagKindEvent" xml:space="preserve">
+    <value>Event</value>
+  </data>
+  <data name="PendingTagKindMedia" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="PendingTagRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="PendingTagsAttached" xml:space="preserve">
+    <value>{0} tagged items attached to the case</value>
+  </data>
+  <data name="PendingTagsDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="TagDefaultReason" xml:space="preserve">
+    <value>Tagged during review</value>
+  </data>
 </root>

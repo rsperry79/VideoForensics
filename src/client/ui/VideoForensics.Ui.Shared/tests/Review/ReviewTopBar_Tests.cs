@@ -1,9 +1,11 @@
 using AngleSharp.Dom;
 
+using Microsoft.Extensions.DependencyInjection;
 using Bunit;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -145,5 +147,20 @@ public class ReviewTopBar_Tests : ReviewTestContext
         Assert.Equal(ReviewTab.Detail, ReviewState.ActiveTab);
         Assert.Contains("active", cut.Find("[data-testid='review-tab-button-detail']").ClassName);
         Assert.DoesNotContain("active", cut.Find("[data-testid='review-tab-button-timeline']").ClassName);
+    }
+
+    [Fact]
+    public void ReviewTopBar_PendingTagsExist_ShowsTheBadge()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        Assert.Empty(cut.FindAll("[data-testid='review-pending-tags-count']"));
+
+        // Act
+        cut.InvokeAsync(() => Services.GetRequiredService<PendingEvidenceTags>().Add(new PendingTag(
+            CaseItemKind.Media, Guid.NewGuid(), Devices[0].Id, FixedNowUtc, PendingTagFakes.Reason, "actor-1")));
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
     }
 }

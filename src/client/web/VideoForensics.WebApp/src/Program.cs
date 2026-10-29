@@ -663,6 +663,8 @@ builder.Services.AddScoped<DeviceOwnershipService>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewEvidenceTagger>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
 builder.Services.AddScoped<SimpleHomeBuilder>(sp => new SimpleHomeBuilder(

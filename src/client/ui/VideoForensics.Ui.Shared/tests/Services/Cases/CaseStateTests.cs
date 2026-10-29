@@ -6,6 +6,7 @@ using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Ui.Shared.Tests;
 
@@ -366,6 +367,76 @@ public class CaseState_Tests
         // Act & Assert
         _ = await Assert.ThrowsAsync<InvalidOperationException>(
             () => caseState.PinAsync(CaseItemKind.Event, Guid.NewGuid(), "reason", "actor", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CaseState_ActivateAsync_WithPendingTags_AttachesThemOnceAndClearsPending()
+    {
+        // Arrange
+        var pending = new PendingEvidenceTags(Microsoft.Extensions.Logging.Abstractions.NullLogger<PendingEvidenceTags>.Instance);
+        _ = pending.Add(new PendingTag(CaseItemKind.Media, Guid.NewGuid(), Guid.NewGuid(), PendingTagFakes.NowUtc, "Tagged during review", "actor-1"));
+        _ = pending.Add(new PendingTag(CaseItemKind.Event, Guid.NewGuid(), Guid.NewGuid(), PendingTagFakes.NowUtc, "Tagged during review", "actor-1"));
+        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
+
+        // Act
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase, pending);
+        _ = await caseState.ActivateAsync(openCase.Id, CancellationToken.None);
+
+        // Assert
+        repository.Verify(r => r.AddItemAsync(
+            openCase.Id, It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), "actor-1", It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.Equal(0, pending.Count);
+    }
+
+    [Fact]
+    public async Task CaseState_ActivateAsync_WhenAttachThrows_StillReturnsTrueAndActivatesTheCase()
+    {
+        // Arrange
+        var pending = new ThrowingPendingEvidenceTags();
+        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
+        var caseState = new CaseState(repository.Object, new ScopeState(new FakeTimeProvider(PendingTagFakes.NowUtc)), pending);
+
+        // Act
+        bool result = await caseState.ActivateAsync(openCase.Id, CancellationToken.None);
+
+        // Assert
+        Assert.True(result);
+        Assert.NotNull(caseState.ActiveCase);
+    }
+
+    [Fact]
+    public async Task CaseState_ActivateAsync_WithoutPendingService_DoesNotPinOrReadItems()
+    {
+        // Arrange
+        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
+        var caseState = new CaseState(repository.Object, new ScopeState(new FakeTimeProvider(PendingTagFakes.NowUtc)));
+
+        // Act
+        bool result = await caseState.ActivateAsync(openCase.Id, CancellationToken.None);
+
+        // Assert
+        Assert.True(result);
+        Assert.NotNull(caseState.ActiveCase);
+        repository.Verify(r => r.AddItemAsync(
+            It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(r => r.ListItemsAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+/// <summary>Pending tags whose attach always throws, so a test can prove activation survives a failed attach.</summary>
+internal sealed class ThrowingPendingEvidenceTags : PendingEvidenceTags
+{
+    public ThrowingPendingEvidenceTags()
+        : base(Microsoft.Extensions.Logging.Abstractions.NullLogger<PendingEvidenceTags>.Instance)
+    {
+    }
+
+    public override Task<AttachResult> AttachToActiveCaseAsync(CaseState caseState, CancellationToken ct)
+    {
+        throw new InvalidOperationException("Attach failed in the test double.");
     }
 }
 
