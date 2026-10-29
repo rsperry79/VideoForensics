@@ -353,4 +353,34 @@
   <data name="CertificateRequestFailed" xml:space="preserve">
     <value>Certificate request failed: {0}</value>
   </data>
+  <data name="NetworkDiscoverySection" xml:space="preserve">
+    <value>Network Discovery</value>
+  </data>
+  <data name="EnableMdnsAdvertisement" xml:space="preserve">
+    <value>Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP</value>
+  </data>
+  <data name="MdnsStatus" xml:space="preserve">
+    <value>mDNS advertisement {0}</value>
+  </data>
+  <data name="MdnsError" xml:space="preserve">
+    <value>Failed to update mDNS advertisement: {0}</value>
+  </data>
+  <data name="AdminOnlySettingsNote" xml:space="preserve">
+    <value>Only an administrator can change these settings. Ask an administrator to make the change.</value>
+  </data>
+  <data name="ConfigurationNotSupported" xml:space="preserve">
+    <value>This setting can only be changed from the server directly.</value>
+  </data>
+  <data name="DownloadsSection" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloads" xml:space="preserve">
+    <value>Max concurrent downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloadsHelp" xml:space="preserve">
+    <value>How many media files download at the same time from your providers. Higher finishes sooner but uses more bandwidth and computer resources. Lower is gentler on your connection.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
 </root>

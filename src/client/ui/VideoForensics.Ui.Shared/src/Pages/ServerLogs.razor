@@ -13,6 +13,9 @@
 @inject IJSRuntime JS
 @inject IServiceProvider Services
 @inject IStringLocalizer<ServerLogs> L
+@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
+@inject IForensicsConfiguration Config
+@using VideoForensics.Client.Ui.Shared.Layout
 
 <div class="d-flex align-items-center gap-2 mb-3">
     <h4 class="mb-0">@L["Title"]</h4>
@@ -25,6 +28,25 @@
     {
         <div class="alert alert-danger" data-testid="logs-denied">@L["AccessDenied"]</div>
     }
+
+    <div class="card p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label class="form-label small mb-0" for="recording-level">@L["RecordingLevelLabel"]</label>
+                <select id="recording-level" class="form-select form-select-sm" data-testid="recording-level" disabled="@(!CanAdmin)" @onchange="OnRecordingLevelChangedAsync">
+                    @foreach (string level in Levels)
+                    {
+                        <option value="@level" selected="@(level == _recordingLevel)">@level</option>
+                    }
+                </select>
+            </div>
+            <small class="text-muted flex-grow-1">@L["RecordingLevelHelp"]</small>
+        </div>
+        @if (_recordingMessage is not null)
+        {
+            <span class="small d-block mt-2" style="@(_recordingSuccess ? "color: green;" : "color: red;")">@_recordingMessage</span>
+        }
+    </div>
 
     <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
         <div>
@@ -181,6 +203,9 @@ else if (_sessionChecked)
     private bool _scrollPending;
     private bool _denied;
     private string _minLevel = "Information";
+    private string _recordingLevel = "Information";
+    private bool _recordingSuccess;
+    private string? _recordingMessage;
     private string _searchText = string.Empty;
     private string? _activeSearch;
 
@@ -217,6 +242,15 @@ else if (_sessionChecked)
     protected override void OnInitialized()
     {
         _time = Services.GetService<TimeProvider>() ?? TimeProvider.System;
+        _recordingLevel = Config.LogLevel;
+    }
+
+    private bool CanAdmin => PageAccessRules.Allows(AccessPolicy.Admin, NavContext.FromSession(SessionState, appLockSupported: false));
+
+    private async Task OnRecordingLevelChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _recordingLevel = e.Value?.ToString() ?? "Information";
+        (_recordingSuccess, _recordingMessage) = await ConfigTools.SetLoggingLevelAsync(Config, _recordingLevel, CancellationToken.None);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

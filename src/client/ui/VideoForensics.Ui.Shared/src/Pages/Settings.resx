@@ -71,32 +71,8 @@
   <data name="EnableHealthSync" xml:space="preserve">
     <value>Enable RSSI / device-health background sync</value>
   </data>
-  <data name="NetworkDiscoverySection" xml:space="preserve">
-    <value>Network Discovery</value>
-  </data>
-  <data name="EnableMdnsAdvertisement" xml:space="preserve">
-    <value>Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP</value>
-  </data>
-  <data name="RetentionSection" xml:space="preserve">
-    <value>Retention</value>
-  </data>
-  <data name="RetentionDaysLabel" xml:space="preserve">
-    <value>Retention (days)</value>
-  </data>
-  <data name="DownloadsSection" xml:space="preserve">
-    <value>Downloads</value>
-  </data>
-  <data name="MaxConcurrentDownloads" xml:space="preserve">
-    <value>Max Concurrent Downloads</value>
-  </data>
-  <data name="DownloadLocation" xml:space="preserve">
-    <value>Download Location</value>
-  </data>
   <data name="ReportingFormatSection" xml:space="preserve">
     <value>Reporting Format &amp; Redaction</value>
-  </data>
-  <data name="LoggingSection" xml:space="preserve">
-    <value>Logging</value>
   </data>
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
@@ -106,12 +82,6 @@
   </data>
   <data name="HealthSyncError" xml:space="preserve">
     <value>Failed to update health sync: {0}</value>
-  </data>
-  <data name="MdnsStatus" xml:space="preserve">
-    <value>mDNS advertisement {0}</value>
-  </data>
-  <data name="MdnsError" xml:space="preserve">
-    <value>Failed to update mDNS advertisement: {0}</value>
   </data>
   <data name="AdminOnlySettingsNote" xml:space="preserve">
     <value>Only an administrator can change these settings. Ask an administrator to make the change.</value>

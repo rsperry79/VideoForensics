@@ -75,9 +75,11 @@ var storageProvider = new StorageLocationProvider();
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
 
+// The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
+ServerLogLevel serverLogLevel = new();
+
 Log.Logger = new LoggerConfiguration()
-    // Every level is recorded. The Server Logs filters only change what is shown, so Trace is kept for later review.
-    .MinimumLevel.Verbose()
+    .MinimumLevel.ControlledBy(serverLogLevel.Switch)
     // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
     // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
@@ -98,6 +100,7 @@ Log.Logger = new LoggerConfiguration()
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         shared: true)
+    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -108,7 +111,7 @@ bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuratio
 string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
 bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
 bool updatesActiveAsService = inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
-if (updatesActiveAsService)
+if (OperatingSystem.IsWindows() && updatesActiveAsService)
 {
     // Files renamed aside by the previous apply (the exe and dlls that were in use) can be deleted now.
     VideoForensics.Client.Hosting.Updates.UpdateApplier.DeleteLeftoverFiles(AppContext.BaseDirectory);
@@ -156,8 +159,14 @@ if (updatesActiveAsService)
         Log.Information("Applied staged update {Version}; exiting so the service manager restarts the new version", updateResult.Version);
         await Log.CloseAndFlushAsync();
 
-        // This process still has the old files mapped, so it must not keep running. A non-zero exit triggers the
-        // service's SCM recovery action (restart); the recovery settings were ensured above.
+        // This process still has the old files mapped, so it must not keep running. It has not connected to the service
+        // manager yet, so exiting counts as a failed start and the recovery action does not run: a detached helper starts
+        // the service again instead. (Updates applied while the service is running restart through recovery.)
+        if (!VideoForensics.Client.Platform.Windows.ServiceRestartScheduler.TrySchedule("VideoForensics"))
+        {
+            Log.Error("Could not schedule the service restart after applying the update; the service must be started manually");
+        }
+
         Environment.Exit(1);
     }
     else if (updateResult.Outcome != VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None)
@@ -221,9 +230,12 @@ builder.WebHost.UseUrls([]);
 
 // Serilog is already configured above with file sinks. Optionally enable additional sinks
 // (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
+// Serilog writes the console, so the framework's own console provider is dropped to avoid printing every line twice.
+builder.Logging.ClearProviders();
 builder.Logging.SetMinimumLevel(LogLevel.Trace);
-// The Server Logs history reads the daily audit files in logsDir; they hold every level recorded above.
+// The Server Logs history reads the daily audit files in logsDir, which hold the levels the saved setting allows.
 builder.Services.AddSingleton(new LogFileDirectory(logsDir));
+builder.Services.AddSingleton(serverLogLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
@@ -450,13 +462,19 @@ else if (OperatingSystem.IsWindows())
 
 if (updatesActiveAsService)
 {
-    // A package staged while the service runs (the dev stage script, or a downloaded release) triggers drain-and-restart.
+    // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,
+    // and the service then exits so the service manager restarts it on the new version.
     // NoOpUpdateDrain is replaced by the scheduler's drain when that lands.
     builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.NoOpUpdateDrain>();
     _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
         updatesRoot,
         new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
         sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
+        new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
+            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+            new VideoForensics.Client.Hosting.Updates.UpdateApplier(sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>>()),
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>>()),
+        AppContext.BaseDirectory,
         allowDevUpdatePackages,
         () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
         code => { Log.CloseAndFlush(); Environment.Exit(code); },
@@ -679,6 +697,20 @@ builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
 WebApplication app = builder.Build();
+
+// Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
+using (IServiceScope levelScope = app.Services.CreateScope())
+{
+    try
+    {
+        IForensicsConfiguration savedConfig = await levelScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
+        serverLogLevel.Apply(savedConfig.LogLevel);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
 
 // Debug trace of every Ring API call: method, path and query, and status. Response bodies are not logged because
 // they hold camera and account data; enable the "VideoForensics.Providers.Ring.Api" category at Debug to see the trace.

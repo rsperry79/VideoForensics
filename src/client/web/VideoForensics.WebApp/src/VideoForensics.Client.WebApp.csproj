@@ -18,6 +18,8 @@
     <!-- mDNS service advertisement for local network discovery (plan §5.2). -->
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <!-- Console sink for the recording level (Program.cs); the same level governs the audit files. -->
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="TimezoneDetectorCore" Version="4.1.0" />
     <!-- Web Push Notifications (RFC 8291) - push subscription management and VAPID key handling. -->
     <PackageReference Include="WebPush" Version="1.0.13" />
