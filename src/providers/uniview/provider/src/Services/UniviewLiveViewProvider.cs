@@ -10,6 +10,9 @@ namespace VideoForensics.Providers.Uniview.Services
     /// </summary>
     public class UniviewLiveViewProvider : ILiveViewCapableProvider
     {
+        /// <inheritdoc />
+        public string ProviderName => "Uniview";
+
         public Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct)
         {
             throw new NotSupportedException("Uniview does not support live view yet.");

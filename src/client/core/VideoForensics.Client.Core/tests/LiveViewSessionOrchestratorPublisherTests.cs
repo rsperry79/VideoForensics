@@ -94,7 +94,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider))).Returns(mockProvider.Object);
+            LiveViewProviderWiring.Register(spMock, mockProvider);
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Core.Tests
                 .ThrowsAsync(new InvalidOperationException("hub unavailable"));
 
             var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider))).Returns(mockProvider.Object);
+            LiveViewProviderWiring.Register(spMock, mockProvider);
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 

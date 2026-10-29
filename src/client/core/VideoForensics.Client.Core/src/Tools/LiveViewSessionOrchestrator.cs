@@ -381,21 +381,26 @@ namespace VideoForensics.Client.Core.Tools
             Data.Common.Entities.Device device = await deviceRepository.GetAsync(deviceId, ct)
                 ?? throw new KeyNotFoundException($"Device {deviceId} not found.");
 
-            // Determine provider name - for now, we infer from device metadata or use a convention.
-            // In production, Device would have a ProviderName property, or we'd look it up via Location.
-            // For this implementation, we'll try known provider names or rely on configuration.
-            string providerName = "Ring"; // Default to Ring; in production this comes from Device.ProviderName
+            // The provider comes from the account the device's location belongs to. Several providers register
+            // ILiveViewCapableProvider, and a plain GetService returns only the last registration.
+            ILocationRepository locationRepository = scope.ServiceProvider.GetRequiredService<ILocationRepository>();
+            IReadOnlyList<ProviderAccount> accounts = await locationRepository.ListProviderAccountsForLocationAsync(device.LocationId, ct);
+            ILiveViewCapableProvider[] registered = scope.ServiceProvider.GetServices<ILiveViewCapableProvider>().ToArray();
+
+            ILiveViewCapableProvider? provider = registered.FirstOrDefault(p =>
+                accounts.Any(a => string.Equals(a.ProviderName, p.ProviderName, StringComparison.OrdinalIgnoreCase)));
+            if (provider is null)
+            {
+                string known = accounts.Count > 0 ? string.Join(", ", accounts.Select(a => a.ProviderName)) : "unknown";
+                throw new NotSupportedException($"Live view not supported for provider {known}. No capable provider found.");
+            }
+
+            string providerName = provider.ProviderName;
 
             // Budget guard: check if provider API calls are within budget
             if (!await budgetGuard.TryConsumeAsync(providerName, ct))
             {
                 throw new InvalidOperationException($"Provider API budget exceeded for {providerName}.");
-            }
-
-            // Resolve provider from the same scope that resolved the repositories
-            if (scope.ServiceProvider.GetService(typeof(ILiveViewCapableProvider)) is not ILiveViewCapableProvider provider)
-            {
-                throw new NotSupportedException($"Live view not supported for provider {providerName}. No capable provider found.");
             }
 
             // Start the provider connection

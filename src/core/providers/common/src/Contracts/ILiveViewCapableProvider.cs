@@ -23,6 +23,9 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// <exception cref="InvalidOperationException">Thrown if not authenticated or the device cannot be accessed.</exception>
         /// <exception cref="NotSupportedException">Thrown by provider implementations that do not support live view.</exception>
         Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct);
+
+        /// <summary>The provider this implementation serves, matching <c>ProviderAccount.ProviderName</c> (e.g. "Ring").</summary>
+        string ProviderName { get; }
     }
 
     /// <summary>

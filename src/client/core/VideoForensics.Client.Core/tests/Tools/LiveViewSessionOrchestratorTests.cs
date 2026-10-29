@@ -67,6 +67,76 @@ namespace VideoForensics.Client.Core.Tests.Tools
                 new NullLiveViewTelemetryPublisher());
         }
 
+        private static Mock<ILiveViewCapableProvider> ProviderNamed(string name)
+        {
+            var provider = new Mock<ILiveViewCapableProvider>();
+            _ = provider.SetupGet(p => p.ProviderName).Returns(name);
+            _ = provider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Mock<ILiveViewConnection>().Object);
+            return provider;
+        }
+
+        private Mock<IServiceProvider> ProvidersFor(string accountProvider, params ILiveViewCapableProvider[] registered)
+        {
+            var locationRepository = new Mock<ILocationRepository>();
+            _ = locationRepository
+                .Setup(r => r.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new ProviderAccount { ProviderName = accountProvider }]);
+
+            var sp = new Mock<IServiceProvider>();
+            _ = sp.Setup(s => s.GetService(typeof(ILocationRepository))).Returns(locationRepository.Object);
+            _ = sp.Setup(s => s.GetService(typeof(IEnumerable<ILiveViewCapableProvider>))).Returns(registered);
+            return sp;
+        }
+
+        private void ArrangeIdleDevice(Guid deviceId)
+        {
+            var device = new Device { Id = deviceId, ProviderDeviceId = "doorbot:1", LocationId = Guid.NewGuid(), Name = "Door", Type = "camera" };
+            _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LiveViewSession?)null);
+            _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
+        }
+
+        [Fact]
+        public async Task StartAsync_RingDeviceWithSeveralProvidersRegistered_UsesTheRingProvider()
+        {
+            // Arrange: Uniview is registered last, as in production, and is what a plain GetService returns.
+            var deviceId = Guid.NewGuid();
+            ArrangeIdleDevice(deviceId);
+            Mock<ILiveViewCapableProvider> ring = ProviderNamed("Ring");
+            Mock<ILiveViewCapableProvider> uniview = ProviderNamed("Uniview");
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(
+                ProvidersFor("Ring", ring.Object, uniview.Object));
+
+            // Act
+            _ = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, Guid.NewGuid(), CancellationToken.None);
+
+            // Assert
+            ring.Verify(p => p.StartLiveViewAsync("doorbot:1", It.IsAny<CancellationToken>()), Times.Once);
+            uniview.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            _budgetGuardMock.Verify(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task StartAsync_DeviceWhoseProviderHasNoLiveView_ThrowsNotSupportedNamingThatProvider()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            ArrangeIdleDevice(deviceId);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(
+                ProvidersFor("Blink", ProviderNamed("Ring").Object));
+
+            // Act
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
+                () => orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, Guid.NewGuid(), CancellationToken.None));
+
+            // Assert
+            Assert.Contains("Blink", ex.Message);
+        }
+
         [Fact]
         public async Task StartAsync_NoActiveSession_CreatesAndPersistsStartingSession()
         {
@@ -98,8 +168,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
 
             var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
-                .Returns(mockProvider.Object);
+            LiveViewProviderWiring.Register(spMock, mockProvider);
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
@@ -194,8 +263,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
                 .ReturnsAsync(false);
 
             var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
-                .Returns(mockProvider.Object);
+            LiveViewProviderWiring.Register(spMock, mockProvider);
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
@@ -226,9 +294,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
-                .Returns(null);
+            Mock<IServiceProvider> spMock = ProvidersFor("Ring");
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 

@@ -10,6 +10,9 @@ namespace VideoForensics.Providers.Wyze.Services
     /// </summary>
     public class WyzeLiveViewProvider : ILiveViewCapableProvider
     {
+        /// <inheritdoc />
+        public string ProviderName => "Wyze";
+
         public Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct)
         {
             throw new NotSupportedException("Wyze does not support live view yet.");
