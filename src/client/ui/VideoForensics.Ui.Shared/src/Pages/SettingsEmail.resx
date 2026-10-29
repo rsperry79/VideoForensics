@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage email settings.</value>
+  </data>
+  <data name="NoAccessNote" xml:space="preserve">
+    <value>Only a Super Admin can change email settings. A Super Admin can allow admins to change them on the Permissions page.</value>
+  </data>
+  <data name="FailedToLoadSettings" xml:space="preserve">
+    <value>Could not load email settings: {0}</value>
+  </data>
+  <data name="EmailDescription" xml:space="preserve">
+    <value>Sends alerts by email. This works even when nobody has the app open. Fill in the details of the mail server that will send the messages.</value>
+  </data>
+  <data name="EnableEmailNotifications" xml:space="preserve">
+    <value>Enable email notifications</value>
+  </data>
+  <data name="EnableEmailNotificationsDescription" xml:space="preserve">
+    <value>Turn this on to send alerts by email. Turn it off to stop all email.</value>
+  </data>
+  <data name="LabelSmtpHost" xml:space="preserve">
+    <value>SMTP Host</value>
+  </data>
+  <data name="SmtpHostDescription" xml:space="preserve">
+    <value>The address of your mail server, for example smtp.example.com.</value>
+  </data>
+  <data name="LabelPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="PortDescription" xml:space="preserve">
+    <value>The mail server port. 587 is the usual choice for secure sending.</value>
+  </data>
+  <data name="LabelUseStarttls" xml:space="preserve">
+    <value>Use STARTTLS</value>
+  </data>
+  <data name="UseStarttlsDescription" xml:space="preserve">
+    <value>Encrypts the connection to the mail server. Leave this on unless your server does not support it.</value>
+  </data>
+  <data name="LabelSmtpUsername" xml:space="preserve">
+    <value>SMTP Username</value>
+  </data>
+  <data name="SmtpUsernameDescription" xml:space="preserve">
+    <value>The account name used to sign in to the mail server.</value>
+  </data>
+  <data name="LabelSmtpPassword" xml:space="preserve">
+    <value>SMTP Password</value>
+  </data>
+  <data name="PlaceholderPassword" xml:space="preserve">
+    <value>(unchanged)</value>
+  </data>
+  <data name="SmtpPasswordDescription" xml:space="preserve">
+    <value>The password for that account. It is stored securely and never shown again; leave it blank to keep the saved one.</value>
+  </data>
+  <data name="LabelFromAddress" xml:space="preserve">
+    <value>From Address</value>
+  </data>
+  <data name="FromAddressDescription" xml:space="preserve">
+    <value>The address the emails appear to come from.</value>
+  </data>
+  <data name="LabelNotifyAddress" xml:space="preserve">
+    <value>Notify This Address</value>
+  </data>
+  <data name="NotifyAddressDescription" xml:space="preserve">
+    <value>The address that receives the alerts.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SavingButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="SendTestEmailButton" xml:space="preserve">
+    <value>Send Test Email</value>
+  </data>
+  <data name="SendingTestButton" xml:space="preserve">
+    <value>Sending...</value>
+  </data>
+  <data name="SendTestEmailDescription" xml:space="preserve">
+    <value>Sends a test message to the notify address using the saved settings. Save first if you changed anything.</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="TestEmailSent" xml:space="preserve">
+    <value>Test email sent.</value>
+  </data>
+  <data name="TestEmailFailed" xml:space="preserve">
+    <value>Test email failed: {0}</value>
+  </data>
+</root>

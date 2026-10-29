@@ -32,6 +32,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
+  <data name="NoAccessNote" xml:space="preserve">
+    <value>Only a Super Admin can change notification settings. A Super Admin can allow admins to change them on the Permissions page.</value>
+  </data>
   <data name="Title" xml:space="preserve">
     <value>Notifications</value>
   </data>
@@ -47,50 +50,11 @@
   <data name="SignInRequired" xml:space="preserve">
     <value>- an Admin (or higher) device is required to manage notification settings.</value>
   </data>
-  <data name="EmailSection" xml:space="preserve">
-    <value>Email</value>
-  </data>
-  <data name="EmailDescription" xml:space="preserve">
-    <value>The reliable baseline channel - reaches you regardless of whether any client app is open. Other channels (Web Push, MAUI toast) are planned but not yet built.</value>
-  </data>
-  <data name="EnableEmailNotifications" xml:space="preserve">
-    <value>Enable email notifications</value>
-  </data>
-  <data name="LabelSmtpHost" xml:space="preserve">
-    <value>SMTP Host</value>
-  </data>
-  <data name="LabelPort" xml:space="preserve">
-    <value>Port</value>
-  </data>
-  <data name="LabelUseStarttls" xml:space="preserve">
-    <value>Use STARTTLS</value>
-  </data>
-  <data name="LabelSmtpUsername" xml:space="preserve">
-    <value>SMTP Username</value>
-  </data>
-  <data name="LabelSmtpPassword" xml:space="preserve">
-    <value>SMTP Password</value>
-  </data>
-  <data name="PlaceholderPassword" xml:space="preserve">
-    <value>(unchanged)</value>
-  </data>
-  <data name="LabelFromAddress" xml:space="preserve">
-    <value>From Address</value>
-  </data>
-  <data name="LabelNotifyAddress" xml:space="preserve">
-    <value>Notify This Address</value>
-  </data>
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
   </data>
   <data name="SavingButton" xml:space="preserve">
     <value>Saving...</value>
-  </data>
-  <data name="SendTestEmailButton" xml:space="preserve">
-    <value>Send Test Email</value>
-  </data>
-  <data name="SendingTestButton" xml:space="preserve">
-    <value>Sending...</value>
   </data>
   <data name="UrgentEventOverrides" xml:space="preserve">
     <value>Urgent Event Overrides</value>
@@ -124,18 +88,6 @@
   </data>
   <data name="FailedToLoadSettings" xml:space="preserve">
     <value>Failed to load notification settings: {0}</value>
-  </data>
-  <data name="SaveFailed" xml:space="preserve">
-    <value>Save failed: {0}</value>
-  </data>
-  <data name="Saved" xml:space="preserve">
-    <value>Saved.</value>
-  </data>
-  <data name="TestEmailSent" xml:space="preserve">
-    <value>Test email sent.</value>
-  </data>
-  <data name="TestEmailFailed" xml:space="preserve">
-    <value>Test email failed: {0}</value>
   </data>
   <data name="FailedToUpdateOverride" xml:space="preserve">
     <value>Failed to update override: {0}</value>
