@@ -1,5 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
@@ -9,7 +10,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
-    /// Reads and changes who may edit provider accounts who may change report settings, who may change email settings, and who may change notification settings. Reading is open to Admin and up so the UI can show the current
+    /// Reads and changes who may edit provider accounts who may change report settings, who may change email settings, who may change notification settings, and who may change LLM settings. Reading is open to Admin and up so the UI can show the current
     /// setting. Changing it is SuperAdmin only, on the same passkey-or-local gate as the lockout policy beside it.
     /// </summary>
     public static class ProviderPermissionEndpoints
@@ -25,6 +26,9 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .WithName("UpdateProviderAccountPermissions");
+
+            _ = group.MapGet("/settings-access", GetSettingsAccessAsync)
+                .WithName("GetSettingsAccess");
 
             _ = group.MapGet("/reports", GetReportsAsync)
                 .WithName("GetReportPermissions");
@@ -49,12 +53,34 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .WithName("UpdateNotificationPermissions");
+
+            _ = group.MapGet("/llm", GetLlmAsync)
+                .WithName("GetLlmPermissions");
+
+            _ = group.MapPut("/llm", UpdateLlmAsync)
+                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .WithName("UpdateLlmPermissions");
         }
 
         private static async Task<IResult> GetAsync(IAppSettingRepository settings, CancellationToken ct)
         {
             string? stored = await settings.GetAsync(ProviderAccountEditPolicy.SettingKey, ct);
             return Results.Ok(new ProviderPermissionsDto(ProviderAccountEditPolicy.NormalizeLevel(stored)));
+        }
+
+        private static async Task<IResult> GetSettingsAccessAsync(
+            IReportSettingsPolicy reports,
+            IEmailSettingsPolicy email,
+            INotificationSettingsPolicy notifications,
+            ILlmSettingsPolicy llm,
+            CancellationToken ct)
+        {
+            return Results.Ok(new SettingsAccessDto(
+                await reports.GetRequiredPolicyAsync(ct) == AccessPolicy.Admin,
+                await email.GetRequiredPolicyAsync(ct) == AccessPolicy.Admin,
+                await notifications.GetRequiredPolicyAsync(ct) == AccessPolicy.Admin,
+                await llm.GetRequiredPolicyAsync(ct) == AccessPolicy.Admin));
         }
 
         private static async Task<IResult> GetReportsAsync(IAppSettingRepository settings, CancellationToken ct)
@@ -154,6 +180,39 @@ namespace VideoForensics.Client.WebApp.Api
                 null, tierResolver.ResolveClientIp(context), $"NotificationSettings: {level}", isUrgent: true, ct);
 
             return Results.Ok(new NotificationPermissionsDto(level));
+        }
+
+        private static async Task<IResult> GetLlmAsync(IAppSettingRepository settings, CancellationToken ct)
+        {
+            string? stored = await settings.GetAsync(LlmSettingsPolicy.SettingKey, ct);
+            return Results.Ok(new LlmPermissionsDto(LlmSettingsPolicy.NormalizeLevel(stored)));
+        }
+
+        private static async Task<IResult> UpdateLlmAsync(
+            UpdateLlmPermissionsRequest request,
+            IAppSettingRepository settings,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string level = request.LlmSettingsAccess;
+            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.LlmSettingsAccess)] = ["Must be Admin or SuperAdmin."],
+                });
+            }
+
+            await settings.SetAsync(LlmSettingsPolicy.SettingKey, level, ct);
+
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await auditLog.LogAsync(SecurityAuditEventTypes.LlmPermissionsUpdated,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), $"LlmSettings: {level}", isUrgent: true, ct);
+
+            return Results.Ok(new LlmPermissionsDto(level));
         }
 
         private static async Task<IResult> UpdateAsync(

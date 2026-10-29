@@ -311,6 +311,7 @@ builder.Services.AddScoped<IProviderAccountEditPolicy, ProviderAccountEditPolicy
 builder.Services.AddScoped<IReportSettingsPolicy, ReportSettingsPolicy>();
 builder.Services.AddScoped<IEmailSettingsPolicy, EmailSettingsPolicy>();
 builder.Services.AddScoped<INotificationSettingsPolicy, NotificationSettingsPolicy>();
+builder.Services.AddScoped<ILlmSettingsPolicy, LlmSettingsPolicy>();
 
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET

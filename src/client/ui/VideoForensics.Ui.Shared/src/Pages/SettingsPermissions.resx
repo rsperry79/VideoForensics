@@ -86,6 +86,15 @@
   <data name="NotificationsLabel" xml:space="preserve">
     <value>Who may change notification settings</value>
   </data>
+  <data name="LlmSection" xml:space="preserve">
+    <value>LLM API</value>
+  </data>
+  <data name="LlmDescription" xml:space="preserve">
+    <value>Choose who may open the LLM API settings page and change the chat assistant's provider, model and API key. Super Admins can always change them.</value>
+  </data>
+  <data name="LlmLabel" xml:space="preserve">
+    <value>Who may change LLM settings</value>
+  </data>
   <data name="Save" xml:space="preserve">
     <value>Save</value>
   </data>

@@ -17,6 +17,18 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>SuperAdmin on the Local tier, or any tier with an operator-passkey session.</summary>
         SuperAdminLocalOrPasskey,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened report settings to admins.</summary>
+        ReportSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened email settings to admins.</summary>
+        EmailSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened notification settings to admins.</summary>
+        NotificationSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened LLM settings to admins.</summary>
+        LlmSettings,
     }
 
     /// <summary>
@@ -68,22 +80,20 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // page, so the table is the only gate. Local tier is the conservative choice.
                 ["/settings/infrastructure"] = AccessPolicy.SuperAdminLocal,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/notifications"] = AccessPolicy.Admin,
+                ["/settings/notifications"] = AccessPolicy.NotificationSettings,
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
                 // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).
                 ["/settings/permissions"] = AccessPolicy.SuperAdminLocalOrPasskey,
-                // Admins reach the page so it can say why they cannot change anything; the Permissions setting
-                // (ReportSettingsGate) decides whether it offers controls, and the guarded orchestrator enforces it.
-                ["/settings/reports"] = AccessPolicy.Admin,
-                // Admins reach the page so it can say why they cannot change anything; the Permissions setting
-                // (EmailSettingsGate) decides whether it offers controls, and the notification endpoints enforce it.
-                ["/settings/integrations/email"] = AccessPolicy.Admin,
+                // SuperAdmin by default; Admin only once the Permissions page opens the page to admins. The nav and the
+                // route guard hide it otherwise, and the server enforces the same setting on the writes.
+                ["/settings/reports"] = AccessPolicy.ReportSettings,
+                ["/settings/integrations/email"] = AccessPolicy.EmailSettings,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/llm"] = AccessPolicy.SuperAdmin,
+                ["/settings/llm"] = AccessPolicy.LlmSettings,
                 ["/settings/lockout-policy"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/auth-methods"] = AccessPolicy.SuperAdminLocal,
             };
@@ -112,6 +122,10 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRole.SuperAdmin),
                 AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRole.SuperAdmin) && ctx.IsLocalTier,
                 AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRole.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
+                AccessPolicy.ReportSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.ReportsOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
+                AccessPolicy.EmailSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.EmailOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
+                AccessPolicy.NotificationSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.NotificationsOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
+                AccessPolicy.LlmSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.LlmOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
                 _ => false,
             };
         }
