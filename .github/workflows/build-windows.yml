@@ -65,6 +65,27 @@ jobs:
           dotnet publish src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj
           -c Release -r win-x64 --self-contained true -o publish-dbsetup
 
+      - name: Publish DbDiagnostics (win-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        run: >
+          dotnet publish src/utils/diagnostics/src/VideoForensics.Utils.Diagnostics.csproj
+          -c Release -r win-x64 --self-contained true -o publish-dbdiagnostics
+
+      - name: Publish DbRepair (win-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        run: >
+          dotnet publish src/utils/dbrepair/src/VideoForensics.Utils.DbRepair.csproj
+          -c Release -r win-x64 --self-contained true -o publish-dbrepair
+
+      - name: Publish LogViewer (win-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        run: >
+          dotnet publish src/utils/logviewer/src/VideoForensics.Utils.LogViewer.csproj
+          -c Release -r win-x64 --self-contained true -o publish-logviewer
+
       - name: Publish WebApp (linux-x64, self-contained)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
         shell: bash
@@ -78,7 +99,7 @@ jobs:
         if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
         shell: bash
         run: |
-          tar -cf windows-publish.tar publish-win publish-desktop publish-dbsetup
+          tar -cf windows-publish.tar publish-win publish-desktop publish-dbsetup publish-dbdiagnostics publish-dbrepair publish-logviewer
           tar -cf linux-publish.tar publish-linux
 
       - name: Upload Windows publish output

@@ -10,8 +10,9 @@
 ; Independently selectable components:
 ;   - server:  VideoForensics.WebApp, installed as a Windows Service (LocalSystem, auto-start)
 ;   - desktop: VideoForensics.Client.MauiApp, a plain unpackaged desktop client (no service, no MSIX)
-;   - tools:   Optional Tools - VideoForensics.DbSetup, VideoForensics.DbDiagnostics, and
-;              VideoForensics.DbRepair CLI utilities (advanced/opt-in, unchecked by default)
+;   - tools:   Optional Tools - VideoForensics.Utils.DbSetup, VideoForensics.Utils.Diagnostics,
+;              VideoForensics.Utils.DbRepair CLI utilities and the VideoForensics.Utils.LogViewer
+;              console (advanced/opt-in, unchecked by default)
 ;   - mcp:     MCP Bridge (VideoForensics.Client.MCP) for AI-assistant hosts like Claude Desktop
 ;              (advanced/opt-in, unchecked by default)
 ;
@@ -47,6 +48,9 @@
 #ifndef McpPublishDir
   #define McpPublishDir "..\..\publish\mcp"
 #endif
+#ifndef LogViewerPublishDir
+  #define LogViewerPublishDir "..\..\publish\logviewer"
+#endif
 
 ; Only offer the Desktop Client component/shortcuts/files when a real MauiApp publish is actually
 ; present at compile time. Without this guard, a local/dev compile (or a CI run where the MauiApp
@@ -57,10 +61,11 @@
 #define DesktopExeExists FileExists(DesktopPublishDir + "\VideoForensics.Client.MauiApp.exe")
 ; Same guard pattern for the "Optional Tools" utilities and the MCP bridge - each is its own
 ; separate publish that a local/dev compile may not have produced.
-#define DbSetupExeExists FileExists(DbSetupPublishDir + "\VideoForensics.DbSetup.exe")
-#define DbDiagnosticsExeExists FileExists(DbDiagnosticsPublishDir + "\VideoForensics.DbDiagnostics.exe")
-#define DbRepairExeExists FileExists(DbRepairPublishDir + "\VideoForensics.DbRepair.exe")
+#define DbSetupExeExists FileExists(DbSetupPublishDir + "\VideoForensics.Utils.DbSetup.exe")
+#define DbDiagnosticsExeExists FileExists(DbDiagnosticsPublishDir + "\VideoForensics.Utils.Diagnostics.exe")
+#define DbRepairExeExists FileExists(DbRepairPublishDir + "\VideoForensics.Utils.DbRepair.exe")
 #define McpExeExists FileExists(McpPublishDir + "\VideoForensics.Client.MCP.exe")
+#define LogViewerExeExists FileExists(LogViewerPublishDir + "\VideoForensics.Utils.LogViewer.exe")
 
 [Setup]
 AppId={{6B1D9F0E-6A3C-4E9D-9F0B-2C7B2C2E9A11}
@@ -116,8 +121,8 @@ Name: "desktop"; Description: "Desktop Client"; Types: full custom
 ; switches to Custom. Neither is required for the server or desktop client to work: the service
 ; initializes its own database on first start regardless of whether "tools" is installed (DbSetup
 ; just does the same thing ahead of time so the very first request isn't delayed by migrations).
-#if DbSetupExeExists
-Name: "tools"; Description: "Optional Tools (database setup && diagnostics utilities)"; Types: custom
+#if DbSetupExeExists || DbDiagnosticsExeExists || DbRepairExeExists || LogViewerExeExists
+Name: "tools"; Description: "Optional Tools (database setup, diagnostics, repair and log viewer utilities)"; Types: custom
 #endif
 #if McpExeExists
 Name: "mcp"; Description: "MCP Bridge (for AI assistants such as Claude Desktop)"; Types: custom
@@ -167,6 +172,9 @@ Source: "{#DesktopPublishDir}\*"; DestDir: "{app}\Desktop"; Components: desktop;
 ; became the only path to create an admin, which is a real security gap once "local network"
 ; access is also in play (see the Network Access race-condition warning in CurStepChanged).
 Source: "{#DbSetupPublishDir}\*"; DestDir: "{app}\Tools\DbSetup"; Components: server; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
+; The usage README is shipped whenever the "tools" component is offered, so it matches that guard.
+#if DbSetupExeExists || DbDiagnosticsExeExists || DbRepairExeExists || LogViewerExeExists
 Source: "ToolsReadme.txt"; DestDir: "{app}\Tools"; DestName: "README.txt"; Components: tools; Flags: ignoreversion
 #endif
 #if DbDiagnosticsExeExists
@@ -177,6 +185,11 @@ Source: "{#DbDiagnosticsPublishDir}\*"; DestDir: "{app}\Tools\DbDiagnostics"; Co
 ; confirmation (or --yes for scripted use) before touching anything. See ToolsReadme.txt.
 #if DbRepairExeExists
 Source: "{#DbRepairPublishDir}\*"; DestDir: "{app}\Tools\DbRepair"; Components: tools; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
+; VideoForensics.Utils.LogViewer: console client for the WebApp logger named pipe (see Program.cs in
+; src/utils/logviewer). Its own leaf folder for the same self-contained-collision reason as above.
+#if LogViewerExeExists
+Source: "{#LogViewerPublishDir}\*"; DestDir: "{app}\Tools\LogViewer"; Components: tools; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif
 
 ; MCP Bridge: stdio MCP server (VideoForensics.Client.MCP) that AI-assistant hosts like Claude Desktop
@@ -205,9 +218,12 @@ Name: "{group}\VideoForensics Logs Folder"; Filename: "{commonappdata}\VideoFore
 ; Optional Tools Start Menu group - a PowerShell prompt already cd'd into the Tools folder (so
 ; either exe is runnable by bare name without typing the full path or subfolder), and the usage
 ; README for both bundled CLI tools.
-#if DbSetupExeExists
+#if DbSetupExeExists || DbDiagnosticsExeExists || DbRepairExeExists || LogViewerExeExists
 Name: "{group}\Optional Tools\PowerShell in Tools Folder"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; WorkingDir: "{app}\Tools"; Components: tools
 Name: "{group}\Optional Tools\Tools Readme"; Filename: "{app}\Tools\README.txt"; Components: tools
+#endif
+#if LogViewerExeExists
+Name: "{group}\Optional Tools\Log Viewer"; Filename: "{app}\Tools\LogViewer\VideoForensics.Utils.LogViewer.exe"; Components: tools
 #endif
 
 [Run]
@@ -381,7 +397,7 @@ end;
 
 function DbSetupToolExists(): Boolean;
 begin
-  Result := FileExists(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.DbSetup.exe'));
+  Result := FileExists(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.Utils.DbSetup.exe'));
 end;
 
 { True only when the Administrator Account page was actually filled in - the username field being
@@ -415,7 +431,7 @@ var
 begin
   WizardForm.StatusLabel.Caption := StatusText;
   WizardForm.Update;
-  Result := Exec(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.DbSetup.exe'), Args, '',
+  Result := Exec(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.Utils.DbSetup.exe'), Args, '',
     SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
 end;
 
@@ -520,7 +536,7 @@ begin
 end;
 
 { ---- System PATH management for the Optional Tools folders ------------------------------------
-  Lets someone open any terminal and just type "VideoForensics.DbSetup.exe" instead of needing the
+  Lets someone open any terminal and just type "VideoForensics.Utils.DbSetup.exe" instead of needing the
   full path or the "PowerShell in Tools Folder" shortcut. Broadcasts WM_SETTINGCHANGE afterwards so
   Explorer and freshly-opened terminals pick up the change immediately, without a reboot. }
 function SendMessageTimeoutA(hWnd: Longint; Msg: Longint; wParam: Longint; lParam: string;
@@ -953,6 +969,8 @@ begin
         AddDirToPath(ExpandConstant('{app}\Tools\DbDiagnostics'));
       if DirExists(ExpandConstant('{app}\Tools\DbRepair')) then
         AddDirToPath(ExpandConstant('{app}\Tools\DbRepair'));
+      if DirExists(ExpandConstant('{app}\Tools\LogViewer')) then
+        AddDirToPath(ExpandConstant('{app}\Tools\LogViewer'));
     end;
   end;
 end;
@@ -1058,6 +1076,7 @@ begin
     RemoveDirFromPath(ExpandConstant('{app}\Tools\DbSetup'));
     RemoveDirFromPath(ExpandConstant('{app}\Tools\DbDiagnostics'));
     RemoveDirFromPath(ExpandConstant('{app}\Tools\DbRepair'));
+    RemoveDirFromPath(ExpandConstant('{app}\Tools\LogViewer'));
 
     DataPath := ExpandConstant('{commonappdata}') + '\VideoForensics';
 

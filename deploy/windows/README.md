@@ -150,9 +150,9 @@ installed to its own `Tools` subfolder (kept separate from the server's own file
 the comment in `VideoForensics.iss` for why):
 
 ```powershell
-"C:\Program Files\VideoForensics\Tools\VideoForensics.DbSetup.exe" --data-root "D:\VFData"
+"C:\Program Files\VideoForensics\Tools\VideoForensics.Utils.DbSetup.exe" --data-root "D:\VFData"
 # or, for an exact database file path:
-"C:\Program Files\VideoForensics\Tools\VideoForensics.DbSetup.exe" --db-path "D:\VFData\videoforensics.db"
+"C:\Program Files\VideoForensics\Tools\VideoForensics.Utils.DbSetup.exe" --db-path "D:\VFData\videoforensics.db"
 ```
 
 With no arguments, it creates/migrates the database at whatever path the server itself would
