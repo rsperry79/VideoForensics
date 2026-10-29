@@ -53,26 +53,29 @@
   <data name="ColPath" xml:space="preserve">
     <value>Current Path</value>
   </data>
-  <data name="ColDefault" xml:space="preserve">
-    <value>Default</value>
-  </data>
   <data name="ColUsedSpace" xml:space="preserve">
     <value>Used Space</value>
   </data>
   <data name="ColFreeSpace" xml:space="preserve">
     <value>Free Space</value>
   </data>
-  <data name="DefaultBadge" xml:space="preserve">
-    <value>Default</value>
-  </data>
-  <data name="CustomBadge" xml:space="preserve">
-    <value>Custom</value>
-  </data>
   <data name="ChangeButton" xml:space="preserve">
     <value>Change...</value>
   </data>
-  <data name="PathPlaceholder" xml:space="preserve">
-    <value>Enter new root path</value>
+  <data name="BrowseFolderTitle" xml:space="preserve">
+    <value>Select new folder</value>
+  </data>
+  <data name="MoveFilesWarning" xml:space="preserve">
+    <value>Existing files in the current folder will be moved to this folder.</value>
+  </data>
+  <data name="ConfirmMoveTitle" xml:space="preserve">
+    <value>Move files?</value>
+  </data>
+  <data name="ConfirmMoveMessage" xml:space="preserve">
+    <value>Existing files in the current folder will be moved to the new folder. This can take a while for large folders.</value>
+  </data>
+  <data name="MoveFilesButton" xml:space="preserve">
+    <value>Move files</value>
   </data>
   <data name="ConfirmButton" xml:space="preserve">
     <value>Confirm</value>
