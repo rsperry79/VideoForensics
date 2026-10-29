@@ -156,6 +156,8 @@ written. It reconnects on its own if the WebApp restarts, and Ctrl+C exits.
   --raw          Print each line as received instead of formatting the JSON.
   --help, -h     Show usage and exit.
 
-The pipe is only served when the WebApp runs in the Development environment.
-The installed service runs as Production, so this viewer will wait without
-showing anything there. Use it with a development run of the WebApp.
+The pipe is closed by default. Open it in the VideoForensics app under
+Settings > Infrastructure > Diagnostics (SuperAdmin, or Admin once granted
+access on the Permissions page). The change applies immediately, and the saved
+value is read again when the service starts. Until it is open, this viewer
+waits without showing anything.
