@@ -5,11 +5,12 @@
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 @inject IStringLocalizer<ReviewPage> L
 
 <div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
     <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-back" @onclick="OnBack">@L["Back"]</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-back" @onclick="OnBackAsync">@L["Back"]</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
     </div>
 
@@ -130,9 +131,24 @@
         _filterOpen = false;
     }
 
-    private void OnBack()
+    /// <summary>
+    /// Goes back in browser history. This page is /media itself, so navigating there would not leave it.
+    /// A dead circuit or an unavailable JS runtime is ignored: Back then simply does nothing.
+    /// </summary>
+    private async Task OnBackAsync()
     {
-        NavigationManager.NavigateTo("/media");
+        try
+        {
+            await JS.InvokeVoidAsync("history.back");
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            // The browser refused the call; leave the page where it is.
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            // The circuit closed before the call ran.
+        }
     }
 
     private void OnLive()

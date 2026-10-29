@@ -25,16 +25,18 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_BackClick_NavigatesToTheLegacyMediaList()
+    public void ReviewTopBar_BackClick_GoesBackInBrowserHistory()
     {
         // Arrange
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        string before = CurrentUri;
 
         // Act
         cut.Find("[data-testid='review-back']").Click();
 
-        // Assert
-        Assert.Equal("http://localhost/media", CurrentUri);
+        // Assert: /media is this page, so Back uses history rather than navigating to it.
+        Assert.Contains(JSInterop.Invocations, i => i.Identifier == "history.back");
+        Assert.Equal(before, CurrentUri);
     }
 
     [Fact]
