@@ -119,6 +119,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Import / Export", "/tools/import-export", Section: "Storage & Data"),
 
                 new("LLM API", "/settings/llm", Section: "Integrations"),
+                new("Email", "/settings/integrations/email", Section: "Integrations"),
             ])
         ];
 

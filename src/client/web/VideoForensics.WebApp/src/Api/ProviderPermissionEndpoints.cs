@@ -9,7 +9,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
-    /// Reads and changes who may edit provider accounts and who may change report settings. Reading is open to Admin and up so the UI can show the current
+    /// Reads and changes who may edit provider accounts who may change report settings, who may change email settings, and who may change notification settings. Reading is open to Admin and up so the UI can show the current
     /// setting. Changing it is SuperAdmin only, on the same passkey-or-local gate as the lockout policy beside it.
     /// </summary>
     public static class ProviderPermissionEndpoints
@@ -33,6 +33,22 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .WithName("UpdateReportPermissions");
+
+            _ = group.MapGet("/email", GetEmailAsync)
+                .WithName("GetEmailPermissions");
+
+            _ = group.MapPut("/email", UpdateEmailAsync)
+                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .WithName("UpdateEmailPermissions");
+
+            _ = group.MapGet("/notifications", GetNotificationsAsync)
+                .WithName("GetNotificationPermissions");
+
+            _ = group.MapPut("/notifications", UpdateNotificationsAsync)
+                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .WithName("UpdateNotificationPermissions");
         }
 
         private static async Task<IResult> GetAsync(IAppSettingRepository settings, CancellationToken ct)
@@ -72,6 +88,72 @@ namespace VideoForensics.Client.WebApp.Api
                 null, tierResolver.ResolveClientIp(context), $"ReportSettings: {level}", isUrgent: true, ct);
 
             return Results.Ok(new ReportPermissionsDto(level));
+        }
+
+        private static async Task<IResult> GetEmailAsync(IAppSettingRepository settings, CancellationToken ct)
+        {
+            string? stored = await settings.GetAsync(EmailSettingsPolicy.SettingKey, ct);
+            return Results.Ok(new EmailPermissionsDto(EmailSettingsPolicy.NormalizeLevel(stored)));
+        }
+
+        private static async Task<IResult> UpdateEmailAsync(
+            UpdateEmailPermissionsRequest request,
+            IAppSettingRepository settings,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string level = request.EmailSettingsAccess;
+            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.EmailSettingsAccess)] = ["Must be Admin or SuperAdmin."],
+                });
+            }
+
+            await settings.SetAsync(EmailSettingsPolicy.SettingKey, level, ct);
+
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await auditLog.LogAsync(SecurityAuditEventTypes.EmailPermissionsUpdated,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), $"EmailSettings: {level}", isUrgent: true, ct);
+
+            return Results.Ok(new EmailPermissionsDto(level));
+        }
+
+        private static async Task<IResult> GetNotificationsAsync(IAppSettingRepository settings, CancellationToken ct)
+        {
+            string? stored = await settings.GetAsync(NotificationSettingsPolicy.SettingKey, ct);
+            return Results.Ok(new NotificationPermissionsDto(NotificationSettingsPolicy.NormalizeLevel(stored)));
+        }
+
+        private static async Task<IResult> UpdateNotificationsAsync(
+            UpdateNotificationPermissionsRequest request,
+            IAppSettingRepository settings,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string level = request.NotificationSettingsAccess;
+            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.NotificationSettingsAccess)] = ["Must be Admin or SuperAdmin."],
+                });
+            }
+
+            await settings.SetAsync(NotificationSettingsPolicy.SettingKey, level, ct);
+
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await auditLog.LogAsync(SecurityAuditEventTypes.NotificationPermissionsUpdated,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), $"NotificationSettings: {level}", isUrgent: true, ct);
+
+            return Results.Ok(new NotificationPermissionsDto(level));
         }
 
         private static async Task<IResult> UpdateAsync(

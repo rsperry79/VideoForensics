@@ -76,6 +76,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Admins reach the page so it can say why they cannot change anything; the Permissions setting
                 // (ReportSettingsGate) decides whether it offers controls, and the guarded orchestrator enforces it.
                 ["/settings/reports"] = AccessPolicy.Admin,
+                // Admins reach the page so it can say why they cannot change anything; the Permissions setting
+                // (EmailSettingsGate) decides whether it offers controls, and the notification endpoints enforce it.
+                ["/settings/integrations/email"] = AccessPolicy.Admin,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,

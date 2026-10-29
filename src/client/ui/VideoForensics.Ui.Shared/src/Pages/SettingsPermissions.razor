@@ -67,6 +67,46 @@ else
             }
         </div>
     </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["EmailSection"]</h5>
+            <p class="text-body-secondary">@L["EmailDescription"]</p>
+
+            <label class="form-label" for="email-settings-access">@L["EmailLabel"]</label>
+            <select id="email-settings-access" class="form-select mb-3" @bind="_emailSettingsAccess" disabled="@_saving">
+                <option value="SuperAdmin">@L["ReportsSuperAdminOption"]</option>
+                <option value="Admin">@L["ProviderEditAdminOption"]</option>
+            </select>
+
+            <button type="button" class="btn btn-primary" @onclick="SaveEmailAsync" disabled="@_saving">@L["Save"]</button>
+
+            @if (_emailStatus is not null)
+            {
+                <div class="alert alert-secondary mt-3 mb-0" role="status">@_emailStatus</div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["NotificationsSection"]</h5>
+            <p class="text-body-secondary">@L["NotificationsDescription"]</p>
+
+            <label class="form-label" for="notification-settings-access">@L["NotificationsLabel"]</label>
+            <select id="notification-settings-access" class="form-select mb-3" @bind="_notificationSettingsAccess" disabled="@_saving">
+                <option value="SuperAdmin">@L["ReportsSuperAdminOption"]</option>
+                <option value="Admin">@L["ProviderEditAdminOption"]</option>
+            </select>
+
+            <button type="button" class="btn btn-primary" @onclick="SaveNotificationsAsync" disabled="@_saving">@L["Save"]</button>
+
+            @if (_notificationsStatus is not null)
+            {
+                <div class="alert alert-secondary mt-3 mb-0" role="status">@_notificationsStatus</div>
+            }
+        </div>
+    </div>
 }
 
 @code {
@@ -77,12 +117,22 @@ else
     private string _providerEditAccess = "Admin";
     private string _reportSettingsAccess = "SuperAdmin";
     private string? _reportsStatus;
+    private string _emailSettingsAccess = "SuperAdmin";
+    private string? _emailStatus;
+    private string _notificationSettingsAccess = "SuperAdmin";
+    private string? _notificationsStatus;
 
     /// <summary>Response shape of GET /api/v1/permissions/provider-accounts.</summary>
     private sealed record ProviderPermissionsResponse(string ProviderAccountEditAccess);
 
     /// <summary>Response shape of GET /api/v1/permissions/reports.</summary>
     private sealed record ReportPermissionsResponse(string ReportSettingsAccess);
+
+    /// <summary>Response shape of GET /api/v1/permissions/email.</summary>
+    private sealed record EmailPermissionsResponse(string EmailSettingsAccess);
+
+    /// <summary>Response shape of GET /api/v1/permissions/notifications.</summary>
+    private sealed record NotificationPermissionsResponse(string NotificationSettingsAccess);
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,6 +151,12 @@ else
 
             ReportPermissionsResponse? reports = await client.GetFromJsonAsync<ReportPermissionsResponse>("/api/v1/permissions/reports");
             _reportSettingsAccess = reports?.ReportSettingsAccess ?? "SuperAdmin";
+
+            EmailPermissionsResponse? email = await client.GetFromJsonAsync<EmailPermissionsResponse>("/api/v1/permissions/email");
+            _emailSettingsAccess = email?.EmailSettingsAccess ?? "SuperAdmin";
+
+            NotificationPermissionsResponse? notifications = await client.GetFromJsonAsync<NotificationPermissionsResponse>("/api/v1/permissions/notifications");
+            _notificationSettingsAccess = notifications?.NotificationSettingsAccess ?? "SuperAdmin";
         }
         catch (HttpRequestException ex)
         {
@@ -109,6 +165,50 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task SaveNotificationsAsync()
+    {
+        _saving = true;
+        _notificationsStatus = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PutAsJsonAsync("/api/v1/permissions/notifications", new { notificationSettingsAccess = _notificationSettingsAccess });
+            _notificationsStatus = response.IsSuccessStatusCode
+                ? L["SaveSucceeded"].Value
+                : L["SaveFailed", response.StatusCode.ToString()].Value;
+        }
+        catch (HttpRequestException ex)
+        {
+            _notificationsStatus = L["SaveFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveEmailAsync()
+    {
+        _saving = true;
+        _emailStatus = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PutAsJsonAsync("/api/v1/permissions/email", new { emailSettingsAccess = _emailSettingsAccess });
+            _emailStatus = response.IsSuccessStatusCode
+                ? L["SaveSucceeded"].Value
+                : L["SaveFailed", response.StatusCode.ToString()].Value;
+        }
+        catch (HttpRequestException ex)
+        {
+            _emailStatus = L["SaveFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _saving = false;
         }
     }
 

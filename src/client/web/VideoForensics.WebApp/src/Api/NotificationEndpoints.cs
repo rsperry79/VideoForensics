@@ -16,6 +16,8 @@ namespace VideoForensics.Client.WebApp.Api
         {
             RouteGroupBuilder group = app.MapGroup("/api/notifications").RequireAuthorization(VideoForensicsPolicies.Admin);
 
+            // The email settings routes (settings, test-email) follow the stored email-settings level: SuperAdmin unless
+            // the Permissions page opens them to Admin. The urgency override routes follow the notification-settings level the same way.
             _ = group.MapGet("/settings", (IForensicsConfiguration config) => Results.Ok(new
             {
                 enableEmailNotifications = config.EnableEmailNotifications,
@@ -27,7 +29,7 @@ namespace VideoForensics.Client.WebApp.Api
                 notificationRecipientEmail = config.NotificationRecipientEmail
                 // The SMTP password is deliberately never returned - write-only from the UI's
                 // point of view, same as every other credential field in this app.
-            }));
+            })).AddEndpointFilter<EmailSettingsFilter>();
 
             _ = group.MapPost("/settings", async (
                 SaveNotificationSettingsRequest request,
@@ -54,7 +56,7 @@ namespace VideoForensics.Client.WebApp.Api
                 }
 
                 return Results.Ok();
-            });
+            }).AddEndpointFilter<EmailSettingsFilter>();
 
             _ = group.MapPost("/test-email", async (EmailNotificationProvider emailProvider, CancellationToken ct) =>
             {
@@ -67,7 +69,7 @@ namespace VideoForensics.Client.WebApp.Api
                 {
                     return Results.Json(new { error = $"Test email failed: {ex.Message}" }, statusCode: StatusCodes.Status502BadGateway);
                 }
-            });
+            }).AddEndpointFilter<EmailSettingsFilter>();
 
             _ = group.MapGet("/urgency-overrides", async (IUrgencyOverrideStore overrides, CancellationToken ct) =>
             {
@@ -80,19 +82,19 @@ namespace VideoForensics.Client.WebApp.Api
                     effectiveUrgent = current.TryGetValue(kvp.Key, out bool o2) ? o2 : kvp.Value
                 });
                 return Results.Ok(rows);
-            });
+            }).AddEndpointFilter<NotificationSettingsFilter>();
 
             _ = group.MapPost("/urgency-overrides/set", async (SetUrgencyOverrideRequest request, IUrgencyOverrideStore overrides, CancellationToken ct) =>
             {
                 await overrides.SetOverrideAsync(request.EventType, request.IsUrgent, ct);
                 return Results.Ok();
-            });
+            }).AddEndpointFilter<NotificationSettingsFilter>();
 
             _ = group.MapPost("/urgency-overrides/clear", async (ClearUrgencyOverrideRequest request, IUrgencyOverrideStore overrides, CancellationToken ct) =>
             {
                 await overrides.ClearOverrideAsync(request.EventType, ct);
                 return Results.Ok();
-            });
+            }).AddEndpointFilter<NotificationSettingsFilter>();
         }
     }
 

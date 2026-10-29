@@ -309,6 +309,8 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandle
 // Read per request, so a change on the Permissions page applies without a restart.
 builder.Services.AddScoped<IProviderAccountEditPolicy, ProviderAccountEditPolicy>();
 builder.Services.AddScoped<IReportSettingsPolicy, ReportSettingsPolicy>();
+builder.Services.AddScoped<IEmailSettingsPolicy, EmailSettingsPolicy>();
+builder.Services.AddScoped<INotificationSettingsPolicy, NotificationSettingsPolicy>();
 
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
