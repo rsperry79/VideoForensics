@@ -95,6 +95,7 @@ namespace VideoForensics.Client.WebApp.Auth
         public const string EmailSettings = "VF.EmailSettings";
         public const string NotificationSettings = "VF.NotificationSettings";
         public const string LlmSettings = "VF.LlmSettings";
+        public const string InfrastructureSettings = "VF.InfrastructureSettings";
 
         public static void AddVideoForensicsPolicies(this AuthorizationOptions options)
         {

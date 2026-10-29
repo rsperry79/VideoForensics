@@ -443,4 +443,13 @@
   <data name="ServerPortsSaveFailed" xml:space="preserve">
     <value>Saving the ports failed: {0}</value>
   </data>
+  <data name="HttpsPortNeedsCertificate" xml:space="preserve">
+    <value>HTTPS needs a valid Let's Encrypt certificate. Request one below first.</value>
+  </data>
+  <data name="LocalNetworkSection" xml:space="preserve">
+    <value>Local Network</value>
+  </data>
+  <data name="LocalNetworkHelp" xml:space="preserve">
+    <value>Settings for devices on this network: the ports the server listens on, the address they use to reach it, and discovery.</value>
+  </data>
 </root>

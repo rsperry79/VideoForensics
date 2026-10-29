@@ -289,7 +289,8 @@ namespace VideoForensics.Client.WebApp.Api
                 });
             });
 
-            // Downloads the public certificate chain. The private key is never sent; it stays encrypted in the store.
+            // Downloads a zip with the server certificate (cert.pem) and its intermediates (chain.pem). The private key is
+            // never sent; it stays encrypted in the store.
             _ = group.MapGet("/certificate/download", async (
                 ILetsEncryptCertificateStore store,
                 IForensicsConfiguration config,
@@ -301,8 +302,20 @@ namespace VideoForensics.Client.WebApp.Api
                     return Results.NotFound(new { error = "No certificate has been issued yet." });
                 }
 
-                byte[] chain = Encoding.UTF8.GetBytes(LetsEncryptCertificateManager.PublicChainPem(issued.PemBundle));
-                return Results.File(chain, "application/x-pem-file", $"{InternetHost(config) ?? "certificate"}-chain.pem");
+                // The public chain lists the server certificate first, then its intermediates.
+                List<string> blocks = LetsEncryptCertificateManager.PublicChainPem(issued.PemBundle)
+                    .Split("-----END CERTIFICATE-----", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(block => block + "\n-----END CERTIFICATE-----\n")
+                    .ToList();
+
+                using var archiveStream = new MemoryStream();
+                using (var archive = new System.IO.Compression.ZipArchive(archiveStream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    await WriteEntryAsync(archive, "cert.pem", blocks.Count > 0 ? blocks[0] : string.Empty, ct);
+                    await WriteEntryAsync(archive, "chain.pem", string.Concat(blocks.Skip(1)), ct);
+                }
+
+                return Results.File(archiveStream.ToArray(), "application/zip", $"{InternetHost(config) ?? "certificate"}-certificate.zip");
             });
 
             // Removes the stored certificate and Let's Encrypt account. Until a new certificate is requested, Kestrel
@@ -355,6 +368,14 @@ namespace VideoForensics.Client.WebApp.Api
             return Uri.TryCreate($"https://{value}", UriKind.Absolute, out Uri? uri)
                         && uri.Host == value?.Trim().TrimEnd('.').ToLowerInvariant()
                         && uri.Host.Contains('.', StringComparison.Ordinal);
+        }
+
+        /// <summary>Adds one UTF-8 text entry to the certificate download archive.</summary>
+        private static async Task WriteEntryAsync(System.IO.Compression.ZipArchive archive, string name, string content, CancellationToken ct)
+        {
+            System.IO.Compression.ZipArchiveEntry entry = archive.CreateEntry(name, System.IO.Compression.CompressionLevel.Optimal);
+            await using Stream stream = entry.Open();
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(content), ct);
         }
 
         /// <summary>The host of the saved Internet address, or null when none is configured.</summary>

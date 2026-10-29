@@ -69,7 +69,8 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapGet("/internal-url", (IForensicsConfiguration config, IConfiguration configuration) => Results.Ok(new
             {
-                internalServerUrl = config.InternalServerUrl ?? ServerAddressResolver.ResolveDefaultInternalUrl(configuration)
+                // A blank saved value means "not set", so it gets the machine's DNS name like a never-saved one.
+                internalServerUrl = string.IsNullOrWhiteSpace(config.InternalServerUrl) ? ServerAddressResolver.ResolveDefaultInternalUrl(configuration) : config.InternalServerUrl
             }));
 
             _ = group.MapPost("/internal-url", async (
@@ -113,7 +114,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapGet("/server-ports", (IForensicsConfiguration config, IConfiguration configuration) => Results.Ok(new
             {
                 httpPort = config.ServerHttpPort > 0 ? config.ServerHttpPort : ServerAddressResolver.ResolveListenEndpoints(configuration).FirstOrDefault(e => e.Scheme == "http")?.Port,
-                httpsPort = config.ServerHttpsPort > 0 ? config.ServerHttpsPort : ServerAddressResolver.ResolveListenEndpoints(configuration).FirstOrDefault(e => e.Scheme == "https")?.Port
+                httpsPort = config.ServerHttpsPort > 0 ? config.ServerHttpsPort : ServerAddressResolver.ResolveListenEndpoints(configuration).FirstOrDefault(e => e.Scheme == "https")?.Port ?? ServerAddressResolver.DefaultHttpsPort
             }));
 
             _ = group.MapPost("/server-ports", async (
@@ -124,6 +125,7 @@ namespace VideoForensics.Client.WebApp.Api
                 IFirewallRuleManager firewallRuleManager,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
+                ILetsEncryptCertificateStore certificateStore,
                 HttpContext context,
                 CancellationToken ct) =>
             {
@@ -141,6 +143,13 @@ namespace VideoForensics.Client.WebApp.Api
                 if (error is not null)
                 {
                     return Results.BadRequest(new { error });
+                }
+
+                // Only a change to the HTTPS port needs a certificate. Saving the HTTP port alone keeps the current HTTPS port.
+                int currentHttpsPort = config.ServerHttpsPort > 0 ? config.ServerHttpsPort : ServerAddressResolver.DefaultHttpsPort;
+                if (request.HttpsPort != currentHttpsPort && !await HasValidCertificateAsync(certificateStore, ct))
+                {
+                    return Results.BadRequest(new { error = "HTTPS needs a valid Let's Encrypt certificate. Request one first." });
                 }
 
                 string? oldPorts = $"HTTP {config.ServerHttpPort}, HTTPS {config.ServerHttpsPort}";
@@ -227,6 +236,13 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         private static bool IsValidPort(int port) => port is >= 1 and <= 65535;
+
+        /// <summary>True when an issued Let's Encrypt certificate exists and has not expired. HTTPS ports need one.</summary>
+        private static async Task<bool> HasValidCertificateAsync(ILetsEncryptCertificateStore store, CancellationToken ct)
+        {
+            IssuedCertificate? issued = await store.GetCertificateAsync(ct);
+            return issued is not null && issued.NotAfter > DateTimeOffset.UtcNow;
+        }
 
         /// <summary>
         /// Returns a message when the port is held by another program. The port this server already listens on for the

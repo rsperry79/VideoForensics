@@ -79,44 +79,53 @@ else
             <span style="color: @(_success ? "#4caf50" : "#f44336")" class="mt-3">@_message</span>
         }
 
-        @if (SessionState.IsSignedIn)
-        {
-            <h5 class="mt-4 mb-2">@L["InternalUrlHeading"]</h5>
-            <small class="text-muted d-block mb-2">@L["InternalUrlHelp"]</small>
-            <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
-                <input type="text" class="form-control" style="max-width: 420px;" aria-label="@L["InternalUrlLabel"]" placeholder="http://machine.local:5162" disabled="@(!CanAdmin)" @bind="_internalUrl" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveInternalUrlAsync" Disabled="@(!CanAdmin || _isInternalUrlSaving)" CssClass="e-primary" />
-            </div>
-            @if (_internalUrlMessage is not null)
-            {
-                <span style="@(_internalUrlSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_internalUrlMessage</span>
-            }
-
-            <h5 class="mt-4 mb-2">@L["ServerPortsHeading"]</h5>
-            <small class="text-muted d-block mb-2">@L["ServerPortsHelp"]</small>
-            <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
-                <label>@L["HttpPortLabel"]</label>
-                <input type="number" class="form-control" style="max-width: 120px;" min="1" max="65535" disabled="@(!CanAdmin)" @bind="_httpPort" />
-                <label>@L["HttpsPortLabel"]</label>
-                <input type="number" class="form-control" style="max-width: 120px;" min="1" max="65535" disabled="@(!CanAdmin)" @bind="_httpsPort" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveServerPortsAsync" Disabled="@(!CanAdmin || _isServerPortsSaving)" CssClass="e-primary" />
-            </div>
-            @if (_serverPortsMessage is not null)
-            {
-                <span style="@(_serverPortsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_serverPortsMessage</span>
-            }
-        }
     </div>
 
     @if (SessionState.IsSignedIn)
     {
-        <h5 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h5>
-        <div class="mb-4">
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
-            @if (_mdnsMessage is not null)
-            {
-                <span style="@(_mdnsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_mdnsMessage</span>
-            }
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h5 class="mb-2">@L["LocalNetworkSection"]</h5>
+                <small class="text-muted d-block mb-3">@L["LocalNetworkHelp"]</small>
+
+                <h6 class="mt-3 mb-2">@L["ServerPortsHeading"]</h6>
+                <small class="text-muted d-block mb-2">@L["ServerPortsHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                    <label>@L["HttpPortLabel"]</label>
+                    <input type="number" class="form-control" style="max-width: 120px;" min="1" max="65535" disabled="@(!CanAdmin)" @bind="_httpPort" />
+                    <label>@L["HttpsPortLabel"]</label>
+                    <input type="number" class="form-control" style="max-width: 120px;" min="1" max="65535" disabled="@(!CanAdmin || !_hasValidCertificate)" @bind="_httpsPort" />
+                    <SfButton Content="@L["SaveButton"]" OnClick="SaveServerPortsAsync" Disabled="@(!CanAdmin || _isServerPortsSaving)" CssClass="e-primary" />
+                </div>
+                @if (!_hasValidCertificate)
+                {
+                    <small class="text-muted d-block mt-2">@L["HttpsPortNeedsCertificate"]</small>
+                }
+                @if (_serverPortsMessage is not null)
+                {
+                    <span style="@(_serverPortsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_serverPortsMessage</span>
+                }
+
+                <h6 class="mt-4 mb-2">@L["InternalUrlHeading"]</h6>
+                <small class="text-muted d-block mb-2">@L["InternalUrlHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                    <input type="text" class="form-control" style="max-width: 420px;" aria-label="@L["InternalUrlLabel"]" disabled="@(!CanAdmin)" @bind="_internalUrl" />
+                    <SfButton Content="@L["SaveButton"]" OnClick="SaveInternalUrlAsync" Disabled="@(!CanAdmin || _isInternalUrlSaving)" CssClass="e-primary" />
+                </div>
+                @if (_internalUrlMessage is not null)
+                {
+                    <span style="@(_internalUrlSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_internalUrlMessage</span>
+                }
+
+                <h6 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h6>
+                <div>
+                    <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
+                    @if (_mdnsMessage is not null)
+                    {
+                        <span style="@(_mdnsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_mdnsMessage</span>
+                    }
+                </div>
+            </div>
         </div>
     }
 
@@ -136,6 +145,43 @@ else
             <small class="text-muted d-block mt-2">@L["MaxConcurrentDownloadsHelp"]</small>
         </div>
     }
+    @if (SessionState.IsSignedIn)
+    {
+        <div class="card mb-4"><div class="card-body p-4">
+            <strong class="d-block mb-2">@L["LetsEncryptHeading"]</strong>
+            @if (_leStatus is { } status)
+            {
+                <p class="mb-2">
+                    @if (status.Issued)
+                    {
+                        @L["CertificateStatusIssued", status.Hostname ?? "-", status.NotAfter?.ToString("yyyy-MM-dd") ?? "-"]
+                        @if (status.RenewalDue)
+                        {
+                            <span class="text-warning">@L["CertificateStatusRenewalDue"]</span>
+                        }
+                    }
+                    else
+                    {
+                        @L["CertificateStatusNone"]
+                    }
+                </p>
+            }
+            <div class="mb-3" style="max-width: 420px;">
+                <label class="form-label mb-1" for="le-contact-email">@L["ContactEmailLabel"]</label>
+                <input id="le-contact-email" type="email" class="form-control" @bind="_leContactEmail" />
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <SfButton Content="@L["RequestCertificateButton"]" OnClick="RequestCertificateAsync" Disabled="@_isLeBusy" CssClass="e-primary" />
+                <SfButton Content="@L["DownloadCertificateButton"]" OnClick="DownloadCertificateAsync" Disabled="@(_isLeBusy || _leStatus is not { Issued: true })" CssClass="e-outline e-primary" />
+                <SfButton Content="@L["ResetCertificateButton"]" OnClick="ResetCertificateAsync" Disabled="@(_isLeBusy || _leStatus is not { Issued: true })" CssClass="e-danger" />
+            </div>
+            @if (_leMessage is not null)
+            {
+                <div class="alert @(_leSucceeded ? "alert-success" : "alert-danger") mt-3 mb-0">@_leMessage</div>
+            }
+        </div></div>
+    }
+
 
     <h5 class="mt-4 mb-2">@L["RemoteAccessSectionTitle"]</h5>
 
@@ -207,45 +253,6 @@ else
             </div>
         </div>
 
-        <div class="card mb-4"><div class="card-body p-4">
-            <strong class="d-block mb-2">@L["LetsEncryptHeading"]</strong>
-            @if (_leStatus is { } status)
-            {
-                <p class="mb-2">
-                    @if (status.Issued)
-                    {
-                        @L["CertificateStatusIssued", status.Hostname ?? "-", status.NotAfter?.ToString("yyyy-MM-dd") ?? "-"]
-                        @if (status.RenewalDue)
-                        {
-                            <span class="text-warning">@L["CertificateStatusRenewalDue"]</span>
-                        }
-                    }
-                    else
-                    {
-                        @L["CertificateStatusNone"]
-                    }
-                </p>
-            }
-            <div class="mb-2" style="max-width: 420px;">
-                <label class="form-label mb-1" for="le-contact-email">@L["ContactEmailLabel"]</label>
-                <input id="le-contact-email" type="email" class="form-control" @bind="_leContactEmail" />
-            </div>
-            <div class="form-check mb-1">
-                <input id="le-use-staging" type="checkbox" class="form-check-input" @bind="_leUseStaging" />
-                <label class="form-check-label" for="le-use-staging">@L["UseStagingLabel"]</label>
-            </div>
-            <small class="text-muted d-block mb-3">@L["UseStagingHelp"]</small>
-            <div class="d-flex gap-2 flex-wrap">
-                <SfButton Content="@L["SaveCertSettingsButton"]" OnClick="SaveCertificateSettingsAsync" Disabled="@_isLeBusy" CssClass="e-flat" />
-                <SfButton Content="@L["RequestCertificateButton"]" OnClick="RequestCertificateAsync" Disabled="@_isLeBusy" CssClass="e-primary" />
-                <SfButton Content="@L["DownloadCertificateButton"]" OnClick="DownloadCertificateAsync" Disabled="@(_isLeBusy || _leStatus is not { Issued: true })" CssClass="e-flat" />
-                <SfButton Content="@L["ResetCertificateButton"]" OnClick="ResetCertificateAsync" Disabled="@(_isLeBusy || _leStatus is not { Issued: true })" CssClass="e-danger" />
-            </div>
-            @if (_leMessage is not null)
-            {
-                <div class="alert @(_leSucceeded ? "alert-success" : "alert-danger") mt-3 mb-0">@_leMessage</div>
-            }
-        </div></div>
 
         @* The Cloudflare setup is only needed until a tunnel is configured; once it is, the status card above is enough. *@
         @if (!_tunnelConfigured && _wizardVisible)
@@ -403,9 +410,8 @@ else
     private List<string> _zones = new();
     private bool _confirmDisconnect;
 
-    // Let's Encrypt settings. The contact email and staging choice are saved separately from issuing a certificate.
+    // Let's Encrypt settings. The contact email is saved with the request, so the request always uses what is on the form.
     private string? _leContactEmail;
-    private bool _leUseStaging = true;
     private bool _isLeBusy;
     private string? _leMessage;
     private bool _leSucceeded;
@@ -657,6 +663,11 @@ else
             {
                 await LoadRemoteAccessStatusAsync();
             }
+            else
+            {
+                // The certificate is used for HTTPS on the local network too, so its status loads on every tier.
+                await LoadCertificateDataAsync();
+            }
 
             StateHasChanged();
         }
@@ -887,6 +898,13 @@ else
         return value.ValueKind == System.Text.Json.JsonValueKind.Null ? null : value.GetString();
     }
 
+    private async Task LoadCertificateDataAsync()
+    {
+        HttpClient client = CreateClient();
+        await LoadCertificateSettingsAsync(client);
+        await LoadCertificateStatusAsync(client);
+    }
+
     private async Task LoadCertificateSettingsAsync(HttpClient client)
     {
         try
@@ -899,7 +917,6 @@ else
 
             var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
             _leContactEmail = NullableString(body, "contactEmail");
-            _leUseStaging = body.GetProperty("useStaging").GetBoolean();
         }
         catch (Exception)
         {
@@ -944,9 +961,9 @@ else
                 return;
             }
 
-            string pem = await response.Content.ReadAsStringAsync();
+            byte[] archive = await response.Content.ReadAsByteArrayAsync();
             await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", LeDownloadModule);
-            await module.InvokeVoidAsync("downloadText", $"{_leStatus?.Hostname ?? "certificate"}-chain.pem", pem);
+            await module.InvokeVoidAsync("downloadBytes", $"{_leStatus?.Hostname ?? "certificate"}-certificate.zip", archive, "application/zip");
         }
         catch (Exception ex)
         {
@@ -1032,6 +1049,9 @@ else
 
     private int _httpPort;
     private int _httpsPort;
+
+    // HTTPS can only be served once Let's Encrypt has issued a certificate that has not expired.
+    private bool _hasValidCertificate => _leStatus is { Issued: true, NotAfter: { } notAfter } && notAfter > DateTimeOffset.UtcNow;
     private string? _serverPortsMessage;
     private bool _serverPortsSuccess;
     private bool _isServerPortsSaving;
@@ -1066,32 +1086,8 @@ else
         }
     }
 
-    private async Task SaveCertificateSettingsAsync()
-    {
-        _isLeBusy = true;
-        _leMessage = null;
-        try
-        {
-            var response = await CreateClient().PutAsJsonAsync("api/remote-access/certificate-settings", new { contactEmail = _leContactEmail ?? string.Empty, useStaging = _leUseStaging });
-            if (!response.IsSuccessStatusCode)
-            {
-                SetLeMessage(await SafeReadErrorAsync(response) ?? L["CertificateSettingsFailed", response.StatusCode.ToString()], false);
-                return;
-            }
-
-            SetLeMessage(L["CertificateSettingsSaved"], true);
-        }
-        catch (Exception ex)
-        {
-            SetLeMessage(L["CertificateSettingsFailed", ex.Message], false);
-        }
-        finally
-        {
-            _isLeBusy = false;
-        }
-    }
-
     // Issuing a certificate changes what the server presents, so it needs a fresh passkey assertion like the other actions.
+    // The contact email and staging choice are saved first, so the request always uses what is on the form.
     private async Task RequestCertificateAsync()
     {
         if (SessionState.SessionToken is null)
@@ -1104,6 +1100,13 @@ else
         _leMessage = null;
         try
         {
+            var settingsResponse = await CreateClient().PutAsJsonAsync("api/remote-access/certificate-settings", new { contactEmail = _leContactEmail ?? string.Empty, useStaging = false });
+            if (!settingsResponse.IsSuccessStatusCode)
+            {
+                SetLeMessage(await SafeReadErrorAsync(settingsResponse) ?? L["CertificateSettingsFailed", settingsResponse.StatusCode.ToString()], false);
+                return;
+            }
+
             var stepUpToken = await StepUp.GetStepUpTokenAsync();
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);

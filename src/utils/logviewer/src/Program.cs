@@ -1,5 +1,11 @@
+using System.Globalization;
 using System.IO.Pipes;
 using System.Text.Json;
+using CommandLine;
+using Serilog;
+using Serilog.Events;
+using Serilog.Parsing;
+using VideoForensics.Utils.LogViewer;
 
 // VideoForensics.Utils.LogViewer: displays the VideoForensics named pipe logger output in this console.
 //
@@ -10,33 +16,23 @@ using System.Text.Json;
 // Usage:
 //   VideoForensics.Utils.LogViewer [--pipe <name>] [--raw] [--help]
 //
-// --pipe  pipe name to connect to (default: VideoForensics.Logger)
-// --raw   print each line as received instead of formatting the JSON
+// Run with --help for the option list. Formatted lines use the same Serilog console sink and layout as the
+// WebApp, so the level colours match the server's console.
 
-const string DefaultPipeName = "VideoForensics.Logger";
-
-string pipeName = DefaultPipeName;
-bool raw = false;
-
-for (int i = 0; i < args.Length; i++)
+ParserResult<LogViewerOptions> parsed = Parser.Default.ParseArguments<LogViewerOptions>(args);
+if (parsed.Errors.Any())
 {
-    switch (args[i])
-    {
-        case "--pipe" when i + 1 < args.Length:
-            pipeName = args[++i];
-            break;
-        case "--raw":
-            raw = true;
-            break;
-        case "--help":
-        case "-h":
-            Console.WriteLine("Usage: VideoForensics.Utils.LogViewer [--pipe <name>] [--raw] [--help]");
-            return 0;
-        default:
-            Console.Error.WriteLine($"Unknown argument: {args[i]}");
-            return 1;
-    }
+    // Help and version requests are not failures; the parser has already written the text.
+    return parsed.Errors.Any(e => e.Tag is ErrorType.HelpRequestedError or ErrorType.VersionRequestedError) ? 0 : 1;
 }
+
+LogViewerOptions options = parsed.Value;
+
+// Same output template as the WebApp's console sink (Program.cs there). No theme is set, so the sink's default applies.
+ILogger logger = new LoggerConfiguration()
+    .MinimumLevel.Verbose()
+    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .CreateLogger();
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -45,21 +41,28 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-Console.WriteLine($"Waiting for logger on pipe '{pipeName}'. Press Ctrl+C to exit.");
+Console.WriteLine($"Waiting for logger on pipe '{options.Pipe}'. Press Ctrl+C to exit.");
 
 while (!cts.IsCancellationRequested)
 {
     try
     {
         // Connect with a timeout so the loop can notice cancellation while the server is absent.
-        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.In, PipeOptions.Asynchronous);
+        await using var client = new NamedPipeClientStream(".", options.Pipe, PipeDirection.In, PipeOptions.Asynchronous);
         await client.ConnectAsync(1000, cts.Token);
-        Console.WriteLine($"Connected to '{pipeName}'.");
+        Console.WriteLine($"Connected to '{options.Pipe}'.");
 
         using var reader = new StreamReader(client);
         while (await reader.ReadLineAsync(cts.Token) is { } line)
         {
-            Console.WriteLine(raw ? line : FormatLine(line));
+            if (!options.Raw && ToLogEvent(line) is { } logEvent)
+            {
+                logger.Write(logEvent);
+            }
+            else
+            {
+                Console.WriteLine(line);
+            }
         }
 
         Console.WriteLine("Logger disconnected. Waiting for it to return...");
@@ -92,23 +95,52 @@ while (!cts.IsCancellationRequested)
     }
 }
 
+await Log.CloseAndFlushAsync();
 return 0;
 
-// Formats a logger JSON line as "timestamp level [category] message"; falls back to the raw line.
-static string FormatLine(string line)
+// Turns a logger JSON line into a Serilog event with the server's timestamp, level, and category.
+// Returns null when the line is not a logger entry, so the caller prints it unchanged.
+static LogEvent? ToLogEvent(string line)
 {
     try
     {
         using JsonDocument doc = JsonDocument.Parse(line);
         JsonElement root = doc.RootElement;
-        string timestamp = root.TryGetProperty("timestamp", out JsonElement ts) ? ts.GetString() ?? string.Empty : string.Empty;
-        string level = root.TryGetProperty("level", out JsonElement lv) ? lv.GetString() ?? string.Empty : string.Empty;
-        string category = root.TryGetProperty("category", out JsonElement cat) ? cat.GetString() ?? string.Empty : string.Empty;
-        string message = root.TryGetProperty("message", out JsonElement msg) ? msg.GetString() ?? string.Empty : string.Empty;
-        return $"{timestamp} {level,-11} [{category}] {message}";
+        string timestamp = Text(root, "timestamp");
+        string category = Text(root, "category");
+        string message = Text(root, "message");
+        DateTimeOffset time = DateTimeOffset.TryParse(timestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset parsed)
+            ? parsed
+            : DateTimeOffset.Now;
+
+        return new LogEvent(
+            time,
+            ToSerilogLevel(Text(root, "level")),
+            null,
+            new MessageTemplateParser().Parse("{Message}"),
+            [
+                new LogEventProperty("SourceContext", new ScalarValue(category)),
+                new LogEventProperty("Message", new ScalarValue(message)),
+            ]);
     }
     catch (JsonException)
     {
-        return line;
+        return null;
     }
 }
+
+static string Text(JsonElement root, string property)
+{
+    return root.TryGetProperty(property, out JsonElement value) ? value.GetString() ?? string.Empty : string.Empty;
+}
+
+// Maps the logger's level names to Serilog's, so the sink colours each line the way the WebApp's console does.
+static LogEventLevel ToSerilogLevel(string level) => level switch
+{
+    "Trace" => LogEventLevel.Verbose,
+    "Debug" => LogEventLevel.Debug,
+    "Warning" => LogEventLevel.Warning,
+    "Error" => LogEventLevel.Error,
+    "Critical" => LogEventLevel.Fatal,
+    _ => LogEventLevel.Information,
+};

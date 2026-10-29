@@ -14,6 +14,9 @@ namespace VideoForensics.Client.WebApp.Infrastructure
     {
         private const int DefaultPort = 5162;
 
+        /// <summary>The HTTPS port offered when none is configured. It can only be used once a Let's Encrypt certificate is issued.</summary>
+        internal const int DefaultHttpsPort = 7000;
+
         private static IEnumerable<Uri> ParseUrls(IConfiguration configuration)
         {
             string? urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"];
