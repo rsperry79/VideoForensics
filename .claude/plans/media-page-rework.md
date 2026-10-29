@@ -1,6 +1,6 @@
 # Plan: media page rework (Frigate-style)
 
-Status (2026-10-28): Step 1 (hide the nav on `/media`, `/` redirects there) done, `ed1030a8`. The active-account side task done, `e0da8bd3`. The preview pipeline and the viewer components (Part 3 of `platform-split-and-viewer.md`) are already built, but no page uses them yet. Step 2 (the review page itself) is not started. Audited against the code on 2026-10-28.
+Status (2026-10-28): the review page is built and live at `/media` (also `/media/review`); the old Evidence page is retired. All batches B1 to B8 are done and pushed to `wip` (see "Built"). Nothing has been looked at in a browser yet (every batch was verified by builds and bUnit tests only): do a manual pass first. Open follow-ups are listed under "Follow-ups".
 
 ## Goals
 1. On `/media`, hide the left nav (done).
@@ -14,10 +14,25 @@ Status (2026-10-28): Step 1 (hide the nav on `/media`, `/` redirects there) done
 - Preview pipeline is done: `MediaItem.PreviewPath` (migration `AddMediaItemPreviewPath`), `MediaPreviewService` (320 px, 1 fps, `.preview.mp4`), generated after download in `EventPullService` and by `MediaPreviewBackfillService`, served by `GET /api/v1/media/{id}/preview` with tests.
 - Clip paging exists: `GET /api/v1/media-items/page` (`RemoteMediaItemRepository`). `CameraSync` and `ReviewTimeline` are in Client.Common.
 
+## Built (commits on `wip`)
+- B1 state, URL, clip model: `d625cb85`. B2 shell and top bar: `ce0109b5`. B3 Timeline tab: `6b125c33` (+ media DTO duration and preview path, `bbf80073`). B4 vertical timeline in the right panel: `6a5f03bc`, B4b page-level feeder so it works on every tab: `5aa3c3e6`. B5 Events tab: `e0939e6d`. B6a Filter panel: `f8ee2211`. B6b Detail tab: `39b9c7e8`. B7a pending tags kept in memory and attached when a case opens: `fb0668cb`. B7b1 Actions menu: `77bc9fd2`. B7b2 grab-still: `bad204bc`. B7b3 `/media` swap, Evidence retired: `459504d3`. B8 case "Review selected evidence": `80801a66`.
+- Read paths added for the page: paged multi-device events (`/api/v1/events/page`) and event detail rows (`/api/v1/events/details`): `0da25690`.
+- Query parameters: `devices`, `from`, `to`, `q` (scope), `t` (cursor), `tab`, `provider`, `account`, and `reviewcase` (case view). `case` is the app-wide active-case context (`CaseUrl`, "Work on this case") and is NOT the case view.
+
+## Follow-ups
+1. **Browser pass.** Layout, popups (camera selector, filter, actions, pending tags), the vertical strip, and the right panel were never viewed. Fixed 600px strip length; filling the panel needs JS measurement.
+2. **Cursor does not follow playback.** `ReviewPlayer` and `CameraGrid` take the cursor as input only and report no progress, so the timeline marker does not move while a clip plays.
+3. **Orphaned Evidence code.** These have no non-test references outside their folders (some may be used inside their folder or by tests): `DeviceTimeBucket`, `DeviceTimeCellClickArgs`, `DeviceTimeGrid`, `DeviceTimeGridResult`, `DeviceTimeGridView`, `DeviceTimeRow`, `EvidenceDayGroup`, `EvidenceDeviceGroup`, `EvidenceInspectorMapper`, `EvidenceItemCounts`, `EvidenceKind`, `EvidenceLoadResult`, `EvidenceLoader`, `EvidenceTimeline`, `EvidenceTimelineStyle`, `EvidenceView`, `EvidenceViewModel`, `ImageViewport`, `RssiPlot`, `RssiSample`, `SnapshotStrip`, `SnapshotWindowFallback`, `SnapshotWindowThinning`, `TimeLapseCoverage` (plus `MediaViewer`, `MediaThumb`, `MediaViewerKeys`, `MediaViewerAction`, `MediaStillCaptureStatus`, `EvidenceItem`, which are kept). Remove what is truly dead together with its tests. `Pages/EvidenceDatesFilter.razor` (`/media/dates-filter`) has no inbound link; decide keep or remove.
+4. **Test gaps.** Timeline tab live refresh on evidence changes, grab-still signed-out and service failure, and the old "view details" behaviour have no named review test. Several throttle tests use real 750 ms waits (`Thread.Sleep`/`Task.Delay`): possible flakes.
+5. **Known behaviours.** Start new case with a case already open pins to that case and then opens the new-case page. In case view the Detail tab's jamming and anomaly lists are not limited to the case; pins added while a case is being viewed appear only after re-entering. Load more can repeat a row if an event arrives mid-paging. The feeder ignores the loader's truncation flag. A camera-list change reloads the right-panel timeline even when the primary camera is unchanged. The ownership data for the filters loads once per page open. The horizontal `TimelineStrip` has an old click-offset issue (the page does not use it). Verify integrity re-checks every file of the primary camera (slow on large devices).
+6. **Heads.** MAUI does not register `IEvidenceChangedSource`, so no live reload there. Wyze `GetEventsAsync` is not implemented, so Wyze cameras have no events. In Simple mode `/media` shows the plain-language home; the review page is at `/media/review`.
+7. **Role gates in the Actions menu are stricter than the old Evidence page** (they follow the server: hold and release Admin, export SuperAdmin, verify any signed-in operator, tag and new case Review).
+8. **Pending tags are in memory only** and are lost when the session or circuit restarts (the UI says so). `CaseState` swallows an unexpected attach exception without logging (per-item failures are logged).
+
 ## Step 1: sidebar on /media (done)
 - Left nav hidden on `/media` via a transient collapse (the saved preference is not changed; the hamburger flips the pane for the visit; leaving restores the saved state). `/` redirects to `/media`. Commit `ed1030a8`.
 
-## Step 2: the review page (not started)
+## Step 2: the review page (done; see Built)
 Replaces the Evidence list (user decision). Route: build it at `/media`; check `NoticeActions.ReviewLink` and bookmarks before moving anything (not verified).
 - Top bar: Back, Live, camera selector (`SfDropDownList` multi-select, "All cameras" toggle plus per-camera switches, Apply/Reset), range (Last 24 hours), Filter, Actions, tabs Timeline / Events / Detail.
 - Main area: `ReviewPlayer`; under it `SingleCameraView` for the other cameras; `CameraGrid` when more than one camera is on.
@@ -58,7 +73,7 @@ The new page lives at `/media/review` until the last batch, so `/media` keeps wo
 - Evidence.razor features: keep legal hold, integrity validation, and a link to export in the Actions menu; drop report generation (only used by `EventRowLoader`), case-pin tone on rows, and the device-time grid and gallery.
 - There is no tagging concept for evidence (`AiAnalysisTag` is AI output). "Start new case" only takes the scope today; pre-filling the selected clip needs a new hand-off.
 
-## Step 3: remaining items
+## Step 3: remaining items (preview pipeline done; WebView2 check still open)
 - Verify WebView2 range playback on the MAUI Windows head (manual; no test or note exists in code). Server-side range tests exist (`MediaContentRangeTests`).
 - The preview pipeline is done (see Current state), so there is no separate server work left for the preview strip.
 
