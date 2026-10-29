@@ -24,7 +24,7 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/operators", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/operators/{Id:guid}", AccessPolicy.SuperAdminLocal)]
     [InlineData("/admin/pending-credentials", AccessPolicy.SuperAdminLocalOrPasskey)]
-    [InlineData("/settings/infrastructure", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/settings/infrastructure", AccessPolicy.InfrastructureSettings)]
     [InlineData("/tools/import-export", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/notifications", AccessPolicy.NotificationSettings)]
     [InlineData("/settings/security-log", AccessPolicy.Admin)]

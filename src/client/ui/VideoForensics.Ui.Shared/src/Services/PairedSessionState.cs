@@ -253,7 +253,8 @@ namespace VideoForensics.Client.Ui.Shared.Services
                         (access.ReportsOpenToAdmin ? RestrictedSettings.Reports : RestrictedSettings.None)
                         | (access.EmailOpenToAdmin ? RestrictedSettings.Email : RestrictedSettings.None)
                         | (access.NotificationsOpenToAdmin ? RestrictedSettings.Notifications : RestrictedSettings.None)
-                        | (access.LlmOpenToAdmin ? RestrictedSettings.Llm : RestrictedSettings.None);
+                        | (access.LlmOpenToAdmin ? RestrictedSettings.Llm : RestrictedSettings.None)
+                        | (access.InfrastructureOpenToAdmin ? RestrictedSettings.Infrastructure : RestrictedSettings.None);
                 }
             }
             catch (Exception)
@@ -346,7 +347,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
         private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
 
         // Response of GET /api/v1/auth/session-kind. Tier and passkey default to false so an older server that omits them fails closed.
-        private sealed record SettingsAccessResponse(bool ReportsOpenToAdmin, bool EmailOpenToAdmin, bool NotificationsOpenToAdmin, bool LlmOpenToAdmin = false);
+        private sealed record SettingsAccessResponse(bool ReportsOpenToAdmin, bool EmailOpenToAdmin, bool NotificationsOpenToAdmin, bool LlmOpenToAdmin = false, bool InfrastructureOpenToAdmin = false);
 
         private sealed record SessionKindResponse(bool PasskeySetupOnly, bool LocalTier = false, bool PasskeySession = false, bool PasswordSession = false, bool TwoFactorRequired = false);
     }

@@ -64,7 +64,8 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             bool enableEventLog = false,
             bool enableSyslog = false,
             bool enableNamedPipeLogger = false,
-            Action<ILoggingBuilder>? eventLogProvider = null)
+            Action<ILoggingBuilder>? eventLogProvider = null,
+            NamedPipeLogGate? namedPipeGate = null)
         {
             // Serilog integration: if Serilog is configured globally via Log.Logger, wire it into the logging pipeline.
             // The logFilePath parameter is kept for backward compatibility but is now superseded by
@@ -95,7 +96,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             if (enableNamedPipeLogger && OperatingSystem.IsWindows())
             {
-                _ = logging.AddProvider(new NamedPipeLoggerProvider());
+                _ = logging.AddProvider(new NamedPipeLoggerProvider(namedPipeGate));
             }
 
             // Resolve the buffer lazily from the real container so registration order doesn't matter and the

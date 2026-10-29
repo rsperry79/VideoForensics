@@ -249,10 +249,13 @@ builder.Services.AddSingleton(serverLogLevel);
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
-// The named pipe feeds VideoForensics.Utils.LogViewer. Development only: the pipe is open to local users.
+// The named pipe feeds VideoForensics.Utils.LogViewer. The gate starts closed; the saved Infrastructure setting opens it after build.
+var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate();
+builder.Services.AddSingleton(namedPipeGate);
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
-    enableNamedPipeLogger: builder.Environment.IsDevelopment(),
-    eventLogProvider: OperatingSystem.IsWindows() ? (Action<ILoggingBuilder>?)VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null);
+    enableNamedPipeLogger: true,
+    eventLogProvider: OperatingSystem.IsWindows() ? (Action<ILoggingBuilder>?)VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null,
+    namedPipeGate: namedPipeGate);
 
 // Add services to the container.
 // Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
@@ -729,6 +732,20 @@ using (IServiceScope levelScope = app.Services.CreateScope())
     }
 }
 
+// Open the LogViewer pipe only if the Infrastructure setting says so. A failure keeps it closed.
+using (IServiceScope pipeScope = app.Services.CreateScope())
+{
+    try
+    {
+        string? storedPipe = await pipeScope.ServiceProvider.GetRequiredService<IAppSettingRepository>().GetAsync(LogPipeEndpoints.SettingKey, CancellationToken.None);
+        namedPipeGate.SetOpen(LogPipeEndpoints.IsEnabled(storedPipe));
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved log pipe setting, keeping it closed: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
+
 // Debug trace of every Ring API call: method, path and query, and status. Response bodies are not logged because
 // they hold camera and account data; enable the "VideoForensics.Providers.Ring.Api" category at Debug to see the trace.
 Microsoft.Extensions.Logging.ILogger ringApiLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("VideoForensics.Providers.Ring.Api");
@@ -833,6 +850,7 @@ app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
+app.MapLogPipeEndpoints();
 app.MapSnapshotProbeEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)

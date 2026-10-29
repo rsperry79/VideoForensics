@@ -9,6 +9,9 @@
 @inject IOperatorPreferencesRepository PreferencesRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<SettingsInfrastructure> L
+@using System.Net.Http.Json
+@using VideoForensics.Client.Ui.Shared.Services
+@inject ISelfApiHttpClientFactory ClientFactory
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -29,6 +32,22 @@ else if (!_isAuthenticated)
 }
 else
 {
+    <h6 class="mt-4 mb-2">@L["DiagnosticsSection"]</h6>
+    <div class="card mb-4">
+        <div class="card-body p-4">
+            <p class="text-body-secondary">@L["LogPipeDescription"]</p>
+            <div class="form-check mb-3">
+                <input id="log-pipe-enabled" class="form-check-input" type="checkbox" @bind="_logPipeEnabled" disabled="@(_logPipeSaving || _logPipeLoading)" />
+                <label class="form-check-label" for="log-pipe-enabled">@L["LogPipeLabel"]</label>
+            </div>
+            <button type="button" class="btn btn-primary" @onclick="SaveLogPipeAsync" disabled="@(_logPipeSaving || _logPipeLoading)">@L["SaveButton"]</button>
+            @if (_logPipeMessage is not null)
+            {
+                <span class="ms-3" role="status">@_logPipeMessage</span>
+            }
+        </div>
+    </div>
+
     <h6 class="mt-4 mb-2">@L["DataEncryptionSection"]</h6>
     @if (!_encryptionWarningDismissed)
     {
@@ -93,6 +112,11 @@ else
     private bool _keyStorageProviderSuccess;
     private string? _keyStorageProviderMessage;
 
+    private bool _logPipeEnabled;
+    private bool _logPipeLoading = true;
+    private bool _logPipeSaving;
+    private string? _logPipeMessage;
+
     private bool _showFactoryResetConfirm;
     private bool _factoryResetting;
     private bool _factoryResetSuccess;
@@ -107,6 +131,7 @@ else
             if (_isAuthenticated)
             {
                 _keyStorageProvider = Config.KeyStorageProvider;
+                await LoadLogPipeAsync();
                 if (SessionState.OperatorId is Guid operatorId)
                 {
                     OperatorPreferences? saved = await PreferencesRepository.GetAsync(operatorId, CancellationToken.None);
@@ -128,6 +153,54 @@ else
             await PreferencesRepository.SetEncryptionWarningDismissedAsync(operatorId, true, CancellationToken.None);
         }
     }
+
+    private async Task LoadLogPipeAsync()
+    {
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            LogPipeSetting? setting = await client.GetFromJsonAsync<LogPipeSetting>("/api/v1/diagnostics/log-pipe");
+            _logPipeEnabled = setting?.Enabled ?? false;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logPipeMessage = L["LogPipeLoadFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _logPipeLoading = false;
+        }
+    }
+
+    private async Task SaveLogPipeAsync()
+    {
+        _logPipeSaving = true;
+        _logPipeMessage = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/diagnostics/log-pipe", new LogPipeSetting(_logPipeEnabled));
+            if (response.IsSuccessStatusCode)
+            {
+                _logPipeMessage = L["LogPipeSaved"].Value;
+            }
+            else
+            {
+                _logPipeMessage = L["LogPipeSaveFailed", (int)response.StatusCode].Value;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logPipeMessage = L["LogPipeSaveFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _logPipeSaving = false;
+        }
+    }
+
+    // Mirrors the WebApp's LogPipeSettingDto. Kept local because Ui.Shared cannot reference the WebApp.
+    private sealed record LogPipeSetting(bool Enabled);
 
     private async Task SaveKeyStorageProviderAsync()
     {
