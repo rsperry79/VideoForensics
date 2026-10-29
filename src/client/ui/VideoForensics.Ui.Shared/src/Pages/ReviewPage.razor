@@ -104,7 +104,10 @@ else
         _isAuthenticated = SessionState.IsSignedIn;
         if (_isAuthenticated)
         {
-            IReadOnlyList<Device> devices = await DeviceRepository.ListAsync(CancellationToken.None);
+            // Only cameras have video to review. Chimes, bridges and sensors are left out of every list on this page.
+            IReadOnlyList<Device> devices = (await DeviceRepository.ListAsync(CancellationToken.None))
+                .Where(device => DeviceKinds.IsCamera(device.Type))
+                .ToList();
             _deviceIds = devices.Select(device => device.Id).ToList();
             _deviceNames = devices.ToDictionary(
                 device => device.Id,
