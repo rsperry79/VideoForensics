@@ -46,12 +46,16 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Session session = await RealSessionHelper.CreateAuthenticatedSessionAsync();
             Entities.Devices devices = await session.GetRingDevices();
+            // Doorbots and stickup cams are separate lists in Ring's response, and both can stream live view.
+            var cameras = devices.Doorbots.Select(d => (Name: d.Description, Id: (long)d.Id))
+                .Concat(devices.StickupCams.Where(c => c.Id is not null).Select(c => (Name: c.Description, Id: c.Id!.Value)))
+                .ToList();
             string wantedName = Environment.GetEnvironmentVariable("RING_TEST_DOORBOT") ?? "Front Door";
-            Entities.Doorbot? doorbot = devices.Doorbots.FirstOrDefault(d => string.Equals(d.Description, wantedName, StringComparison.OrdinalIgnoreCase));
-            if (doorbot is null)
+            var camera = cameras.FirstOrDefault(c => string.Equals(c.Name, wantedName, StringComparison.OrdinalIgnoreCase));
+            if (camera.Id == 0)
             {
-                string available = string.Join(", ", devices.Doorbots.Select(d => d.Description));
-                Assert.Skip($"No doorbot named '{wantedName}' on this account (set RING_TEST_DOORBOT). Available: {available}");
+                string available = string.Join(", ", cameras.Select(c => c.Name));
+                Assert.Skip($"No camera named '{wantedName}' on this account (set RING_TEST_DOORBOT). Available: {available}");
                 return;
             }
 
@@ -59,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // surfaces here with the HTTP status and correlation id.
             using var startCts = new CancellationTokenSource(StartTimeout);
             var transport = new RecordingTransport(new ClientWebSocketTransport());
-            RingLiveViewSession liveView = await session.StartLiveView(doorbot.Id, transport, startCts.Token);
+            RingLiveViewSession liveView = await session.StartLiveView(camera.Id, transport, startCts.Token);
             using (liveView)
             {
                 var up = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -80,7 +84,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 Assert.True(
                     finished == up.Task,
                     $"Live view started but never connected within {MediaTimeout.TotalSeconds:0}s (last state: {lastState}). "
-                    + $"Signaling messages received (method only): [{string.Join(", ", transport.ReceivedMethods)}].");
+                    + $"Signaling messages received (method only): [{string.Join(", ", transport.ReceivedMethods)}]. "
+                    + $"Sent methods in order: [{string.Join(", ", transport.SentMethods)}]. "
+                    + $"Offer media lines: [{string.Join(" | ", transport.SentOfferLines)}].");
                 await liveView.CloseAsync();
             }
         }
@@ -102,7 +108,44 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             public Task ConnectAsync(Uri uri, CancellationToken cancellationToken) => _inner.ConnectAsync(uri, cancellationToken);
 
-            public Task SendAsync(string message, CancellationToken cancellationToken) => _inner.SendAsync(message, cancellationToken);
+            public Task SendAsync(string message, CancellationToken cancellationToken)
+            {
+                SentMethods.Add(SentMethodOf(message));
+                if (message.Contains("\"live_view\"", StringComparison.Ordinal))
+                {
+                    SentOfferLines = OfferMediaLines(message);
+                }
+
+                return _inner.SendAsync(message, cancellationToken);
+            }
+
+            /// <summary>The method of each message we sent, in order.</summary>
+            public List<string> SentMethods { get; } = new();
+
+            /// <summary>The media description lines of the offer we sent, without ICE credentials or fingerprints.</summary>
+            public List<string> SentOfferLines { get; private set; } = new();
+
+            private static string SentMethodOf(string message)
+            {
+                using JsonDocument document = JsonDocument.Parse(message);
+                return document.RootElement.TryGetProperty("method", out JsonElement method) ? method.GetString() ?? "null" : "no-method";
+            }
+
+            private static List<string> OfferMediaLines(string message)
+            {
+                using JsonDocument document = JsonDocument.Parse(message);
+                string sdp = document.RootElement.GetProperty("body").GetProperty("sdp").GetString() ?? string.Empty;
+                return sdp.Split("\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(line => line.StartsWith("m=", StringComparison.Ordinal)
+                        || line.StartsWith("a=rtpmap", StringComparison.Ordinal)
+                        || line.StartsWith("a=fmtp", StringComparison.Ordinal)
+                        || line.StartsWith("a=sendrecv", StringComparison.Ordinal)
+                        || line.StartsWith("a=recvonly", StringComparison.Ordinal)
+                        || line.StartsWith("a=sendonly", StringComparison.Ordinal)
+                        || line.StartsWith("a=setup", StringComparison.Ordinal)
+                        || line.StartsWith("a=mid", StringComparison.Ordinal))
+                    .ToList();
+            }
 
             public async Task<string?> ReceiveAsync(CancellationToken cancellationToken)
             {
