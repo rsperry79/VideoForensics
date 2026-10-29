@@ -1,5 +1,6 @@
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -12,19 +13,43 @@ public sealed class ReviewEventLoader : IReviewEventLoader
     public const int MaxDevices = 64;
 
     private readonly IEventRepository _events;
+    private readonly ReviewCaseMode? _caseMode;
 
-    /// <summary>Creates the loader over the event repository.</summary>
-    public ReviewEventLoader(IEventRepository events)
+    /// <summary>
+    /// Creates the loader over the event repository. When <paramref name="caseMode"/> is active, pages come from the
+    /// case's pinned events in memory. Null means the case view is never active.
+    /// </summary>
+    public ReviewEventLoader(IEventRepository events, ReviewCaseMode? caseMode = null)
     {
         _events = events;
+        _caseMode = caseMode;
     }
 
     /// <inheritdoc />
     public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
     {
+        if (_caseMode is { Active: true })
+        {
+            return Task.FromResult(CaseEventPage(_caseMode, deviceIds, fromUtc, toUtc, skip, take));
+        }
+
         // Cameras are capped at the state's limit, so this cut is defensive only.
         List<Guid> devices = deviceIds.Distinct().Take(MaxDevices).ToList();
         return _events.ListPageByDevicesAndDateRangeAsync(
             devices, fromUtc, toUtc, ReviewEventFilters.ExcludedEventTypes, skip, take, ct);
+    }
+
+    /// <summary>
+    /// Filters the case's events to the requested devices and window, newest first, then cuts the page. The total is the
+    /// full matching count, so the events tab's paging works the same as against the repository.
+    /// </summary>
+    private static EventPage CaseEventPage(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take)
+    {
+        HashSet<Guid> devices = deviceIds.ToHashSet();
+        List<Event> matching = caseMode.Events
+            .Where(evt => devices.Contains(evt.DeviceId) && evt.OccurredAtUtc >= fromUtc && evt.OccurredAtUtc <= toUtc)
+            .OrderByDescending(evt => evt.OccurredAtUtc)
+            .ToList();
+        return new EventPage(matching.Skip(skip).Take(take).ToList(), matching.Count);
     }
 }

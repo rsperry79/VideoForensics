@@ -106,6 +106,18 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The page's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewPage>> PageLogger { get; } = new();
 
+    /// <summary>The media item repository double the case view reads pinned clips through.</summary>
+    protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
+
+    /// <summary>The event repository double the case view reads pinned events through.</summary>
+    protected Mock<IEventRepository> EventRepositoryMock { get; } = new();
+
+    private readonly Dictionary<Guid, MediaItem> _mediaById = [];
+    private readonly Dictionary<Guid, Event> _eventsById = [];
+
+    /// <summary>The case view service, resolved from the same scope the page uses.</summary>
+    protected ReviewCaseMode CaseMode => Services.GetRequiredService<ReviewCaseMode>();
+
     /// <summary>The page's localizer, resolved the way the page resolves it.</summary>
     protected IStringLocalizer<ReviewPage> L => Services.GetRequiredService<IStringLocalizer<ReviewPage>>();
 
@@ -145,6 +157,18 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped<CaseState>();
         _ = Services.AddScoped<ReviewEvidenceTagger>();
         _ = Services.AddScoped<ReviewSelection>();
+        _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        _ = Services.AddScoped(_ => EventRepositoryMock.Object);
+        _ = Services.AddScoped(sp => new ReviewCaseMode(
+            sp.GetRequiredService<ICaseRepository>(),
+            sp.GetRequiredService<IMediaItemRepository>(),
+            sp.GetRequiredService<IEventRepository>()));
+        _ = MediaItemRepositoryMock
+            .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItem?>(_mediaById.GetValueOrDefault(id)));
+        _ = EventRepositoryMock
+            .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));
         _ = Services.AddScoped(_ => StillCaptureMock.Object);
         _ = StillCaptureMock
             .Setup(m => m.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -177,6 +201,53 @@ public abstract class ReviewTestContext : BunitContext
             .ReturnsAsync(() => Devices.ToList());
 
         SignInOperatorAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates a case whose pins are the given media items and events, wires the case, pin, and row doubles, and
+    /// returns the case id. Set the case repository double before rendering anything that resolves the case view.
+    /// </summary>
+    protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
+    {
+        Guid caseId = Guid.NewGuid();
+        var pins = new List<CaseItem>();
+        foreach (MediaItem item in media)
+        {
+            _mediaById[item.Id] = item;
+            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = item.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+        }
+
+        foreach (Event evt in events ?? [])
+        {
+            _eventsById[evt.Id] = evt;
+            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = evt.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+        }
+
+        var caseRepository = new Mock<ICaseRepository>();
+        _ = caseRepository
+            .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = title, CreatedBy = "op" });
+        _ = caseRepository
+            .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pins);
+        CaseRepositoryDouble = caseRepository.Object;
+        return caseId;
+    }
+
+    /// <summary>A clip on <paramref name="device"/> recorded at <paramref name="recordedUtc"/>, lasting one minute.</summary>
+    protected static MediaItem PinnableClip(Guid device, DateTime recordedUtc)
+    {
+        return new MediaItem
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            RecordedAtUtc = recordedUtc,
+            DurationSeconds = 60,
+            Sha256Hash = "hash",
+        };
     }
 
     /// <summary>Adds a provider account with the given provider name and returns it.</summary>

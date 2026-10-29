@@ -1,12 +1,26 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Components.Review
+@using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IDisposable
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
+@inject ReviewCaseMode CaseMode
 @inject IStringLocalizer<ReviewPage> L
+
+@if (CaseMode.Active)
+{
+    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 w-100 py-2 mb-2" role="status" data-testid="review-case-banner">
+        <span>@L["CaseModeBanner", CaseMode.CaseName ?? string.Empty]</span>
+        @if (CaseMode.Truncated)
+        {
+            <span class="small" data-testid="review-case-truncated">@L["CaseModeTruncated", ReviewCaseMode.MaxItemsPerKind]</span>
+        }
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-testid="review-case-leave" @onclick="OnLeaveCase">@L["CaseModeLeave"]</button>
+    </div>
+}
 
 <div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
     <div class="d-flex align-items-center gap-2">
@@ -114,11 +128,22 @@
     protected override void OnInitialized()
     {
         State.OnChange += OnStateChanged;
+        CaseMode.OnChange += OnStateChanged;
     }
 
     private void OnStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Leaves the case view and navigates to the same route without the case parameter. The other query
+    /// parameters stay as they are.
+    /// </summary>
+    private void OnLeaveCase()
+    {
+        CaseMode.Exit();
+        NavigationManager.NavigateTo(ReviewUrl.WithoutCaseView(NavigationManager.Uri));
     }
 
     private void OnToggleFilter()
@@ -191,5 +216,6 @@
     public void Dispose()
     {
         State.OnChange -= OnStateChanged;
+        CaseMode.OnChange -= OnStateChanged;
     }
 }

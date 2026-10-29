@@ -1,5 +1,6 @@
 using Bunit;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +11,7 @@ using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -347,6 +349,117 @@ public class ReviewPage_Tests : ReviewTestContext
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
         Assert.Single(cut.FindAll("[data-testid='review-camera-button']"));
+    }
+
+    [Fact]
+    public void ReviewPage_CaseQuery_EntersCaseModeAndSeedsCamerasRangeAndCursor()
+    {
+        // Arrange
+        AddDevices(3);
+        Guid first = Devices[0].Id;
+        Guid second = Devices[1].Id;
+        MediaItem early = PinnableClip(first, FixedNowUtc.AddHours(-3));
+        MediaItem late = PinnableClip(second, FixedNowUtc.AddHours(-1));
+        Guid caseId = ArrangePinnedCase("Driveway", [early, late]);
+        NavigateToReview("reviewcase=" + caseId.ToString("D"));
+
+        // Act
+        _ = Render<ReviewPage>();
+
+        // Assert
+        Assert.True(CaseMode.Active);
+        Assert.Equal([first, second], ReviewState.CameraIds);
+        Assert.Equal(FixedNowUtc.AddHours(-3).AddMinutes(-1), ReviewState.FromUtc);
+        Assert.Equal(FixedNowUtc.AddHours(-1).AddSeconds(60).AddMinutes(1), ReviewState.ToUtc);
+        Assert.Equal(FixedNowUtc.AddHours(-3), ReviewState.Cursor);
+    }
+
+    [Fact]
+    public void ReviewPage_CaseQueryWithOwnCameras_KeepsTheCamerasTheUrlNames()
+    {
+        // Arrange
+        AddDevices(3);
+        Guid pinnedDevice = Devices[0].Id;
+        Guid urlDevice = Devices[2].Id;
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(pinnedDevice, FixedNowUtc.AddHours(-1))]);
+        NavigateToReview($"devices={urlDevice:D}&reviewcase={caseId:D}");
+
+        // Act
+        _ = Render<ReviewPage>();
+
+        // Assert
+        Assert.True(CaseMode.Active);
+        Assert.Equal([urlDevice], ReviewState.CameraIds);
+    }
+
+    [Fact]
+    public void ReviewPage_CaseQueryForUnknownCase_ShowsTheNotFoundMessageAndStaysInNormalMode()
+    {
+        // Arrange
+        AddDevices(2);
+        var caseRepository = new Mock<ICaseRepository>();
+        Guid unknown = Guid.NewGuid();
+        _ = caseRepository.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        CaseRepositoryDouble = caseRepository.Object;
+        NavigateToReview("reviewcase=" + unknown.ToString("D"));
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert
+        Assert.False(CaseMode.Active);
+        Assert.Contains(L["CaseNotFound"].Value, cut.Find("[data-testid='review-case-not-found']").TextContent);
+        Assert.DoesNotContain("reviewcase=", CurrentUri);
+    }
+
+    [Fact]
+    public void ReviewPage_CaseMode_WriteBackKeepsTheMediaRouteAndTheCaseParam()
+    {
+        // Arrange
+        AddDevices(1);
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(Devices[0].Id, FixedNowUtc.AddHours(-1))]);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?reviewcase=" + caseId.ToString("D"));
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Act
+        cut.Find("[data-testid='review-tab-button-events']").Click();
+
+        // Assert
+        Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
+        Assert.Contains("reviewcase=" + caseId.ToString("D"), CurrentUri);
+    }
+
+    [Fact]
+    public void ReviewPage_NormalMode_WriteBackOnMediaStaysOnMedia()
+    {
+        // Arrange
+        AddDevices(1);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media");
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Act
+        cut.Find("[data-testid='review-tab-button-events']").Click();
+
+        // Assert
+        Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
+        Assert.DoesNotContain("reviewcase=", CurrentUri);
+    }
+
+    [Fact]
+    public void ReviewPage_Dispose_ExitsCaseMode()
+    {
+        // Arrange
+        AddDevices(1);
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(Devices[0].Id, FixedNowUtc.AddHours(-1))]);
+        NavigateToReview("reviewcase=" + caseId.ToString("D"));
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+        Assert.True(CaseMode.Active);
+
+        // Act
+        ((IDisposable)cut.Instance).Dispose();
+
+        // Assert
+        Assert.False(CaseMode.Active);
     }
 
     /// <summary>Ring owns Devices[0]; Wyze owns Devices[1]. Returns the Ring and Wyze devices.</summary>

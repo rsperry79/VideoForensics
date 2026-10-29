@@ -200,4 +200,87 @@ public class ReviewUrl_Tests
         // Assert
         Assert.Equal(DefaultState(), parsed);
     }
+
+    [Fact]
+    public void Parse_CaseParam_ReadsTheCaseGuid()
+    {
+        // Arrange
+        Guid caseId = Guid.NewGuid();
+
+        // Act
+        ReviewUrlState state = ReviewUrl.Parse("reviewcase=" + caseId.ToString("D"));
+
+        // Assert
+        Assert.Equal(caseId, state.CaseId);
+    }
+
+    [Fact]
+    public void Parse_GarbageCaseParam_IsIgnored()
+    {
+        // Act
+        ReviewUrlState state = ReviewUrl.Parse("reviewcase=not-a-guid");
+
+        // Assert
+        Assert.Null(state.CaseId);
+    }
+
+    [Fact]
+    public void ReviewUrl_ActiveCaseContextParameter_IsNotTheCaseView()
+    {
+        // "case" is the app-wide active-case context (CaseUrl); only "reviewcase" opens the case view.
+        Guid caseId = Guid.NewGuid();
+
+        ReviewUrlState state = ReviewUrl.Parse("case=" + caseId.ToString("D"));
+
+        Assert.Null(state.CaseId);
+    }
+
+    [Fact]
+    public void ReviewUrl_WithoutCaseView_RemovesOnlyTheReviewCaseParameter()
+    {
+        Guid caseId = Guid.NewGuid();
+        string uri = "http://localhost/media?case=" + caseId.ToString("D") + "&reviewcase=" + caseId.ToString("D") + "&tab=Events";
+
+        string result = ReviewUrl.WithoutCaseView(uri);
+
+        Assert.DoesNotContain("reviewcase=", result);
+        Assert.Contains("case=" + caseId.ToString("D"), result);
+        Assert.Contains("tab=Events", result);
+    }
+
+    [Fact]
+    public void Build_CaseId_WritesTheCaseParam()
+    {
+        // Arrange
+        Guid caseId = Guid.NewGuid();
+
+        // Act
+        string query = ReviewUrl.Build(DefaultState() with { CaseId = caseId });
+
+        // Assert
+        Assert.Equal("reviewcase=" + caseId.ToString("D"), query);
+    }
+
+    [Fact]
+    public void Build_NullCaseId_OmitsTheCaseKey()
+    {
+        // Act
+        string query = ReviewUrl.Build(DefaultState());
+
+        // Assert
+        Assert.DoesNotContain("reviewcase=", query);
+    }
+
+    [Fact]
+    public void RoundTrip_CaseId_ParseReturnsEqualState()
+    {
+        // Arrange
+        ReviewUrlState state = DefaultState() with { CaseId = Guid.NewGuid(), FromUtc = From, ToUtc = To };
+
+        // Act
+        ReviewUrlState parsed = ReviewUrl.Parse(ReviewUrl.Build(state));
+
+        // Assert
+        Assert.Equal(state, parsed);
+    }
 }

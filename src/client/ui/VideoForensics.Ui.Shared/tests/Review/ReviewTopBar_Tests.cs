@@ -1,5 +1,6 @@
 using AngleSharp.Dom;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Bunit;
 
@@ -22,6 +23,71 @@ public class ReviewTopBar_Tests : ReviewTestContext
             .Add(p => p.Devices, Devices.Select(d => d.Id).ToList())
             .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf))
             .Add(p => p.UtcNow, () => FixedNowUtc));
+    }
+
+    [Fact]
+    public async Task ReviewTopBar_CaseModeActive_ShowsTheBannerWithTheCaseName()
+    {
+        // Arrange
+        AddDevices(1);
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(Devices[0].Id, FixedNowUtc.AddHours(-1))]);
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        string banner = cut.Find("[data-testid='review-case-banner']").TextContent;
+        Assert.Contains(L["CaseModeBanner", "Driveway"].Value, banner);
+        Assert.Empty(cut.FindAll("[data-testid='review-case-truncated']"));
+    }
+
+    [Fact]
+    public async Task ReviewTopBar_CaseModeTruncated_ShowsTheTruncationNotice()
+    {
+        // Arrange
+        AddDevices(1);
+        var clips = Enumerable.Range(0, ReviewCaseMode.MaxItemsPerKind + 1)
+            .Select(i => PinnableClip(Devices[0].Id, FixedNowUtc.AddMinutes(-i)))
+            .ToList();
+        Guid caseId = ArrangePinnedCase("Big", clips);
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Contains(L["CaseModeTruncated", ReviewCaseMode.MaxItemsPerKind].Value, cut.Find("[data-testid='review-case-truncated']").TextContent);
+    }
+
+    [Fact]
+    public void ReviewTopBar_CaseModeInactive_ShowsNoBanner()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-case-banner']"));
+    }
+
+    [Fact]
+    public async Task ReviewTopBar_LeaveCaseClick_ExitsCaseModeAndNavigatesWithoutTheCaseParam()
+    {
+        // Arrange
+        AddDevices(1);
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(Devices[0].Id, FixedNowUtc.AddHours(-1))]);
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?reviewcase=" + caseId.ToString("D") + "&tab=Events");
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Act
+        cut.Find("[data-testid='review-case-leave']").Click();
+
+        // Assert
+        Assert.False(CaseMode.Active);
+        Assert.DoesNotContain("reviewcase=", CurrentUri);
+        Assert.Contains("tab=Events", CurrentUri);
+        Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
     }
 
     [Fact]
