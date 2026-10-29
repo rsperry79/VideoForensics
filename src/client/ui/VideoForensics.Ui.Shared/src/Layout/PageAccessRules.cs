@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
@@ -122,12 +123,18 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRole.SuperAdmin),
                 AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRole.SuperAdmin) && ctx.IsLocalTier,
                 AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRole.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
-                AccessPolicy.ReportSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.ReportsOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
-                AccessPolicy.EmailSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.EmailOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
-                AccessPolicy.NotificationSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.NotificationsOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
-                AccessPolicy.LlmSettings => ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.LlmOpenToAdmin && ctx.HasRole(OperatorRole.Admin)),
+                AccessPolicy.ReportSettings => AllowsSetting(RestrictedSettings.Reports, ctx),
+                AccessPolicy.EmailSettings => AllowsSetting(RestrictedSettings.Email, ctx),
+                AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
+                AccessPolicy.LlmSettings => AllowsSetting(RestrictedSettings.Llm, ctx),
                 _ => false,
             };
+        }
+
+        /// <summary>SuperAdmin always; Admin only once a Super Admin has opened that settings page to admins.</summary>
+        private static bool AllowsSetting(RestrictedSettings area, NavContext ctx)
+        {
+            return ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.OpenToAdmin.HasFlag(area) && ctx.HasRole(OperatorRole.Admin));
         }
 
         private static string StripQuery(string path)

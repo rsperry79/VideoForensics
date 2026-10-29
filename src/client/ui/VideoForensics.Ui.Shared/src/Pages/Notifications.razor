@@ -203,8 +203,8 @@ else
             var client = CreateClient();
 
             // Admins only reach the controls when a Super Admin has opened notification settings to them.
-            var permissions = await client.GetFromJsonAsync<NotificationPermissionsDto>("api/v1/permissions/notifications");
-            _noAccess = !NotificationSettingsGate.CanChange(permissions?.NotificationSettingsAccess, NavContext.FromSession(SessionState, appLockSupported: false));
+            var permissions = await client.GetFromJsonAsync<SettingsAccessLevelDto>("api/v1/permissions/notifications");
+            _noAccess = !SettingsAccessGate.CanChange(permissions?.Access, NavContext.FromSession(SessionState, appLockSupported: false));
             if (_noAccess)
             {
                 return;

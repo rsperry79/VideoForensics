@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services
@@ -78,17 +79,11 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// </summary>
         public virtual bool IsTwoFactorRequired { get; private set; }
 
-        /// <summary>True when a Super Admin has opened report settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
-        public virtual bool ReportsOpenToAdmin { get; private set; }
-
-        /// <summary>True when a Super Admin has opened email settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
-        public virtual bool EmailOpenToAdmin { get; private set; }
-
-        /// <summary>True when a Super Admin has opened notification settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
-        public virtual bool NotificationsOpenToAdmin { get; private set; }
-
-        /// <summary>True when a Super Admin has opened LLM settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
-        public virtual bool LlmOpenToAdmin { get; private set; }
+        /// <summary>
+        /// The restricted settings pages a Super Admin has opened to admins. Only read for Admin sessions (a Super Admin
+        /// always has access, a lower role never does). In-memory only, like <see cref="IsLocalTier"/>.
+        /// </summary>
+        public virtual RestrictedSettings SettingsOpenToAdmin { get; private set; }
 
         /// <summary>
         /// True once the server has reported the tier and credential kind for the current session. False after sign-in
@@ -243,7 +238,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// </summary>
         private async Task LoadSettingsAccessAsync(HttpClient client)
         {
-            ApplySettingsAccess(false, false, false, false);
+            SettingsOpenToAdmin = RestrictedSettings.None;
             if (Role != nameof(OperatorRole.Admin))
             {
                 return;
@@ -254,7 +249,11 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 SettingsAccessResponse? access = await client.GetFromJsonAsync<SettingsAccessResponse>("api/v1/permissions/settings-access");
                 if (access is not null)
                 {
-                    ApplySettingsAccess(access.ReportsOpenToAdmin, access.EmailOpenToAdmin, access.NotificationsOpenToAdmin, access.LlmOpenToAdmin);
+                    SettingsOpenToAdmin =
+                        (access.ReportsOpenToAdmin ? RestrictedSettings.Reports : RestrictedSettings.None)
+                        | (access.EmailOpenToAdmin ? RestrictedSettings.Email : RestrictedSettings.None)
+                        | (access.NotificationsOpenToAdmin ? RestrictedSettings.Notifications : RestrictedSettings.None)
+                        | (access.LlmOpenToAdmin ? RestrictedSettings.Llm : RestrictedSettings.None);
                 }
             }
             catch (Exception)
@@ -264,18 +263,10 @@ namespace VideoForensics.Client.Ui.Shared.Services
         }
 
         /// <summary>Records which settings pages are open to admins. Public so hosts and tests can seed it.</summary>
-        public void SetSettingsAccess(bool reportsOpenToAdmin, bool emailOpenToAdmin, bool notificationsOpenToAdmin, bool llmOpenToAdmin = false)
+        public void SetSettingsAccess(RestrictedSettings openToAdmin)
         {
-            ApplySettingsAccess(reportsOpenToAdmin, emailOpenToAdmin, notificationsOpenToAdmin, llmOpenToAdmin);
+            SettingsOpenToAdmin = openToAdmin;
             ServerKindChanged?.Invoke();
-        }
-
-        private void ApplySettingsAccess(bool reports, bool email, bool notifications, bool llm)
-        {
-            LlmOpenToAdmin = llm;
-            ReportsOpenToAdmin = reports;
-            EmailOpenToAdmin = email;
-            NotificationsOpenToAdmin = notifications;
         }
 
         /// <summary>
@@ -307,7 +298,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             Role = null;
             MustChangePassword = false;
             PasskeySetupOnly = false;
-            ApplySettingsAccess(false, false, false, false);
+            SettingsOpenToAdmin = RestrictedSettings.None;
             ApplyServerSessionKind(localTier: false, passkeySession: false, known: false);
             try
             {

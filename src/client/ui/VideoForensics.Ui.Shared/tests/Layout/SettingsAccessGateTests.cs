@@ -6,7 +6,7 @@ using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 
-public class EmailSettingsGateTests
+public class SettingsAccessGateTests
 {
     private static NavContext Operator(OperatorRole role)
     {
@@ -19,19 +19,19 @@ public class EmailSettingsGateTests
     [InlineData("not-a-level")]
     public void CanChange_DefaultOrUnknownLevel_OnlySuperAdminCanChange(string? level)
     {
-        Assert.True(EmailSettingsGate.CanChange(level, Operator(OperatorRole.SuperAdmin)));
-        Assert.False(EmailSettingsGate.CanChange(level, Operator(OperatorRole.Admin)));
+        Assert.True(SettingsAccessGate.CanChange(level, Operator(OperatorRole.SuperAdmin)));
+        Assert.False(SettingsAccessGate.CanChange(level, Operator(OperatorRole.Admin)));
     }
 
     [Fact]
     public void CanChange_AdminLevel_AdminCanChange()
     {
-        Assert.True(EmailSettingsGate.CanChange(ProviderEditAccessLevels.Admin, Operator(OperatorRole.Admin)));
+        Assert.True(SettingsAccessGate.CanChange(ProviderEditAccessLevels.Admin, Operator(OperatorRole.Admin)));
     }
 
     [Fact]
     public void CanChange_AdminLevel_ReviewCannotChange()
     {
-        Assert.False(EmailSettingsGate.CanChange(ProviderEditAccessLevels.Admin, Operator(OperatorRole.Review)));
+        Assert.False(SettingsAccessGate.CanChange(ProviderEditAccessLevels.Admin, Operator(OperatorRole.Review)));
     }
 }

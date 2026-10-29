@@ -137,8 +137,8 @@ else
             }
 
             HttpClient client = ClientFactory.CreateClient();
-            ReportPermissionsDto? permissions = await client.GetFromJsonAsync<ReportPermissionsDto>("/api/v1/permissions/reports");
-            _canChange = ReportSettingsGate.CanChange(permissions?.ReportSettingsAccess, NavContext.FromSession(SessionState, appLockSupported: false));
+            SettingsAccessLevelDto? permissions = await client.GetFromJsonAsync<SettingsAccessLevelDto>("/api/v1/permissions/reports");
+            _canChange = SettingsAccessGate.CanChange(permissions?.Access, NavContext.FromSession(SessionState, appLockSupported: false));
             if (_canChange)
             {
                 _reportFormat = Config.ReportOutputFormat;
