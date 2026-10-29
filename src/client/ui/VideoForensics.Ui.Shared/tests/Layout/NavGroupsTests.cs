@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 
 using System.Reflection;
 
@@ -249,7 +250,7 @@ public class NavGroups_Tests
         // Hidden from Admin until a Super Admin opens notification settings to admins
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
         Assert.False(notificationsItem.IsVisible(adminCtx));
-        Assert.True(notificationsItem.IsVisible(adminCtx with { NotificationsOpenToAdmin = true }));
+        Assert.True(notificationsItem.IsVisible(adminCtx with { OpenToAdmin = RestrictedSettings.Notifications }));
 
         // Super Admin always sees it
         Assert.True(notificationsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));

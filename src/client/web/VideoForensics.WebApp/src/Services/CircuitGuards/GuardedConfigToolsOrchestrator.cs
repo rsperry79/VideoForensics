@@ -2,6 +2,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
@@ -11,7 +12,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     /// need SuperAdminLocal; report settings need the level set on the Permissions page (SuperAdmin unless opened to Admin); the other settings need Admin. A denied change returns a failed result, not an exception,
     /// so the page can show the reason.
     /// </summary>
-    public sealed class GuardedConfigToolsOrchestrator(IConfigToolsOrchestrator inner, ICircuitOperatorGate gate, ServerLogLevel? serverLogLevel = null, IReportSettingsPolicy? reportPolicy = null) : IConfigToolsOrchestrator
+    public sealed class GuardedConfigToolsOrchestrator(IConfigToolsOrchestrator inner, ICircuitOperatorGate gate, ServerLogLevel? serverLogLevel = null, ISettingsAccessPolicy? accessPolicy = null) : IConfigToolsOrchestrator
     {
         public async Task<(bool Success, string Message)> SetLoggingLevelAsync(IForensicsConfiguration config, string level, CancellationToken ct = default)
         {
@@ -78,7 +79,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
         private async Task<(bool Success, string Message)> RunReportSetting(Func<Task<(bool Success, string Message)>> change, CancellationToken ct)
         {
             // Without a policy store the safe default applies: SuperAdmin only.
-            AccessPolicy required = reportPolicy is null ? AccessPolicy.SuperAdmin : await reportPolicy.GetRequiredPolicyAsync(ct);
+            AccessPolicy required = accessPolicy is null ? AccessPolicy.SuperAdmin : await accessPolicy.GetRequiredPolicyAsync(RestrictedSettings.Reports, ct);
             return await Run(required, change);
         }
 

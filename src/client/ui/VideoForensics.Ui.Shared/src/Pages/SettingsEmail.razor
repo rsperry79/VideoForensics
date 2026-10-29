@@ -121,8 +121,8 @@ else
         try
         {
             HttpClient client = ClientFactory.CreateClient();
-            EmailPermissionsDto? permissions = await client.GetFromJsonAsync<EmailPermissionsDto>("/api/v1/permissions/email");
-            _canChange = EmailSettingsGate.CanChange(permissions?.EmailSettingsAccess, NavContext.FromSession(SessionState, appLockSupported: false));
+            SettingsAccessLevelDto? permissions = await client.GetFromJsonAsync<SettingsAccessLevelDto>("/api/v1/permissions/email");
+            _canChange = SettingsAccessGate.CanChange(permissions?.Access, NavContext.FromSession(SessionState, appLockSupported: false));
             if (!_canChange)
             {
                 return;

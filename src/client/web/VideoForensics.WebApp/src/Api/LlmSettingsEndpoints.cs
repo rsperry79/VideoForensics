@@ -7,7 +7,7 @@ namespace VideoForensics.Client.WebApp.Api
     /// <summary>
     /// LLM settings API endpoints for configuring the embedded MCP-backed chat assistant (Milestone 8).
     /// Operators retrieve and update LLM provider configuration (provider, model, API key, base URL).
-    /// Gated to SuperAdmin by default; LlmSettingsFilter lets admins in once the Permissions page opens LLM settings to them.
+    /// Gated to SuperAdmin by default; RequireSettingsAccess lets admins in once the Permissions page opens LLM settings to them.
     /// </summary>
     public static class LlmSettingsEndpoints
     {
@@ -15,7 +15,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             _ = app.MapGet("/api/v1/llm/settings", GetLlmSettingsAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
-                .AddEndpointFilter<LlmSettingsFilter>()
+                .RequireSettingsAccess(RestrictedSettings.Llm)
                 .WithSummary("Get the current LLM configuration (provider, model, base URL)")
                 .Produces<LlmSettingsResponseDto>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status401Unauthorized)
@@ -24,7 +24,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = app.MapPost("/api/v1/llm/settings", UpdateLlmSettingsAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
-                .AddEndpointFilter<LlmSettingsFilter>()
+                .RequireSettingsAccess(RestrictedSettings.Llm)
                 .WithSummary("Update LLM configuration (provider, model, API key, base URL)")
                 .Produces<LlmSettingsResponseDto>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest)

@@ -65,10 +65,7 @@ namespace VideoForensics.Data.Common.Entities
         public const string SetupAdminCreated = nameof(SetupAdminCreated);
         public const string LockoutPolicyUpdated = nameof(LockoutPolicyUpdated);
         public const string ProviderPermissionsUpdated = nameof(ProviderPermissionsUpdated);
-        public const string ReportPermissionsUpdated = nameof(ReportPermissionsUpdated);
-        public const string EmailPermissionsUpdated = nameof(EmailPermissionsUpdated);
-        public const string NotificationPermissionsUpdated = nameof(NotificationPermissionsUpdated);
-        public const string LlmPermissionsUpdated = nameof(LlmPermissionsUpdated);
+        public const string SettingsPermissionsUpdated = nameof(SettingsPermissionsUpdated);
         public const string TwoFactorPolicyUpdated = nameof(TwoFactorPolicyUpdated);
         public const string AuthMethodsUpdated = nameof(AuthMethodsUpdated);
         public const string OperatorUnlocked = nameof(OperatorUnlocked);
@@ -129,10 +126,7 @@ namespace VideoForensics.Data.Common.Entities
             [SetupAdminCreated] = true,
             [LockoutPolicyUpdated] = true,
             [ProviderPermissionsUpdated] = true,
-            [ReportPermissionsUpdated] = true,
-            [EmailPermissionsUpdated] = true,
-            [NotificationPermissionsUpdated] = true,
-            [LlmPermissionsUpdated] = true,
+            [SettingsPermissionsUpdated] = true,
             [TwoFactorPolicyUpdated] = true,
             [AuthMethodsUpdated] = true,
             [OperatorUnlocked] = true,

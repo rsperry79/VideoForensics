@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -34,7 +35,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     public sealed record NavSection(string? Title, IReadOnlyList<NavItem> Items);
 
     /// <summary>Role/session state needed to evaluate nav and page access.</summary>
-    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, bool ReportsOpenToAdmin = false, bool EmailOpenToAdmin = false, bool NotificationsOpenToAdmin = false, bool LlmOpenToAdmin = false)
+    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
     {
         /// <summary>Builds the access context for the current circuit's session, using the server-reported tier.</summary>
         public static NavContext FromSession(PairedSessionState session, bool appLockSupported)
@@ -49,10 +50,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 appLockSupported,
                 IsLocalTier: session.IsLocalTier,
                 IsPasskeySession: session.IsPasskeySession,
-                ReportsOpenToAdmin: session.ReportsOpenToAdmin,
-                EmailOpenToAdmin: session.EmailOpenToAdmin,
-                NotificationsOpenToAdmin: session.NotificationsOpenToAdmin,
-                LlmOpenToAdmin: session.LlmOpenToAdmin);
+                OpenToAdmin: session.SettingsOpenToAdmin);
         }
 
         /// <summary>True when signed in with a role at or above <paramref name="minimum"/>.</summary>

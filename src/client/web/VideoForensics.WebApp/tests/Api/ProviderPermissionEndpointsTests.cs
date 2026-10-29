@@ -63,10 +63,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.Services.AddScoped(_ => Mock.Of<IAppSettingRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<ISecurityAuditLogger>());
             _ = builder.Services.AddScoped(_ => Mock.Of<INetworkTierResolver>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<IReportSettingsPolicy>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<IEmailSettingsPolicy>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<INotificationSettingsPolicy>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<ILlmSettingsPolicy>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<ISettingsAccessPolicy>());
 
             WebApplication app = builder.Build();
             app.MapProviderPermissionEndpoints();

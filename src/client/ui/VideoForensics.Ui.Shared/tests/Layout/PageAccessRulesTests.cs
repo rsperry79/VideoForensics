@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Layout;
 
@@ -59,17 +60,17 @@ public class PageAccessRules_Tests
     public void IsAllowed_NotificationSettingsPage_AdminOperator_DeniedUntilOpened()
     {
         Assert.False(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin)));
-        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin) with { NotificationsOpenToAdmin = true }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Notifications }));
         Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.SuperAdmin)));
     }
 
     [Fact]
     public void IsAllowed_SettingsPages_AdminOperator_FollowTheirOwnOpenFlag()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { EmailOpenToAdmin = true }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { ReportsOpenToAdmin = true }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/integrations/email", Ctx(OperatorRole.Admin) with { EmailOpenToAdmin = true }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin) with { LlmOpenToAdmin = true }));
+        Assert.False(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Reports }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/integrations/email", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Llm }));
         Assert.False(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin)));
         Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.SuperAdmin)));
     }
