@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToChangeSettings" xml:space="preserve">
+    <value>to change settings.</value>
+  </data>
+  <data name="LoadFailed" xml:space="preserve">
+    <value>Could not load report settings: {0}</value>
+  </data>
+  <data name="NoAccessNote" xml:space="preserve">
+    <value>Only a Super Admin can change report settings. A Super Admin can allow admins to change them on the Permissions page.</value>
+  </data>
+  <data name="ReportsSection" xml:space="preserve">
+    <value>Report types</value>
+  </data>
+  <data name="ReportsDescription" xml:space="preserve">
+    <value>Choose which reports the system creates.</value>
+  </data>
+  <data name="ForensicAnalysis" xml:space="preserve">
+    <value>Forensic Analysis</value>
+  </data>
+  <data name="ForensicAnalysisDescription" xml:space="preserve">
+    <value>Creates a written report that summarizes what the analysis found in each case.</value>
+  </data>
+  <data name="SignalAnomaly" xml:space="preserve">
+    <value>Signal Anomaly</value>
+  </data>
+  <data name="SignalAnomalyDescription" xml:space="preserve">
+    <value>Reports unusual signal readings from devices, such as sudden drops or spikes.</value>
+  </data>
+  <data name="ChainOfCustody" xml:space="preserve">
+    <value>Chain of Custody</value>
+  </data>
+  <data name="ChainOfCustodyDescription" xml:space="preserve">
+    <value>Records who handled each piece of evidence and when.</value>
+  </data>
+  <data name="EvidenceValidation" xml:space="preserve">
+    <value>Evidence Validation</value>
+  </data>
+  <data name="EvidenceValidationDescription" xml:space="preserve">
+    <value>Checks that evidence files have not been changed since they were collected.</value>
+  </data>
+  <data name="AccessControl" xml:space="preserve">
+    <value>Access Control</value>
+  </data>
+  <data name="AccessControlDescription" xml:space="preserve">
+    <value>Reports on door and entry activity from access control devices.</value>
+  </data>
+  <data name="ReportingFormatSection" xml:space="preserve">
+    <value>Reporting Format &amp; Redaction</value>
+  </data>
+  <data name="FormatLabel" xml:space="preserve">
+    <value>Report file format</value>
+  </data>
+  <data name="FormatDescription" xml:space="preserve">
+    <value>The file type used when a report is exported. JSON suits other software, XML suits systems that require it, and CSV opens in a spreadsheet.</value>
+  </data>
+  <data name="RedactionLabel" xml:space="preserve">
+    <value>Redaction level</value>
+  </data>
+  <data name="RedactionDescription" xml:space="preserve">
+    <value>How much personal information is hidden in exported reports. None hides nothing, Light hides email and phone details, Medium also hides addresses and coordinates, and Heavy also hides names and device locations.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+</root>

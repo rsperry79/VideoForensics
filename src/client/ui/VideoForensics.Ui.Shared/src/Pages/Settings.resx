@@ -47,32 +47,11 @@
   <data name="AppearanceSection" xml:space="preserve">
     <value>Appearance</value>
   </data>
-  <data name="ReportsSection" xml:space="preserve">
-    <value>Reports</value>
-  </data>
-  <data name="ForensicAnalysis" xml:space="preserve">
-    <value>Forensic Analysis</value>
-  </data>
-  <data name="SignalAnomaly" xml:space="preserve">
-    <value>Signal Anomaly</value>
-  </data>
-  <data name="ChainOfCustody" xml:space="preserve">
-    <value>Chain of Custody</value>
-  </data>
-  <data name="EvidenceValidation" xml:space="preserve">
-    <value>Evidence Validation</value>
-  </data>
-  <data name="AccessControl" xml:space="preserve">
-    <value>Access Control</value>
-  </data>
   <data name="HealthSyncSection" xml:space="preserve">
     <value>Health Sync</value>
   </data>
   <data name="EnableHealthSync" xml:space="preserve">
     <value>Enable RSSI / device-health background sync</value>
-  </data>
-  <data name="ReportingFormatSection" xml:space="preserve">
-    <value>Reporting Format &amp; Redaction</value>
   </data>
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
@@ -85,5 +64,8 @@
   </data>
   <data name="AdminOnlySettingsNote" xml:space="preserve">
     <value>Only an administrator can change these settings. Ask an administrator to make the change.</value>
+  </data>
+  <data name="HealthSyncDescription" xml:space="preserve">
+    <value>Lets the server keep collecting signal strength and device-health readings in the background, so device status stays current.</value>
   </data>
 </root>

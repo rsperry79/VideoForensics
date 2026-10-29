@@ -95,6 +95,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("General", "/settings", Section: "General"),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported, Section: "General"),
                 new("Notifications", "/settings/notifications", Section: "General"),
+                new("Reports", "/settings/reports", Section: "General"),
 
                 new("Provider Accounts", "/accounts", Section: "Sources"),
                 new("Query API", "/query", Section: "Sources"),

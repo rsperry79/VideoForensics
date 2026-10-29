@@ -60,67 +60,15 @@ else if (!_isAuthenticated)
 }
 else
 {
-    <h6 class="mt-4 mb-2">@L["ReportsSection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-column gap-2">
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableForensicAnalysisReports" @bind-Checked:after="@(async () => await SaveForensicAnalysisReportsAsync(Config.EnableForensicAnalysisReports))" Label="@L["ForensicAnalysis"].Value" />
-            @if (_reportMessages.TryGetValue("ForensicAnalysis", out var m1))
-            {
-                <small style="@(m1.Success ? "color: green;" : "color: red;")">@m1.Message</small>
-            }
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableSignalAnomalyReports" @bind-Checked:after="@(async () => await SaveSignalAnomalyReportsAsync(Config.EnableSignalAnomalyReports))" Label="@L["SignalAnomaly"].Value" />
-            @if (_reportMessages.TryGetValue("SignalAnomaly", out var m2))
-            {
-                <small style="@(m2.Success ? "color: green;" : "color: red;")">@m2.Message</small>
-            }
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableChainOfCustodyReports" @bind-Checked:after="@(async () => await SaveChainOfCustodyReportsAsync(Config.EnableChainOfCustodyReports))" Label="@L["ChainOfCustody"].Value" />
-            @if (_reportMessages.TryGetValue("ChainOfCustody", out var m3))
-            {
-                <small style="@(m3.Success ? "color: green;" : "color: red;")">@m3.Message</small>
-            }
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableEvidenceValidationReports" @bind-Checked:after="@(async () => await SaveEvidenceValidationReportsAsync(Config.EnableEvidenceValidationReports))" Label="@L["EvidenceValidation"].Value" />
-            @if (_reportMessages.TryGetValue("EvidenceValidation", out var m4))
-            {
-                <small style="@(m4.Success ? "color: green;" : "color: red;")">@m4.Message</small>
-            }
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableAccessControlMonitoring" @bind-Checked:after="@(async () => await SaveAccessControlReportsAsync(Config.EnableAccessControlMonitoring))" Label="@L["AccessControl"].Value" />
-            @if (_reportMessages.TryGetValue("AccessControl", out var m5))
-            {
-                <small style="@(m5.Success ? "color: green;" : "color: red;")">@m5.Message</small>
-            }
-        </div>
-    </div>
-
     <h6 class="mt-4 mb-2">@L["HealthSyncSection"]</h6>
     <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-2">
+            <small class="text-body-secondary">@L["HealthSyncDescription"]</small>
             <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableHealthSync" @bind-Checked:after="@(async () => await SaveHealthSyncAsync(Config.EnableHealthSync))" Label="@L["EnableHealthSync"].Value" />
             @if (_healthSyncMessage is not null)
             {
                 <span style="@(_healthSyncSuccess ? "color: green;" : "color: red;")">@_healthSyncMessage</span>
             }
-        </div>
-    </div>
-
-    <h6 class="mt-4 mb-2">@L["ReportingFormatSection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-column gap-3">
-            <div class="d-flex flex-row gap-2 align-items-center">
-                <SfDropDownList TValue="string" TItem="string" @bind-Value="_reportFormat" Enabled="@CanAdmin" DataSource="@(new[] { "json", "xml", "csv" })" Style="max-width: 200px;" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveReportFormatAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
-                @if (_reportFormatMessage is not null)
-                {
-                    <span style="@(_reportFormatSuccess ? "color: green;" : "color: red;")">@_reportFormatMessage</span>
-                }
-            </div>
-            <div class="d-flex flex-row gap-2 align-items-center">
-                <SfDropDownList TValue="RedactionLevel" TItem="RedactionLevel" @bind-Value="_redactionLevel" Enabled="@CanAdmin" DataSource="@(Enum.GetValues<RedactionLevel>())" Style="max-width: 200px;" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveRedactionLevelAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
-                @if (_redactionLevelMessage is not null)
-                {
-                    <span style="@(_redactionLevelSuccess ? "color: green;" : "color: red;")">@_redactionLevelMessage</span>
-                }
-            </div>
         </div>
     </div>
 }
@@ -129,18 +77,8 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
 
-    private readonly Dictionary<string, (bool Success, string Message)> _reportMessages = new();
-
     private bool _healthSyncSuccess;
     private string? _healthSyncMessage;
-
-    private string _reportFormat = "json";
-    private bool _reportFormatSuccess;
-    private string? _reportFormatMessage;
-
-    private RedactionLevel _redactionLevel;
-    private bool _redactionLevelSuccess;
-    private string? _redactionLevelMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,8 +88,6 @@ else
             _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
-                _reportFormat = Config.ReportOutputFormat;
-                _redactionLevel = Config.RedactionLevel;
             }
         }
         finally
@@ -163,18 +99,6 @@ else
     private bool CanAdmin => PageAccessRules.Allows(AccessPolicy.Admin, NavContext.FromSession(SessionState, appLockSupported: false));
 
     private bool CanLocalAdmin => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
-
-    private Task SaveForensicAnalysisReportsAsync(bool enabled) => SaveReportToggleAsync("ForensicAnalysis", enabled);
-    private Task SaveSignalAnomalyReportsAsync(bool enabled) => SaveReportToggleAsync("SignalAnomaly", enabled);
-    private Task SaveChainOfCustodyReportsAsync(bool enabled) => SaveReportToggleAsync("ChainOfCustody", enabled);
-    private Task SaveEvidenceValidationReportsAsync(bool enabled) => SaveReportToggleAsync("EvidenceValidation", enabled);
-    private Task SaveAccessControlReportsAsync(bool enabled) => SaveReportToggleAsync("AccessControl", enabled);
-
-    private async Task SaveReportToggleAsync(string reportType, bool enabled)
-    {
-        var (success, message) = await ConfigTools.SetReportEnabledAsync(Config, reportType, enabled, CancellationToken.None);
-        _reportMessages[reportType] = (success, message);
-    }
 
     private async Task SaveHealthSyncAsync(bool enabled)
     {
@@ -206,16 +130,6 @@ else
             _healthSyncSuccess = false;
             _healthSyncMessage = L["HealthSyncError", ex.Message].Value;
         }
-    }
-
-    private async Task SaveReportFormatAsync()
-    {
-        (_reportFormatSuccess, _reportFormatMessage) = await ConfigTools.SetReportFormatAsync(Config, _reportFormat, CancellationToken.None);
-    }
-
-    private async Task SaveRedactionLevelAsync()
-    {
-        (_redactionLevelSuccess, _redactionLevelMessage) = await ConfigTools.SetRedactionLevelAsync(Config, _redactionLevel, CancellationToken.None);
     }
 
 }

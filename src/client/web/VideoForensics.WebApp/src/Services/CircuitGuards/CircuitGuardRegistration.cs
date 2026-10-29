@@ -29,7 +29,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             _ = services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            _ = services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetService<ServerLogLevel>()));
+            _ = services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetService<ServerLogLevel>(), sp.GetService<IReportSettingsPolicy>()));
             _ = services.DecorateScoped<IJammingRepository>((inner, sp) => new GuardedJammingRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
 
             return services;

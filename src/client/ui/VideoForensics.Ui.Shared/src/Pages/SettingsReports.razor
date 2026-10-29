@@ -1,0 +1,173 @@
+@page "/settings/reports"
+@using VideoForensics.Client.Core.Tools
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Layout
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Api.Contracts
+@inject PairedSessionState SessionState
+@inject IForensicsConfiguration Config
+@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
+@inject NavigationManager NavigationManager
+@inject ISelfApiHttpClientFactory ClientFactory
+@inject IStringLocalizer<SettingsReports> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isLoading)
+{
+    <div class="spinner-border spinner-border-sm" role="status"></div>
+}
+else if (!_isAuthenticated)
+{
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToChangeSettings"]
+    </div>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (!_canChange)
+{
+    <div class="alert alert-info">@L["NoAccessNote"]</div>
+}
+else
+{
+    <h6 class="mt-4 mb-2">@L["ReportsSection"]</h6>
+    <p class="text-body-secondary">@L["ReportsDescription"]</p>
+    <div class="card p-4 mb-4">
+        <div class="card-body d-flex flex-column gap-3">
+            <div>
+                <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableForensicAnalysisReports" @bind-Checked:after="@(async () => await SaveReportToggleAsync("ForensicAnalysis", Config.EnableForensicAnalysisReports))" Label="@L["ForensicAnalysis"].Value" />
+                <small class="d-block text-body-secondary">@L["ForensicAnalysisDescription"]</small>
+                <ReportMessage Messages="_reportMessages" Key="ForensicAnalysis" />
+            </div>
+            <div>
+                <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableSignalAnomalyReports" @bind-Checked:after="@(async () => await SaveReportToggleAsync("SignalAnomaly", Config.EnableSignalAnomalyReports))" Label="@L["SignalAnomaly"].Value" />
+                <small class="d-block text-body-secondary">@L["SignalAnomalyDescription"]</small>
+                <ReportMessage Messages="_reportMessages" Key="SignalAnomaly" />
+            </div>
+            <div>
+                <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableChainOfCustodyReports" @bind-Checked:after="@(async () => await SaveReportToggleAsync("ChainOfCustody", Config.EnableChainOfCustodyReports))" Label="@L["ChainOfCustody"].Value" />
+                <small class="d-block text-body-secondary">@L["ChainOfCustodyDescription"]</small>
+                <ReportMessage Messages="_reportMessages" Key="ChainOfCustody" />
+            </div>
+            <div>
+                <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableEvidenceValidationReports" @bind-Checked:after="@(async () => await SaveReportToggleAsync("EvidenceValidation", Config.EnableEvidenceValidationReports))" Label="@L["EvidenceValidation"].Value" />
+                <small class="d-block text-body-secondary">@L["EvidenceValidationDescription"]</small>
+                <ReportMessage Messages="_reportMessages" Key="EvidenceValidation" />
+            </div>
+            <div>
+                <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableAccessControlMonitoring" @bind-Checked:after="@(async () => await SaveReportToggleAsync("AccessControl", Config.EnableAccessControlMonitoring))" Label="@L["AccessControl"].Value" />
+                <small class="d-block text-body-secondary">@L["AccessControlDescription"]</small>
+                <ReportMessage Messages="_reportMessages" Key="AccessControl" />
+            </div>
+        </div>
+    </div>
+
+    <h6 class="mt-4 mb-2">@L["ReportingFormatSection"]</h6>
+    <div class="card p-4 mb-4">
+        <div class="card-body d-flex flex-column gap-4">
+            <div>
+                <label class="form-label fw-semibold">@L["FormatLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["FormatDescription"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <SfDropDownList TValue="string" TItem="FormatOption" @bind-Value="_reportFormat" DataSource="@_formats" Style="max-width: 200px;">
+                        <DropDownListFieldSettings Text="Text" Value="Value" />
+                    </SfDropDownList>
+                    <SfButton Content="@L["SaveButton"]" OnClick="SaveReportFormatAsync" CssClass="e-primary" />
+                    @if (_reportFormatMessage is not null)
+                    {
+                        <span style="@(_reportFormatSuccess ? "color: green;" : "color: red;")">@_reportFormatMessage</span>
+                    }
+                </div>
+            </div>
+            <div>
+                <label class="form-label fw-semibold">@L["RedactionLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["RedactionDescription"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <SfDropDownList TValue="RedactionLevel" TItem="RedactionLevel" @bind-Value="_redactionLevel" DataSource="@(Enum.GetValues<RedactionLevel>())" Style="max-width: 200px;" />
+                    <SfButton Content="@L["SaveButton"]" OnClick="SaveRedactionLevelAsync" CssClass="e-primary" />
+                    @if (_redactionLevelMessage is not null)
+                    {
+                        <span style="@(_redactionLevelSuccess ? "color: green;" : "color: red;")">@_redactionLevelMessage</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>A report file type: stored lowercase, shown in capitals.</summary>
+    private sealed record FormatOption(string Value, string Text);
+
+    private static readonly FormatOption[] _formats =
+    [
+        new("json", "JSON"),
+        new("xml", "XML"),
+        new("csv", "CSV"),
+    ];
+
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private bool _canChange;
+    private string? _loadError;
+
+    private readonly Dictionary<string, (bool Success, string Message)> _reportMessages = new();
+
+    private string _reportFormat = "json";
+    private bool _reportFormatSuccess;
+    private string? _reportFormatMessage;
+
+    private RedactionLevel _redactionLevel;
+    private bool _redactionLevelSuccess;
+    private string? _redactionLevelMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
+            if (!_isAuthenticated)
+            {
+                return;
+            }
+
+            HttpClient client = ClientFactory.CreateClient();
+            ReportPermissionsDto? permissions = await client.GetFromJsonAsync<ReportPermissionsDto>("/api/v1/permissions/reports");
+            _canChange = ReportSettingsGate.CanChange(permissions?.ReportSettingsAccess, NavContext.FromSession(SessionState, appLockSupported: false));
+            if (_canChange)
+            {
+                _reportFormat = Config.ReportOutputFormat;
+                _redactionLevel = Config.RedactionLevel;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _loadError = L["LoadFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveReportToggleAsync(string reportType, bool enabled)
+    {
+        var (success, message) = await ConfigTools.SetReportEnabledAsync(Config, reportType, enabled, CancellationToken.None);
+        _reportMessages[reportType] = (success, message);
+    }
+
+    private async Task SaveReportFormatAsync()
+    {
+        (_reportFormatSuccess, _reportFormatMessage) = await ConfigTools.SetReportFormatAsync(Config, _reportFormat, CancellationToken.None);
+    }
+
+    private async Task SaveRedactionLevelAsync()
+    {
+        (_redactionLevelSuccess, _redactionLevelMessage) = await ConfigTools.SetRedactionLevelAsync(Config, _redactionLevel, CancellationToken.None);
+    }
+}
