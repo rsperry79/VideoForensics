@@ -1,0 +1,11 @@
+/* The review video fits its column: never wider than its container, a stable 16:9 box, and no taller than 62% of the viewport. */
+
+.review-player {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: 62vh;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    background: #000;
+}

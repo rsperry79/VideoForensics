@@ -38,7 +38,22 @@ public class ReviewCameraSelector_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewCameraSelector_SomeCamerasSelected_ShowsTheCountLabel()
+    public void ReviewCameraSelector_TwoCamerasSelected_ShowsThePluralCountLabel()
+    {
+        // Arrange
+        AddDevices(3);
+        SelectOnly(0, 1);
+
+        // Act
+        IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
+
+        // Assert
+        Assert.Equal(L["CamerasSelected", 2].Value, cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+        Assert.Equal("2 cameras", cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_OneCameraSelected_ShowsTheSingularCountLabel()
     {
         // Arrange
         AddDevices(3);
@@ -48,7 +63,8 @@ public class ReviewCameraSelector_Tests : ReviewTestContext
         IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
 
         // Assert
-        Assert.Equal(L["CamerasSelected", 1].Value, cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+        Assert.Equal(L["CameraSelectedOne"].Value, cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+        Assert.Equal("1 camera", cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
     }
 
     [Fact]

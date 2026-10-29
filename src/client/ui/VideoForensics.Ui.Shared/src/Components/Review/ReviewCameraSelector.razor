@@ -77,7 +77,12 @@
             bool allSelected = Devices.Count > 0
                 && State.CameraIds.Count == Devices.Count
                 && Devices.All(State.CameraIds.Contains);
-            return allSelected ? L["AllCameras"].Value : L["CamerasSelected", State.CameraIds.Count].Value;
+            if (allSelected)
+            {
+                return L["AllCameras"].Value;
+            }
+
+            return State.CameraIds.Count == 1 ? L["CameraSelectedOne"].Value : L["CamerasSelected", State.CameraIds.Count].Value;
         }
     }
 

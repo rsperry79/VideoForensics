@@ -1,0 +1,62 @@
+/* The main player sits above a horizontally scrolling strip of preview tiles. Every tile is a fixed 160px wide. */
+
+.single-camera-others-caption {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.single-camera-strip {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    min-width: 0;
+    max-width: 100%;
+    padding-bottom: 0.25rem;
+}
+
+.single-camera-preview {
+    flex: 0 0 160px;
+    width: 160px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+.single-camera-preview video,
+.single-camera-placeholder {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    box-sizing: border-box;
+}
+
+.single-camera-placeholder {
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.single-camera-caption {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+}

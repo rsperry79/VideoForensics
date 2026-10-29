@@ -13,19 +13,19 @@
 @if (_previewIndexes.Count > 0)
 {
     <div class="single-camera-others-caption">@L["SingleCameraOthers"]</div>
-    <div class="single-camera-strip" style="display:flex;gap:8px;overflow-x:auto;">
+    <div class="single-camera-strip">
         @foreach (int index in _previewIndexes)
         {
             CameraTile camera = Cameras[index];
             string? previewUrl = PreviewUrlOf(camera);
-            <button type="button" class="single-camera-preview" data-testid="single-camera-preview" data-camera-index="@index" title="@camera.Label" style="flex:0 0 160px;display:flex;flex-direction:column;gap:4px;padding:0;border:0;background:none;cursor:pointer;" @onclick="() => OnSelect.InvokeAsync(index)">
+            <button type="button" class="single-camera-preview" data-testid="single-camera-preview" data-camera-index="@index" title="@camera.Label" @onclick="() => OnSelect.InvokeAsync(index)">
                 @if (previewUrl is null)
                 {
-                    <div class="single-camera-placeholder" data-testid="single-camera-placeholder" style="width:100%;aspect-ratio:16/9;background:#222;"></div>
+                    <div class="single-camera-placeholder" data-testid="single-camera-placeholder">@L["ReviewPlayerGap"]</div>
                 }
                 else
                 {
-                    <video src="@previewUrl" muted loop autoplay playsinline preload="metadata" style="width:100%;aspect-ratio:16/9;background:#000;" @ref="_previewVideos[index]"></video>
+                    <video src="@previewUrl" muted loop autoplay playsinline preload="metadata" @ref="_previewVideos[index]"></video>
                 }
                 <span class="single-camera-caption">@camera.Label</span>
             </button>
