@@ -73,6 +73,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
                 // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).
                 ["/settings/permissions"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                // Admins reach the page so it can say why they cannot change anything; the Permissions setting
+                // (ReportSettingsGate) decides whether it offers controls, and the guarded orchestrator enforces it.
+                ["/settings/reports"] = AccessPolicy.Admin,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/software-paths"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,

@@ -56,6 +56,18 @@
   <data name="ProviderEditSuperAdminOption" xml:space="preserve">
     <value>Super Admin only</value>
   </data>
+  <data name="ReportsSection" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="ReportsDescription" xml:space="preserve">
+    <value>Choose who may open the Reports settings page and change which reports are created, their file format and how much personal information they hide. Super Admins can always change them.</value>
+  </data>
+  <data name="ReportsLabel" xml:space="preserve">
+    <value>Who may change report settings</value>
+  </data>
+  <data name="ReportsSuperAdminOption" xml:space="preserve">
+    <value>Super Admin only (default)</value>
+  </data>
   <data name="Save" xml:space="preserve">
     <value>Save</value>
   </data>

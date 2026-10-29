@@ -101,6 +101,9 @@
   <data name="Notifications" xml:space="preserve">
     <value>Notifications</value>
   </data>
+  <data name="Reports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
   <data name="Security Audit Log" xml:space="preserve">
     <value>Security Audit Log</value>
   </data>

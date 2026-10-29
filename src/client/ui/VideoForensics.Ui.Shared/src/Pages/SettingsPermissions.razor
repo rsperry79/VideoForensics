@@ -47,6 +47,26 @@ else
             }
         </div>
     </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["ReportsSection"]</h5>
+            <p class="text-body-secondary">@L["ReportsDescription"]</p>
+
+            <label class="form-label" for="report-settings-access">@L["ReportsLabel"]</label>
+            <select id="report-settings-access" class="form-select mb-3" @bind="_reportSettingsAccess" disabled="@_saving">
+                <option value="SuperAdmin">@L["ReportsSuperAdminOption"]</option>
+                <option value="Admin">@L["ProviderEditAdminOption"]</option>
+            </select>
+
+            <button type="button" class="btn btn-primary" @onclick="SaveReportsAsync" disabled="@_saving">@L["Save"]</button>
+
+            @if (_reportsStatus is not null)
+            {
+                <div class="alert alert-secondary mt-3 mb-0" role="status">@_reportsStatus</div>
+            }
+        </div>
+    </div>
 }
 
 @code {
@@ -55,9 +75,14 @@ else
     private string? _status;
     private bool _saving;
     private string _providerEditAccess = "Admin";
+    private string _reportSettingsAccess = "SuperAdmin";
+    private string? _reportsStatus;
 
     /// <summary>Response shape of GET /api/v1/permissions/provider-accounts.</summary>
     private sealed record ProviderPermissionsResponse(string ProviderAccountEditAccess);
+
+    /// <summary>Response shape of GET /api/v1/permissions/reports.</summary>
+    private sealed record ReportPermissionsResponse(string ReportSettingsAccess);
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,6 +98,9 @@ else
             HttpClient client = ClientFactory.CreateClient();
             ProviderPermissionsResponse? result = await client.GetFromJsonAsync<ProviderPermissionsResponse>("/api/v1/permissions/provider-accounts");
             _providerEditAccess = result?.ProviderAccountEditAccess ?? "Admin";
+
+            ReportPermissionsResponse? reports = await client.GetFromJsonAsync<ReportPermissionsResponse>("/api/v1/permissions/reports");
+            _reportSettingsAccess = reports?.ReportSettingsAccess ?? "SuperAdmin";
         }
         catch (HttpRequestException ex)
         {
@@ -81,6 +109,28 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task SaveReportsAsync()
+    {
+        _saving = true;
+        _reportsStatus = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PutAsJsonAsync("/api/v1/permissions/reports", new { reportSettingsAccess = _reportSettingsAccess });
+            _reportsStatus = response.IsSuccessStatusCode
+                ? L["SaveSucceeded"].Value
+                : L["SaveFailed", response.StatusCode.ToString()].Value;
+        }
+        catch (HttpRequestException ex)
+        {
+            _reportsStatus = L["SaveFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _saving = false;
         }
     }
 
