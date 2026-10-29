@@ -36,7 +36,7 @@ Redeploy and start, but do not attach the debugger.
 How long to wait for the service to apply a staged build and answer its health check.
 
 .PARAMETER NoLogConsole
-Do not open the VideoForensics.Utils.Console window that shows the WebApp logger pipe output.
+Do not open the VideoForensics.Utils.LogViewer window that shows the WebApp logger pipe output.
 
 .PARAMETER WhatIf
 Dry run: nothing is staged, copied, stopped, started, or attached.
@@ -69,7 +69,7 @@ $project = (Resolve-Path $project).Path
 $stageScript = (Resolve-Path (Join-Path $PSScriptRoot '..\deploy\windows\stage-update.ps1')).Path
 $updatesRoot = Join-Path $env:ProgramData 'VideoForensics\updates'
 $healthUrl = 'http://localhost:5162/healthz'
-$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\src\utils\console\src\VideoForensics.Utils.Console.csproj')).Path
+$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj')).Path
 # The build output folder is the project's bin\<Configuration>\net10.0, the folder Visual Studio builds into.
 $buildOutput = Join-Path (Split-Path -Parent $project) "bin\$Configuration\net10.0"
 # The published executable is named after the project's AssemblyName, not the file name.

@@ -249,7 +249,9 @@ builder.Services.AddSingleton(serverLogLevel);
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
+// The named pipe feeds VideoForensics.Utils.LogViewer. Development only: the pipe is open to local users.
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
+    enableNamedPipeLogger: builder.Environment.IsDevelopment(),
     eventLogProvider: OperatingSystem.IsWindows() ? (Action<ILoggingBuilder>?)VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null);
 
 // Add services to the container.
