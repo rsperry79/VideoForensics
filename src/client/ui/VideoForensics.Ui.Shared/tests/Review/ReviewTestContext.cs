@@ -100,6 +100,9 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The case repository the case state and the tagger read and pin through. Set before the first render that uses them.</summary>
     protected ICaseRepository CaseRepositoryDouble { get; set; } = new Mock<ICaseRepository>().Object;
 
+    /// <summary>The still-capture service the timeline tab's Grab still button calls. Succeeds by default.</summary>
+    protected Mock<IMediaStillCaptureService> StillCaptureMock { get; } = new();
+
     /// <summary>The page's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewPage>> PageLogger { get; } = new();
 
@@ -142,6 +145,19 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped<CaseState>();
         _ = Services.AddScoped<ReviewEvidenceTagger>();
         _ = Services.AddScoped<ReviewSelection>();
+        _ = Services.AddScoped(_ => StillCaptureMock.Object);
+        _ = StillCaptureMock
+            .Setup(m => m.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => MediaStillCaptureResult.Ok(new MediaStillInfo
+            {
+                Id = Guid.NewGuid(),
+                SourceMediaItemId = Guid.NewGuid(),
+                FrameOffsetMs = 0,
+                Sha256Hash = "0000000000000000",
+                SourceSha256AtCapture = "source",
+                CapturedByOperator = "operator",
+                CaptureMethod = "Server",
+            }));
         _ = LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LegalHold>());

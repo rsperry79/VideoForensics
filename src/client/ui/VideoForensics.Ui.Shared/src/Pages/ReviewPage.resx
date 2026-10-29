@@ -458,4 +458,28 @@
   <data name="VerifyFailed" xml:space="preserve">
     <value>The integrity check returned an unknown result.</value>
   </data>
+  <data name="GrabStill" xml:space="preserve">
+    <value>Grab still</value>
+  </data>
+  <data name="GrabStillInProgress" xml:space="preserve">
+    <value>Grabbing the still...</value>
+  </data>
+  <data name="GrabStillResultPrefix" xml:space="preserve">
+    <value>Still captured. Hash:</value>
+  </data>
+  <data name="GrabStillOpen" xml:space="preserve">
+    <value>Open still</value>
+  </data>
+  <data name="GrabStillErrorPrefix" xml:space="preserve">
+    <value>Could not grab the still:</value>
+  </data>
+  <data name="GrabStillNeedsRole" xml:space="preserve">
+    <value>Grabbing a still needs the Review role or higher.</value>
+  </data>
+  <data name="GrabStillNoClip" xml:space="preserve">
+    <value>No clip covers the cursor. Move the cursor onto a clip.</value>
+  </data>
+  <data name="GrabStillNoPosition" xml:space="preserve">
+    <value>Could not read the playback position. Try again.</value>
+  </data>
 </root>

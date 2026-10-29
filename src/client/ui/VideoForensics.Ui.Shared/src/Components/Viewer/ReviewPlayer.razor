@@ -1,3 +1,4 @@
+@implements IAsyncDisposable
 @using Microsoft.Extensions.Localization
 @inject IJSRuntime JS
 @inject IStringLocalizer<SharedResources> L
@@ -15,6 +16,58 @@ else
 }
 
 @code {
+    /// <summary>The media-viewer script that reads the video's playback position. Imported on the first read.</summary>
+    private const string MediaViewerScript = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js";
+
+    private IJSObjectReference? _mediaViewerModule;
+
+    /// <summary>
+    /// Reads the video's current playback position in whole milliseconds. Returns null when no video is rendered (the cursor
+    /// is in a gap) or when the browser call fails, so the caller shows a message rather than a guessed position.
+    /// </summary>
+    public async Task<long?> GetCurrentTimeMsAsync()
+    {
+        if (_url is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            _mediaViewerModule ??= await JS.InvokeAsync<IJSObjectReference>("import", MediaViewerScript);
+            if (_mediaViewerModule is null)
+            {
+                return null;
+            }
+
+            double currentTimeMs = await _mediaViewerModule.InvokeAsync<double>("getCurrentTimeMs", _video);
+            return (long)Math.Round(currentTimeMs);
+        }
+        catch (JSDisconnectedException)
+        {
+            return null;
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (_mediaViewerModule is not null)
+        {
+            try
+            {
+                await _mediaViewerModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit is already gone, so there is nothing left to release.
+            }
+        }
+    }
+
     /// <summary>Clips for this camera. The player picks the one covering <see cref="Cursor"/>.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<ClipWindow> Clips { get; set; } = [];
 
