@@ -1,0 +1,40 @@
+/* Vertical strip only. The horizontal strip keeps its existing inline layout. */
+
+.review-timeline-vertical {
+    position: relative;
+    width: 64px;
+    flex: 0 0 64px;
+    background-color: var(--bs-tertiary-bg);
+    border-radius: 4px;
+}
+
+.review-timeline-vertical .review-timeline-segment {
+    position: absolute;
+    left: 44px;
+    width: 16px;
+    background-color: var(--bs-primary);
+    background-size: cover;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.review-timeline-vertical .review-timeline-tick {
+    position: absolute;
+    left: 0;
+    width: 38px;
+    transform: translateY(-50%);
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    pointer-events: none;
+}
+
+.review-timeline-vertical .review-timeline-cursor-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--bs-emphasis-color);
+    transform: translateY(-1px);
+    pointer-events: none;
+}

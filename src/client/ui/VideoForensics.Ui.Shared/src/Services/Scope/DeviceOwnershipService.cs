@@ -8,11 +8,13 @@ namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 /// <param name="AccountNames">Operator-facing label per account: the user's display name, else the provider name.</param>
 /// <param name="ProviderNames">Distinct provider names, sorted, for the Provider filter.</param>
 /// <param name="Ownership">Device-to-account links derived from location membership.</param>
+/// <param name="LoadError">The exception that stopped the load, or null. Callers that must not hide devices on failure check this.</param>
 public sealed record DeviceOwnershipSnapshot(
     IReadOnlyList<ProviderAccount> Accounts,
     IReadOnlyDictionary<Guid, string> AccountNames,
     IReadOnlyList<string> ProviderNames,
-    IReadOnlyList<DeviceOwnership> Ownership);
+    IReadOnlyList<DeviceOwnership> Ownership,
+    Exception? LoadError = null);
 
 /// <summary>
 /// Loads the provider accounts, their locations and display names once, so every page that offers the
@@ -62,13 +64,14 @@ public sealed class DeviceOwnershipService
             IReadOnlyDictionary<Guid, string> names = await LoadAccountNamesAsync(accounts, ct);
             return new DeviceOwnershipSnapshot(accounts, names, providerNames, ownership);
         }
-        catch
+        catch (Exception ex)
         {
             return new DeviceOwnershipSnapshot(
                 Array.Empty<ProviderAccount>(),
                 new Dictionary<Guid, string>(),
                 Array.Empty<string>(),
-                Array.Empty<DeviceOwnership>());
+                Array.Empty<DeviceOwnership>(),
+                ex);
         }
     }
 

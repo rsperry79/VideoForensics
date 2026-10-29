@@ -21,15 +21,19 @@ namespace VideoForensics.Client.Hosting.Updates
     }
 
     /// <summary>
-    /// Notices a package staged while the service is running, drains, and exits so the service manager restarts it
-    /// and <see cref="StartupUpdateApplier"/> applies the package. The exit is abrupt on purpose: a graceful stop
-    /// reports "stopped" to the service manager, which then does not run the restart recovery action.
+    /// Notices a package staged while the service is running, drains, applies it in place, and exits so the service manager
+    /// restarts the new version. Applying here, in the connected service, matters: a process that exits before it has
+    /// connected to the service manager counts as a failed start, which does not run the recovery action and leaves the
+    /// service stopped. The exit after applying is abrupt on purpose for the same reason in reverse: a graceful stop reports
+    /// "stopped", which also skips the recovery action, whereas dying while running counts as a crash and restarts.
     /// </summary>
     public sealed class StagedUpdateWatcher : BackgroundService
     {
         private readonly string _updatesRoot;
         private readonly IUpdatePackageVerifier _verifier;
         private readonly IUpdateDrain _drain;
+        private readonly StartupUpdateApplier _applier;
+        private readonly string _installDir;
         private readonly bool _allowDevPackages;
         private readonly Func<string> _currentVersion;
         private readonly Action<int> _exit;
@@ -42,6 +46,8 @@ namespace VideoForensics.Client.Hosting.Updates
             string updatesRoot,
             IUpdatePackageVerifier verifier,
             IUpdateDrain drain,
+            StartupUpdateApplier applier,
+            string installDir,
             bool allowDevPackages,
             Func<string> currentVersion,
             Action<int> exit,
@@ -51,6 +57,8 @@ namespace VideoForensics.Client.Hosting.Updates
             _updatesRoot = updatesRoot ?? throw new ArgumentNullException(nameof(updatesRoot));
             _verifier = verifier ?? throw new ArgumentNullException(nameof(verifier));
             _drain = drain ?? throw new ArgumentNullException(nameof(drain));
+            _applier = applier ?? throw new ArgumentNullException(nameof(applier));
+            _installDir = installDir ?? throw new ArgumentNullException(nameof(installDir));
             _allowDevPackages = allowDevPackages;
             _currentVersion = currentVersion ?? throw new ArgumentNullException(nameof(currentVersion));
             _exit = exit ?? throw new ArgumentNullException(nameof(exit));
@@ -84,7 +92,7 @@ namespace VideoForensics.Client.Hosting.Updates
             }
         }
 
-        /// <summary>Checks the updates folder once. Returns true when a valid package was found and the exit was requested.</summary>
+        /// <summary>Checks the updates folder once. Returns true when a package was applied and the exit was requested.</summary>
         internal async Task<bool> CheckOnceAsync(CancellationToken ct)
         {
             string? candidate = StartupUpdateApplier.FindNewestStaged(_updatesRoot);
@@ -102,8 +110,19 @@ namespace VideoForensics.Client.Hosting.Updates
                 return false;
             }
 
-            _logger.LogInformation("Staged update {Version} found; draining and restarting to apply it", verification.Manifest?.Version);
+            _logger.LogInformation("Staged update {Version} found; draining, then applying it", verification.Manifest?.Version);
             await _drain.DrainAsync(ct);
+
+            // Verified again inside the applier: the folder is writable by a non-admin in dev mode, so the files could have
+            // changed since the check above.
+            StartupUpdateResult result = await _applier.TryApplyStagedAsync(_updatesRoot, _installDir, _currentVersion(), _allowDevPackages, ct);
+            if (result.Outcome != StartupUpdateOutcome.Applied)
+            {
+                _logger.LogError("Staged update {Outcome}: {Message}; staying on the current version", result.Outcome, result.Message);
+                return false;
+            }
+
+            _logger.LogInformation("Applied update {Version}; exiting so the service manager restarts the new version", result.Version);
             _exit(1);
             return true;
         }

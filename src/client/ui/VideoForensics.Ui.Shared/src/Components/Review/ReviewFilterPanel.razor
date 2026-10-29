@@ -1,0 +1,99 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Data.Common.Entities
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="card shadow-sm p-2" role="dialog" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel" style="position: absolute; z-index: 1050; min-width: 16rem; top: 100%; right: 0;">
+    <div class="small fw-semibold mb-2">@L["FilterTitle"]</div>
+
+    <label class="form-label small mb-1" for="review-filter-provider-select">@L["FilterProvider"]</label>
+    <select id="review-filter-provider-select" class="form-select form-select-sm mb-2" data-testid="review-filter-provider" @onchange="OnProviderChanged">
+        <option value="" selected="@(_provider is null)">@L["FilterAllProviders"]</option>
+        @foreach (string provider in ProviderNames)
+        {
+            <option value="@provider" selected="@(_provider == provider)">@provider</option>
+        }
+    </select>
+
+    <label class="form-label small mb-1" for="review-filter-account-select">@L["FilterAccount"]</label>
+    <select id="review-filter-account-select" class="form-select form-select-sm mb-2" data-testid="review-filter-account" @onchange="OnAccountChanged">
+        <option value="" selected="@(_account is null)">@L["FilterAllAccounts"]</option>
+        @foreach (ProviderAccount account in AccountOptions)
+        {
+            <option value="@account.Id" selected="@(_account == account.Id)">@AccountName(account)</option>
+        }
+    </select>
+
+    <small class="d-block mb-2" data-testid="review-filter-count">@L["FilterMatchingCameras", MatchingCount]</small>
+
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter-reset" @onclick="OnReset">@L["Reset"]</button>
+        <button type="button" class="btn btn-sm btn-primary" data-testid="review-filter-apply" @onclick="OnApply">@L["Apply"]</button>
+    </div>
+</div>
+
+@code {
+    /// <summary>The review state the panel writes to on Apply.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Every camera the page knows about, before any filter.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> AllDeviceIds { get; set; } = [];
+
+    /// <summary>Accounts, provider names and device ownership. Null when the ownership load failed, so every camera counts as visible.</summary>
+    [Parameter]
+    public DeviceOwnershipSnapshot? Ownership { get; set; }
+
+    /// <summary>Raised after Apply, so the top bar can close the panel.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    // The choices being edited. They reach the review state only when the user presses Apply.
+    private string? _provider;
+    private Guid? _account;
+
+    private IReadOnlyList<string> ProviderNames => Ownership?.ProviderNames ?? Array.Empty<string>();
+
+    private IReadOnlyList<ProviderAccount> Accounts => Ownership?.Accounts ?? Array.Empty<ProviderAccount>();
+
+    private IEnumerable<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
+
+    private int MatchingCount => ReviewDeviceFilter.VisibleDeviceIds(AllDeviceIds, Ownership?.Ownership, _provider, _account).Count;
+
+    protected override void OnInitialized()
+    {
+        _provider = State.ProviderFilter;
+        _account = State.AccountFilter;
+    }
+
+    private string AccountName(ProviderAccount account)
+    {
+        return Ownership?.AccountNames.GetValueOrDefault(account.Id, account.ProviderName) ?? account.ProviderName;
+    }
+
+    private void OnProviderChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        // The rule clears the account when the newly picked provider does not own it.
+        (_provider, _account) = ScopeRailRules.ApplyProviderPick(Accounts, _account, e.Value?.ToString());
+    }
+
+    private void OnAccountChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _account = ScopeRailRules.ParseAccountPick(e.Value?.ToString());
+    }
+
+    private void OnReset()
+    {
+        _provider = null;
+        _account = null;
+    }
+
+    private async Task OnApply()
+    {
+        State.SetFilters(_provider, _account);
+        await OnClose.InvokeAsync();
+    }
+}

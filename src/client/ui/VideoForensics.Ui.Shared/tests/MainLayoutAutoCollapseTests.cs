@@ -91,6 +91,20 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         Assert.Equal(0, CountInvocations(SetPrefIdentifier));
     }
 
+    [Fact]
+    public void MainLayout_ReviewPage_CollapsesLeftNavWhenPrefIsExpanded()
+    {
+        // Arrange
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
+        NavigateTo("http://localhost/media/review");
+
+        // Act
+        _ = Render<MainLayout>();
+
+        // Assert
+        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+    }
+
     private void NavigateTo(string uri)
     {
         Services.GetRequiredService<NavigationManager>().NavigateTo(uri);
