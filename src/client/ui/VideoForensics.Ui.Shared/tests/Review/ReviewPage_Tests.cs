@@ -169,6 +169,23 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewPage_DevicesThatAreNotCameras_AreNeverOfferedOrShown()
+    {
+        // Arrange: a chime sits among the cameras, as a Ring account's devices do.
+        AddDevices(2);
+        Devices.Add(new Device { Id = Guid.NewGuid(), ProviderDeviceId = "chime-1", Name = "Upstairs", Type = "chime" });
+        Guid chime = Devices[^1].Id;
+        NavigateToReview($"devices={chime}");
+
+        // Act
+        _ = Render<ReviewPage>();
+
+        // Assert: even a URL that names the chime does not select it.
+        Assert.DoesNotContain(chime, ReviewState.CameraIds);
+        Assert.Equal(2, ReviewState.CameraIds.Count);
+    }
+
+    [Fact]
     public void ReviewPage_SignedIn_RegistersTheFilterPanelWithTheRightPanel()
     {
         // Arrange

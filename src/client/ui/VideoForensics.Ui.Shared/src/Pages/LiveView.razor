@@ -158,7 +158,7 @@ else
         {
             // Load available devices
             var devices = await DeviceRepository.ListAsync(System.Threading.CancellationToken.None);
-            _devices = devices.ToList();
+            _devices = devices.Where(device => DeviceKinds.IsCamera(device.Type)).ToList();
             _visibleDevices = _devices;
             DeviceOptions = BuildDeviceOptions(_visibleDevices);
             _selectedDeviceIdStr = LiveViewDeviceSelection.Initial(_devices, Device);
