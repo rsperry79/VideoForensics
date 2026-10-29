@@ -1,3 +1,50 @@
+const SIGNALR_SCRIPT = "_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js";
+
+/**
+ * Loads the vendored SignalR browser client on first use. The Blazor script bundles its own private
+ * copy that it does not expose, so the live view page brings the standard client.
+ */
+function loadSignalR(): Promise<SignalRLibrary> {
+    if (window.signalR) {
+        return Promise.resolve(window.signalR);
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = SIGNALR_SCRIPT;
+        script.onload = () => (window.signalR ? resolve(window.signalR) : reject(new Error("SignalR client did not register")));
+        script.onerror = () => reject(new Error(`Could not load the SignalR client from '${SIGNALR_SCRIPT}'`));
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Opens the SignalR connection the live view signals over. The session cookie authorizes the hub.
+ * Returns a .NET-visible reference, which the page passes back to startLiveView and stopHubConnection.
+ *
+ * @param hubUrl - Absolute URL of the live view signaling hub.
+ */
+export async function initializeHubConnection(hubUrl: string): Promise<unknown> {
+    const signalR = await loadSignalR();
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl(hubUrl)
+        .withAutomaticReconnect()
+        .build();
+    await connection.start();
+    return DotNet.createJSObjectReference(connection);
+}
+
+/**
+ * Closes the signaling connection when the page goes away.
+ *
+ * @param hubConnection - The connection returned by initializeHubConnection.
+ */
+export async function stopHubConnection(hubConnection: SignalRHubConnection | null | undefined): Promise<void> {
+    if (hubConnection) {
+        await hubConnection.stop();
+    }
+}
+
 /**
  * Starts a live view connection from the browser to a server-bridged camera stream.
  * Creates a WebRTC peer connection, negotiates offer/answer with the server via SignalR,
@@ -116,4 +163,16 @@ export function stopLiveView(pc: RTCPeerConnection | null | undefined): void {
 interface SignalRHubConnection {
     invoke<T = void>(methodName: string, ...args: unknown[]): Promise<T>;
     on(methodName: string, handler: (...args: never[]) => void): void;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+}
+
+interface SignalRHubConnectionBuilder {
+    withUrl(url: string): SignalRHubConnectionBuilder;
+    withAutomaticReconnect(): SignalRHubConnectionBuilder;
+    build(): SignalRHubConnection;
+}
+
+interface SignalRLibrary {
+    HubConnectionBuilder: new () => SignalRHubConnectionBuilder;
 }

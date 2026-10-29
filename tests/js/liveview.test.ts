@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addIceCandidate, startLiveView, stopLiveView } from "../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/liveview.js";
+import { addIceCandidate, initializeHubConnection, startLiveView, stopHubConnection, stopLiveView } from "../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/liveview.js";
 
 // WebRTC negotiation for the live view. jsdom has no RTCPeerConnection, so a fake records calls.
 
@@ -125,5 +125,70 @@ describe("liveview", () => {
 
         stopLiveView(pc);
         expect(lastPc.close).toHaveBeenCalledOnce();
+    });
+
+    describe("hub connection", () => {
+        function fakeSignalR() {
+            const connection = { start: vi.fn(async () => undefined), stop: vi.fn(async () => undefined) };
+            const builder = {
+                withUrl: vi.fn(() => builder),
+                withAutomaticReconnect: vi.fn(() => builder),
+                build: vi.fn(() => connection),
+            };
+            return { connection, builder, lib: { HubConnectionBuilder: vi.fn(() => builder) } };
+        }
+
+        afterEach(() => {
+            Reflect.deleteProperty(window, "signalR");
+            Reflect.deleteProperty(window, "DotNet");
+            document.head.innerHTML = "";
+        });
+
+        it("builds and starts a connection to the hub url and returns a reference to it", async () => {
+            const { connection, builder, lib } = fakeSignalR();
+            const ref = { __jsObjectId: 7 };
+            const createJSObjectReference = vi.fn(() => ref);
+            vi.stubGlobal("signalR", lib);
+            vi.stubGlobal("DotNet", { createJSObjectReference });
+
+            const result = await initializeHubConnection("https://host/hubs/liveview-signaling");
+
+            expect(builder.withUrl).toHaveBeenCalledWith("https://host/hubs/liveview-signaling");
+            expect(connection.start).toHaveBeenCalledTimes(1);
+            expect(createJSObjectReference).toHaveBeenCalledWith(connection);
+            expect(result).toBe(ref);
+        });
+
+        it("loads the vendored SignalR client script when the global is missing", async () => {
+            const { lib } = fakeSignalR();
+            vi.stubGlobal("DotNet", { createJSObjectReference: vi.fn(() => ({})) });
+
+            const pending = initializeHubConnection("https://host/hubs/liveview-signaling");
+
+            const script = document.head.querySelector("script");
+            expect(script?.getAttribute("src")).toBe("_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js");
+            vi.stubGlobal("signalR", lib);
+            script?.dispatchEvent(new Event("load"));
+            await pending;
+
+            expect(lib.HubConnectionBuilder).toHaveBeenCalled();
+        });
+
+        it("rejects when the SignalR client script fails to load", async () => {
+            vi.stubGlobal("DotNet", { createJSObjectReference: vi.fn(() => ({})) });
+
+            const pending = initializeHubConnection("https://host/hubs/liveview-signaling");
+            document.head.querySelector("script")?.dispatchEvent(new Event("error"));
+
+            await expect(pending).rejects.toThrow();
+        });
+
+        it("stops the connection", async () => {
+            const { connection } = fakeSignalR();
+
+            await stopHubConnection(connection as never);
+
+            expect(connection.stop).toHaveBeenCalledTimes(1);
+        });
     });
 });

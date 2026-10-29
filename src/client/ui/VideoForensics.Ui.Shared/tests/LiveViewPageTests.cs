@@ -64,4 +64,24 @@ public class LiveViewPageTests : BunitContext
             Assert.Equal(ExpectedModulePath, importCalls[0]);
         });
     }
+
+    [Fact]
+    public void LiveView_InitializesHubConnectionThroughTheModuleWithoutError()
+    {
+        // Arrange: the module is the one the page imports, so its calls can be inspected
+        BunitJSModuleInterop module = JSInterop.SetupModule(ExpectedModulePath);
+        module.Mode = JSRuntimeMode.Loose;
+
+        // Act
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+
+        // Assert: the page calls functions the module exports, and nothing else it never defined
+        cut.WaitForAssertion(() =>
+        {
+            var calls = module.Invocations.Select(i => i.Identifier).ToList();
+            Assert.Contains("initializeHubConnection", calls);
+            Assert.DoesNotContain("setupIceCandidateHandler", calls);
+            Assert.Empty(cut.FindAll(".alert-danger"));
+        });
+    }
 }

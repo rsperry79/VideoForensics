@@ -19,6 +19,8 @@ interface Window {
     vfTheme: {
         getPrefersDark(): boolean;
         getStoredMode(): string | null;
+        getStoredTimeFormat(): string | null;
+        setStoredTimeFormat(format: string): void;
         setStoredMode(mode: string): void;
         watchPrefersDark(dotNetRef: DotNetObjectReference): void;
         setStylesheet(isDark: boolean): void;
@@ -29,4 +31,9 @@ interface Window {
     };
     // Set by startLiveView so that addIceCandidate can reach the connection it created.
     _liveViewPeerConnection?: RTCPeerConnection;
+    // Set by the vendored SignalR browser client (lib/signalr/signalr.min.js) once it loads.
+    signalR?: SignalRLibrary;
 }
+
+// Provided by blazor.web.js. Wraps a JS object so .NET can hold it and pass it back as an argument.
+declare const DotNet: { createJSObjectReference(object: unknown): unknown };

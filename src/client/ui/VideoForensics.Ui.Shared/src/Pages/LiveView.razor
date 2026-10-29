@@ -131,7 +131,7 @@ else
         return Task.CompletedTask;
     }
 
-    private object? _hubConnection;
+    private IJSObjectReference? _hubConnection;
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
     private IDisposable? _telemetrySubscription;
@@ -155,11 +155,9 @@ else
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/VideoForensics.Client.Ui.Shared/scripts/liveview.js");
 
-            // Initialize SignalR connection via JS
-            _hubConnection = await _jsModule.InvokeAsync<dynamic>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString());
-
-            // Set up ICE candidate handler via JS
-            await _jsModule.InvokeVoidAsync("setupIceCandidateHandler", _jsModule);
+            // Open the SignalR connection in JS and keep a reference to it. The server sends its ICE candidates
+            // inside the offer, and startLiveView registers the handler for any it pushes later.
+            _hubConnection = await _jsModule.InvokeAsync<IJSObjectReference>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString());
         }
         catch (Exception ex)
         {
@@ -273,6 +271,19 @@ else
             await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
 
         DisposeTelemetrySubscription();
+
+        if (_jsModule is not null && _hubConnection is not null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("stopHubConnection", _hubConnection);
+                await _hubConnection.DisposeAsync();
+            }
+            catch (JSException)
+            {
+                // Best effort: the circuit may already be gone, and the server drops the connection on disconnect.
+            }
+        }
 
         if (_jsModule is not null)
             await _jsModule.DisposeAsync();
