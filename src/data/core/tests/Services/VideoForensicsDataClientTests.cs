@@ -170,6 +170,68 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task RecordDownloadEventAsync_ExistingClipForRecording_UpdatesRowInsteadOfAdding()
+        {
+            // Arrange: the file was lost but the clip row remains, so a re-download must update it. An insert would
+            // violate the (DeviceId, RecordedAtUtc) index and roll back the event.
+            var deviceId = Guid.NewGuid();
+            var recordedAt = DateTime.UtcNow;
+            var existingClip = new MediaItem { Id = Guid.NewGuid(), DeviceId = deviceId, RecordedAtUtc = recordedAt, FileName = "old.mp4", FilePath = "/path/to/old.mp4", MediaFormat = "video/mp4", Sha256Hash = "old123" };
+            var downloadEvent = new DownloadEvent
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                ProviderEventId = "event-redownload",
+                AppVersion = "1.0",
+                Success = true,
+                DownloadStartedUtc = DateTime.UtcNow,
+                EventOccurredAtUtc = recordedAt
+            };
+            var mediaItem = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                DownloadEventId = downloadEvent.Id,
+                FileName = "new.mp4",
+                FilePath = "/path/to/new.mp4",
+                MediaFormat = "video/mp4",
+                Sha256Hash = "def456",
+                RecordedAtUtc = recordedAt,
+                DownloadedAtUtc = DateTime.UtcNow
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDownloadEventRepo = new Mock<IDownloadEventRepository>();
+            var mockMediaItemRepo = new Mock<IMediaItemRepository>();
+            var mockActionLogRepo = new Mock<IActionLogRepository>();
+            var mockDeviceRepo = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepo.Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepo.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepo.Object);
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepo.Object);
+            _ = mockMediaItemRepo
+                .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, recordedAt, recordedAt, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem> { existingClip });
+            _ = mockDeviceRepo
+                .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
+            _ = mockActionLogRepo
+                .Setup(x => x.AppendAsync(It.IsAny<string>(), It.IsAny<ActorType>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ActionLogEntry { Id = Guid.NewGuid(), Actor = Environment.UserName, ActorType = ActorType.Human, Action = "MediaDownloaded", EntityType = "DownloadEvent", TimestampUtc = DateTime.UtcNow, EntryHash = "test_hash" });
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, CancellationToken.None);
+
+            // Assert: the new download takes over the existing row's id and is saved as an update, never as an insert.
+            Assert.Equal(existingClip.Id, mediaItem.Id);
+            mockMediaItemRepo.Verify(x => x.UpdateAsync(mediaItem, It.IsAny<CancellationToken>()), Times.Once);
+            mockMediaItemRepo.Verify(x => x.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RecordDownloadEventAsync_InvokesUnitOfWorkWithCorrectOperations()
         {
             // Arrange
@@ -205,6 +267,10 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
             _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            // No existing clip for this recording, so the media item is added rather than updated.
+            _ = mockMediaItemRepoInContext
+                .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, mediaItem.RecordedAtUtc, mediaItem.RecordedAtUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>());
             _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);

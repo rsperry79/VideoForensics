@@ -247,7 +247,20 @@ namespace VideoForensics.Data.Core.Services
 
                     if (media != null)
                     {
-                        await context.MediaItems.AddAsync(media, ct);
+                        // A clip is unique by (DeviceId, RecordedAtUtc). When the file was lost but the row remains, the
+                        // re-download must update that row; a blind insert would violate the index and roll back the event.
+                        // The range is a single instant, so the list holds at most the one matching row.
+                        MediaItem? sameRecording = (await context.MediaItems.GetByDeviceAndDateRangeAsync(
+                            media.DeviceId, media.RecordedAtUtc, media.RecordedAtUtc, ct)).FirstOrDefault();
+                        if (sameRecording != null)
+                        {
+                            media.Id = sameRecording.Id;
+                            await context.MediaItems.UpdateAsync(media, ct);
+                        }
+                        else
+                        {
+                            await context.MediaItems.AddAsync(media, ct);
+                        }
                     }
 
                     // Persist detection-related entities if provided
