@@ -715,7 +715,14 @@
         ScopeState.OnChange -= OnScopeChanged;
         if (_module is not null)
         {
-            await _module.DisposeAsync();
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit has already gone, so the module's JS side is gone with it. Nothing left to release.
+            }
         }
     }
 }
