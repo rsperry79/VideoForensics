@@ -3,6 +3,7 @@ using System.IO.Pipes;
 using System.Text.Json;
 using CommandLine;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Parsing;
 using VideoForensics.Utils.LogViewer;
@@ -29,7 +30,7 @@ if (parsed.Errors.Any())
 LogViewerOptions options = parsed.Value;
 
 // Same output template as the WebApp's console sink (Program.cs there). No theme is set, so the sink's default applies.
-ILogger logger = new LoggerConfiguration()
+Logger logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
@@ -40,6 +41,12 @@ Console.CancelKeyPress += (_, e) =>
     e.Cancel = true;
     cts.Cancel();
 };
+
+// Where the server setting lives, so a user who sees no output knows what to turn on.
+Console.WriteLine("The server's log pipe is off by default. To turn it on, open the WebApp and go to:");
+Console.WriteLine("  Admin > Devices & Network > Infrastructure > Diagnostics");
+Console.WriteLine("  tick \"Open the log pipe for LogViewer\", then press Save.");
+Console.WriteLine();
 
 Console.WriteLine($"Waiting for logger on pipe '{options.Pipe}'. Press Ctrl+C to exit.");
 
@@ -104,7 +111,7 @@ static LogEvent? ToLogEvent(string line)
 {
     try
     {
-        using JsonDocument doc = JsonDocument.Parse(line);
+        using var doc = JsonDocument.Parse(line);
         JsonElement root = doc.RootElement;
         string timestamp = Text(root, "timestamp");
         string category = Text(root, "category");

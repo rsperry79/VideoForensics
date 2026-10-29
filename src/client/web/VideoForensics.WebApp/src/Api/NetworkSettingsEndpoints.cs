@@ -162,6 +162,10 @@ namespace VideoForensics.Client.WebApp.Api
                 {
                     await firewallRuleManager.RemoveRuleAsync("VideoForensics", ct);
                     await firewallRuleManager.EnsureRuleExistsAsync("VideoForensics", request.HttpPort, ct);
+
+                    // HTTPS needs its own inbound rule, or remote devices reach a listener the firewall blocks.
+                    await firewallRuleManager.RemoveRuleAsync(HttpsFirewallRuleName, ct);
+                    await firewallRuleManager.EnsureRuleExistsAsync(HttpsFirewallRuleName, request.HttpsPort, ct);
                 }
 
                 string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
@@ -218,13 +222,16 @@ namespace VideoForensics.Client.WebApp.Api
             // the tier here at runtime must also open it (or removing it when narrowing back), or remote
             // devices see a socket that's listening but firewalled.
             int listenPort = ServerAddressResolver.ResolveConfiguredPort(configuration);
+            int httpsPort = config.ServerHttpsPort > 0 ? config.ServerHttpsPort : ServerAddressResolver.DefaultHttpsPort;
             if (request.Tier == NetworkTier.Local)
             {
                 await firewallRuleManager.RemoveRuleAsync("VideoForensics", ct);
+                await firewallRuleManager.RemoveRuleAsync(HttpsFirewallRuleName, ct);
             }
             else
             {
                 await firewallRuleManager.EnsureRuleExistsAsync("VideoForensics", listenPort, ct);
+                await firewallRuleManager.EnsureRuleExistsAsync(HttpsFirewallRuleName, httpsPort, ct);
             }
 
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
@@ -236,6 +243,9 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         private static bool IsValidPort(int port) => port is >= 1 and <= 65535;
+
+        /// <summary>Windows Firewall rule for the HTTPS port. Separate from the HTTP rule, which keeps its original name.</summary>
+        private const string HttpsFirewallRuleName = "VideoForensics-Https";
 
         /// <summary>True when an issued Let's Encrypt certificate exists and has not expired. HTTPS ports need one.</summary>
         private static async Task<bool> HasValidCertificateAsync(ILetsEncryptCertificateStore store, CancellationToken ct)
