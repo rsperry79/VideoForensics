@@ -107,6 +107,26 @@ else
             }
         </div>
     </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["LlmSection"]</h5>
+            <p class="text-body-secondary">@L["LlmDescription"]</p>
+
+            <label class="form-label" for="llm-settings-access">@L["LlmLabel"]</label>
+            <select id="llm-settings-access" class="form-select mb-3" @bind="_llmSettingsAccess" disabled="@_saving">
+                <option value="SuperAdmin">@L["ReportsSuperAdminOption"]</option>
+                <option value="Admin">@L["ProviderEditAdminOption"]</option>
+            </select>
+
+            <button type="button" class="btn btn-primary" @onclick="SaveLlmAsync" disabled="@_saving">@L["Save"]</button>
+
+            @if (_llmStatus is not null)
+            {
+                <div class="alert alert-secondary mt-3 mb-0" role="status">@_llmStatus</div>
+            }
+        </div>
+    </div>
 }
 
 @code {
@@ -121,6 +141,8 @@ else
     private string? _emailStatus;
     private string _notificationSettingsAccess = "SuperAdmin";
     private string? _notificationsStatus;
+    private string _llmSettingsAccess = "SuperAdmin";
+    private string? _llmStatus;
 
     /// <summary>Response shape of GET /api/v1/permissions/provider-accounts.</summary>
     private sealed record ProviderPermissionsResponse(string ProviderAccountEditAccess);
@@ -133,6 +155,9 @@ else
 
     /// <summary>Response shape of GET /api/v1/permissions/notifications.</summary>
     private sealed record NotificationPermissionsResponse(string NotificationSettingsAccess);
+
+    /// <summary>Response shape of GET /api/v1/permissions/llm.</summary>
+    private sealed record LlmPermissionsResponse(string LlmSettingsAccess);
 
     protected override async Task OnInitializedAsync()
     {
@@ -157,6 +182,9 @@ else
 
             NotificationPermissionsResponse? notifications = await client.GetFromJsonAsync<NotificationPermissionsResponse>("/api/v1/permissions/notifications");
             _notificationSettingsAccess = notifications?.NotificationSettingsAccess ?? "SuperAdmin";
+
+            LlmPermissionsResponse? llm = await client.GetFromJsonAsync<LlmPermissionsResponse>("/api/v1/permissions/llm");
+            _llmSettingsAccess = llm?.LlmSettingsAccess ?? "SuperAdmin";
         }
         catch (HttpRequestException ex)
         {
@@ -165,6 +193,28 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task SaveLlmAsync()
+    {
+        _saving = true;
+        _llmStatus = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PutAsJsonAsync("/api/v1/permissions/llm", new { llmSettingsAccess = _llmSettingsAccess });
+            _llmStatus = response.IsSuccessStatusCode
+                ? L["SaveSucceeded"].Value
+                : L["SaveFailed", response.StatusCode.ToString()].Value;
+        }
+        catch (HttpRequestException ex)
+        {
+            _llmStatus = L["SaveFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _saving = false;
         }
     }
 

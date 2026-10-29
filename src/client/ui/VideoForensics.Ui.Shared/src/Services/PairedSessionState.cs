@@ -5,6 +5,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
@@ -75,6 +77,18 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// must upgrade to a passkey before it can confirm a destructive change. In-memory only.
         /// </summary>
         public virtual bool IsTwoFactorRequired { get; private set; }
+
+        /// <summary>True when a Super Admin has opened report settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
+        public virtual bool ReportsOpenToAdmin { get; private set; }
+
+        /// <summary>True when a Super Admin has opened email settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
+        public virtual bool EmailOpenToAdmin { get; private set; }
+
+        /// <summary>True when a Super Admin has opened notification settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
+        public virtual bool NotificationsOpenToAdmin { get; private set; }
+
+        /// <summary>True when a Super Admin has opened LLM settings to admins. Admin and Super Admin sessions only; in-memory.</summary>
+        public virtual bool LlmOpenToAdmin { get; private set; }
 
         /// <summary>
         /// True once the server has reported the tier and credential kind for the current session. False after sign-in
@@ -203,6 +217,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 }
 
                 serverPasskeySetupOnly = kind.PasskeySetupOnly;
+                await LoadSettingsAccessAsync(client);
                 SetServerSessionKind(kind.LocalTier, kind.PasskeySession, kind.PasswordSession, kind.TwoFactorRequired);
             }
             catch (Exception)
@@ -219,6 +234,48 @@ namespace VideoForensics.Client.Ui.Shared.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Asks which settings pages admins may use, before the session kind is marked known, so the route guard never
+        /// judges those pages on a default. Only admins need it (a Super Admin always has access, a lower role never does);
+        /// a failed read leaves the flags false, which hides the pages rather than showing ones the server would refuse.
+        /// </summary>
+        private async Task LoadSettingsAccessAsync(HttpClient client)
+        {
+            ApplySettingsAccess(false, false, false, false);
+            if (Role != nameof(OperatorRole.Admin))
+            {
+                return;
+            }
+
+            try
+            {
+                SettingsAccessResponse? access = await client.GetFromJsonAsync<SettingsAccessResponse>("api/v1/permissions/settings-access");
+                if (access is not null)
+                {
+                    ApplySettingsAccess(access.ReportsOpenToAdmin, access.EmailOpenToAdmin, access.NotificationsOpenToAdmin, access.LlmOpenToAdmin);
+                }
+            }
+            catch (Exception)
+            {
+                // Best-effort, as the session-kind call itself.
+            }
+        }
+
+        /// <summary>Records which settings pages are open to admins. Public so hosts and tests can seed it.</summary>
+        public void SetSettingsAccess(bool reportsOpenToAdmin, bool emailOpenToAdmin, bool notificationsOpenToAdmin, bool llmOpenToAdmin = false)
+        {
+            ApplySettingsAccess(reportsOpenToAdmin, emailOpenToAdmin, notificationsOpenToAdmin, llmOpenToAdmin);
+            ServerKindChanged?.Invoke();
+        }
+
+        private void ApplySettingsAccess(bool reports, bool email, bool notifications, bool llm)
+        {
+            LlmOpenToAdmin = llm;
+            ReportsOpenToAdmin = reports;
+            EmailOpenToAdmin = email;
+            NotificationsOpenToAdmin = notifications;
         }
 
         /// <summary>
@@ -250,6 +307,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             Role = null;
             MustChangePassword = false;
             PasskeySetupOnly = false;
+            ApplySettingsAccess(false, false, false, false);
             ApplyServerSessionKind(localTier: false, passkeySession: false, known: false);
             try
             {
@@ -297,6 +355,8 @@ namespace VideoForensics.Client.Ui.Shared.Services
         private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
 
         // Response of GET /api/v1/auth/session-kind. Tier and passkey default to false so an older server that omits them fails closed.
+        private sealed record SettingsAccessResponse(bool ReportsOpenToAdmin, bool EmailOpenToAdmin, bool NotificationsOpenToAdmin, bool LlmOpenToAdmin = false);
+
         private sealed record SessionKindResponse(bool PasskeySetupOnly, bool LocalTier = false, bool PasskeySession = false, bool PasswordSession = false, bool TwoFactorRequired = false);
     }
 }

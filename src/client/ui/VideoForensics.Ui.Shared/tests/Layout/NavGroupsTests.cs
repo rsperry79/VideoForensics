@@ -246,7 +246,7 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Notifications_RequiresAdminRole()
+    public void Notifications_DefaultsToSuperAdmin_AdminOnlyWhenOpened()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         NavItem notificationsItem = group.Items.First(i => i.Path == "/settings/notifications");
@@ -255,9 +255,13 @@ public class NavGroups_Tests
         var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
         Assert.False(notificationsItem.IsVisible(readOnlyCtx));
 
-        // Should be visible to Admin
+        // Hidden from Admin until a Super Admin opens notification settings to admins
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
-        Assert.True(notificationsItem.IsVisible(adminCtx));
+        Assert.False(notificationsItem.IsVisible(adminCtx));
+        Assert.True(notificationsItem.IsVisible(adminCtx with { NotificationsOpenToAdmin = true }));
+
+        // Super Admin always sees it
+        Assert.True(notificationsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
     }
 
     [Fact]
