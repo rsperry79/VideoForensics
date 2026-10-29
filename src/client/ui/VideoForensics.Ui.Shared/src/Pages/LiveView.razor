@@ -16,6 +16,7 @@
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
+@inject PairedSessionState SessionState
 @inject IStringLocalizer<LiveView> L
 @inject ILogger<LiveView> Logger
 
@@ -157,7 +158,7 @@ else
 
             // Open the SignalR connection in JS and keep a reference to it. The server sends its ICE candidates
             // inside the offer, and startLiveView registers the handler for any it pushes later.
-            _hubConnection = await _jsModule.InvokeAsync<IJSObjectReference>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString());
+            _hubConnection = await _jsModule.InvokeAsync<IJSObjectReference>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString(), SessionState.SessionToken);
         }
         catch (Exception ex)
         {

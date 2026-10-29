@@ -131,7 +131,7 @@ describe("liveview", () => {
         function fakeSignalR() {
             const connection = { start: vi.fn(async () => undefined), stop: vi.fn(async () => undefined) };
             const builder = {
-                withUrl: vi.fn(() => builder),
+                withUrl: vi.fn<(url: string, options: unknown) => unknown>(() => builder),
                 withAutomaticReconnect: vi.fn(() => builder),
                 build: vi.fn(() => connection),
             };
@@ -151,9 +151,13 @@ describe("liveview", () => {
             vi.stubGlobal("signalR", lib);
             vi.stubGlobal("DotNet", { createJSObjectReference });
 
-            const result = await initializeHubConnection("https://host/hubs/liveview-signaling");
+            const result = await initializeHubConnection("https://host/hubs/liveview-signaling", "session-token");
 
-            expect(builder.withUrl).toHaveBeenCalledWith("https://host/hubs/liveview-signaling");
+            expect(builder.withUrl).toHaveBeenCalledWith(
+                "https://host/hubs/liveview-signaling",
+                expect.objectContaining({ accessTokenFactory: expect.any(Function) }));
+            const options = builder.withUrl.mock.calls[0][1] as { accessTokenFactory: () => string };
+            expect(options.accessTokenFactory()).toBe("session-token");
             expect(connection.start).toHaveBeenCalledTimes(1);
             expect(createJSObjectReference).toHaveBeenCalledWith(connection);
             expect(result).toBe(ref);
@@ -163,7 +167,7 @@ describe("liveview", () => {
             const { lib } = fakeSignalR();
             vi.stubGlobal("DotNet", { createJSObjectReference: vi.fn(() => ({})) });
 
-            const pending = initializeHubConnection("https://host/hubs/liveview-signaling");
+            const pending = initializeHubConnection("https://host/hubs/liveview-signaling", "t");
 
             const script = document.head.querySelector("script");
             expect(script?.getAttribute("src")).toBe("_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js");
@@ -177,7 +181,7 @@ describe("liveview", () => {
         it("rejects when the SignalR client script fails to load", async () => {
             vi.stubGlobal("DotNet", { createJSObjectReference: vi.fn(() => ({})) });
 
-            const pending = initializeHubConnection("https://host/hubs/liveview-signaling");
+            const pending = initializeHubConnection("https://host/hubs/liveview-signaling", "t");
             document.head.querySelector("script")?.dispatchEvent(new Event("error"));
 
             await expect(pending).rejects.toThrow();

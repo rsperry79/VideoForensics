@@ -16,15 +16,17 @@ function loadSignalR() {
     });
 }
 /**
- * Opens the SignalR connection the live view signals over. The session cookie authorizes the hub.
+ * Opens the SignalR connection the live view signals over. The hub authenticates the paired session token,
+ * which travels as the access_token query parameter on the WebSocket upgrade.
  * Returns a .NET-visible reference, which the page passes back to startLiveView and stopHubConnection.
  *
  * @param hubUrl - Absolute URL of the live view signaling hub.
+ * @param accessToken - The signed-in operator's session token.
  */
-export async function initializeHubConnection(hubUrl) {
+export async function initializeHubConnection(hubUrl, accessToken) {
     const signalR = await loadSignalR();
     const connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrl)
+        .withUrl(hubUrl, { accessTokenFactory: () => accessToken ?? "" })
         .withAutomaticReconnect()
         .build();
     await connection.start();
