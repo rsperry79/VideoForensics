@@ -138,6 +138,7 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped<PendingEvidenceTags>();
         _ = Services.AddScoped(_ => TimelineModel);
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<LeftPanelContentService>();
         _ = Services.AddSingleton<IReviewClipLoader>(ClipLoader);
         _ = Services.AddSingleton<IMediaContentUrlProvider>(UrlProvider);
         _ = Services.AddScoped(sp => new ReviewUrlCache(sp.GetRequiredService<IMediaContentUrlProvider>(), sp.GetRequiredService<TimeProvider>()));

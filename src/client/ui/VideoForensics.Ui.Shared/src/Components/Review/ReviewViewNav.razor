@@ -1,0 +1,61 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@implements IDisposable
+@inject ReviewPageState State
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<ReviewPage> L
+
+<nav class="review-view-nav d-flex flex-column gap-1 p-2" aria-label="@L["ViewNavLabel"]" data-testid="review-view-nav">
+    <div class="d-flex flex-column gap-1" role="tablist" aria-label="@L["TabsLabel"]">
+        @foreach (ReviewTab tab in Enum.GetValues<ReviewTab>())
+        {
+            bool active = State.ActiveTab == tab;
+            <button type="button"
+                    role="tab"
+                    class="btn btn-sm text-start @(active ? "btn-primary active" : "btn-outline-secondary")"
+                    aria-selected="@(active ? "true" : "false")"
+                    data-testid="@TabTestId(tab)"
+                    @onclick="() => State.SetTab(tab)">@L[TabKey(tab)]</button>
+        }
+    </div>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary text-start" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
+</nav>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLive()
+    {
+        NavigationManager.NavigateTo("/live-view");
+    }
+
+    private static string TabKey(ReviewTab tab)
+    {
+        return tab switch
+        {
+            ReviewTab.Events => "TabEvents",
+            ReviewTab.Detail => "TabDetail",
+            _ => "TabTimeline",
+        };
+    }
+
+    private static string TabTestId(ReviewTab tab)
+    {
+        return "review-tab-button-" + tab.ToString().ToLowerInvariant();
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

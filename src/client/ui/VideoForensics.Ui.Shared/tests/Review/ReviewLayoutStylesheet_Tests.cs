@@ -86,6 +86,39 @@ public class ReviewLayoutStylesheet_Tests
         Assert.True(backdrop < popup, $"The backdrop z-index ({backdrop}) must be below the popup z-index ({popup}).");
     }
 
+    [Fact]
+    public void ReviewPageStylesheet_TimelineAside_IsStickyFixedWidthAndDoesNotShrink()
+    {
+        // Arrange
+        string css = RepoFile.ReadUiSharedSource("Pages/ReviewPage.razor.css");
+        Match block = Regex.Match(css, @"\.review-timeline-aside\s*\{([^}]*)\}");
+
+        // Assert
+        Assert.True(block.Success, "The timeline aside rule must exist.");
+        string rules = block.Groups[1].Value;
+        Assert.Contains("position: sticky", rules);
+        Assert.Contains("top: 0", rules);
+        Assert.Contains("align-self: flex-start", rules);
+        Assert.Contains("flex-shrink: 0", rules);
+        Assert.Matches(new Regex(@"width:\s*7rem"), rules);
+    }
+
+    [Fact]
+    public void ReviewPageStylesheet_Body_IsAFlexRowWithAShrinkableContentColumn()
+    {
+        // Arrange
+        string css = RepoFile.ReadUiSharedSource("Pages/ReviewPage.razor.css");
+        Match body = Regex.Match(css, @"\.review-body\s*\{([^}]*)\}");
+        Match content = Regex.Match(css, @"\.review-content\s*\{([^}]*)\}");
+
+        // Assert
+        Assert.True(body.Success, "The review body rule must exist.");
+        Assert.Contains("display: flex", body.Groups[1].Value);
+        Assert.True(content.Success, "The review content rule must exist.");
+        Assert.Matches(new Regex(@"flex:\s*1"), content.Groups[1].Value);
+        Assert.Contains("min-width: 0", content.Groups[1].Value);
+    }
+
     private static int ZIndexOf(string css, string blockPattern)
     {
         Match block = Regex.Match(css, blockPattern);

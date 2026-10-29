@@ -3,9 +3,10 @@
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @using VideoForensics.Data.Common.Entities
+@implements IDisposable
 @inject IStringLocalizer<ReviewPage> L
 
-<div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel" style="min-width: 16rem; top: 100%; right: 0;">
+<div class="review-filter-panel p-2" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel">
     <div class="small fw-semibold mb-2">@L["FilterTitle"]</div>
 
     <label class="form-label small mb-1" for="review-filter-provider-select">@L["FilterProvider"]</label>
@@ -47,7 +48,7 @@
     [Parameter]
     public DeviceOwnershipSnapshot? Ownership { get; set; }
 
-    /// <summary>Raised after Apply, so the top bar can close the panel.</summary>
+    /// <summary>Raised after Apply. Optional: the panel is inline in the right sidebar and has nothing to close.</summary>
     [Parameter]
     public EventCallback OnClose { get; set; }
 
@@ -63,10 +64,37 @@
 
     private int MatchingCount => ReviewDeviceFilter.VisibleDeviceIds(AllDeviceIds, Ownership?.Ownership, _provider, _account).Count;
 
+    // The state filters the edit fields were last seeded from. A different value on a state change means something
+    // else (the URL, a restore) set the filters, so the edit fields follow it.
+    private (string? Provider, Guid? Account) _seenFilters;
+
     protected override void OnInitialized()
+    {
+        SeedFromState();
+        State.OnChange += OnStateChanged;
+    }
+
+    private void SeedFromState()
     {
         _provider = State.ProviderFilter;
         _account = State.AccountFilter;
+        _seenFilters = (_provider, _account);
+    }
+
+    private void OnStateChanged()
+    {
+        if ((State.ProviderFilter, State.AccountFilter) == _seenFilters)
+        {
+            return;
+        }
+
+        SeedFromState();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
     }
 
     private string AccountName(ProviderAccount account)

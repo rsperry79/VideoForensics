@@ -51,10 +51,16 @@ public class ReviewPage_Tests : ReviewTestContext
         string topBar = cut.Find("[data-testid='review-top-bar']").TextContent;
         foreach (string key in new[]
         {
-            "Back", "Live", "AllCameras", "RangeLast24Hours", "Filter", "Actions", "TabTimeline", "TabEvents", "TabDetail",
+            "Back", "AllCameras", "RangeLast24Hours", "Actions",
         })
         {
             Assert.Contains(L[key].Value, topBar);
+        }
+
+        string nav = RenderLeftPanel().Find("[data-testid='review-view-nav']").TextContent;
+        foreach (string key in new[] { "Live", "TabTimeline", "TabEvents", "TabDetail" })
+        {
+            Assert.Contains(L[key].Value, nav);
         }
     }
 
@@ -103,8 +109,10 @@ public class ReviewPage_Tests : ReviewTestContext
         NavigateToReview();
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
+        IRenderedComponent<IComponent> nav = RenderLeftPanel();
+
         // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
+        nav.Find("[data-testid='review-tab-button-events']").Click();
 
         // Assert
         Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
@@ -161,7 +169,7 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_SignedIn_RegistersTheTimelinePanelWithTheRightPanel()
+    public void ReviewPage_SignedIn_RegistersTheFilterPanelWithTheRightPanel()
     {
         // Arrange
         AddDevices(2);
@@ -169,16 +177,66 @@ public class ReviewPage_Tests : ReviewTestContext
         _ = Render<ReviewPage>();
 
         // Act
-        RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
-        Assert.NotNull(slot.Content);
-        var panel = Render(slot.Content!);
+        IRenderedComponent<IComponent> panel = RenderRightPanel();
 
-        // Assert
-        Assert.Single(panel.FindAll("[data-testid='review-timeline-panel']"));
+        // Assert - the filters live in the right sidebar, and the timeline does not
+        Assert.Single(panel.FindAll("[data-testid='review-filter-panel']"));
+        Assert.Empty(panel.FindAll("[data-testid='review-timeline-panel']"));
     }
 
     [Fact]
-    public async Task ReviewPage_SignedOut_DoesNotRegisterTheTimelinePanel()
+    public void ReviewPage_SignedIn_RegistersTheViewNavWithTheLeftPanel()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        IRenderedComponent<IComponent> nav = RenderLeftPanel();
+
+        // Assert
+        Assert.Single(nav.FindAll("[data-testid='review-view-nav']"));
+        Assert.Single(nav.FindAll("[data-testid='review-tab-button-timeline']"));
+        Assert.Single(nav.FindAll("[data-testid='review-live']"));
+    }
+
+    [Theory]
+    [InlineData("tab=timeline")]
+    [InlineData("tab=events")]
+    [InlineData("tab=detail")]
+    public void ReviewPage_EveryTab_ShowsTheTimelinePanelInTheRightAside(string query)
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview(query);
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert - the panel is in the page body, inside the aside, never in the slots
+        Assert.Single(cut.FindAll("aside.review-timeline-aside [data-testid='review-timeline-panel']"));
+        Assert.Single(cut.FindAll(".review-body > .review-content"));
+        Assert.Empty(RenderLeftPanel().FindAll("[data-testid='review-timeline-panel']"));
+    }
+
+    [Fact]
+    public void ReviewPage_SignedIn_KeepsTheTopBarAboveTheBodyRow()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert - the tab content is inside the content column, the top bar is not
+        Assert.Empty(cut.FindAll(".review-body [data-testid='review-top-bar']"));
+        Assert.Single(cut.FindAll(".review-content [data-testid='review-tab-timeline']"));
+    }
+
+    [Fact]
+    public async Task ReviewPage_SignedOut_DoesNotRegisterAnyPanel()
     {
         // Arrange
         AddDevices(2);
@@ -190,6 +248,7 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Assert
         Assert.Null(Services.GetRequiredService<RightPanelContentService>().Content);
+        Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
     }
 
     [Fact]
@@ -299,10 +358,11 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
         ReviewState.SetCameras([ringDevice, wyzeDevice]);
 
+        IRenderedComponent<IComponent> filters = RenderRightPanel();
+
         // Act
-        cut.Find("[data-testid='review-filter']").Click();
-        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
-        cut.Find("[data-testid='review-filter-apply']").Click();
+        filters.Find("[data-testid='review-filter-provider']").Change("Ring");
+        filters.Find("[data-testid='review-filter-apply']").Click();
 
         // Assert
         Assert.Equal([ringDevice], ReviewState.CameraIds);
@@ -317,10 +377,11 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
         ReviewState.SetCameras([ringDevice]);
 
+        IRenderedComponent<IComponent> filters = RenderRightPanel();
+
         // Act
-        cut.Find("[data-testid='review-filter']").Click();
-        cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
-        cut.Find("[data-testid='review-filter-apply']").Click();
+        filters.Find("[data-testid='review-filter-provider']").Change("Wyze");
+        filters.Find("[data-testid='review-filter-apply']").Click();
 
         // Assert
         Assert.Equal([wyzeDevice], ReviewState.CameraIds);
@@ -421,8 +482,10 @@ public class ReviewPage_Tests : ReviewTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?reviewcase=" + caseId.ToString("D"));
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
+        IRenderedComponent<IComponent> nav = RenderLeftPanel();
+
         // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
+        nav.Find("[data-testid='review-tab-button-events']").Click();
 
         // Assert
         Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
@@ -437,8 +500,10 @@ public class ReviewPage_Tests : ReviewTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media");
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
+        IRenderedComponent<IComponent> nav = RenderLeftPanel();
+
         // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
+        nav.Find("[data-testid='review-tab-button-events']").Click();
 
         // Assert
         Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
@@ -460,6 +525,20 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Assert
         Assert.False(CaseMode.Active);
+    }
+
+    private IRenderedComponent<IComponent> RenderLeftPanel()
+    {
+        LeftPanelContentService slot = Services.GetRequiredService<LeftPanelContentService>();
+        Assert.NotNull(slot.Content);
+        return Render(slot.Content!);
+    }
+
+    private IRenderedComponent<IComponent> RenderRightPanel()
+    {
+        RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
+        Assert.NotNull(slot.Content);
+        return Render(slot.Content!);
     }
 
     /// <summary>Ring owns Devices[0]; Wyze owns Devices[1]. Returns the Ring and Wyze devices.</summary>

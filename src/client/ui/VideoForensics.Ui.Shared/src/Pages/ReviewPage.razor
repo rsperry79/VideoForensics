@@ -4,6 +4,7 @@
 @using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Extensions
+@using VideoForensics.Client.Ui.Shared.Layout.LeftPanel
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Review
@@ -34,31 +35,43 @@ else
 {
     <ReviewTimelineFeeder />
 
+    <PageLeftPanelContent>
+        <ReviewViewNav />
+    </PageLeftPanelContent>
+
     <PageRightPanelContent>
-        <ReviewTimelinePanel />
+        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" />
     </PageRightPanelContent>
 
-    <ReviewTopBar State="State" Devices="_visibleIds" DeviceNames="_deviceNames" AllDeviceIds="_deviceIds" Ownership="_ownership" />
+    <ReviewTopBar State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
 
     @if (_caseNotFound)
     {
         <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
     }
 
-    @if (State.ActiveTab == ReviewTab.Timeline)
-    {
-        <section class="review-tab-panel" data-testid="review-tab-timeline">
-            <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
-        </section>
-    }
-    else if (State.ActiveTab == ReviewTab.Events)
-    {
-        <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
-    }
-    else
-    {
-        <ReviewDetailTab State="State" DeviceNames="_deviceNames" />
-    }
+    <div class="review-body">
+        <div class="review-content">
+            @if (State.ActiveTab == ReviewTab.Timeline)
+            {
+                <section class="review-tab-panel" data-testid="review-tab-timeline">
+                    <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
+                </section>
+            }
+            else if (State.ActiveTab == ReviewTab.Events)
+            {
+                <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
+            }
+            else
+            {
+                <ReviewDetailTab State="State" DeviceNames="_deviceNames" />
+            }
+        </div>
+
+        <aside class="review-timeline-aside">
+            <ReviewTimelinePanel />
+        </aside>
+    </div>
 }
 
 @code {

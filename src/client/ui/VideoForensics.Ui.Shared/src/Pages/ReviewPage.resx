@@ -80,14 +80,14 @@
   <data name="RangeLast7Days" xml:space="preserve">
     <value>Last 7 days</value>
   </data>
-  <data name="Filter" xml:space="preserve">
-    <value>Filter</value>
-  </data>
   <data name="Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
   <data name="ActionsMenuLabel" xml:space="preserve">
     <value>Evidence actions</value>
+  </data>
+  <data name="ViewNavLabel" xml:space="preserve">
+    <value>Review navigation</value>
   </data>
   <data name="TabsLabel" xml:space="preserve">
     <value>Review views</value>
@@ -199,9 +199,6 @@
   </data>
   <data name="FilterMatchingCameras" xml:space="preserve">
     <value>{0} cameras match</value>
-  </data>
-  <data name="FilterActive" xml:space="preserve">
-    <value>Filter active</value>
   </data>
   <data name="DetailNoCameras" xml:space="preserve">
     <value>Select a camera to see its details.</value>

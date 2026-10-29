@@ -7,6 +7,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Entities;
 
@@ -197,5 +198,70 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
 
         // Assert
         Assert.Equal(L["FilterMatchingCameras", 3].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Inline_HasNoPopupChrome()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - the panel sits in the right sidebar, not in a floating card
+        IElement panel = cut.Find("[data-testid='review-filter-panel']");
+        Assert.DoesNotContain("review-popup", panel.ClassName);
+        Assert.Null(panel.GetAttribute("role"));
+        Assert.DoesNotContain("min-width", panel.GetAttribute("style") ?? string.Empty);
+        Assert.DoesNotContain("position", panel.GetAttribute("style") ?? string.Empty);
+        Assert.Equal(L["FilterTitle"].Value, cut.Find("[data-testid='review-filter-panel'] .fw-semibold").TextContent);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_StateFiltersChangeExternally_ReInitialisesTheEditFields()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
+
+        // Act - another control sets the filters
+        cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
+
+        // Assert
+        Assert.Equal("Wyze", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
+        Assert.Equal(_wyze.Id.ToString("D"), ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
+        Assert.Equal(L["FilterMatchingCameras", 1].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_StateChangesWithoutFilterChange_KeepsUnappliedEdits()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
+
+        // Act - an unrelated state change (the tab) must not discard the pending pick
+        cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
+
+        // Assert
+        Assert.Equal("Ring", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Dispose_UnsubscribesFromStateChanges()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        ((IDisposable)cut.Instance).Dispose();
+
+        // Act
+        Exception? error = Record.Exception(() => ReviewState.SetFilters("Ring", null));
+
+        // Assert
+        Assert.Null(error);
     }
 }

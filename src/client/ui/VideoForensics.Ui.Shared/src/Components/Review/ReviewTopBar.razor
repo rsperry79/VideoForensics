@@ -32,7 +32,6 @@
 
     <div class="d-flex align-items-center gap-2">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-back" @onclick="OnBackAsync">@L["Back"]</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -46,34 +45,7 @@
 
         <ReviewPendingTags DeviceNames="DeviceNames" />
 
-        <div class="position-relative">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" aria-expanded="@Popups.IsOpen(ReviewPopupState.Filter)" @onclick="OnToggleFilter">
-                @L["Filter"]
-                @if (FilterActive)
-                {
-                    <span class="badge rounded-pill text-bg-primary ms-1" data-testid="review-filter-active" aria-label="@L["FilterActive"]" title="@L["FilterActive"]">&#8226;</span>
-                }
-            </button>
-
-            @if (Popups.IsOpen(ReviewPopupState.Filter))
-            {
-                <ReviewFilterPanel State="State" AllDeviceIds="AllDeviceIds" Ownership="Ownership" OnClose="OnFilterClosed" />
-            }
-        </div>
         <ReviewActionsMenu State="State" />
-    </div>
-
-    <div class="btn-group btn-group-sm ms-auto" role="tablist" aria-label="@L["TabsLabel"]" data-testid="review-tabs">
-        @foreach (ReviewTab tab in Enum.GetValues<ReviewTab>())
-        {
-            bool active = State.ActiveTab == tab;
-            <button type="button"
-                    role="tab"
-                    class="btn @(active ? "btn-primary active" : "btn-outline-secondary")"
-                    aria-selected="@active"
-                    data-testid="@TabTestId(tab)"
-                    @onclick="() => State.SetTab(tab)">@L[TabKey(tab)]</button>
-        }
     </div>
 </div>
 
@@ -86,14 +58,6 @@
     [Parameter]
     public IReadOnlyList<Guid> Devices { get; set; } = [];
 
-    /// <summary>Every camera before any filter. The filter panel counts matches against it.</summary>
-    [Parameter]
-    public IReadOnlyList<Guid> AllDeviceIds { get; set; } = [];
-
-    /// <summary>Accounts and device ownership for the filter panel. Null when the ownership load failed.</summary>
-    [Parameter]
-    public DeviceOwnershipSnapshot? Ownership { get; set; }
-
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
@@ -101,9 +65,6 @@
     /// <summary>The clock the range presets end at. Tests pass a fixed clock; the page uses the system clock.</summary>
     [Parameter]
     public Func<DateTime> UtcNow { get; set; } = static () => DateTime.UtcNow;
-
-    /// <summary>True while a Provider or Account filter narrows the cameras, so the Filter button shows an indicator.</summary>
-    private bool FilterActive => State.ProviderFilter is not null || State.AccountFilter is not null;
 
     private enum RangePreset
     {
@@ -169,16 +130,6 @@
         NavigationManager.NavigateTo(ReviewUrl.WithoutCaseView(NavigationManager.Uri));
     }
 
-    private void OnToggleFilter()
-    {
-        Popups.Toggle(ReviewPopupState.Filter);
-    }
-
-    private void OnFilterClosed()
-    {
-        Popups.Close(ReviewPopupState.Filter);
-    }
-
     /// <summary>
     /// Goes back in browser history. This page is /media itself, so navigating there would not leave it.
     /// A dead circuit or an unavailable JS runtime is ignored: Back then simply does nothing.
@@ -199,11 +150,6 @@
         }
     }
 
-    private void OnLive()
-    {
-        NavigationManager.NavigateTo("/live-view");
-    }
-
     private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
         TimeSpan span = PresetSpan(args.Value?.ToString());
@@ -219,21 +165,6 @@
             "week" => TimeSpan.FromDays(7),
             _ => TimeSpan.FromHours(24),
         };
-    }
-
-    private static string TabKey(ReviewTab tab)
-    {
-        return tab switch
-        {
-            ReviewTab.Events => "TabEvents",
-            ReviewTab.Detail => "TabDetail",
-            _ => "TabTimeline",
-        };
-    }
-
-    private static string TabTestId(ReviewTab tab)
-    {
-        return "review-tab-button-" + tab.ToString().ToLowerInvariant();
     }
 
     public void Dispose()
