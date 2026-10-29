@@ -13,6 +13,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
@@ -87,6 +88,18 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>When true, the provider-account repository throws, so the ownership load fails.</summary>
     protected bool OwnershipFails { get; set; }
 
+    /// <summary>The Actions menu's logger, so a test can check what was logged.</summary>
+    protected Mock<ILogger<ReviewActionsMenu>> ActionsLogger { get; } = new();
+
+    /// <summary>The legal hold repository double the Actions menu places and releases holds through.</summary>
+    protected Mock<ILegalHoldRepository> LegalHoldRepositoryMock { get; } = new();
+
+    /// <summary>The integrity verification double the Actions menu runs through.</summary>
+    protected Mock<IEvidenceValidationService> EvidenceValidationMock { get; } = new();
+
+    /// <summary>The case repository the case state and the tagger read and pin through. Set before the first render that uses them.</summary>
+    protected ICaseRepository CaseRepositoryDouble { get; set; } = new Mock<ICaseRepository>().Object;
+
     /// <summary>The page's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewPage>> PageLogger { get; } = new();
 
@@ -122,6 +135,19 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddSingleton(FeederLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddSingleton(PageLogger.Object);
+        _ = Services.AddSingleton(ActionsLogger.Object);
+        _ = Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
+        _ = Services.AddScoped(_ => EvidenceValidationMock.Object);
+        _ = Services.AddScoped<ICaseRepository>(_ => CaseRepositoryDouble);
+        _ = Services.AddScoped<CaseState>();
+        _ = Services.AddScoped<ReviewEvidenceTagger>();
+        _ = Services.AddScoped<ReviewSelection>();
+        _ = LegalHoldRepositoryMock
+            .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LegalHold>());
+        _ = EvidenceValidationMock
+            .Setup(m => m.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            .ReturnsAsync(new List<MediaVerificationResult>());
         Mock<IProviderAccountRepository> accountRepository = ConfigureAccountRepository();
         Mock<ILocationRepository> locationRepository = ConfigureLocationRepository();
         Mock<IUserRepository> userRepository = ConfigureUserRepository();
@@ -231,7 +257,21 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>Signs in a paired operator so the page's sign-in gate passes.</summary>
     protected Task SignInOperatorAsync()
     {
-        return Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+        return SignInOperatorAsync("Review");
+    }
+
+    /// <summary>Signs in a paired operator with the given role and returns the operator's id.</summary>
+    protected async Task<Guid> SignInOperatorAsAsync(string role)
+    {
+        Guid operatorId = Guid.NewGuid();
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", operatorId, role);
+        return operatorId;
+    }
+
+    /// <summary>Signs in a paired operator with the given role.</summary>
+    protected Task SignInOperatorAsync(string role)
+    {
+        return SignInOperatorAsAsync(role);
     }
 
     /// <summary>Clears the operator session, so the page shows its sign-in prompt.</summary>

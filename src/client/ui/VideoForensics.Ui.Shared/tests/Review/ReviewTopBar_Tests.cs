@@ -51,15 +51,20 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_Actions_StaysDisabledWithALocalizedTooltip()
+    public void ReviewTopBar_Actions_IsEnabledAndOpensTheMenu()
     {
         // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
         // Assert
         IElement actions = cut.Find("[data-testid='review-actions']");
-        Assert.True(actions.HasAttribute("disabled"));
-        Assert.Equal(L["ActionsAvailableLater"].Value, actions.GetAttribute("title"));
+        Assert.False(actions.HasAttribute("disabled"));
+
+        // Act: the button opens the actions popup
+        actions.Click();
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
     }
 
     [Fact]

@@ -83,8 +83,8 @@
   <data name="Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
-  <data name="ActionsAvailableLater" xml:space="preserve">
-    <value>Actions arrive in a later update</value>
+  <data name="ActionsMenuLabel" xml:space="preserve">
+    <value>Evidence actions</value>
   </data>
   <data name="TabsLabel" xml:space="preserve">
     <value>Review views</value>
@@ -367,5 +367,95 @@
   </data>
   <data name="TagDefaultReason" xml:space="preserve">
     <value>Tagged during review</value>
+  </data>
+  <data name="ActionsMenuTitle" xml:space="preserve">
+    <value>Selected evidence</value>
+  </data>
+  <data name="ActionTagEvidence" xml:space="preserve">
+    <value>Tag evidence</value>
+  </data>
+  <data name="ActionStartNewCase" xml:space="preserve">
+    <value>Start new case with this evidence</value>
+  </data>
+  <data name="ActionPlaceHold" xml:space="preserve">
+    <value>Place legal hold</value>
+  </data>
+  <data name="ActionReleaseHold" xml:space="preserve">
+    <value>Release legal hold</value>
+  </data>
+  <data name="ActionVerifyIntegrity" xml:space="preserve">
+    <value>Verify integrity</value>
+  </data>
+  <data name="ActionExport" xml:space="preserve">
+    <value>Export evidence</value>
+  </data>
+  <data name="ActionFailed" xml:space="preserve">
+    <value>The action failed. See the log for details.</value>
+  </data>
+  <data name="ReasonNoSelection" xml:space="preserve">
+    <value>Select an event, or move the cursor onto a clip.</value>
+  </data>
+  <data name="ReasonNoClipAtCursor" xml:space="preserve">
+    <value>No clip covers the cursor. Move the cursor onto a clip.</value>
+  </data>
+  <data name="ReasonSignInRequired" xml:space="preserve">
+    <value>You must be signed in to perform this action.</value>
+  </data>
+  <data name="ReasonRequiresReview" xml:space="preserve">
+    <value>Needs the Review role or higher.</value>
+  </data>
+  <data name="ReasonRequiresAdmin" xml:space="preserve">
+    <value>Needs the Admin role or higher.</value>
+  </data>
+  <data name="ReasonRequiresSuperAdmin" xml:space="preserve">
+    <value>Needs the SuperAdmin role.</value>
+  </data>
+  <data name="ResultTagPinned" xml:space="preserve">
+    <value>Tagged and pinned to the open case.</value>
+  </data>
+  <data name="ResultTagKeptPending" xml:space="preserve">
+    <value>Kept until a case opens. It is held in memory, so a restart clears it.</value>
+  </data>
+  <data name="ResultTagAlreadyTagged" xml:space="preserve">
+    <value>Already tagged.</value>
+  </data>
+  <data name="ResultTagFailed" xml:space="preserve">
+    <value>The tag could not be saved.</value>
+  </data>
+  <data name="HoldReasonPlaceholder" xml:space="preserve">
+    <value>Reason for the legal hold</value>
+  </data>
+  <data name="HoldReleaseReasonPlaceholder" xml:space="preserve">
+    <value>Reason for releasing the hold</value>
+  </data>
+  <data name="HoldConfirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="HoldCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="HoldPlaced" xml:space="preserve">
+    <value>Legal hold placed.</value>
+  </data>
+  <data name="HoldReleased" xml:space="preserve">
+    <value>Legal hold released.</value>
+  </data>
+  <data name="HoldFailed" xml:space="preserve">
+    <value>The legal hold could not be changed.</value>
+  </data>
+  <data name="VerifyVerified" xml:space="preserve">
+    <value>Verified: the clip matches its stored hash.</value>
+  </data>
+  <data name="VerifyMismatch" xml:space="preserve">
+    <value>Mismatch: the clip does not match its stored hash.</value>
+  </data>
+  <data name="VerifyMissing" xml:space="preserve">
+    <value>The clip file is missing from storage.</value>
+  </data>
+  <data name="VerifyNotChecked" xml:space="preserve">
+    <value>This clip was not in the integrity run.</value>
+  </data>
+  <data name="VerifyFailed" xml:space="preserve">
+    <value>The integrity check returned an unknown result.</value>
   </data>
 </root>

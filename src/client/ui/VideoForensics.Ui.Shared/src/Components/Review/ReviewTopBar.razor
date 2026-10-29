@@ -38,7 +38,7 @@
                 <ReviewFilterPanel State="State" AllDeviceIds="AllDeviceIds" Ownership="Ownership" OnClose="OnFilterClosed" />
             }
         </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-actions" disabled title="@L["ActionsAvailableLater"]">@L["Actions"]</button>
+        <ReviewActionsMenu State="State" />
     </div>
 
     <div class="btn-group btn-group-sm ms-auto" role="tablist" aria-label="@L["TabsLabel"]" data-testid="review-tabs">
