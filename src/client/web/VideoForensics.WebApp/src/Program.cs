@@ -108,7 +108,7 @@ bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuratio
 string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
 bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
 bool updatesActiveAsService = inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
-if (updatesActiveAsService)
+if (OperatingSystem.IsWindows() && updatesActiveAsService)
 {
     // Files renamed aside by the previous apply (the exe and dlls that were in use) can be deleted now.
     VideoForensics.Client.Hosting.Updates.UpdateApplier.DeleteLeftoverFiles(AppContext.BaseDirectory);
@@ -156,8 +156,14 @@ if (updatesActiveAsService)
         Log.Information("Applied staged update {Version}; exiting so the service manager restarts the new version", updateResult.Version);
         await Log.CloseAndFlushAsync();
 
-        // This process still has the old files mapped, so it must not keep running. A non-zero exit triggers the
-        // service's SCM recovery action (restart); the recovery settings were ensured above.
+        // This process still has the old files mapped, so it must not keep running. It has not connected to the service
+        // manager yet, so exiting counts as a failed start and the recovery action does not run: a detached helper starts
+        // the service again instead. (Updates applied while the service is running restart through recovery.)
+        if (!VideoForensics.Client.Platform.Windows.ServiceRestartScheduler.TrySchedule("VideoForensics"))
+        {
+            Log.Error("Could not schedule the service restart after applying the update; the service must be started manually");
+        }
+
         Environment.Exit(1);
     }
     else if (updateResult.Outcome != VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None)
@@ -450,13 +456,19 @@ else if (OperatingSystem.IsWindows())
 
 if (updatesActiveAsService)
 {
-    // A package staged while the service runs (the dev stage script, or a downloaded release) triggers drain-and-restart.
+    // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,
+    // and the service then exits so the service manager restarts it on the new version.
     // NoOpUpdateDrain is replaced by the scheduler's drain when that lands.
     builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.NoOpUpdateDrain>();
     _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
         updatesRoot,
         new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
         sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
+        new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
+            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+            new VideoForensics.Client.Hosting.Updates.UpdateApplier(sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>>()),
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>>()),
+        AppContext.BaseDirectory,
         allowDevUpdatePackages,
         () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
         code => { Log.CloseAndFlush(); Environment.Exit(code); },
