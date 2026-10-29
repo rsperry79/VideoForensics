@@ -68,4 +68,13 @@
   <data name="HealthSyncDescription" xml:space="preserve">
     <value>Lets the server keep collecting signal strength and device-health readings in the background, so device status stays current.</value>
   </data>
+  <data name="ServerConnectionSection" xml:space="preserve">
+    <value>Server Connection</value>
+  </data>
+  <data name="ConnectionStatusLabel" xml:space="preserve">
+    <value>Connection Status:</value>
+  </data>
+  <data name="ServerAddressLabel" xml:space="preserve">
+    <value>Server Address:</value>
+  </data>
 </root>
