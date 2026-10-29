@@ -146,4 +146,10 @@
   <data name="ExportCase" xml:space="preserve">
     <value>Export case</value>
   </data>
+  <data name="ReviewSelectedEvidence" xml:space="preserve">
+    <value>Review selected evidence</value>
+  </data>
+  <data name="ReviewSelectedEvidenceNoItems" xml:space="preserve">
+    <value>This case has no pinned evidence to review.</value>
+  </data>
 </root>

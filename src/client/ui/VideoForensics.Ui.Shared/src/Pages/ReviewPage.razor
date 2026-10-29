@@ -1,3 +1,4 @@
+@page "/media"
 @page "/media/review"
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
@@ -13,6 +14,7 @@
 @implements IDisposable
 @inject IDeviceRepository DeviceRepository
 @inject ReviewPageState State
+@inject ReviewCaseMode CaseMode
 @inject ScopeState ScopeState
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
@@ -38,6 +40,11 @@ else
 
     <ReviewTopBar State="State" Devices="_visibleIds" DeviceNames="_deviceNames" AllDeviceIds="_deviceIds" Ownership="_ownership" />
 
+    @if (_caseNotFound)
+    {
+        <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
+    }
+
     @if (State.ActiveTab == ReviewTab.Timeline)
     {
         <section class="review-tab-panel" data-testid="review-tab-timeline">
@@ -57,6 +64,9 @@ else
 @code {
     private bool _isLoading = true;
     private bool _isAuthenticated;
+
+    // Set when the URL names a case that does not exist (or could not be read). The page then shows all evidence.
+    private bool _caseNotFound;
 
     // The URL is read once, on the first load. Until then the write-back stays off, so a half-read state
     // never overwrites the query the user arrived with.
@@ -89,7 +99,14 @@ else
 
             await LoadOwnershipAsync(devices);
 
-            ReadUrlOnce();
+            // The case is entered before the URL is applied, so the case's cameras and range can seed what the URL leaves out.
+            ReviewUrlState url = ReviewUrl.Parse(CurrentQuery());
+            if (url.CaseId is Guid caseId)
+            {
+                await EnterCaseAsync(caseId);
+            }
+
+            ReadUrlOnce(url);
             _urlParsed = true;
             WriteBackUrl();
         }
@@ -145,17 +162,43 @@ else
     }
 
     /// <summary>
-    /// Seeds the state from the query string. The filters are read first, so cameras the filters hide are dropped;
-    /// with none left, the page falls back to the global scope's cameras, then to the first nine visible devices.
+    /// Enters the case the URL names. A case that does not exist, or a load that fails, leaves the page in normal
+    /// mode with the not-found message. The failure is logged by type and message only.
     /// </summary>
-    private void ReadUrlOnce()
+    private async Task EnterCaseAsync(Guid caseId)
     {
-        ReviewUrlState url = ReviewUrl.Parse(CurrentQuery());
+        try
+        {
+            _caseNotFound = !await CaseMode.EnterAsync(caseId, CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(
+                "Could not open the case for review, showing all evidence: {ExceptionType}: {Message}",
+                ex.GetType().FullName,
+                ex.Message);
+            CaseMode.Exit();
+            _caseNotFound = true;
+        }
+    }
+
+    /// <summary>
+    /// Seeds the state from the parsed query string. The filters are read first, so cameras the filters hide are dropped.
+    /// Cameras fall back to the case's cameras (when a case is entered), then the global scope's, then the first nine visible
+    /// devices. The case's range and cursor apply only where the URL leaves them out.
+    /// </summary>
+    private void ReadUrlOnce(ReviewUrlState url)
+    {
         State.SetFilters(url.Provider, url.Account);
         ComputeVisibleCameras();
         HashSet<Guid> visible = _visibleIds.ToHashSet();
 
         List<Guid> cameras = url.Devices.Where(visible.Contains).ToList();
+        if (cameras.Count == 0 && CaseMode.Active)
+        {
+            cameras = CaseMode.DeviceIds.Where(visible.Contains).Take(CameraSync.MaxTiles).ToList();
+        }
+
         if (cameras.Count == 0)
         {
             cameras = ScopeState.Current.DeviceIds.Where(visible.Contains).ToList();
@@ -172,8 +215,13 @@ else
         {
             State.SetRange(from, to);
         }
+        else if (CaseMode.Active && CaseMode.FromUtc is DateTime caseFrom && CaseMode.ToUtc is DateTime caseTo)
+        {
+            State.SetRange(caseFrom, caseTo);
+        }
 
-        State.SetCursor(url.CursorUtc);
+        DateTime? caseCursor = CaseMode.Active ? CaseMode.EarliestItemUtc : null;
+        State.SetCursor(url.CursorUtc ?? caseCursor);
         State.SetTab(url.Tab);
     }
 
@@ -210,7 +258,8 @@ else
             State.Cursor,
             State.ActiveTab,
             State.ProviderFilter,
-            State.AccountFilter);
+            State.AccountFilter,
+            CaseMode.Active ? CaseMode.CaseId : null);
 
         string target = ReviewUrl.Build(current);
         string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
@@ -219,7 +268,8 @@ else
             return;
         }
 
-        string path = "/media/review";
+        // Stay on the route the user is on (/media or /media/review), so a write-back never moves them to another path.
+        string path = new Uri(NavigationManager.Uri).AbsolutePath;
         NavigationManager.NavigateTo(target.Length == 0 ? path : path + "?" + target, replace: true);
     }
 
@@ -232,5 +282,6 @@ else
     {
         State.OnChange -= OnReviewStateChanged;
         ScopeState.OnChange -= OnScopeChanged;
+        CaseMode.Exit();
     }
 }

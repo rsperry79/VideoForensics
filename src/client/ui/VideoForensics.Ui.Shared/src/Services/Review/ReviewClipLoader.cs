@@ -23,16 +23,27 @@ public sealed class ReviewClipLoader : IReviewClipLoader
     public const int MaxDevicesPerCall = 64;
 
     private readonly IMediaItemRepository _mediaItems;
+    private readonly ReviewCaseMode? _caseMode;
 
-    /// <summary>Creates the loader over the media item repository.</summary>
-    public ReviewClipLoader(IMediaItemRepository mediaItems)
+    /// <summary>
+    /// Creates the loader over the media item repository. When <paramref name="caseMode"/> is active, the loader
+    /// returns the case's pinned clips instead of paging the repository. Null means the case view is never active.
+    /// </summary>
+    public ReviewClipLoader(IMediaItemRepository mediaItems, ReviewCaseMode? caseMode = null)
     {
         _mediaItems = mediaItems;
+        _caseMode = caseMode;
     }
 
     /// <inheritdoc />
     public async Task<ReviewClipSet> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
+        if (_caseMode is { Active: true })
+        {
+            // The case's pins are already in memory, so the device and range filters run here, not in SQL.
+            return new ReviewClipSet(CaseClips(_caseMode, deviceIds, fromUtc, toUtc), false);
+        }
+
         List<Guid> devices = deviceIds.Distinct().ToList();
         var items = new List<MediaItem>();
 
@@ -47,6 +58,18 @@ public sealed class ReviewClipLoader : IReviewClipLoader
         }
 
         return new ReviewClipSet(items, false);
+    }
+
+    /// <summary>
+    /// Filters the case's pinned clips to the requested devices and window, using the same inclusive bounds the
+    /// repository query uses, so a case clip and a normal clip in the same window behave the same.
+    /// </summary>
+    private static IReadOnlyList<MediaItem> CaseClips(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc)
+    {
+        HashSet<Guid> devices = deviceIds.ToHashSet();
+        return caseMode.MediaItems
+            .Where(item => devices.Contains(item.DeviceId) && item.RecordedAtUtc >= fromUtc && item.RecordedAtUtc <= toUtc)
+            .ToList();
     }
 
     /// <summary>

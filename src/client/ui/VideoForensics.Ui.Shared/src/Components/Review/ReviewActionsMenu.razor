@@ -1,0 +1,421 @@
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Cases
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@inject ReviewSelection Selection
+@inject ReviewEvidenceTagger Tagger
+@inject ILegalHoldRepository LegalHoldRepository
+@inject IEvidenceValidationService EvidenceValidationService
+@inject PairedSessionState SessionState
+@inject ScopeState ScopeState
+@inject ReviewTimelineModel TimelineModel
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<ReviewPage> L
+@inject ILogger<ReviewActionsMenu> Logger
+
+<div class="review-actions-menu position-relative d-inline-block" data-testid="review-actions-menu">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-actions" aria-haspopup="true" aria-expanded="@(_open ? "true" : "false")" @onclick="OnToggleAsync">@L["Actions"]</button>
+
+    @if (_open)
+    {
+        <div class="card shadow-sm p-2" role="dialog" aria-label="@L["ActionsMenuLabel"]" data-testid="review-actions-popup" style="position: absolute; z-index: 1050; min-width: 20rem; top: 100%; right: 0;">
+            <div class="small fw-semibold mb-2">@L["ActionsMenuTitle"]</div>
+
+            <div class="mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-tag" disabled="@(TagReason is not null)" @onclick="OnTagAsync">@L["ActionTagEvidence"]</button>
+                @if (TagReason is { } tagReason)
+                {
+                    <small class="text-muted d-block" data-testid="review-action-reason-tag">@tagReason</small>
+                }
+            </div>
+
+            <div class="mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-new-case" disabled="@(TagReason is not null)" @onclick="OnStartNewCaseAsync">@L["ActionStartNewCase"]</button>
+                @if (TagReason is { } newCaseReason)
+                {
+                    <small class="text-muted d-block" data-testid="review-action-reason-new-case">@newCaseReason</small>
+                }
+            </div>
+
+            <div class="mb-2">
+                @if (_activeHoldId is null)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-hold" disabled="@(HoldReason is not null || _holdMode != HoldMode.None)" @onclick="OnBeginPlaceHold">@L["ActionPlaceHold"]</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-release" disabled="@(HoldReason is not null || _holdMode != HoldMode.None)" @onclick="OnBeginRelease">@L["ActionReleaseHold"]</button>
+                }
+                @if (HoldReason is { } holdReason)
+                {
+                    <small class="text-muted d-block" data-testid="review-action-reason-hold">@holdReason</small>
+                }
+
+                @if (_holdMode != HoldMode.None)
+                {
+                    <div class="mt-2" data-testid="review-hold-prompt">
+                        <textarea class="form-control form-control-sm mb-2" rows="2" data-testid="review-hold-reason" aria-label="@HoldPlaceholder" placeholder="@HoldPlaceholder" @bind="_holdReason"></textarea>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-sm btn-primary" data-testid="review-hold-confirm" disabled="@string.IsNullOrWhiteSpace(_holdReason)" @onclick="OnConfirmHoldAsync">@L["HoldConfirm"]</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-hold-cancel" @onclick="OnCancelHold">@L["HoldCancel"]</button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-verify" disabled="@(VerifyReason is not null)" @onclick="OnVerifyAsync">@L["ActionVerifyIntegrity"]</button>
+                @if (VerifyReason is { } verifyReason)
+                {
+                    <small class="text-muted d-block" data-testid="review-action-reason-verify">@verifyReason</small>
+                }
+            </div>
+
+            <div class="mb-2">
+                @if (ExportHref is { } href)
+                {
+                    <a class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-export" href="@href">@L["ActionExport"]</a>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-action-export" disabled>@L["ActionExport"]</button>
+                    <small class="text-muted d-block" data-testid="review-action-reason-export">@ExportReason</small>
+                }
+            </div>
+
+            @if (_message is not null)
+            {
+                <div class="small mt-2" role="status" data-testid="review-actions-message">@_message</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The review state whose changes refresh the menu. The selection itself is read through <see cref="ReviewSelection"/>.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    private enum HoldMode
+    {
+        None,
+        Place,
+        Release,
+    }
+
+    private bool _open;
+    private HoldMode _holdMode = HoldMode.None;
+    private string _holdReason = string.Empty;
+    private Guid? _activeHoldId;
+
+    // The clip whose hold status was last loaded. The menu reloads it when the covering clip changes while open.
+    private Guid? _holdLoadedFor;
+    private LocalizedString? _message;
+    private bool _busy;
+
+    /// <summary>The operator role parsed from the paired session, or null when no role is known.</summary>
+    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+
+    /// <summary>Why the tag and new-case actions do not apply, or null when they do.</summary>
+    private LocalizedString? TagReason =>
+        Selection.DeviceId is null || (Selection.EventId is null && Selection.MediaItemId is null)
+            ? L["ReasonNoSelection"]
+            : RoleReason(OperatorRole.Review);
+
+    /// <summary>Why the hold action does not apply, or null when it does.</summary>
+    private LocalizedString? HoldReason =>
+        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.Admin);
+
+    /// <summary>Why the integrity check does not apply, or null when it does.</summary>
+    private LocalizedString? VerifyReason =>
+        Selection.MediaItemId is null || Selection.DeviceId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.ReadOnly);
+
+    /// <summary>Why the export does not apply, or null when it does. Export needs SuperAdmin, as the export page does.</summary>
+    private LocalizedString? ExportReason =>
+        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.SuperAdmin);
+
+    /// <summary>The export link for the covering clip, or null while export does not apply.</summary>
+    private string? ExportHref =>
+        ExportReason is null && Selection.MediaItemId is Guid clipId ? EvidenceActions.BuildExportUrl(new[] { clipId }) : null;
+
+    private string HoldPlaceholder =>
+        _holdMode == HoldMode.Release ? L["HoldReleaseReasonPlaceholder"].Value : L["HoldReasonPlaceholder"].Value;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnSelectionChanged;
+        TimelineModel.OnChange += OnSelectionChanged;
+        await SessionState.EnsureLoadedAsync();
+    }
+
+    /// <summary>Returns the reason a minimum role is refused, or null when the operator meets it.</summary>
+    private LocalizedString? RoleReason(OperatorRole minimum)
+    {
+        OperatorRole? role = Role;
+        if (role is null)
+        {
+            return L["ReasonSignInRequired"];
+        }
+
+        if (role.Value >= minimum)
+        {
+            return null;
+        }
+
+        return minimum switch
+        {
+            OperatorRole.Review => L["ReasonRequiresReview"],
+            OperatorRole.Admin => L["ReasonRequiresAdmin"],
+            _ => L["ReasonRequiresSuperAdmin"],
+        };
+    }
+
+    private void OnSelectionChanged()
+    {
+        // Re-read the hold for the covering clip when it changes under an open menu, so Place and Release follow the cursor.
+        _ = InvokeAsync(async () =>
+        {
+            if (_open && _holdLoadedFor != Selection.MediaItemId)
+            {
+                await LoadActiveHoldAsync();
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnToggleAsync()
+    {
+        _open = !_open;
+        if (_open)
+        {
+            await LoadActiveHoldAsync();
+        }
+        else
+        {
+            _message = null;
+            ClearHoldPrompt();
+        }
+    }
+
+    /// <summary>Loads the active legal hold on the covering clip. A failure is shown and logged, never thrown.</summary>
+    private async Task LoadActiveHoldAsync()
+    {
+        Guid? mediaItemId = Selection.MediaItemId;
+        _holdLoadedFor = mediaItemId;
+        _activeHoldId = null;
+        if (mediaItemId is not Guid clipId)
+        {
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<LegalHold> holds = await LegalHoldRepository.GetActiveByMediaItemIdsAsync(new[] { clipId }, CancellationToken.None);
+            _activeHoldId = holds.FirstOrDefault(h => h.MediaItemId == clipId)?.Id;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Review action hold-status failed: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+            _message = L["ActionFailed"];
+        }
+    }
+
+    /// <summary>Runs one menu action. Any failure becomes a message and a log line; nothing propagates to the page.</summary>
+    private async Task RunAsync(string action, LocalizedString failureMessage, Func<Task> work)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await work();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Review action {Action} failed: {ExceptionType}: {Message}", action, ex.GetType().Name, ex.Message);
+            _message = failureMessage;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Tags the selected event, or the covering clip when no event is selected. The tagger decides pin or pending.</summary>
+    private Task<TagOutcome> TagSelectionAsync()
+    {
+        Guid deviceId = Selection.DeviceId!.Value;
+        string reason = L["TagDefaultReason"].Value;
+        if (Selection.EventId is Guid eventId)
+        {
+            return Tagger.TagAsync(CaseItemKind.Event, eventId, deviceId, Selection.AtUtc, reason, CancellationToken.None);
+        }
+
+        return Tagger.TagAsync(CaseItemKind.Media, Selection.MediaItemId!.Value, deviceId, Selection.AtUtc, reason, CancellationToken.None);
+    }
+
+    private LocalizedString OutcomeMessage(TagOutcome outcome)
+    {
+        return outcome switch
+        {
+            TagOutcome.PinnedToOpenCase => L["ResultTagPinned"],
+            TagOutcome.KeptPending => L["ResultTagKeptPending"],
+            TagOutcome.AlreadyTagged => L["ResultTagAlreadyTagged"],
+            _ => L["ResultTagFailed"],
+        };
+    }
+
+    private async Task OnTagAsync()
+    {
+        if (TagReason is not null)
+        {
+            return;
+        }
+
+        await RunAsync("tag", L["ActionFailed"], async () =>
+        {
+            _message = OutcomeMessage(await TagSelectionAsync());
+        });
+    }
+
+    /// <summary>Tags the selection, then sets the review's cameras and range as the scope and opens the new-case page.</summary>
+    private async Task OnStartNewCaseAsync()
+    {
+        if (TagReason is not null)
+        {
+            return;
+        }
+
+        await RunAsync("new-case", L["ActionFailed"], async () =>
+        {
+            TagOutcome outcome = await TagSelectionAsync();
+            if (outcome == TagOutcome.Failed)
+            {
+                _message = OutcomeMessage(outcome);
+                return;
+            }
+
+            ScopeState.Set(ScopeState.Current with
+            {
+                DeviceIds = State.CameraIds,
+                FromUtc = State.FromUtc,
+                ToUtc = State.ToUtc,
+                MatchesNoDevices = false,
+            });
+            NavigationManager.NavigateTo("/cases/new");
+        });
+    }
+
+    private void OnBeginPlaceHold()
+    {
+        _holdMode = HoldMode.Place;
+        _holdReason = string.Empty;
+        _message = null;
+    }
+
+    private void OnBeginRelease()
+    {
+        _holdMode = HoldMode.Release;
+        _holdReason = string.Empty;
+        _message = null;
+    }
+
+    private void OnCancelHold()
+    {
+        ClearHoldPrompt();
+    }
+
+    private void ClearHoldPrompt()
+    {
+        _holdMode = HoldMode.None;
+        _holdReason = string.Empty;
+    }
+
+    /// <summary>Places or releases the hold with the typed reason. The actor is the signed-in operator; no operator means no action.</summary>
+    private async Task OnConfirmHoldAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_holdReason) || HoldReason is not null || _holdMode == HoldMode.None)
+        {
+            return;
+        }
+
+        if (Selection.MediaItemId is not Guid mediaItemId)
+        {
+            ClearHoldPrompt();
+            return;
+        }
+
+        // Same rule as the Evidence page: never fall back to a machine identity, refuse instead.
+        string? actorId = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actorId is not { } actor)
+        {
+            _message = L["ReasonSignInRequired"];
+            ClearHoldPrompt();
+            return;
+        }
+
+        string reason = _holdReason.Trim();
+        HoldMode mode = _holdMode;
+        await RunAsync("hold", L["HoldFailed"], async () =>
+        {
+            if (mode == HoldMode.Place)
+            {
+                LegalHold hold = await LegalHoldRepository.PlaceAsync(mediaItemId, reason, actor, CancellationToken.None);
+                _activeHoldId = hold.Id;
+                _message = L["HoldPlaced"];
+            }
+            else if (_activeHoldId is Guid holdId)
+            {
+                await LegalHoldRepository.ReleaseAsync(holdId, actor, reason, CancellationToken.None);
+                _activeHoldId = null;
+                _message = L["HoldReleased"];
+            }
+        });
+
+        ClearHoldPrompt();
+    }
+
+    /// <summary>Re-verifies the primary camera's files and reports the covering clip's result.</summary>
+    private async Task OnVerifyAsync()
+    {
+        if (VerifyReason is not null)
+        {
+            return;
+        }
+
+        Guid clipId = Selection.MediaItemId!.Value;
+        Guid deviceId = Selection.DeviceId!.Value;
+        await RunAsync("verify", L["ActionFailed"], async () =>
+        {
+            IReadOnlyList<MediaVerificationResult> results =
+                await EvidenceValidationService.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+            MediaVerificationResult? result = results.FirstOrDefault(r => r.MediaItemId == clipId);
+            _message = result?.Status switch
+            {
+                null => L["VerifyNotChecked"],
+                "verified" => L["VerifyVerified"],
+                "failed" => L["VerifyMismatch"],
+                "missing" => L["VerifyMissing"],
+                _ => L["VerifyFailed"],
+            };
+        });
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnSelectionChanged;
+        TimelineModel.OnChange -= OnSelectionChanged;
+    }
+}

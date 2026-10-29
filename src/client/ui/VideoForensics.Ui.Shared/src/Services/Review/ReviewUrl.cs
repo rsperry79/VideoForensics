@@ -20,7 +20,8 @@ public sealed record ReviewUrlState(
     DateTime? CursorUtc,
     ReviewTab Tab,
     string? Provider,
-    Guid? Account)
+    Guid? Account,
+    Guid? CaseId = null)
 {
     /// <summary>Compares every field, with <see cref="Devices"/> compared by sequence.</summary>
     public bool Equals(ReviewUrlState? other)
@@ -32,7 +33,8 @@ public sealed record ReviewUrlState(
             && CursorUtc == other.CursorUtc
             && Tab == other.Tab
             && Provider == other.Provider
-            && Account == other.Account;
+            && Account == other.Account
+            && CaseId == other.CaseId;
     }
 
     /// <summary>Hash code that agrees with <see cref="Equals(ReviewUrlState)"/>.</summary>
@@ -50,6 +52,7 @@ public sealed record ReviewUrlState(
         hash.Add(Tab);
         hash.Add(Provider);
         hash.Add(Account);
+        hash.Add(CaseId);
         return hash.ToHashCode();
     }
 }
@@ -77,6 +80,7 @@ public static class ReviewUrl
         ReviewTab tab = ReviewTab.Timeline;
         string? provider = null;
         Guid? account = null;
+        Guid? caseId = null;
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -115,6 +119,9 @@ public static class ReviewUrl
                     case "account":
                         account = Guid.TryParse(value.Trim(), out Guid accountValue) ? accountValue : account;
                         break;
+                    case "reviewcase":
+                        caseId = Guid.TryParse(value.Trim(), out Guid caseValue) ? caseValue : caseId;
+                        break;
                 }
             }
         }
@@ -126,7 +133,28 @@ public static class ReviewUrl
             cursor,
             tab,
             provider,
-            account);
+            account,
+            caseId);
+    }
+
+    /// <summary>
+    /// Returns <paramref name="uri"/> without the <c>reviewcase</c> (case view) parameter, keeping every other query
+    /// parameter, including <c>case</c>, the app-wide active-case context that <c>CaseUrl</c> manages.
+    /// </summary>
+    public static string WithoutCaseView(string uri)
+    {
+        int queryStart = uri.IndexOf('?');
+        if (queryStart < 0)
+        {
+            return uri;
+        }
+
+        string path = uri[..queryStart];
+        string[] kept = uri[(queryStart + 1)..]
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(part => !part.StartsWith("reviewcase=", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        return kept.Length == 0 ? path : path + "?" + string.Join('&', kept);
     }
 
     /// <summary>
@@ -170,6 +198,11 @@ public static class ReviewUrl
         if (state.Account is Guid account)
         {
             parts.Add("account=" + account.ToString("D"));
+        }
+
+        if (state.CaseId is Guid caseGuid)
+        {
+            parts.Add("reviewcase=" + caseGuid.ToString("D"));
         }
 
         return string.Join("&", parts);

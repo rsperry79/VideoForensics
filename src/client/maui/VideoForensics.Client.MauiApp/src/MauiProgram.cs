@@ -196,6 +196,8 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.TryAddSingleton(TimeProvider.System);
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.ScopeState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewClipLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewClipLoader>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewEventLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewEventLoader>();
@@ -205,6 +207,8 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.DeviceOwnershipService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Client.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Cases.CaseState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewEvidenceTagger>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.IUiModeService, VideoForensics.Client.Ui.Shared.Services.UiModeService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Client.Ui.Shared.Formatting.SimpleHomeBuilder(

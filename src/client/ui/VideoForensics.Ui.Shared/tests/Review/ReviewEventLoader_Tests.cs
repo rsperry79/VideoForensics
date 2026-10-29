@@ -116,4 +116,85 @@ public class ReviewEventLoader_Tests
         // Assert
         Assert.Equal(new[] { device }, capture.Devices);
     }
+
+    private static ReviewCaseMode NoCase()
+    {
+        return new ReviewCaseMode(new Mock<ICaseRepository>().Object, new Mock<IMediaItemRepository>().Object, new Mock<IEventRepository>().Object);
+    }
+
+    private static Event Evt(Guid device, DateTime occurred)
+    {
+        return new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = Guid.NewGuid().ToString(), EventType = "motion", OccurredAtUtc = occurred };
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_CaseMode_PagesInMemoryNewestFirstWithTheMatchingTotal()
+    {
+        // Arrange
+        Guid device = Guid.NewGuid();
+        Event a = Evt(device, From.AddHours(1));
+        Event b = Evt(device, From.AddHours(2));
+        Event c = Evt(device, From.AddHours(3));
+        ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [a, b, c]);
+        var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
+
+        // Act
+        EventPage page = await loader.LoadAsync([device], From, To, 1, 1, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(3, page.TotalCount);
+        Assert.Equal([b.Id], page.Items.Select(e => e.Id));
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_CaseMode_RestrictsToTheRequestedDevicesAndRange()
+    {
+        // Arrange
+        Guid device = Guid.NewGuid();
+        Guid other = Guid.NewGuid();
+        Event inside = Evt(device, From.AddHours(1));
+        Event wrongDevice = Evt(other, From.AddHours(1));
+        Event outsideRange = Evt(device, To.AddDays(1));
+        ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [inside, wrongDevice, outsideRange]);
+        var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
+
+        // Act
+        EventPage page = await loader.LoadAsync([device], From, To, 0, 100, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, page.TotalCount);
+        Assert.Equal([inside.Id], page.Items.Select(e => e.Id));
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_CaseMode_DoesNotQueryTheRepository()
+    {
+        // Arrange
+        Guid device = Guid.NewGuid();
+        ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [Evt(device, From.AddHours(1))]);
+        var repository = Repository(new Capture());
+        var loader = new ReviewEventLoader(repository.Object, caseMode);
+
+        // Act
+        _ = await loader.LoadAsync([device], From, To, 0, 100, CancellationToken.None);
+
+        // Assert
+        repository.Verify(r => r.ListPageByDevicesAndDateRangeAsync(
+            It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+            It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_InactiveCaseMode_QueriesTheRepositoryAsBefore()
+    {
+        // Arrange
+        var capture = new Capture();
+        var loader = new ReviewEventLoader(Repository(capture).Object, NoCase());
+
+        // Act
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, 0, 100, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(new[] { "snapshot" }, capture.Excluded);
+    }
 }

@@ -13,6 +13,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
@@ -87,8 +88,35 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>When true, the provider-account repository throws, so the ownership load fails.</summary>
     protected bool OwnershipFails { get; set; }
 
+    /// <summary>The Actions menu's logger, so a test can check what was logged.</summary>
+    protected Mock<ILogger<ReviewActionsMenu>> ActionsLogger { get; } = new();
+
+    /// <summary>The legal hold repository double the Actions menu places and releases holds through.</summary>
+    protected Mock<ILegalHoldRepository> LegalHoldRepositoryMock { get; } = new();
+
+    /// <summary>The integrity verification double the Actions menu runs through.</summary>
+    protected Mock<IEvidenceValidationService> EvidenceValidationMock { get; } = new();
+
+    /// <summary>The case repository the case state and the tagger read and pin through. Set before the first render that uses them.</summary>
+    protected ICaseRepository CaseRepositoryDouble { get; set; } = new Mock<ICaseRepository>().Object;
+
+    /// <summary>The still-capture service the timeline tab's Grab still button calls. Succeeds by default.</summary>
+    protected Mock<IMediaStillCaptureService> StillCaptureMock { get; } = new();
+
     /// <summary>The page's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewPage>> PageLogger { get; } = new();
+
+    /// <summary>The media item repository double the case view reads pinned clips through.</summary>
+    protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
+
+    /// <summary>The event repository double the case view reads pinned events through.</summary>
+    protected Mock<IEventRepository> EventRepositoryMock { get; } = new();
+
+    private readonly Dictionary<Guid, MediaItem> _mediaById = [];
+    private readonly Dictionary<Guid, Event> _eventsById = [];
+
+    /// <summary>The case view service, resolved from the same scope the page uses.</summary>
+    protected ReviewCaseMode CaseMode => Services.GetRequiredService<ReviewCaseMode>();
 
     /// <summary>The page's localizer, resolved the way the page resolves it.</summary>
     protected IStringLocalizer<ReviewPage> L => Services.GetRequiredService<IStringLocalizer<ReviewPage>>();
@@ -106,6 +134,7 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => ReviewState);
+        _ = Services.AddScoped<PendingEvidenceTags>();
         _ = Services.AddScoped(_ => TimelineModel);
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddSingleton<IReviewClipLoader>(ClipLoader);
@@ -121,6 +150,44 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddSingleton(FeederLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddSingleton(PageLogger.Object);
+        _ = Services.AddSingleton(ActionsLogger.Object);
+        _ = Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
+        _ = Services.AddScoped(_ => EvidenceValidationMock.Object);
+        _ = Services.AddScoped<ICaseRepository>(_ => CaseRepositoryDouble);
+        _ = Services.AddScoped<CaseState>();
+        _ = Services.AddScoped<ReviewEvidenceTagger>();
+        _ = Services.AddScoped<ReviewSelection>();
+        _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        _ = Services.AddScoped(_ => EventRepositoryMock.Object);
+        _ = Services.AddScoped(sp => new ReviewCaseMode(
+            sp.GetRequiredService<ICaseRepository>(),
+            sp.GetRequiredService<IMediaItemRepository>(),
+            sp.GetRequiredService<IEventRepository>()));
+        _ = MediaItemRepositoryMock
+            .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItem?>(_mediaById.GetValueOrDefault(id)));
+        _ = EventRepositoryMock
+            .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));
+        _ = Services.AddScoped(_ => StillCaptureMock.Object);
+        _ = StillCaptureMock
+            .Setup(m => m.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => MediaStillCaptureResult.Ok(new MediaStillInfo
+            {
+                Id = Guid.NewGuid(),
+                SourceMediaItemId = Guid.NewGuid(),
+                FrameOffsetMs = 0,
+                Sha256Hash = "0000000000000000",
+                SourceSha256AtCapture = "source",
+                CapturedByOperator = "operator",
+                CaptureMethod = "Server",
+            }));
+        _ = LegalHoldRepositoryMock
+            .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LegalHold>());
+        _ = EvidenceValidationMock
+            .Setup(m => m.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            .ReturnsAsync(new List<MediaVerificationResult>());
         Mock<IProviderAccountRepository> accountRepository = ConfigureAccountRepository();
         Mock<ILocationRepository> locationRepository = ConfigureLocationRepository();
         Mock<IUserRepository> userRepository = ConfigureUserRepository();
@@ -134,6 +201,53 @@ public abstract class ReviewTestContext : BunitContext
             .ReturnsAsync(() => Devices.ToList());
 
         SignInOperatorAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates a case whose pins are the given media items and events, wires the case, pin, and row doubles, and
+    /// returns the case id. Set the case repository double before rendering anything that resolves the case view.
+    /// </summary>
+    protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
+    {
+        Guid caseId = Guid.NewGuid();
+        var pins = new List<CaseItem>();
+        foreach (MediaItem item in media)
+        {
+            _mediaById[item.Id] = item;
+            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = item.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+        }
+
+        foreach (Event evt in events ?? [])
+        {
+            _eventsById[evt.Id] = evt;
+            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = evt.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+        }
+
+        var caseRepository = new Mock<ICaseRepository>();
+        _ = caseRepository
+            .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = title, CreatedBy = "op" });
+        _ = caseRepository
+            .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pins);
+        CaseRepositoryDouble = caseRepository.Object;
+        return caseId;
+    }
+
+    /// <summary>A clip on <paramref name="device"/> recorded at <paramref name="recordedUtc"/>, lasting one minute.</summary>
+    protected static MediaItem PinnableClip(Guid device, DateTime recordedUtc)
+    {
+        return new MediaItem
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            RecordedAtUtc = recordedUtc,
+            DurationSeconds = 60,
+            Sha256Hash = "hash",
+        };
     }
 
     /// <summary>Adds a provider account with the given provider name and returns it.</summary>
@@ -230,7 +344,21 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>Signs in a paired operator so the page's sign-in gate passes.</summary>
     protected Task SignInOperatorAsync()
     {
-        return Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+        return SignInOperatorAsync("Review");
+    }
+
+    /// <summary>Signs in a paired operator with the given role and returns the operator's id.</summary>
+    protected async Task<Guid> SignInOperatorAsAsync(string role)
+    {
+        Guid operatorId = Guid.NewGuid();
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", operatorId, role);
+        return operatorId;
+    }
+
+    /// <summary>Signs in a paired operator with the given role.</summary>
+    protected Task SignInOperatorAsync(string role)
+    {
+        return SignInOperatorAsAsync(role);
     }
 
     /// <summary>Clears the operator session, so the page shows its sign-in prompt.</summary>

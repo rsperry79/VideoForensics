@@ -7,7 +7,7 @@
 
 @if (_hasMain)
 {
-    <ReviewPlayer Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" />
+    <ReviewPlayer @ref="_mainPlayer" Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" />
 }
 
 @if (_previewIndexes.Count > 0)
@@ -34,6 +34,18 @@
 }
 
 @code {
+    // The main player, read by the timeline tab's Grab still button for the playback position.
+    private ReviewPlayer? _mainPlayer;
+
+    /// <summary>
+    /// Reads the main player's playback position in milliseconds. Null when no main player is rendered (no camera is
+    /// selected) or when the player has no video at the cursor.
+    /// </summary>
+    public Task<long?> GetCurrentTimeMsAsync()
+    {
+        return _mainPlayer is null ? Task.FromResult<long?>(null) : _mainPlayer.GetCurrentTimeMsAsync();
+    }
+
     /// <summary>Every camera. The entry at <see cref="SelectedIndex"/> plays large; the others appear as preview tiles.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<CameraTile> Cameras { get; set; } = [];
 

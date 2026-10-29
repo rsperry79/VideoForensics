@@ -1,9 +1,12 @@
 using AngleSharp.Dom;
 
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Bunit;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -23,16 +26,83 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_BackClick_NavigatesToTheLegacyMediaList()
+    public async Task ReviewTopBar_CaseModeActive_ShowsTheBannerWithTheCaseName()
+    {
+        // Arrange
+        AddDevices(1);
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(Devices[0].Id, FixedNowUtc.AddHours(-1))]);
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        string banner = cut.Find("[data-testid='review-case-banner']").TextContent;
+        Assert.Contains(L["CaseModeBanner", "Driveway"].Value, banner);
+        Assert.Empty(cut.FindAll("[data-testid='review-case-truncated']"));
+    }
+
+    [Fact]
+    public async Task ReviewTopBar_CaseModeTruncated_ShowsTheTruncationNotice()
+    {
+        // Arrange
+        AddDevices(1);
+        var clips = Enumerable.Range(0, ReviewCaseMode.MaxItemsPerKind + 1)
+            .Select(i => PinnableClip(Devices[0].Id, FixedNowUtc.AddMinutes(-i)))
+            .ToList();
+        Guid caseId = ArrangePinnedCase("Big", clips);
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Contains(L["CaseModeTruncated", ReviewCaseMode.MaxItemsPerKind].Value, cut.Find("[data-testid='review-case-truncated']").TextContent);
+    }
+
+    [Fact]
+    public void ReviewTopBar_CaseModeInactive_ShowsNoBanner()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-case-banner']"));
+    }
+
+    [Fact]
+    public async Task ReviewTopBar_LeaveCaseClick_ExitsCaseModeAndNavigatesWithoutTheCaseParam()
+    {
+        // Arrange
+        AddDevices(1);
+        Guid caseId = ArrangePinnedCase("Driveway", [PinnableClip(Devices[0].Id, FixedNowUtc.AddHours(-1))]);
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?reviewcase=" + caseId.ToString("D") + "&tab=Events");
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Act
+        cut.Find("[data-testid='review-case-leave']").Click();
+
+        // Assert
+        Assert.False(CaseMode.Active);
+        Assert.DoesNotContain("reviewcase=", CurrentUri);
+        Assert.Contains("tab=Events", CurrentUri);
+        Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
+    }
+
+    [Fact]
+    public void ReviewTopBar_BackClick_GoesBackInBrowserHistory()
     {
         // Arrange
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        string before = CurrentUri;
 
         // Act
         cut.Find("[data-testid='review-back']").Click();
 
-        // Assert
-        Assert.Equal("http://localhost/media", CurrentUri);
+        // Assert: /media is this page, so Back uses history rather than navigating to it.
+        Assert.Contains(JSInterop.Invocations, i => i.Identifier == "history.back");
+        Assert.Equal(before, CurrentUri);
     }
 
     [Fact]
@@ -49,15 +119,20 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_Actions_StaysDisabledWithALocalizedTooltip()
+    public void ReviewTopBar_Actions_IsEnabledAndOpensTheMenu()
     {
         // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
         // Assert
         IElement actions = cut.Find("[data-testid='review-actions']");
-        Assert.True(actions.HasAttribute("disabled"));
-        Assert.Equal(L["ActionsAvailableLater"].Value, actions.GetAttribute("title"));
+        Assert.False(actions.HasAttribute("disabled"));
+
+        // Act: the button opens the actions popup
+        actions.Click();
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
     }
 
     [Fact]
@@ -145,5 +220,20 @@ public class ReviewTopBar_Tests : ReviewTestContext
         Assert.Equal(ReviewTab.Detail, ReviewState.ActiveTab);
         Assert.Contains("active", cut.Find("[data-testid='review-tab-button-detail']").ClassName);
         Assert.DoesNotContain("active", cut.Find("[data-testid='review-tab-button-timeline']").ClassName);
+    }
+
+    [Fact]
+    public void ReviewTopBar_PendingTagsExist_ShowsTheBadge()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+        Assert.Empty(cut.FindAll("[data-testid='review-pending-tags-count']"));
+
+        // Act
+        cut.InvokeAsync(() => Services.GetRequiredService<PendingEvidenceTags>().Add(new PendingTag(
+            CaseItemKind.Media, Guid.NewGuid(), Devices[0].Id, FixedNowUtc, PendingTagFakes.Reason, "actor-1")));
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
     }
 }

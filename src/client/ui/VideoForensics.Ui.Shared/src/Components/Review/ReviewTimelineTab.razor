@@ -2,7 +2,10 @@
 @using System.Reactive.Linq
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Pages
@@ -14,6 +17,11 @@
 @inject IServiceProvider ServiceProvider
 @inject IStringLocalizer<ReviewPage> L
 @inject ILogger<ReviewTimelineTab> Logger
+@inject IMediaStillCaptureService CaptureService
+@inject IMediaContentUrlProvider MediaUrlProvider
+@inject PairedSessionState SessionState
+@inject ReviewSelection Selection
+@inject ReviewTimelineModel TimelineModel
 
 <div class="review-timeline-tab" data-testid="review-timeline-tab">
     @if (State.CameraIds.Count == 0)
@@ -41,7 +49,18 @@
         }
         else if (State.CameraIds.Count == 1)
         {
-            <SingleCameraView Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
+            <div class="review-grab-still-bar">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(GrabStillReason is not null)" @onclick="OnGrabStillAsync">@L["GrabStill"]</button>
+                @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
+                {
+                    <span class="@(_stillStatus.IsError ? "text-danger" : null)" data-testid="review-grab-still-status">@_stillStatus.Text</span>
+                    @if (_stillStatus.OpenUrl is not null)
+                    {
+                        <a href="@_stillStatus.OpenUrl" target="_blank" rel="noopener" data-testid="review-grab-still-open">@L["GrabStillOpen"]</a>
+                    }
+                }
+            </div>
+            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
         }
         else
         {
@@ -68,6 +87,14 @@
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
 
+    // The single-camera view, whose main player reads the playback position for Grab still.
+    private SingleCameraView? _singleCamera;
+
+    // Grab still: the status line, the clip it belongs to, and whether a capture is in flight.
+    private StillStatus? _stillStatus;
+    private Guid? _stillClipId;
+    private bool _grabInProgress;
+
     private LoadedClips? _loaded;
     private LoadKey? _requested;
     private IReadOnlyList<CameraTile> _tiles = [];
@@ -80,9 +107,11 @@
     private bool _error;
     private bool _disposed;
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnReviewStateChanged;
+        TimelineModel.OnChange += OnTimelineChanged;
+        await SessionState.EnsureLoadedAsync();
 
         // Optional, like the Evidence page: a host with no realtime feed simply never reloads from evidence changes.
         IEvidenceChangedSource? evidence = ServiceProvider.GetService(typeof(IEvidenceChangedSource)) as IEvidenceChangedSource;
@@ -92,7 +121,6 @@
             .Subscribe(change => { _ = InvokeAsync(() => ReloadAsync()); });
 
         _ = ReloadAsync();
-        return Task.CompletedTask;
     }
 
     private void OnReviewStateChanged()
@@ -106,7 +134,14 @@
     /// </summary>
     private async Task OnReviewStateChangedAsync()
     {
-        if (_disposed || _requested is null)
+        if (_disposed)
+        {
+            return;
+        }
+
+        ClearStillStatusForAnotherClip();
+
+        if (_requested is null)
         {
             return;
         }
@@ -325,6 +360,142 @@
         State.SetCameras([_tileDeviceIds[index]]);
     }
 
+    /// <summary>The operator role parsed from the paired session, or null when none is known.</summary>
+    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+
+    /// <summary>Why Grab still does not apply now, or null when it does. The reasons are checked in the order an operator can fix them.</summary>
+    private LocalizedString? GrabStillReason
+    {
+        get
+        {
+            OperatorRole? role = Role;
+            if (role is null || role.Value < OperatorRole.Review)
+            {
+                return L["GrabStillNeedsRole"];
+            }
+
+            if (Selection.MediaItemId is null)
+            {
+                return L["GrabStillNoClip"];
+            }
+
+            return _grabInProgress ? L["GrabStillInProgress"] : null;
+        }
+    }
+
+    /// <summary>The button's tooltip: why it is disabled, or its own name when it is enabled.</summary>
+    private string GrabStillTitle => (GrabStillReason ?? L["GrabStill"]).Value;
+
+    /// <summary>
+    /// Grabs the covering clip's current frame as a new evidence still. The position comes from the single-camera player and
+    /// the capture uses the clip's media item id, as the Evidence page's viewer does.
+    /// </summary>
+    private async Task OnGrabStillAsync()
+    {
+        if (GrabStillReason is not null || Selection.MediaItemId is not Guid clipId)
+        {
+            return;
+        }
+
+        string? actorId = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actorId is null)
+        {
+            ShowStillStatus(new StillStatus(L["ReasonSignInRequired"].Value, true, null), clipId);
+            return;
+        }
+
+        _grabInProgress = true;
+        ShowStillStatus(new StillStatus(L["GrabStillInProgress"].Value, false, null), clipId);
+        StillStatus? status = await RunGrabStillAsync(clipId, actorId);
+        _grabInProgress = false;
+
+        if (!_disposed && status is not null)
+        {
+            ShowStillStatus(status, clipId);
+        }
+    }
+
+    /// <summary>Reads the position, runs the capture, and returns the status to show. Null only when the tab was disposed mid-capture.</summary>
+    private async Task<StillStatus?> RunGrabStillAsync(Guid clipId, string actorId)
+    {
+        try
+        {
+            long? offsetMs = _singleCamera is null ? null : await _singleCamera.GetCurrentTimeMsAsync();
+            if (offsetMs is not long offset)
+            {
+                return new StillStatus(L["GrabStillNoPosition"].Value, true, null);
+            }
+
+            MediaStillCaptureResult result = await CaptureService.CaptureStillAsync(clipId, offset, null, null, null, actorId, _lifetime.Token);
+            if (!result.Success || result.Still is null)
+            {
+                Logger.LogError("Could not grab still: {ErrorCode}: {Message}", result.Error, result.ErrorMessage ?? string.Empty);
+                return new StillStatus(ErrorText(result.ErrorMessage ?? L["ActionFailed"].Value), true, null);
+            }
+
+            string? openUrl = await OpenUrlForStillAsync(result.Still.Id);
+            return new StillStatus(L["GrabStillResultPrefix"].Value + " " + HashPrefix(result.Still.Sha256Hash), false, openUrl);
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not grab still: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            return new StillStatus(ErrorText(ex.Message), true, null);
+        }
+    }
+
+    /// <summary>The ticketed URL that opens the new still. Null when it cannot be fetched, since the still exists either way.</summary>
+    private async Task<string?> OpenUrlForStillAsync(Guid stillId)
+    {
+        try
+        {
+            IReadOnlyDictionary<Guid, string> urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { stillId }, _lifetime.Token);
+            return urls.TryGetValue(stillId, out string? url) ? url : null;
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not get the link to the new still: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            return null;
+        }
+    }
+
+    private void ShowStillStatus(StillStatus status, Guid clipId)
+    {
+        _stillStatus = status;
+        _stillClipId = clipId;
+        StateHasChanged();
+    }
+
+    /// <summary>The status belongs to the clip it was grabbed from, so moving the cursor onto another clip clears it.</summary>
+    private void ClearStillStatusForAnotherClip()
+    {
+        if (_stillStatus is not null && _stillClipId != Selection.MediaItemId)
+        {
+            _stillStatus = null;
+            _stillClipId = null;
+        }
+    }
+
+    private static string HashPrefix(string hash) => hash.Length > 12 ? hash[..12] : hash;
+
+    private string ErrorText(string detail) => L["GrabStillErrorPrefix"].Value + " " + detail;
+
+    /// <summary>The timeline model changed (the page feeder published clips), so the button's enabled state is redrawn.</summary>
+    private void OnTimelineChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>The Grab still status line: its text and whether it reports an error.</summary>
+    private sealed record StillStatus(string Text, bool IsError, string? OpenUrl);
+
     public void Dispose()
     {
         if (_disposed)
@@ -334,6 +505,7 @@
 
         _disposed = true;
         State.OnChange -= OnReviewStateChanged;
+        TimelineModel.OnChange -= OnTimelineChanged;
         _evidenceSubscription?.Dispose();
         _loadCts?.Cancel();
         _loadCts?.Dispose();
