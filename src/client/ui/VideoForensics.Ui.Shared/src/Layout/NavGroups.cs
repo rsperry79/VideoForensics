@@ -113,7 +113,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
                 new("Paired Devices", "/settings/devices", Section: "Devices & Network"),
                 new("Network Access", "/settings/network", Section: "Devices & Network"),
-                new("Software Paths", "/settings/software-paths", Section: "Devices & Network"),
                 new("Infrastructure", "/settings/infrastructure", Section: "Devices & Network"),
 
                 new("Storage", "/settings/storage", Section: "Storage & Data"),
