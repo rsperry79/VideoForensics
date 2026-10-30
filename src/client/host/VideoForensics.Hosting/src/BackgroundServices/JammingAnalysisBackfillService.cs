@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
+using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -52,6 +53,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
+                using IDisposable? lease = scope.ServiceProvider.TryEnter();
+                if (lease is null)
+                {
+                    return;
+                }
+
                 _ = await scope.ServiceProvider.GetRequiredService<IJammingAnalysisBackfill>().BackfillAsync(ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

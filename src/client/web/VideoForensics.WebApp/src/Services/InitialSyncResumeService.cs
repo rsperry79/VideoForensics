@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.WebApp.Services
 {
@@ -34,6 +35,9 @@ namespace VideoForensics.Client.WebApp.Services
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
+
+                // Why: a first sync that is due waits for maintenance to end rather than being skipped until the next restart.
+                using IDisposable lease = await MaintenanceWork.EnterWorkWhenOpenAsync(MaintenanceWork.GateFrom(scope.ServiceProvider), stoppingToken);
                 InitialSyncResumer resumer = scope.ServiceProvider.GetRequiredService<InitialSyncResumer>();
                 await resumer.ResumeIncompleteAsync(stoppingToken);
             }

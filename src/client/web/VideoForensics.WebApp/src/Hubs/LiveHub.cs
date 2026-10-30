@@ -34,13 +34,15 @@ namespace VideoForensics.Client.WebApp.Hubs
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<LiveHub> _logger;
         private readonly ISyncProgressStore _progress;
+        private readonly IMaintenanceGate? _maintenance;
 
-        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger, ISyncProgressStore progress)
+        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger, ISyncProgressStore progress, IMaintenanceGate? maintenance = null)
         {
             _connectionTracker = connectionTracker;
             _scopeFactory = scopeFactory;
             _logger = logger;
             _progress = progress;
+            _maintenance = maintenance;
         }
 
         public override async Task OnConnectedAsync()
@@ -62,10 +64,9 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
 
             // A client that connects during maintenance shows the banner at once, not on the next change.
-            IMaintenanceGate? maintenance = Context.GetHttpContext()?.RequestServices.GetService<IMaintenanceGate>();
-            if (maintenance is not null)
+            if (_maintenance is not null)
             {
-                await Clients.Caller.SendAsync(LiveHubMethods.MaintenanceState, maintenance.Current, Context.ConnectionAborted);
+                await Clients.Caller.SendAsync(LiveHubMethods.MaintenanceState, _maintenance.Current, Context.ConnectionAborted);
             }
 
             // Snapshot-on-connect: a new client (including every reconnect) gets the current state

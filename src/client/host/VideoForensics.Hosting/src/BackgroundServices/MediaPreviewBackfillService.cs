@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
+using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -60,6 +61,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
+                using IDisposable? lease = scope.ServiceProvider.TryEnter();
+                if (lease is null)
+                {
+                    return;
+                }
+
                 IMediaPreviewBackfill backfill = scope.ServiceProvider.GetRequiredService<IMediaPreviewBackfill>();
                 MediaPreviewBackfillResult result = await backfill.RunAsync(BatchSize, ct);
                 _logger.LogInformation(

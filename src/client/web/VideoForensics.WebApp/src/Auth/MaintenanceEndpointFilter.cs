@@ -6,11 +6,12 @@ namespace VideoForensics.Client.WebApp.Auth
     /// Refuses user-started work while server maintenance blocks it, with 503 and the current maintenance message. The
     /// lease is held for the request, so a maintenance drain waits for a request already in progress.
     /// </summary>
-    public sealed class MaintenanceEndpointFilter(IMaintenanceGate gate) : IEndpointFilter
+    public sealed class MaintenanceEndpointFilter(IServiceProvider services) : IEndpointFilter
     {
         /// <inheritdoc />
         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
         {
+            IMaintenanceGate gate = MaintenanceWork.GateFrom(services);
             using IDisposable? lease = gate.TryEnterWork();
             if (lease is null)
             {

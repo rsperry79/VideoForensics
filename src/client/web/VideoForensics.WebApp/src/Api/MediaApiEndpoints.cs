@@ -95,6 +95,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireRateLimiting("media");
 
             _ = group.MapPost("/media/{id:guid}/stills", CreateMediaStillAsync)
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireAuthorization(VideoForensicsPolicies.Review)
                 .RequireRateLimiting("media");
         }
