@@ -14,6 +14,9 @@ namespace VideoForensics.Client.Hosting.Contracts
         /// <summary>Latest-value stream of download progress.</summary>
         IObservable<DownloadProgressDto> DownloadProgress { get; }
 
+        /// <summary>Latest-value stream of server maintenance state. A new subscriber receives the current state.</summary>
+        IObservable<MaintenanceStatusDto> Maintenance { get; }
+
         /// <summary>Latest-value stream of urgent events. A new subscriber receives the most recent event, if any.</summary>
         IObservable<NotificationEvent> UrgentEvents { get; }
 
@@ -40,6 +43,9 @@ namespace VideoForensics.Client.Hosting.Contracts
 
         /// <summary>Most recent download progress, or null before the first emission.</summary>
         DownloadProgressDto? LatestDownloadProgress { get; }
+
+        /// <summary>Most recent server maintenance state. Idle until the server reports otherwise.</summary>
+        MaintenanceStatusDto LatestMaintenance { get; }
 
         /// <summary>Most recent urgent event, or null before the first emission.</summary>
         NotificationEvent? LatestUrgentEvent { get; }

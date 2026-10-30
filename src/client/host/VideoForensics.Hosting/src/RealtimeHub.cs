@@ -36,6 +36,7 @@ namespace VideoForensics.Client.Hosting
         private readonly CappedBackoffRetryPolicy _retryPolicy = new(ReconnectBaseDelay, ReconnectMaxDelay);
         private readonly object _gate = new();
         private readonly Subject<DownloadProgressDto> _downloadProgress = new();
+        private readonly Subject<MaintenanceStatusDto> _maintenance = new();
         private readonly Subject<NotificationEvent> _urgentEvents = new();
         private readonly Subject<SelfTestStatusDto> _selfTestStatus = new();
         private readonly Subject<LiveViewSessionDto> _liveViewSessionChanged = new();
@@ -83,6 +84,9 @@ namespace VideoForensics.Client.Hosting
 
         /// <inheritdoc />
         public IObservable<DownloadProgressDto> DownloadProgress => _downloadProgress.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<MaintenanceStatusDto> Maintenance => _maintenance.AsObservable();
 
         /// <inheritdoc />
         public IObservable<NotificationEvent> UrgentEvents => _urgentEvents.AsObservable();
@@ -335,6 +339,7 @@ namespace VideoForensics.Client.Hosting
             }
 
             _downloadProgress.OnCompleted();
+            _maintenance.OnCompleted();
             _urgentEvents.OnCompleted();
             _selfTestStatus.OnCompleted();
             _liveViewSessionChanged.OnCompleted();
@@ -427,6 +432,7 @@ namespace VideoForensics.Client.Hosting
                 .Build();
 
             _ = connection.On<DownloadProgressDto>("DownloadProgress", payload => Emit(_downloadProgress, payload));
+            _ = connection.On<MaintenanceStatusDto>("MaintenanceState", status => Emit(_maintenance, status));
             _ = connection.On<NotificationEvent>("UrgentEvent", notificationEvent => Emit(_urgentEvents, notificationEvent));
             _ = connection.On<SelfTestStatusDto>("SelfTestStatus", status => Emit(_selfTestStatus, status));
             _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", EmitLiveViewSessionChanged);

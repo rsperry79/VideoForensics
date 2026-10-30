@@ -801,6 +801,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<IRealtimeHub>(sp => sp.GetRequiredService<RealtimeHub>());
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMaintenanceStatusSource, Remote.RemoteMaintenanceStatusSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();

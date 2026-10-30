@@ -1,0 +1,43 @@
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Resources
+@implements IDisposable
+@inject IServiceProvider Services
+@inject IStringLocalizer<SharedResources> L
+
+@if (_status is { IsActive: true })
+{
+    <div class="alert alert-warning mb-0 rounded-0" role="status" data-testid="maintenance-banner">
+        <strong>@L["MaintenanceBannerTitle"]</strong>
+        <span>@(_status.Phase == "Draining" ? L["MaintenanceDraining"] : L["MaintenanceRunning"])</span>
+        @if (!string.IsNullOrWhiteSpace(_status.Message))
+        {
+            <span>@_status.Message</span>
+        }
+        <span>@L["MaintenanceWorkPaused"]</span>
+    </div>
+}
+
+@code {
+    private MaintenanceStatusSnapshot? _status;
+    private IDisposable? _subscription;
+
+    protected override void OnInitialized()
+    {
+        // A host without a maintenance source (tests, or a build that does not broadcast it) shows no banner.
+        IMaintenanceStatusSource? source = Services.GetService<IMaintenanceStatusSource>();
+        if (source is null)
+        {
+            return;
+        }
+
+        _subscription = source.Status.Subscribe(status => _ = InvokeAsync(() =>
+        {
+            _status = status;
+            StateHasChanged();
+        }));
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+}

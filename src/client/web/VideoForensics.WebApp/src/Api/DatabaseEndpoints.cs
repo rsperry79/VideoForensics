@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Routing;
 
 using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 
@@ -8,7 +9,8 @@ namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Database administration for the System &gt; Database page. Super Admin on the local tier only, like Storage and Logs.
-    /// Purge and chain repair are destructive, so they also need a step-up. Validation changes nothing.
+    /// Compact, repair, purge and chain repair change the database, so each runs as a maintenance run: new work is held back
+    /// while it runs. Purge and chain repair also need a step-up. Stats and validate only read.
     /// </summary>
     public static class DatabaseEndpoints
     {
@@ -39,16 +41,18 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithName("GetDatabaseStats")
                 .WithSummary("Physical database stats and record counts");
 
-            _ = group.MapPost("/compact", async (IDatabaseAdministrationService admin, CancellationToken ct) =>
-                {
-                    await admin.CompactAsync(ct);
-                    return Results.NoContent();
-                })
+            _ = group.MapPost("/compact", (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    RunMaintenanceAsync(coordinator, "Compacting the database", async (sp, token) =>
+                    {
+                        await sp.GetRequiredService<IDatabaseAdministrationService>().CompactAsync(token);
+                        return Results.NoContent();
+                    }, ct))
                 .WithName("CompactDatabase")
                 .WithSummary("Rebuild the database file to reclaim free pages");
 
-            _ = group.MapPost("/repair", async (IDatabaseAdministrationService admin, CancellationToken ct) =>
-                    Results.Ok(new RepairVerdictDto(await admin.RepairAsync(ct))))
+            _ = group.MapPost("/repair", (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    RunMaintenanceAsync(coordinator, "Checking and rebuilding the database", async (sp, token) =>
+                        Results.Ok(new RepairVerdictDto(await sp.GetRequiredService<IDatabaseAdministrationService>().RepairAsync(token))), ct))
                 .WithName("RepairDatabase")
                 .WithSummary("Integrity check and index rebuild");
 
@@ -63,33 +67,51 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithName("ValidateDatabase")
                 .WithSummary("List media rows without files and check the action log chain. Changes nothing.");
 
-            _ = group.MapPost("/purge-missing", async (PurgeMissingRequest request, IDatabaseAdministrationService admin, CancellationToken ct) =>
-                {
-                    if (request.MediaItemIds.Count == 0 || request.MediaItemIds.Count > MaxPurgeBatch)
+            _ = group.MapPost("/purge-missing", (PurgeMissingRequest request, MaintenanceCoordinator coordinator, CancellationToken ct) =>
                     {
-                        return Results.ValidationProblem(new Dictionary<string, string[]>
+                        if (request.MediaItemIds.Count == 0 || request.MediaItemIds.Count > MaxPurgeBatch)
                         {
-                            [nameof(request.MediaItemIds)] = [$"Send between 1 and {MaxPurgeBatch} ids."],
-                        });
-                    }
+                            return Task.FromResult(Results.ValidationProblem(new Dictionary<string, string[]>
+                            {
+                                [nameof(request.MediaItemIds)] = [$"Send between 1 and {MaxPurgeBatch} ids."],
+                            }));
+                        }
 
-                    int purged = await admin.PurgeMissingMediaAsync(request.MediaItemIds, ct);
-                    return Results.Ok(new PurgeMissingResultDto(purged));
-                })
+                        return RunMaintenanceAsync(coordinator, "Purging missing media records", async (sp, token) =>
+                            Results.Ok(new PurgeMissingResultDto(await sp.GetRequiredService<IDatabaseAdministrationService>().PurgeMissingMediaAsync(request.MediaItemIds, token))), ct);
+                    })
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .WithName("PurgeMissingMedia")
                 .WithSummary("Purge media rows whose files are missing. Legal holds are skipped.");
 
-            _ = group.MapPost("/repair-chain", async (IDatabaseAdministrationService admin, CancellationToken ct) =>
-                {
-                    ChainRepairResult result = await admin.RepairChainAsync(ct);
-                    return Results.Ok(new ChainRepairResultDto(
-                        result.BridgesAdded,
-                        result.Unrepairable is null ? null : ToDto(result.Unrepairable)));
-                })
+            _ = group.MapPost("/repair-chain", (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    RunMaintenanceAsync(coordinator, "Repairing the action log chain", async (sp, token) =>
+                    {
+                        ChainRepairResult result = await sp.GetRequiredService<IDatabaseAdministrationService>().RepairChainAsync(token);
+                        return Results.Ok(new ChainRepairResultDto(
+                            result.BridgesAdded,
+                            result.Unrepairable is null ? null : ToDto(result.Unrepairable)));
+                    }, ct))
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .WithName("RepairActionLogChain")
                 .WithSummary("Bridge action log gaps with logged ChainRepaired entries. Altered entries are never bridged.");
+        }
+
+        // Turns an overlapping run into 409 Conflict. Other failures are not caught here, so they surface as server errors.
+        private static async Task<IResult> RunMaintenanceAsync(
+            MaintenanceCoordinator coordinator,
+            string description,
+            Func<IServiceProvider, CancellationToken, Task<IResult>> operation,
+            CancellationToken ct)
+        {
+            try
+            {
+                return await coordinator.RunAsync(description, operation, ct);
+            }
+            catch (MaintenanceInProgressException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
         }
 
         private static ChainCheckDto ToDto(ChainIntegrityResult chain)

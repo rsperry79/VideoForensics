@@ -9,6 +9,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Client.Hosting.Services;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
@@ -122,6 +123,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+
+            // Why: during maintenance a tick does nothing. Schedules stay due, so they run on the first tick after it ends.
+            using IDisposable? lease = (sp.GetService<IMaintenanceGate>() ?? new NoOpMaintenanceGate()).TryEnterWork();
+            if (lease is null)
+            {
+                return;
+            }
 
             ISyncScheduleRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleRepository>();
             IReadOnlyList<SyncSchedule> schedules = await scheduleRepository.ListEnabledAsync(ct);

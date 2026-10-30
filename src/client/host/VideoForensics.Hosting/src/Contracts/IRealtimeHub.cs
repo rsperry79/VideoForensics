@@ -12,6 +12,9 @@ namespace VideoForensics.Client.Hosting.Contracts
         /// <summary>Download progress pushes (server sends a snapshot on connect, then only on change).</summary>
         IObservable<DownloadProgressDto> DownloadProgress { get; }
 
+        /// <summary>Server maintenance state. The server sends the current state on connect, then each change.</summary>
+        IObservable<MaintenanceStatusDto> Maintenance { get; }
+
         /// <summary>Urgent security events.</summary>
         IObservable<NotificationEvent> UrgentEvents { get; }
 

@@ -6,6 +6,9 @@ namespace VideoForensics.Client.WebApp.Hubs
     /// </summary>
     public static class LiveHubMethods
     {
+        /// <summary>Server maintenance state push. Broadcast on every change, and sent to each connection on connect.</summary>
+        public const string MaintenanceState = "MaintenanceState";
+
         /// <summary>Download progress push. Sent to every connection on connect and broadcast on change.</summary>
         public const string DownloadProgress = "DownloadProgress";
 

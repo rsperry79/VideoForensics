@@ -824,4 +824,16 @@
   <data name="Database" xml:space="preserve">
     <value>Database</value>
   </data>
+  <data name="MaintenanceBannerTitle" xml:space="preserve">
+    <value>Server maintenance.</value>
+  </data>
+  <data name="MaintenanceDraining" xml:space="preserve">
+    <value>Finishing current work before maintenance starts.</value>
+  </data>
+  <data name="MaintenanceRunning" xml:space="preserve">
+    <value>Maintenance is running.</value>
+  </data>
+  <data name="MaintenanceWorkPaused" xml:space="preserve">
+    <value>New work is paused until it finishes.</value>
+  </data>
 </root>

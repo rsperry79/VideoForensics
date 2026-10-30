@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -58,6 +59,13 @@ namespace VideoForensics.Client.WebApp.Hubs
             if (isAdmin)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "admins", CancellationToken.None);
+            }
+
+            // A client that connects during maintenance shows the banner at once, not on the next change.
+            IMaintenanceGate? maintenance = Context.GetHttpContext()?.RequestServices.GetService<IMaintenanceGate>();
+            if (maintenance is not null)
+            {
+                await Clients.Caller.SendAsync(LiveHubMethods.MaintenanceState, maintenance.Current, Context.ConnectionAborted);
             }
 
             // Snapshot-on-connect: a new client (including every reconnect) gets the current state

@@ -15,6 +15,7 @@ namespace VideoForensics.Client.Hosting.Tests
             public Subject<DownloadProgressDto> Progress { get; } = new();
             public Subject<NotificationEvent> Urgent { get; } = new();
             public Subject<SelfTestStatusDto> SelfTest { get; } = new();
+            public Subject<MaintenanceStatusDto> MaintenanceStream { get; } = new();
             public Subject<ConnectionState> State { get; } = new();
             public Subject<ThumbnailReadyDto> Thumbnails { get; } = new();
             public Subject<EvidenceChangedDto> Evidence { get; } = new();
@@ -22,6 +23,7 @@ namespace VideoForensics.Client.Hosting.Tests
             public IObservable<DownloadProgressDto> DownloadProgress => Progress;
             public IObservable<NotificationEvent> UrgentEvents => Urgent;
             public IObservable<SelfTestStatusDto> SelfTestStatus => SelfTest;
+            public IObservable<MaintenanceStatusDto> Maintenance => MaintenanceStream;
             public IObservable<ConnectionState> Connection => State;
             public IObservable<ThumbnailReadyDto> ThumbnailReady => Thumbnails;
             public IObservable<EvidenceChangedDto> EvidenceChanged => Evidence;

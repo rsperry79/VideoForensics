@@ -23,6 +23,7 @@ namespace VideoForensics.Client.Hosting
         private readonly BehaviorSubject<NotificationEvent?> _urgentEvents = new(null);
         private readonly BehaviorSubject<SelfTestStatusDto?> _selfTestStatus = new(null);
         private readonly BehaviorSubject<ConnectionState?> _connection = new(null);
+        private readonly BehaviorSubject<MaintenanceStatusDto> _maintenance = new(MaintenanceStatusDto.Normal);
         // Events, not state: no replay, so a late subscriber only hears about thumbnails produced after it subscribed.
         private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
         private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
@@ -39,6 +40,7 @@ namespace VideoForensics.Client.Hosting
             ArgumentNullException.ThrowIfNull(hub);
 
             _hubSubscriptions.Add(hub.DownloadProgress.Subscribe(OnDownloadProgress));
+            _hubSubscriptions.Add(hub.Maintenance.Subscribe(value => Publish(_maintenance, value)));
             _hubSubscriptions.Add(hub.UrgentEvents.Subscribe(value => Publish(_urgentEvents, value)));
             _hubSubscriptions.Add(hub.SelfTestStatus.Subscribe(value => Publish(_selfTestStatus, value)));
             _hubSubscriptions.Add(hub.Connection.Subscribe(value => Publish(_connection, value)));
@@ -74,6 +76,12 @@ namespace VideoForensics.Client.Hosting
 
         /// <inheritdoc />
         public DownloadProgressDto? LatestDownloadProgress => _downloadProgress.Value;
+
+        /// <inheritdoc />
+        public IObservable<MaintenanceStatusDto> Maintenance => _maintenance.AsObservable();
+
+        /// <inheritdoc />
+        public MaintenanceStatusDto LatestMaintenance => _maintenance.Value;
 
         /// <inheritdoc />
         public NotificationEvent? LatestUrgentEvent => _urgentEvents.Value;

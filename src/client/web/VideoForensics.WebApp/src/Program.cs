@@ -372,8 +372,10 @@ builder.Services.Configure<BrowserLiveViewOptions>(
     builder.Configuration.GetSection(BrowserLiveViewOptions.SectionName));
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
+builder.Services.AddHostedService<MaintenanceBroadcastService>();
 // Per-circuit, so each circuit samples the sync activity log itself. Replaces the Razor panel's polling timer.
 builder.Services.AddScoped<IDownloadProgressSource, LocalDownloadProgressSource>();
+builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMaintenanceStatusSource, VideoForensics.Client.WebApp.Services.LocalMaintenanceStatusSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
 builder.Services.AddScoped<ISelfTestStatusSource, LocalSelfTestStatusSource>();
 // The LiveView page resolves this in both hosts. The WebApp has no live push channel, so it reports disconnected and the page polls.
@@ -481,12 +483,16 @@ else if (OperatingSystem.IsWindows())
     _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
 }
 
+// One maintenance gate for the process. Scheduled sync, the update drain and the Database coordinator all share it.
+builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Maintenance.MaintenanceGate>();
+builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Maintenance.IMaintenanceGate>(sp => sp.GetRequiredService<VideoForensics.Client.Hosting.Maintenance.MaintenanceGate>());
+
 if (updatesActiveAsService)
 {
     // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,
     // and the service then exits so the service manager restarts it on the new version.
-    // NoOpUpdateDrain is replaced by the scheduler's drain when that lands.
-    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.NoOpUpdateDrain>();
+    // The drain holds back new work through the maintenance gate and waits for in-flight work to finish before applying.
+    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.MaintenanceUpdateDrain>();
     _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
         updatesRoot,
         new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
