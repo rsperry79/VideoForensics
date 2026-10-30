@@ -18,7 +18,7 @@
     <ItemGroup>
         <None Include="../../../../../VideoForensics.snk" Link="VideoForensics.snk" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.13" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
         <ProjectReference Include="../../common/src/VideoForensics.Providers.Ring.Common.csproj" />
         <ProjectReference Include="../../../../core/helpers/src/VideoForensics.Core.Helpers.csproj" />
     </ItemGroup>

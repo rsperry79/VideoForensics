@@ -19,7 +19,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.21.0" />
-    <PackageReference Include="bunit" Version="2.12.5" />
+    <PackageReference Include="bunit" Version="2.13.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
