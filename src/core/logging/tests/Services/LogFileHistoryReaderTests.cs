@@ -119,6 +119,26 @@ namespace VideoForensics.Core.Logging.Tests.Services
             Assert.Equal("VideoForensics.Client.Hosting.Thing", record.Category);
         }
 
+        [Fact]
+        public async Task ReadAsync_DayRolledBySize_ReadsEverySegmentOfTheDay()
+        {
+            // Serilog rolls a day's file on its size limit to audit-yyyyMMdd_001.json, _002, and so on.
+            File.WriteAllLines(Path.Combine(_directory, "audit-20261026.json"), [Line("2026-10-26T10:00:00.000+00:00", "Information", "first")]);
+            File.WriteAllLines(Path.Combine(_directory, "audit-20261026_001.json"), [Line("2026-10-26T11:00:00.000+00:00", "Information", "second")]);
+
+            (IReadOnlyList<LogRecord> records, bool truncated) = await LogFileHistoryReader.ReadAsync(
+                _directory,
+                new DateTimeOffset(2026, 10, 26, 9, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 10, 26, 12, 0, 0, TimeSpan.Zero),
+                minLevel: "Information",
+                search: null,
+                limit: 100,
+                CancellationToken.None);
+
+            Assert.False(truncated);
+            Assert.Equal(["first", "second"], records.Select(r => r.Message));
+        }
+
         private void WriteDay(string yyyymmdd, params string[] lines)
         {
             File.WriteAllLines(Path.Combine(_directory, $"audit-{yyyymmdd}.json"), lines);
