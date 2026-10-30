@@ -1,0 +1,103 @@
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@inject ICaseRepository CaseRepository
+@inject ReviewCaseMode CaseMode
+@inject NavigationManager NavigationManager
+@inject ILogger<ReviewCaseSection> Logger
+@inject IStringLocalizer<SharedResources> SharedL
+
+<div class="review-case-section p-2" data-testid="review-case-section">
+    <div class="small fw-semibold mb-2">@SharedL["ScopeCase"]</div>
+
+    <select class="form-select form-select-sm mb-1" data-testid="review-case-picker" @onchange="OnCasePicked">
+        <option value="" selected="@(!CaseMode.Active)">@SharedL["ScopeNoCase"]</option>
+        @foreach (ForensicCase openCase in _openCases)
+        {
+            <option value="@openCase.Id" selected="@(CaseMode.CaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
+        }
+    </select>
+
+    <a class="small" href="/cases">@SharedL["ScopeAllCases"]</a>
+</div>
+
+@code {
+    /// <summary>The review state the picked case's range, cameras and cursor are written to.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>The cameras the filters leave visible. A picked case only sets cameras from this list.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    private IReadOnlyList<ForensicCase> _openCases = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        CaseMode.OnChange += OnCaseModeChanged;
+        try
+        {
+            _openCases = (await CaseRepository.ListAsync(CaseStatus.Open, CancellationToken.None)).ToList();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The picker stays usable as "(no case)"; the failure is logged by type and message only.
+            Logger.LogError("Could not load open cases for the review picker: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+        }
+    }
+
+    private void OnCaseModeChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Enters the picked case, or leaves the current one for "(no case)". Entering sets the range, cameras and cursor
+    /// to the case's, the same as opening a case from the URL. A case that fails to load leaves the view as it was.
+    /// </summary>
+    private async Task OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out Guid caseId))
+        {
+            CaseMode.Exit();
+            NavigationManager.NavigateTo(ReviewUrl.WithoutCaseView(NavigationManager.Uri), replace: true);
+            return;
+        }
+
+        try
+        {
+            if (!await CaseMode.EnterAsync(caseId, CancellationToken.None))
+            {
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError("Could not open the case from the review picker: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            return;
+        }
+
+        if (CaseMode.FromUtc is DateTime from && CaseMode.ToUtc is DateTime to && from < to)
+        {
+            State.SetRange(from, to);
+        }
+
+        List<Guid> cameras = CaseMode.DeviceIds.Where(Devices.Contains).Take(CameraSync.MaxTiles).ToList();
+        if (cameras.Count > 0)
+        {
+            State.SetCameras(cameras);
+        }
+
+        State.SetCursor(CaseMode.EarliestItemUtc);
+    }
+
+    public void Dispose()
+    {
+        CaseMode.OnChange -= OnCaseModeChanged;
+    }
+}

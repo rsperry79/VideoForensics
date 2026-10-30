@@ -10,6 +10,8 @@
 @inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources> SharedL
 
 <div class="review-filter-panel p-2" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel">
+    <ReviewCaseSection State="State" Devices="Devices" />
+
     <div class="small fw-semibold mb-2">@L["FilterTitle"]</div>
 
     <label class="form-label small mb-1">@L["FilterProvider"]</label>

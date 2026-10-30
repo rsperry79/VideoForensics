@@ -311,7 +311,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         Assert.Null(panel.GetAttribute("role"));
         Assert.DoesNotContain("min-width", panel.GetAttribute("style") ?? string.Empty);
         Assert.DoesNotContain("position", panel.GetAttribute("style") ?? string.Empty);
-        Assert.Equal(L["FilterTitle"].Value, cut.Find("[data-testid='review-filter-panel'] .fw-semibold").TextContent);
+        Assert.Contains(L["FilterTitle"].Value, cut.FindAll("[data-testid='review-filter-panel'] .fw-semibold").Select(e => e.TextContent));
     }
 
     [Fact]
