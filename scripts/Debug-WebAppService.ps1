@@ -58,7 +58,8 @@ param(
     [string]$Configuration = 'Debug',
     [switch]$Publish,
     [switch]$SkipAttach,
-    [int]$ReadyTimeoutSeconds = 120,
+    # The service drains in-flight work before it applies a staged build, which can take minutes.
+    [int]$ReadyTimeoutSeconds = 300,
     [switch]$NoLogConsole
 )
 
