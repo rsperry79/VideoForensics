@@ -366,7 +366,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             try
             {
-                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, mediaFilePath, deviceHealthId: null);
+                string? storedPath = mediaFilePath is null
+                    ? null
+                    : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
+                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: null);
                 _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -378,7 +381,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (mediaFilePath is not null)
             {
-                // WriteImage returns the full path under the media root; the capture row and the Media row both hold it.
+                // WriteImage returns the full path under the media root; the capture row and the Media row both store it relative to that root.
                 await RecordCaptureMediaAsync(sp, device, mediaFilePath, attemptedAt, accountName, ct);
             }
 

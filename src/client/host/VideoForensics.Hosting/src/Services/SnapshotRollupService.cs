@@ -204,7 +204,12 @@ namespace VideoForensics.Client.Hosting.Services
         private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             IReadOnlyList<SnapshotCapture> rows = await _captures!.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
-            var records = rows.Select(r => new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, r.MediaFilePath)).ToList();
+            var records = new List<SnapshotStillRecord>(rows.Count);
+            foreach (SnapshotCapture r in rows)
+            {
+                string? path = string.IsNullOrWhiteSpace(r.MediaFilePath) ? null : await _mediaPaths.ToAbsoluteAsync(r.MediaFilePath, cancellationToken);
+                records.Add(new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, path));
+            }
 
             // The newest 200 is the only still that can be held to the window end; the mapper cuts it short at a later failure.
             DateTimeOffset? newestStill = rows.Where(r => r.HttpStatus == 200 && !string.IsNullOrWhiteSpace(r.MediaFilePath))

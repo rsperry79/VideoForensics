@@ -22,14 +22,17 @@ namespace VideoForensics.Data.Core.Services
         private readonly ITimelineVideoBuilder _builder;
         private readonly SnapshotTimelineOptions _options;
         private readonly ILogger<SnapshotTimelineService> _logger;
+        private readonly IMediaPathResolver _paths;
 
         public SnapshotTimelineService(
             ISnapshotCaptureRepository captures,
             ISnapshotStillMapper stillMapper,
             ITimelineVideoBuilder builder,
             IOptions<SnapshotTimelineOptions> options,
-            ILogger<SnapshotTimelineService> logger)
+            ILogger<SnapshotTimelineService> logger,
+            IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _captures = captures;
             _stillMapper = stillMapper;
             _builder = builder;
@@ -44,9 +47,12 @@ namespace VideoForensics.Data.Core.Services
                 await _captures.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
 
             // Failed attempts are kept: the mapper uses them to end a still's hold, so outages show as gaps.
-            var records = rows
-                .Select(row => new SnapshotStillRecord(row.DeviceId, row.CapturedAtUtc, row.HttpStatus, row.MediaFilePath))
-                .ToList();
+            var records = new List<SnapshotStillRecord>(rows.Count);
+            foreach (VideoForensics.Data.Common.Entities.SnapshotCapture row in rows)
+            {
+                string? path = string.IsNullOrWhiteSpace(row.MediaFilePath) ? null : await _paths.ToAbsoluteAsync(row.MediaFilePath, cancellationToken);
+                records.Add(new SnapshotStillRecord(row.DeviceId, row.CapturedAtUtc, row.HttpStatus, path));
+            }
 
             IReadOnlyList<TimelineStill> stills = _stillMapper.MapCurrentStills(
                 new SnapshotStillMapRequest(records, deviceId, _options.SnapshotRoot, LastStillHold));

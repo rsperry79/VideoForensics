@@ -7,7 +7,7 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// <param name="DeviceId">Internal device GUID the attempt belongs to.</param>
     /// <param name="CapturedAt">When the attempt was made.</param>
     /// <param name="HttpStatus">HTTP status of the attempt. Only 200 can yield a still; any other status is a failed attempt that ends a hold.</param>
-    /// <param name="MediaFilePath">Media path relative to the snapshot root. Null or blank yields no still.</param>
+    /// <param name="MediaFilePath">Full media path (the caller resolves the stored relative path). Null or blank yields no still.</param>
     public sealed record SnapshotStillRecord(Guid DeviceId, DateTimeOffset CapturedAt, int HttpStatus, string? MediaFilePath);
 
     /// <summary>Input to <see cref="ISnapshotStillMapper.MapCurrentStills"/>.</summary>

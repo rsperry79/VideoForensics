@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>True only when <see cref="HttpStatus"/> is 200.</summary>
         public bool IsCurrent { get; private set; }
 
-        /// <summary>Path relative to the snapshot root. Set only when <see cref="IsCurrent"/> is true.</summary>
+        /// <summary>Path relative to the media root, with '/' separators. Set only when <see cref="IsCurrent"/> is true.</summary>
         public string? MediaFilePath { get; private set; }
 
         /// <summary>Link to the DeviceHealth row captured for the same tick, when one exists.</summary>
