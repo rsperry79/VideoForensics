@@ -43,6 +43,7 @@ else
 {
     <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+        <GridEvents TValue="StorageCategoryStatus" RowSelected="OnRowSelected"></GridEvents>
         <GridColumns>
             <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" MinWidth="100" />
             <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" MinWidth="400" />
@@ -62,55 +63,8 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="" MinWidth="100">
-                <Template>
-                    @{
-                        var status = (StorageCategoryStatus)context;
-                        @if (status.IsRelocatable)
-                        {
-                            <SfButton Content="@L["ChangeButton"]" OnClick="() => BeginRelocate(status.Category)" CssClass="e-flat" />
-                            @if (_pendingRelocateCategory == status.Category)
-                            {
-                                <div class="mt-2 d-flex flex-column gap-2">
-                                    <span class="font-monospace">@_newPathInput</span>
-                                    <span class="text-muted">@L["MoveFilesWarning"]</span>
-                                    <div class="d-flex flex-row gap-2">
-                                        <SfButton Content="@L["ConfirmButton"]" OnClick="AskConfirmRelocate" CssClass="e-primary" />
-                                        <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
-                                    </div>
-                                </div>
-                            }
-                        }
-                    }
-                </Template>
-            </GridColumn>
         </GridColumns>
     </SfGrid>
-
-    <SfDialog @bind-Visible="_folderDialogVisible" Header="@L["BrowseFolderTitle"]" Width="600px" IsModal="true">
-        <FolderPicker OnClosed="OnFolderSelected" />
-    </SfDialog>
-
-    <SfDialog @bind-Visible="_confirmMoveVisible" Header="@L["ConfirmMoveTitle"]" Width="500px" IsModal="true">
-        <div class="mb-3">@L["ConfirmMoveMessage"]</div>
-        <div class="d-flex flex-row gap-2 justify-content-end">
-            <SfButton Content="@L["CancelButton"]" OnClick="CancelConfirmMove" CssClass="e-flat" />
-            <SfButton Content="@L["MoveFilesButton"]" OnClick="ConfirmMoveAsync" CssClass="e-primary" />
-        </div>
-    </SfDialog>
-}
-
-@if (_actionMessage is not null)
-{
-    <div class="alert @(_actionSuccess ? "alert-success" : "alert-danger") mt-4">
-        @_actionMessage
-        @if (_restartRequired)
-        {
-            <div class="mt-2">
-                <strong>@L["RestartRequiredMessage"]</strong>
-            </div>
-        }
-    </div>
 }
 
 @code {
@@ -118,14 +72,6 @@ else
     private VideoForensics.Client.Common.Contracts.StorageSettings? _storageData;
     private string? _authError;
     private string? _loadError;
-    private string? _actionMessage;
-    private bool _actionSuccess;
-    private bool _restartRequired;
-    private StorageCategory? _pendingRelocateCategory;
-    private string _newPathInput = string.Empty;
-    private StorageCategory? _browseCategory;
-    private bool _folderDialogVisible;
-    private bool _confirmMoveVisible;
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,9 +93,6 @@ else
         _isLoading = true;
         _authError = null;
         _loadError = null;
-        _actionMessage = null;
-        _actionSuccess = false;
-        _restartRequired = false;
 
         try
         {
@@ -170,93 +113,9 @@ else
         }
     }
 
-    private void BeginRelocate(StorageCategory category)
+    private void OnRowSelected(RowSelectEventArgs<StorageCategoryStatus> args)
     {
-        _browseCategory = category;
-        _folderDialogVisible = true;
-        _actionMessage = null;
-    }
-
-    private Task OnFolderSelected(string? path)
-    {
-        _folderDialogVisible = false;
-        if (path is not null && _browseCategory is { } category)
-        {
-            _pendingRelocateCategory = category;
-            _newPathInput = path;
-        }
-
-        _browseCategory = null;
-        return Task.CompletedTask;
-    }
-
-    private void CancelPending()
-    {
-        _pendingRelocateCategory = null;
-        _newPathInput = string.Empty;
-    }
-
-    private void AskConfirmRelocate()
-    {
-        _confirmMoveVisible = true;
-    }
-
-    private void CancelConfirmMove()
-    {
-        _confirmMoveVisible = false;
-    }
-
-    private Task ConfirmMoveAsync()
-    {
-        _confirmMoveVisible = false;
-        return _pendingRelocateCategory is { } category
-            ? ConfirmRelocate(category)
-            : Task.CompletedTask;
-    }
-
-    private async Task ConfirmRelocate(StorageCategory category)
-    {
-        if (string.IsNullOrWhiteSpace(_newPathInput))
-        {
-            _actionMessage = L["PathRequired"];
-            _actionSuccess = false;
-            return;
-        }
-
-        _actionMessage = null;
-        try
-        {
-            var request = new RelocateStorageCategoryRequest(category, _newPathInput);
-            var result = await StorageService.RelocateAsync(request, CancellationToken.None);
-
-            if (result.Succeeded)
-            {
-                CancelPending();
-                _actionSuccess = true;
-                _restartRequired = result.RestartRequired;
-                _actionMessage = L["RelocateSuccess", GetCategoryName(category)];
-                await LoadAsync();
-            }
-            else
-            {
-                _actionSuccess = false;
-                _restartRequired = false;
-                _actionMessage = result.ErrorMessage ?? L["RelocateFailed"];
-            }
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
-        {
-            _actionSuccess = false;
-            _restartRequired = false;
-            _actionMessage = L["NotAuthorizedToModify"];
-            _authError = L["NotAuthorizedToView"];
-        }
-        catch (Exception ex)
-        {
-            _actionSuccess = false;
-            _restartRequired = false;
-            _actionMessage = L["RelocateFailed2", ex.Message];
-        }
+        NavigationManager.NavigateTo($"/settings/storage/details?category={args.Data.Category}");
     }
 
     private static string FormatBytes(long bytes)
@@ -272,17 +131,4 @@ else
             : bytes >= kb ? $"{bytes / kb:F2} KB"
             : $"{bytes} bytes";
     }
-
-    private string GetCategoryName(StorageCategory category) => category switch
-    {
-        StorageCategory.Database => L["CategoryDatabase"],
-        StorageCategory.Media => L["CategoryMedia"],
-        StorageCategory.TempDownload => L["CategoryTempDownloads"],
-        StorageCategory.Logs => L["CategoryLogs"],
-        StorageCategory.Reports => L["CategoryReports"],
-        StorageCategory.Backup => L["CategoryBackups"],
-        StorageCategory.Exports => L["CategoryExports"],
-        StorageCategory.Keys => L["CategoryKeys"],
-        _ => category.ToString()
-    };
 }

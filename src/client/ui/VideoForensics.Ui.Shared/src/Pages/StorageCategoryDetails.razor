@@ -1,0 +1,236 @@
+@page "/settings/storage/details"
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Core.Helpers.Platform
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Dialogs
+@inject IStorageSettingsService StorageService
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Pages.StorageSettings> L
+
+<Breadcrumb Items="@_breadcrumbItems" />
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["NotAuthorizedMessage"]</span>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (_status is null)
+{
+    <span>@L["CategoryNotFound"]</span>
+}
+else
+{
+    <dl class="row">
+        <dt class="col-sm-3">@L["ColCategory"]</dt>
+        <dd class="col-sm-9">@GetCategoryName(_status.Category)</dd>
+        <dt class="col-sm-3">@L["ColPath"]</dt>
+        <dd class="col-sm-9 font-monospace text-break">@_status.CurrentPath</dd>
+        <dt class="col-sm-3">@L["ColUsedSpace"]</dt>
+        <dd class="col-sm-9">@FormatBytes(_status.UsedBytes)</dd>
+        <dt class="col-sm-3">@L["ColFreeSpace"]</dt>
+        <dd class="col-sm-9">@FormatBytes(_status.FreeBytes)</dd>
+    </dl>
+
+    @if (_status.IsRelocatable)
+    {
+        <SfButton Content="@L["ChangePathButton"]" OnClick="BeginRelocate" CssClass="e-primary" />
+
+        @if (_newPath is not null)
+        {
+            <div class="mt-3 d-flex flex-column gap-2">
+                <span class="font-monospace text-break">@_newPath</span>
+                <span class="text-muted">@L["MoveFilesWarning"]</span>
+                <div class="d-flex flex-row gap-2">
+                    <SfButton Content="@L["ConfirmButton"]" OnClick="AskConfirmRelocate" CssClass="e-primary" />
+                    <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
+                </div>
+            </div>
+        }
+    }
+
+    <SfDialog @bind-Visible="_folderDialogVisible" Header="@L["BrowseFolderTitle"]" Width="600px" IsModal="true">
+        <FolderPicker OnClosed="OnFolderSelected" />
+    </SfDialog>
+
+    <SfDialog @bind-Visible="_confirmMoveVisible" Header="@L["ConfirmMoveTitle"]" Width="500px" IsModal="true">
+        <div class="mb-3">@L["ConfirmMoveMessage"]</div>
+        <div class="d-flex flex-row gap-2 justify-content-end">
+            <SfButton Content="@L["CancelButton"]" OnClick="CancelConfirmMove" CssClass="e-flat" />
+            <SfButton Content="@L["MoveFilesButton"]" OnClick="ConfirmRelocateAsync" CssClass="e-primary" />
+        </div>
+    </SfDialog>
+}
+
+@if (_actionMessage is not null)
+{
+    <div class="alert @(_actionSuccess ? "alert-success" : "alert-danger") mt-4">
+        @_actionMessage
+        @if (_restartRequired)
+        {
+            <div class="mt-2">
+                <strong>@L["RestartRequiredMessage"]</strong>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "category")]
+    public string? CategoryName { get; set; }
+
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
+    private bool _isLoading = true;
+    private StorageCategoryStatus? _status;
+    private string? _authError;
+    private string? _loadError;
+    private string? _actionMessage;
+    private bool _actionSuccess;
+    private bool _restartRequired;
+    private string? _newPath;
+    private bool _folderDialogVisible;
+    private bool _confirmMoveVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SessionState.EnsureLoadedAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _status = null;
+
+        try
+        {
+            var data = await StorageService.GetStatusAsync(CancellationToken.None);
+            if (Enum.TryParse<StorageCategory>(CategoryName, true, out var category))
+            {
+                _status = data.Categories.FirstOrDefault(c => c.Category == category);
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _authError = L["NotAuthorizedToView"];
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["FailedToLoad", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+            _breadcrumbItems = new()
+            {
+                (L["Title"], "/settings/storage"),
+                (_status is null ? L["CategoryNotFound"] : GetCategoryName(_status.Category), null)
+            };
+        }
+    }
+
+    private void BeginRelocate()
+    {
+        _folderDialogVisible = true;
+        _actionMessage = null;
+    }
+
+    private Task OnFolderSelected(string? path)
+    {
+        _folderDialogVisible = false;
+        if (path is not null)
+        {
+            _newPath = path;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void CancelPending() => _newPath = null;
+
+    private void AskConfirmRelocate() => _confirmMoveVisible = true;
+
+    private void CancelConfirmMove() => _confirmMoveVisible = false;
+
+    private async Task ConfirmRelocateAsync()
+    {
+        _confirmMoveVisible = false;
+        if (_status is null || string.IsNullOrWhiteSpace(_newPath))
+        {
+            _actionMessage = L["PathRequired"];
+            _actionSuccess = false;
+            return;
+        }
+
+        var category = _status.Category;
+        _actionMessage = null;
+        try
+        {
+            var result = await StorageService.RelocateAsync(new RelocateStorageCategoryRequest(category, _newPath), CancellationToken.None);
+
+            if (result.Succeeded)
+            {
+                _newPath = null;
+                await LoadAsync();
+                _actionSuccess = true;
+                _restartRequired = result.RestartRequired;
+                _actionMessage = L["RelocateSuccess", GetCategoryName(category)];
+            }
+            else
+            {
+                _actionSuccess = false;
+                _restartRequired = false;
+                _actionMessage = result.ErrorMessage ?? L["RelocateFailed"];
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _actionSuccess = false;
+            _restartRequired = false;
+            _actionMessage = L["NotAuthorizedToModify"];
+        }
+        catch (Exception ex)
+        {
+            _actionSuccess = false;
+            _restartRequired = false;
+            _actionMessage = L["RelocateFailed2", ex.Message];
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        const double kb = 1024;
+        const double mb = kb * 1024;
+        const double gb = mb * 1024;
+        const double tb = gb * 1024;
+
+        return bytes >= tb ? $"{bytes / tb:F2} TB"
+            : bytes >= gb ? $"{bytes / gb:F2} GB"
+            : bytes >= mb ? $"{bytes / mb:F2} MB"
+            : bytes >= kb ? $"{bytes / kb:F2} KB"
+            : $"{bytes} bytes";
+    }
+
+    private string GetCategoryName(StorageCategory category) => category switch
+    {
+        StorageCategory.Database => L["CategoryDatabase"],
+        StorageCategory.Media => L["CategoryMedia"],
+        StorageCategory.TempDownload => L["CategoryTempDownloads"],
+        StorageCategory.Logs => L["CategoryLogs"],
+        StorageCategory.Reports => L["CategoryReports"],
+        StorageCategory.Backup => L["CategoryBackups"],
+        StorageCategory.Exports => L["CategoryExports"],
+        StorageCategory.Keys => L["CategoryKeys"],
+        _ => category.ToString()
+    };
+}
