@@ -714,6 +714,9 @@ builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
 builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
 builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
+// The folder picker answers in-process on this host (see InProcessFolderBrowserEndpoint). MAUI registers the
+// remote version instead, which calls the /api/v1/filesystem route below.
+builder.Services.AddScoped<IFolderBrowserEndpoint, InProcessFolderBrowserEndpoint>();
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
 builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
@@ -853,6 +856,7 @@ app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();
+app.MapFolderBrowseEndpoints();
 app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 app.MapChatEndpoints();

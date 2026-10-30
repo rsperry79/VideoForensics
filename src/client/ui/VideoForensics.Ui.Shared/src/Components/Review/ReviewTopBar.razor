@@ -6,7 +6,6 @@
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IDisposable
 @inject NavigationManager NavigationManager
-@inject IJSRuntime JS
 @inject ReviewCaseMode CaseMode
 @inject ReviewPopupState Popups
 @inject IStringLocalizer<ReviewPage> L
@@ -29,10 +28,6 @@
         @* Transparent full-page backdrop below the popups: a click outside any popup lands here and closes it. *@
         <div class="review-popup-backdrop" data-testid="review-popup-backdrop" @onclick="ClosePopups"></div>
     }
-
-    <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-back" @onclick="OnBackAsync">@L["Back"]</button>
-    </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <ReviewPendingTags DeviceNames="DeviceNames" />
@@ -85,26 +80,6 @@
     {
         CaseMode.Exit();
         NavigationManager.NavigateTo(ReviewUrl.WithoutCaseView(NavigationManager.Uri));
-    }
-
-    /// <summary>
-    /// Goes back in browser history. This page is /media itself, so navigating there would not leave it.
-    /// A dead circuit or an unavailable JS runtime is ignored: Back then simply does nothing.
-    /// </summary>
-    private async Task OnBackAsync()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("history.back");
-        }
-        catch (Microsoft.JSInterop.JSException)
-        {
-            // The browser refused the call; leave the page where it is.
-        }
-        catch (Microsoft.JSInterop.JSDisconnectedException)
-        {
-            // The circuit closed before the call ran.
-        }
     }
 
     public void Dispose()
