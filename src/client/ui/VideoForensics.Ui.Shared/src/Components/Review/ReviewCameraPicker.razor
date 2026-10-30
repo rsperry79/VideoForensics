@@ -1,0 +1,77 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Pages
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="review-camera-picker" role="group" aria-label="@L["CamerasLabel"]" data-testid="review-camera-picker">
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="review-camera-all" data-testid="review-camera-all" checked="@AllChecked" @onchange="OnAllChanged" />
+        <label class="form-check-label" for="review-camera-all">@L["AllCameras"]</label>
+    </div>
+
+    @if (Devices.Count == 0)
+    {
+        <p class="small mb-2">@L["NoCameras"]</p>
+    }
+
+    @foreach (Guid id in Devices)
+    {
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="@CameraInputId(id)" data-testid="@CameraTestId(id)" checked="@Selected.Contains(id)" @onchange="args => OnCameraChanged(id, args)" />
+            <label class="form-check-label" for="@CameraInputId(id)">@DeviceNames.GetValueOrDefault(id, id.ToString("D"))</label>
+        </div>
+    }
+
+    @if (Selected.Count > CameraSync.MaxTiles)
+    {
+        <small class="d-block mt-2" data-testid="review-camera-hint">@L["TooManyCameras", CameraSync.MaxTiles]</small>
+    }
+    else if (Selected.Count == 0)
+    {
+        <small class="d-block mt-2" data-testid="review-camera-hint">@L["SelectAtLeastOneCamera"]</small>
+    }
+</div>
+
+@code {
+    /// <summary>Every camera to offer, in display order.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The cameras currently picked. The picker never changes this set.</summary>
+    [Parameter]
+    public IReadOnlySet<Guid> Selected { get; set; } = new HashSet<Guid>();
+
+    /// <summary>Raised with a new set after every toggle.</summary>
+    [Parameter]
+    public EventCallback<HashSet<Guid>> SelectedChanged { get; set; }
+
+    private bool AllChecked => Devices.Count > 0 && Devices.All(Selected.Contains);
+
+    private Task OnCameraChanged(Guid id, Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        HashSet<Guid> next = Selected.ToHashSet();
+        _ = on ? next.Add(id) : next.Remove(id);
+        return SelectedChanged.InvokeAsync(next);
+    }
+
+    private Task OnAllChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        return SelectedChanged.InvokeAsync(on ? Devices.Take(CameraSync.MaxTiles).ToHashSet() : []);
+    }
+
+    private static string CameraTestId(Guid id)
+    {
+        return "review-camera-toggle-" + id.ToString("D");
+    }
+
+    private static string CameraInputId(Guid id)
+    {
+        return "review-camera-input-" + id.ToString("D");
+    }
+}

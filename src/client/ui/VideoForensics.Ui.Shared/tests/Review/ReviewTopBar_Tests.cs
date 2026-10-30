@@ -20,7 +20,6 @@ public class ReviewTopBar_Tests : ReviewTestContext
         AddDevices(2);
         return Render<ReviewTopBar>(parameters => parameters
             .Add(p => p.State, ReviewState)
-            .Add(p => p.Devices, Devices.Select(d => d.Id).ToList())
             .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf))
             .Add(p => p.UtcNow, () => FixedNowUtc));
     }
@@ -152,22 +151,6 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_CameraOpenedWhileActionsOpen_LeavesOnlyTheCameraPopup()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-actions']").Click();
-        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
-
-        // Act
-        cut.Find("[data-testid='review-camera-button']").Click();
-
-        // Assert
-        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
-        Assert.Single(cut.FindAll("[data-testid='review-camera-popup']"));
-    }
-
-    [Fact]
     public void ReviewTopBar_Rendered_HasNoTabGroupLiveButtonOrFilterControls()
     {
         // Arrange and Act
@@ -199,7 +182,7 @@ public class ReviewTopBar_Tests : ReviewTestContext
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
         // Act
-        cut.Find("[data-testid='review-camera-button']").Click();
+        cut.Find("[data-testid='review-actions']").Click();
 
         // Assert
         Assert.Single(cut.FindAll("[data-testid='review-popup-backdrop']"));
@@ -210,14 +193,14 @@ public class ReviewTopBar_Tests : ReviewTestContext
     {
         // Arrange
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-camera-button']").Click();
-        Assert.Single(cut.FindAll("[data-testid='review-camera-popup']"));
+        cut.Find("[data-testid='review-actions']").Click();
+        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
 
         // Act
         cut.Find("[data-testid='review-popup-backdrop']").Click();
 
         // Assert
-        Assert.Empty(cut.FindAll("[data-testid='review-camera-popup']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
         Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
     }
 
@@ -226,13 +209,13 @@ public class ReviewTopBar_Tests : ReviewTestContext
     {
         // Arrange
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-camera-button']").Click();
+        cut.Find("[data-testid='review-actions']").Click();
 
         // Act
         cut.Find("[data-testid='review-top-bar']").KeyDown("Escape");
 
         // Assert
-        Assert.Empty(cut.FindAll("[data-testid='review-camera-popup']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
     }
 
     [Fact]
@@ -240,12 +223,12 @@ public class ReviewTopBar_Tests : ReviewTestContext
     {
         // Arrange
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-camera-button']").Click();
+        cut.Find("[data-testid='review-actions']").Click();
 
         // Act
         cut.Find("[data-testid='review-top-bar']").KeyDown("a");
 
         // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-camera-popup']"));
+        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
     }
 }

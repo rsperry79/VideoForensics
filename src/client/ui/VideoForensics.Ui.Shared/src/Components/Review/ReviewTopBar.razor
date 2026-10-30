@@ -35,8 +35,6 @@
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
-        <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
-
         <select class="form-select form-select-sm" style="width: auto;" data-testid="review-range" aria-label="@L["RangeLabel"]" @onchange="OnRangeChanged">
             <option value="hour" selected="@(CurrentPreset == RangePreset.LastHour)">@L["RangeLastHour"]</option>
             <option value="day" selected="@(CurrentPreset == RangePreset.Last24Hours)">@L["RangeLast24Hours"]</option>
@@ -53,10 +51,6 @@
     /// <summary>The review state the bar reads and writes.</summary>
     [Parameter, EditorRequired]
     public ReviewPageState State { get; set; } = default!;
-
-    /// <summary>The cameras the page offers after the Provider and Account filters, in display order.</summary>
-    [Parameter]
-    public IReadOnlyList<Guid> Devices { get; set; } = [];
 
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
