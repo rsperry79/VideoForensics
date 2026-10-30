@@ -196,6 +196,18 @@ namespace VideoForensics.Data.Core.Services
             return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
         }
 
+        public async Task<string?> GetDownloadedMediaPathAsync(Guid deviceId, string providerEventId, CancellationToken ct)
+        {
+            DownloadEvent? downloadEvent = await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
+            if (downloadEvent is null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<MediaItem> items = await _mediaItemRepository.GetByDownloadEventIdAsync(downloadEvent.Id, ct);
+            return items.FirstOrDefault(i => !i.IsPurged && string.Equals(i.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase))?.FilePath;
+        }
+
         /// <summary>
         /// Analyses a saved media item and waits for the result, so the next provider call is spaced by local analysis time.
         /// Best-effort: an analysis failure is logged and never fails the recording.

@@ -381,6 +381,14 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private sealed class StubVideoHistoryHandler : HttpMessageHandler
         {
+            private readonly string _cvPropertiesJson;
+
+            /// <param name="cvDetectionType">Ring CV detection_type to put on the event, or null for an event without CV data.</param>
+            public StubVideoHistoryHandler(string? cvDetectionType = null)
+            {
+                _cvPropertiesJson = cvDetectionType is null ? string.Empty : ",\"cv_properties\":{\"detection_type\":\"" + cvDetectionType + "\"}";
+            }
+
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 string url = request.RequestUri?.ToString() ?? string.Empty;
@@ -398,7 +406,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     // First page has the one event; any older_than page is empty so paging terminates.
                     body = url.Contains("older_than", StringComparison.Ordinal)
                         ? "[]"
-                        : "[{\"id\":987654,\"created_at\":\"" + VideoEventCreatedAt + "\",\"kind\":\"motion\",\"doorbot\":{\"id\":12345,\"description\":\"cam\"}}]";
+                        : "[{\"id\":987654,\"created_at\":\"" + VideoEventCreatedAt + "\",\"kind\":\"motion\",\"doorbot\":{\"id\":12345,\"description\":\"cam\"}" + _cvPropertiesJson + "}]";
                 }
                 else
                 {
@@ -426,9 +434,10 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        private static async Task<(RingMediaDownloadService Service, Session Session)> CreateVideoServiceAsync()
+        private static async Task<(RingMediaDownloadService Service, Session Session)> CreateVideoServiceAsync(
+            string? cvDetectionType = null, Action<Mock<IVideoForensicsDataClient>>? configureDataClient = null)
         {
-            var session = new Session("testuser", "testpass", new StubVideoHistoryHandler(), new StubVideoDownloader(), null);
+            var session = new Session("testuser", "testpass", new StubVideoHistoryHandler(cvDetectionType), new StubVideoDownloader(), null);
             _ = await session.Authenticate();
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
@@ -438,11 +447,76 @@ namespace VideoForensics.Providers.Ring.Tests
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            configureDataClient?.Invoke(dataClientMock);
             var tagger = new Mock<IMediaMetadataTagger>();
             _ = tagger.Setup(t => t.TagEventIdAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object, tagger.Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
             return (service, session);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_MotionEventWithPersonDetection_NamesFileWithDetectionType()
+        {
+            // Arrange - the event carries a Ring CV "human" detection
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(cvDetectionType: "human");
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vtype_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the type is in the file name; the plain motion name is not used
+                Assert.True(result.Success, result.ErrorMessage);
+                string expected = MediaFileNamer.FormatMediaFileName("cam", DateTime.Parse(VideoEventCreatedAt), "motion-person", "mp4");
+                Assert.True(File.Exists(Path.Combine(folder, expected)), $"expected {expected} in {string.Join(", ", Directory.GetFiles(folder).Select(Path.GetFileName))}");
+                Assert.Empty(Directory.GetFiles(folder, "*_motion.mp4"));
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_EventAlreadyDownloadedUnderDifferentName_IsNotRedownloaded()
+        {
+            // Arrange - the clip was downloaded earlier and later renamed; the database knows where it is
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vstored_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(folder);
+            string storedFile = Path.Combine(folder, "cam_renamed_elsewhere_motion-person.mp4");
+            byte[] storedBytes = new byte[] { 7, 7, 7, 7 };
+            await File.WriteAllBytesAsync(storedFile, storedBytes);
+
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(cvDetectionType: "human", configureDataClient: dc =>
+            {
+                _ = dc.Setup(d => d.GetDownloadEventAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new VideoForensics.Data.Common.Entities.DownloadEvent
+                    {
+                        Id = Guid.NewGuid(),
+                        ProviderEventId = "987654",
+                        Success = true,
+                        AppVersion = "test",
+                    });
+                _ = dc.Setup(d => d.GetDownloadedMediaPathAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(storedFile);
+            });
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - nothing new was downloaded and the stored clip is untouched
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.Equal([storedFile], Directory.GetFiles(folder, "*.mp4"));
+                Assert.Equal(storedBytes, await File.ReadAllBytesAsync(storedFile));
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
         }
 
         private static void TryDeleteFolder(string folder)

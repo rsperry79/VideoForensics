@@ -592,8 +592,10 @@ namespace VideoForensics.Providers.Ring.Services
 
                         string cameraName = @event.Doorbot?.Description ?? deviceId;
                         string eventType = @event.Kind ?? "video";
+                        // The file name carries the detection type (motion-person); the stored event type stays Ring's raw kind.
+                        string fileTypeSegment = MediaFileNamer.FormatEventTypeSegment(@event.Kind, CvDetectionTypes(@event));
                         string fileName = Path.Combine(outputPath,
-                            MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, eventType, "mp4"));
+                            MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, fileTypeSegment, "mp4"));
                         string eventIdStr = @event.Id?.ToString() ?? "unknown";
                         DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                         int previousAttemptCount = 0;
@@ -621,6 +623,23 @@ namespace VideoForensics.Providers.Ring.Services
                             // network call when the file is actually present on disk; otherwise fall through
                             // and redownload it, even though the DB says it was already downloaded.
                             existingRecord = await _dataClient.GetDownloadEventAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
+
+                            // An event downloaded earlier is found by its stored path, not by recomputing its name. The name
+                            // carries the detection type, which can be added after the first download, and files can be renamed
+                            // later; recomputing would make such a clip look missing and download it a second time.
+                            if (existingRecord is not null)
+                            {
+                                string? storedPath = await _dataClient.GetDownloadedMediaPathAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
+                                if (storedPath is not null)
+                                {
+                                    string storedAbsolute = await _mediaPaths.ToAbsoluteAsync(storedPath, rateLimitCts.Token);
+                                    if (File.Exists(storedAbsolute) && new FileInfo(storedAbsolute).Length > 0)
+                                    {
+                                        fileName = storedAbsolute;
+                                    }
+                                }
+                            }
+
                             bool existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
                             previousAttemptCount = existingRecord?.AttemptCount ?? 0;
 
@@ -1511,6 +1530,27 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             return sb.ToString();
+        }
+
+        /// <summary>Every CV detection type Ring reported for the event: the overall type and each individual detection.</summary>
+        private static IEnumerable<string?> CvDetectionTypes(Entities.DoorbotHistoryEvent @event)
+        {
+            Entities.CvProperties? cv = @event.CvProperties;
+            if (cv is null)
+            {
+                yield break;
+            }
+
+            yield return cv.DetectionType;
+            if (cv.DetectionTypes is null)
+            {
+                yield break;
+            }
+
+            foreach (Entities.CvDetectionType detection in cv.DetectionTypes)
+            {
+                yield return detection?.DetectionType;
+            }
         }
 
         private bool WriteMetadataFile(string mediaFilePath, string deviceId, Entities.DoorbotHistoryEvent @event, long fileSizeBytes, string mediaFormat, Guid eventDbId)

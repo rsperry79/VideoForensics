@@ -192,5 +192,37 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.DoesNotContain("?", result);
             Assert.DoesNotContain("*", result);
         }
+
+        [Theory]
+        [InlineData("motion", "human", "motion-person")]
+        [InlineData("motion", "animal", "motion-animal")]
+        [InlineData("motion", "vehicle", "motion-vehicle")]
+        [InlineData("motion", "package_delivery", "motion-package")]
+        [InlineData("Motion", "human", "Motion-person")]
+        [InlineData("motion", "other_motion", "motion")]
+        [InlineData("motion", "something_new", "motion")]
+        [InlineData("motion", null, "motion")]
+        [InlineData("ding", "human", "ding")]
+        [InlineData("on_demand", "vehicle", "on_demand")]
+        [InlineData(null, "human", "video")]
+        public void FormatEventTypeSegment_SingleDetection_ReturnsExpectedSegment(string? rawKind, string? detection, string expected)
+        {
+            Assert.Equal(expected, MediaFileNamer.FormatEventTypeSegment(rawKind, [detection]));
+        }
+
+        [Fact]
+        public void FormatEventTypeSegment_SeveralDetections_PicksHighestPriority()
+        {
+            // Person outranks animal, vehicle and package, whatever order Ring lists them in
+            Assert.Equal("motion-person", MediaFileNamer.FormatEventTypeSegment("motion", ["package_delivery", "vehicle", "human", "animal"]));
+            Assert.Equal("motion-animal", MediaFileNamer.FormatEventTypeSegment("motion", ["vehicle", "animal"]));
+            Assert.Equal("motion-vehicle", MediaFileNamer.FormatEventTypeSegment("motion", ["package_delivery", "vehicle"]));
+        }
+
+        [Fact]
+        public void FormatEventTypeSegment_NoDetections_ReturnsPlainMotion()
+        {
+            Assert.Equal("motion", MediaFileNamer.FormatEventTypeSegment("motion", []));
+        }
     }
 }

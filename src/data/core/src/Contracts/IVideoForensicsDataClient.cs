@@ -16,6 +16,13 @@ namespace VideoForensics.Data.Core.Contracts
         Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct);
 
         /// <summary>
+        /// Gets the stored path of the video already downloaded for an event, or null when there is none. Callers use this
+        /// instead of recomputing the file name, because the name can change after the download (a detection type is added,
+        /// or the file is renamed).
+        /// </summary>
+        Task<string?> GetDownloadedMediaPathAsync(Guid deviceId, string providerEventId, CancellationToken ct);
+
+        /// <summary>
         /// Records a download event and associated media item(s) atomically via IUnitOfWork,
         /// along with an action log entry and any related detection metadata.
         /// </summary>
