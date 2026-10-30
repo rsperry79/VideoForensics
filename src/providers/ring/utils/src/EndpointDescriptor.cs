@@ -145,17 +145,6 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "invitations",
-                DisplayName = "Pending invitations",
-                Description = "Pending share invitations for a location.",
-                SessionMethod = "Session.GetInvitations(locationId)",
-                HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/clients_api/locations/{locationId}/invitations",
-                Scope = EndpointScope.PerLocation,
-                Invoke = (session, target) => session.GetInvitations(target.LocationId!.Value)
-            },
-            new()
-            {
                 Key = "snapshot-timestamps",
                 DisplayName = "Snapshot timestamps",
                 Description = "When the last snapshot was taken for a doorbot. Read-only - does not request a new snapshot (that's update-snapshot, a --destructive endpoint since it triggers the physical camera).",

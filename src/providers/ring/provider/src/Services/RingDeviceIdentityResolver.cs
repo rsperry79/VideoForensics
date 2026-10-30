@@ -66,9 +66,9 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             // Falls back to a synthetic "default" location only when the caller genuinely has no
-            // real Ring location id for this device — matches VideoDownloadServiceAdapter's own
-            // fallback so both layers agree on the placeholder's identity instead of creating two
-            // different "default" locations.
+            // real Ring location id for this device. The sync path uses the same fallback, so
+            // both agree on the placeholder's identity instead of creating two different
+            // "default" locations.
             string effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
 
             // Resolve Account/Location once per effectiveLocationId and cache them
@@ -130,8 +130,8 @@ namespace VideoForensics.Providers.Ring.Services
 
     /// <summary>
     /// Maps a Ring device kind (doorbell_*, doorbot, stickup_cam_*, chime_*, ...) to the stored device type.
-    /// Same mapping as VideoDownloadServiceAdapter.MapDeviceType (which is internal to the client assembly,
-    /// so it is duplicated here): unrecognised or missing kinds are "Unknown", never silently "camera".
+    /// Same mapping the sync path uses (kept as a copy because that mapping is internal to the client assembly):
+    /// unrecognised or missing kinds are "Unknown", never silently "camera".
     /// </summary>
     internal static class RingDeviceTypeMapper
     {

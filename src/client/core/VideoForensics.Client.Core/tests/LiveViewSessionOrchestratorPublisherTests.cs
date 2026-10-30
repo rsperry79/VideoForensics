@@ -85,7 +85,7 @@ namespace VideoForensics.Client.Core.Tests
             var deviceId = Guid.NewGuid();
             var device = new Device { Id = deviceId, ProviderDeviceId = "ring-device-123", LocationId = Guid.NewGuid(), Name = "Test", Type = "camera" };
             var mockProvider = new Mock<ILiveViewCapableProvider>();
-            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Mock<ILiveViewConnection>().Object);
 
             _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
@@ -94,7 +94,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider))).Returns(mockProvider.Object);
+            LiveViewProviderWiring.Register(spMock, mockProvider);
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
@@ -114,7 +114,7 @@ namespace VideoForensics.Client.Core.Tests
             var deviceId = Guid.NewGuid();
             var device = new Device { Id = deviceId, ProviderDeviceId = "ring-device-123", LocationId = Guid.NewGuid(), Name = "Test", Type = "camera" };
             var mockProvider = new Mock<ILiveViewCapableProvider>();
-            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Mock<ILiveViewConnection>().Object);
 
             _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Core.Tests
                 .ThrowsAsync(new InvalidOperationException("hub unavailable"));
 
             var spMock = new Mock<IServiceProvider>();
-            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider))).Returns(mockProvider.Object);
+            LiveViewProviderWiring.Register(spMock, mockProvider);
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 

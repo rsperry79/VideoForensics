@@ -132,7 +132,7 @@
     /// <summary>
     /// Invoked when the operator grabs the current video frame as a new evidence still, with the
     /// current playback position (milliseconds into the source video). Only wired up for video
-    /// items; the parent (e.g. Evidence.razor) is responsible for calling the capture service and
+    /// items; the parent (e.g. ReviewPage.razor) is responsible for calling the capture service and
     /// updating <see cref="StillCaptureStatus"/> with the result.
     /// </summary>
     [Parameter]
@@ -165,7 +165,7 @@
         if (firstRender)
         {
             _jsModule = await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+                "import", "./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
 
             await FocusViewerAsync();
         }

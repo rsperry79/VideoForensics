@@ -263,6 +263,40 @@ namespace VideoForensics.Data.Database.Repositories
             };
         }
 
+        /// <summary>
+        /// Pages events from any of the given devices within a UTC range, newest first. Filtering, sorting, paging and counting
+        /// all run in SQL. The id list is materialized once so EF translates a plain IN list.
+        /// </summary>
+        public async Task<EventPage> ListPageByDevicesAndDateRangeAsync(
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
+            int skip, int take, CancellationToken ct)
+        {
+            // Bounds are checked here as well as at the endpoint: an unbounded take would turn the page back into a full scan.
+            ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
+            ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
+            ArgumentOutOfRangeException.ThrowIfLessThan(deviceIds.Count, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(deviceIds.Count, 64);
+
+            Guid[] ids = deviceIds.ToArray();
+            string[] excluded = excludeEventTypes?.ToArray() ?? [];
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            IQueryable<Event> matches = db.Events
+                .AsNoTracking()
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+
+            int total = await matches.CountAsync(ct);
+            List<Event> items = await matches
+                .OrderByDescending(e => e.OccurredAtUtc)
+                .ThenBy(e => e.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(ct);
+
+            return new EventPage(items, total);
+        }
+
         /// <summary>Updates an event's download failure status and timestamp.</summary>
         public async Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct)
         {

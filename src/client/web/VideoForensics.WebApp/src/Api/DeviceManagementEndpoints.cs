@@ -384,7 +384,8 @@ namespace VideoForensics.Client.WebApp.Api
             op.FailedLoginAttemptCount,
             op.LockedOutUntilUtc,
             op.TwoFactorRequirementOverride,
-            op.IsPrimarySuperAdmin);
+            op.IsPrimarySuperAdmin,
+            op.PasskeyRequired);
         }
     }
 }

@@ -24,22 +24,28 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly IForensicsConfiguration _config;
         private readonly ILogger<CameraBitrateCalibrationService> _logger;
 
+        private readonly ThreadHeartbeats? _heartbeats;
+
         public CameraBitrateCalibrationService(
             IServiceScopeFactory scopeFactory,
             IForensicsConfiguration config,
-            ILogger<CameraBitrateCalibrationService> logger)
+            ILogger<CameraBitrateCalibrationService> logger,
+            ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _config = config;
             _logger = logger;
+            _heartbeats = heartbeats;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(_config.CalibrationCheckIntervalMinutes));
+            TimeSpan calibrationInterval = TimeSpan.FromMinutes(_config.CalibrationCheckIntervalMinutes);
+            using var timer = new PeriodicTimer(calibrationInterval);
 
             do
             {
+                _heartbeats?.Beat(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, calibrationInterval);
                 await RunOneTickAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));

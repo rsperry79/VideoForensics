@@ -41,7 +41,6 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.LogLevel = loadedConfig.LogLevel;
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
-                runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
@@ -55,6 +54,9 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.ConfiguredNetworkTier = loadedConfig.ConfiguredNetworkTier;
                 // These were missing, so a restart dropped the saved Internet address (and with it the passkey RP ID).
                 runtimeConfig.InternetServerUrl = loadedConfig.InternetServerUrl;
+                runtimeConfig.InternalServerUrl = loadedConfig.InternalServerUrl;
+                runtimeConfig.ServerHttpPort = loadedConfig.ServerHttpPort;
+                runtimeConfig.ServerHttpsPort = loadedConfig.ServerHttpsPort;
                 runtimeConfig.FfmpegBinDirectory = loadedConfig.FfmpegBinDirectory;
                 runtimeConfig.UniviewNvrHost = loadedConfig.UniviewNvrHost;
                 runtimeConfig.UniviewFfmpegPath = loadedConfig.UniviewFfmpegPath;

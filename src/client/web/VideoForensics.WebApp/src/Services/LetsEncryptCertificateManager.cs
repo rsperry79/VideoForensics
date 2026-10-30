@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Services
 
         /// <summary>
         /// Loads the stored certificate, then issues a new one if <paramref name="force"/> is set or renewal is due.
-        /// Acme:UseStaging defaults to true, so production issuance is an explicit configuration change.
+        /// Staging is the default until production is chosen on the settings page (or Acme:UseStaging is set to false).
         /// </summary>
         public async Task<CertificateCheckResult> EnsureCertificateAsync(bool force, CancellationToken ct)
         {
@@ -77,7 +77,9 @@ namespace VideoForensics.Client.WebApp.Services
                 return new CertificateCheckResult(false, false, $"No zone visible to the Cloudflare token covers {internetUrl.Host}.");
             }
 
-            bool useStaging = _configuration.GetValue("Acme:UseStaging", true);
+            // The staging choice saved from the settings page wins; the Acme:UseStaging config value is only the
+            // fallback before anything is saved. Both default to staging so production issuance is always deliberate.
+            bool useStaging = await _store.GetUseStagingAsync(ct).ConfigureAwait(true) ?? _configuration.GetValue("Acme:UseStaging", true);
             AcmeAccountState? account = await _store.GetAccountAsync(ct).ConfigureAwait(true);
             var publisher = new CloudflareDnsChallengePublisher(_cloudflare, apiToken, zone.Id);
 
@@ -90,6 +92,25 @@ namespace VideoForensics.Client.WebApp.Services
 
             _logger.LogInformation("Issued a {Environment} certificate for {Host}, valid until {NotAfter:u}", useStaging ? "staging" : "production", internetUrl.Host, issued.NotAfter);
             return new CertificateCheckResult(true, true, $"Certificate issued for {internetUrl.Host}, valid until {issued.NotAfter:yyyy-MM-dd}.");
+        }
+
+        /// <summary>
+        /// Removes the stored certificate and account, and drops the one Kestrel presents so the default certificate takes over.
+        /// </summary>
+        public async Task ResetAsync(CancellationToken ct)
+        {
+            await _store.ClearCertificateAsync(ct).ConfigureAwait(true);
+            _holder.Clear();
+            _logger.LogInformation("Cleared the Let's Encrypt certificate and account");
+        }
+
+        /// <summary>Keeps only the CERTIFICATE blocks of a bundle, so the private key never leaves the server.</summary>
+        internal static string PublicChainPem(string bundle)
+        {
+            IEnumerable<string> blocks = CertRegex().Matches(bundle)
+                .Where(match => match.Groups[1].Value.EndsWith("CERTIFICATE", StringComparison.Ordinal))
+                .Select(match => match.Value);
+            return string.Join("\n", blocks) + "\n";
         }
 
         /// <summary>

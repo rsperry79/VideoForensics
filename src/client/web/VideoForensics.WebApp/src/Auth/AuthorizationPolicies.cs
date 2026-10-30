@@ -89,6 +89,14 @@ namespace VideoForensics.Client.WebApp.Auth
         /// <summary>SuperAdmin role AND (Local tier OR an operator-passkey session from any tier).</summary>
         public const string SuperAdminLocalOrPasskey = "VF.SuperAdminLocalOrPasskey";
 
+        // Page gates the UI checks by name (PageAccessRules). The server enforces them with endpoint filters, not with
+        // AddPolicy, so these names are not registered here: do not pass them to RequireAuthorization.
+        public const string ReportSettings = "VF.ReportSettings";
+        public const string EmailSettings = "VF.EmailSettings";
+        public const string NotificationSettings = "VF.NotificationSettings";
+        public const string LlmSettings = "VF.LlmSettings";
+        public const string InfrastructureSettings = "VF.InfrastructureSettings";
+
         public static void AddVideoForensicsPolicies(this AuthorizationOptions options)
         {
             options.AddPolicy(ReadOnly, p => p.Requirements.Add(new MinimumRoleRequirement(OperatorRole.ReadOnly)));

@@ -1,7 +1,10 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Utils.Testing;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -87,17 +90,79 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ActionLogRepository_VerifyChainIntegrity_EmptyDatabaseReturnsTrue()
         {
-            bool isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
 
-            Assert.True(isValid);
+            Assert.True(result.IsValid);
+            Assert.Equal(0, result.EntriesChecked);
         }
 
         [Fact]
         public async Task ActionLogRepository_VerifyChainIntegrity_EmptyChainReturnsTrue()
         {
-            bool isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
 
-            Assert.True(isValid);
+            Assert.True(result.IsValid);
+        }
+
+        [Fact]
+        public async Task ActionLogRepository_VerifyChainIntegrity_ValidChain_ReportsEveryEntryChecked()
+        {
+            _ = await _repository.AppendAsync("A1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            _ = await _repository.AppendAsync("A2", ActorType.Human, "Act2", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            _ = await _repository.AppendAsync("A3", ActorType.Human, "Act3", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(3, result.EntriesChecked);
+            Assert.Equal(ChainBreakKind.None, result.Break);
+            Assert.Null(result.FailedEntryId);
+        }
+
+        [Fact]
+        public async Task ActionLogRepository_VerifyChainIntegrity_AlteredDetails_ReportsEntryHashBreakAtThatEntry()
+        {
+            _ = await _repository.AppendAsync("A1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            ActionLogEntry second = await _repository.AppendAsync("A2", ActorType.Human, "Act2", "Ent", Guid.NewGuid(), "{\"k\":1}", CancellationToken.None);
+            _ = await _repository.AppendAsync("A3", ActorType.Human, "Act3", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            await SetDetailsAsync(second.Id, "{\"k\":2}");
+
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Equal(ChainBreakKind.EntryHashMismatch, result.Break);
+            Assert.Equal(second.Id, result.FailedEntryId);
+            Assert.Equal(1, result.EntriesChecked);
+        }
+
+        [Fact]
+        public async Task ActionLogRepository_VerifyChainIntegrity_AlteredPreviousHash_ReportsPreviousHashBreakAtThatEntry()
+        {
+            _ = await _repository.AppendAsync("A1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            _ = await _repository.AppendAsync("A2", ActorType.Human, "Act2", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            ActionLogEntry third = await _repository.AppendAsync("A3", ActorType.Human, "Act3", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            await SetPreviousHashAsync(third.Id, "deadbeef");
+
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Equal(ChainBreakKind.PreviousHashMismatch, result.Break);
+            Assert.Equal(third.Id, result.FailedEntryId);
+            Assert.Equal(2, result.EntriesChecked);
+        }
+
+        private async Task SetDetailsAsync(Guid entryId, string details)
+        {
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            _ = await db.ActionLogEntries.Where(e => e.Id == entryId)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.DetailsJson, details));
+        }
+
+        private async Task SetPreviousHashAsync(Guid entryId, string previousHash)
+        {
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            _ = await db.ActionLogEntries.Where(e => e.Id == entryId)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.PreviousEntryHash, previousHash));
         }
 
         [Fact]
@@ -175,6 +240,35 @@ namespace VideoForensics.Data.Database.Tests
             ActionLogEntry entry2 = await _repository.AppendAsync("Actor2", ActorType.Human, "Action2", "Entity2", null, null, CancellationToken.None);
 
             Assert.NotEqual(entry1.EntryHash, entry2.EntryHash);
+        }
+
+        [Fact]
+        public async Task ActionLogRepository_VerifyChainIntegrity_AfterAppendsThroughSqlite_ReturnsTrue()
+        {
+            // Entries are read back from SQLite before verification, so this covers the hash of a round-tripped timestamp.
+            _ = await _repository.AppendAsync("A1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            _ = await _repository.AppendAsync("A2", ActorType.Human, "Act2", "Ent", Guid.NewGuid(), "{\"k\":1}", CancellationToken.None);
+            _ = await _repository.AppendAsync("A3", ActorType.System, "Act3", "Ent", null, null, CancellationToken.None);
+
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.True(result.IsValid);
+        }
+
+        [Fact]
+        public async Task ActionLogRepository_AppendAsync_ConcurrentAppends_KeepChainValid()
+        {
+            // Each append reads the tail and inserts in its own context. Without serialising them, two can chain to the same tail.
+            Task<ActionLogEntry>[] appends = Enumerable.Range(0, 10)
+                .Select(i => _repository.AppendAsync($"Actor{i}", ActorType.Human, $"Act{i}", "Ent", Guid.NewGuid(), null, CancellationToken.None))
+                .ToArray();
+
+            ActionLogEntry[] entries = await Task.WhenAll(appends);
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.Equal(10, entries.Select(e => e.Id).Distinct().Count());
+            Assert.True(result.IsValid);
+            Assert.Equal(10, result.EntriesChecked);
         }
 
         [Fact]

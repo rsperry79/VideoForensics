@@ -31,7 +31,10 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets all action log entries.</summary>
         Task<IReadOnlyList<ActionLogEntry>> ListAsync(CancellationToken ct);
 
-        /// <summary>Verifies the integrity of the hash chain, returning true if the chain is valid.</summary>
-        Task<bool> VerifyChainIntegrityAsync(CancellationToken ct);
+        /// <summary>
+        /// Verifies the hash chain. A failed result names the first broken entry and the kind of break, so an
+        /// operator can see where the chain diverged rather than only that it did.
+        /// </summary>
+        Task<ChainIntegrityResult> VerifyChainIntegrityAsync(CancellationToken ct);
     }
 }

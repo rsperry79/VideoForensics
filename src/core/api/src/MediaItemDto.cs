@@ -24,6 +24,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="PurgeReason">Reason for purging the file (e.g., "retention_policy", "user_request"). Null if not purged.</param>
     /// <param name="MetadataJson">Additional media metadata in JSON format, provider-specific or forensic-specific.</param>
     /// <param name="ApiSourceHash">Hash of the source API response for change detection; null if not applicable.</param>
+    /// <param name="DurationSeconds">Length of a video clip in seconds; null for stills or when unknown. The review timeline needs it to place the clip.</param>
+    /// <param name="PreviewPath">Path of the short preview clip, null when none was generated. Clients only use it to know a preview exists.</param>
     public record MediaItemDto(
         Guid Id,
         Guid DeviceId,
@@ -45,7 +47,9 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime? PurgedAtUtc,
         string? PurgeReason,
         string? MetadataJson,
-        string? ApiSourceHash
+        string? ApiSourceHash,
+        double? DurationSeconds = null,
+        string? PreviewPath = null
     );
 
     /// <summary>Extension methods for mapping MediaItem entities to/from MediaItemDtos.</summary>
@@ -77,7 +81,9 @@ namespace VideoForensics.Core.Api.Contracts
                 PurgedAtUtc: entity.PurgedAtUtc,
                 PurgeReason: entity.PurgeReason,
                 MetadataJson: entity.MetadataJson,
-                ApiSourceHash: entity.ApiSourceHash
+                ApiSourceHash: entity.ApiSourceHash,
+                DurationSeconds: entity.DurationSeconds,
+                PreviewPath: entity.PreviewPath
             );
         }
 
@@ -108,7 +114,9 @@ namespace VideoForensics.Core.Api.Contracts
                 PurgedAtUtc = dto.PurgedAtUtc,
                 PurgeReason = dto.PurgeReason,
                 MetadataJson = dto.MetadataJson,
-                ApiSourceHash = dto.ApiSourceHash
+                ApiSourceHash = dto.ApiSourceHash,
+                DurationSeconds = dto.DurationSeconds,
+                PreviewPath = dto.PreviewPath
             };
         }
     }

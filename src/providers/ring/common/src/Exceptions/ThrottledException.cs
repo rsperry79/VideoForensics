@@ -22,6 +22,9 @@ namespace VideoForensics.Providers.Ring.Exceptions
         /// <summary>The Retry-After wait Ring asked for, when the response carried one. Null means the caller picks its default.</summary>
         public TimeSpan? RetryAfter { get; init; }
 
+        /// <summary>When a hard ban lifts, in UTC. Set for hard bans, where a short Retry-After would retry long before the ban ends.</summary>
+        public DateTime? BlockedUntilUtc { get; init; }
+
         /// <summary>The raw response body Ring returned, truncated to ~4000 chars, when available.</summary>
         public string? ResponseBody { get; init; }
 

@@ -42,6 +42,52 @@ namespace VideoForensics.Providers.Uniview.Tests
         }
 
         [Fact]
+        public void UniviewAuthService_GetAuthStatusDetails_NotAuthenticated_ReportsNotAuthenticated()
+        {
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            var service = new UniviewAuthService(
+                new Mock<ILogger<UniviewAuthService>>().Object,
+                mockSessionProvider.Object,
+                new Mock<IForensicsConfiguration>().Object,
+                new Mock<ICredentialRepository>().Object);
+
+            var details = service.GetAuthStatusDetails();
+
+            Assert.NotNull(details);
+            Assert.False(details!.IsAuthenticated);
+            Assert.Null(details.TokenType);
+            Assert.Null(details.ExpiresAtUtc);
+        }
+
+        [Fact]
+        public void UniviewAuthService_GetAuthStatusDetails_Authenticated_ReportsAuthenticatedWithoutTokenDetail()
+        {
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var client = new UniviewClient("192.168.1.1", "admin", "password");
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            var service = new UniviewAuthService(
+                new Mock<ILogger<UniviewAuthService>>().Object,
+                mockSessionProvider.Object,
+                new Mock<IForensicsConfiguration>().Object,
+                new Mock<ICredentialRepository>().Object);
+
+            try
+            {
+                var details = service.GetAuthStatusDetails();
+
+                Assert.NotNull(details);
+                Assert.True(details!.IsAuthenticated);
+                Assert.Null(details.TokenType);
+                Assert.Null(details.ExpiresAtUtc);
+            }
+            finally
+            {
+                client.Dispose();
+            }
+        }
+
+        [Fact]
         public void UniviewAuthService_GetAuthStatus_Authenticated_ReturnsAuthenticatedMessage()
         {
             // Arrange

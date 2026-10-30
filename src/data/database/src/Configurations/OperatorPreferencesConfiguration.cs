@@ -15,6 +15,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(p => p.CultureName).HasMaxLength(16);
             _ = builder.Property(p => p.UiMode).IsRequired().HasMaxLength(16);
             _ = builder.Property(p => p.UiModeLocked).IsRequired();
+            _ = builder.Property(p => p.TimeFormat).IsRequired().HasMaxLength(16).HasDefaultValue("Locale");
+
+            _ = builder.Property(p => p.EncryptionWarningDismissed).IsRequired().HasDefaultValue(false);
 
             _ = builder.HasIndex(p => p.OperatorId).IsUnique();
         }

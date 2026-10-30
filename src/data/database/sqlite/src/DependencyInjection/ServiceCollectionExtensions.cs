@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using System.Security.AccessControl;
-using System.Security.Principal;
 
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
@@ -41,21 +39,11 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                 // On Windows, %ProgramData% is machine-wide and not writable by normal users by default for newly-created
                 // subdirectories. Grant the built-in "Users" group Modify rights so the app can function whether run as a
                 // normal user, elevated process, or (eventually) Windows Service.
-                if (!directoryExistedBefore && OperatingSystem.IsWindows())
+                if (!directoryExistedBefore)
                 {
                     try
                     {
-                        var dirInfo = new DirectoryInfo(dbDirectory);
-                        DirectorySecurity acl = dirInfo.GetAccessControl();
-                        var usersIdentity = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
-                        acl.AddAccessRule(
-                            new FileSystemAccessRule(
-                                usersIdentity,
-                                FileSystemRights.Modify,
-                                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-                                PropagationFlags.None,
-                                AccessControlType.Allow));
-                        dirInfo.SetAccessControl(acl);
+                        DataDirectoryAccess.Current.GrantUsersModify(dbDirectory);
                     }
                     catch
                     {
@@ -67,7 +55,7 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 
             // Register DbContext factory with SQLite provider
             // Using a factory (not AddDbContext) for thread-safety compatibility with MAUI and concurrent access patterns.
-            string connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
+            string connectionString = SqliteConnectionStrings.ForFile(dbPath);
 
             // Split queries by default: many repository queries Include multiple collections, and the default SingleQuery
             // produces cartesian-product result sets and EF's MultipleCollectionIncludeWarning. Split queries avoid both.
@@ -79,6 +67,20 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                     .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
 
                 // Hosts that register no logging (such as the test containers) keep EF's default logging.
+                ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
+                if (loggerFactory is not null)
+                {
+                    options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
+                }
+            });
+
+            // Operational logs live in logs.db beside the main database, so error rows and telemetry do not bloat the audit file.
+            string logsPath = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "logs.db");
+            _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>((sp, options) =>
+            {
+                options.UseSqlite(SqliteConnectionStrings.ForFile(logsPath));
+
+                // Same Debug remap as the main database. ProviderApiCallRecords writes go through this context.
                 ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
                 if (loggerFactory is not null)
                 {

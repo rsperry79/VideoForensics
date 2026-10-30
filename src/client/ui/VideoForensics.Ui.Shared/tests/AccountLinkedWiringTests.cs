@@ -74,6 +74,7 @@ public class AccountLinkedWiringTests_Wizard : BunitContext
         _ = Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(new ProviderAccountEditAccessDouble());
         _ = Services.AddScoped<IAccountLinkedNotifier>(_ => _notifier);
     }
 

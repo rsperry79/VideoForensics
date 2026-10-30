@@ -1,0 +1,9 @@
+/* Menu items are plain rows: full width, left-aligned, no button border. Bootstrap supplies the hover and disabled colors. */
+.review-actions-menu .dropdown-item {
+    text-align: left;
+    border: 0;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    white-space: normal;
+}

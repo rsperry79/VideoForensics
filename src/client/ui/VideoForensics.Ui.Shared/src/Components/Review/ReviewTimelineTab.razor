@@ -1,0 +1,551 @@
+@implements IDisposable
+@using System.Reactive.Linq
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject IReviewClipLoader ClipLoader
+@inject ReviewUrlCache UrlCache
+@inject IServiceProvider ServiceProvider
+@inject IStringLocalizer<ReviewPage> L
+@inject ILogger<ReviewTimelineTab> Logger
+@inject IMediaStillCaptureService CaptureService
+@inject IMediaContentUrlProvider MediaUrlProvider
+@inject PairedSessionState SessionState
+@inject ReviewSelection Selection
+@inject ReviewTimelineModel TimelineModel
+@inject ReviewStillCommand StillCommand
+
+<div class="review-timeline-tab" data-testid="review-timeline-tab">
+    @if (State.CameraIds.Count == 0)
+    {
+        <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+    }
+    else if (_error)
+    {
+        <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+    }
+    else if (_loaded is null || !_loaded.Key.Matches(State))
+    {
+        <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+    }
+    else
+    {
+        @if (_loaded.Truncated)
+        {
+            <p class="review-timeline-truncated text-warning" role="status" data-testid="review-timeline-truncated">@string.Format(L["ClipsTruncated"], ReviewClipLoader.MaxItems)</p>
+        }
+
+        @if (!_loaded.HasSelectedClips)
+        {
+            <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+        }
+        else if (State.CameraIds.Count == 1)
+        {
+            @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
+            {
+                <div class="review-grab-still-bar">
+                    <span class="@(_stillStatus.IsError ? "text-danger" : null)" data-testid="review-grab-still-status">@_stillStatus.Text</span>
+                    @if (_stillStatus.OpenUrl is not null)
+                    {
+                        <a href="@_stillStatus.OpenUrl" target="_blank" rel="noopener" data-testid="review-grab-still-open">@L["GrabStillOpen"]</a>
+                    }
+                </div>
+            }
+            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
+        }
+        else
+        {
+            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" />
+        }
+    }
+</div>
+
+@code {
+    private static readonly TimeSpan ReloadQuietPeriod = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>Most other cameras the single-camera strip loads, beside the selected one.</summary>
+    private const int StripLimit = 8;
+
+    /// <summary>The review state the tab reads and writes (cameras, range, cursor).</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Every camera the user can see, in display order. The single-camera strip draws from these.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    // The single-camera view, whose main player reads the playback position for Grab still.
+    private SingleCameraView? _singleCamera;
+
+    // Grab still: the status line, the clip it belongs to, and whether a capture is in flight.
+    private StillStatus? _stillStatus;
+    private Guid? _stillClipId;
+    private bool _grabInProgress;
+
+    private LoadedClips? _loaded;
+    private LoadKey? _requested;
+    private IReadOnlyList<CameraTile> _tiles = [];
+    private IReadOnlyList<Guid> _tileDeviceIds = [];
+    private Dictionary<string, MediaItem> _itemsByClipId = new(StringComparer.Ordinal);
+    private IReadOnlySet<Guid> _loadedDeviceIds = new HashSet<Guid>();
+    private CancellationTokenSource? _loadCts;
+    private readonly CancellationTokenSource _lifetime = new();
+    private IDisposable? _evidenceSubscription;
+    private bool _error;
+    private bool _disposed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnReviewStateChanged;
+        TimelineModel.OnChange += OnTimelineChanged;
+        await SessionState.EnsureLoadedAsync();
+
+        // Optional, like the Evidence page: a host with no realtime feed simply never reloads from evidence changes.
+        IEvidenceChangedSource? evidence = ServiceProvider.GetService(typeof(IEvidenceChangedSource)) as IEvidenceChangedSource;
+        _evidenceSubscription = evidence?.EvidenceChanged
+            .Where(change => _loadedDeviceIds.Contains(change.DeviceId))
+            .Throttle(ReloadQuietPeriod)
+            .Subscribe(change => { _ = InvokeAsync(() => ReloadAsync()); });
+
+        _ = ReloadAsync();
+    }
+
+    private void OnReviewStateChanged()
+    {
+        _ = InvokeAsync(OnReviewStateChangedAsync);
+    }
+
+    /// <summary>
+    /// A camera or range change reloads. A cursor or tab change only refreshes the URLs the cursor needs, so the
+    /// player never shows a tile whose URL is missing.
+    /// </summary>
+    private async Task OnReviewStateChangedAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        ClearStillStatusForAnotherClip();
+
+        if (_requested is null)
+        {
+            return;
+        }
+
+        if (!_requested.Matches(State))
+        {
+            await ReloadAsync();
+            return;
+        }
+
+        await EnsureUrlsAsync(_lifetime.Token);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Loads the clips for the selected cameras (plus the strip when exactly one camera is selected). A newer load cancels
+    /// this one, and a result that is no longer current is dropped.
+    /// </summary>
+    private async Task ReloadAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _loadCts = cts;
+        CancellationToken ct = cts.Token;
+
+        var key = new LoadKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc);
+        _requested = key;
+        _error = false;
+
+        if (key.Cameras.Count == 0)
+        {
+            _loaded = null;
+            _tiles = [];
+            _loadedDeviceIds = new HashSet<Guid>();
+            StateHasChanged();
+            return;
+        }
+
+        IReadOnlyList<Guid> toLoad = key.Cameras.Count == 1 ? WithStrip(key.Cameras[0]) : key.Cameras;
+
+        // Set before the call, so an evidence change that arrives while the load runs still counts.
+        _loadedDeviceIds = toLoad.ToHashSet();
+        StateHasChanged();
+
+        try
+        {
+            ReviewClipSet set = await ClipLoader.LoadAsync(toLoad, key.FromUtc, key.ToUtc, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Adopt(key, toLoad, set);
+            if (State.Cursor is null)
+            {
+                SetDefaultCursor(key.Cameras.Count);
+            }
+
+            await EnsureUrlsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load review clips: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _loaded = null;
+            _tiles = [];
+            _error = true;
+        }
+
+        if (IsCurrent(cts))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private bool IsCurrent(CancellationTokenSource cts)
+    {
+        return !_disposed && ReferenceEquals(_loadCts, cts) && !cts.IsCancellationRequested;
+    }
+
+    /// <summary>The selected camera first, then up to <see cref="StripLimit"/> other available cameras for the strip.</summary>
+    private List<Guid> WithStrip(Guid selected)
+    {
+        var ids = new List<Guid> { selected };
+        ids.AddRange(Devices.Where(id => id != selected).Take(StripLimit));
+        return ids;
+    }
+
+    private void Adopt(LoadKey key, IReadOnlyList<Guid> loadIds, ReviewClipSet set)
+    {
+        _itemsByClipId = new Dictionary<string, MediaItem>(StringComparer.Ordinal);
+        foreach (MediaItem item in set.Items)
+        {
+            _itemsByClipId[item.Id.ToString("D")] = item;
+        }
+
+        // The URL lookups run when a player takes its parameters, so the cache is read at render time, not here.
+        _tiles = ReviewClipBuilder.BuildTiles(
+            set.Items,
+            loadIds,
+            DeviceNames,
+            item => UrlCache.ContentUrl(item.Id),
+            item => UrlCache.PreviewUrl(item.Id));
+        _tileDeviceIds = loadIds.ToList();
+
+        bool hasSelectedClips = key.Cameras.Any(id => ReviewClipBuilder.BuildClips(set.Items, id).Count > 0);
+        _loaded = new LoadedClips(key, set.Truncated, hasSelectedClips);
+    }
+
+    /// <summary>Sets the cursor to the start of the newest clip among the selected cameras, when nothing has set one yet.</summary>
+    private void SetDefaultCursor(int selectedCount)
+    {
+        DateTime? newest = null;
+        for (int i = 0; i < selectedCount && i < _tiles.Count; i++)
+        {
+            foreach (ClipWindow clip in _tiles[i].Clips)
+            {
+                if (newest is null || clip.StartUtc > newest)
+                {
+                    newest = clip.StartUtc;
+                }
+            }
+        }
+
+        if (newest is DateTime start)
+        {
+            State.SetCursor(start);
+        }
+    }
+
+    /// <summary>
+    /// Makes sure the URLs for the clip at the cursor and the clip after it are cached, for every camera on screen.
+    /// </summary>
+    private async Task EnsureUrlsAsync(CancellationToken ct)
+    {
+        if (_loaded is null || State.Cursor is not DateTime cursor)
+        {
+            return;
+        }
+
+        var wanted = new List<MediaItem>();
+        foreach (CameraTile tile in _tiles)
+        {
+            IReadOnlyList<ClipWindow> clips = tile.Clips;
+            int index = IndexAt(clips, cursor);
+            for (int i = index; i < clips.Count && i <= index + 1; i++)
+            {
+                if (_itemsByClipId.TryGetValue(clips[i].Id, out MediaItem? item))
+                {
+                    wanted.Add(item);
+                }
+            }
+        }
+
+        try
+        {
+            await UrlCache.EnsureAsync(wanted, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The tab is reloading or closing; the next load requests what it needs.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not refresh review clip URLs: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Index of the clip covering the cursor, or, in a gap, of the first clip that starts after it. Returns the count when
+    /// no clip is left, so the caller finds nothing to fetch.
+    /// </summary>
+    private static int IndexAt(IReadOnlyList<ClipWindow> clips, DateTime cursor)
+    {
+        for (int i = 0; i < clips.Count; i++)
+        {
+            if (cursor >= clips[i].StartUtc && cursor < clips[i].StartUtc.AddSeconds(clips[i].DurationSeconds))
+            {
+                return i;
+            }
+        }
+
+        for (int i = 0; i < clips.Count; i++)
+        {
+            if (clips[i].StartUtc > cursor)
+            {
+                return i;
+            }
+        }
+
+        return clips.Count;
+    }
+
+    /// <summary>The strip asks for a single camera. The tab narrows the selection to it and keeps the cursor.</summary>
+    private void OnStripSelect(int index)
+    {
+        if (index < 0 || index >= _tileDeviceIds.Count)
+        {
+            return;
+        }
+
+        State.SetCameras([_tileDeviceIds[index]]);
+    }
+
+    /// <summary>The operator role parsed from the paired session, or null when none is known.</summary>
+    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+
+    /// <summary>Why Grab still does not apply now, or null when it does. The reasons are checked in the order an operator can fix them.</summary>
+    private LocalizedString? GrabStillReason
+    {
+        get
+        {
+            OperatorRole? role = Role;
+            if (role is null || role.Value < OperatorRole.Review)
+            {
+                return L["GrabStillNeedsRole"];
+            }
+
+            if (Selection.MediaItemId is null)
+            {
+                return L["GrabStillNoClip"];
+            }
+
+            return _grabInProgress ? L["GrabStillInProgress"] : null;
+        }
+    }
+
+    /// <summary>
+    /// Publishes the Grab still reason and handler to the sidebar button. Grab still needs the single-camera player, so
+    /// a grid of several cameras reports that instead of the capture reasons.
+    /// </summary>
+    private void PublishGrabStill()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (State.CameraIds.Count != 1)
+        {
+            StillCommand.Publish(L["GrabStillNeedsSingleCamera"].Value, null);
+            return;
+        }
+
+        StillCommand.Publish(GrabStillReason?.Value, OnGrabStillAsync);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        PublishGrabStill();
+    }
+
+    /// <summary>
+    /// Grabs the covering clip's current frame as a new evidence still. The position comes from the single-camera player and
+    /// the capture uses the clip's media item id, as the Evidence page's viewer does.
+    /// </summary>
+    private async Task OnGrabStillAsync()
+    {
+        if (GrabStillReason is not null || Selection.MediaItemId is not Guid clipId)
+        {
+            return;
+        }
+
+        string? actorId = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actorId is null)
+        {
+            ShowStillStatus(new StillStatus(L["ReasonSignInRequired"].Value, true, null), clipId);
+            return;
+        }
+
+        _grabInProgress = true;
+        ShowStillStatus(new StillStatus(L["GrabStillInProgress"].Value, false, null), clipId);
+        StillStatus? status = await RunGrabStillAsync(clipId, actorId);
+        _grabInProgress = false;
+
+        if (!_disposed && status is not null)
+        {
+            ShowStillStatus(status, clipId);
+        }
+    }
+
+    /// <summary>Reads the position, runs the capture, and returns the status to show. Null only when the tab was disposed mid-capture.</summary>
+    private async Task<StillStatus?> RunGrabStillAsync(Guid clipId, string actorId)
+    {
+        try
+        {
+            long? offsetMs = _singleCamera is null ? null : await _singleCamera.GetCurrentTimeMsAsync();
+            if (offsetMs is not long offset)
+            {
+                return new StillStatus(L["GrabStillNoPosition"].Value, true, null);
+            }
+
+            MediaStillCaptureResult result = await CaptureService.CaptureStillAsync(clipId, offset, null, null, null, actorId, _lifetime.Token);
+            if (!result.Success || result.Still is null)
+            {
+                Logger.LogError("Could not grab still: {ErrorCode}: {Message}", result.Error, result.ErrorMessage ?? string.Empty);
+                return new StillStatus(ErrorText(result.ErrorMessage ?? L["ActionFailed"].Value), true, null);
+            }
+
+            string? openUrl = await OpenUrlForStillAsync(result.Still.Id);
+            return new StillStatus(L["GrabStillResultPrefix"].Value + " " + HashPrefix(result.Still.Sha256Hash), false, openUrl);
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not grab still: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            return new StillStatus(ErrorText(ex.Message), true, null);
+        }
+    }
+
+    /// <summary>The ticketed URL that opens the new still. Null when it cannot be fetched, since the still exists either way.</summary>
+    private async Task<string?> OpenUrlForStillAsync(Guid stillId)
+    {
+        try
+        {
+            IReadOnlyDictionary<Guid, string> urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { stillId }, _lifetime.Token);
+            return urls.TryGetValue(stillId, out string? url) ? url : null;
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not get the link to the new still: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            return null;
+        }
+    }
+
+    private void ShowStillStatus(StillStatus status, Guid clipId)
+    {
+        _stillStatus = status;
+        _stillClipId = clipId;
+        StateHasChanged();
+    }
+
+    /// <summary>The status belongs to the clip it was grabbed from, so moving the cursor onto another clip clears it.</summary>
+    private void ClearStillStatusForAnotherClip()
+    {
+        if (_stillStatus is not null && _stillClipId != Selection.MediaItemId)
+        {
+            _stillStatus = null;
+            _stillClipId = null;
+        }
+    }
+
+    private static string HashPrefix(string hash) => hash.Length > 12 ? hash[..12] : hash;
+
+    private string ErrorText(string detail) => L["GrabStillErrorPrefix"].Value + " " + detail;
+
+    /// <summary>The timeline model changed (the page feeder published clips), so the button's enabled state is redrawn.</summary>
+    private void OnTimelineChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>The Grab still status line: its text and whether it reports an error.</summary>
+    private sealed record StillStatus(string Text, bool IsError, string? OpenUrl);
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        StillCommand.Publish(L["GrabStillNeedsSingleCamera"].Value, null);
+        State.OnChange -= OnReviewStateChanged;
+        TimelineModel.OnChange -= OnTimelineChanged;
+        _evidenceSubscription?.Dispose();
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+    }
+
+    /// <summary>The cameras and range one load asked for. The tab shows its data only while this still matches the state.</summary>
+    private sealed record LoadKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc)
+    {
+        public bool Matches(ReviewPageState state)
+        {
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc;
+        }
+    }
+
+    /// <summary>The last successful load and whether its selected cameras have any clip.</summary>
+    private sealed record LoadedClips(LoadKey Key, bool Truncated, bool HasSelectedClips);
+}

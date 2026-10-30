@@ -35,6 +35,34 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task OperatorPreferencesRepository_SetEncryptionWarningDismissed_NoRow_CreatesRowWithFlag()
+        {
+            var operatorId = Guid.NewGuid();
+
+            await _repository.SetEncryptionWarningDismissedAsync(operatorId, true, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.True(retrieved.EncryptionWarningDismissed);
+            Assert.Equal("System", retrieved.ThemeMode);
+        }
+
+        [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_AfterDismissal_KeepsFlag()
+        {
+            var operatorId = Guid.NewGuid();
+            await _repository.SetEncryptionWarningDismissedAsync(operatorId, true, CancellationToken.None);
+
+            // A later theme save builds a fresh object without the flag; it must not reset the dismissal.
+            await _repository.UpsertAsync(new OperatorPreferences { OperatorId = operatorId, ThemeMode = "Dark", UiMode = "Standard" }, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.True(retrieved.EncryptionWarningDismissed);
+            Assert.Equal("Dark", retrieved.ThemeMode);
+        }
+
+        [Fact]
         public async Task OperatorPreferencesRepository_Upsert_Insert_CreatesNewRecord()
         {
             var operatorId = Guid.NewGuid();
@@ -155,6 +183,52 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(retrieved);
             Assert.NotEqual(Guid.Empty, retrieved.Id);
             Assert.Equal("Light", retrieved.ThemeMode);
+        }
+
+        [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_TimeFormat_IsStoredAndUpdated()
+        {
+            var operatorId = Guid.NewGuid();
+            await _repository.UpsertAsync(new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                TimeFormat = "TwelveHour",
+                UpdatedAtUtc = DateTime.UtcNow
+            }, CancellationToken.None);
+
+            await _repository.UpsertAsync(new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                TimeFormat = "TwentyFourHour",
+                UpdatedAtUtc = DateTime.UtcNow
+            }, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("TwentyFourHour", retrieved.TimeFormat);
+        }
+
+        [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_NewRowWithoutTimeFormat_DefaultsToLocale()
+        {
+            var operatorId = Guid.NewGuid();
+            await _repository.UpsertAsync(new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                UpdatedAtUtc = DateTime.UtcNow
+            }, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("Locale", retrieved.TimeFormat);
         }
 
         [Fact]

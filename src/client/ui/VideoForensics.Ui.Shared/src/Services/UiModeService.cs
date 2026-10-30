@@ -89,7 +89,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             // returns null and we create one fresh with just the UiMode set.
             OperatorPreferences? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
 
-            // Merge: keep existing ThemeMode and CultureName, but update UiMode and UpdatedAtUtc.
+            // Merge: keep existing ThemeMode, CultureName and TimeFormat, but update UiMode and UpdatedAtUtc.
             // Never write the UiModeLocked field - it's managed by the admin lock endpoint.
             var prefs = new OperatorPreferences
             {
@@ -97,6 +97,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 OperatorId = operatorId,
                 ThemeMode = existing?.ThemeMode ?? "System",
                 CultureName = existing?.CultureName,
+                TimeFormat = existing?.TimeFormat ?? "Locale",
                 UiMode = Mode,
                 UpdatedAtUtc = DateTime.UtcNow,
                 // Preserve the lock state without writing it

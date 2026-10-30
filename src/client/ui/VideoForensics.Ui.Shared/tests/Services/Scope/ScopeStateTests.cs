@@ -383,6 +383,21 @@ public class ScopeState_ApplyQueryString_Tests
     }
 
     [Fact]
+    public void ApplyQueryString_WithTimeOfDay_ParsesTheUtcInstant()
+    {
+        // Arrange
+        var state = new ScopeState();
+
+        // Act
+        bool changed = state.ApplyQueryString("from=2026-10-26T23:00:00Z&to=2026-10-27T01:00:00Z");
+
+        // Assert
+        Assert.True(changed);
+        Assert.Equal(new DateTime(2026, 10, 26, 23, 0, 0, DateTimeKind.Utc), state.Current.FromUtc);
+        Assert.Equal(new DateTime(2026, 10, 27, 1, 0, 0, DateTimeKind.Utc), state.Current.ToUtc);
+    }
+
+    [Fact]
     public void ApplyQueryString_WithMultipleDevices_ParsesAll()
     {
         // Arrange

@@ -23,6 +23,18 @@ namespace VideoForensics.Core.Providers.Common.Contracts
 
         /// <summary>Gets current authentication status</summary>
         string GetAuthStatus();
+
+        /// <summary>
+        /// Gets the non-secret session details shown as a raw payload. Null when the provider does not report them,
+        /// so callers can say so instead of showing an empty payload.
+        /// </summary>
+        ProviderAuthStatus? GetAuthStatusDetails() => null;
+
+        /// <summary>
+        /// Gets the status details, fetching them from the server when this is a remote client. The default reads
+        /// them locally, so server-side providers need no change.
+        /// </summary>
+        Task<ProviderAuthStatus?> GetAuthStatusDetailsAsync(CancellationToken cancellationToken = default) => Task.FromResult(GetAuthStatusDetails());
     }
 
     /// <summary>Result of authentication attempt</summary>
@@ -34,8 +46,8 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// <summary>
         /// The persisted ProviderAccount this login resolved to, when the implementation persists
         /// accounts. Null on failure, or if account persistence isn't wired up for this provider.
-        /// A caller that tracks "the active account" (e.g. to attach downloaded devices to it)
-        /// should set it from this value after a successful login.
+        /// A caller that attaches downloaded devices to an account
+        /// should use this value after a successful login.
         /// </summary>
         Guid? ProviderAccountId = null
     );

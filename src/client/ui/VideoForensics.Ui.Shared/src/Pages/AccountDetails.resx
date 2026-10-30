@@ -98,6 +98,9 @@
   <data name="ColLatestLoop" xml:space="preserve">
     <value>Latest time lapse</value>
   </data>
+  <data name="DeviceSettings" xml:space="preserve">
+    <value>Device settings</value>
+  </data>
   <data name="NoSnapshotYet" xml:space="preserve">
     <value>No snapshot yet</value>
   </data>
@@ -113,8 +116,8 @@
   <data name="TabCases" xml:space="preserve">
     <value>Cases</value>
   </data>
-  <data name="ValidateSectionTitle" xml:space="preserve">
-    <value>Validate</value>
+  <data name="TabHistory" xml:space="preserve">
+    <value>History</value>
   </data>
   <data name="TabSync" xml:space="preserve">
     <value>Sync</value>
@@ -166,9 +169,6 @@
   </data>
   <data name="ErrorLoadingAccount" xml:space="preserve">
     <value>Error loading account: {0}</value>
-  </data>
-  <data name="SettingServerOnly" xml:space="preserve">
-    <value>This setting can only be changed from the server directly.</value>
   </data>
   <data name="ErrorRemovingAccount" xml:space="preserve">
     <value>Error removing account: {0}</value>

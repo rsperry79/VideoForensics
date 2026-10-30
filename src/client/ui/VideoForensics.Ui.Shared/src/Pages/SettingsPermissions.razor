@@ -1,0 +1,115 @@
+@page "/settings/permissions"
+@using System.Net
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject ISelfApiHttpClientFactory ClientFactory
+@inject IStringLocalizer<SettingsPermissions> L
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+</div>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="spinner-border spinner-border-sm" role="status"></div>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["ProviderAccountsSection"]</h5>
+            <p class="text-body-secondary">@L["ProviderAccountsDescription"]</p>
+
+            <label class="form-label" for="provider-edit-access">@L["ProviderEditLabel"]</label>
+            <select id="provider-edit-access" class="form-select mb-3" @bind="_providerEditAccess" disabled="@_saving">
+                <option value="Admin">@L["ProviderEditAdminOption"]</option>
+                <option value="SuperAdmin">@L["ProviderEditSuperAdminOption"]</option>
+            </select>
+
+            <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@_saving">@L["Save"]</button>
+
+            @if (_status is not null)
+            {
+                <div class="alert alert-secondary mt-3 mb-0" role="status">@_status</div>
+            }
+        </div>
+    </div>
+
+    <SettingsAccessCard Route="reports" Title="@L["ReportsSection"]" Description="@L["ReportsDescription"]" Label="@L["ReportsLabel"]" />
+    <SettingsAccessCard Route="email" Title="@L["EmailSection"]" Description="@L["EmailDescription"]" Label="@L["EmailLabel"]" />
+    <SettingsAccessCard Route="notifications" Title="@L["NotificationsSection"]" Description="@L["NotificationsDescription"]" Label="@L["NotificationsLabel"]" />
+    <SettingsAccessCard Route="llm" Title="@L["LlmSection"]" Description="@L["LlmDescription"]" Label="@L["LlmLabel"]" />
+    <SettingsAccessCard Route="infrastructure" Title="@L["InfrastructureSection"]" Description="@L["InfrastructureDescription"]" Label="@L["InfrastructureLabel"]" />
+}
+
+@code {
+    private bool _isLoading = true;
+    private string? _loadError;
+    private string? _status;
+    private bool _saving;
+    private string _providerEditAccess = "Admin";
+
+    /// <summary>Response shape of GET /api/v1/permissions/provider-accounts.</summary>
+    private sealed record ProviderPermissionsResponse(string ProviderAccountEditAccess);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SessionState.EnsureLoadedAsync();
+        if (!SessionState.IsSignedIn)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            ProviderPermissionsResponse? result = await client.GetFromJsonAsync<ProviderPermissionsResponse>("/api/v1/permissions/provider-accounts");
+            _providerEditAccess = result?.ProviderAccountEditAccess ?? "Admin";
+
+        }
+        catch (HttpRequestException ex)
+        {
+            _loadError = L["LoadFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _status = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PutAsJsonAsync("/api/v1/permissions/provider-accounts", new { providerAccountEditAccess = _providerEditAccess });
+            _status = response.IsSuccessStatusCode
+                ? L["SaveSucceeded"].Value
+                : L["SaveFailed", response.StatusCode.ToString()].Value;
+        }
+        catch (HttpRequestException ex)
+        {
+            _status = L["SaveFailed", ex.Message].Value;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

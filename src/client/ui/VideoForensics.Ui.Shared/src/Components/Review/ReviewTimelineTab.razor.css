@@ -1,0 +1,16 @@
+/* The timeline tab stays within its container. The Grab still bar and its status line sit above the player. */
+
+.review-timeline-tab {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.review-grab-still-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    margin-bottom: 0.5rem;
+}

@@ -147,6 +147,25 @@ public class ScopeState
     }
 
     /// <summary>
+    /// Reads a scope bound from a link. A plain date (yyyy-MM-dd) is the day as the forms write it. A UTC instant
+    /// (yyyy-MM-ddTHH:mm:ssZ) is what a notice's review link carries, so the scope can open on an hour of the day.
+    /// </summary>
+    internal static bool TryParseScopeDate(string value, out DateTime date)
+    {
+        if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out date))
+        {
+            return true;
+        }
+
+        return DateTime.TryParseExact(
+            value,
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+            out date);
+    }
+
+    /// <summary>
     /// Parse and apply a query string (with or without leading '?').
     /// Ignores unknown keys and invalid values.
     /// Returns true if the scope changed, false if it stayed the same.
@@ -199,14 +218,14 @@ public class ScopeState
             }
             else if (key == "from" && !string.IsNullOrWhiteSpace(value))
             {
-                if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime from))
+                if (TryParseScopeDate(value, out DateTime from))
                 {
                     fromUtc = from;
                 }
             }
             else if (key == "to" && !string.IsNullOrWhiteSpace(value))
             {
-                if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime to))
+                if (TryParseScopeDate(value, out DateTime to))
                 {
                     toUtc = to;
                 }

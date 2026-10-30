@@ -1,0 +1,10 @@
+@if (Messages.TryGetValue(Key, out var m))
+{
+    <small class="d-block" style="@(m.Success ? "color: green;" : "color: red;")">@m.Message</small>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyDictionary<string, (bool Success, string Message)> Messages { get; set; } = default!;
+
+    [Parameter, EditorRequired] public string Key { get; set; } = string.Empty;
+}

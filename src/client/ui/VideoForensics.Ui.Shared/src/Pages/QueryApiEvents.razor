@@ -1,5 +1,6 @@
 @page "/query/events"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.QueryApi
 @using VideoForensics.Client.Ui.Shared.Components
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Resources
@@ -8,6 +9,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.QueryApi
 @using VideoForensics.Client.Ui.Shared.Services.Inspector
 @using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Dump
 @using VideoForensics.Core.Providers.Common.Contracts
@@ -24,20 +26,8 @@
 <PageRightPanelContent>
     <div class="right-panel-section">
         <small>@L["Title"]</small>
-        <div class="d-flex flex-column gap-2 mb-2">
-            <div>
-                <label>@L["LabelLocationId"]</label>
-                <SfDropDownList ID="query-api-events-location-filter" TValue="string" TItem="QueryApiSelectOption" @bind-Value="LocationIdValue" DataSource="@LocationOptions" Placeholder="@L["SelectLocation"]" CssClass="w-100">
-                    <DropDownListFieldSettings Text="Label" Value="Value" />
-                </SfDropDownList>
-            </div>
-            <div>
-                <label>@L["LabelDeviceId"]</label>
-                <SfDropDownList ID="query-api-device-events-filter" TValue="string" TItem="QueryApiSelectOption" @bind-Value="DeviceIdValue" DataSource="@DeviceOptions" Placeholder="@L["SelectDevice"]" CssClass="w-100">
-                    <DropDownListFieldSettings Text="Label" Value="Value" />
-                </SfDropDownList>
-            </div>
-        </div>
+        <QueryApiFilterBar LocationOptions="@LocationOptions" DeviceOptions="@DeviceOptions"
+                           LocationElementId="query-api-events-location-filter" DeviceElementId="query-api-device-events-filter" />
     </div>
 </PageRightPanelContent>
 
@@ -82,25 +72,18 @@
 </div>
 
 @code {
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used so a time is never shown in the wrong zone.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
     private List<(string Label, string? Url)> BreadcrumbItems =>
     [
         (SharedL["Sources"], "/accounts"),
         (SharedL["Query API"], "/query"),
         (L["Title"], null)
     ];
-
-    // Shared selections are read and written through the filter state, so they survive navigation.
-    private string LocationIdValue
-    {
-        get => FilterState.LocationId ?? string.Empty;
-        set => FilterState.SetLocationId(string.IsNullOrEmpty(value) ? null : value);
-    }
-
-    private string DeviceIdValue
-    {
-        get => FilterState.DeviceId ?? string.Empty;
-        set => FilterState.SetDeviceId(string.IsNullOrEmpty(value) ? null : value);
-    }
 
     private System.Action? _onScopeChangeHandler;
     private string? _loadedDevicesLocationId;
@@ -216,7 +199,8 @@
             FilterState.DeviceId ?? string.Empty,
             ScopeState.Current.FromUtc,
             ScopeState.Current.ToUtc,
-            _eventsRetrievedAt);
+            _eventsRetrievedAt,
+            Zone);
     }
 
     private RenderFragment DeviceEventGridColumns => __builder =>

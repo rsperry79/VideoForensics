@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Permissions</value>
+  </data>
+  <data name="SignInPrompt" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage permissions.</value>
+  </data>
+  <data name="ProviderAccountsSection" xml:space="preserve">
+    <value>Provider accounts</value>
+  </data>
+  <data name="ProviderAccountsDescription" xml:space="preserve">
+    <value>Choose the lowest operator level that may edit provider accounts. Deleting a provider account always requires SuperAdmin on the Local network, whatever is set here.</value>
+  </data>
+  <data name="ProviderEditLabel" xml:space="preserve">
+    <value>Who may edit provider accounts</value>
+  </data>
+  <data name="ProviderEditAdminOption" xml:space="preserve">
+    <value>Admin and up</value>
+  </data>
+  <data name="ProviderEditSuperAdminOption" xml:space="preserve">
+    <value>Super Admin only</value>
+  </data>
+  <data name="ReportsSection" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="ReportsDescription" xml:space="preserve">
+    <value>Choose who may open the Reports settings page and change which reports are created, their file format and how much personal information they hide. Super Admins can always change them.</value>
+  </data>
+  <data name="ReportsLabel" xml:space="preserve">
+    <value>Who may change report settings</value>
+  </data>
+  <data name="ReportsSuperAdminOption" xml:space="preserve">
+    <value>Super Admin only (default)</value>
+  </data>
+  <data name="EmailSection" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="EmailDescription" xml:space="preserve">
+    <value>Choose who may open the Email settings page and change the mail server, sender and recipient used for alert emails. Super Admins can always change them.</value>
+  </data>
+  <data name="EmailLabel" xml:space="preserve">
+    <value>Who may change email settings</value>
+  </data>
+  <data name="NotificationsSection" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="NotificationsDescription" xml:space="preserve">
+    <value>Choose who may open the Notifications settings page and change which events count as urgent and how push alerts are sent. Super Admins can always change them.</value>
+  </data>
+  <data name="NotificationsLabel" xml:space="preserve">
+    <value>Who may change notification settings</value>
+  </data>
+  <data name="LlmSection" xml:space="preserve">
+    <value>LLM API</value>
+  </data>
+  <data name="LlmDescription" xml:space="preserve">
+    <value>Choose who may open the LLM API settings page and change the chat assistant's provider, model and API key. Super Admins can always change them.</value>
+  </data>
+  <data name="LlmLabel" xml:space="preserve">
+    <value>Who may change LLM settings</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SaveSucceeded" xml:space="preserve">
+    <value>Permissions saved.</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Could not save permissions: {0}</value>
+  </data>
+  <data name="LoadFailed" xml:space="preserve">
+    <value>Could not load permissions: {0}</value>
+  </data>
+  <data name="InfrastructureSection" xml:space="preserve">
+    <value>Infrastructure</value>
+  </data>
+  <data name="InfrastructureDescription" xml:space="preserve">
+    <value>Infrastructure settings include the log pipe and factory reset. Let admins open the Infrastructure page.</value>
+  </data>
+  <data name="InfrastructureLabel" xml:space="preserve">
+    <value>Who may open Infrastructure settings</value>
+  </data>
+</root>

@@ -23,7 +23,11 @@ namespace VideoForensics.Client.WebApp.Api
             // Resolving it here from the root provider would throw under scope validation.
             IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
-            RouteGroupBuilder group = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            // Reads and provider-account edits are Admin and up; ProviderAccountEditFilter can narrow edits to SuperAdmin.
+            // User writes, delete, and export or purge stay SuperAdmin on the Local tier, so they use their own groups.
+            RouteGroupBuilder group = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.Admin);
+            RouteGroupBuilder userGroup = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder sensitiveGroup = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
             // User endpoints
             _ = group.MapGet("/users", async (IUserRepository users, CancellationToken ct) =>
@@ -50,7 +54,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Get user by provider key")
                 .WithDescription("Retrieves a user by its provider-specific user key.");
 
-            _ = group.MapPost("/users", async (
+            _ = userGroup.MapPost("/users", async (
                 CreateUserRequest request,
                 IUserRepository users,
                 CancellationToken ct) =>
@@ -71,7 +75,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Create a new user")
                 .WithDescription("Creates a new user account.");
 
-            _ = group.MapPut("/users/{id:guid}", async (
+            _ = userGroup.MapPut("/users/{id:guid}", async (
                 Guid id,
                 UpdateUserRequest request,
                 IUserRepository users,
@@ -96,7 +100,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Update a user")
                 .WithDescription("Updates an existing user's information.");
 
-            _ = group.MapDelete("/users/{id:guid}", async (Guid id, IUserRepository users, CancellationToken ct) =>
+            _ = userGroup.MapDelete("/users/{id:guid}", async (Guid id, IUserRepository users, CancellationToken ct) =>
             {
                 User? user = await users.GetAsync(id, ct);
                 if (user == null)
@@ -204,6 +208,7 @@ namespace VideoForensics.Client.WebApp.Api
             })
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Create a new provider account link")
                 .WithDescription("Creates a new link between a user and a provider account.");
 
@@ -241,10 +246,11 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.Ok(account.ToDto());
             })
                 .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Update a provider account")
                 .WithDescription("Updates an existing provider account's information.");
 
-            _ = group.MapDelete("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = sensitiveGroup.MapDelete("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
                 if (account == null)
@@ -279,10 +285,11 @@ namespace VideoForensics.Client.WebApp.Api
             })
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Retire a provider account")
                 .WithDescription("Soft-removes the account: syncing stops but its data is kept. Idempotent.");
 
-            _ = group.MapPost("/provider-accounts/{id:guid}/exports", async (
+            _ = sensitiveGroup.MapPost("/provider-accounts/{id:guid}/exports", async (
                 Guid id,
                 QueueAccountExportRequest request,
                 IProviderAccountRepository accounts,
@@ -318,7 +325,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Export a provider account")
                 .WithDescription("Queues a background export of the account's data, optionally purging the account afterwards.");
 
-            _ = group.MapGet("/provider-accounts/{id:guid}/export-status", async (Guid id, IAccountExportService exports, CancellationToken ct) =>
+            _ = sensitiveGroup.MapGet("/provider-accounts/{id:guid}/export-status", async (Guid id, IAccountExportService exports, CancellationToken ct) =>
             {
                 ExportJobStatus? status = await exports.GetLatestStatusForAccountAsync(id, ct);
                 return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
@@ -327,7 +334,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Get the latest export job for an account")
                 .WithDescription("Returns the most recently queued export job for the account, or 404 when none is known (including after a server restart).");
 
-            _ = group.MapGet("/exports/{jobId:guid}", async (Guid jobId, IAccountExportService exports, CancellationToken ct) =>
+            _ = sensitiveGroup.MapGet("/exports/{jobId:guid}", async (Guid jobId, IAccountExportService exports, CancellationToken ct) =>
             {
                 ExportJobStatus? status = await exports.GetStatusAsync(jobId, ct);
                 return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
@@ -356,6 +363,7 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.Accepted();
             })
                 .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Start the first full sync of a newly added account")
                 .WithDescription("Restores the account's session, discovers its locations and devices, and pulls its full event history in the background.");
 
@@ -426,6 +434,7 @@ namespace VideoForensics.Client.WebApp.Api
                 );
             })
                 .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Queue manual sync of events and device configuration")
                 .WithDescription("Initiates background pull of events and config for all devices in the account");
 
@@ -451,6 +460,7 @@ namespace VideoForensics.Client.WebApp.Api
                     : Results.NotFound();
             })
                 .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Set the config sync interval")
                 .WithDescription("Saves the hours between config syncs (1 to 720) for the account. 404 when the account has no Ring row.");
         }
@@ -461,8 +471,11 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Longest config sync interval the PUT endpoint accepts, in hours (30 days).</summary>
         private const int MaxConfigSyncIntervalHours = 720;
 
-        /// <summary>Largest look-back, in days, a sync-now request may ask for.</summary>
-        private const int MaxSyncDays = 3650;
+        /// <summary>
+        /// Largest look-back, in days, a sync-now request may ask for, and the longest custom range. Why: the runner clamps any
+        /// range to one year back, so a larger request would silently sync only one year. 366 covers one year plus a leap day.
+        /// </summary>
+        private const int MaxSyncDays = 366;
 
         /// <summary>
         /// Returns the UTC instant for a bound date. System.Text.Json converts an offset timestamp such as "+02:00" to local
@@ -529,6 +542,13 @@ namespace VideoForensics.Client.WebApp.Api
                     if (to <= from)
                     {
                         error = "to must be after from";
+                        return false;
+                    }
+
+                    // An open end means now, so the same limit applies against the current time.
+                    if ((to ?? DateTime.UtcNow) - from.Value > TimeSpan.FromDays(MaxSyncDays))
+                    {
+                        error = $"range must not be longer than {MaxSyncDays} days";
                         return false;
                     }
 

@@ -50,6 +50,43 @@ namespace VideoForensics.Data.Database.Repositories
             string? detailsJson,
             CancellationToken ct)
         {
+            // Inside an open unit of work, write on the unit's context so the append joins its transaction. The unit
+            // already holds the chain gate in this flow.
+            VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
+            if (ambient != null)
+            {
+                return await new UnitOfWorkActionLogRepository(ambient, _logger).AppendAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
+            }
+
+            // The shared chain gate covers this read, insert and commit.
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            if (entered)
+            {
+                await ActionLogAppendGate.WaitAsync(ct);
+            }
+
+            try
+            {
+                return await AppendCoreAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
+            }
+            finally
+            {
+                if (entered)
+                {
+                    ActionLogAppendGate.Release();
+                }
+            }
+        }
+
+        private async Task<ActionLogEntry> AppendCoreAsync(
+            string actor,
+            ActorType actorType,
+            string action,
+            string entityType,
+            Guid? entityId,
+            string? detailsJson,
+            CancellationToken ct)
+        {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
@@ -62,7 +99,13 @@ namespace VideoForensics.Data.Database.Repositories
                     .FirstOrDefaultAsync(ct);
 
                 string? previousEntryHash = lastEntry?.EntryHash;
+
+                // Verification orders by timestamp, so this entry must be strictly later than its predecessor.
                 DateTime timestampUtc = DateTime.UtcNow;
+                if (lastEntry != null && timestampUtc <= lastEntry.TimestampUtc)
+                {
+                    timestampUtc = DateTime.SpecifyKind(lastEntry.TimestampUtc.AddTicks(1), DateTimeKind.Utc);
+                }
 
                 // Compute the new entry's hash
                 string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
@@ -116,8 +159,11 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.ActionLogEntries.ToListAsync(ct);
         }
 
-        /// <summary>Verifies the integrity of the hash chain, returning true if the chain is valid.</summary>
-        public async Task<bool> VerifyChainIntegrityAsync(CancellationToken ct)
+        /// <summary>
+        /// Verifies the hash chain in timestamp order. On a break, reports the kind of break and the first failing entry,
+        /// and how many entries verified before it.
+        /// </summary>
+        public async Task<ChainIntegrityResult> VerifyChainIntegrityAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             List<ActionLogEntry> entries = await db.ActionLogEntries
@@ -127,11 +173,12 @@ namespace VideoForensics.Data.Database.Repositories
 
             if (entries.Count == 0)
             {
-                return true;
+                return ChainIntegrityResult.Valid(0);
             }
 
             // Verify the chain starting from the first entry
             string? expectedPreviousHash = null;
+            int checkedCount = 0;
 
             foreach (ActionLogEntry? entry in entries)
             {
@@ -140,24 +187,27 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _logger.LogError("Hash chain integrity violation at entry {EntryId}: expected previous hash {ExpectedHash}, got {ActualHash}",
                         entry.Id, expectedPreviousHash, entry.PreviousEntryHash);
-                    return false;
+                    return ChainIntegrityResult.Broken(checkedCount, ChainBreakKind.PreviousHashMismatch, entry);
                 }
 
-                // Recompute the entry's hash to verify it's correct
-                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
+                // Recompute the entry's hash to verify it's correct. SQLite reads timestamps back as Kind=Unspecified,
+                // which formats without the "Z" the appender hashed, so the kind is restored to UTC before formatting.
+                string timestampUtc = DateTime.SpecifyKind(entry.TimestampUtc, DateTimeKind.Utc).ToString("O");
+                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{timestampUtc}|{entry.DetailsJson ?? ""}";
                 string computedHash = ComputeSha256Hash(canonicalString);
 
                 if (entry.EntryHash != computedHash)
                 {
                     _logger.LogError("Hash chain integrity violation at entry {EntryId}: expected hash {ExpectedHash}, computed {ComputedHash}",
                         entry.Id, entry.EntryHash, computedHash);
-                    return false;
+                    return ChainIntegrityResult.Broken(checkedCount, ChainBreakKind.EntryHashMismatch, entry);
                 }
 
                 expectedPreviousHash = entry.EntryHash;
+                checkedCount++;
             }
 
-            return true;
+            return ChainIntegrityResult.Valid(checkedCount);
         }
 
         /// <summary>Computes a SHA-256 hash of the canonical string.</summary>

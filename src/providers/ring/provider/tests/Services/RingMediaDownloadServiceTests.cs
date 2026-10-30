@@ -332,7 +332,9 @@ namespace VideoForensics.Providers.Ring.Tests
                         ? new StringContent("{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", System.Text.Encoding.UTF8, "application/json")
                         : new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
 
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+                // Ring answers the on-demand refresh with 204 No Content; anything else is an error.
+                HttpStatusCode status = url.Contains("snapshots/update_all", StringComparison.Ordinal) ? HttpStatusCode.NoContent : HttpStatusCode.OK;
+                return Task.FromResult(new HttpResponseMessage(status) { Content = content });
             }
         }
 
@@ -622,6 +624,72 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             sessionProvider.Verify(sp => sp.GetSession(accountId), Times.Once, "GetSession should be called with the cached accountId");
+        }
+
+        [Fact]
+        public async Task DownloadSnapshotsAsync_WhenFreshSnapshotCannotBeCaptured_FailsWithoutSavingOldImage()
+        {
+            // Arrange: a failed refresh must not fall back to Ring's cached image, which would look current.
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(mockSession.Object);
+            var service = new RefreshFailingMediaDownloadService(new Mock<ILogger>().Object, sessionProvider.Object, CreateMockDataClient());
+            string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync("123", outputPath, DateTime.Now.AddDays(-1), DateTime.Now);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains("fresh snapshot", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.False(Directory.Exists(outputPath) && Directory.EnumerateFiles(outputPath).Any());
+        }
+
+        [Fact]
+        public async Task DownloadSnapshotsAsync_WhenRingReturns503_LogsHttpStatus()
+        {
+            // Arrange: Ring refuses the snapshot read with 503. The log must name the status so the cause is visible without querying the database.
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = mockSession.Setup(s => s.GetLatestSnapshotWithStatus(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpUtility.DownloadResult(HttpStatusCode.ServiceUnavailable, [], null));
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(mockSession.Object);
+            var logger = new RecordingLogger();
+            var service = new SnapshotReadStubMediaDownloadService(logger, sessionProvider.Object, CreateMockDataClient());
+            string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync("123", outputPath, DateTime.Now.AddDays(-1), DateTime.Now);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Message.Contains("HTTP 503", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task DownloadSnapshotsAsync_WhenRingReturns404_LogsErrorWithoutStackTrace()
+        {
+            // Arrange: a device with no snapshot answers 404. The failure stays an Error, but the entry carries the message
+            // alone, so the log does not fill with a stack trace for an expected condition.
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = mockSession.Setup(s => s.GetLatestSnapshotWithStatus(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpUtility.DownloadResult(HttpStatusCode.NotFound, [], null));
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(mockSession.Object);
+            var logged = new List<(LogLevel Level, Exception? Exception)>();
+            var logger = new Mock<ILogger>();
+            _ = logger.Setup(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+                .Callback(new InvocationAction(invocation => logged.Add(((LogLevel)invocation.Arguments[0]!, (Exception?)invocation.Arguments[3]))));
+            var service = new SnapshotReadStubMediaDownloadService(logger.Object, sessionProvider.Object, CreateMockDataClient());
+            string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync("123", outputPath, DateTime.Now.AddDays(-1), DateTime.Now);
+
+            // Assert
+            Assert.False(result.Success);
+            (LogLevel Level, Exception? Exception) error = Assert.Single(logged, e => e.Level == LogLevel.Error);
+            Assert.Null(error.Exception);
         }
 
         [Fact]
@@ -1207,5 +1275,104 @@ namespace VideoForensics.Providers.Ring.Tests
                 }
             }
         }
+    }
+
+    /// <summary>Scripts the latest-snapshot reads, so the retry on 404 runs without Ring and without real waits.</summary>
+    internal sealed class ScriptedSnapshotReadService : RingMediaDownloadService
+    {
+        private static readonly byte[] JpegBytes = [0xFF, 0xD8, 0xFF, 0xE0];
+        private readonly HttpStatusCode[] _statuses;
+
+        public ScriptedSnapshotReadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, params HttpStatusCode[] statuses)
+            : base(logger, sessionProvider, dataClient)
+        {
+            _statuses = statuses;
+        }
+
+        /// <summary>How many latest-snapshot reads the capture made.</summary>
+        public int Reads { get; private set; }
+
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) => Task.CompletedTask;
+
+        protected override Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        protected override Task<HttpUtility.DownloadResult> ReadLatestSnapshotAsync(Session session, int doorbotId, CancellationToken cancellationToken)
+        {
+            HttpStatusCode status = _statuses[Math.Min(Reads, _statuses.Length - 1)];
+            Reads++;
+            byte[] body = status == HttpStatusCode.OK ? JpegBytes : [];
+            return Task.FromResult(new HttpUtility.DownloadResult(status, body, null));
+        }
+    }
+
+    public class RingMediaDownloadServiceCaptureRetryTests
+    {
+        [Fact]
+        public async Task CaptureAsync_Ring404ThenJpeg_RetriesAndReturnsTheImage()
+        {
+            // Ring builds the refreshed frame after the update, so the first read can be 404. The next read has the image.
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(new Mock<Session>("testuser", "testpass", null, null, null).Object);
+            var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
+                HttpStatusCode.NotFound, HttpStatusCode.OK);
+
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+
+            Assert.Equal(200, attempt.HttpStatus);
+            Assert.NotNull(attempt.Image);
+            Assert.Equal(2, service.Reads);
+        }
+
+        [Fact]
+        public async Task CaptureAsync_Ring404Always_StopsAfterTheReadLimit()
+        {
+            // A device that never produces a frame must not be read forever: the capture gives up and records the 404.
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(new Mock<Session>("testuser", "testpass", null, null, null).Object);
+            var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
+                HttpStatusCode.NotFound);
+
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+
+            Assert.Equal(404, attempt.HttpStatus);
+            Assert.Null(attempt.Image);
+            Assert.Equal(RingMediaDownloadService.MaxSnapshotReads, service.Reads);
+        }
+
+        [Fact]
+        public async Task CaptureAsync_Ring503_IsNotRetried()
+        {
+            // Only 404 means "not built yet". Any other failure is reported at once, not retried.
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(new Mock<Session>("testuser", "testpass", null, null, null).Object);
+            var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
+                HttpStatusCode.ServiceUnavailable);
+
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+
+            Assert.Equal(503, attempt.HttpStatus);
+            Assert.Equal(1, service.Reads);
+        }
+    }
+
+    /// <summary>Lets the fresh-snapshot request succeed, so a failure comes from the snapshot read that follows it.</summary>
+    internal sealed class SnapshotReadStubMediaDownloadService : RingMediaDownloadService
+    {
+        public SnapshotReadStubMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
+            : base(logger, sessionProvider, dataClient)
+        {
+        }
+
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) => Task.CompletedTask;
+    }
+
+    /// <summary>Simulates Ring refusing an on-demand snapshot refresh.</summary>
+    internal sealed class RefreshFailingMediaDownloadService : RingMediaDownloadService
+    {
+        public RefreshFailingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
+            : base(logger, sessionProvider, dataClient) { }
+
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) =>
+            Task.FromException(new InvalidOperationException("refresh unsupported"));
     }
 }

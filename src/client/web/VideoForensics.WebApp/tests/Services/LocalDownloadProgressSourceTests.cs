@@ -1,10 +1,14 @@
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Client.Ui.Shared.Contracts;
 
 using Xunit;
 
@@ -15,142 +19,116 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         // A period far longer than any test runs, so only the explicit SampleOnce calls sample.
         private static readonly TimeSpan NeverTicks = TimeSpan.FromHours(1);
 
-        /// <summary>Mutable state the fake service reads from, so a test can change it between samples.</summary>
-        private sealed class SampleState
+        /// <summary>Fake sync log: lines a test appends are returned by the next Drain, and each Drain is counted.</summary>
+        private sealed class FakeActivityLog : ISyncActivityLog
         {
-            public DownloadStatus Status { get; set; } = new(true, 1, 4, 100L, "a.mp4", 2, 8, 200L, 1, 0.5);
-            public (int Index, int Total, string Name) Device { get; set; } = (1, 3, "Garage");
-            public Dictionary<string, int> PreScanCounts { get; } = new() { ["dev-1"] = 6 };
-            public string? LastError { get; set; }
-            public string? RemainingReason { get; set; }
-            public List<string> PendingActivity { get; } = [];
-        }
+            public List<string> Pending { get; } = [];
 
-        private static Mock<IVideoDownloadService> BuildService(SampleState state)
-        {
-            var service = new Mock<IVideoDownloadService>();
-            _ = service.Setup(s => s.GetProgress()).Returns(() => state.Status);
-            _ = service.Setup(s => s.GetCurrentDevice()).Returns(() => state.Device);
-            _ = service.Setup(s => s.GetPreScanCounts()).Returns(() => new Dictionary<string, int>(state.PreScanCounts));
-            _ = service.Setup(s => s.GetLastError()).Returns(() => state.LastError);
-            _ = service.Setup(s => s.GetRemainingReason()).Returns(() => state.RemainingReason);
-            _ = service.Setup(s => s.DrainActivityLog()).Returns(() =>
+            public int DrainCount { get; private set; }
+
+            public void Append(string line)
             {
-                List<string> lines = [.. state.PendingActivity];
-                state.PendingActivity.Clear();
-                return lines;
-            });
-            return service;
-        }
-
-        private static LocalDownloadProgressSource BuildSource(IVideoDownloadService service)
-        {
-            return new LocalDownloadProgressSource(service, Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalDownloadProgressSource>.Instance, NeverTicks);
-        }
-
-        [Fact]
-        public void LocalDownloadProgressSource_SampleOnce_EmitsFirstSample()
-        {
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
-            var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
-
-            source.SampleOnce();
-
-            _ = Assert.Single(received);
-            Assert.Equal(1, received[0].FilesCompleted);
-            Assert.Equal(3, received[0].CurrentDeviceTotal);
-            Assert.Equal("Garage", received[0].CurrentDeviceName);
-        }
-
-        [Fact]
-        public void LocalDownloadProgressSource_SampleOnce_UnchangedStateDoesNotEmit()
-        {
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
-            var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
-            source.SampleOnce();
-
-            source.SampleOnce();
-            source.SampleOnce();
-
-            _ = Assert.Single(received);
-        }
-
-        [Fact]
-        public void LocalDownloadProgressSource_SampleOnce_ChangedStateEmitsAgain()
-        {
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
-            var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
-            source.SampleOnce();
-
-            state.Status = new DownloadStatus(true, 2, 4, 150L, "b.mp4", 3, 8, 250L, 1, 0.5);
-            source.SampleOnce();
-
-            Assert.Equal(2, received.Count);
-            Assert.Equal(2, received[1].FilesCompleted);
-        }
-
-        [Theory]
-        [InlineData("LastError")]
-        [InlineData("RemainingReason")]
-        [InlineData("Device")]
-        public void LocalDownloadProgressSource_SampleOnce_ChangeInCompareFieldEmits(string field)
-        {
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
-            var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
-            source.SampleOnce();
-
-            switch (field)
-            {
-                case "LastError":
-                    state.LastError = "boom";
-                    break;
-                case "RemainingReason":
-                    state.RemainingReason = "rate limited";
-                    break;
-                case "Device":
-                    state.Device = (2, 3, "Porch");
-                    break;
+                Pending.Add(line);
             }
 
-            source.SampleOnce();
+            public IReadOnlyList<string> Drain()
+            {
+                DrainCount++;
+                string[] lines = [.. Pending];
+                Pending.Clear();
+                return lines;
+            }
+        }
 
-            Assert.Equal(2, received.Count);
+        private static LocalDownloadProgressSource BuildSource(ISyncActivityLog log, ISyncProgressStore? store = null)
+        {
+            return new LocalDownloadProgressSource(log, store ?? new SyncProgressStore(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalDownloadProgressSource>.Instance, NeverTicks);
         }
 
         [Fact]
-        public void LocalDownloadProgressSource_SampleOnce_EqualPreScanContentInNewDictionaryDoesNotEmit()
+        public void LocalDownloadProgressSource_SampleOnce_ChangedStoreValueEmitsWithoutActivity()
         {
-            // The service's GetPreScanCounts returns a fresh dictionary on every call. Comparison must be
-            // by content, or every sample would look changed.
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
+            var store = new SyncProgressStore();
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog(), store);
             var received = new List<DownloadProgressSnapshot>();
             using IDisposable subscription = source.Progress.Subscribe(received.Add);
             source.SampleOnce();
 
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 1, 4, "Garage"));
+            source.SampleOnce();
+
+            Assert.Equal(2, received.Count);
+            Assert.True(received[1].IsDownloading);
+            Assert.Equal(3, received[1].FilesCompleted);
+            Assert.Equal(5, received[1].FilesTotal);
+            Assert.Equal("a.mp4", received[1].CurrentFile);
+            Assert.Equal(1, received[1].CurrentDeviceIndex);
+            Assert.Equal(4, received[1].CurrentDeviceTotal);
+            Assert.Equal("Garage", received[1].CurrentDeviceName);
+            Assert.Empty(received[1].Activity);
+        }
+
+        [Fact]
+        public void LocalDownloadProgressSource_SampleOnce_UnchangedStoreValueDoesNotReEmit()
+        {
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 1, 4, "Garage"));
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog(), store);
+            var received = new List<DownloadProgressSnapshot>();
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            source.SampleOnce();
+
+            source.SampleOnce();
             source.SampleOnce();
 
             _ = Assert.Single(received);
         }
 
         [Fact]
-        public void LocalDownloadProgressSource_SampleOnce_ActivityEmitsEvenWhenStateUnchanged()
+        public void LocalDownloadProgressSource_SampleOnce_EmitsFirstSampleAsIdle()
         {
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog());
+            var received = new List<DownloadProgressSnapshot>();
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+
+            source.SampleOnce();
+
+            _ = Assert.Single(received);
+            Assert.False(received[0].IsDownloading);
+            Assert.Equal(0, received[0].FilesCompleted);
+            Assert.Equal(0, received[0].CurrentDeviceTotal);
+            Assert.Equal(string.Empty, received[0].CurrentDeviceName);
+            Assert.Empty(received[0].PreScanCounts);
+            Assert.Null(received[0].LastError);
+            Assert.Null(received[0].RemainingReason);
+            Assert.Empty(received[0].Activity);
+        }
+
+        [Fact]
+        public void LocalDownloadProgressSource_SampleOnce_EmptyTicksDoNotEmit()
+        {
+            // With no activity and no state to compare, repeated idle ticks must not re-broadcast.
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog());
             var received = new List<DownloadProgressSnapshot>();
             using IDisposable subscription = source.Progress.Subscribe(received.Add);
             source.SampleOnce();
 
-            state.PendingActivity.Add("file.mp4 done");
+            source.SampleOnce();
+            source.SampleOnce();
+
+            _ = Assert.Single(received);
+        }
+
+        [Fact]
+        public void LocalDownloadProgressSource_SampleOnce_ActivityEmitsEvenWhenNothingElseChanged()
+        {
+            var log = new FakeActivityLog();
+            using LocalDownloadProgressSource source = BuildSource(log);
+            var received = new List<DownloadProgressSnapshot>();
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            source.SampleOnce();
+
+            log.Append("file.mp4 done");
             source.SampleOnce();
 
             Assert.Equal(2, received.Count);
@@ -160,18 +138,17 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         [Fact]
         public void LocalDownloadProgressSource_SampleOnce_ActivityIsDrainedOncePerSample()
         {
-            var state = new SampleState();
-            Mock<IVideoDownloadService> service = BuildService(state);
-            using LocalDownloadProgressSource source = BuildSource(service.Object);
+            var log = new FakeActivityLog();
+            using LocalDownloadProgressSource source = BuildSource(log);
             var received = new List<DownloadProgressSnapshot>();
             using IDisposable subscription = source.Progress.Subscribe(received.Add);
             source.SampleOnce();
-            state.PendingActivity.Add("line");
+            log.Append("line");
 
             source.SampleOnce();
             source.SampleOnce();
 
-            service.Verify(s => s.DrainActivityLog(), Times.Exactly(3));
+            Assert.Equal(3, log.DrainCount);
             Assert.Equal(2, received.Count);
             Assert.Equal(new[] { "line" }, received[1].Activity);
         }
@@ -179,23 +156,22 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         [Fact]
         public void LocalDownloadProgressSource_Progress_NewSubscriberReceivesLatestSnapshot()
         {
-            var state = new SampleState();
-            using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog());
             source.SampleOnce();
 
             var received = new List<DownloadProgressSnapshot>();
             using IDisposable subscription = source.Progress.Subscribe(received.Add);
 
             _ = Assert.Single(received);
-            Assert.Equal(1, received[0].FilesCompleted);
+            Assert.False(received[0].IsDownloading);
         }
 
         [Fact]
-        public void LocalDownloadProgressSource_SampleOnce_ServiceThrows_EmitsNothingAndDoesNotThrow()
+        public void LocalDownloadProgressSource_SampleOnce_LogThrows_EmitsNothingAndDoesNotThrow()
         {
-            var service = new Mock<IVideoDownloadService>();
-            _ = service.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("provider down"));
-            using LocalDownloadProgressSource source = BuildSource(service.Object);
+            var log = new Mock<ISyncActivityLog>();
+            _ = log.Setup(l => l.Drain()).Throws(new InvalidOperationException("log unavailable"));
+            using LocalDownloadProgressSource source = BuildSource(log.Object);
             var received = new List<DownloadProgressSnapshot>();
             using IDisposable subscription = source.Progress.Subscribe(received.Add);
 
@@ -207,7 +183,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         [Fact]
         public void LocalDownloadProgressSource_Dispose_CompletesSubscribers()
         {
-            LocalDownloadProgressSource source = BuildSource(BuildService(new SampleState()).Object);
+            LocalDownloadProgressSource source = BuildSource(new FakeActivityLog());
             bool completed = false;
             using IDisposable subscription = source.Progress.Subscribe(_ => { }, () => completed = true);
 

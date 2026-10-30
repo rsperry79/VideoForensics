@@ -10,6 +10,7 @@ using Moq;
 
 using System.Net;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
@@ -96,9 +97,17 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
 
+    /// <summary>Device health changes the test pushes; the account pages see them through IDeviceHealthChangedSource.</summary>
+    protected Subject<DeviceHealthChangedDto> DeviceHealthChanges { get; } = new();
+
+    /// <summary>Edit-access double; gating tests set <see cref="ProviderAccountEditAccessDouble.CanEdit"/> before rendering.</summary>
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IDeviceHealthChangedSource>(new DeviceHealthChangedSourceDouble(DeviceHealthChanges));
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
@@ -146,7 +155,6 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         _ = Services.AddScoped(_ => MediaUrlProviderMock.Object);
         _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped(sp => new WebAuthnClient(sp.GetRequiredService<IJSRuntime>(), new Mock<ISelfApiHttpClientFactory>().Object));
         _ = Services.AddScoped<StepUpService>();
@@ -167,10 +175,16 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         return Render<AccountDetails>(p => p.Add(c => c.Id, AccountId));
     }
 
-    /// <summary>The Sync tab: sync controls, output, history, and the last-sync timestamps.</summary>
+    /// <summary>The Sync tab: sync controls, output, the schedule, and a link to the history page.</summary>
     protected IRenderedComponent<AccountSyncTab> RenderSync()
     {
         return Render<AccountSyncTab>(p => p.Add(c => c.Id, AccountId));
+    }
+
+    /// <summary>The sync history page: the account's sync runs and their details.</summary>
+    protected IRenderedComponent<AccountSyncHistory> RenderSyncHistory()
+    {
+        return Render<AccountSyncHistory>(p => p.Add(c => c.Id, AccountId));
     }
 
     /// <summary>The Cases tab: the account's attached cases.</summary>
@@ -216,7 +230,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("#sync-history .sync-run-row").Count));
         var rows = cut.FindAll("#sync-history .sync-run-row").Select(r => r.TextContent).ToList();
@@ -235,7 +249,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         Assert.Contains(Strings["ColSyncType"], cut.Find("#sync-history thead").TextContent);
@@ -255,7 +269,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -271,7 +285,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         SetJson("/sync-runs", new[] { new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true) });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -284,7 +298,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNoRuns"], cut.Find("#sync-history").TextContent));
         Assert.Empty(cut.FindAll("#sync-history .sync-run-row"));
@@ -299,7 +313,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         SetJson($"/sync-runs/{runId}", new ProviderSyncRunDetailDto(runId, AccountId, started, started.AddMinutes(1), false, "Token expired"));
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
 
         cut.Find("#sync-history .sync-run-row button").Click();
@@ -309,14 +323,41 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
-    public void AccountDetails_SyncListFails_ShowsLoadErrorInSyncSectionOnly()
+    public void AccountDetails_SyncListFails_ShowsLoadErrorOnHistoryPage()
     {
         FailJson("/sync-runs");
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["LoadListError"], cut.Find("#sync-history").TextContent));
-        Assert.Contains("Ring", cut.Find(".card-title").TextContent);
+    }
+}
+
+public class AccountDetailsPage_HistoryTab_Tests : AccountDetailsPageTestBase
+{
+    [Fact]
+    public void SyncTab_NoHistoryTable_AndTabsLinkToHistoryPage()
+    {
+        SetEmptyLists();
+
+        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+
+        cut.WaitForAssertion(() => Assert.Equal($"/accounts/{AccountId}/history", cut.Find($"nav a[href='/accounts/{AccountId}/history']").GetAttribute("href")));
+        Assert.Empty(cut.FindAll("#sync-history"));
+    }
+}
+
+public class AccountDetailsPage_ValidateOnCasesTab_Tests : AccountDetailsPageTestBase
+{
+    [Fact]
+    public void CasesTab_EmbedsValidatePanel_ScopedToThisAccount()
+    {
+        SetEmptyLists();
+
+        IRenderedComponent<AccountCasesTab> cut = RenderCases();
+
+        // The panel's buttons only render for a signed-in operator; the account scope is what this tab must pass on.
+        cut.WaitForAssertion(() => Assert.Equal(AccountId, cut.FindComponent<VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence>().Instance.AccountId));
     }
 }
 
@@ -557,7 +598,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -577,7 +618,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        IRenderedComponent<AccountSyncHistory> cut = RenderSyncHistory();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -585,22 +626,6 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         Assert.Contains(string.Format(Strings["SyncRecordsSnapshots"], 3), row);
     }
 
-    [Fact]
-    public void AccountDetails_SyncRunsLoaded_ShowsLatestRunInSyncOutput()
-    {
-        var started = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
-        SetJson("/sync-runs", new[]
-        {
-            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started.AddDays(-1), started.AddDays(-1).AddMinutes(1), false),
-            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true),
-        });
-        SetJson("/cases", Array.Empty<AccountCaseDto>());
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-
-        cut.WaitForAssertion(() => Assert.Contains(Strings["LatestSyncRunLabel"], cut.Find("#sync-output").TextContent));
-        Assert.Contains(Strings["SyncSucceeded"], cut.Find("#sync-output").TextContent);
-    }
 
     private static List<string> ButtonLabels<T>(IRenderedComponent<T> cut) where T : Microsoft.AspNetCore.Components.IComponent
     {

@@ -37,9 +37,12 @@ public abstract class AccountDetailsRemoveTestBase : BunitContext
 
     protected static readonly Guid RingAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
 
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountDetailsRemoveTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
@@ -62,7 +65,7 @@ public abstract class AccountDetailsRemoveTestBase : BunitContext
         _ = Services.AddScoped(_ => new Mock<IMultiProviderAuthService>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(_ => new Mock<ISyncScheduleRepository>().Object);
         // Signed-in passkey session so StepUpService can fetch a step-up token for remove/retire/export.
         _ = Services.AddScoped(sp =>
         {

@@ -63,7 +63,9 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             LogLevel minimumLevel = LogLevel.Information,
             bool enableEventLog = false,
             bool enableSyslog = false,
-            bool enableNamedPipeLogger = false)
+            bool enableNamedPipeLogger = false,
+            Action<ILoggingBuilder>? eventLogProvider = null,
+            NamedPipeLogGate? namedPipeGate = null)
         {
             // Serilog integration: if Serilog is configured globally via Log.Logger, wire it into the logging pipeline.
             // The logFilePath parameter is kept for backward compatibility but is now superseded by
@@ -78,9 +80,9 @@ namespace VideoForensics.Core.Logging.DependencyInjection
                 _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
             }
 
-            if (enableEventLog && OperatingSystem.IsWindows())
+            if (enableEventLog && OperatingSystem.IsWindows() && eventLogProvider is not null)
             {
-                AddWindowsEventLog(logging);
+                eventLogProvider(logging);
             }
 
             if (enableSyslog && OperatingSystem.IsLinux())
@@ -94,7 +96,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             if (enableNamedPipeLogger && OperatingSystem.IsWindows())
             {
-                _ = logging.AddProvider(new NamedPipeLoggerProvider());
+                _ = logging.AddProvider(new NamedPipeLoggerProvider(namedPipeGate));
             }
 
             // Resolve the buffer lazily from the real container so registration order doesn't matter and the
@@ -118,12 +120,6 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             }
 
             return logging;
-        }
-
-        [SupportedOSPlatform("windows")]
-        private static void AddWindowsEventLog(ILoggingBuilder logging)
-        {
-            _ = logging.AddEventLog(settings => settings.SourceName = "VideoForensics");
         }
     }
 }

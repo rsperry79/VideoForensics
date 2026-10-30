@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Layout;
 
@@ -56,9 +57,22 @@ public class PageAccessRules_Tests
     }
 
     [Fact]
-    public void IsAllowed_AdminPage_AdminOperator_Allowed()
+    public void IsAllowed_NotificationSettingsPage_AdminOperator_DeniedUntilOpened()
     {
-        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Notifications }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.SuperAdmin)));
+    }
+
+    [Fact]
+    public void IsAllowed_SettingsPages_AdminOperator_FollowTheirOwnOpenFlag()
+    {
+        Assert.False(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Reports }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/integrations/email", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Llm }));
+        Assert.False(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.SuperAdmin)));
     }
 
     [Fact]
@@ -163,7 +177,7 @@ public class NavGroupsSections_Tests
         IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin, local: true));
 
         Assert.Equal(
-            new[] { "General", "Security", "Diagnostics & Updates", "Devices & Network", "Storage & Data", "Integrations" },
+            new[] { "General", "Sources", "Security", "Diagnostics & Updates", "Devices & Network", "Storage & Data", "Integrations" },
             sections.Select(s => s.Title).ToList());
     }
 
@@ -191,19 +205,11 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_GroupWithoutSections_ReturnsSingleUntitledSection()
     {
-        NavGroup media = NavGroups.All.First(g => g.Key == "media");
+        var group = new NavGroup("plain", "Plain", "/plain", [new("Only item", "/plain")]);
 
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(media, Ctx(OperatorRole.ReadOnly));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, Ctx(OperatorRole.ReadOnly));
 
         _ = Assert.Single(sections);
         Assert.Null(sections[0].Title);
-    }
-
-    [Fact]
-    public void Media_GroupHasNoHiddenDatesFilterPlaceholder()
-    {
-        NavGroup media = NavGroups.All.First(g => g.Key == "media");
-
-        Assert.DoesNotContain(media.Items, i => i.Path == "/media/dates-filter");
     }
 }

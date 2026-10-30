@@ -686,10 +686,9 @@ namespace VideoForensics.Utils.SelfTest
           --app-snaps-api-base-url <url>    Override the Ring app snapshots API base URL.
 
         CREDENTIALS (first match wins):
-          The active account's saved refresh token - the same IForensicsConfiguration.ActiveProviderAccountId
-          "current account" the desktop UI's account switcher sets, restored via RingAuthService
+          The first active provider account.s saved refresh token, restored via RingAuthService
           (the same database-backed auth code the WebApp and legacy console app use). If no account
-          is marked active, falls back to the most-recently-authenticated Ring account in the database.
+          is active, falls back to the most-recently-authenticated Ring account in the database.
           --username / --password   Explicit account credentials (used only if no saved account restores).
           --refresh-token           An OAuth refresh token from a prior session (used only if no saved account restores).
           RING_USERNAME / RING_PASSWORD / RING_REFRESH_TOKEN environment variables (same fallback tier).

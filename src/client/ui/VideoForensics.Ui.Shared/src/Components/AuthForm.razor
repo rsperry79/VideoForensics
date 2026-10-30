@@ -1,7 +1,6 @@
 @* Shared credentials + 2FA flow used by both Pages/SignIn.razor and Pages/Accounts.razor's
    "Add Account" section. Encapsulates the TaskCompletionSource-based 2FA callback pattern
-   described in IProviderAuthService.AuthenticateWithTwoFactorAsync, plus the
-   ActiveProviderAccountId bookkeeping that must happen on a successful login (see
+   described in IProviderAuthService.AuthenticateWithTwoFactorAsync (see
    MenuManager.AuthenticateWithTwoFactorAsync in the console app for the equivalent flow). *@
 @using System.Linq
 @inject IProviderAuthService AuthService
@@ -9,8 +8,6 @@
 @using VideoForensics.Client.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 @inject IMultiProviderAuthService MultiProviderAuthService
-@inject IForensicsConfiguration ForensicsConfig
-@inject IForensicsConfigurationService ForensicsConfigService
 
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
@@ -56,7 +53,7 @@ else
     /// <summary>Label for the credentials submit button.</summary>
     [Parameter] public string? SubmitLabel { get; set; }
 
-    /// <summary>Raised after a successful login, once ActiveProviderAccountId has been set/saved when applicable.</summary>
+    /// <summary>Raised after a successful login.</summary>
     [Parameter] public EventCallback<AuthResult> OnAuthenticated { get; set; }
 
     [Parameter] public IReadOnlyList<string>? AvailableProviders { get; set; }
@@ -95,12 +92,6 @@ else
             var result = await effectiveAuthService.AuthenticateWithTwoFactorAsync(_email, _password, TwoFactorCodeCallback);
             if (result.Success)
             {
-                if (result.ProviderAccountId.HasValue && ForensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
-                {
-                    ForensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
-                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-                }
-
                 _needsTwoFactor = false;
                 _email = "";
                 _password = "";

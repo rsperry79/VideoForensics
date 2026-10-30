@@ -9,6 +9,9 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Signal;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.Signal;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -44,7 +47,15 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/media-items/page", ListMediaItemPageAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/media-items/{id:guid}", GetMediaItemAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/signal-analysis", GetSignalAnalysisAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
@@ -76,6 +87,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireRateLimiting("media");
 
             _ = group.MapGet("/media/{id:guid}/thumbnail", GetThumbnailAsync)
+                .AllowAnonymous()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media/{id:guid}/preview", GetPreviewAsync)
                 .AllowAnonymous()
                 .RequireRateLimiting("media");
 
@@ -214,6 +229,47 @@ namespace VideoForensics.Client.WebApp.Api
             };
 
             return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Serves a clip's preview MP4 (the transcoded, thumbnail-scale copy) with the same two authentication paths
+        /// and range-request behaviour as <see cref="GetContentAsync"/>.
+        /// Does not write an access audit entry: a preview is a thumbnail-scale view of a clip the operator has already
+        /// opened, so auditing each preview request would bury the full-clip views that matter.
+        /// Previews are written once and never change, so the response is cacheable for a day.
+        /// Returns 404 when the clip has no preview path or the preview file is missing.
+        /// </summary>
+        public static async Task<IResult> GetPreviewAsync(
+            Guid id,
+            string? ticket,
+            IMediaAccessTicketService ticketService,
+            IMediaItemRepository mediaItems,
+            IOperatorRepository operators,
+            IMediaStorageProvider storage,
+            ILogger<Program> logger,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            if (await ResolveAuthorizedOperatorAsync(id, ticket, ticketService, operators, context, ct) == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            MediaItem? item = await mediaItems.GetAsync(id, ct);
+            if (item == null || string.IsNullOrEmpty(item.PreviewPath))
+            {
+                return Results.NotFound();
+            }
+
+            if (!await storage.ExistsAsync(item.PreviewPath, ct))
+            {
+                logger.LogWarning("Media item {MediaItemId} has no preview file on disk at {PreviewPath}", id, item.PreviewPath);
+                return Results.NotFound();
+            }
+
+            context.Response.Headers.CacheControl = "private, max-age=86400";
+            Stream stream = await storage.OpenReadStreamAsync(item.PreviewPath, ct);
+            return Results.Stream(stream, "video/mp4", enableRangeProcessing: true);
         }
 
         /// <summary>
@@ -361,6 +417,50 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>
+        /// Pages media items from one or more devices within a UTC range, oldest first, for the media viewer.
+        /// The total count comes from the database, so the client can page without fetching every clip.
+        /// Semantics:
+        /// - deviceIds (1..64) and from/to (from must be &lt;= to) are required
+        /// - skip defaults to 0, must be &gt;= 0
+        /// - take defaults to 100, must be 1..500
+        /// </summary>
+        public static async Task<IResult> ListMediaItemPageAsync(
+            Guid[]? deviceIds,
+            DateTime? from,
+            DateTime? to,
+            int? skip,
+            int? take,
+            IMediaItemRepository mediaItems,
+            CancellationToken ct)
+        {
+            const int MaxDevices = 64;
+            const int DefaultTake = 100;
+            const int MaxTake = 500;
+
+            if (deviceIds is null || deviceIds.Length == 0 || deviceIds.Length > MaxDevices)
+            {
+                return Results.BadRequest();
+            }
+
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            int effectiveSkip = skip ?? 0;
+            int effectiveTake = take ?? DefaultTake;
+            if (effectiveSkip < 0 || effectiveTake < 1 || effectiveTake > MaxTake)
+            {
+                return Results.BadRequest();
+            }
+
+            MediaItemPage page = await mediaItems.GetPageByDevicesAndDateRangeAsync(
+                deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct);
+
+            return Results.Ok(new MediaItemPageDto([.. page.Items.Select(x => x.ToDto())], page.TotalCount));
+        }
+
+        /// <summary>
         /// Gets a single media item by ID.
         /// Returns 404 if not found.
         /// </summary>
@@ -399,6 +499,42 @@ namespace VideoForensics.Client.WebApp.Api
 
             IReadOnlyList<DeviceHealth> history = await deviceHealth.GetHistoryAsync(id, from.Value, to.Value, ct);
             return Results.Ok(history.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
+        /// Gets the signal figures for cameras over a window: stats, the week grid, deviation hours, overlay periods and
+        /// buckets. Computed here so every client shows the same numbers. <paramref name="devices"/> is a comma-separated
+        /// list of device IDs; both <paramref name="from"/> and <paramref name="to"/> are required, and <paramref name="from"/>
+        /// must not be after <paramref name="to"/>.
+        /// </summary>
+        public static async Task<IResult> GetSignalAnalysisAsync(
+            string? devices,
+            DateTime? from,
+            DateTime? to,
+            ISignalAnalysisService analysis,
+            CancellationToken ct)
+        {
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            var ids = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(devices))
+            {
+                foreach (string part in devices.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (!Guid.TryParse(part, out Guid id))
+                    {
+                        return Results.BadRequest();
+                    }
+
+                    ids.Add(id);
+                }
+            }
+
+            SignalAnalysis result = await analysis.AnalyzeAsync(ids, from.Value, to.Value, ct);
+            return Results.Ok(result.ToDto());
         }
 
         /// <summary>

@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             Assert.True(config.EnableSignalAnomalyReports);
             Assert.Equal("json", config.ReportOutputFormat);
             Assert.Equal(180, config.RetentionDaysDefault);
-            Assert.Equal(10, config.MaxConcurrentDownloads);
+            Assert.Equal(2, config.MaxConcurrentDownloads);
         }
 
         [Fact]
@@ -136,25 +136,6 @@ namespace VideoForensics.Client.Core.Tests.Services
             Assert.NotNull(config);
             Assert.Equal(RedactionLevel.Heavy, config.RedactionLevel);
             Assert.Equal(KeyStorageProvider.Tpm, config.KeyStorageProvider);
-        }
-
-        [Fact]
-        public async Task LoadConfigurationAsync_WithStoredGuidSettings_LoadsCorrectly()
-        {
-            var accountId = Guid.NewGuid();
-
-            _ = _settingRepositoryMock
-                .Setup(r => r.GetAsync("ActiveProviderAccountId", It.IsAny<CancellationToken>()))
-                .ReturnsAsync(accountId.ToString());
-
-            _ = _settingRepositoryMock
-                .Setup(r => r.GetAsync(It.IsNotIn("ActiveProviderAccountId"), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((string?)null);
-
-            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
-
-            Assert.NotNull(config);
-            Assert.Equal(accountId, config.ActiveProviderAccountId);
         }
 
         [Fact]
@@ -318,21 +299,6 @@ namespace VideoForensics.Client.Core.Tests.Services
 
             _settingRepositoryMock.Verify(
                 r => r.SetAsync("InternetServerUrl", string.Empty, It.IsAny<CancellationToken>()),
-                Times.Once);
-        }
-
-        [Fact]
-        public async Task SaveConfigurationAsync_WithNullGuid_SavesEmptyString()
-        {
-            var config = new ForensicsConfiguration
-            {
-                ActiveProviderAccountId = null
-            };
-
-            await _service.SaveConfigurationAsync(config);
-
-            _settingRepositoryMock.Verify(
-                r => r.SetAsync("ActiveProviderAccountId", string.Empty, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 

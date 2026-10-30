@@ -1,0 +1,138 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@inject PendingEvidenceTags PendingTags
+@inject ReviewPopupState Popups
+@inject IStringLocalizer<ReviewPage> L
+
+@if (ShouldShow)
+{
+    <div class="position-relative d-inline-flex align-items-center gap-2" data-testid="review-pending-tags">
+        @if (PendingTags.Count > 0)
+        {
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-testid="review-pending-tags-open"
+                    aria-label="@L["PendingTagsOpen"]"
+                    aria-expanded="@Popups.IsOpen(ReviewPopupState.Pending)"
+                    title="@L["PendingTagsHelp"]"
+                    @onclick="OnToggleOpen">
+                <span class="badge rounded-pill text-bg-secondary" data-testid="review-pending-tags-count">@L["PendingTagsCount", PendingTags.Count]</span>
+            </button>
+        }
+
+        @if (Popups.IsOpen(ReviewPopupState.Pending) && PendingTags.Count > 0)
+        {
+            <div class="card position-absolute p-2 shadow-sm review-popup" style="top: 100%; right: 0; min-width: 18rem;" role="dialog" aria-label="@L["PendingTagsOpen"]" data-testid="review-pending-tags-list">
+                @foreach (PendingTag tag in PendingTags.Items)
+                {
+                    <div class="d-flex align-items-center justify-content-between gap-2 py-1" data-testid="review-pending-tag-row">
+                        <span class="small">
+                            <span class="fw-semibold">@KindLabel(tag.Kind)</span>
+                            @if (CameraName(tag.DeviceId) is { } camera)
+                            {
+                                <span class="text-muted ms-1">@camera</span>
+                            }
+                            @if (tag.OccurredAtUtc is { } occurred)
+                            {
+                                <span class="text-muted ms-1">@occurred.ToLocalTime().ToString("g")</span>
+                            }
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-testid="review-pending-tag-remove" @onclick="() => Remove(tag)">@L["PendingTagRemove"]</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@if (VisibleAttach is { } attached)
+{
+    <div class="d-inline-flex align-items-center gap-2 small ms-2" role="status">
+        <span class="text-success" data-testid="review-pending-tags-attached">@L["PendingTagsAttached", attached.Attached]</span>
+        <button type="button" class="btn btn-sm btn-link p-0" data-testid="review-pending-tags-dismiss" @onclick="DismissAttach">@L["PendingTagsDismiss"]</button>
+    </div>
+}
+
+@code {
+    /// <summary>Display names for the cameras, keyed by device id. A tag whose camera is unknown shows no name.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The attach notice the user has dismissed. Compared by reference, so a later attach shows again.</summary>
+    private AttachResult? _dismissedAttach;
+
+    /// <summary>The attach notice to show, or null when none is recent or the user dismissed it.</summary>
+    private AttachResult? VisibleAttach
+    {
+        get
+        {
+            AttachResult? last = PendingTags.LastAttach;
+            return last is not null && !ReferenceEquals(last, _dismissedAttach) ? last : null;
+        }
+    }
+
+    /// <summary>The badge shows while tags are pending or an attach notice is waiting to be dismissed.</summary>
+    private bool ShouldShow => PendingTags.Count > 0 || VisibleAttach is not null;
+
+    protected override void OnInitialized()
+    {
+        PendingTags.OnChange += OnPendingChanged;
+        PendingTags.Attached += OnAttached;
+        Popups.OnChange += OnPopupChanged;
+    }
+
+    private void OnPopupChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPendingChanged()
+    {
+        // The list can change from outside this component, so marshal back onto the sync context.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnAttached(AttachResult _)
+    {
+        OnPendingChanged();
+    }
+
+    private void OnToggleOpen()
+    {
+        Popups.Toggle(ReviewPopupState.Pending);
+    }
+
+    private void Remove(PendingTag tag)
+    {
+        _ = PendingTags.Remove(tag.Kind, tag.TargetId);
+        if (PendingTags.Count == 0)
+        {
+            Popups.Close(ReviewPopupState.Pending);
+        }
+    }
+
+    private void DismissAttach()
+    {
+        _dismissedAttach = PendingTags.LastAttach;
+    }
+
+    private string KindLabel(CaseItemKind kind)
+    {
+        return kind == CaseItemKind.Event ? L["PendingTagKindEvent"].Value : L["PendingTagKindMedia"].Value;
+    }
+
+    private string? CameraName(Guid deviceId)
+    {
+        return DeviceNames.TryGetValue(deviceId, out string? name) ? name : null;
+    }
+
+    public void Dispose()
+    {
+        PendingTags.OnChange -= OnPendingChanged;
+        PendingTags.Attached -= OnAttached;
+        Popups.OnChange -= OnPopupChanged;
+    }
+}

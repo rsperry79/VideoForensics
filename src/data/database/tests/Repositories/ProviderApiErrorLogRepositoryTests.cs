@@ -8,12 +8,12 @@ namespace VideoForensics.Data.Database.Tests
 {
     public class ProviderApiErrorLogRepositoryTests : IAsyncLifetime
     {
-        private SqliteInMemoryFixture _fixture = null!;
+        private SqliteLogsInMemoryFixture _fixture = null!;
         private ProviderApiErrorLogRepository _repository = null!;
 
         public async ValueTask InitializeAsync()
         {
-            _fixture = new SqliteInMemoryFixture();
+            _fixture = new SqliteLogsInMemoryFixture();
             await _fixture.InitializeAsync();
             _repository = new ProviderApiErrorLogRepository(_fixture.Factory);
         }
@@ -93,6 +93,25 @@ namespace VideoForensics.Data.Database.Tests
         {
             IReadOnlyList<ProviderApiErrorLog> results = await _repository.GetByEventIdAsync(Guid.NewGuid(), CancellationToken.None);
             Assert.Empty(results);
+        }
+
+        [Fact]
+        public async Task PruneOlderThanAsync_DeletesOnlyEntriesPastTheRetentionAge()
+        {
+            // Error rows are operational, not audit: they are pruned by age. Recent rows stay.
+            var deviceId = Guid.NewGuid();
+            ProviderApiErrorLog old = BuildEntry(null, deviceId, 1, "Other");
+            old.OccurredAtUtc = DateTime.UtcNow.AddDays(-60);
+            ProviderApiErrorLog recent = BuildEntry(null, deviceId, 2, "Other");
+            recent.OccurredAtUtc = DateTime.UtcNow.AddDays(-1);
+            await _repository.RecordAsync(old, CancellationToken.None);
+            await _repository.RecordAsync(recent, CancellationToken.None);
+
+            int deleted = await _repository.PruneOlderThanAsync(TimeSpan.FromDays(30), CancellationToken.None);
+
+            Assert.Equal(1, deleted);
+            IReadOnlyList<ProviderApiErrorLog> remaining = await _repository.GetByDeviceIdAsync(deviceId, CancellationToken.None);
+            Assert.Equal(new[] { recent.Id }, remaining.Select(e => e.Id).ToArray());
         }
     }
 }

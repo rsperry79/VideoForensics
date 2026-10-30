@@ -2,56 +2,57 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="IDownloadProgressSource"/> for the WebApp, which runs downloads in-process and has no realtime
-    /// hub. It samples the local <see cref="IVideoDownloadService"/> on a fixed interval and pushes a snapshot
-    /// only when the state changed or activity lines arrived. This replaces the panel's own polling timer.
+    /// hub. It samples the <see cref="ISyncActivityLog"/> and the <see cref="ISyncProgressStore"/> on a fixed interval.
+    /// It pushes a snapshot when activity lines arrive, when the progress reading changes, and once initially. This
+    /// replaces the panel's own polling timer.
     /// <para>
-    /// Scoped per circuit, because <see cref="IVideoDownloadService"/> is scoped. Sampling starts on the first
-    /// subscription and stops on <see cref="Dispose"/>, which the scope's disposal calls.
+    /// Progress comes from the store, which each pull writes while it downloads. Activity lines come from the log.
     /// </para>
     /// <para>
     /// Activity is drained exactly once per sample. The drained lines always travel with the sample that drained
-    /// them, so none are lost when the state is otherwise unchanged.
+    /// them, so none are lost.
     /// </para>
     /// </summary>
     public sealed class LocalDownloadProgressSource : IDownloadProgressSource, IDisposable
     {
-        /// <summary>Default time between samples of the download service.</summary>
+        /// <summary>Default time between samples of the activity log.</summary>
         public static readonly TimeSpan DefaultSampleInterval = TimeSpan.FromMilliseconds(750);
 
-        private readonly IVideoDownloadService _downloadService;
+        private readonly ISyncActivityLog _syncActivity;
+        private readonly ISyncProgressStore _progress;
         private readonly ILogger<LocalDownloadProgressSource> _logger;
-        private readonly ISyncActivityLog? _syncActivity;
         private readonly TimeSpan _sampleInterval;
         private readonly ReplaySubject<DownloadProgressSnapshot> _snapshots = new(1);
         private readonly CancellationTokenSource _cancellation = new();
         private readonly object _gate = new();
-        private DownloadProgressSnapshot? _lastState;
+        private DownloadProgressSnapshot? _lastEmitted;
         private bool _started;
         private bool _disposed;
 
         /// <summary>
-        /// Creates the source over the circuit's download service.
+        /// Creates the source over the sync activity log.
         /// </summary>
-        /// <param name="downloadService">The service sampled for progress. Its activity queue is drained by this source.</param>
+        /// <param name="syncActivity">The log drained for activity lines. Each sample consumes the lines it returns.</param>
+        /// <param name="progress">The store the pulls write live per-file progress to. Read on each sample, never consumed.</param>
         /// <param name="logger">Receives an error when a sample fails. A failed sample is skipped, not rethrown.</param>
         /// <param name="sampleInterval">Time between samples; defaults to <see cref="DefaultSampleInterval"/>.</param>
         public LocalDownloadProgressSource(
-            IVideoDownloadService downloadService,
+            ISyncActivityLog syncActivity,
+            ISyncProgressStore progress,
             ILogger<LocalDownloadProgressSource> logger,
-            TimeSpan? sampleInterval = null,
-            ISyncActivityLog? syncActivity = null)
+            TimeSpan? sampleInterval = null)
         {
-            _downloadService = downloadService;
+            _syncActivity = syncActivity;
+            _progress = progress;
             _logger = logger;
             _sampleInterval = sampleInterval ?? DefaultSampleInterval;
-            _syncActivity = syncActivity;
         }
 
         /// <inheritdoc />
@@ -62,8 +63,9 @@ namespace VideoForensics.Client.WebApp.Services
                                                                               });
 
         /// <summary>
-        /// Takes one sample and emits it if the state changed or activity arrived. The sampling loop calls this on
-        /// each tick. It is public so a caller can drive sampling deterministically.
+        /// Takes one sample and emits it if it carries activity lines, if its progress state differs from the last emitted
+        /// one, or if it is the first sample. The sampling loop calls this on each tick. It is public so a caller can
+        /// drive sampling deterministically.
         /// </summary>
         public void SampleOnce()
         {
@@ -85,10 +87,12 @@ namespace VideoForensics.Client.WebApp.Services
                     return;
                 }
 
-                bool stateChanged = HasStateChanged(_lastState, current);
-                _lastState = current;
+                // An identical idle repeat is not re-broadcast. The first sample is emitted so a subscriber gets an
+                // initial value. A changed reading or any activity line is always sent.
+                bool stateChanged = _lastEmitted is null || !SameState(_lastEmitted, current);
                 if (stateChanged || current.Activity.Count > 0)
                 {
+                    _lastEmitted = current;
                     _snapshots.OnNext(current);
                 }
             }
@@ -146,72 +150,45 @@ namespace VideoForensics.Client.WebApp.Services
 
         private DownloadProgressSnapshot Capture()
         {
-            DownloadStatus status = _downloadService.GetProgress();
-            (int index, int total, string name) = _downloadService.GetCurrentDevice();
-
+            SyncProgress reading = _progress.Current;
             return new DownloadProgressSnapshot(
-                IsDownloading: status.IsDownloading,
-                FilesCompleted: status.FilesCompleted,
-                FilesTotal: status.FilesTotal,
-                BytesDownloaded: status.BytesDownloaded,
-                CurrentFile: status.CurrentFile,
-                TotalFilesCompleted: status.TotalFilesCompleted,
-                TotalFilesMatched: status.TotalFilesMatched,
-                TotalBytesDownloaded: status.TotalBytesDownloaded,
-                ActiveConnections: status.ActiveConnections,
-                CurrentSpeedMbps: status.CurrentSpeedMbps,
-                CurrentDeviceIndex: index,
-                CurrentDeviceTotal: total,
-                CurrentDeviceName: name ?? string.Empty,
-                // Copied: the service may return a live or reused dictionary, and a later mutation would otherwise
-                // change the previous state this source compares against.
-                PreScanCounts: new Dictionary<string, int>(_downloadService.GetPreScanCounts()),
-                Activity: _downloadService.DrainActivityLog().Concat(_syncActivity?.Drain() ?? []).ToArray(),
-                LastError: _downloadService.GetLastError(),
-                RemainingReason: _downloadService.GetRemainingReason());
+                IsDownloading: reading.IsDownloading,
+                FilesCompleted: reading.FilesCompleted,
+                FilesTotal: reading.FilesTotal,
+                BytesDownloaded: reading.BytesDownloaded,
+                CurrentFile: reading.CurrentFile,
+                TotalFilesCompleted: 0,
+                TotalFilesMatched: 0,
+                TotalBytesDownloaded: 0L,
+                ActiveConnections: reading.ActiveConnections,
+                CurrentSpeedMbps: 0.0,
+                CurrentDeviceIndex: reading.DeviceIndex,
+                CurrentDeviceTotal: reading.DeviceTotal,
+                CurrentDeviceName: reading.DeviceName ?? string.Empty,
+                PreScanCounts: new Dictionary<string, int>(),
+                Activity: _syncActivity.Drain(),
+                LastError: null,
+                RemainingReason: null);
         }
 
         /// <summary>
-        /// Value comparison of everything except <see cref="DownloadProgressSnapshot.Activity"/>, which is transient
-        /// and decided separately. Pre-scan counts compare by content, because the service may return a new
-        /// dictionary on every call.
+        /// Compares the progress state, ignoring <see cref="DownloadProgressSnapshot.Activity"/>. Compared field by field
+        /// because each capture builds new collections, so record equality would always report a change.
         /// </summary>
-        private static bool HasStateChanged(DownloadProgressSnapshot? previous, DownloadProgressSnapshot current)
+        private static bool SameState(DownloadProgressSnapshot left, DownloadProgressSnapshot right)
         {
-            return previous is null || previous.IsDownloading != current.IsDownloading
-                || previous.FilesCompleted != current.FilesCompleted
-                || previous.FilesTotal != current.FilesTotal
-                || previous.BytesDownloaded != current.BytesDownloaded
-                || previous.CurrentFile != current.CurrentFile
-                || previous.TotalFilesCompleted != current.TotalFilesCompleted
-                || previous.TotalFilesMatched != current.TotalFilesMatched
-                || previous.TotalBytesDownloaded != current.TotalBytesDownloaded
-                || previous.ActiveConnections != current.ActiveConnections
-                || previous.CurrentSpeedMbps != current.CurrentSpeedMbps
-                || previous.CurrentDeviceIndex != current.CurrentDeviceIndex
-                || previous.CurrentDeviceTotal != current.CurrentDeviceTotal
-                || previous.CurrentDeviceName != current.CurrentDeviceName
-                || previous.LastError != current.LastError
-                || previous.RemainingReason != current.RemainingReason
-                || !PreScanCountsEqual(previous.PreScanCounts, current.PreScanCounts);
-        }
-
-        private static bool PreScanCountsEqual(IReadOnlyDictionary<string, int> left, IReadOnlyDictionary<string, int> right)
-        {
-            if (left.Count != right.Count)
-            {
-                return false;
-            }
-
-            foreach (KeyValuePair<string, int> entry in left)
-            {
-                if (!right.TryGetValue(entry.Key, out int value) || value != entry.Value)
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            return left.IsDownloading == right.IsDownloading
+                && left.FilesCompleted == right.FilesCompleted
+                && left.FilesTotal == right.FilesTotal
+                && left.BytesDownloaded == right.BytesDownloaded
+                && left.CurrentFile == right.CurrentFile
+                && left.ActiveConnections == right.ActiveConnections
+                && left.CurrentDeviceIndex == right.CurrentDeviceIndex
+                && left.CurrentDeviceTotal == right.CurrentDeviceTotal
+                && left.CurrentDeviceName == right.CurrentDeviceName
+                && left.LastError == right.LastError
+                && left.RemainingReason == right.RemainingReason
+                && left.PreScanCounts.Count == right.PreScanCounts.Count;
         }
     }
 }

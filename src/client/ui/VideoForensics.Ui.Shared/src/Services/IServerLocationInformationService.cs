@@ -8,6 +8,12 @@ namespace VideoForensics.Client.Ui.Shared.Services
     public interface IServerLocationInformationService
     {
         /// <summary>
+        /// Gets whether this host has a server connection to describe. False where the process is the server, so
+        /// pages hide the connection details instead of showing an empty placeholder.
+        /// </summary>
+        bool IsApplicable => true;
+
+        /// <summary>
         /// Gets the currently active server address, if available.
         /// </summary>
         Uri? CurrentServerAddress { get; }

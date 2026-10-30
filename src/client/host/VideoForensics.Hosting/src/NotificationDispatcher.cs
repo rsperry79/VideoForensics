@@ -19,12 +19,19 @@ namespace VideoForensics.Client.Hosting
         private readonly IEnumerable<INotificationProvider> _providers;
         private readonly ILogger<NotificationDispatcher> _logger;
         private readonly INoticeRepository _noticeRepository;
+        private readonly LocalNoticeFeed? _noticeFeed;
 
-        public NotificationDispatcher(IEnumerable<INotificationProvider> providers, ILogger<NotificationDispatcher> logger, INoticeRepository noticeRepository)
+        /// <summary>Creates the dispatcher. <paramref name="noticeFeed"/> is null on hosts with no open pages to tell, such as MAUI.</summary>
+        public NotificationDispatcher(
+            IEnumerable<INotificationProvider> providers,
+            ILogger<NotificationDispatcher> logger,
+            INoticeRepository noticeRepository,
+            LocalNoticeFeed? noticeFeed = null)
         {
             _providers = providers;
             _logger = logger;
             _noticeRepository = noticeRepository;
+            _noticeFeed = noticeFeed;
         }
 
         public async Task DispatchAsync(NotificationEvent notificationEvent, CancellationToken ct)
@@ -41,7 +48,8 @@ namespace VideoForensics.Client.Hosting
                     Audience = (int)notificationEvent.Audience,  // cast enum to int per Notice schema
                     TimestampUtc = notificationEvent.TimestampUtc,
                     OperatorId = notificationEvent.OperatorId,
-                    ProviderAccountId = null  // will be added in a future task
+                    ProviderAccountId = null,  // will be added in a future task
+                    ActionPath = notificationEvent.ActionPath
                 };
                 await _noticeRepository.AddAsync(notice, ct);
                 _logger.LogDebug("Persisted notification event {EventType} to notice repository", notificationEvent.EventType);
@@ -50,6 +58,9 @@ namespace VideoForensics.Client.Hosting
             {
                 _logger.LogWarning(ex, "Failed to persist notice event {EventType} to database (non-critical, continuing with provider dispatch)", notificationEvent.EventType);
             }
+
+            // Open Notices pages reload on this publish, so it comes after the notice row is saved.
+            _noticeFeed?.Publish(notificationEvent);
 
             foreach (INotificationProvider provider in _providers)
             {

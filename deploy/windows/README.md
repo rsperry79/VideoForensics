@@ -33,9 +33,7 @@ The installer offers two independently selectable components — you can install
 Desktop client only, or both:
 
 - **Server** (`VideoForensics.WebApp`) — installed as the `VideoForensics` Windows Service (LocalSystem,
-  auto-start). Has an optional **Install bundled FFmpeg** task (checked by default) for video
-  transcoding/metadata — uncheck it if you already have a system-wide ffmpeg you'd rather use (see
-  [Using a Custom ffmpeg Build](#using-a-custom-ffmpeg-build) below).
+  auto-start). It does not bundle ffmpeg or cloudflared; see [FFmpeg and cloudflared](#ffmpeg-and-cloudflared) below.
 - **Desktop Client** (`VideoForensics.Client.MauiApp`) — a plain, unpackaged desktop app (no MSIX, no separate
   service) that connects to a Server over the network. Has an optional **Create Desktop & Start Menu
   shortcuts** task (checked by default).
@@ -51,26 +49,22 @@ dotnet publish src/client/web/VideoForensics.WebApp -c Release -r win-x64 --self
 dotnet publish src/client/maui/VideoForensics.Client.MauiApp -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -o publish\desktop
 ```
 
-## FFmpeg Binaries
+## FFmpeg and cloudflared
 
-VideoForensics bundles ffmpeg and ffprobe binaries with the Windows installer — no separate ffmpeg
-installation needed on the target machine, as long as the **Install bundled FFmpeg** task is checked.
+The Windows installer does not install ffmpeg or cloudflared. Install them on the server machine, or
+point the app at them:
 
-### What's Bundled
-
-Statically-linked LGPL ffmpeg binaries from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds):
-- `ffmpeg.exe` — video transcoding and metadata extraction
-- `ffprobe.exe` — video metadata probing
-
-Both are installed to `%ProgramFiles%\VideoForensics\` alongside `ffmpeg-LICENSE.txt` (the bundled
-binaries' LGPL license/copyright notice — do not remove this file).
+- **ffmpeg / ffprobe:** the server finds ffmpeg on `PATH` or in a configured bin directory. ffprobe
+  reads media through [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore).
+- **cloudflared:** needed only for the Cloudflare Tunnel. The server uses the copy next to the app if
+  present, otherwise `PATH`, otherwise it downloads the binary from the cloudflared GitHub releases.
 
 ### Using a Custom ffmpeg Build
 
 To use a different or newer ffmpeg version:
 
 - **Uniview provider:** Supports a custom path via the `UniviewFfmpegPath` configuration setting, configurable through the admin UI or directly in the database.
-- **Ring provider:** No user-facing configuration setting is available today. The Ring provider resolves ffmpeg from: (1) bundled binaries in the installation directory, or (2) system PATH. To use a custom ffmpeg build with Ring, you must rebuild the application with a code change.
+- **Ring provider:** No user-facing configuration setting is available today. The Ring provider resolves ffmpeg from: (1) the configured bin directory, or (2) system PATH. To use a custom ffmpeg build with Ring, you must rebuild the application with a code change.
 
 ## Hardware-Accelerated Video Decoding
 
@@ -109,7 +103,7 @@ Nerdbank.GitVersioning (`nbgv get-version -v Version`).
 Run `VideoForensicsSetup.exe`. This launches a standard installer with:
 - License page
 - Install location picker (defaults to `%ProgramFiles%\VideoForensics\`)
-- Component/task checkboxes (Server + bundled FFmpeg, Desktop client + shortcuts)
+- Component/task checkboxes (Server, Desktop client + shortcuts)
 - **Data Directory page** (Server only, fresh installs only — see below)
 - Progress and completion screens
 
@@ -156,9 +150,9 @@ installed to its own `Tools` subfolder (kept separate from the server's own file
 the comment in `VideoForensics.iss` for why):
 
 ```powershell
-"C:\Program Files\VideoForensics\Tools\VideoForensics.DbSetup.exe" --data-root "D:\VFData"
+"C:\Program Files\VideoForensics\Tools\VideoForensics.Utils.DbSetup.exe" --data-root "D:\VFData"
 # or, for an exact database file path:
-"C:\Program Files\VideoForensics\Tools\VideoForensics.DbSetup.exe" --db-path "D:\VFData\videoforensics.db"
+"C:\Program Files\VideoForensics\Tools\VideoForensics.Utils.DbSetup.exe" --db-path "D:\VFData\videoforensics.db"
 ```
 
 With no arguments, it creates/migrates the database at whatever path the server itself would
@@ -323,26 +317,30 @@ the Inno Setup installer for end-user distribution, but keep the PowerShell scri
 - Testing service registration logic independently
 - Educational reference (showing the underlying Windows Service setup patterns)
 
-## Hot-Swapping the Service During Development
+## Updating the Service During Development (no admin)
 
-`deploy/windows/hotswap-service.ps1` updates an **already-installed** service's binaries without a
-full installer round-trip — no Inno Setup compile, no re-registering the service, no UAC prompt
-beyond the script's own elevation. It stops the service, copies over only newer files (never
-deletes anything, so it can't accidentally remove unrelated installed content), and restarts it,
-then checks `http://localhost:5162` to confirm the new build actually came up.
+`stage-update.ps1` publishes the current source and stages it as an update package in
+`%ProgramData%\VideoForensics\updates\<version>`. The running service notices it, restarts, verifies the package, and
+swaps the files in itself. The MAUI and Visual Studio debug launches run this automatically and wait until the service is on the
+new build, with no UAC prompt.
+
+One-time setup, as administrator (dev machines only: dev packages are unsigned and may reuse the running version):
 
 ```powershell
-# Publish current source and swap it in, in one step
-.\deploy\windows\hotswap-service.ps1 -Build
-
-# Swap in an already-published output without rebuilding
-.\deploy\windows\hotswap-service.ps1 -PublishDir C:\Build\VideoForensics
+.\deploy\windows\enable-dev-updates.ps1          # use -Disable to turn it back off
 ```
 
-**Data safety:** this script only ever touches `%ProgramFiles%\VideoForensics` (binaries). It never
-references `%ProgramData%\VideoForensics` (database, media, logs, keys) in any way — do not add such
-a reference to it. Requires the service to already be installed (run the Inno Setup installer once
-first); this is purely a fast-iteration tool for after that.
+That sets `Updates__Enabled`, `Updates__AllowDevPackages` and `Updates__DevWriterUser` as service environment variables and
+restarts the service. On start the service locks the updates folder to SYSTEM and Administrators plus your account, and
+sets its own restart-on-failure recovery.
+
+```powershell
+.\deploy\windows\stage-update.ps1 -Build                  # publish current source and stage it
+.\deploy\windows\stage-update.ps1 -PublishDir C:\Build\VideoForensics   # stage an existing publish output
+```
+
+Progress and failures are in the service log. A package that fails verification is renamed `<version>.rejected` and
+`updates\status.json` records the last attempt. The previous version is kept in `updates\previous` for rollback.
 
 ## Important Notes
 

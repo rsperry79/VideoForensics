@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="../src/VideoForensics.Utils.DbRepair.csproj" />
     <ProjectReference Include="../../../data/common/src/VideoForensics.Data.Common.csproj" />
+    <ProjectReference Include="..\..\dbsetup\src\VideoForensics.Utils.DbSetup.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />

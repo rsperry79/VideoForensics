@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -48,13 +49,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IServiceScopeFactory scopeFactory,
             IOptionsMonitor<ScheduledTasksOptions> options,
             ILogger<ScheduledSyncService> logger,
-            TimeProvider time)
+            TimeProvider time,
+            ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _logger = logger;
             _time = time;
+            _heartbeats = heartbeats;
         }
+
+        private readonly ThreadHeartbeats? _heartbeats;
 
         /// <summary>Tick period for a configured value: seconds, floored at 5.</summary>
         internal static TimeSpan ResolveTickInterval(int tickSeconds)
@@ -72,6 +77,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 // Wait for the first tick before the first pass so a cold start does not race database initialization.
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
+                    _heartbeats?.Beat(nameof(ScheduledSyncService), _time.GetUtcNow());
                     try
                     {
                         await RunOneTickAsync(stoppingToken);
@@ -90,6 +96,23 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 // Normal shutdown.
             }
+        }
+
+        /// <summary>
+        /// The start of a catch-up for a schedule whose last run was <paramref name="lastRunUtc"/>, or null when the gap fits in one pull.
+        /// Why: one pull reaches back at most a week, so longer downtime is split into weekly windows. The start is clamped to one year back,
+        /// the same limit as the sync-now endpoint.
+        /// </summary>
+        internal static DateTime? CatchUpStart(DateTime lastRunUtc, DateTime nowUtc)
+        {
+            DateTime start = lastRunUtc - PullOverlap;
+            DateTime yearFloor = nowUtc.AddYears(-1);
+            if (start < yearFloor)
+            {
+                start = yearFloor;
+            }
+
+            return nowUtc - start > TimeSpan.FromDays(7) ? start : null;
         }
 
         /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the BackgroundService lifecycle/timer.</summary>
@@ -318,13 +341,19 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 else
                 {
+                    DateTime runNowUtc = _time.GetUtcNow().UtcDateTime;
+                    bool backfill = account.LastSyncCompletedUtc is null && _options.CurrentValue.InitialSyncEnabled;
+
+                    // A long gap since the last run is pulled in weekly windows, so the part older than one week is not skipped.
+                    DateTime? catchUpFrom = !backfill && schedule.EventLastRunUtc is { } lastRunUtc ? CatchUpStart(lastRunUtc, runNowUtc) : null;
+
                     DateTime requestedScheduledFrom = schedule.EventLastRunUtc is { } lastRun ? lastRun - PullOverlap : account.LastSuccessfulAuthUtc ?? DateTime.MinValue;
-                    if (AccountSyncRunner.WasLimited(requestedScheduledFrom, _time.GetUtcNow().UtcDateTime))
+                    if (catchUpFrom is null && AccountSyncRunner.WasLimited(requestedScheduledFrom, runNowUtc))
                     {
-                        _logger.LogInformation("Scheduled sync start limited to one month back for {ProviderName} account", providerName);
+                        _logger.LogInformation("Scheduled sync start limited to one week back for {ProviderName} account", providerName);
                     }
 
-                    DateTime? from = AccountSyncRunner.OneMonthFloor(schedule.EventLastRunUtc is { } last
+                    DateTime? from = AccountSyncRunner.OneWeekFloor(schedule.EventLastRunUtc is { } last
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc, _time.GetUtcNow().UtcDateTime); // first run: same as the manual sync-now endpoint
 
@@ -339,13 +368,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         deviceDiscovery,
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,
-                        deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
+                        deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>(),
+                        storage: sp.GetService<IStorageLocationProvider>(),
+                        configurationService: sp.GetService<IForensicsConfigurationService>(),
+                        progress: sp.GetService<ISyncProgressStore>());
 
-                    // No completed sync yet: backfill forward a month at a time from a year ago, as the initial sync does.
-                    // No completed sync yet: backfill one month per tick, from the saved cursor (a year ago to start). A clean
-                    // month advances the cursor; the sync completes only once the cursor reaches now.
+                    // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
+                    // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
+                    // week advances the cursor; the sync completes only once the cursor reaches now.
                     string? backfillError = null;
-                    if (account.LastSyncCompletedUtc is null && _options.CurrentValue.InitialSyncEnabled)
+                    string? catchUpError = null;
+                    if (backfill)
                     {
                         DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
                         DateTime windowStart = schedule.BackfillCursorUtc ?? nowUtc.AddYears(-1);
@@ -359,16 +392,26 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                             await scheduleRepository.RecordBackfillCursorAsync(accountId, windowEnd, ct);
                         }
                     }
+                    else if (catchUpFrom is { } catchUpStart)
+                    {
+                        IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.WeeklyWindows(catchUpStart, runNowUtc);
+                        _logger.LogInformation("Scheduled sync catching up {Windows} week(s) for {ProviderName} account", windows.Count, providerName);
+                        (counts, catchUpError) = await PullCatchUpAsync(pull, sp.GetRequiredService<IProviderAccountRepository>(), budgetGuard, providerName, accountId, windows, ct);
+                    }
                     else
                     {
                         counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     }
 
-                    await budgetGuard.RecordCallAsync(providerName, ct);
+                    // Each catch-up window records its own provider call inside PullCatchUpAsync.
+                    if (catchUpFrom is null)
+                    {
+                        await budgetGuard.RecordCallAsync(providerName, ct);
+                    }
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
                     // Same rule as the manual sync: the pull reports failures by recording them on the account.
-                    outcome = backfillError ?? ProviderSyncRunRecorder.OutcomeAfterPull(
+                    outcome = backfillError ?? catchUpError ?? ProviderSyncRunRecorder.OutcomeAfterPull(
                         await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
                 }
             }
@@ -393,6 +436,40 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             // Success or failure, count it as an attempt so a broken account backs off a full interval instead of hammering the provider.
             DateTime now = _time.GetUtcNow().UtcDateTime;
             await scheduleRepository.RecordEventRunAsync(accountId, now, ScheduleCalculator.NextEventRunUtc(schedule, now), ct);
+        }
+
+        /// <summary>
+        /// Pulls each window one at a time, oldest first, after a long gap since the last run. Counts follow AccountSyncRunner's weekly pull:
+        /// discovery repeats per window so devices and locations take the largest count, events and failed feeds are summed, and the first
+        /// recorded error is kept. Every window is a provider call, so each one is recorded against the provider budget.
+        /// </summary>
+        private async Task<(EventPullResult Counts, string? Error)> PullCatchUpAsync(
+            EventPullService pull,
+            IProviderAccountRepository accounts,
+            IProviderApiBudgetGuard budgetGuard,
+            string providerName,
+            Guid accountId,
+            IReadOnlyList<(DateTime From, DateTime To)> windows,
+            CancellationToken ct)
+        {
+            int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
+            string? firstError = null;
+            foreach ((DateTime windowFrom, DateTime windowTo) in windows)
+            {
+                ct.ThrowIfCancellationRequested();
+                EventPullResult window = await pull.PullAccountEventsAsync(accountId, windowFrom, windowTo, ct);
+                devices = Math.Max(devices, window.DevicesSynced);
+                locations = Math.Max(locations, window.LocationsSynced);
+                config = Math.Max(config, window.ConfigAreasSynced);
+                events += window.EventsSynced;
+                failed += window.FeedsFailed;
+
+                // A failed window records its error on the account; a later clean window clears it. Keep the first one so it is not lost.
+                firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await accounts.GetAsync(accountId, ct));
+                await budgetGuard.RecordCallAsync(providerName, ct);
+            }
+
+            return (new EventPullResult(devices, locations, events, config, failed), firstError);
         }
 
         /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>

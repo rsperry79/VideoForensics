@@ -176,6 +176,9 @@
   <data name="Issues" xml:space="preserve">
     <value>issues</value>
   </data>
+  <data name="SchemaIssuesHeading" xml:space="preserve">
+    <value>Schema issues for this call</value>
+  </data>
   <data name="Success" xml:space="preserve">
     <value>Success</value>
   </data>
@@ -214,6 +217,9 @@
   </data>
   <data name="Category_ReadOnly" xml:space="preserve">
     <value>Read-only</value>
+  </data>
+  <data name="Category_Alarm" xml:space="preserve">
+    <value>Alarm</value>
   </data>
   <data name="Category_Destructive" xml:space="preserve">
     <value>Destructive / physical</value>

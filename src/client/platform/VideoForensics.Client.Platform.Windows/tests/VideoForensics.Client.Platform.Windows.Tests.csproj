@@ -20,5 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../src/VideoForensics.Client.Platform.Windows.csproj" />
+    <ProjectReference Include="../../../../core/helpers/forensics/tests/VideoForensics.Core.Helpers.Forensics.Tests.csproj" />
   </ItemGroup>
 </Project>

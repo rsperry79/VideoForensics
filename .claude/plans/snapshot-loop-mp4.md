@@ -1,6 +1,6 @@
 # Snapshot loop with 15-minute MP4 roll-up
 
-Status: all five steps built and pushed to `wip` (last change `d3d4e18a`, plan commit `0cda778b`). Not yet verified against a live Ring account.
+Status: all five steps built and pushed to `wip` (last change `d3d4e18a`, plan commit `0cda778b`). Partly verified live: the snapshot pull reads Front Door (doorbot `86401464`) after `e5a9ff01`, which stops saving non-image responses. The roll-up and Devices tab are not yet verified live.
 
 ## Decisions (user)
 
@@ -22,7 +22,8 @@ Also done along the way:
 
 ## Known gaps
 
-- Nothing has been run against a live Ring account. The end-to-end path (pull or capture, Media row, roll-up, Devices tab) is covered by unit tests only.
+- The live snapshot download is verified (`RealSnapshotIntegrationTests`, Front Door). The end-to-end path after that (Media row, roll-up, Devices tab) is covered by unit tests only.
+- Production snapshot capture calls `UpdateSnapshot` and then reads at once. Ring can take a few seconds to build the image, so the first read can be 404. Since `e5a9ff01` that now fails the capture instead of saving `Not Found`. The live test retries for this, but the production path does not yet. Add the same bounded retry there.
 - ffmpeg must be present on the host. A missing binary fails the roll-up with a logged error; it does not crash the tick.
 - The 1-second snapshot floor needs a Ring rate-limit review before production.
 - Retries are throttled to one per 5 minutes per account, but there is no cap on total retries.

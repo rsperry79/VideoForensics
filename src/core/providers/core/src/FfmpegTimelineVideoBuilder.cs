@@ -1,3 +1,4 @@
+using FFMpegCore;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
@@ -27,9 +28,9 @@ namespace VideoForensics.Core.Providers.Core
     /// </list>
     /// Overlapping clips resolve to the one that starts first; the later clip is trimmed to start where the earlier
     /// one ends. Declared windows are used for placement, so a part of a declared window past the clip's real end is a
-    /// gap: it still cuts stills, and the gap is filled with black frames like any other uncovered time.
+    /// gap: it still cuts stills, and the gap is filled with gray frames like any other uncovered time.
     /// Stills are true to time: each shows until the next still is captured, or for its hold if that comes first.
-    /// Uncovered time of a second or more between covered segments is filled with black frames, so the video runs in real time.
+    /// Uncovered time of a second or more between covered segments is filled with gray frames, so the video runs in real time.
     /// </para>
     /// </summary>
     public sealed class FfmpegTimelineVideoBuilder : ITimelineVideoBuilder
@@ -57,6 +58,13 @@ namespace VideoForensics.Core.Providers.Core
                 ? FfmpegPathResolver.Resolve(null, "ffprobe")
                 : DeriveFfprobePath(ffmpegPath);
             _timeout = timeout ?? DefaultTimeout;
+
+            // FFMpegCore reads one binary folder, so point it at the ffmpeg this builder resolved.
+            string? folder = Path.GetDirectoryName(_ffmpegPath);
+            if (!string.IsNullOrEmpty(folder))
+            {
+                GlobalFFOptions.Configure(options => options.BinaryFolder = folder);
+            }
         }
 
         /// <inheritdoc />
@@ -125,7 +133,7 @@ namespace VideoForensics.Core.Providers.Core
                 for (int i = 0; i < segments.Count; i++)
                 {
                     string segmentPath = Path.Combine(workDir, $"segment-{i:D4}.mp4");
-                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath, width, height), ProcessTimeout(_timeout, segments[i].Seconds), ct);
+                    string? encodeError = await EncodeSegmentAsync(segments[i], filter, segmentPath, width, height, ProcessTimeout(_timeout, segments[i].Seconds), ct);
                     if (encodeError is not null)
                     {
                         return new TimelineVideoResult(false, null, encodeError, 0);
@@ -140,7 +148,7 @@ namespace VideoForensics.Core.Providers.Core
                 // Join inside the work directory and move into place only on success. A failed or cancelled join must not
                 // leave a truncated file at the requested path, or destroy an earlier good file there.
                 string joinedPath = Path.Combine(workDir, "joined.mp4");
-                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath, GapRanges(segments)), ProcessTimeout(_timeout, frameCount), ct);
+                string? joinError = await JoinSegmentsAsync(listPath, joinedPath, GapRanges(segments), ProcessTimeout(_timeout, frameCount), ct);
                 if (joinError is not null || !File.Exists(joinedPath))
                 {
                     return new TimelineVideoResult(false, null, joinError ?? "ffmpeg did not write the output file.", 0);
@@ -278,7 +286,7 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // OrderBy is stable, so equal start times keep their insertion order.
-            // Fill every gap of a second or more between covered time with black frames, so the video runs in real time.
+            // Fill every gap of a second or more between covered time with gray frames, so the video runs in real time.
             // A shorter gap is dropped, like a cut-off remainder. Leading and trailing time is not filled.
             var ordered = items.OrderBy(i => i.Start).ToList();
             var result = new List<Segment>(ordered.Count);
@@ -390,44 +398,14 @@ namespace VideoForensics.Core.Providers.Core
             foreach (TimelineClip clip in clips)
             {
                 string name = Path.GetFileName(clip.VideoPath);
-                var startInfo = new ProcessStartInfo
+                (bool ok, IMediaAnalysis? analysis, string? error) = await TryAnalyseAsync(clip.VideoPath, ct);
+                if (!ok)
                 {
-                    FileName = _ffprobePath,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-                foreach (string arg in new[] { "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0" })
-                {
-                    startInfo.ArgumentList.Add(arg);
+                    return (false, Array.Empty<ProbedClip>(), $"Could not read the duration of clip '{name}': {error}");
                 }
 
-                startInfo.ArgumentList.Add(Path.GetFullPath(clip.VideoPath));
-
-                ProcessResult run;
-                try
-                {
-                    run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    return (false, Array.Empty<ProbedClip>(), $"Could not read the duration of clip '{name}': {ex.Message}");
-                }
-
-                if (run.ExitCode != 0)
-                {
-                    return (false, Array.Empty<ProbedClip>(), $"ffprobe could not read the duration of clip '{name}' (exit code {run.ExitCode}).");
-                }
-
-                // Output is the duration in decimal seconds, e.g. "2.000000".
-                if (!double.TryParse(run.StandardOutput.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double seconds)
-                    || !double.IsFinite(seconds)
-                    || seconds <= 0)
+                double seconds = analysis!.Duration.TotalSeconds;
+                if (!double.IsFinite(seconds) || seconds <= 0)
                 {
                     return (false, Array.Empty<ProbedClip>(), $"ffprobe returned an unreadable duration for clip '{name}'.");
                 }
@@ -436,6 +414,37 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             return (true, probed, null);
+        }
+
+        /// <summary>Reads a file with FFMpegCore's ffprobe wrapper, bounded by the builder's timeout. Failures are returned, not thrown, except cancellation.</summary>
+        private async Task<(bool Ok, IMediaAnalysis? Analysis, string? Error)> TryAnalyseAsync(string path, CancellationToken ct)
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(_timeout);
+            try
+            {
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(Path.GetFullPath(path), BuildFfprobeOptions(), timeoutCts.Token);
+                return (true, analysis, null);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                return (false, null, $"ffprobe timed out after {_timeout.TotalSeconds:0.#}s.");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>FFMpegCore takes a folder for its binaries. A bare name (found on PATH) leaves the default options in place.</summary>
+        private FFOptions? BuildFfprobeOptions()
+        {
+            string? folder = Path.GetDirectoryName(_ffprobePath);
+            return string.IsNullOrEmpty(folder) ? null : new FFOptions { BinaryFolder = folder };
         }
 
         /// <summary>
@@ -450,52 +459,20 @@ namespace VideoForensics.Core.Providers.Core
             int maxHeight = 0;
             foreach (string mediaPath in mediaPaths)
             {
-                var startInfo = new ProcessStartInfo
+                (bool ok, IMediaAnalysis? analysis, string? error) = await TryAnalyseAsync(mediaPath, ct);
+                if (!ok)
                 {
-                    FileName = _ffprobePath,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-                foreach (string arg in new[] { "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0" })
-                {
-                    startInfo.ArgumentList.Add(arg);
+                    return (false, 0, 0, error);
                 }
 
-                startInfo.ArgumentList.Add(Path.GetFullPath(mediaPath));
-
-                ProcessResult run;
-                try
-                {
-                    run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    return (false, 0, 0, ex.Message);
-                }
-
-                if (run.ExitCode != 0)
-                {
-                    return (false, 0, 0, $"ffprobe exited with code {run.ExitCode}.");
-                }
-
-                // Output is "width,height" for the single input.
-                string[] parts = run.StandardOutput.Trim().Split(',');
-                if (parts.Length != 2
-                    || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int w)
-                    || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int h)
-                    || w <= 0 || h <= 0)
+                VideoStream? video = analysis!.PrimaryVideoStream;
+                if (video is null || video.Width <= 0 || video.Height <= 0)
                 {
                     return (false, 0, 0, "ffprobe returned an unreadable image size.");
                 }
 
-                maxWidth = Math.Max(maxWidth, w);
-                maxHeight = Math.Max(maxHeight, h);
+                maxWidth = Math.Max(maxWidth, video.Width);
+                maxHeight = Math.Max(maxHeight, video.Height);
             }
 
             return (true, RoundUpToEven(maxWidth), RoundUpToEven(maxHeight), null);
@@ -507,41 +484,84 @@ namespace VideoForensics.Core.Providers.Core
         }
 
         /// <summary>
-        /// Builds the ffmpeg arguments that encode one segment to a 1 fps MP4 of exactly its whole-second frame count.
-        /// A still loops for its duration; a clip is seeked to the offset of its used window and read for its duration.
+        /// Encodes one segment through FFMpegCore. The input and filter arguments are the ones the builder has always used;
+        /// FFMpegCore runs them, and cancellation through <paramref name="ct"/> or the timeout stops the process.
         /// </summary>
-        private static IReadOnlyList<string> BuildSegmentArgs(Segment segment, string filter, string segmentPath, int width, int height)
+        private async Task<string?> EncodeSegmentAsync(Segment segment, string filter, string segmentPath, int width, int height, TimeSpan timeout, CancellationToken ct)
         {
             string seconds = segment.Seconds.ToString(CultureInfo.InvariantCulture);
-            var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error" };
+            FFMpegArguments input;
             if (segment.IsClip)
             {
                 string offset = segment.Offset.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
-                args.AddRange(new[] { "-ss", offset, "-t", seconds, "-i", segment.SourcePath! });
+                input = FFMpegArguments.FromFileInput(segment.SourcePath!, true, o => o.WithCustomArgument($"-ss {offset} -t {seconds}"));
+            }
+            else if (segment.SourcePath is null)
+            {
+                input = FFMpegArguments.FromFileInput($"color=c=gray:s={width}x{height}:r=1", false, o => o.ForceFormat("lavfi").WithCustomArgument($"-t {seconds}"));
             }
             else
             {
-                args.AddRange(segment.SourcePath is null
-                    ? new[] { "-f", "lavfi", "-i", $"color=c=black:s={width}x{height}:r=1", "-t", seconds }
-                    : new[] { "-loop", "1", "-i", segment.SourcePath, "-t", seconds });
+                input = FFMpegArguments.FromFileInput(segment.SourcePath, true, o => o.WithCustomArgument($"-loop 1 -t {seconds}"));
             }
 
-            args.AddRange(new[]
-            {
-                "-vf", filter,
-                "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                "-fps_mode", "cfr", "-g", "1", "-an",
-                "-y", segmentPath
-            });
-            return args;
+            FFMpegArgumentProcessor processor = input.OutputToFile(segmentPath, true, o => o.WithCustomArgument(
+                $"-vf {filter} -c:v libx264 -pix_fmt yuv420p -fps_mode cfr -g 1 -an"));
+            return await RunProcessorAsync(processor, timeout, ct);
         }
+
+        /// <summary>
+        /// Joins the encoded segments through FFMpegCore's concat demuxer, copying the streams. Gap ranges go in as file metadata.
+        /// </summary>
+        private async Task<string?> JoinSegmentsAsync(string listPath, string outputPath, string gapRanges, TimeSpan timeout, CancellationToken ct)
+        {
+            FFMpegArgumentProcessor processor = FFMpegArguments
+                .FromFileInput(listPath, true, o => o.ForceFormat("concat").WithCustomArgument("-safe 0"))
+                .OutputToFile(outputPath, true, o =>
+                {
+                    _ = o.WithCustomArgument("-c copy");
+                    if (gapRanges.Length > 0)
+                    {
+                        _ = o.WithCustomArgument("-metadata comment=vf_gap_seconds=" + gapRanges);
+                    }
+                });
+            return await RunProcessorAsync(processor, timeout, ct);
+        }
+
+        /// <summary>Runs an FFMpegCore processor with a timeout. Returns the failure reason, or null on success. Cancellation by the caller is rethrown.</summary>
+        private async Task<string?> RunProcessorAsync(FFMpegArgumentProcessor processor, TimeSpan timeout, CancellationToken ct)
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(timeout);
+            try
+            {
+                _ = await processor.CancellableThrough(timeoutCts.Token).ProcessAsynchronously(throwOnError: true);
+                return null;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("Timeline video build ffmpeg step timed out after {Seconds}s", timeout.TotalSeconds);
+                return $"ffmpeg timed out after {timeout.TotalSeconds:0.#}s.";
+            }
+            catch (Exception ex)
+            {
+                // Covers failed encodes and a missing or unstartable ffmpeg binary: report, do not throw.
+                _logger.LogError(ex, "Timeline video build ffmpeg step failed");
+                return ex.Message;
+            }
+        }
+
 
         /// <summary>
         /// Builds the ffmpeg arguments that join the encoded segments without re-encoding. The segments share one
         /// encoder setup, so stream copy is valid.
         /// </summary>
         /// <summary>
-        /// The output seconds that are black gap fill, as half-open ranges "start:end" joined by commas, or empty when there are
+        /// The output seconds that are gray gap fill, as half-open ranges "start:end" joined by commas, or empty when there are
         /// none. The file records these so a viewer can tell gap-filled time from captured stills and clips.
         /// </summary>
         private static string GapRanges(IReadOnlyList<Segment> segments)
@@ -561,17 +581,6 @@ namespace VideoForensics.Core.Providers.Core
             return string.Join(",", parts);
         }
 
-        private static IReadOnlyList<string> BuildConcatArgs(string listPath, string outputPath, string gapRanges)
-        {
-            var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy" };
-            if (gapRanges.Length > 0)
-            {
-                args.AddRange(new[] { "-metadata", "comment=vf_gap_seconds=" + gapRanges });
-            }
-
-            args.AddRange(new[] { "-y", outputPath });
-            return args;
-        }
 
         /// <summary>
         /// The budget for one ffmpeg process: the base timeout plus room for encoding its output. A fixed budget would fail
@@ -585,46 +594,6 @@ namespace VideoForensics.Core.Providers.Core
         // Generous: a 4K source can encode at a fraction of real time.
         private const int BudgetSecondsPerOutputSecond = 4;
 
-        /// <summary>Runs ffmpeg with the given arguments. Returns null on success, or the failure reason.</summary>
-        private async Task<string?> TryRunFfmpegAsync(IReadOnlyList<string> args, TimeSpan timeout, CancellationToken ct)
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = _ffmpegPath,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-            foreach (string arg in args)
-            {
-                startInfo.ArgumentList.Add(arg);
-            }
-
-            ProcessResult run;
-            try
-            {
-                run = await ProcessRunner.RunAsync(startInfo, timeout, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                // Covers timeouts and a missing or unstartable ffmpeg binary: report, do not throw.
-                _logger.LogError(ex, "Timeline video build could not run ffmpeg");
-                return ex.Message;
-            }
-
-            if (run.ExitCode != 0)
-            {
-                _logger.LogError("Timeline video build ffmpeg step failed, exit code {Code}: {Stderr}", run.ExitCode, run.StandardError);
-                return $"ffmpeg exited with code {run.ExitCode}.";
-            }
-
-            return null;
-        }
 
         /// <summary>
         /// Builds the concat-demuxer list over the encoded segment files. Each segment is listed once, in timeline order.
@@ -661,43 +630,15 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         private async Task<(bool Ok, int Frames, string? Error)> TryCountOutputFramesAsync(string path, CancellationToken ct)
         {
-            var startInfo = new ProcessStartInfo
+            (bool ok, IMediaAnalysis? analysis, string? error) = await TryAnalyseAsync(path, ct);
+            if (!ok)
             {
-                FileName = _ffprobePath,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-            foreach (string arg in new[] { "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration", "-of", "csv=p=0" })
-            {
-                startInfo.ArgumentList.Add(arg);
+                return (false, 0, $"Could not read the output video: {error}");
             }
 
-            startInfo.ArgumentList.Add(path);
-
-            ProcessResult run;
-            try
-            {
-                run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                return (false, 0, $"Could not read the output video: {ex.Message}");
-            }
-
-            if (run.ExitCode != 0)
-            {
-                return (false, 0, $"ffprobe could not read the output video (exit code {run.ExitCode}).");
-            }
-
-            if (!double.TryParse(run.StandardOutput.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double seconds)
-                || !double.IsFinite(seconds)
-                || seconds <= 0)
+            VideoStream? video = analysis!.PrimaryVideoStream;
+            double seconds = video?.Duration.TotalSeconds ?? 0;
+            if (!double.IsFinite(seconds) || seconds <= 0)
             {
                 return (false, 0, "ffprobe returned an unreadable duration for the output video.");
             }

@@ -3,6 +3,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using System.Collections.Concurrent
 @using System.Globalization
+@using System.Net.Http
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services
@@ -12,6 +13,9 @@
 @inject IJSRuntime JS
 @inject IServiceProvider Services
 @inject IStringLocalizer<ServerLogs> L
+@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
+@inject IForensicsConfiguration Config
+@using VideoForensics.Client.Ui.Shared.Layout
 
 <div class="d-flex align-items-center gap-2 mb-3">
     <h4 class="mb-0">@L["Title"]</h4>
@@ -24,6 +28,25 @@
     {
         <div class="alert alert-danger" data-testid="logs-denied">@L["AccessDenied"]</div>
     }
+
+    <div class="card p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label class="form-label small mb-0" for="recording-level">@L["RecordingLevelLabel"]</label>
+                <select id="recording-level" class="form-select form-select-sm" data-testid="recording-level" disabled="@(!CanAdmin)" @onchange="OnRecordingLevelChangedAsync">
+                    @foreach (string level in Levels)
+                    {
+                        <option value="@level" selected="@(level == _recordingLevel)">@level</option>
+                    }
+                </select>
+            </div>
+            <small class="text-muted flex-grow-1">@L["RecordingLevelHelp"]</small>
+        </div>
+        @if (_recordingMessage is not null)
+        {
+            <span class="small d-block mt-2" style="@(_recordingSuccess ? "color: green;" : "color: red;")">@_recordingMessage</span>
+        }
+    </div>
 
     <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
         <div>
@@ -60,10 +83,34 @@
         </div>
     </div>
 
+    <div class="d-flex flex-wrap align-items-end gap-2 mb-2" data-testid="logs-mode">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn @(_rangeMode ? "btn-outline-secondary" : "btn-secondary")" data-testid="logs-mode-live" @onclick="SwitchToLive">@L["ModeLive"]</button>
+            <button type="button" class="btn @(_rangeMode ? "btn-secondary" : "btn-outline-secondary")" data-testid="logs-mode-range" @onclick="SwitchToRange">@L["ModeRange"]</button>
+        </div>
+        @if (_rangeMode)
+        {
+            <div>
+                <label class="form-label small mb-0" for="logs-range-from">@L["RangeFromLabel"]</label>
+                <input id="logs-range-from" type="datetime-local" class="form-control form-control-sm" data-testid="logs-range-from" value="@_fromText" @onchange="OnFromChanged" />
+            </div>
+            <div>
+                <label class="form-label small mb-0" for="logs-range-to">@L["RangeToLabel"]</label>
+                <input id="logs-range-to" type="datetime-local" class="form-control form-control-sm" data-testid="logs-range-to" value="@_toText" @onchange="OnToChanged" />
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" data-testid="logs-range-show" @onclick="ShowRangeAsync">@L["RangeShowButton"]</button>
+            @if (_rangeMessage is not null)
+            {
+                <span class="small text-danger" data-testid="logs-range-message">@_rangeMessage</span>
+            }
+        }
+    </div>
+
     <div class="log-viewport" @ref="_viewport" data-testid="logs-viewport">
         <table class="table table-sm table-hover log-table mb-0">
             <thead>
                 <tr>
+                    <th class="col-date">@L["ColDate"]</th>
                     <th class="col-time">@L["ColTime"]</th>
                     <th class="col-level">@L["ColLevel"]</th>
                     <th class="col-category">@L["ColCategory"]</th>
@@ -75,7 +122,8 @@
                 {
                     bool expanded = entry.Exception is not null && _expanded.Contains(entry.Sequence);
                     <tr @key="entry.Sequence" data-testid="log-row" data-seq="@entry.Sequence" data-level="@entry.Level">
-                        <td class="text-nowrap" data-testid="log-time" title="@FormatUtc(entry)">@FormatLocal(entry)</td>
+                        <td class="text-nowrap" data-testid="log-date" title="@FormatZoned(entry)">@FormatLocalDate(entry)</td>
+                        <td class="text-nowrap" data-testid="log-time" title="@FormatZoned(entry)">@FormatLocal(entry)</td>
                         <td><span class="badge lvl @LevelCss(entry.Level)" data-testid="log-level-badge">@entry.Level</span></td>
                         <td class="text-nowrap" data-testid="log-category" title="@entry.Category">@ShortCategory(entry.Category)</td>
                         <td class="log-message">
@@ -117,7 +165,7 @@ else if (_sessionChecked)
     private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
 
     private const int MaxRows = 2000;
-    private const string ModulePath = "./_content/VideoForensics.Ui.Shared/js/server-logs.js";
+    private const string ModulePath = "./_content/VideoForensics.Client.Ui.Shared/scripts/server-logs.js";
     private static readonly string[] Levels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
     private static readonly TimeSpan RenderThrottle = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(300);
@@ -155,14 +203,26 @@ else if (_sessionChecked)
     private bool _scrollPending;
     private bool _denied;
     private string _minLevel = "Information";
+    private string _recordingLevel = "Information";
+    private bool _recordingSuccess;
+    private string? _recordingMessage;
     private string _searchText = string.Empty;
     private string? _activeSearch;
 
-    private string StatusKey => _paused && _status == ConnectionStatus.Live ? "paused" : _status.ToString().ToLowerInvariant();
+    // Range mode reads the daily files on demand; the live stream is stopped while it is on.
+    private bool _rangeMode;
+    private string _fromText = string.Empty;
+    private string _toText = string.Empty;
+    private string? _rangeMessage;
+
+    private static readonly string[] RangeFormats = ["yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss"];
+
+    private string StatusKey => _rangeMode ? "history" : _paused && _status == ConnectionStatus.Live ? "paused" : _status.ToString().ToLowerInvariant();
 
     private string StatusText => StatusKey switch
     {
         "live" => L["StatusLive"],
+        "history" => L["StatusHistory"],
         "paused" => L["StatusPaused"],
         "reconnecting" => L["StatusReconnecting"],
         "disconnected" => L["StatusDisconnected"],
@@ -172,6 +232,7 @@ else if (_sessionChecked)
     private string StatusCss => StatusKey switch
     {
         "live" => "bg-success",
+        "history" => "bg-secondary",
         "paused" => "bg-info text-dark",
         "reconnecting" => "bg-warning text-dark",
         "disconnected" => "bg-danger",
@@ -181,6 +242,15 @@ else if (_sessionChecked)
     protected override void OnInitialized()
     {
         _time = Services.GetService<TimeProvider>() ?? TimeProvider.System;
+        _recordingLevel = Config.LogLevel;
+    }
+
+    private bool CanAdmin => PageAccessRules.Allows(AccessPolicy.Admin, NavContext.FromSession(SessionState, appLockSupported: false));
+
+    private async Task OnRecordingLevelChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _recordingLevel = e.Value?.ToString() ?? "Information";
+        (_recordingSuccess, _recordingMessage) = await ConfigTools.SetLoggingLevelAsync(Config, _recordingLevel, CancellationToken.None);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -415,12 +485,68 @@ else if (_sessionChecked)
         _expanded.Clear();
     }
 
+    private void SwitchToRange()
+    {
+        CancelRun();
+        _rangeMode = true;
+        _rangeMessage = null;
+        ResetRows();
+
+        // Default to the last hour in the user's zone; the pickers take the same local format.
+        DateTime nowLocal = TimeZoneInfo.ConvertTime(_time.GetUtcNow(), Zone.Zone).DateTime;
+        _toText = nowLocal.ToString(RangeFormats[0], CultureInfo.InvariantCulture);
+        _fromText = nowLocal.AddHours(-1).ToString(RangeFormats[0], CultureInfo.InvariantCulture);
+    }
+
+    private void SwitchToLive()
+    {
+        _rangeMode = false;
+        _rangeMessage = null;
+        ResetRows();
+        StartRun();
+    }
+
+    private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) => _fromText = e.Value?.ToString() ?? string.Empty;
+
+    private void OnToChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) => _toText = e.Value?.ToString() ?? string.Empty;
+
+    /// <summary>Reads the typed range (in the user's zone), converts it to UTC, and replaces the rows with that history.</summary>
+    private async Task ShowRangeAsync()
+    {
+        if (!DateTime.TryParseExact(_fromText, RangeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime fromLocal)
+            || !DateTime.TryParseExact(_toText, RangeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime toLocal)
+            || toLocal < fromLocal)
+        {
+            _rangeMessage = L["RangeInvalid"];
+            return;
+        }
+
+        var fromUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(fromLocal, Zone.Zone), TimeSpan.Zero);
+        var toUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(toLocal, Zone.Zone), TimeSpan.Zero);
+        try
+        {
+            LogPage page = await LogViewer.GetHistoryAsync(new LogHistoryQuery(fromUtc, toUtc, _minLevel, _activeSearch, MaxRows), CancellationToken.None);
+            ResetRows();
+            _rows.AddRange(page.Entries.OrderBy(e => e.TimestampUtc));
+            _rangeMessage = page.Truncated ? L["RangeTruncated", MaxRows] : null;
+        }
+        catch (HttpRequestException)
+        {
+            _rangeMessage = L["RangeFailed"];
+        }
+    }
+
     private void OnLevelChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         string? value = e.Value?.ToString();
         _minLevel = value is not null && Levels.Contains(value) ? value : "Information";
         ResetRows();
-        StartRun();
+
+        // In range mode the level applies when the range is shown again, so the live stream stays off.
+        if (!_rangeMode)
+        {
+            StartRun();
+        }
     }
 
     private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
@@ -461,7 +587,11 @@ else if (_sessionChecked)
 
                 _activeSearch = effective;
                 ResetRows();
-                StartRun();
+                if (!_rangeMode)
+                {
+                    StartRun();
+                }
+
                 StateHasChanged();
             });
         }
@@ -526,11 +656,19 @@ else if (_sessionChecked)
         return e.Exception is null ? line : line + "\n" + e.Exception;
     }
 
+    /// <summary>The copied log line keeps UTC: exported text has no zone label of its own, so the instant must stay unambiguous.</summary>
     private static string FormatUtc(LogEntry e)
         => e.TimestampUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + " UTC";
 
+    /// <summary>The hover title for a log time, in the user's zone.</summary>
+    private string FormatZoned(LogEntry e)
+        => Zone.Format(e.TimestampUtc.UtcDateTime, "yyyy-MM-dd HH:mm:ss.fff");
+
     private string FormatLocal(LogEntry e)
         => TimeZoneInfo.ConvertTime(e.TimestampUtc, Zone.Zone).ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+
+    private string FormatLocalDate(LogEntry e)
+        => TimeZoneInfo.ConvertTime(e.TimestampUtc, Zone.Zone).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static string ShortCategory(string category)
     {

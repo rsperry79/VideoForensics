@@ -103,6 +103,8 @@ namespace VideoForensics.Client.WebApp.Tests
             _ = tier.Setup(t => t.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
 
             _ = builder.Services.AddSingleton(buffer);
+            // Program.cs registers this; without it the history endpoint binds it as a body parameter and host startup fails.
+            _ = builder.Services.AddSingleton(new LogFileDirectory(Path.GetTempPath()));
             _ = builder.Services.AddSingleton(audit.Object);
             _ = builder.Services.AddSingleton(stepUp.Object);
             _ = builder.Services.AddSingleton(tier.Object);

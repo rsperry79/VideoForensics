@@ -23,7 +23,7 @@ dotnet publish src/client/web/VideoForensics.WebApp -c Release --self-contained 
 
 The `-c Release` flag builds for release. The `--self-contained false` flag creates a framework-dependent deployment (smaller, since .NET 10 is already on the target machine); the published output will be approximately 50-100 MB.
 
-The output folder will contain `VideoForensics.WebApp.exe` and supporting assemblies.
+The output folder will contain `VideoForensics.Client.WebApp.exe` and supporting assemblies.
 
 ## Installation
 

@@ -3,10 +3,13 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Diagnostics;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
@@ -15,42 +18,175 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Unit of work implementation for executing multi-entity operations atomically within a single transaction.</summary>
     public class UnitOfWork : IUnitOfWork
     {
+        /// <summary>
+        /// Transactions at or past this length log a Warning. Shorter ones log at Debug. The default is well above a normal
+        /// write, so a Warning means a transaction held the database for long enough to block other writers.
+        /// </summary>
+        private static readonly TimeSpan DefaultSlowTransactionThreshold = TimeSpan.FromSeconds(1);
+
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<UnitOfWork> _logger;
+        private readonly TimeSpan _slowTransactionThreshold;
+        private readonly InFlightTransactions _inFlight;
 
         /// <summary>Initializes a new instance of the UnitOfWork.</summary>
         public UnitOfWork(
             IDbContextFactory<VideoForensicsDbContext> factory,
             IServiceProvider serviceProvider,
-            ILogger<UnitOfWork> logger)
+            ILogger<UnitOfWork> logger,
+            TimeSpan? slowTransactionThreshold = null,
+            InFlightTransactions? inFlight = null)
         {
             _factory = factory;
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _slowTransactionThreshold = slowTransactionThreshold ?? DefaultSlowTransactionThreshold;
+            _inFlight = inFlight ?? new InFlightTransactions();
         }
 
-        /// <summary>Executes a work function within a shared transaction context, committing on success or rolling back on exception.</summary>
+        /// <summary>
+        /// Executes a work function within a shared transaction context, committing on success or rolling back on exception.
+        /// Each call logs its timing, so a slow write can be traced to the operation that ran it.
+        /// </summary>
         public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
+        {
+            // Read the caller before the first await: its frames are only on the stack until then.
+            string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
+            var clock = Stopwatch.StartNew();
+            // Open from here until the method returns, so a stalled watchdog can name it. Waiting for the chain gate counts as in flight.
+            using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
+
+            // Hold the chain gate for the whole transaction. A chain append must not read a tail that this transaction is
+            // about to extend, and no other writer may read that tail before this one commits.
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            if (entered)
+            {
+                await ActionLogAppendGate.WaitAsync(ct);
+                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+            }
+
+            try
+            {
+                return await RunTransactionAsync(work, caller, clock, ct);
+            }
+            finally
+            {
+                if (entered)
+                {
+                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
+                    ActionLogAppendGate.Release();
+                }
+            }
+        }
+
+        private async Task<T> RunTransactionAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, string caller, Stopwatch clock, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
+            TimeSpan begun = clock.Elapsed;
+            TimeSpan worked = begun;
 
+            // Standalone appends made inside the work use this context, so they join this transaction.
+            VideoForensicsDbContext? outerDb = AmbientUnitOfWork.DbContext;
+            AmbientUnitOfWork.DbContext = db;
             try
             {
                 var context = new UnitOfWorkContext(db, _serviceProvider);
                 T? result = await work(context);
                 _ = await db.SaveChangesAsync(ct);
+                worked = clock.Elapsed;
                 await transaction.CommitAsync(ct);
-                _logger.LogDebug("Unit of work committed successfully");
+                LogTransaction(caller, "committed", begun, worked, clock.Elapsed);
                 return result;
             }
             catch (Exception ex)
             {
+                // A failure before the work finished ends the work phase there; a failed commit counts as work.
+                worked = clock.Elapsed;
                 await transaction.RollbackAsync(ct);
+                LogTransaction(caller, "rolled back", begun, worked, clock.Elapsed);
                 _logger.LogError(ex, "Unit of work rolled back due to exception");
                 throw;
             }
+            finally
+            {
+                AmbientUnitOfWork.DbContext = outerDb;
+            }
+        }
+
+        /// <summary>
+        /// Logs one transaction's timing. The begin phase covers opening the connection and starting the transaction.
+        /// The work phase covers the caller's lambda and SaveChanges, and the finish phase covers commit or rollback.
+        /// </summary>
+        private void LogTransaction(string caller, string outcome, TimeSpan begun, TimeSpan worked, TimeSpan finished)
+        {
+            long beginMs = (long)begun.TotalMilliseconds;
+            long workMs = (long)(worked - begun).TotalMilliseconds;
+            long finishMs = (long)(finished - worked).TotalMilliseconds;
+            long totalMs = (long)finished.TotalMilliseconds;
+
+            if (finished >= _slowTransactionThreshold)
+            {
+                _logger.LogWarning(
+                    "Slow unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
+                    caller, outcome, totalMs, beginMs, workMs, finishMs);
+                return;
+            }
+
+            _logger.LogDebug(
+                "Unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
+                caller, outcome, totalMs, beginMs, workMs, finishMs);
+        }
+
+        /// <summary>
+        /// Names the first caller outside this class, as "Type.Method". Async methods and lambdas compile to nested
+        /// types with generated names, so the readable name is taken from those.
+        /// </summary>
+        private static string DescribeCaller(StackTrace trace)
+        {
+            foreach (StackFrame frame in trace.GetFrames() ?? [])
+            {
+                MethodBase? method = frame.GetMethod();
+                if (method?.DeclaringType is not { } declared || declared.Namespace is null
+                    || !declared.Namespace.StartsWith("VideoForensics.", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Type owner = OwningType(declared);
+                if (owner == typeof(UnitOfWork))
+                {
+                    continue;
+                }
+
+                return $"{owner.Name}.{MethodName(method, declared)}";
+            }
+
+            return "unknown caller";
+        }
+
+        private static Type OwningType(Type type)
+        {
+            Type owner = type;
+            while (owner.Name.StartsWith('<') && owner.DeclaringType is { } outer)
+            {
+                owner = outer;
+            }
+
+            return owner;
+        }
+
+        private static string MethodName(MethodBase method, Type declared)
+        {
+            // An async state machine's type is "<Name>d__N" and its method is MoveNext; a lambda's method is "<Name>b__N".
+            string name = method.Name == "MoveNext" && declared.Name.StartsWith('<') ? declared.Name : method.Name;
+            if (name.StartsWith('<') && name.IndexOf('>') > 1)
+            {
+                return name[1..name.IndexOf('>')];
+            }
+
+            return name;
         }
     }
 
@@ -398,6 +534,23 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
         }
 
+        public Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
+            ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
+
+            Guid[] ids = deviceIds.ToArray();
+            IQueryable<MediaItem> matches = _db.MediaItems
+                .AsNoTracking()
+                .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
+
+            int total = matches.Count();
+            List<MediaItem> items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
+            return Task.FromResult(new MediaItemPage(items, total));
+        }
+
         public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList());
@@ -436,6 +589,15 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
                 .Where(m => !m.IsPurged && m.ThumbnailPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.PreviewPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
                 .ToList());
         }
 
@@ -601,15 +763,27 @@ namespace VideoForensics.Data.Database.Repositories
         /// against the shared unit-of-work DbContext/transaction instead of opening its own - the
         /// caller (UnitOfWork.ExecuteAsync) already owns the surrounding transaction and commit/rollback.
         /// </summary>
-        public Task<ActionLogEntry> AppendAsync(string actor, ActorType actorType, string action, string entityType, Guid? entityId, string? detailsJson, CancellationToken ct)
+        public async Task<ActionLogEntry> AppendAsync(string actor, ActorType actorType, string action, string entityType, Guid? entityId, string? detailsJson, CancellationToken ct)
         {
-            ActionLogEntry? lastEntry = _db.ActionLogEntries
+            // Write the entries this unit of work has already appended. The tail is read from the database, so an
+            // unsaved entry is invisible to it; without this flush two appends in one unit of work chain to the same
+            // predecessor and the chain forks (reconciliation auto-fix appends several entries in one unit of work).
+            _ = await _db.SaveChangesAsync(ct);
+
+            ActionLogEntry? lastEntry = await _db.ActionLogEntries
                 .OrderByDescending(ale => ale.TimestampUtc)
                 .ThenByDescending(ale => ale.Id)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync(ct);
 
             string? previousEntryHash = lastEntry?.EntryHash;
+
+            // Verification orders by timestamp, so each entry must be strictly later than its predecessor, or a tie would
+            // fall back to the random Id order and break the chain.
             DateTime timestampUtc = DateTime.UtcNow;
+            if (lastEntry != null && timestampUtc <= lastEntry.TimestampUtc)
+            {
+                timestampUtc = DateTime.SpecifyKind(lastEntry.TimestampUtc.AddTicks(1), DateTimeKind.Utc);
+            }
 
             string canonicalString = $"{previousEntryHash ?? string.Empty}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? string.Empty}";
             string entryHash = ComputeSha256Hash(canonicalString);
@@ -629,7 +803,7 @@ namespace VideoForensics.Data.Database.Repositories
             };
 
             _ = _db.ActionLogEntries.Add(entry);
-            return Task.FromResult(entry);
+            return entry;
         }
 
         public Task<IReadOnlyList<ActionLogEntry>> GetHistoryForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
@@ -645,7 +819,7 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<ActionLogEntry>)_db.ActionLogEntries.AsNoTracking().ToList());
         }
 
-        public Task<bool> VerifyChainIntegrityAsync(CancellationToken ct)
+        public Task<ChainIntegrityResult> VerifyChainIntegrityAsync(CancellationToken ct)
         {
             var entries = _db.ActionLogEntries.AsNoTracking()
                 .OrderBy(ale => ale.TimestampUtc)
@@ -653,23 +827,27 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList();
 
             string? expectedPreviousHash = null;
+            int checkedCount = 0;
             foreach (ActionLogEntry? entry in entries)
             {
                 if (entry.PreviousEntryHash != expectedPreviousHash)
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(ChainIntegrityResult.Broken(checkedCount, ChainBreakKind.PreviousHashMismatch, entry));
                 }
 
-                string canonicalString = $"{entry.PreviousEntryHash ?? string.Empty}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? string.Empty}";
+                // SQLite reads timestamps back as Kind=Unspecified; restore UTC so the hash matches what the appender computed.
+                string timestampUtc = DateTime.SpecifyKind(entry.TimestampUtc, DateTimeKind.Utc).ToString("O");
+                string canonicalString = $"{entry.PreviousEntryHash ?? string.Empty}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{timestampUtc}|{entry.DetailsJson ?? string.Empty}";
                 if (entry.EntryHash != ComputeSha256Hash(canonicalString))
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(ChainIntegrityResult.Broken(checkedCount, ChainBreakKind.EntryHashMismatch, entry));
                 }
 
                 expectedPreviousHash = entry.EntryHash;
+                checkedCount++;
             }
 
-            return Task.FromResult(true);
+            return Task.FromResult(ChainIntegrityResult.Valid(checkedCount));
         }
 
         private static string ComputeSha256Hash(string input)
@@ -801,6 +979,33 @@ namespace VideoForensics.Data.Database.Repositories
                 .GroupBy(x => x.Event.EventType)
                 .ToDictionary(g => g.Key, g => g.Count());
             return Task.FromResult(summary);
+        }
+
+        public Task<EventPage> ListPageByDevicesAndDateRangeAsync(
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
+            int skip, int take, CancellationToken ct)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
+            ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
+            ArgumentOutOfRangeException.ThrowIfLessThan(deviceIds.Count, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(deviceIds.Count, 64);
+
+            Guid[] ids = deviceIds.ToArray();
+            string[] excluded = excludeEventTypes?.ToArray() ?? [];
+            IQueryable<Event> matches = _db.Events
+                .AsNoTracking()
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+
+            int total = matches.Count();
+            List<Event> items = matches
+                .OrderByDescending(e => e.OccurredAtUtc)
+                .ThenBy(e => e.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToList();
+
+            return Task.FromResult(new EventPage(items, total));
         }
 
         public Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct)

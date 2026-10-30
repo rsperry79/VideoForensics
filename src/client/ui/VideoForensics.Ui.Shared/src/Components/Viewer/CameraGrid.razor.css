@@ -1,0 +1,31 @@
+/* The grid keeps its inline grid-template-columns (one column per camera step) and stacks to one column on narrow screens. */
+
+.camera-grid {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 900px) {
+    .camera-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.camera-tile {
+    margin: 0;
+    min-width: 0;
+}
+
+.camera-tile figcaption {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.camera-tile ::deep .review-player {
+    max-height: 38vh;
+}

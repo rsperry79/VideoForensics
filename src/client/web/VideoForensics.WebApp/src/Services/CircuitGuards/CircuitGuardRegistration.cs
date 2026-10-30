@@ -21,7 +21,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             _ = services.AddScoped<CircuitHandler, CircuitScopeHandler>();
             _ = services.AddScoped<ICircuitOperatorGate, CircuitOperatorGate>();
 
-            _ = services.DecorateScoped<IProviderAccountRepository>((inner, sp) => new GuardedProviderAccountRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IProviderAccountRepository>((inner, sp) => new GuardedProviderAccountRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<IProviderAccountEditPolicy>()));
             _ = services.DecorateScoped<IDeviceConfigRepository>((inner, sp) => new GuardedDeviceConfigRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IEvidenceExportService>((inner, sp) => new GuardedEvidenceExportService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
@@ -29,7 +29,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             _ = services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            _ = services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetService<ServerLogLevel>(), sp.GetService<ISettingsAccessPolicy>()));
             _ = services.DecorateScoped<IJammingRepository>((inner, sp) => new GuardedJammingRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
 
             return services;

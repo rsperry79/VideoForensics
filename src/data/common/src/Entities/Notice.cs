@@ -28,5 +28,11 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Optional FK to ProviderAccount - e.g. which account had the credential decryption failure, for context.</summary>
         public Guid? ProviderAccountId { get; set; }
+
+        /// <summary>
+        /// Optional relative link into the app, such as <c>/accounts/{id}/sync</c>. Relative because the Notices page is only
+        /// reached while signed in; email builds an absolute link from the tunnel address instead.
+        /// </summary>
+        public string? ActionPath { get; set; }
     }
 }

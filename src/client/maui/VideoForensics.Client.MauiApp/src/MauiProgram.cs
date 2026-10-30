@@ -16,6 +16,7 @@ using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Local;
 using VideoForensics.Client.Hosting.ServerDiscovery;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.MauiApp.AppLock;
 using VideoForensics.Client.MauiApp.ServerDiscovery;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -27,6 +28,11 @@ namespace VideoForensics.Client.MauiApp
         public static Microsoft.Maui.Hosting.MauiApp CreateMauiApp()
         {
             StartupTrace.Mark("CreateMauiApp: start");
+
+            // Read install-time storage overrides from the registry before any StorageLocationProvider is created.
+            VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+            VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+            VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
 #if DEBUG
             // During local development, ensure VideoForensics.Client.WebApp is running before continuing.
             // This is a DEBUG-only convenience: a developer can simply run the MAUI app in the debugger
@@ -178,20 +184,33 @@ namespace VideoForensics.Client.MauiApp
             // the plain default factory. TryAddScoped so a host that needs a different behavior could
             // still override it.
             builder.Services.TryAddScoped<VideoForensics.Client.Ui.Shared.Services.ISelfApiHttpClientFactory, VideoForensics.Client.Ui.Shared.Services.DefaultSelfApiHttpClientFactory>();
+            builder.Services.TryAddScoped<VideoForensics.Client.Ui.Shared.Services.IProviderAccountEditAccess, VideoForensics.Client.Ui.Shared.Services.ProviderAccountEditAccess>();
 
             // Docked-layout chrome state (plan: docked MAUI/Blazor layout) - collapse state
             // (device-local), right-panel page-context slot, and per-operator theme/culture, all
             // circuit-scoped like PairedSessionState above.
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.LayoutPreferencesState>();
-            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.AccountSelectionState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Inspector.InspectorState>();
             builder.Services.TryAddSingleton(TimeProvider.System);
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.ScopeState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewStillCommand>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewClipLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewClipLoader>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewEventLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewEventLoader>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewDetailLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewDetailLoader>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewUrlCache>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.DeviceOwnershipService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Client.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Cases.CaseState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewEvidenceTagger>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.IUiModeService, VideoForensics.Client.Ui.Shared.Services.UiModeService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Client.Ui.Shared.Formatting.SimpleHomeBuilder(
@@ -221,9 +240,14 @@ namespace VideoForensics.Client.MauiApp
             // has to trigger a browser download instead. See WebFileDialogService for that side.
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IFileDialogService, VideoForensics.Client.MauiApp.Services.MauiFileDialogService>();
 
+            // Where the backup export is staged before the save dialog: the current user's documents folder.
+            builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
+
             // Local filesystem folder browser for picking the import "media root" folder (Import/Export
             // page) - shared implementation, works identically on MAUI and Web since both processes run
             // on the same local machine as the user in this app's deployment model.
+            // Filesystem roots for that browser: drives on Windows, "/" elsewhere.
+            builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IDirectoryBrowserService, VideoForensics.Client.Ui.Shared.Services.DirectoryBrowserService>();
 
             // Local app-lock (plan §5.9) - overrides the no-op IAppLockPreferencesStore default that
@@ -315,109 +339,47 @@ namespace VideoForensics.Client.MauiApp
 
 #if DEBUG
         /// <summary>
-        /// Ensures VideoForensics.Client.WebApp is running on localhost:5162 for DEBUG builds.
-        /// This is a local-development convenience only: the method probes the health endpoint,
-        /// launches the server via dotnet run if unreachable, and waits for it to be ready.
-        /// Failures are logged as warnings but never block app startup.
+        /// Stages the current source as an update through deploy\windows\stage-update.ps1 and waits until the installed
+        /// service has applied it and answers on localhost:5162, so the UI starts against a live server on the latest build.
+        /// DEBUG builds only. No administrator rights are needed; enable-dev-updates.ps1 must have been run once as admin.
+        /// Failures are logged and never block app startup; the app then falls back to normal server resolution.
         /// </summary>
         private static async Task EnsureWebAppRunningForDebugAsync()
         {
-            const string webAppHealthUrl = "http://localhost:5162/healthz";
-            const int probeTimeoutMs = 1500;
-            const int pollIntervalMs = 500;
-            const int maxPollDurationMs = 15000;
-
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.Timeout = TimeSpan.FromMilliseconds(probeTimeoutMs);
-
-                // Probe health endpoint to see if server is already running
-                try
-                {
-                    HttpResponseMessage response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        // Server is already running
-                        return;
-                    }
-                }
-                catch (HttpRequestException)
-                {
-                    // Server is not running, proceed to launch it
-                }
-                catch (OperationCanceledException)
-                {
-                    // Probe timed out, server may not be running
-                }
-
-                // Server is not responding; launch VideoForensics.Client.WebApp
                 string solutionRoot = FindSolutionRoot();
                 if (string.IsNullOrEmpty(solutionRoot))
                 {
-                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to launch WebApp");
+                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to stage an update");
                     return;
                 }
 
-                string webAppProjectPath = Path.Combine(
-                    solutionRoot,
-                    "src", "client", "web", "VideoForensics.Client.WebApp", "VideoForensics.WebApp.csproj");
-
-                if (!File.Exists(webAppProjectPath))
+                string scriptPath = Path.Combine(solutionRoot, "deploy", "windows", "stage-update.ps1");
+                if (!File.Exists(scriptPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"DEBUG: WebApp project not found at {webAppProjectPath}");
+                    System.Diagnostics.Debug.WriteLine($"DEBUG: stage script not found at {scriptPath}");
                     return;
                 }
 
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"run --project \"{webAppProjectPath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false
-                };
+                // The script returns once the package is staged; the service then notices it, restarts and applies it.
+                // Sixty seconds covers the watcher's poll, the restart, and the first health answer.
+                string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+                var launcher = new DevWebAppLauncher(
+                    new WebAppHealthProbe(),
+                    new StageScriptRunner(),
+                    () => PendingUpdateProbe.HasPending(updatesRoot),
+                    readyTimeout: TimeSpan.FromSeconds(60),
+                    pollInterval: TimeSpan.FromMilliseconds(500));
 
-                try
-                {
-                    _ = System.Diagnostics.Process.Start(psi);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"DEBUG: Failed to start WebApp process: {ex.Message}");
-                    return;
-                }
-
-                // Poll health endpoint until server is ready or timeout expires
-                DateTime pollStart = DateTime.UtcNow;
-                while ((DateTime.UtcNow - pollStart).TotalMilliseconds < maxPollDurationMs)
-                {
-                    await Task.Delay(pollIntervalMs);
-
-                    try
-                    {
-                        HttpResponseMessage response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            // Server is ready
-                            return;
-                        }
-                    }
-                    catch (HttpRequestException)
-                    {
-                        // Still not ready, continue polling
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Poll timed out, continue trying
-                    }
-                }
-
-                System.Diagnostics.Debug.WriteLine("DEBUG: WebApp did not become ready within timeout");
+                DevWebAppLaunchResult result = await launcher.EnsureReadyAsync(scriptPath, CancellationToken.None);
+                // Debug.WriteLine is only visible under a debugger, so the outcome also goes to the startup trace file.
+                StartupTrace.Mark($"debug web app check: {result.Status} - {result.Message}");
+                System.Diagnostics.Debug.WriteLine($"DEBUG: {result.Status}: {result.Message}");
             }
             catch (Exception ex)
             {
+                StartupTrace.Mark($"debug web app check: failed - {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"DEBUG: EnsureWebAppRunningForDebugAsync failed: {ex.Message}");
             }
         }

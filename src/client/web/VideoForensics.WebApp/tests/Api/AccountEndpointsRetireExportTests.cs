@@ -58,6 +58,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
+            _ = builder.Services.AddScoped(_ => ProviderAccountEditPolicyStub.Admin());
 
             var stepUp = new Mock<IStepUpAuthService>();
             _ = stepUp.Setup(s => s.Validate(StepUpToken, It.IsAny<Guid>())).Returns(true);

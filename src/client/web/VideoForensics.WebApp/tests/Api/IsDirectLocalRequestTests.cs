@@ -37,15 +37,28 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public void OperatorAuthEndpoints_IsDirectLocalRequest_LanAddressFromLanClient_IsTrue()
+        {
+            // A device on the local network reaches the server by its LAN address, which counts as local.
+            Assert.True(OperatorAuthEndpoints.IsDirectLocalRequest(Request("192.168.1.5:5000", System.Net.IPAddress.Parse("192.168.1.20"))));
+        }
+
+        [Fact]
+        public void OperatorAuthEndpoints_IsDirectLocalRequest_InternetAddressFromInternetClient_IsFalse()
+        {
+            Assert.False(OperatorAuthEndpoints.IsDirectLocalRequest(Request("8.8.8.8:5000", System.Net.IPAddress.Parse("8.8.4.4"))));
+        }
+
+        [Fact]
         public void OperatorAuthEndpoints_IsDirectLocalRequest_CloudflareHeaderPresent_IsFalse()
         {
             Assert.False(OperatorAuthEndpoints.IsDirectLocalRequest(Request("localhost:5162", IPAddress.Loopback, "203.0.113.9")));
         }
 
         [Fact]
-        public void OperatorAuthEndpoints_IsDirectLocalRequest_LanAddress_IsFalse()
+        public void OperatorAuthEndpoints_IsDirectLocalRequest_LanAddressFromLanHost_IsTrue()
         {
-            Assert.False(OperatorAuthEndpoints.IsDirectLocalRequest(Request("192.168.1.20:5162", IPAddress.Parse("192.168.1.55"))));
+            Assert.True(OperatorAuthEndpoints.IsDirectLocalRequest(Request("192.168.1.20:5162", IPAddress.Parse("192.168.1.55"))));
         }
     }
 }

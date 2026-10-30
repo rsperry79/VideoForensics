@@ -26,6 +26,11 @@
     else
     {
         <div class="d-flex flex-column gap-3">
+            @if (_passkeyBlockedByAddress)
+            {
+                <div class="alert alert-warning mb-0" role="alert" data-testid="passkey-unavailable">@L["PasskeyUnavailableHere"]</div>
+            }
+
             <!-- Password/Username Login -->
             @if (_authMethods.PasswordEnabled)
             {
@@ -53,7 +58,7 @@
                     <!-- A future provider block (e.g. external sign-in buttons) goes here, above the form fields. -->
                     <div class="d-flex flex-column gap-2">
                         <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" HtmlAttributes="_usernameAttributes" />
-                        <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordLabel"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                        <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordLabel"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" HtmlAttributes="_passwordAttributes" />
                         <div>
                             <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Style="width:100%" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
                         </div>
@@ -114,6 +119,7 @@
     private string _username = string.Empty;
     /// <summary>Marks the username field as a username for password managers and passkey autofill (conditional UI).</summary>
     private readonly Dictionary<string, object> _usernameAttributes = new() { { "autocomplete", "username webauthn" }, { "name", "username" } };
+    private readonly Dictionary<string, object> _passwordAttributes = new() { { "autocomplete", "current-password" }, { "name", "password" } };
     private string _password = string.Empty;
     private bool _isSigningInWithPassword;
     private bool _isSigningInWithPasskey;
@@ -123,6 +129,9 @@
     private IReadOnlyList<string> _twoFactorMethods = Array.Empty<string>();
     private const string TwoFactorMethodPasskey = "passkey";
     private bool _webAuthnAvailable;
+
+    /// <summary>True when the browser supports passkeys but this address does not (plain http on the LAN). Shows a message.</summary>
+    private bool _passkeyBlockedByAddress;
     private bool _isLoading = true;
     private string? _error;
     private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
@@ -133,7 +142,9 @@
         if (firstRender)
         {
             await SessionState.EnsureLoadedAsync();
-            _webAuthnAvailable = await WebAuthn.IsAvailableAsync();
+            bool browserSupportsPasskeys = await WebAuthn.IsAvailableAsync();
+            _passkeyBlockedByAddress = browserSupportsPasskeys && !await WebAuthn.IsPasskeyAvailableOnThisAddressAsync();
+            _webAuthnAvailable = browserSupportsPasskeys && !_passkeyBlockedByAddress;
             _authMethods = await WebAuthn.GetAuthMethodsAsync();
             _isLoading = false;
             StateHasChanged();
@@ -258,6 +269,39 @@
     // Offers every approved passkey on the first attempt. Offering only the most recently used one kept
     // sending the same passkey, which can belong to another relying party, so the browser never found a match.
     private async Task SignInWithPasskeyAsync(bool allCredentials = true)
+    {
+        if (await RedirectPasskeyToTunnelAsync())
+        {
+            return;
+        }
+
+        await SignInWithPasskeyCoreAsync(allCredentials);
+    }
+
+    /// <summary>
+    /// A passkey cannot work from localhost: its RP ID is the tunnel host, so the browser refuses the request. On localhost the
+    /// sign-in moves to the tunnel instead. Returns true when the browser is being sent there.
+    /// </summary>
+    private async Task<bool> RedirectPasskeyToTunnelAsync()
+    {
+        string? tunnelUrl = await WebAuthn.GetTunnelUrlAsync();
+        if (tunnelUrl is null)
+        {
+            return false;
+        }
+
+        var here = new Uri(NavigationManager.Uri);
+        if (!LocalNetworkAddress.IsLocalHost(here.Host) || string.Equals(here.Host, new Uri(tunnelUrl).Host, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        NavigationManager.NavigateTo(tunnelUrl + "/signin");
+        return true;
+    }
+
+
+    private async Task SignInWithPasskeyCoreAsync(bool allCredentials)
     {
         _isSigningInWithPasskey = true;
         _passkeyFailed = false;

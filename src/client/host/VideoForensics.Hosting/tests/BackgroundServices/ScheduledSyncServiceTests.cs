@@ -411,6 +411,81 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             h.Media["Ring"].Verify(Harness.Pulled(account.Id, last.AddMinutes(-10)), Times.Once);
         }
 
+        /// <summary>Records each (start, end) window the scheduled pull hands to the media download, in call order.</summary>
+        private static List<(DateTime Start, DateTime End)> CaptureWindows(Harness h, string provider)
+        {
+            var windows = new List<(DateTime Start, DateTime End)>();
+            _ = h.Media[provider]
+                .Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback<string, string, DateTime, DateTime, string?, CancellationToken>((_, _, start, end, _, _) => windows.Add((start, end)))
+                .ReturnsAsync(new DownloadResult(true));
+            return windows;
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CatchUpAfterTwentyDays_PullsThreeContiguousWindowsOldestFirst()
+        {
+            var h = new Harness();
+            DateTime last = Now.AddDays(-20);
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: Now.AddMinutes(-1), eventLast: last);
+            List<(DateTime Start, DateTime End)> windows = CaptureWindows(h, "Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            DateTime first = last.AddMinutes(-10);
+            Assert.Equal(
+                [(first, first.AddDays(7)), (first.AddDays(7), first.AddDays(14)), (first.AddDays(14), Now)],
+                windows);
+            Assert.Equal(3, windows.Count);
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CatchUpAfterTwentyDays_RecordsProviderBudgetOncePerWindow()
+        {
+            var h = new Harness();
+            _ = h.AddAccount("Ring", eventNext: Now.AddMinutes(-1), eventLast: Now.AddDays(-20));
+            _ = CaptureWindows(h, "Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(3));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RecentRun_PullsOnceWithoutCatchUp()
+        {
+            var h = new Harness();
+            DateTime last = Now.AddHours(-1);
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: Now.AddMinutes(-1), eventLast: last);
+            List<(DateTime Start, DateTime End)> windows = CaptureWindows(h, "Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Single(windows);
+            Assert.Equal(last.AddMinutes(-10), windows[0].Start);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id, last.AddMinutes(-10)), Times.Once);
+            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CatchUpLongerThanYear_ClampsFirstWindowToOneYearBack()
+        {
+            var h = new Harness();
+            _ = h.AddAccount("Ring", eventNext: Now.AddMinutes(-1), eventLast: Now.AddYears(-3));
+            List<(DateTime Start, DateTime End)> windows = CaptureWindows(h, "Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Equal(Now.AddYears(-1), windows[0].Start);
+            Assert.Equal(Now, windows[^1].End);
+            Assert.True(windows.Count > 1);
+        }
+
         [Fact]
         public async Task RunOneTickAsync_IntervalBelowMinimum_RecordsNextRunAtMinimum()
         {

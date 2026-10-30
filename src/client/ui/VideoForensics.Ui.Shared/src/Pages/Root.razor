@@ -1,0 +1,11 @@
+@page "/"
+@inject NavigationManager Nav
+
+@code {
+    // "/" has no page of its own. The review page (/media) is the landing page, so send the browser there.
+    // replace: true keeps "/" out of the history, so Back does not bounce between the two.
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/media", replace: true);
+    }
+}

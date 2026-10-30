@@ -1,45 +1,97 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests
 {
     public class DownloadProgressSnapshotTests
     {
         [Fact]
-        public void DownloadProgressDtoMapping_ToDownloadProgressSnapshot_NeverDrainsActivityLog()
+        public void DownloadProgressDtoMapping_ToDownloadProgressDto_CarriesActivityLinesAndZeroedNumericFields()
         {
-            var service = new Mock<IVideoDownloadService>();
-            _ = service.Setup(s => s.GetProgress()).Returns(new DownloadStatus(true, 1, 4, 100L, "a.mp4", 2, 8, 200L, 3, 1.5));
-            _ = service.Setup(s => s.GetCurrentDevice()).Returns((1, 3, "Garage"));
-            _ = service.Setup(s => s.DrainActivityLog()).Returns(["should not be consumed"]);
+            var log = new Mock<ISyncActivityLog>();
+            _ = log.Setup(l => l.Drain()).Returns(["sync started", "discovered 3 devices"]);
 
-            // Called twice to prove a snapshot consumes nothing and can be repeated safely.
-            _ = service.Object.ToDownloadProgressSnapshot();
-            _ = service.Object.ToDownloadProgressSnapshot();
+            DownloadProgressDto dto = log.Object.ToDownloadProgressDto();
 
-            service.Verify(s => s.DrainActivityLog(), Times.Never);
+            Assert.Equal(new[] { "sync started", "discovered 3 devices" }, dto.Activity);
+            Assert.Equal(new DownloadStatusDto(false, 0, 0, 0L, null, 0, 0, 0L, 0, 0.0), dto.Progress);
+            Assert.Equal(0, dto.CurrentDeviceIndex);
+            Assert.Equal(0, dto.CurrentDeviceTotal);
+            Assert.Null(dto.CurrentDeviceName);
+            Assert.Empty(dto.PreScanCounts);
+            Assert.Null(dto.LastError);
+            Assert.Null(dto.RemainingReason);
         }
 
         [Fact]
-        public void DownloadProgressDtoMapping_ToDownloadProgressSnapshot_ReturnsEmptyActivityAndCopiesState()
+        public void DownloadProgressDtoMapping_ToDownloadProgressDto_DrainsSyncLogExactlyOnce()
         {
-            var status = new DownloadStatus(false, 0, 0, 0L, null, 5, 9, 700L, 1, 0.0);
+            var log = new Mock<ISyncActivityLog>();
+            _ = log.Setup(l => l.Drain()).Returns(Array.Empty<string>());
 
-            var service = new Mock<IVideoDownloadService>();
-            _ = service.Setup(s => s.GetProgress()).Returns(status);
-            _ = service.Setup(s => s.GetCurrentDevice()).Returns((0, 0, string.Empty));
-            _ = service.Setup(s => s.DrainActivityLog()).Returns(["pending line"]);
-            _ = service.Setup(s => s.GetPreScanCounts()).Returns(new Dictionary<string, int> { ["dev-2"] = 4 });
-            _ = service.Setup(s => s.GetLastError()).Returns("boom");
-            _ = service.Setup(s => s.GetRemainingReason()).Returns("Rate limited");
+            _ = log.Object.ToDownloadProgressDto();
 
-            VideoForensics.Core.Api.Contracts.DownloadProgressDto dto = service.Object.ToDownloadProgressSnapshot();
+            log.Verify(l => l.Drain(), Times.Once);
+        }
+
+        [Fact]
+        public void DownloadProgressDtoMapping_IdleSnapshot_HasNoActivityAndNeutralState()
+        {
+            DownloadProgressDto dto = DownloadProgressDtoMapping.IdleSnapshot();
 
             Assert.Empty(dto.Activity);
-            Assert.Equal(status.ToDto(), dto.Progress);
-            Assert.Equal(4, dto.PreScanCounts["dev-2"]);
-            Assert.Equal("boom", dto.LastError);
-            Assert.Equal("Rate limited", dto.RemainingReason);
+            Assert.Equal(new DownloadStatusDto(false, 0, 0, 0L, null, 0, 0, 0L, 0, 0.0), dto.Progress);
+            Assert.Equal(0, dto.CurrentDeviceIndex);
+            Assert.Equal(0, dto.CurrentDeviceTotal);
+            Assert.Null(dto.CurrentDeviceName);
+            Assert.Empty(dto.PreScanCounts);
+            Assert.Null(dto.LastError);
+            Assert.Null(dto.RemainingReason);
+        }
+
+        [Fact]
+        public void DownloadProgressDtoMapping_ToDownloadProgressDto_WithStore_CarriesProgressAndDrainsActivity()
+        {
+            var log = new Mock<ISyncActivityLog>();
+            _ = log.Setup(l => l.Drain()).Returns(["sync started"]);
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 2, 4, "Garage"));
+
+            DownloadProgressDto dto = log.Object.ToDownloadProgressDto(store);
+
+            Assert.Equal(new DownloadStatusDto(true, 3, 5, 2048L, "a.mp4", 0, 0, 0L, 2, 0.0), dto.Progress);
+            Assert.Equal(2, dto.CurrentDeviceIndex);
+            Assert.Equal(4, dto.CurrentDeviceTotal);
+            Assert.Equal("Garage", dto.CurrentDeviceName);
+            Assert.Equal(new[] { "sync started" }, dto.Activity);
+            log.Verify(l => l.Drain(), Times.Once);
+        }
+
+        [Fact]
+        public void DownloadProgressDtoMapping_IdleSnapshot_WithStore_CarriesProgressAndLeavesActivityInLog()
+        {
+            var log = new SyncActivityLog();
+            log.Append("pending line");
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 2, 4, "Garage"));
+
+            DownloadProgressDto dto = DownloadProgressDtoMapping.IdleSnapshot(store);
+
+            Assert.Equal(new DownloadStatusDto(true, 3, 5, 2048L, "a.mp4", 0, 0, 0L, 2, 0.0), dto.Progress);
+            Assert.Equal("Garage", dto.CurrentDeviceName);
+            Assert.Empty(dto.Activity);
+            Assert.Equal(new[] { "pending line" }, log.Drain());
+        }
+
+        [Fact]
+        public void DownloadProgressDtoMapping_IdleSnapshot_NoStore_StaysNeutral()
+        {
+            DownloadProgressDto dto = DownloadProgressDtoMapping.IdleSnapshot(null);
+
+            Assert.Equal(new DownloadStatusDto(false, 0, 0, 0L, null, 0, 0, 0L, 0, 0.0), dto.Progress);
+            Assert.Null(dto.CurrentDeviceName);
         }
     }
 }

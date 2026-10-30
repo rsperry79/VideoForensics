@@ -466,7 +466,7 @@ public class MediaViewer_Video_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
-        _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
         _ = _module.SetupVoid("setPlaybackRate", _ => true);
         _ = _module.SetupVoid("stepFrame", _ => true);
         _ = _module.SetupVoid("togglePlay", _ => true);
@@ -748,7 +748,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
-        _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
         _ = _module.SetupVoid("setPlaybackRate", _ => true);
         _ = _module.SetupVoid("stepFrame", _ => true);
         _ = _module.SetupVoid("togglePlay", _ => true);
@@ -1030,7 +1030,7 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
-        _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
         _ = _module.SetupVoid("focusElement", _ => true);
     }
 

@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Cases;
@@ -12,6 +13,7 @@ public class CaseState
 {
     private readonly ICaseRepository _caseRepository;
     private readonly ScopeState _scopeState;
+    private readonly PendingEvidenceTags? _pendingTags;
 
     /// <summary>
     /// The currently-active case, or null if no case is selected.
@@ -28,10 +30,15 @@ public class CaseState
     /// </summary>
     public event Action? OnChange;
 
-    public CaseState(ICaseRepository caseRepository, ScopeState scopeState)
+    /// <summary>
+    /// Creates the state. When <paramref name="pendingTags"/> is supplied, activating a case attaches the tags
+    /// that were kept while no case was open.
+    /// </summary>
+    public CaseState(ICaseRepository caseRepository, ScopeState scopeState, PendingEvidenceTags? pendingTags = null)
     {
         _caseRepository = caseRepository;
         _scopeState = scopeState;
+        _pendingTags = pendingTags;
     }
 
     /// <summary>
@@ -62,7 +69,30 @@ public class CaseState
         });
 
         OnChange?.Invoke();
+        await AttachPendingTagsAsync(ct);
         return true;
+    }
+
+    /// <summary>
+    /// Attaches the pending tags to the case that was just activated. Never fails activation: a tag that cannot
+    /// attach simply stays pending.
+    /// </summary>
+    private async Task AttachPendingTagsAsync(CancellationToken ct)
+    {
+        if (_pendingTags is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _ = await _pendingTags.AttachToActiveCaseAsync(this, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Activation has already succeeded and the tags stay pending, so there is nothing to undo here.
+            _ = ex;
+        }
     }
 
     /// <summary>
@@ -159,5 +189,20 @@ public class CaseState
             reason,
             actor,
             ct);
+    }
+
+    /// <summary>
+    /// Returns true when the active case already holds a live pin for the item. Callers check this before pinning,
+    /// because the repository reports an existing pin only as a generic InvalidOperationException.
+    /// </summary>
+    public async Task<bool> HasActivePinAsync(CaseItemKind kind, Guid targetId, CancellationToken ct)
+    {
+        if (ActiveCase is null)
+        {
+            return false;
+        }
+
+        IReadOnlyList<CaseItem> items = await _caseRepository.ListItemsAsync(ActiveCase.Id, false, ct);
+        return items.Any(i => i.Kind == kind && (kind == CaseItemKind.Event ? i.EventId : i.MediaItemId) == targetId);
     }
 }

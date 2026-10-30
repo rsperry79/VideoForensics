@@ -156,10 +156,43 @@ namespace VideoForensics.Client.Hosting.Remote
             throw new NotSupportedException("Not supported on a remote (MAUI client) authentication service - use the server's API directly, or this method isn't wired up yet.");
         }
 
+        // The last status the server returned. The synchronous methods read this cache, because they cannot wait on HTTP
+        // without blocking the UI thread. Call GetAuthStatusDetailsAsync first to refresh it.
+        private ProviderAuthStatus? _lastStatus;
+        private bool _statusFetched;
+
         /// <inheritdoc />
+        public async Task<ProviderAuthStatus?> GetAuthStatusDetailsAsync(CancellationToken cancellationToken = default)
+        {
+            string route = "api/v1/auth/status";
+            if (!string.IsNullOrEmpty(_providerName))
+            {
+                route += "?provider=" + Uri.EscapeDataString(_providerName);
+            }
+
+            ProviderAuthStatusDto? dto = await _httpClient.GetFromJsonAsync<ProviderAuthStatusDto>(route, cancellationToken);
+            _lastStatus = dto?.ToDomain();
+            _statusFetched = true;
+            return _lastStatus;
+        }
+
+        /// <inheritdoc />
+        /// <remarks>Returns the last status fetched by <see cref="GetAuthStatusDetailsAsync"/>, or null before any fetch.</remarks>
+        public ProviderAuthStatus? GetAuthStatusDetails()
+        {
+            return _lastStatus;
+        }
+
+        /// <inheritdoc />
+        /// <remarks>Derived from the last status fetched by <see cref="GetAuthStatusDetailsAsync"/>.</remarks>
         public string GetAuthStatus()
         {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) authentication service - use the server's API directly, or this method isn't wired up yet.");
+            if (!_statusFetched)
+            {
+                return "Not checked yet";
+            }
+
+            return _lastStatus?.IsAuthenticated == true ? "Authenticated" : "Not authenticated";
         }
 
         /// <summary>

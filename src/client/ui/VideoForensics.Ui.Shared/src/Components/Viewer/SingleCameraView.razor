@@ -1,0 +1,123 @@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<SharedResources> L
+@using Microsoft.AspNetCore.Components.Web
+@inject IJSRuntime JS
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+
+@if (_hasMain)
+{
+    <ReviewPlayer @ref="_mainPlayer" Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" />
+}
+
+@if (_previewIndexes.Count > 0)
+{
+    <div class="single-camera-others-caption">@L["SingleCameraOthers"]</div>
+    <div class="single-camera-strip">
+        @foreach (int index in _previewIndexes)
+        {
+            CameraTile camera = Cameras[index];
+            string? previewUrl = PreviewUrlOf(camera);
+            <button type="button" class="single-camera-preview" data-testid="single-camera-preview" data-camera-index="@index" title="@camera.Label" @onclick="() => OnSelect.InvokeAsync(index)">
+                @if (previewUrl is null)
+                {
+                    <div class="single-camera-placeholder" data-testid="single-camera-placeholder">@L["ReviewPlayerGap"]</div>
+                }
+                else
+                {
+                    <video src="@previewUrl" muted loop autoplay playsinline preload="metadata" @ref="_previewVideos[index]"></video>
+                }
+                <span class="single-camera-caption">@camera.Label</span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    // The main player, read by the timeline tab's Grab still button for the playback position.
+    private ReviewPlayer? _mainPlayer;
+
+    /// <summary>
+    /// Reads the main player's playback position in milliseconds. Null when no main player is rendered (no camera is
+    /// selected) or when the player has no video at the cursor.
+    /// </summary>
+    public Task<long?> GetCurrentTimeMsAsync()
+    {
+        return _mainPlayer is null ? Task.FromResult<long?>(null) : _mainPlayer.GetCurrentTimeMsAsync();
+    }
+
+    /// <summary>Every camera. The entry at <see cref="SelectedIndex"/> plays large; the others appear as preview tiles.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<CameraTile> Cameras { get; set; } = [];
+
+    /// <summary>Index into <see cref="Cameras"/> of the camera shown large.</summary>
+    [Parameter] public int SelectedIndex { get; set; }
+
+    /// <summary>Shared playback time (UTC). The main player and each preview follow it.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>Raised with the index (into <see cref="Cameras"/>) of a preview tile the user clicked.</summary>
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    private bool _hasMain => SelectedIndex >= 0 && SelectedIndex < Cameras.Count;
+
+    // Video element of each preview tile, keyed by camera index, so the cursor offset can be applied to it.
+    private readonly Dictionary<int, ElementReference> _previewVideos = new();
+
+    // The cursor and selection at the last seek. Previews seek only when one of them changes, not on every render.
+    private DateTime? _seekedCursor;
+    private int? _seekedSelectedIndex;
+
+    // Every camera except the one shown large, in list order. An out-of-range selection means no selection, so no tiles.
+    private List<int> _previewIndexes => _hasMain
+        ? Enumerable.Range(0, Cameras.Count).Where(i => i != SelectedIndex).ToList()
+        : new List<int>();
+
+    /// <summary>
+    /// Returns the preview URL for the clip that covers the cursor. Null when there is no cursor, no clip covers it, or the
+    /// camera has no preview source, so the tile shows a placeholder instead of a video.
+    /// </summary>
+    private string? PreviewUrlOf(CameraTile camera)
+    {
+        if (Cursor is not DateTime time)
+        {
+            return null;
+        }
+
+        ClipSelection? selection = ReviewTimeline.ClipAt(camera.Clips, time);
+        return selection is null ? null : camera.PreviewUrlFor?.Invoke(selection.ClipId);
+    }
+
+    /// <summary>
+    /// Seeks each rendered preview to the offset of the clip covering the cursor. Previews are 1 fps copies of their clips,
+    /// so the same offset gives the same moment as the main camera. Skips the work when neither cursor nor selection moved.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Cursor == _seekedCursor && SelectedIndex == _seekedSelectedIndex)
+        {
+            return;
+        }
+
+        _seekedCursor = Cursor;
+        _seekedSelectedIndex = SelectedIndex;
+
+        if (Cursor is not DateTime time)
+        {
+            return;
+        }
+
+        foreach (int index in _previewIndexes)
+        {
+            CameraTile camera = Cameras[index];
+            ClipSelection? selection = ReviewTimeline.ClipAt(camera.Clips, time);
+
+            // A tile with no clip or no preview URL renders a placeholder, so there is no video element to seek.
+            if (selection is null || PreviewUrlOf(camera) is null || !_previewVideos.TryGetValue(index, out ElementReference video))
+            {
+                continue;
+            }
+
+            await JS.InvokeVoidAsync("vfSetVideoTime", video, selection.OffsetSeconds);
+        }
+    }
+}

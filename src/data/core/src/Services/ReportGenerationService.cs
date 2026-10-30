@@ -298,18 +298,23 @@ namespace VideoForensics.Data.Core.Services
                 report.AuditTrail = filteredActions;
 
                 // The hash chain is one chain for the whole log, so the verdict is global whatever device is asked for.
-                bool chainIsValid = await _actionLogRepository.VerifyChainIntegrityAsync(ct);
-                report.ChainIntegrityVerified = chainIsValid;
-                report.ChainVerificationStatus = chainIsValid ? "Valid hash chain" : "Chain integrity check failed";
+                ChainIntegrityResult chain = await _actionLogRepository.VerifyChainIntegrityAsync(ct);
+                report.ChainIntegrityVerified = chain.IsValid;
+                report.ChainVerificationStatus = chain.IsValid ? "Valid hash chain" : "Chain integrity check failed";
+                report.ChainEntriesChecked = chain.EntriesChecked;
+                report.ChainBreak = chain.Break;
+                report.ChainFailedEntryId = chain.FailedEntryId;
+                report.ChainFailedAtUtc = chain.FailedEntryTimestampUtc;
 
                 _logger.LogDebug(
-                    "Built chain of custody report: {ActionCount} actions, chain valid={ChainValid}",
+                    "Built chain of custody report: {ActionCount} actions, chain valid={ChainValid}, break={ChainBreak}",
                     filteredActions.Count,
-                    chainIsValid);
+                    chain.IsValid,
+                    chain.Break);
 
-                if (!chainIsValid)
+                if (!chain.IsValid)
                 {
-                    await DispatchChainIntegrityAlertAsync(ct);
+                    await DispatchChainIntegrityAlertAsync(chain, ct);
                 }
             }
             catch (Exception ex)
@@ -333,7 +338,7 @@ namespace VideoForensics.Data.Core.Services
         /// Raises an Alert-severity notice so a broken audit chain shows in the notices bell.
         /// Failures are isolated: a notification problem must never suppress the report itself.
         /// </summary>
-        private async Task DispatchChainIntegrityAlertAsync(CancellationToken ct)
+        private async Task DispatchChainIntegrityAlertAsync(ChainIntegrityResult chain, CancellationToken ct)
         {
             if (_notificationDispatcher == null)
             {
@@ -360,9 +365,10 @@ namespace VideoForensics.Data.Core.Services
                         OperatorId: null,
                         PairedDeviceId: null,
                         SourceIp: null,
-                        Details: "Chain of custody integrity check failed: the audit trail hash chain does not verify.",
+                        Details: $"Chain of custody integrity check failed ({chain.Break}) at entry {chain.FailedEntryId:D} after {chain.EntriesChecked} verified entries.",
                         Audience: NotificationAudience.AdminsOnly,
-                        Severity: NoticeSeverity.Alert),
+                        Severity: NoticeSeverity.Alert,
+                        ActionPath: "/analyze/chain-of-custody"),
                     ct);
             }
             catch (Exception ex)

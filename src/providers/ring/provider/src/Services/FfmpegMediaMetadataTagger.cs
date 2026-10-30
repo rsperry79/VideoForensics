@@ -1,3 +1,4 @@
+using FFMpegCore;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
@@ -16,6 +17,7 @@ namespace VideoForensics.Providers.Ring.Services
     public class FfmpegMediaMetadataTagger : IMediaMetadataTagger
     {
         private const string CommentPrefix = "vf-event-id:";
+        private static readonly TimeSpan TagTimeout = TimeSpan.FromHours(1);
         private readonly string _ffmpegPath;
         private readonly string _ffprobePath;
         private readonly ILogger _logger;
@@ -25,6 +27,7 @@ namespace VideoForensics.Providers.Ring.Services
             _logger = logger;
             _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg", binDirectory);
             _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe", binDirectory);
+            FfmpegCapture.UseBinaryFolderOf(_ffmpegPath);
         }
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
@@ -37,25 +40,18 @@ namespace VideoForensics.Providers.Ring.Services
             string tmpPath = BuildTempPath(mediaFilePath);
             try
             {
-                ProcessStartInfo psi = BuildTaggingProcessInfo(mediaFilePath, eventId, tmpPath);
+                // Copy every stream and metadata entry, adding the comment. The copy goes to a temp file that replaces the original.
+                FFMpegArgumentProcessor processor = FFMpegArguments
+                    .FromFileInput(mediaFilePath, true)
+                    .OutputToFile(tmpPath, true, o => o.WithCustomArgument($"-map_metadata 0 -metadata comment={CommentPrefix}{eventId} -codec copy"));
+                // A failed run or a missing binary throws here and is logged as an error by the catch below.
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeoutCts.CancelAfter(TagTimeout);
+                _ = await processor.CancellableThrough(timeoutCts.Token).ProcessAsynchronously(throwOnError: true);
 
-                using var process = Process.Start(psi);
-                if (process == null)
+                if (!File.Exists(tmpPath))
                 {
-                    _logger.LogWarning("Failed to start ffmpeg process for tagging {Path}", mediaFilePath);
-                    return false;
-                }
-
-                await process.WaitForExitAsync(ct);
-
-                if (process.ExitCode != 0 || !File.Exists(tmpPath))
-                {
-                    _logger.LogWarning("ffmpeg tagging failed for {Path}, exit code {Code}", mediaFilePath, process.ExitCode);
-                    if (File.Exists(tmpPath))
-                    {
-                        File.Delete(tmpPath);
-                    }
-
+                    _logger.LogWarning("ffmpeg tagging produced no output for {Path}", mediaFilePath);
                     return false;
                 }
 
@@ -77,6 +73,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+
         private static bool IsJpeg(string mediaFilePath)
         {
             string ext = Path.GetExtension(mediaFilePath);
@@ -91,31 +88,6 @@ namespace VideoForensics.Providers.Ring.Services
         {
             string ext = Path.GetExtension(mediaFilePath);
             return mediaFilePath[..^ext.Length] + ".tmp" + ext;
-        }
-
-        private ProcessStartInfo BuildTaggingProcessInfo(string mediaFilePath, Guid eventId, string tmpPath)
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = _ffmpegPath,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            };
-
-            // Build arguments via ArgumentList for proper escaping and ordering
-            psi.ArgumentList.Add("-y");
-            psi.ArgumentList.Add("-i");
-            psi.ArgumentList.Add(mediaFilePath);
-            psi.ArgumentList.Add("-map_metadata");
-            psi.ArgumentList.Add("0");
-            psi.ArgumentList.Add("-metadata");
-            psi.ArgumentList.Add($"comment={CommentPrefix}{eventId}");
-            psi.ArgumentList.Add("-codec");
-            psi.ArgumentList.Add("copy");
-            psi.ArgumentList.Add(tmpPath);
-
-            return psi;
         }
 
         /// <summary>
@@ -162,21 +134,20 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                ProcessStartInfo psi = BuildReadingProcessInfo(mediaFilePath);
-
-                using var process = Process.Start(psi);
-                if (process == null)
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), ct);
+                if (analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment))
                 {
                     return null;
                 }
 
-                string output = (await process.StandardOutput.ReadToEndAsync(ct)).Trim();
-                await process.WaitForExitAsync(ct);
-
-                return output.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
-                    Guid.TryParse(output[CommentPrefix.Length..], out Guid id)
+                return comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
+                    Guid.TryParse(comment[CommentPrefix.Length..], out Guid id)
                     ? id
                     : null;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -184,6 +155,14 @@ namespace VideoForensics.Providers.Ring.Services
                 return null;
             }
         }
+
+        /// <summary>FFMpegCore takes a folder for its binaries. A bare name (found on PATH) leaves the default options in place.</summary>
+        private FFOptions? BuildFfprobeOptions()
+        {
+            string? folder = Path.GetDirectoryName(_ffprobePath);
+            return string.IsNullOrEmpty(folder) ? null : new FFOptions { BinaryFolder = folder };
+        }
+
 
         private async Task<Guid?> ReadJpegEventIdAsync(string mediaFilePath, CancellationToken ct)
         {
@@ -205,25 +184,5 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        private ProcessStartInfo BuildReadingProcessInfo(string mediaFilePath)
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = _ffprobePath,
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            };
-
-            // Build arguments via ArgumentList for proper escaping and ordering
-            psi.ArgumentList.Add("-v");
-            psi.ArgumentList.Add("quiet");
-            psi.ArgumentList.Add("-show_entries");
-            psi.ArgumentList.Add("format_tags=comment");
-            psi.ArgumentList.Add("-of");
-            psi.ArgumentList.Add("default=noprint_wrappers=1:nokey=1");
-            psi.ArgumentList.Add(mediaFilePath);
-
-            return psi;
-        }
     }
 }

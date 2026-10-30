@@ -30,8 +30,8 @@ else if (!_isAuthenticated)
 else
 {
     <div class="d-flex flex-row gap-2 mb-4">
-        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='(_ => SelectTabAsync("integrity"))' CssClass='@(_activeTab == "integrity" ? "e-primary" : "e-flat")' />
-        <SfButton Content="@L["ReconcileTab"]" OnClick='(_ => SelectTabAsync("reconcile"))' CssClass='@(_activeTab == "reconcile" ? "e-primary" : "e-flat")' />
+        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='(_ => SelectTabAsync("integrity"))' CssClass="e-primary" />
+        <SfButton Content="@L["ReconcileTab"]" OnClick='(_ => SelectTabAsync("reconcile"))' CssClass="e-primary" />
     </div>
 
     @if (_activeTab == "integrity")
@@ -90,7 +90,7 @@ else
             }
         }
     }
-    else
+    else if (_activeTab == "reconcile")
     {
         <PageRightPanelContent>
             <div class="right-panel-section">
@@ -153,7 +153,8 @@ else
     private string _providerDeviceId = string.Empty;
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
-    private string _activeTab = "integrity";
+    // Empty until a button opens a panel, so the page starts as two buttons and nothing else.
+    private string _activeTab = string.Empty;
 
     // Latest job snapshot per kind; a kind is absent until it has been started or reattached.
     private readonly Dictionary<EvidenceValidationJobKind, EvidenceValidationJob?> _jobs = new();
@@ -214,8 +215,6 @@ else
     {
         try
         {
-            _activeTab = "integrity";
-
             await SessionState.EnsureLoadedAsync();
             _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
@@ -227,9 +226,8 @@ else
                 _devices = devices.ToList();
                 _visibleDevices = _devices;
 
-                // Reattach to whatever job is already running or finished for the active tab. Nothing is
-                // auto-started: verifying hashes every media file's bytes, so it stays an explicit action.
-                await ReattachAsync(ActiveKind);
+                // Nothing is auto-started: verifying hashes every media file's bytes, so it stays an explicit action.
+                // A panel reattaches to its job when it opens, in SelectTabAsync.
             }
         }
         finally
@@ -240,14 +238,15 @@ else
 
     private async Task SelectTabAsync(string tab)
     {
-        _activeTab = tab;
+        // Pressing the open button again closes its panel, and the panel's filters with it.
+        _activeTab = _activeTab == tab ? string.Empty : tab;
 
         // Each tab builds its own filter controls, so they start at "all" on every switch. The page's device state
         // resets with them, and so does the integrity selection, which would otherwise outlive the filter it was made under.
         _visibleDevices = _devices;
         _isFiltered = false;
         _integrityDeviceIds = Array.Empty<string>();
-        if (_isAuthenticated)
+        if (_isAuthenticated && _activeTab.Length > 0)
         {
             await ReattachAsync(ActiveKind);
         }

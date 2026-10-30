@@ -40,6 +40,19 @@ public class DeviceUptimeTests
     }
 
     [Fact]
+    public void NoConnectionFlag_WhenProviderRequiresIt_IsOfflineEvenWhenRecent()
+    {
+        // Ring reports connection only through health.connected. A recent capture without that flag is not proof of connection.
+        Assert.Equal(DeviceUptimeStatus.Offline, DeviceUptime.Evaluate(null, Now.AddSeconds(-10), Now.AddSeconds(-10), Now, 300, requiresConnectionFlag: true));
+    }
+
+    [Fact]
+    public void NoConnectionFlag_WhenProviderDoesNotRequireIt_StillUsesRecency()
+    {
+        Assert.Equal(DeviceUptimeStatus.Online, DeviceUptime.Evaluate(null, null, Now.AddSeconds(-10), Now, 300));
+    }
+
+    [Fact]
     public void HeartbeatIsNewerThanCapture_HeartbeatCountsAsLastSeen()
     {
         // The capture is old, but a heartbeat a minute ago means the device is online.
@@ -53,7 +66,22 @@ public class DeviceUptimeTests
     }
 
     [Fact]
-    public void LastSeen_PicksTheNewerOfHeartbeatAndCapture()
+    public void StaleHeartbeat_WithFreshCapture_IsOffline()
+    {
+        // Ring re-sends its last known state on every sync, so a fresh capture of a year-old heartbeat is not evidence the device was seen.
+        Assert.Equal(DeviceUptimeStatus.Offline, DeviceUptime.Evaluate(true, Now.AddDays(-365), Now, Now, 300));
+    }
+
+    [Fact]
+    public void LastSeen_StaleHeartbeat_IsNotReplacedByCapture()
+    {
+        DateTime heartbeat = Now.AddDays(-365);
+
+        Assert.Equal(heartbeat, DeviceUptime.LastSeenUtc(heartbeat, Now));
+    }
+
+    [Fact]
+    public void LastSeen_UsesHeartbeatWhenPresent_AndCaptureOtherwise()
     {
         DateTime heartbeat = Now.AddSeconds(-10);
         DateTime captured = Now.AddSeconds(-30);

@@ -2,8 +2,10 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Dialogs
+@using VideoForensics.Client.Common.Contracts
 @using Microsoft.AspNetCore.Components.Forms
 @inject IBackupExportService BackupExportService
+@inject IBackupStagingLocator StagingLocator
 @inject IBackupImportService BackupImportService
 @inject IFileDialogService FileDialogService
 @inject IStringLocalizer<ImportExport> L
@@ -118,11 +120,6 @@
     private string? _selectedBackupFileName;
     private InputFile? _backupFileInput;
 
-    private readonly string _stagingDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-        "VideoForensics",
-        "Backups");
-
     private async Task ExportAsync()
     {
         _isExporting = true;
@@ -134,7 +131,7 @@
             _prepareResult = await BackupExportService.PrepareForExportAsync(CancellationToken.None);
 
             // Then export
-            _exportResult = await BackupExportService.ExportBackupAsync(_stagingDirectory, CancellationToken.None);
+            _exportResult = await BackupExportService.ExportBackupAsync(StagingLocator.GetStagingDirectory(), CancellationToken.None);
 
             if (_exportResult.Success && _exportResult.ArchivePath is not null)
             {

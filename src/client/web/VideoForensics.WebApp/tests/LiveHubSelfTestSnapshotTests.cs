@@ -10,7 +10,6 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -24,17 +23,11 @@ namespace VideoForensics.Client.WebApp.Tests
             string? roleClaim,
             CancellationToken connectionAborted = default)
         {
-            var download = new Mock<IVideoDownloadService>();
-            _ = download.Setup(s => s.GetProgress()).Returns(new DownloadStatus(false, 0, 0, 0L, string.Empty, 0, 0, 0L, 0, 0.0));
-            _ = download.Setup(s => s.GetCurrentDevice()).Returns((0, 0, string.Empty));
-            _ = download.Setup(s => s.DrainActivityLog()).Returns([]);
-
             var selfTest = new Mock<IRingSelfTestService>();
             _ = selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Completed, null, null, null));
 
             IServiceProvider services = new ServiceCollection()
-                .AddSingleton(download.Object)
                 .AddSingleton(selfTest.Object)
                 .BuildServiceProvider();
             IServiceScopeFactory scopeFactory = services.GetRequiredService<IServiceScopeFactory>();
@@ -52,7 +45,7 @@ namespace VideoForensics.Client.WebApp.Tests
             _ = context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
 
             var groups = new Mock<IGroupManager>();
-            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
+            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance, new VideoForensics.Client.Hosting.Services.SyncProgressStore())
             {
                 Clients = clients.Object,
                 Groups = groups.Object,

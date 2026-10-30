@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using FFMpegCore;
 
 namespace VideoForensics.Core.Providers.Core
 {
@@ -9,7 +9,10 @@ namespace VideoForensics.Core.Providers.Core
         Task<MediaBitrateAnalysis?> AnalyzeAsync(string mediaFilePath, long fileSizeBytes, CancellationToken ct);
     }
 
-    /// <summary>Runs ffprobe on a downloaded file and returns its bitrate analysis.</summary>
+    /// <summary>
+    /// Reads a downloaded file's duration and video bitrate through FFMpegCore's ffprobe wrapper. The ffprobe path is resolved
+    /// like the other ffmpeg tools, and its folder is handed to FFMpegCore so the same binary runs.
+    /// </summary>
     public sealed class FfprobeMediaBitrateAnalyzer : IMediaBitrateAnalyzer
     {
         private readonly string _ffprobePath;
@@ -23,22 +26,27 @@ namespace VideoForensics.Core.Providers.Core
         /// <inheritdoc />
         public async Task<MediaBitrateAnalysis?> AnalyzeAsync(string mediaFilePath, long fileSizeBytes, CancellationToken ct)
         {
-            var psi = new ProcessStartInfo
+            try
             {
-                FileName = _ffprobePath,
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            };
-            psi.ArgumentList.Add("-v");
-            psi.ArgumentList.Add("quiet");
-            psi.ArgumentList.Add("-print_format");
-            psi.ArgumentList.Add("json");
-            psi.ArgumentList.Add("-show_format");
-            psi.ArgumentList.Add("-show_streams");
-            psi.ArgumentList.Add(mediaFilePath);
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildOptions(), ct);
+                return MediaBitrateAnalysis.FromProbe(analysis.Duration, analysis.PrimaryVideoStream?.BitRate, fileSizeBytes);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // A file ffprobe cannot read is reported as not analyzable, the same as a non-zero exit before.
+                return null;
+            }
+        }
 
-            ProcessResult result = await ProcessRunner.RunAsync(psi, ProcessRunner.DefaultAnalysisTimeout, ct);
-            return result.ExitCode == 0 ? MediaBitrateAnalysis.FromFfprobeJson(result.StandardOutput, fileSizeBytes) : null;
+        /// <summary>FFMpegCore takes a folder, not a file. A bare name (found on PATH) leaves the default options in place.</summary>
+        private FFOptions? BuildOptions()
+        {
+            string? folder = Path.GetDirectoryName(_ffprobePath);
+            return string.IsNullOrEmpty(folder) ? null : new FFOptions { BinaryFolder = folder };
         }
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
@@ -17,6 +18,7 @@ public class CaseDetailsExportEntryTests : CasesPagesTestBase
     public CaseDetailsExportEntryTests()
     {
         RegisterGridStub<CaseDetails.CaseItemRow>();
+        _ = Services.AddScoped<RightPanelContentService>();
     }
 
     [Fact]

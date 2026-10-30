@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Signal history</value>
+  </data>
+  <data name="PageIntro" xml:space="preserve">
+    <value>Wi-Fi signal (RSSI) for each camera. Ring does not report SNR. Closer to zero is stronger; readings weaker than -75 dBm are weak. Choose cameras and dates in the right-hand panel.</value>
+  </data>
+  <data name="ScopeHint" xml:space="preserve">
+    <value>Showing {0} camera(s), {1} to {2}.</value>
+  </data>
+  <data name="NoDevicesInScope" xml:space="preserve">
+    <value>No cameras match the current filters. Adjust the devices in the right-hand panel.</value>
+  </data>
+  <data name="DeviceSettings" xml:space="preserve">
+    <value>Device settings</value>
+  </data>
+  <data name="NoReadings" xml:space="preserve">
+    <value>No signal readings have been recorded for this camera yet.</value>
+  </data>
+  <data name="NoReadingsInRange" xml:space="preserve">
+    <value>No readings in the selected period.</value>
+  </data>
+  <data name="AxisDbm" xml:space="preserve">
+    <value>dBm</value>
+  </data>
+  <data name="AllTimeAverage" xml:space="preserve">
+    <value>All-time average</value>
+  </data>
+  <data name="AllTimeStrongest" xml:space="preserve">
+    <value>All-time strongest</value>
+  </data>
+  <data name="AllTimeWeakest" xml:space="preserve">
+    <value>All-time weakest</value>
+  </data>
+  <data name="SelectionHint" xml:space="preserve">
+    <value>Drag across the graph to select a period, then right-click it to drill down or create a case.</value>
+  </data>
+  <data name="NoSelection" xml:space="preserve">
+    <value>Drag across the graph to select a period first.</value>
+  </data>
+  <data name="DrillDown" xml:space="preserve">
+    <value>Drill down to this period</value>
+  </data>
+  <data name="CreateCase" xml:space="preserve">
+    <value>Create case from this period</value>
+  </data>
+  <data name="CloseMenu" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="LegendNoSignal" xml:space="preserve">
+    <value>No signal (gray)</value>
+  </data>
+  <data name="LegendLowOrMissed" xml:space="preserve">
+    <value>Low signal or two or more missed checks (light red)</value>
+  </data>
+  <data name="PeriodNoSignal" xml:space="preserve">
+    <value>No signal</value>
+  </data>
+  <data name="PeriodWeak" xml:space="preserve">
+    <value>Low signal</value>
+  </data>
+  <data name="PeriodMissed" xml:space="preserve">
+    <value>Missed checks</value>
+  </data>
+  <data name="AllCamerasLabel" xml:space="preserve">
+    <value>All cameras</value>
+  </data>
+  <data name="NoCamerasLabel" xml:space="preserve">
+    <value>No cameras</value>
+  </data>
+  <data name="CameraCountLabel" xml:space="preserve">
+    <value>{0} cameras</value>
+  </data>
+  <data name="CameraFallbackLabel" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="StatCount" xml:space="preserve">
+    <value>Readings</value>
+  </data>
+  <data name="StatLatest" xml:space="preserve">
+    <value>Latest</value>
+  </data>
+  <data name="StatMin" xml:space="preserve">
+    <value>Weakest</value>
+  </data>
+  <data name="StatMax" xml:space="preserve">
+    <value>Strongest</value>
+  </data>
+  <data name="StatDelta" xml:space="preserve">
+    <value>All-time delta (strongest - weakest)</value>
+  </data>
+  <data name="BucketTitle" xml:space="preserve">
+    <value>Over time (UTC)</value>
+  </data>
+  <data name="BucketHour" xml:space="preserve">
+    <value>Hour</value>
+  </data>
+  <data name="BucketDay" xml:space="preserve">
+    <value>Day</value>
+  </data>
+  <data name="BucketWeek" xml:space="preserve">
+    <value>Week</value>
+  </data>
+  <data name="BucketWeekOf" xml:space="preserve">
+    <value>Week of</value>
+  </data>
+  <data name="BucketColStart" xml:space="preserve">
+    <value>Period</value>
+  </data>
+  <data name="BucketColReadings" xml:space="preserve">
+    <value>Readings</value>
+  </data>
+  <data name="BucketColStdDev" xml:space="preserve">
+    <value>Std dev</value>
+  </data>
+  <data name="CalendarTitle" xml:space="preserve">
+    <value>Week by hour (UTC, mean RSSI in dBm)</value>
+  </data>
+  <data name="CalendarDayStdDev" xml:space="preserve">
+    <value>Day std dev</value>
+  </data>
+  <data name="CalendarHourStdDev" xml:space="preserve">
+    <value>Hour std dev</value>
+  </data>
+  <data name="AlertTitle" xml:space="preserve">
+    <value>Signal alert: readings more than 2 std devs from the camera's mean</value>
+  </data>
+  <data name="AlertLine" xml:space="preserve">
+    <value>{0}: RSSI {1} dBm at {2} UTC</value>
+  </data>
+  <data name="LegendOneSigma" xml:space="preserve">
+    <value>Over 1 std dev (amber)</value>
+  </data>
+  <data name="LegendTwoSigma" xml:space="preserve">
+    <value>Over 2 std devs (alert)</value>
+  </data>
+  <data name="BucketColDelta" xml:space="preserve">
+    <value>Delta</value>
+  </data>
+  <data name="BucketColNoSignal" xml:space="preserve">
+    <value>No signal</value>
+  </data>
+  <data name="StatPeriodDelta" xml:space="preserve">
+    <value>Delta in selected period</value>
+  </data>
+  <data name="StatAverage" xml:space="preserve">
+    <value>Average</value>
+  </data>
+  <data name="StatPercentWeak" xml:space="preserve">
+    <value>Weak readings</value>
+  </data>
+  <data name="TimelineLabel" xml:space="preserve">
+    <value>Signal over time</value>
+  </data>
+</root>

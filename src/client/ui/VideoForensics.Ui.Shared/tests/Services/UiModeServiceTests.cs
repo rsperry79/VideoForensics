@@ -194,6 +194,7 @@ public class UiModeServiceTests
             OperatorId = operatorId,
             ThemeMode = "Dark",
             CultureName = "en-US",
+            TimeFormat = "TwentyFourHour",
             UiMode = "Standard"
         };
 
@@ -212,14 +213,15 @@ public class UiModeServiceTests
         // Act
         await service.SetModeAsync("Simple");
 
-        // Assert - verify that ThemeMode and CultureName are preserved
+        // Assert - verify that ThemeMode, CultureName and TimeFormat are preserved
         mockRepository.Verify(
             r => r.UpsertAsync(
                 It.Is<OperatorPreferences>(p =>
                     p.OperatorId == operatorId &&
                     p.UiMode == "Simple" &&
                     p.ThemeMode == "Dark" &&
-                    p.CultureName == "en-US"),
+                    p.CultureName == "en-US" &&
+                    p.TimeFormat == "TwentyFourHour"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

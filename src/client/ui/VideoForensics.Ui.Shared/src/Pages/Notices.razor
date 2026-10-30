@@ -7,11 +7,15 @@
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services.Notices
+@using Microsoft.Extensions.DependencyInjection
 @inject DeviceOwnershipService OwnershipService
 @inject INoticeRepository NoticeRepository
 @inject IStringLocalizer<Notices> L
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject PairedSessionState SessionState
+@inject IServiceProvider ServiceProvider
+@implements IDisposable
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -71,6 +75,18 @@ else
                             <span title="@notice.Details">
                                 @(notice.Details?.Length > 100 ? notice.Details.Substring(0, 100) + "..." : notice.Details ?? "")
                             </span>
+                            @if (NoticeActions.ShowsOpenLink(notice.EventType, notice.ActionPath))
+                            {
+                                <a href="@notice.ActionPath">@L["OpenNoticeLink"]</a>
+                            }
+                            @if (NoticeActions.ReviewLink(notice.EventType, notice.ActionPath) is { } reviewLink)
+                            {
+                                <a href="@reviewLink" class="ms-2" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
+                            }
+                            @if (NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath) is { } settingsLink)
+                            {
+                                <a href="@settingsLink" class="ms-2" data-testid="notice-device-settings">@L["NoticeDeviceSettings"]</a>
+                            }
                         }
                     </Template>
                 </GridColumn>
@@ -97,6 +113,18 @@ else
     private List<Notice> _notices = new();
     private List<Notice> _allNotices = new();
     private bool _showDismissed = false;
+    private IDisposable? _noticeSubscription;
+
+    private async Task ReloadOnNewNoticeAsync()
+    {
+        await LoadNoticesAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _noticeSubscription?.Dispose();
+    }
     private bool _isLoading = true;
 
     // Provider/Account filters. A notice without a provider account is global, so it is hidden while either filter is set.
@@ -116,6 +144,9 @@ else
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbHome"].Value, "/"), (L["NoticesTitle"].Value, null) };
+        // Reload when a notice is raised, so the list does not need a page refresh to show it.
+        _noticeSubscription = ServiceProvider.GetService<VideoForensics.Client.Ui.Shared.Contracts.INoticeFeed>()?.NewNotices
+            .Subscribe(notice => { _ = InvokeAsync(ReloadOnNewNoticeAsync); });
         _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Data.Common.Entities.Device>(), CancellationToken.None);
         await LoadNoticesAsync();
     }

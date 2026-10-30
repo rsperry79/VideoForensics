@@ -38,7 +38,8 @@ namespace VideoForensics.Core.Api.Contracts
         int FailedLoginAttemptCount,
         DateTime? LockedOutUntilUtc,
         TwoFactorRequirementOverride TwoFactorRequirementOverride,
-        bool IsPrimarySuperAdmin
+        bool IsPrimarySuperAdmin,
+        bool PasskeyRequired
     );
 
     /// <summary>

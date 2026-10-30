@@ -215,9 +215,10 @@ namespace VideoForensics.Client.WebApp.Api
                 return false;
             }
 
-            string host = context.Request.Host.Host;
-            bool localHost = host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.Equals("127.0.0.1", StringComparison.Ordinal);
-            return localHost && context.Connection.RemoteIpAddress is { } remote && System.Net.IPAddress.IsLoopback(remote);
+            // Local means this machine or the private network, reached by a local name or address. A tunnel request arrives from
+            // loopback too, but with the public host name, so it is not local.
+            return LocalNetwork.IsLocalHostName(context.Request.Host.Host)
+                && context.Connection.RemoteIpAddress is { } remote && LocalNetwork.IsLocalAddress(remote);
         }
 
         private static async Task<IResult> UsernameAssertionCompleteAsync(
@@ -849,12 +850,13 @@ namespace VideoForensics.Client.WebApp.Api
             // Check two-factor authentication requirement
             bool requiresTwoFactor = await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, twoFactorRequirements, ct);
 
-            // Windows Hello disabled on this machine: a local password sign-in may complete without the passkey second factor.
-            if (requiresTwoFactor && !request.PasskeyAvailable && IsDirectLocalRequest(context))
+            // On the local network the operator's passkey setting decides: the password completes the sign-in, or leads to adding a passkey.
+            LocalPasswordOutcome localOutcome = LocalLoginPolicy.Decide(op.PasskeyRequired, IsDirectLocalRequest(context));
+            if (requiresTwoFactor && localOutcome == LocalPasswordOutcome.Complete)
             {
                 requiresTwoFactor = false;
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null, sourceIpString,
-                    "Passkey second factor skipped: local password sign-in with Windows Hello disabled", isUrgent: true, ct);
+                    "Passkey second factor skipped: local password sign-in allowed for this operator", isUrgent: true, ct);
             }
 
             if (requiresTwoFactor)
@@ -863,7 +865,7 @@ namespace VideoForensics.Client.WebApp.Api
                 IReadOnlyList<OperatorCredential> operatorCredentials = await credentials.ListForOperatorAsync(op.Id, ct);
                 bool hasApprovedCredential = operatorCredentials.Any(c => c.IsApproved && !c.RevokedAtUtc.HasValue);
 
-                if (!hasApprovedCredential)
+                if (!hasApprovedCredential || localOutcome == LocalPasswordOutcome.AddPasskey)
                 {
                     // Operator with 2FA required but no approved passkey yet: they cannot complete a second factor,
                     // so issue a LIMITED session that only the passkey setup endpoints accept

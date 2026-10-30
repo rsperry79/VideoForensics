@@ -14,6 +14,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets a device's newest media items by recording time, at most <paramref name="limit"/>.</summary>
         Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct);
 
+        /// <summary>
+        /// Pages non-purged clips from any of the given devices within a UTC range, oldest first. Filtering, sorting, paging and
+        /// counting all run in SQL. <paramref name="take"/> must be 1..500.
+        /// </summary>
+        Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct);
+
         /// <summary>Gets media items by device ID within a date range.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
@@ -40,6 +46,12 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Lists non-purged video items whose <see cref="MediaItem.ThumbnailPath"/> is not yet set.</summary>
         Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct);
+
+        /// <summary>
+        /// Non-purged video items whose <see cref="MediaItem.PreviewPath"/> is null, oldest first by recording time, up to
+        /// <paramref name="limit"/>. Filtering, sorting and paging run in SQL.
+        /// </summary>
+        Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct);
 
         /// <summary>Adds a new media item.</summary>
         Task AddAsync(MediaItem mediaItem, CancellationToken ct);

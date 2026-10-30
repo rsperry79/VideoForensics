@@ -19,6 +19,7 @@
 @inject IStringLocalizer<SharedResources> L
 @inject IServerConnectivityState ConnectivityState
 @inject IJSRuntime JS
+@using VideoForensics.Client.Ui.Shared.Services.Notices
 @inject INoticeRepository NoticeRepository
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject InspectorState InspectorState
@@ -90,7 +91,7 @@
                                     <span class="@GetSeverityBadgeClass(notice.Severity)" style="padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">
                                         @GetSeverityLabel(notice.Severity)
                                     </span>
-                                    <strong style="font-size: 13px;">@notice.EventType</strong>
+                                    <strong style="font-size: 13px;">@NoticeActions.Title(notice.EventType)</strong>
                                 </div>
                                 <div style="font-size: 12px; color: #666; margin-bottom: 4px;" title="@notice.Details">
                                     @(notice.Details?.Length > 80 ? notice.Details.Substring(0, 80) + "..." : notice.Details ?? "")
@@ -98,6 +99,23 @@
                                 <div style="font-size: 11px; color: #999;">
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
+                                @{
+                                    string? settingsLink = NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath);
+                                    string? reviewLink = NoticeActions.ReviewLink(notice.EventType, notice.ActionPath);
+                                }
+                                @if (settingsLink is not null || reviewLink is not null)
+                                {
+                                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                                        @if (reviewLink is not null)
+                                        {
+                                            <a href="@reviewLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
+                                        }
+                                        @if (settingsLink is not null)
+                                        {
+                                            <a href="@settingsLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-secondary" data-testid="notice-device-settings">@L["NoticeDeviceSettings"]</a>
+                                        }
+                                    </div>
+                                }
                             </div>
                             <SfButton Content="@L["Dismiss"]" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
                         </div>
@@ -121,7 +139,7 @@
            resizable pane cannot sit to the right of the flexible content pane in one flat Splitter;
            nesting a second SfSplitter to work around that was also tried and found (by hand) to
            corrupt the outer layout whenever the outer pane collapses/expands. The right panel is
-           therefore a plain, hand-rolled resizable div (see wwwroot/js/panel-resize.js) rather than
+           therefore a plain, hand-rolled resizable div (see wwwroot/scripts/panel-resize.js) rather than
            a Syncfusion component - do not "simplify" this back to a 3-pane or nested Splitter
            without re-testing left-nav collapse AND right-panel drag-resize by hand. *@
         <SfSplitter @ref="_outerSplitter" Height="100%" Width="100%" CssClass="e-splitter-layout" Orientation="Syncfusion.Blazor.Layouts.Orientation.Horizontal">

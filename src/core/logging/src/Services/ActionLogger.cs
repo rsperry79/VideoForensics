@@ -39,7 +39,8 @@ namespace VideoForensics.Core.Logging.Services
             string? details = null,
             CancellationToken ct = default)
         {
-            return LogAsAsync(Environment.UserName, ActorType.Human, action, entityType, entityId, details, ct);
+            // A service account (DRAGONFIRE$, SYSTEM, ...) is not a person, so its work is recorded as System.
+            return LogAsAsync(Environment.UserName, ActorTypes.ForAccount(Environment.UserName), action, entityType, entityId, details, ct);
         }
 
         public async Task<ActionLogEntry> LogAsAsync(

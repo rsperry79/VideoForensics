@@ -1,0 +1,66 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@implements IDisposable
+@inject ReviewTimelineModel TimelineModel
+@inject ReviewPageState State
+@inject IStringLocalizer<ReviewPage> L
+
+<section class="review-timeline-panel" data-testid="review-timeline-panel">
+    <h6 class="review-timeline-panel-title" data-testid="review-timeline-panel-title">@L["TimelinePanelTitle"]</h6>
+
+    <TimelineStrip Orientation="TimelineOrientation.Vertical"
+                   LengthPx="PanelLengthPx"
+                   Clips="TimelineModel.Clips"
+                   WindowStartUtc="Window.Start"
+                   WindowEndUtc="Window.End"
+                   Cursor="State.Cursor"
+                   Label="@L["TimelineNewestAtTop"].Value"
+                   OnSeek="SeekTo" />
+
+    @if (TimelineModel.Clips.Count == 0)
+    {
+        <p class="review-timeline-panel-empty" data-testid="review-timeline-panel-empty">@L["TimelinePanelEmpty"]</p>
+    }
+</section>
+
+@code {
+    /// <summary>
+    /// Fixed strip length in pixels. The panel cannot measure its own height without JavaScript, so the strip is a fixed
+    /// length that reads well in the panel rather than filling it exactly.
+    /// </summary>
+    private const int PanelLengthPx = 600;
+
+    /// <summary>
+    /// The range the strip draws: the range the published clips were loaded for, or the page's range before anything is
+    /// published (a model range is only valid once it has a non-empty span).
+    /// </summary>
+    private (DateTime Start, DateTime End) Window =>
+        TimelineModel.ToUtc > TimelineModel.FromUtc
+            ? (TimelineModel.FromUtc, TimelineModel.ToUtc)
+            : (State.FromUtc, State.ToUtc);
+
+    protected override Task OnInitializedAsync()
+    {
+        TimelineModel.OnChange += Refresh;
+        State.OnChange += Refresh;
+        return Task.CompletedTask;
+    }
+
+    private void Refresh()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void SeekTo(DateTime time)
+    {
+        State.SetCursor(time);
+    }
+
+    public void Dispose()
+    {
+        TimelineModel.OnChange -= Refresh;
+        State.OnChange -= Refresh;
+    }
+}

@@ -37,6 +37,7 @@ namespace VideoForensics.Data.Database.Repositories
                 existing.ThemeMode = preferences.ThemeMode;
                 existing.CultureName = preferences.CultureName;
                 existing.UiMode = preferences.UiMode;
+                existing.TimeFormat = preferences.TimeFormat;
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 // NOTE: UiModeLocked is NEVER changed by UpsertAsync; it is always left as-is
                 _ = db.OperatorPreferences.Update(existing);
@@ -48,6 +49,32 @@ namespace VideoForensics.Data.Database.Repositories
                 // NOTE: New rows are always created with UiModeLocked = false, regardless of incoming value
                 preferences.UiModeLocked = false;
                 _ = await db.OperatorPreferences.AddAsync(preferences, ct);
+            }
+
+            _ = await db.SaveChangesAsync(ct);
+        }
+
+        public async Task SetEncryptionWarningDismissedAsync(Guid operatorId, bool dismissed, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
+            OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
+
+            if (existing != null)
+            {
+                existing.EncryptionWarningDismissed = dismissed;
+                existing.UpdatedAtUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                _ = await db.OperatorPreferences.AddAsync(new OperatorPreferences
+                {
+                    Id = Guid.NewGuid(),
+                    OperatorId = operatorId,
+                    ThemeMode = "System",
+                    UiMode = "Standard",
+                    EncryptionWarningDismissed = dismissed,
+                    UpdatedAtUtc = DateTime.UtcNow
+                }, ct);
             }
 
             _ = await db.SaveChangesAsync(ct);

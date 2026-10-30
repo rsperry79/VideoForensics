@@ -8,6 +8,7 @@
 @using VideoForensics.Client.Ui.Shared.Components.Scope
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @inject PairedSessionState SessionState
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
@@ -74,7 +75,7 @@ else
 
     <div class="mb-3 p-3 bg-light">
         <small class="text-muted">
-            @L["ScopeSummary", ScopeState.Current.DeviceIds.Count, ScopeState.Current.FromUtc.ToShortDateString(), ScopeState.Current.ToUtc.ToShortDateString()]
+            @L["ScopeSummary", ScopeState.Current.DeviceIds.Count, Zone.Format(ScopeState.Current.FromUtc, "d"), Zone.Format(ScopeState.Current.ToUtc, "d")]
         </small>
     </div>
 
@@ -102,6 +103,12 @@ else
 }
 
 @code {
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used so a time is never shown in the wrong zone.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();

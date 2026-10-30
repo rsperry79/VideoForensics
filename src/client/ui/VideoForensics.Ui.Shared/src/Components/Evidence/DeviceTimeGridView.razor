@@ -70,7 +70,7 @@
 
     private string FormatBucketHeader(DateTime bucketStartUtc) => Result.BucketSize <= TimeSpan.FromHours(1)
         ? Zone.Format(bucketStartUtc, "MM-dd HH:mm")
-        : $"{Zone.ToLocal(bucketStartUtc):MM-dd HH:mm} (+{Result.BucketSize.TotalHours:0}h)";
+        : $"{Zone.Format(bucketStartUtc, "MM-dd HH:mm")} (+{Result.BucketSize.TotalHours:0}h)";
 
     /// <summary>
     /// "active" (has events or media), "gap" (empty, but sandwiched between activity - the anomaly

@@ -173,6 +173,28 @@ namespace VideoForensics.Data.Common.Entities
         public bool SnapshotCaptureEnabled { get; set; } = true;
 
         /// <summary>
+        /// Local kill switch for health telemetry (DeviceHealthSyncService). Set with <see cref="SnapshotCaptureEnabled"/>, and
+        /// copied onto a device moved to another location, like that flag.
+        /// </summary>
+        public bool HealthCaptureEnabled { get; set; } = true;
+
+        /// <summary>
+        /// The three-way choice built from the two switches. Snapshots without health is not a choice, so it reads as
+        /// <see cref="DeviceCaptureMode.Off"/>; setting a mode always sets both switches to match.
+        /// </summary>
+        public DeviceCaptureMode CaptureMode
+        {
+            get => !HealthCaptureEnabled ? DeviceCaptureMode.Off
+                : SnapshotCaptureEnabled ? DeviceCaptureMode.Capture
+                : DeviceCaptureMode.HealthOnly;
+            set
+            {
+                SnapshotCaptureEnabled = value == DeviceCaptureMode.Capture;
+                HealthCaptureEnabled = value != DeviceCaptureMode.Off;
+            }
+        }
+
+        /// <summary>
         /// Name of the provider account linked to this device's location (e.g. "Ring"). Not stored on the row: it is
         /// read from ProviderAccountLocations when devices are listed, and null when no account is linked.
         /// </summary>

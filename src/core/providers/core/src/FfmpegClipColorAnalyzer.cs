@@ -1,3 +1,4 @@
+using FFMpegCore;
 using System.Diagnostics;
 
 namespace VideoForensics.Core.Providers.Core
@@ -32,31 +33,17 @@ namespace VideoForensics.Core.Providers.Core
         public FfmpegClipColorAnalyzer(string? ffmpegPath = null)
         {
             _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
+            FfmpegCapture.UseBinaryFolderOf(_ffmpegPath);
         }
 
         /// <inheritdoc />
         public async Task<ClipColorStats?> AnalyzeAsync(string mediaFilePath, CancellationToken ct)
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = _ffmpegPath,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            };
-            psi.ArgumentList.Add("-hide_banner");
-            psi.ArgumentList.Add("-nostdin");
-            psi.ArgumentList.Add("-an");
-            psi.ArgumentList.Add("-i");
-            psi.ArgumentList.Add(mediaFilePath);
-            psi.ArgumentList.Add("-vf");
-            psi.ArgumentList.Add(FilterFor(mediaFilePath));
-            psi.ArgumentList.Add("-f");
-            psi.ArgumentList.Add("null");
-            psi.ArgumentList.Add("-");
-
-            ProcessResult result = await ProcessRunner.RunAsync(psi, ProcessRunner.DefaultAnalysisTimeout, ct);
-            return result.ExitCode == 0 ? SaturationAnalysis.ParseStats(result.StandardOutput) : null;
+            FFMpegArgumentProcessor processor = FFMpegArguments
+                .FromFileInput(mediaFilePath, true, o => o.WithCustomArgument("-an"))
+                .OutputToFile("-", true, o => o.WithCustomArgument($"-vf {FilterFor(mediaFilePath)} -f null"));
+            FfmpegCapture.CaptureResult result = await FfmpegCapture.RunAsync(processor, ProcessRunner.DefaultAnalysisTimeout, ct);
+            return result.Success ? SaturationAnalysis.ParseStats(result.Stdout) : null;
         }
     }
 }

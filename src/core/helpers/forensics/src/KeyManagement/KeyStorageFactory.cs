@@ -9,6 +9,16 @@ using VideoForensics.Core.Helpers.Forensics.Exceptions;
 namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 {
     /// <summary>
+    /// Registration point for platform-specific key storage providers. A host sets <see cref="PlatformProviders"/> at startup;
+    /// the Windows host supplies TPM and DPAPI, so Core carries no Windows key storage code.
+    /// </summary>
+    public static class KeyStorageProviders
+    {
+        /// <summary>Returns the platform providers in priority order. Null means none are registered.</summary>
+        public static Func<IEnumerable<IKeyStorageProvider>>? PlatformProviders { get; set; }
+    }
+
+    /// <summary>
     /// Factory for selecting the appropriate key storage provider based on platform availability.
     /// Tries TPM first, then platform-specific alternatives, finally encrypted file storage.
     /// </summary>
@@ -31,17 +41,6 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 "TPM 2.0, Windows DPAPI, or file-based encryption required.");
         }
 
-        [SupportedOSPlatform("windows")]
-        public static IKeyStorageProvider CreateTpmProvider()
-        {
-            return new TpmKeyStorageProvider();
-        }
-
-        public static IKeyStorageProvider CreateDpapiProvider(string? storagePath = null)
-        {
-            return new DpapiKeyStorageProvider();
-        }
-
         public static IKeyStorageProvider CreateFileBasedProvider(string storagePath)
         {
             return new FileBasedKeyStorageProvider(storagePath);
@@ -51,32 +50,24 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
         {
             var providers = new List<IKeyStorageProvider>();
 
-            // Try TPM first (most secure, hardware-based). TPM is Windows-only, so skip it elsewhere
-            // rather than relying on the constructor to throw.
-            if (OperatingSystem.IsWindows())
+            // Platform providers (TPM, then DPAPI on Windows) come from the host that registered them, in the order it lists them.
+            // Core has no Windows code, so without a registration only the file-based fallback is available.
+            if (KeyStorageProviders.PlatformProviders is { } platformProviders)
             {
                 try
                 {
-                    providers.Add(new TpmKeyStorageProvider());
+                    foreach (IKeyStorageProvider provider in platformProviders())
+                    {
+                        if (provider.IsAvailable)
+                        {
+                            providers.Add(provider);
+                        }
+                    }
                 }
                 catch
                 {
-                    // TPM not available
+                    // A platform provider failed to initialize; the file-based fallback below still applies.
                 }
-            }
-
-            // Windows: Try DPAPI (currently placeholder)
-            try
-            {
-                var dpapiProvider = new DpapiKeyStorageProvider();
-                if (dpapiProvider.IsAvailable)
-                {
-                    providers.Add(dpapiProvider);
-                }
-            }
-            catch
-            {
-                // DPAPI not available
             }
 
             // Fallback: File-based encrypted storage

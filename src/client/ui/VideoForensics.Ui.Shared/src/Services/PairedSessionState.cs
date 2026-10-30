@@ -5,13 +5,16 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Circuit-scoped holder for the current paired-device session (plan §5.1/§5.11) - the WebAuthn
     /// bearer token, distinct from and unrelated to the existing Ring-account sign-in
     /// (<c>IProviderAuthService</c>). Persisted via a session cookie (see
-    /// <c>wwwroot/js/webauthn.js</c>) so navigation and new tabs within the same browser session stay
+    /// <c>wwwroot/scripts/webauthn.js</c>) so navigation and new tabs within the same browser session stay
     /// signed in without a fresh pairing ceremony; closing the browser itself clears the cookie and
     /// requires signing in again.
     /// </summary>
@@ -75,6 +78,12 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// must upgrade to a passkey before it can confirm a destructive change. In-memory only.
         /// </summary>
         public virtual bool IsTwoFactorRequired { get; private set; }
+
+        /// <summary>
+        /// The restricted settings pages a Super Admin has opened to admins. Only read for Admin sessions (a Super Admin
+        /// always has access, a lower role never does). In-memory only, like <see cref="IsLocalTier"/>.
+        /// </summary>
+        public virtual RestrictedSettings SettingsOpenToAdmin { get; private set; }
 
         /// <summary>
         /// True once the server has reported the tier and credential kind for the current session. False after sign-in
@@ -203,6 +212,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 }
 
                 serverPasskeySetupOnly = kind.PasskeySetupOnly;
+                await LoadSettingsAccessAsync(client);
                 SetServerSessionKind(kind.LocalTier, kind.PasskeySession, kind.PasswordSession, kind.TwoFactorRequired);
             }
             catch (Exception)
@@ -219,6 +229,45 @@ namespace VideoForensics.Client.Ui.Shared.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Asks which settings pages admins may use, before the session kind is marked known, so the route guard never
+        /// judges those pages on a default. Only admins need it (a Super Admin always has access, a lower role never does);
+        /// a failed read leaves the flags false, which hides the pages rather than showing ones the server would refuse.
+        /// </summary>
+        private async Task LoadSettingsAccessAsync(HttpClient client)
+        {
+            SettingsOpenToAdmin = RestrictedSettings.None;
+            if (Role != nameof(OperatorRole.Admin))
+            {
+                return;
+            }
+
+            try
+            {
+                SettingsAccessResponse? access = await client.GetFromJsonAsync<SettingsAccessResponse>("api/v1/permissions/settings-access");
+                if (access is not null)
+                {
+                    SettingsOpenToAdmin =
+                        (access.ReportsOpenToAdmin ? RestrictedSettings.Reports : RestrictedSettings.None)
+                        | (access.EmailOpenToAdmin ? RestrictedSettings.Email : RestrictedSettings.None)
+                        | (access.NotificationsOpenToAdmin ? RestrictedSettings.Notifications : RestrictedSettings.None)
+                        | (access.LlmOpenToAdmin ? RestrictedSettings.Llm : RestrictedSettings.None)
+                        | (access.InfrastructureOpenToAdmin ? RestrictedSettings.Infrastructure : RestrictedSettings.None);
+                }
+            }
+            catch (Exception)
+            {
+                // Best-effort, as the session-kind call itself.
+            }
+        }
+
+        /// <summary>Records which settings pages are open to admins. Public so hosts and tests can seed it.</summary>
+        public void SetSettingsAccess(RestrictedSettings openToAdmin)
+        {
+            SettingsOpenToAdmin = openToAdmin;
+            ServerKindChanged?.Invoke();
         }
 
         /// <summary>
@@ -250,6 +299,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             Role = null;
             MustChangePassword = false;
             PasskeySetupOnly = false;
+            SettingsOpenToAdmin = RestrictedSettings.None;
             ApplyServerSessionKind(localTier: false, passkeySession: false, known: false);
             try
             {
@@ -287,7 +337,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             }
             catch (JSException)
             {
-                // wwwroot/js/webauthn.js isn't loaded on every host (MAUI's BlazorWebView doesn't reference it -
+                // wwwroot/scripts/webauthn.js isn't loaded on every host (MAUI's BlazorWebView doesn't reference it -
                 // device pairing is server/WebApp-only for now). The in-memory session still works for this
                 // circuit; it just won't survive a refresh without vfWebAuthn's localStorage persistence.
             }
@@ -297,6 +347,8 @@ namespace VideoForensics.Client.Ui.Shared.Services
         private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
 
         // Response of GET /api/v1/auth/session-kind. Tier and passkey default to false so an older server that omits them fails closed.
+        private sealed record SettingsAccessResponse(bool ReportsOpenToAdmin, bool EmailOpenToAdmin, bool NotificationsOpenToAdmin, bool LlmOpenToAdmin = false, bool InfrastructureOpenToAdmin = false);
+
         private sealed record SessionKindResponse(bool PasskeySetupOnly, bool LocalTier = false, bool PasskeySession = false, bool PasswordSession = false, bool TwoFactorRequired = false);
     }
 }

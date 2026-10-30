@@ -12,8 +12,13 @@ namespace VideoForensics.Client.Hosting
         Task SaveAccountAsync(AcmeAccountState account, CancellationToken ct);
         Task<IssuedCertificate?> GetCertificateAsync(CancellationToken ct);
         Task SaveCertificateAsync(IssuedCertificate certificate, CancellationToken ct);
+        /// <summary>Removes the stored account key and certificate. The contact email and staging choice are kept.</summary>
+        Task ClearCertificateAsync(CancellationToken ct);
         Task<string?> GetContactEmailAsync(CancellationToken ct);
         Task SetContactEmailAsync(string email, CancellationToken ct);
+        /// <summary>Null when never set, so the caller can fall back to the configured default.</summary>
+        Task<bool?> GetUseStagingAsync(CancellationToken ct);
+        Task SetUseStagingAsync(bool useStaging, CancellationToken ct);
     }
 
     public sealed class LetsEncryptCertificateStore : ILetsEncryptCertificateStore
@@ -22,6 +27,7 @@ namespace VideoForensics.Client.Hosting
         private const string EncryptedCertificate = "Acme.EncryptedCertificate";
         private const string CertificateNotAfter = "Acme.CertificateNotAfter";
         private const string ContactEmail = "Acme.ContactEmail";
+        private const string UseStaging = "Acme.UseStaging";
 
         private readonly IAppSettingRepository _settings;
         private readonly ICredentialEncryptionProvider _encryption;
@@ -58,6 +64,13 @@ namespace VideoForensics.Client.Hosting
             await _settings.SetAsync(CertificateNotAfter, certificate.NotAfter.ToString("O", System.Globalization.CultureInfo.InvariantCulture), ct);
         }
 
+        public async Task ClearCertificateAsync(CancellationToken ct)
+        {
+            await _settings.DeleteAsync(EncryptedAccountKey, ct);
+            await _settings.DeleteAsync(EncryptedCertificate, ct);
+            await _settings.DeleteAsync(CertificateNotAfter, ct);
+        }
+
         public Task<string?> GetContactEmailAsync(CancellationToken ct)
         {
             return _settings.GetAsync(ContactEmail, ct);
@@ -66,6 +79,17 @@ namespace VideoForensics.Client.Hosting
         public Task SetContactEmailAsync(string email, CancellationToken ct)
         {
             return _settings.SetAsync(ContactEmail, email.Trim(), ct);
+        }
+
+        public async Task<bool?> GetUseStagingAsync(CancellationToken ct)
+        {
+            string? value = await _settings.GetAsync(UseStaging, ct);
+            return bool.TryParse(value, out bool useStaging) ? useStaging : null;
+        }
+
+        public Task SetUseStagingAsync(bool useStaging, CancellationToken ct)
+        {
+            return _settings.SetAsync(UseStaging, useStaging.ToString(), ct);
         }
 
         private async Task SetEncryptedAsync(string key, string plain, CancellationToken ct)
@@ -96,6 +120,12 @@ namespace VideoForensics.Client.Hosting
         {
             // The previous certificate is not disposed: a handshake may still be using it.
             _current = certificate;
+        }
+
+        /// <summary>Forgets the certificate so Kestrel falls back to its default. The previous one is not disposed, for the same reason as <see cref="Replace"/>.</summary>
+        public void Clear()
+        {
+            _current = null;
         }
     }
 }

@@ -1,0 +1,15 @@
+/* The popup fills the sidebar width and scrolls when the action list is taller than the viewport allows. */
+.review-actions-panel .review-popup {
+    position: absolute;
+    top: 100%;
+    left: 0.5rem;
+    right: 0.5rem;
+    z-index: 1050;
+    max-height: 24rem;
+    overflow-y: auto;
+}
+
+/* Above the review page backdrop (1040) while open, so the button and the actions stay clickable. */
+.review-actions-panel-open {
+    z-index: 1050;
+}

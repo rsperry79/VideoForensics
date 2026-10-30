@@ -32,15 +32,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="Collect" xml:space="preserve">
-    <value>Collect</value>
-  </data>
-  <data name="Collect Videos" xml:space="preserve">
-    <value>Collect Videos</value>
-  </data>
-  <data name="Collect Snapshots" xml:space="preserve">
-    <value>Collect Snapshots</value>
-  </data>
   <data name="Analyze" xml:space="preserve">
     <value>Analyze</value>
   </data>
@@ -110,6 +101,12 @@
   <data name="Notifications" xml:space="preserve">
     <value>Notifications</value>
   </data>
+  <data name="Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="Reports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
   <data name="Security Audit Log" xml:space="preserve">
     <value>Security Audit Log</value>
   </data>
@@ -125,17 +122,38 @@
   <data name="SelectThisFolder" xml:space="preserve">
     <value>Select This Folder</value>
   </data>
+  <data name="NewFolder" xml:space="preserve">
+    <value>New Folder</value>
+  </data>
+  <data name="NewFolderName" xml:space="preserve">
+    <value>Folder name</value>
+  </data>
+  <data name="CreateFolder" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="CreateFolderFailed" xml:space="preserve">
+    <value>Could not create the folder. Check the name and that you have permission to write here.</value>
+  </data>
   <data name="Yes" xml:space="preserve">
     <value>Yes</value>
   </data>
   <data name="No" xml:space="preserve">
     <value>No</value>
   </data>
-  <data name="Active Account" xml:space="preserve">
-    <value>Active Account</value>
-  </data>
   <data name="Theme" xml:space="preserve">
     <value>Theme</value>
+  </data>
+  <data name="TimeFormat" xml:space="preserve">
+    <value>Time format</value>
+  </data>
+  <data name="TimeFormatLocale" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="TimeFormat12Hour" xml:space="preserve">
+    <value>12-hour</value>
+  </data>
+  <data name="TimeFormat24Hour" xml:space="preserve">
+    <value>24-hour</value>
   </data>
   <data name="Language" xml:space="preserve">
     <value>Language</value>
@@ -158,17 +176,32 @@
   <data name="Cases" xml:space="preserve">
     <value>Cases</value>
   </data>
+  <data name="Review" xml:space="preserve">
+    <value>Review</value>
+  </data>
   <data name="Sources" xml:space="preserve">
     <value>Sources</value>
+  </data>
+  <data name="Permissions" xml:space="preserve">
+    <value>Permissions</value>
   </data>
   <data name="Admin" xml:space="preserve">
     <value>Admin</value>
   </data>
+  <data name="Light theme" xml:space="preserve">
+    <value>Light theme</value>
+  </data>
+  <data name="Dark theme" xml:space="preserve">
+    <value>Dark theme</value>
+  </data>
+  <data name="System theme" xml:space="preserve">
+    <value>System theme</value>
+  </data>
+  <data name="Signal history" xml:space="preserve">
+    <value>Signal history</value>
+  </data>
   <data name="Chat Assistant" xml:space="preserve">
     <value>Chat Assistant</value>
-  </data>
-  <data name="Software Paths" xml:space="preserve">
-    <value>Software Paths</value>
   </data>
   <data name="Event Grid" xml:space="preserve">
     <value>Event Grid</value>
@@ -350,6 +383,15 @@
   <data name="Notices" xml:space="preserve">
     <value>Notices</value>
   </data>
+  <data name="NoticeReview" xml:space="preserve">
+    <value>Review chain of custody</value>
+  </data>
+  <data name="NoticeReviewSignal" xml:space="preserve">
+    <value>Review</value>
+  </data>
+  <data name="NoticeDeviceSettings" xml:space="preserve">
+    <value>Device settings</value>
+  </data>
   <data name="ClearAll" xml:space="preserve">
     <value>Clear all</value>
   </data>
@@ -397,9 +439,6 @@
   </data>
   <data name="NoAccountsLinked" xml:space="preserve">
     <value>No accounts linked yet.</value>
-  </data>
-  <data name="SwitchedActiveAccount" xml:space="preserve">
-    <value>Switched active account.</value>
   </data>
   <data name="SwitchedSessionNotResumed" xml:space="preserve">
     <value>Switched, but the saved session could not be resumed - sign in again.</value>
@@ -751,5 +790,20 @@
   </data>
   <data name="ScopeAllAccounts" xml:space="preserve">
     <value>All accounts</value>
+  </data>
+  <data name="ScopeLocation" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="ScopeAllLocations" xml:space="preserve">
+    <value>All locations</value>
+  </data>
+  <data name="ReviewPlayerGap" xml:space="preserve">
+    <value>No recording covers this time.</value>
+  </data>
+  <data name="CameraGridLimit" xml:space="preserve">
+    <value>Too many cameras to show at once (maximum {0}).</value>
+  </data>
+  <data name="SingleCameraOthers" xml:space="preserve">
+    <value>Other cameras</value>
   </data>
 </root>

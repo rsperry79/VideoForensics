@@ -1,4 +1,5 @@
 @using BlazorLocalTime
+@using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @implements IDisposable
 @inject IServiceProvider Services
@@ -16,20 +17,36 @@
     // Optional so hosts without BlazorLocalTime registered (and component tests) keep rendering in the machine zone.
     private ILocalTimeService? _localTime;
 
+    // Optional for the same reason: the clock preference is only known where the theme preference service is registered.
+    private ThemePreferenceService? _preferences;
+
     protected override void OnInitialized()
     {
         _localTime = Services.GetService(typeof(ILocalTimeService)) as ILocalTimeService;
+        _preferences = Services.GetService(typeof(ThemePreferenceService)) as ThemePreferenceService;
         _zone = CurrentZone();
         if (_localTime is not null)
             _localTime.LocalTimeZoneChanged += OnLocalTimeZoneChanged;
+        if (_preferences is not null)
+            _preferences.OnChange += OnPreferencesChanged;
     }
+
+    // The clock follows the operator's 12/24-hour choice, so a change re-renders every time shown through the cascade.
+    private void OnPreferencesChanged() => _ = InvokeAsync(() =>
+    {
+        _zone = CurrentZone();
+        StateHasChanged();
+    });
 
     private UserTimeZone CurrentZone()
     {
+        TimeFormatPreference clock = _preferences?.TimeFormat ?? TimeFormatPreference.Locale;
         if (_localTime is null)
-            return new UserTimeZone(TimeZoneInfo.Local);
+            return new UserTimeZone(TimeZoneInfo.Local, clock);
 
-        return _localTime.IsTimeZoneInfoAvailable ? new UserTimeZone(_localTime.TimeZoneInfo) : UserTimeZone.Unavailable;
+        return _localTime.IsTimeZoneInfoAvailable
+            ? new UserTimeZone(_localTime.TimeZoneInfo, clock)
+            : UserTimeZone.Unavailable with { Clock = clock };
     }
 
     // The browser reports its zone over JS interop, which can arrive after first render.
@@ -44,5 +61,7 @@
     {
         if (_localTime is not null)
             _localTime.LocalTimeZoneChanged -= OnLocalTimeZoneChanged;
+        if (_preferences is not null)
+            _preferences.OnChange -= OnPreferencesChanged;
     }
 }

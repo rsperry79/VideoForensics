@@ -144,6 +144,26 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>Calls <c>/api/v1/events/page</c>; the server does the filtering, ordering and counting.</remarks>
+        public async Task<EventPage> ListPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes, int skip, int take, CancellationToken ct)
+        {
+            var parameters = deviceIds.Select(id => $"deviceIds={id:D}").ToList();
+            parameters.Add($"from={Uri.EscapeDataString(fromUtc.ToString("o"))}");
+            parameters.Add($"to={Uri.EscapeDataString(toUtc.ToString("o"))}");
+            parameters.AddRange((excludeEventTypes ?? []).Select(t => $"excludeTypes={Uri.EscapeDataString(t)}"));
+            parameters.Add($"skip={skip}");
+            parameters.Add($"take={take}");
+
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/events/page?" + string.Join('&', parameters), ct);
+            _ = response.EnsureSuccessStatusCode();
+            EventPageResponse? body = await response.Content.ReadFromJsonAsync<EventPageResponse>(JsonOptions, ct);
+            return new EventPage((body?.Items ?? []).Select(x => x.ToDomain()).ToList(), body?.TotalCount ?? 0);
+        }
+
+        /// <summary>Wire shape of <c>/events/page</c>.</summary>
+        private sealed record EventPageResponse(List<EventDto>? Items, int TotalCount);
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/events/unanswered/{deviceId}", ct);

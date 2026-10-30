@@ -7,6 +7,7 @@
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Scope
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Inspector
@@ -22,8 +23,11 @@
 @inject InspectorState InspectorState
 @inject IStringLocalizer<CaseDetails> L
 
-<div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
-    <div style="overflow: auto;">
+<PageRightPanelContent>
+    <ScopeRail />
+</PageRightPanelContent>
+
+<div style="overflow: auto; height: 100%;">
         <h4 class="mb-4">
     @if (_case is not null)
     {
@@ -67,6 +71,14 @@ else
 
             <div class="mt-3">
                 <button class="btn btn-outline-primary" @onclick="ExportCase" data-testid="export-case">@L["ExportCase"]</button>
+            </div>
+
+            <div class="mt-3">
+                <button class="btn btn-outline-primary"
+                        @onclick="ReviewSelectedEvidence"
+                        disabled="@(!HasPinnedItems)"
+                        title="@(HasPinnedItems ? L["ReviewSelectedEvidence"].Value : L["ReviewSelectedEvidenceNoItems"].Value)"
+                        data-testid="review-selected-evidence">@L["ReviewSelectedEvidence"]</button>
             </div>
 
             @if (_case.Status == CaseStatus.Open)
@@ -153,10 +165,6 @@ else
         </div>
     </div>
 }
-    </div>
-    <div style="overflow: auto;">
-        <ScopeRail />
-    </div>
 </div>
 
 @code {
@@ -262,7 +270,7 @@ else
                 var @event = await EventRepository.GetAsync(item.EventId.Value, CancellationToken.None);
                 if (@event is not null)
                 {
-                    return $"{@event.EventType} · {@event.OccurredAtUtc:u}";
+                    return $"{@event.EventType} · {Zone.Format(@event.OccurredAtUtc, "yyyy-MM-dd HH:mm")}";
                 }
             }
             else if (item.Kind == CaseItemKind.Media && item.MediaItemId.HasValue)
@@ -312,7 +320,7 @@ else
         {
             new(L["ColumnReason"], row.Reason),
             new(L["ColumnAddedBy"], row.AddedBy),
-            new(L["ColumnAddedAt"], row.AddedAtUtc.ToString("u")),
+            new(L["ColumnAddedAt"], Zone.Format(row.AddedAtUtc, "yyyy-MM-dd HH:mm")),
             new(L["ColumnIntegrity"], row.Integrity.ToString())
         };
 
@@ -365,6 +373,20 @@ else
         {
             _error = L["FailedToActivateCase", ex.Message].Value;
         }
+    }
+
+    /// <summary>True when the case has at least one pin that is not soft-removed. The review entry needs one.</summary>
+    private bool HasPinnedItems => _caseItems?.Any(row => row.Item.RemovedAtUtc is null) == true;
+
+    /// <summary>Opens the review page on this case's pinned items.</summary>
+    private void ReviewSelectedEvidence()
+    {
+        if (_case is null || !HasPinnedItems)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo($"/media?reviewcase={_case.Id:D}");
     }
 
     private void ExportCase()

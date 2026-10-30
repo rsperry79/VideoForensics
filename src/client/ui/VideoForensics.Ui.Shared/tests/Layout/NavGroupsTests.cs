@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 
 using System.Reflection;
 
@@ -11,54 +12,38 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 public class NavGroups_Tests
 {
     [Fact]
-    public void All_HasExactlyFourGroups()
+    public void All_HasExactlyThreeGroups()
     {
-        Assert.Equal(4, NavGroups.All.Count);
+        Assert.Equal(3, NavGroups.All.Count);
     }
 
     [Fact]
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "media", "cases", "sources", "admin" }, groupKeys);
+        Assert.Equal(new[] { "media", "cases", "admin" }, groupKeys);
     }
 
     [Fact]
-    public void Media_GroupHasCorrectProperties()
+    public void Media_TabHasNoSidebarItems()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "media");
-        Assert.Equal("Media", group.Text);
-        Assert.Equal("/media", group.Path);
-
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/media", itemPaths);
-        Assert.DoesNotContain("/collect", itemPaths);
-        Assert.DoesNotContain("/analyze", itemPaths);
-        Assert.Contains("/chat", itemPaths);
-    }
-
-    [Fact]
-    public void Media_GroupNoLongerHasEventGrid()
-    {
-        // The Events page ("Event Grid") was retired in phase 8: its actions moved to Media's
-        // Grid context menu and Inspector (see EvidenceActions/EvidenceInspectorMapper), and the
-        // old /events route now just redirects (see EventsRedirect).
-        NavGroup group = NavGroups.All.First(g => g.Key == "media");
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.DoesNotContain("/events", itemPaths);
-        Assert.DoesNotContain(group.Items, i => i.Text == "Event Grid");
+        // The top Media tab leads to the review page; its menu is the review view menu in the left panel.
+        NavGroup media = NavGroups.All.First(g => g.Key == "media");
+        Assert.Equal("/media", media.Path);
+        Assert.Empty(media.Items);
     }
 
     [Fact]
     public void Cases_GroupHasCorrectProperties()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "cases");
-        Assert.Equal("Cases", group.Text);
+        Assert.Equal("Review", group.Text);
         Assert.Equal("/cases", group.Path);
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/cases", itemPaths);
-        Assert.Contains("/cases/new", itemPaths);
+        Assert.Contains("/signal-history", itemPaths);
+        Assert.Contains("/chat", itemPaths);
         Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/analyze/chain-of-custody", itemPaths);
         Assert.DoesNotContain("/analyze/validate/integrity", itemPaths);
@@ -91,18 +76,47 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Sources_GroupHasCorrectProperties()
+    public void Sources_ItemsLiveUnderAdminInSourcesSection()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "sources");
-        Assert.Equal("Sources", group.Text);
-        Assert.Equal("/accounts", group.Path);
+        Assert.DoesNotContain(NavGroups.All, g => g.Key == "sources");
 
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/accounts", itemPaths);
-        Assert.DoesNotContain("/devices/config", itemPaths);
-        Assert.Contains("/query", itemPaths);
-        Assert.Contains("/query/api-tester", itemPaths);
-        Assert.DoesNotContain("/tools/ring-selftest", itemPaths);
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        var sourceItems = group.Items.Where(i => i.Section == "Sources").ToList();
+        Assert.Equal(new[] { "/accounts", "/query" }, sourceItems.Select(i => i.Path).ToList());
+        Assert.DoesNotContain(group.Items, i => i.Path == "/query/api-tester" || i.Path == "/tools/ring-selftest" || i.Path == "/devices/config");
+    }
+
+    [Fact]
+    public void Sources_QueryApi_RequiresAdminRole()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem queryItem = group.Items.First(i => i.Path == "/query");
+
+        Assert.False(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
+        Assert.True(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void Sources_ProviderAccounts_VisibleToAdminAndUp_HiddenFromReview()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem accountsItem = group.Items.First(i => i.Path == "/accounts");
+
+        Assert.False(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
+        Assert.True(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void Permissions_UnderAdminSecurity_RequiresLocalOrPasskeySuperAdmin()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem permissionsItem = group.Items.First(i => i.Path == "/settings/permissions");
+
+        Assert.Equal("Security", permissionsItem.Section);
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsPasskeySession: true)));
     }
 
     [Fact]
@@ -116,7 +130,6 @@ public class NavGroups_Tests
         Assert.Contains("/settings", itemPaths);
         Assert.Contains("/settings/infrastructure", itemPaths);
         Assert.Contains("/settings/operators", itemPaths);
-        Assert.Contains("/settings/devices", itemPaths);
         Assert.Contains("/settings/network", itemPaths);
         Assert.Contains("/settings/storage", itemPaths);
         Assert.Contains("/settings/update-check", itemPaths);
@@ -128,18 +141,10 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void CaseNew_RequiresReviewRole()
+    public void CaseNew_IsNotInTheMenu()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "cases");
-        NavItem newCaseItem = group.Items.First(i => i.Path == "/cases/new");
-
-        // Should NOT be visible to ReadOnly
-        var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
-        Assert.False(newCaseItem.IsVisible(readOnlyCtx));
-
-        // Should be visible to Review
-        var reviewCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false);
-        Assert.True(newCaseItem.IsVisible(reviewCtx));
+        // A manual case starts from Signal history, not from the menu.
+        Assert.DoesNotContain(NavGroups.All.SelectMany(g => g.Items), i => i.Path == "/cases/new");
     }
 
     [Fact]
@@ -182,18 +187,10 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void SecurityDevices_RequiresSuperAdminRole()
+    public void PairedDevices_IsNotInTheMenu()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem devicesItem = group.Items.First(i => i.Path == "/settings/devices");
-
-        // Should NOT be visible to Admin
-        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
-        Assert.False(devicesItem.IsVisible(adminCtx));
-
-        // Should be visible to SuperAdmin on the Local tier
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
-        Assert.True(devicesItem.IsVisible(superAdminCtx));
+        // Paired devices are not used; the page and its route remain for the links that still point at it.
+        Assert.DoesNotContain(NavGroups.All.SelectMany(g => g.Items), i => i.Path == "/settings/devices");
     }
 
     [Fact]
@@ -227,7 +224,7 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Notifications_RequiresAdminRole()
+    public void Notifications_DefaultsToSuperAdmin_AdminOnlyWhenOpened()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         NavItem notificationsItem = group.Items.First(i => i.Path == "/settings/notifications");
@@ -236,9 +233,13 @@ public class NavGroups_Tests
         var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
         Assert.False(notificationsItem.IsVisible(readOnlyCtx));
 
-        // Should be visible to Admin
+        // Hidden from Admin until a Super Admin opens notification settings to admins
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
-        Assert.True(notificationsItem.IsVisible(adminCtx));
+        Assert.False(notificationsItem.IsVisible(adminCtx));
+        Assert.True(notificationsItem.IsVisible(adminCtx with { OpenToAdmin = RestrictedSettings.Notifications }));
+
+        // Super Admin always sees it
+        Assert.True(notificationsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
     }
 
     [Fact]

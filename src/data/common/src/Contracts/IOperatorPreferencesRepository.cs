@@ -23,5 +23,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// <returns>The saved OperatorPreferences row.</returns>
         /// <exception cref="ArgumentException">Thrown if uiMode is neither "Standard" nor "Simple".</exception>
         Task<OperatorPreferences> SetUiModeAsync(Guid operatorId, string uiMode, bool locked, CancellationToken ct);
+
+        /// <summary>
+        /// Records whether the operator has dismissed the data-at-rest encryption warning. Creates a preferences row with defaults if none exists;
+        /// otherwise changes only this flag and UpdatedAtUtc. <see cref="UpsertAsync"/> never touches it, so theme and mode saves cannot reset it.
+        /// </summary>
+        Task SetEncryptionWarningDismissedAsync(Guid operatorId, bool dismissed, CancellationToken ct);
     }
 }

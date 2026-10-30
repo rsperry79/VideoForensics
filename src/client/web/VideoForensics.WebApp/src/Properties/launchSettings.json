@@ -1,12 +1,19 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
+    "debug-webapp-service": {
+      "commandName": "Executable",
+      "executablePath": "pwsh.exe",
+      "commandLineArgs": "-NoProfile -ExecutionPolicy Bypass -File ..\\..\\..\\..\\..\\scripts\\Debug-WebAppService.ps1",
+      "workingDirectory": ".",
+      "launchBrowser": false
+    },
     "http": {
+      "applicationUrl": "http://localhost:5162",
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:5162",
-      "environmentVariables": {
+            "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },

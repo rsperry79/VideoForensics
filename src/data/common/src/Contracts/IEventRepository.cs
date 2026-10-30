@@ -57,6 +57,13 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists events with true database-level pagination (OrderBy+Skip+Take), unlike the full-table ListAsync.</summary>
         Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct);
 
+        /// <summary>
+        /// Pages events from any of the given devices within a UTC range, newest first (OccurredAtUtc descending, then Id).
+        /// Device and range filtering, the exclusion of <paramref name="excludeEventTypes"/>, sorting, paging and counting run in SQL.
+        /// <paramref name="take"/> must be 1..500, <paramref name="skip"/> at least 0 and <paramref name="deviceIds"/> hold 1..64 ids.
+        /// </summary>
+        Task<EventPage> ListPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes, int skip, int take, CancellationToken ct);
+
         /// <summary>Updates an event's download failure status and timestamp.</summary>
         Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct);
 
