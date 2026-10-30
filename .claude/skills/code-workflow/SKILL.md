@@ -11,8 +11,9 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 - Match worktrees by `refs/heads/<branch>` from `git worktree list --porcelain` (strip `\r`), never by folder name.
 
 ## Worktrees
-- If this chat already has a worktree (created earlier, or the session's cwd is one), reuse it. Confirm it in `git worktree list --porcelain` and continue there. Do not create a second one.
-- Otherwise create per feature: `git worktree add <sibling-path>/<feature> -b <feature-branch> wip`. Name it for the feature, not the session.
+- Reuse the chat's worktree if it is valid: it is listed in `git worktree list --porcelain`, its branch is not yet merged into `wip` (`git merge-base --is-ancestor <branch> wip` fails), and the new work is the same feature. Otherwise make one.
+- Otherwise create per feature: `git worktree add <sibling-path>/<feature> -b <feature-branch> wip`, after the `wip` checks above. Name it for the feature, not the session.
+- A new request on a branch already merged into `wip` gets a new branch from updated `wip`, even in the same chat.
 - All edits, commits, and builds happen in the worktree. Leave the main checkout's uncommitted changes alone.
 - Before removing a worktree, confirm its path in `git worktree list --porcelain`.
 
