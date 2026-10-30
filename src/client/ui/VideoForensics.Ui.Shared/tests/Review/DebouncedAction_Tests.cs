@@ -40,6 +40,16 @@ public class DebouncedAction_Tests
         await Task.Delay(30);
     }
 
+    /// <summary>Waits for a thread-pool continuation to land; a fixed delay is too short on a loaded test host.</summary>
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+    }
+
     [Fact]
     public void DebouncedAction_DefaultDelay_IsOneSecond()
     {
@@ -59,7 +69,7 @@ public class DebouncedAction_Tests
         await SettleAsync();
         Assert.Equal(0, runs);
         delay.CompleteAll();
-        await SettleAsync();
+        await WaitForAsync(() => Volatile.Read(ref runs) == 1);
 
         // Assert
         Assert.Equal(1, runs);
@@ -79,6 +89,7 @@ public class DebouncedAction_Tests
         debounce.Schedule();
         debounce.Schedule();
         delay.CompleteAll();
+        await WaitForAsync(() => Volatile.Read(ref runs) == 1);
         await SettleAsync();
 
         // Assert

@@ -57,12 +57,14 @@
     protected override void OnParametersSet()
     {
         // Reveal the section holding the current page when the page changes, or when the visible sections change
-        // underneath us (sections often arrive after the first render, once role and tier load). Other re-renders
-        // keep whatever the operator last opened, so a manual toggle is not undone.
+        // underneath us (sections often arrive after the first render, once role and tier load, e.g. after a circuit
+        // reconnect). The key covers items as well as headings: the current page's item can appear inside a heading
+        // that was already visible. Other re-renders keep whatever the operator last opened, so a manual toggle is
+        // not undone.
         string location = CurrentPath + CurrentQuery;
-        string sectionKey = string.Join("|", Sections.Select(s => s.Title ?? string.Empty));
+        string sectionKey = string.Join("|", Sections.Select(s => (s.Title ?? string.Empty) + ":" + string.Join(",", s.Items.Select(i => i.Path))));
         bool locationChanged = location != _lastLocation;
-        bool openIsStale = sectionKey != _lastSectionKey && !Sections.Any(s => s.Title == _openTitle);
+        bool openIsStale = sectionKey != _lastSectionKey && (_openTitle is null || !Sections.Any(s => s.Title == _openTitle));
 
         _lastLocation = location;
         _lastSectionKey = sectionKey;

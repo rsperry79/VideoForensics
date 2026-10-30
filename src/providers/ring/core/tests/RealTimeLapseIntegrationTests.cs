@@ -180,11 +180,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 .FirstOrDefault();
             Assert.NotNull(loop);
             Assert.Equal("mp4", loop.MediaFormat);
-            Assert.True(File.Exists(loop.FilePath), $"The time lapse file is missing at {loop.FilePath}.");
+            // The roll-up stores the loop's path relative to the media root, so resolve it before touching the file.
+            string loopPath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToAbsoluteAsync(loop.FilePath, ct);
+            Assert.True(File.Exists(loopPath), $"The time lapse file is missing at {loopPath}.");
             Assert.True(Math.Abs((loop.RecordedAtUtc - end.UtcDateTime).TotalSeconds) < 1, "The time lapse is not stamped with the end of the capture timeframe.");
 
             // The file itself must run for the capture timeframe, so the loop's length is read from the MP4 and compared to end - start.
-            double lapseSeconds = await ProbeDurationSecondsAsync(ffprobe, loop.FilePath, ct);
+            double lapseSeconds = await ProbeDurationSecondsAsync(ffprobe, loopPath, ct);
             double captureSeconds = (end - start).TotalSeconds;
             Assert.True(Math.Abs(lapseSeconds - captureSeconds) <= 1,
                 $"The time lapse runs {lapseSeconds:F1}s but the capture timeframe is {captureSeconds:F1}s.");
