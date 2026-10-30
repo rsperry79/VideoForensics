@@ -16,17 +16,3 @@ export function downloadText(fileName, text) {
     anchor.remove();
     URL.revokeObjectURL(url);
 }
-
-// Saves binary content (for example a zip archive) as a file. The bytes arrive from Blazor as a Uint8Array.
-export function downloadBytes(fileName, bytes, mimeType) {
-    const blob = new Blob([bytes], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = fileName;
-    anchor.style.display = 'none';
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-}
