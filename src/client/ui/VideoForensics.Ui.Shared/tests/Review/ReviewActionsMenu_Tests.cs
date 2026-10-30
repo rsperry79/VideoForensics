@@ -276,11 +276,11 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         // Assert
         Assert.True(cut.Find("[data-testid='review-action-tag']").HasAttribute("disabled"));
         Assert.True(cut.Find("[data-testid='review-action-new-case']").HasAttribute("disabled"));
-        Assert.Equal(L["ReasonNoSelection"].Value, cut.Find("[data-testid='review-action-reason-tag']").TextContent.Trim());
+        Assert.Empty(cut.FindAll("[data-testid='review-action-reason-tag']"));
     }
 
     [Fact]
-    public async Task ReviewActionsMenu_NoClipAtCursor_DisablesHoldVerifyAndExportWithAReason()
+    public async Task ReviewActionsMenu_NoClipAtCursor_DisablesHoldVerifyAndExportWithoutHelpText()
     {
         // Arrange
         SelectClipAtCursor();
@@ -293,9 +293,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         Assert.True(cut.Find("[data-testid='review-action-hold']").HasAttribute("disabled"));
         Assert.True(cut.Find("[data-testid='review-action-verify']").HasAttribute("disabled"));
         Assert.True(cut.Find("[data-testid='review-action-export']").HasAttribute("disabled"));
-        Assert.Equal(L["ReasonNoClipAtCursor"].Value, cut.Find("[data-testid='review-action-reason-hold']").TextContent.Trim());
-        Assert.Equal(L["ReasonNoClipAtCursor"].Value, cut.Find("[data-testid='review-action-reason-verify']").TextContent.Trim());
-        Assert.Equal(L["ReasonNoClipAtCursor"].Value, cut.Find("[data-testid='review-action-reason-export']").TextContent.Trim());
+        Assert.Empty(cut.FindAll("[data-testid^='review-action-reason-']"));
     }
 
     [Fact]
@@ -310,8 +308,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         // Assert
         Assert.True(cut.Find("[data-testid='review-action-hold']").HasAttribute("disabled"));
         Assert.True(cut.Find("[data-testid='review-action-export']").HasAttribute("disabled"));
-        Assert.Equal(L["ReasonRequiresAdmin"].Value, cut.Find("[data-testid='review-action-reason-hold']").TextContent.Trim());
-        Assert.Equal(L["ReasonRequiresSuperAdmin"].Value, cut.Find("[data-testid='review-action-reason-export']").TextContent.Trim());
+        Assert.Empty(cut.FindAll("[data-testid^='review-action-reason-']"));
         Assert.False(cut.Find("[data-testid='review-action-tag']").HasAttribute("disabled"));
         Assert.False(cut.Find("[data-testid='review-action-verify']").HasAttribute("disabled"));
     }

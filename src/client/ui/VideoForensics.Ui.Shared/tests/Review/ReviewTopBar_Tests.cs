@@ -20,8 +20,7 @@ public class ReviewTopBar_Tests : ReviewTestContext
         AddDevices(2);
         return Render<ReviewTopBar>(parameters => parameters
             .Add(p => p.State, ReviewState)
-            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf))
-            .Add(p => p.UtcNow, () => FixedNowUtc));
+            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
     }
 
     [Fact]
@@ -113,20 +112,6 @@ public class ReviewTopBar_Tests : ReviewTestContext
         // Assert - Actions moved to the right sidebar under the filters
         Assert.Empty(cut.FindAll("[data-testid='review-actions']"));
         Assert.Empty(cut.FindAll("[data-testid='review-actions-menu']"));
-    }
-
-    [Fact]
-    public void ReviewTopBar_RangePresetLastSevenDays_SetsStateRangeEndingNow()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-
-        // Act
-        cut.Find("[data-testid='review-range']").Change("week");
-
-        // Assert
-        Assert.Equal(FixedNowUtc.AddDays(-7), ReviewState.FromUtc);
-        Assert.Equal(FixedNowUtc, ReviewState.ToUtc);
     }
 
     [Fact]

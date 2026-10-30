@@ -51,7 +51,7 @@ public class ReviewPage_Tests : ReviewTestContext
         string topBar = cut.Find("[data-testid='review-top-bar']").TextContent;
         foreach (string key in new[]
         {
-            "Back", "RangeLast24Hours",
+            "Back",
         })
         {
             Assert.Contains(L[key].Value, topBar);

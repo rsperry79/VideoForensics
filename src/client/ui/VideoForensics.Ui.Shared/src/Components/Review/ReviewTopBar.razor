@@ -35,12 +35,6 @@
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
-        <select class="form-select form-select-sm" style="width: auto;" data-testid="review-range" aria-label="@L["RangeLabel"]" @onchange="OnRangeChanged">
-            <option value="hour" selected="@(CurrentPreset == RangePreset.LastHour)">@L["RangeLastHour"]</option>
-            <option value="day" selected="@(CurrentPreset == RangePreset.Last24Hours)">@L["RangeLast24Hours"]</option>
-            <option value="week" selected="@(CurrentPreset == RangePreset.Last7Days)">@L["RangeLast7Days"]</option>
-        </select>
-
         <ReviewPendingTags DeviceNames="DeviceNames" />
     </div>
 </div>
@@ -53,35 +47,6 @@
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
-
-    /// <summary>The clock the range presets end at. Tests pass a fixed clock; the page uses the system clock.</summary>
-    [Parameter]
-    public Func<DateTime> UtcNow { get; set; } = static () => DateTime.UtcNow;
-
-    private enum RangePreset
-    {
-        LastHour,
-        Last24Hours,
-        Last7Days,
-    }
-
-    /// <summary>The preset the current window matches. A window that matches none reads as the 24-hour default.</summary>
-    private RangePreset CurrentPreset
-    {
-        get
-        {
-            TimeSpan span = State.ToUtc - State.FromUtc;
-            TimeSpan tolerance = TimeSpan.FromMinutes(1);
-            if (Math.Abs((span - TimeSpan.FromHours(1)).TotalSeconds) < tolerance.TotalSeconds)
-            {
-                return RangePreset.LastHour;
-            }
-
-            return Math.Abs((span - TimeSpan.FromDays(7)).TotalSeconds) < tolerance.TotalSeconds
-                ? RangePreset.Last7Days
-                : RangePreset.Last24Hours;
-        }
-    }
 
     protected override void OnInitialized()
     {
@@ -140,23 +105,6 @@
         {
             // The circuit closed before the call ran.
         }
-    }
-
-    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
-    {
-        TimeSpan span = PresetSpan(args.Value?.ToString());
-        DateTime now = UtcNow();
-        State.SetRange(now - span, now);
-    }
-
-    private static TimeSpan PresetSpan(string? value)
-    {
-        return value switch
-        {
-            "hour" => TimeSpan.FromHours(1),
-            "week" => TimeSpan.FromDays(7),
-            _ => TimeSpan.FromHours(24),
-        };
     }
 
     public void Dispose()
