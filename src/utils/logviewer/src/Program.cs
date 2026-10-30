@@ -41,12 +41,8 @@ Logger logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
+// Ctrl+C is left to the console: with text selected it copies, as in any console window. Ctrl+D is the exit key.
 using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) =>
-{
-    e.Cancel = true;
-    cts.Cancel();
-};
 
 // Ctrl+D exits too. It is read as a key, not as end-of-input, so the console keeps working when input is redirected.
 if (!Console.IsInputRedirected)
@@ -71,7 +67,7 @@ Console.WriteLine("  Admin > Devices & Network > Infrastructure > Diagnostics");
 Console.WriteLine("  tick \"Open the log pipe for LogViewer\", then press Save.");
 Console.WriteLine();
 
-Console.WriteLine($"Waiting for logger on pipe '{options.Pipe}'. Press Ctrl+D or Ctrl+C to exit.");
+Console.WriteLine($"Waiting for logger on pipe '{options.Pipe}'. Press Ctrl+D to exit. Ctrl+C copies a selection.");
 
 while (!cts.IsCancellationRequested)
 {
