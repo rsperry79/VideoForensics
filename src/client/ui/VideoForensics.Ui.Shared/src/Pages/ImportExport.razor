@@ -103,7 +103,7 @@
 </div>
 
 <SfDialog @bind-Visible="_folderBrowserDialogVisible" Header="@L["BrowseMediaRootFolder"]" Width="600px" IsModal="true">
-    <FolderBrowserDialog OnClosed="OnFolderBrowserDialogClosed" />
+    <FolderPicker OnClosed="OnFolderBrowserDialogClosed" />
 </SfDialog>
 
 @code {

@@ -122,18 +122,6 @@
   <data name="SelectThisFolder" xml:space="preserve">
     <value>Select This Folder</value>
   </data>
-  <data name="NewFolder" xml:space="preserve">
-    <value>New Folder</value>
-  </data>
-  <data name="NewFolderName" xml:space="preserve">
-    <value>Folder name</value>
-  </data>
-  <data name="CreateFolder" xml:space="preserve">
-    <value>Create</value>
-  </data>
-  <data name="CreateFolderFailed" xml:space="preserve">
-    <value>Could not create the folder. Check the name and that you have permission to write here.</value>
-  </data>
   <data name="Yes" xml:space="preserve">
     <value>Yes</value>
   </data>

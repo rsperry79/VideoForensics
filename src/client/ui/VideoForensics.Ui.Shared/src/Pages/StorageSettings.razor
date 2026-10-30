@@ -88,7 +88,7 @@ else
     </SfGrid>
 
     <SfDialog @bind-Visible="_folderDialogVisible" Header="@L["BrowseFolderTitle"]" Width="600px" IsModal="true">
-        <FolderBrowserDialog OnClosed="OnFolderSelected" />
+        <FolderPicker OnClosed="OnFolderSelected" />
     </SfDialog>
 
     <SfDialog @bind-Visible="_confirmMoveVisible" Header="@L["ConfirmMoveTitle"]" Width="500px" IsModal="true">
