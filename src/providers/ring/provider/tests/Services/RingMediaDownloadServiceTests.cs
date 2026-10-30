@@ -679,7 +679,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var logged = new List<(LogLevel Level, Exception? Exception)>();
             var logger = new Mock<ILogger>();
             _ = logger.Setup(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
-                .Callback(new InvocationAction(invocation => logged.Add(((LogLevel)invocation.Arguments[0], (Exception?)invocation.Arguments[3]))));
+                .Callback(new InvocationAction(invocation => logged.Add(((LogLevel)invocation.Arguments[0]!, (Exception?)invocation.Arguments[3]))));
             var service = new SnapshotReadStubMediaDownloadService(logger.Object, sessionProvider.Object, CreateMockDataClient());
             string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 

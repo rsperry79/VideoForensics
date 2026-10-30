@@ -21,11 +21,22 @@ namespace VideoForensics.Core.Api.Contracts
     [Flags]
     public enum RestrictedSettings
     {
+        /// <summary>No settings page is open to admins.</summary>
         None = 0,
+
+        /// <summary>The Reports settings page.</summary>
         Reports = 1,
+
+        /// <summary>The Email settings page.</summary>
         Email = 2,
+
+        /// <summary>The Notifications settings page.</summary>
         Notifications = 4,
+
+        /// <summary>The LLM settings page.</summary>
         Llm = 8,
+
+        /// <summary>The Infrastructure settings page.</summary>
         Infrastructure = 16,
     }
 
