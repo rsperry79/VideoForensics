@@ -1,35 +1,41 @@
 using Microsoft.EntityFrameworkCore;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 
-namespace VideoForensics.Data.Database.ReferenceData
+namespace VideoForensics.Data.Database.Sqlite.Services
 {
     /// <summary>
-    /// Derives EventTypeLinks rows from existing event, detection and occurrence data.
+    /// SQLite implementation of <see cref="IEventTypeLinkBackfill"/>. Written as set-based SQL for SQLite, so it lives in the
+    /// SQLite project; the database-agnostic code calls the interface only.
     /// </summary>
     /// <remarks>
     /// Why this is written the way it is:
     /// <list type="bullet">
-    /// <item>Links are set-based (INSERT ... SELECT) so 1M-row databases never load into EF.</item>
+    /// <item>Links are set-based (INSERT ... SELECT) so large databases never load into EF.</item>
     /// <item>NOT EXISTS makes reruns idempotent: a second run inserts nothing new.</item>
     /// <item>Keyset batches of 1000 Events keep each SQLite write transaction short.</item>
     /// <item>Motion is a fallback, so it is linked only when no non-motion type applies.</item>
     /// </list>
-    /// Existing links are never deleted or updated here. Re-derivation with deletes is a separate step.
     /// </remarks>
-    public static class EventTypeBackfill
+    public sealed class SqliteEventTypeLinkBackfill : IEventTypeLinkBackfill
     {
         private const int BatchSize = 1000;
         private const string DerivedSource = "Derived";
         private const string MotionCode = "motion";
 
-        /// <summary>Inserts derived EventTypeLinks for all events and returns the number of rows inserted.</summary>
-        public static async Task<int> RunAsync(
-            IDbContextFactory<VideoForensicsDbContext> factory,
-            string providerKey,
-            CancellationToken ct)
+        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+
+        /// <summary>Creates the backfill over the given DbContext factory.</summary>
+        public SqliteEventTypeLinkBackfill(IDbContextFactory<VideoForensicsDbContext> factory)
         {
-            await using var db = await factory.CreateDbContextAsync(ct);
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        }
+
+        /// <inheritdoc />
+        public async Task<int> RunAsync(string providerKey, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
 
             DateTime nowUtc = DateTime.UtcNow;
             int inserted = 0;

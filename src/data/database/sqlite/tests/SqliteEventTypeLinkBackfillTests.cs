@@ -2,27 +2,29 @@ using Microsoft.EntityFrameworkCore;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Data.Database.ReferenceData;
+using VideoForensics.Data.Database.Sqlite.Services;
 using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Sqlite.Tests
 {
     /// <summary>
-    /// Verifies the EventTypeLinks backfill on a real SQLite database: each rule derives the right links, and a rerun inserts nothing.
+    /// Verifies the SQLite EventTypeLinks backfill: each rule derives the right links, and a rerun inserts nothing.
     /// The new tables are created with raw DDL because the test fixture builds the schema from the DbSets it knows about.
     /// </summary>
-    public class EventTypeBackfillTests : IAsyncLifetime
+    public class SqliteEventTypeLinkBackfillTests : IAsyncLifetime
     {
         private const string Ring = "ring";
 
         private SqliteInMemoryFixture _fixture = null!;
+        private SqliteEventTypeLinkBackfill _backfill = null!;
 
         public async ValueTask InitializeAsync()
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
+            _backfill = new SqliteEventTypeLinkBackfill(_fixture.Factory);
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
 
@@ -112,7 +114,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid eventId = await AddEventAsync("ding", cvType: "human");
 
-            _ = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            _ = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(["person"], await LinkCodesAsync(eventId));
         }
@@ -122,7 +124,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid eventId = await AddEventAsync("motion");
 
-            _ = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            _ = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(["motion"], await LinkCodesAsync(eventId));
         }
@@ -132,7 +134,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid eventId = await AddEventAsync("motion", cvType: "human");
 
-            _ = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            _ = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(["person"], await LinkCodesAsync(eventId));
         }
@@ -142,7 +144,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid eventId = await AddEventAsync("ding", cvType: "other_motion");
 
-            _ = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            _ = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(["motion"], await LinkCodesAsync(eventId));
         }
@@ -150,7 +152,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RunAsync_AnimalOnlyInOccurrenceRows_LinksAnimal()
         {
-            Guid eventId = await AddEventAsync("motion", cvType: null, occurrenceType: null);
+            Guid eventId = await AddEventAsync("motion");
             await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
             {
                 var detectionId = Guid.NewGuid();
@@ -166,7 +168,7 @@ namespace VideoForensics.Data.Database.Tests
                 _ = await db.SaveChangesAsync();
             }
 
-            _ = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            _ = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(["animal"], await LinkCodesAsync(eventId));
         }
@@ -177,8 +179,8 @@ namespace VideoForensics.Data.Database.Tests
             _ = await AddEventAsync("motion");
             _ = await AddEventAsync("ding", cvType: "human");
 
-            int first = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
-            int second = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            int first = await _backfill.RunAsync(Ring, CancellationToken.None);
+            int second = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(2, first);
             Assert.Equal(0, second);
@@ -207,7 +209,7 @@ namespace VideoForensics.Data.Database.Tests
                 _ = await db.SaveChangesAsync();
             }
 
-            int inserted = await EventTypeBackfill.RunAsync(_fixture.Factory, Ring, CancellationToken.None);
+            int inserted = await _backfill.RunAsync(Ring, CancellationToken.None);
 
             Assert.Equal(1001, inserted);
         }
