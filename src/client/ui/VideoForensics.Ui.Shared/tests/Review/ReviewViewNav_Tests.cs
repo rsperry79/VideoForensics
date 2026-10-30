@@ -46,10 +46,10 @@ public class ReviewViewNav_Tests : ReviewTestContext
 
         // Assert
         IElement events = cut.Find("[data-testid='review-tab-button-events']");
-        Assert.Contains("active", events.ClassName);
+        Assert.Contains("e-primary", events.ClassName);
         Assert.Equal("true", events.GetAttribute("aria-selected"));
         IElement timeline = cut.Find("[data-testid='review-tab-button-timeline']");
-        Assert.DoesNotContain("active", timeline.ClassName);
+        Assert.DoesNotContain("e-primary", timeline.ClassName);
         Assert.Equal("false", timeline.GetAttribute("aria-selected"));
     }
 
@@ -64,8 +64,8 @@ public class ReviewViewNav_Tests : ReviewTestContext
 
         // Assert
         Assert.Equal(ReviewTab.Detail, ReviewState.ActiveTab);
-        Assert.Contains("active", cut.Find("[data-testid='review-tab-button-detail']").ClassName);
-        Assert.DoesNotContain("active", cut.Find("[data-testid='review-tab-button-timeline']").ClassName);
+        Assert.Contains("e-primary", cut.Find("[data-testid='review-tab-button-detail']").ClassName);
+        Assert.DoesNotContain("e-primary", cut.Find("[data-testid='review-tab-button-timeline']").ClassName);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class ReviewViewNav_Tests : ReviewTestContext
         cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
 
         // Assert
-        Assert.Contains("active", cut.Find("[data-testid='review-tab-button-events']").ClassName);
+        Assert.Contains("e-primary", cut.Find("[data-testid='review-tab-button-events']").ClassName);
     }
 
     [Fact]
@@ -119,10 +119,10 @@ public class ReviewViewNav_Tests : ReviewTestContext
         IRenderedComponent<ReviewViewNav> cut = RenderNav();
 
         // Assert
-        Assert.Contains("active", cut.Find("[data-testid='review-live']").ClassName);
+        Assert.Contains("e-primary", cut.Find("[data-testid='review-live']").ClassName);
         foreach (string tab in new[] { "timeline", "events", "detail" })
         {
-            Assert.DoesNotContain("active", cut.Find($"[data-testid='review-tab-button-{tab}']").ClassName);
+            Assert.DoesNotContain("e-primary", cut.Find($"[data-testid='review-tab-button-{tab}']").ClassName);
         }
     }
 
@@ -152,7 +152,7 @@ public class ReviewViewNav_Tests : ReviewTestContext
         // Assert
         IElement live = cut.Find("[data-testid='review-live']");
         Assert.Null(live.GetAttribute("role"));
-        Assert.DoesNotContain("active", live.ClassName);
+        Assert.DoesNotContain("e-primary", live.ClassName);
     }
 
     [Fact]

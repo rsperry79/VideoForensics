@@ -1,0 +1,15 @@
+/* The popup fills its container, so it matches the sidebar selects. It scrolls when the camera list is long. */
+.review-camera-selector .review-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 18rem;
+    overflow-y: auto;
+}
+
+/* The review page backdrop sits at 1040. While the popup is open the whole control rises above it, so the switches and the button stay clickable. */
+.review-camera-selector-open {
+    z-index: 1050;
+}

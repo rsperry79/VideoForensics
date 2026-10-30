@@ -6,21 +6,25 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ReviewPage> L
 
-<nav class="review-view-nav d-flex flex-column gap-1 p-2" aria-label="@L["ViewNavLabel"]" data-testid="review-view-nav">
-    <div class="d-flex flex-column gap-1" role="tablist" aria-label="@L["TabsLabel"]">
+<nav class="review-view-nav" aria-label="@L["ViewNavLabel"]" data-testid="review-view-nav">
+    <div role="tablist" aria-label="@L["TabsLabel"]">
         @foreach (ReviewTab tab in Enum.GetValues<ReviewTab>())
         {
             bool active = !OnLivePage && State.ActiveTab == tab;
-            <button type="button"
-                    role="tab"
-                    class="btn btn-sm text-start @(active ? "btn-primary active" : "btn-outline-secondary")"
-                    aria-selected="@(active ? "true" : "false")"
-                    data-testid="@TabTestId(tab)"
-                    @onclick="() => OnTab(tab)">@L[TabKey(tab)]</button>
+            <div class="left-nav-entry">
+                <button type="button"
+                        role="tab"
+                        class="e-btn left-nav-item @(active ? "e-primary" : "e-flat")"
+                        aria-selected="@(active ? "true" : "false")"
+                        data-testid="@TabTestId(tab)"
+                        @onclick="() => OnTab(tab)">@L[TabKey(tab)]</button>
+            </div>
         }
     </div>
 
-    <button type="button" class="btn btn-sm text-start @(OnLivePage ? "btn-primary active" : "btn-outline-secondary")" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
+    <div class="left-nav-entry">
+        <button type="button" class="e-btn left-nav-item @(OnLivePage ? "e-primary" : "e-flat")" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
+    </div>
 </nav>
 
 @code {

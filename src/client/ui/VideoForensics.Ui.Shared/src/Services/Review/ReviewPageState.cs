@@ -29,6 +29,9 @@ public sealed class ReviewPageState
         FromUtc = ToUtc.AddHours(-24);
     }
 
+    /// <summary>How long the sidebar filter and camera controls wait after the last edit before applying it. Tests shorten it.</summary>
+    public TimeSpan DebounceDelay { get; set; } = DebouncedAction.DefaultDelay;
+
     /// <summary>Cameras shown on the page, in display order. At most <see cref="CameraSync.MaxTiles"/>.</summary>
     public IReadOnlyList<Guid> CameraIds => _cameraIds;
 

@@ -1,16 +1,23 @@
+@using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @implements IDisposable
 @inject ReviewStillCommand StillCommand
+@inject ReviewPopupState Popups
 @inject IStringLocalizer<ReviewPage> L
 
-<section class="review-actions-panel p-2 mt-2" aria-label="@L["Actions"]" data-testid="review-actions-panel">
-    <div class="small fw-semibold mb-2">@L["Actions"]</div>
+<section class="review-actions-panel position-relative p-2 mt-2 @(IsOpen ? "review-actions-panel-open" : null)" aria-label="@L["Actions"]" data-testid="review-actions-panel" @onkeydown="OnKeyDown">
+    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-actions-button" aria-expanded="@IsOpen.ToString().ToLowerInvariant()" @onclick="OnToggle">@L["ActionsMenuTitle"]</button>
 
-    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(!StillCommand.CanGrab)" @onclick="() => StillCommand.GrabAsync()">@L["GrabStill"]</button>
+    @if (IsOpen)
+    {
+        <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["ActionsMenuLabel"]" data-testid="review-actions-dropdown">
+            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(!StillCommand.CanGrab)" @onclick="() => StillCommand.GrabAsync()">@L["GrabStill"]</button>
 
-    <ReviewActionsMenu State="State" />
+            <ReviewActionsMenu State="State" />
+        </div>
+    }
 </section>
 
 @code {
@@ -18,11 +25,27 @@
     [Parameter, EditorRequired]
     public ReviewPageState State { get; set; } = default!;
 
+    private bool IsOpen => Popups.IsOpen(ReviewPopupState.Actions);
+
     private string GrabStillTitle => StillCommand.Reason ?? L["GrabStill"].Value;
 
     protected override void OnInitialized()
     {
         StillCommand.OnChange += OnStillChanged;
+        Popups.OnChange += OnStillChanged;
+    }
+
+    private void OnToggle()
+    {
+        Popups.Toggle(ReviewPopupState.Actions);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Popups.Close(ReviewPopupState.Actions);
+        }
     }
 
     private void OnStillChanged()
@@ -33,5 +56,6 @@
     public void Dispose()
     {
         StillCommand.OnChange -= OnStillChanged;
+        Popups.OnChange -= OnStillChanged;
     }
 }

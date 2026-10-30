@@ -69,6 +69,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
+            // The Media tab has no sidebar items: its menu is the review view menu in the left panel, which the review page registers.
+            new("media", "Media", "/media", [], Visible: ctx => ctx.IsSignedIn),
+
             new("cases", "Review", "/cases",
             [
                 new("All Cases", "/cases"),
@@ -142,6 +145,13 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                         best = group;
                         bestLength = item.Path.Length;
                     }
+                }
+
+                // A tab with no sidebar items (Media) is active on its own path.
+                if (group.Items.Count == 0 && group.Path.Length > bestLength && NavPathMatcher.Matches(currentPath, currentQuery, group.Path))
+                {
+                    best = group;
+                    bestLength = group.Path.Length;
                 }
             }
 
