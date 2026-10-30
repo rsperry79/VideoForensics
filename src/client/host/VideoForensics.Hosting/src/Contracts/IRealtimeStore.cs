@@ -35,6 +35,9 @@ namespace VideoForensics.Client.Hosting.Contracts
         /// <summary>Device health change events. Subscribers hear only changes made after they subscribe.</summary>
         IObservable<DeviceHealthChangedDto> DeviceHealthChanged { get; }
 
+        /// <summary>Saved-settings pushes from the hub. Events, not state: no replay.</summary>
+        IObservable<ClientConfigDto> ClientConfigChanged { get; }
+
         /// <summary>Most recent download progress, or null before the first emission.</summary>
         DownloadProgressDto? LatestDownloadProgress { get; }
 

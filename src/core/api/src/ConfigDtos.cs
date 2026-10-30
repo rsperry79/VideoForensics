@@ -109,5 +109,45 @@ namespace VideoForensics.Core.Api.Contracts
                 CalibrationStalenessDays: config.CalibrationStalenessDays
             );
         }
+
+        /// <summary>
+        /// Converts a ClientConfigDto back to a configuration object. Only the client-safe allowlist is set; every other
+        /// setting keeps its default, because the server never sends it. A client must not persist the result.
+        /// </summary>
+        public static ForensicsConfiguration ToDomain(this ClientConfigDto dto)
+        {
+            return new ForensicsConfiguration
+            {
+                EnableForensicAnalysisReports = dto.EnableForensicAnalysisReports,
+                EnableSignalAnomalyReports = dto.EnableSignalAnomalyReports,
+                EnableChainOfCustodyReports = dto.EnableChainOfCustodyReports,
+                EnableEvidenceValidationReports = dto.EnableEvidenceValidationReports,
+                EnableAccessControlMonitoring = dto.EnableAccessControlMonitoring,
+                EnablePiiRedaction = dto.EnablePiiRedaction,
+                ReportOutputFormat = dto.ReportOutputFormat,
+                RedactionLevel = dto.RedactionLevel,
+                RetentionDaysDefault = dto.RetentionDaysDefault,
+                LogLevel = dto.LogLevel,
+                MaxConcurrentDownloads = dto.MaxConcurrentDownloads,
+                DownloadStartDate = dto.DownloadStartDate,
+                EnableHealthSync = dto.EnableHealthSync,
+                EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
+                EnableEmailNotifications = dto.EnableEmailNotifications,
+                ConfiguredNetworkTier = dto.ConfiguredNetworkTier,
+                InternetServerUrl = dto.InternetServerUrl,
+                EnableLiveView = dto.EnableLiveView,
+                LiveViewIdleTimeoutMinutes = dto.LiveViewIdleTimeoutMinutes,
+                LiveViewTelemetrySampleIntervalSeconds = dto.LiveViewTelemetrySampleIntervalSeconds,
+                SustainedModeMaxDurationMinutes = dto.SustainedModeMaxDurationMinutes,
+                LiveViewTelemetryRetentionDays = dto.LiveViewTelemetryRetentionDays,
+                ElevatedPollingWindowMinutes = dto.ElevatedPollingWindowMinutes,
+                ElevatedPollingIntervalSeconds = dto.ElevatedPollingIntervalSeconds,
+                EnableBitrateCalibration = dto.EnableBitrateCalibration,
+                CalibrationCheckIntervalMinutes = dto.CalibrationCheckIntervalMinutes,
+                CalibrationSessionDurationSeconds = dto.CalibrationSessionDurationSeconds,
+                MinCalibrationSamplesPerBucket = dto.MinCalibrationSamplesPerBucket,
+                CalibrationStalenessDays = dto.CalibrationStalenessDays
+            };
+        }
     }
 }

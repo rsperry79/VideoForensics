@@ -511,6 +511,9 @@ else
 builder.Services.AddSingleton<ThumbnailReadyBus>();
 builder.Services.AddSingleton<EvidenceChangedBus>();
 builder.Services.AddSingleton<DeviceHealthChangedBus>();
+builder.Services.AddSingleton<ClientConfigChangedBus>();
+builder.Services.AddSingleton<IConfigurationChangeNotifier, LiveConfigNotifier>();
+builder.Services.AddScoped<IConfigChangedSource, LocalConfigChangedSource>();
 builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, LiveThumbnailNotifier>());
 builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
 builder.Services.Replace(ServiceDescriptor.Singleton<IDeviceHealthChangeNotifier, LiveDeviceHealthNotifier>());

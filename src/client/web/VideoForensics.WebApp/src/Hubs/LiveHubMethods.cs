@@ -19,6 +19,9 @@ namespace VideoForensics.Client.WebApp.Hubs
         public const string EvidenceChanged = "EvidenceChanged";
         public const string DeviceHealthChanged = "DeviceHealthChanged";
 
+        /// <summary>Settings-saved push. Sent to every connection; the payload is the client-safe settings snapshot.</summary>
+        public const string ClientConfigChanged = "ClientConfigChanged";
+
         /// <summary>Live-view session state push. Sent only to connections subscribed to that session's group.</summary>
         public const string LiveViewSessionChanged = "LiveViewSessionChanged";
 

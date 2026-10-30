@@ -27,6 +27,7 @@ namespace VideoForensics.Client.Hosting
         private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
         private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
         private readonly Subject<DeviceHealthChangedDto> _deviceHealthChanged = new();
+        private readonly Subject<ClientConfigDto> _clientConfigChanged = new();
         // Activity lines are not state: every line must reach a drainer, so they are queued rather than latest-value.
         // The cap stops a caller that never drains from growing memory without limit; the oldest lines go first.
         private readonly Queue<string> _activityLog = new();
@@ -44,6 +45,7 @@ namespace VideoForensics.Client.Hosting
             _hubSubscriptions.Add(hub.ThumbnailReady.Subscribe(value => PublishEvent(_thumbnailReady, value)));
             _hubSubscriptions.Add(hub.EvidenceChanged.Subscribe(value => PublishEvent(_evidenceChanged, value)));
             _hubSubscriptions.Add(hub.DeviceHealthChanged.Subscribe(value => PublishEvent(_deviceHealthChanged, value)));
+            _hubSubscriptions.Add(hub.ClientConfigChanged.Subscribe(value => PublishEvent(_clientConfigChanged, value)));
         }
 
         /// <inheritdoc />
@@ -66,6 +68,9 @@ namespace VideoForensics.Client.Hosting
 
         /// <inheritdoc />
         public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => _deviceHealthChanged.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<ClientConfigDto> ClientConfigChanged => _clientConfigChanged.AsObservable();
 
         /// <inheritdoc />
         public DownloadProgressDto? LatestDownloadProgress => _downloadProgress.Value;

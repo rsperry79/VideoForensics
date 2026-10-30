@@ -496,7 +496,8 @@ namespace VideoForensics.Client.Hosting
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
                     serviceProvider.GetRequiredService<IAppSettingRepository>(),
-                    serviceProvider.GetRequiredService<IFfmpegToolLocation>()
+                    serviceProvider.GetRequiredService<IFfmpegToolLocation>(),
+                    changeNotifier: serviceProvider.GetService<IConfigurationChangeNotifier>()
                 )
             );
 
@@ -794,6 +795,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDeviceHealthChangedSource, Remote.RemoteDeviceHealthChangedSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IConfigChangedSource, Remote.RemoteConfigChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.INoticeFeed, Remote.RemoteNoticeFeed>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 

@@ -13,19 +13,23 @@ namespace VideoForensics.Client.Core.Services
         private readonly IAppSettingRepository _settingRepository;
         private readonly IFfmpegToolLocation? _ffmpegToolLocation;
         private readonly Func<string?> _discoverBinDirectory;
+        private readonly IConfigurationChangeNotifier? _changeNotifier;
 
         /// <param name="ffmpegToolLocation">Optional holder that consumers read the ffmpeg bin directory from; kept in sync on load and save.</param>
         /// <param name="discoverBinDirectory">Optional discovery used on first run when FfmpegBinDirectory is empty. Defaults to <see cref="FfmpegBinDirectoryLocator.DiscoverDefault"/>.</param>
+        /// <param name="changeNotifier">Optional announcer told about each successful save, so live clients refresh their settings.</param>
         public ForensicsConfigurationService(
             ILogger<ForensicsConfigurationService> logger,
             IAppSettingRepository settingRepository,
             IFfmpegToolLocation? ffmpegToolLocation = null,
-            Func<string?>? discoverBinDirectory = null)
+            Func<string?>? discoverBinDirectory = null,
+            IConfigurationChangeNotifier? changeNotifier = null)
         {
             _logger = logger;
             _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
             _ffmpegToolLocation = ffmpegToolLocation;
             _discoverBinDirectory = discoverBinDirectory ?? FfmpegBinDirectoryLocator.DiscoverDefault;
+            _changeNotifier = changeNotifier;
         }
 
         public async Task<IForensicsConfiguration> LoadConfigurationAsync(string configPath, CancellationToken cancellationToken = default)
@@ -53,6 +57,12 @@ namespace VideoForensics.Client.Core.Services
             await SaveToDatabaseAsync(config, cancellationToken);
 
             _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
+
+            // Why: announce only after the write succeeds, so a client never refreshes to values that were not saved.
+            if (_changeNotifier is not null)
+            {
+                await _changeNotifier.ConfigurationSavedAsync(config, cancellationToken);
+            }
         }
 
         /// <summary>
