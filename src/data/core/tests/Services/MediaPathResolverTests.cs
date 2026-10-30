@@ -45,11 +45,4 @@ public class MediaPathResolverTests
         Assert.Equal(Path.Combine(Root, "ring", "home", "front_door", "clip.mp4"), full);
     }
 
-    [Fact]
-    public async Task ToAbsolute_RootedPath_IsUnchanged()
-    {
-        string rooted = Path.Combine(Root, "clip.mp4");
-
-        Assert.Equal(rooted, await Create().ToAbsoluteAsync(rooted, CancellationToken.None));
-    }
 }

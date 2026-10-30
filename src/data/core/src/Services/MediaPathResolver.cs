@@ -23,7 +23,7 @@ namespace VideoForensics.Data.Core.Services
         /// <inheritdoc />
         public async Task<string> ToAbsoluteAsync(string storedPath, CancellationToken ct)
         {
-            if (string.IsNullOrEmpty(storedPath) || Path.IsPathRooted(storedPath))
+            if (string.IsNullOrEmpty(storedPath))
             {
                 return storedPath;
             }

@@ -521,7 +521,6 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddScoped<SignalDeviationAlerts>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
-            _ = services.AddHostedService<MediaPathMigrationService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
             _ = services.AddHostedService<MediaPreviewBackfillService>();
             _ = services.AddHostedService<JammingAnalysisBackfillService>();

@@ -6,10 +6,7 @@ namespace VideoForensics.Data.Common.Contracts
     /// </summary>
     public interface IMediaPathResolver
     {
-        /// <summary>
-        /// Full path for a stored path. A path that is already rooted (a row written before relative paths) is returned
-        /// unchanged.
-        /// </summary>
+        /// <summary>Full path for a stored path, under the media root.</summary>
         Task<string> ToAbsoluteAsync(string storedPath, CancellationToken ct);
 
         /// <summary>
