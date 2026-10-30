@@ -205,19 +205,11 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_GroupWithoutSections_ReturnsSingleUntitledSection()
     {
-        NavGroup media = NavGroups.All.First(g => g.Key == "media");
+        var group = new NavGroup("plain", "Plain", "/plain", [new("Only item", "/plain")]);
 
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(media, Ctx(OperatorRole.ReadOnly));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, Ctx(OperatorRole.ReadOnly));
 
         _ = Assert.Single(sections);
         Assert.Null(sections[0].Title);
-    }
-
-    [Fact]
-    public void Media_GroupHasNoHiddenDatesFilterPlaceholder()
-    {
-        NavGroup media = NavGroups.All.First(g => g.Key == "media");
-
-        Assert.DoesNotContain(media.Items, i => i.Path == "/media/dates-filter");
     }
 }

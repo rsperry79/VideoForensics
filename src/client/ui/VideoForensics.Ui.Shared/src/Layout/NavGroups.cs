@@ -69,11 +69,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            new("media", "Media", "/media",
-            [
-                new("Media", "/media")
-            ]),
-
             new("cases", "Review", "/cases",
             [
                 new("All Cases", "/cases"),
