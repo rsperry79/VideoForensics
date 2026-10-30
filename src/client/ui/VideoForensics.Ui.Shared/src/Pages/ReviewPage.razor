@@ -93,7 +93,7 @@ else
 
     // The cameras left after the Provider and Account filters, and the filters they were computed for.
     private IReadOnlyList<Guid> _visibleIds = [];
-    private (string? Provider, Guid? Account) _appliedFilters;
+    private (string? Provider, Guid? Account, Guid? Location) _appliedFilters;
 
     protected override async Task OnInitializedAsync()
     {
@@ -153,8 +153,8 @@ else
     /// <summary>Recomputes the visible cameras for the current Provider and Account filters.</summary>
     private void ComputeVisibleCameras()
     {
-        _visibleIds = ReviewDeviceFilter.VisibleDeviceIds(_deviceIds, _ownership?.Ownership, State.ProviderFilter, State.AccountFilter);
-        _appliedFilters = (State.ProviderFilter, State.AccountFilter);
+        _visibleIds = ReviewDeviceFilter.VisibleDeviceIds(_deviceIds, _ownership?.Ownership, State.ProviderFilter, State.AccountFilter, State.LocationFilter);
+        _appliedFilters = (State.ProviderFilter, State.AccountFilter, State.LocationFilter);
     }
 
     /// <summary>
@@ -205,7 +205,7 @@ else
     /// </summary>
     private void ReadUrlOnce(ReviewUrlState url)
     {
-        State.SetFilters(url.Provider, url.Account);
+        State.SetFilters(url.Provider, url.Account, url.Location);
         ComputeVisibleCameras();
         HashSet<Guid> visible = _visibleIds.ToHashSet();
 
@@ -245,7 +245,7 @@ else
     {
         if (_urlParsed)
         {
-            if ((State.ProviderFilter, State.AccountFilter) != _appliedFilters)
+            if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter) != _appliedFilters)
             {
                 ReconcileCameras();
             }
@@ -275,7 +275,8 @@ else
             State.ActiveTab,
             State.ProviderFilter,
             State.AccountFilter,
-            CaseMode.Active ? CaseMode.CaseId : null);
+            CaseMode.Active ? CaseMode.CaseId : null,
+            State.LocationFilter);
 
         string target = ReviewUrl.Build(current);
         string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));

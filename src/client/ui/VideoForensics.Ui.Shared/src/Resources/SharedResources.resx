@@ -779,6 +779,12 @@
   <data name="ScopeAllAccounts" xml:space="preserve">
     <value>All accounts</value>
   </data>
+  <data name="ScopeLocation" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="ScopeAllLocations" xml:space="preserve">
+    <value>All locations</value>
+  </data>
   <data name="ReviewPlayerGap" xml:space="preserve">
     <value>No recording covers this time.</value>
   </data>

@@ -4,7 +4,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
 /// <summary>
-/// Camera visibility for the review page's Provider and Account filters. Delegates the ownership decision to
+/// Camera visibility for the review page's Provider, Account and Location filters. Delegates the ownership decision to
 /// <see cref="ScopeRailRules.VisibleDevices"/>, so the review page and the scope rail agree on which devices a
 /// provider or account owns.
 /// </summary>
@@ -18,7 +18,8 @@ public static class ReviewDeviceFilter
         IReadOnlyList<Guid> allDeviceIds,
         IReadOnlyList<DeviceOwnership>? ownership,
         string? providerFilter,
-        Guid? accountFilter)
+        Guid? accountFilter,
+        Guid? locationFilter = null)
     {
         if (ownership is null)
         {
@@ -34,7 +35,7 @@ public static class ReviewDeviceFilter
             Type = string.Empty,
         });
 
-        return ScopeRailRules.VisibleDevices(devices, ownership, providerFilter, accountFilter)
+        return ScopeRailRules.VisibleDevices(devices, ownership, providerFilter, accountFilter, locationFilter)
             .Select(device => device.Id)
             .ToList();
     }

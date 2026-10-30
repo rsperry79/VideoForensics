@@ -61,14 +61,44 @@ public class ScopeRailRulesTests
         Device wyzeDevice = MakeDevice();
         DeviceOwnership[] ownership = new[]
         {
-            new DeviceOwnership(ringDevice.Id, Guid.NewGuid(), "Ring"),
-            new DeviceOwnership(wyzeDevice.Id, Guid.NewGuid(), "Wyze"),
+            new DeviceOwnership(ringDevice.Id, Guid.NewGuid(), "Ring", Guid.Empty),
+            new DeviceOwnership(wyzeDevice.Id, Guid.NewGuid(), "Wyze", Guid.Empty),
         };
 
         IReadOnlyList<Device> visible = ScopeRailRules.VisibleDevices(new[] { ringDevice, wyzeDevice }, ownership, "Ring", null);
 
         Device only = Assert.Single(visible);
         Assert.Equal(ringDevice.Id, only.Id);
+    }
+
+    [Fact]
+    public void VisibleDevices_LocationFilter_KeepsOnlyDevicesAtThatLocation()
+    {
+        Device porchDevice = MakeDevice();
+        Device garageDevice = MakeDevice();
+        Guid account = Guid.NewGuid();
+        Guid porch = Guid.NewGuid();
+        Guid garage = Guid.NewGuid();
+        DeviceOwnership[] ownership = new[]
+        {
+            new DeviceOwnership(porchDevice.Id, account, "Ring", porch),
+            new DeviceOwnership(garageDevice.Id, account, "Ring", garage),
+        };
+
+        IReadOnlyList<Device> visible = ScopeRailRules.VisibleDevices(new[] { porchDevice, garageDevice }, ownership, null, null, garage);
+
+        Device only = Assert.Single(visible);
+        Assert.Equal(garageDevice.Id, only.Id);
+    }
+
+    [Fact]
+    public void ApplyFilters_LocationFilterActiveWithNoVisibleDevices_SetsMatchesNoDevices()
+    {
+        ForensicScope current = MakeScope();
+
+        ForensicScope result = ScopeRailRules.ApplyFilters(current, Array.Empty<Guid>(), null, null, Guid.NewGuid());
+
+        Assert.True(result.MatchesNoDevices);
     }
 
     // ---- Provider pick ---------------------------------------------------

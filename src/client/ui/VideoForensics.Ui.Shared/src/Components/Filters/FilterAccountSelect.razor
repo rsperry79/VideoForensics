@@ -1,0 +1,43 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Data.Common.Entities
+@inject IStringLocalizer<SharedResources> L
+
+<select class="@Class" data-testid="@TestId" aria-label="@L["ScopeAccount"]" @onchange="OnChanged">
+    <option value="" selected="@(Value is null)">@L["ScopeAllAccounts"]</option>
+    @foreach (ProviderAccount account in Accounts)
+    {
+        <option value="@account.Id" selected="@(Value == account.Id)">@AccountNames.GetValueOrDefault(account.Id, account.ProviderName)</option>
+    }
+</select>
+
+@code {
+    /// <summary>The accounts to offer, in display order.</summary>
+    [Parameter]
+    public IReadOnlyList<ProviderAccount> Accounts { get; set; } = [];
+
+    /// <summary>The label per account; an account without one shows its provider name.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> AccountNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The picked account, or null for all accounts.</summary>
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    /// <summary>Raised with the picked account, or null when "all accounts" is picked.</summary>
+    [Parameter]
+    public EventCallback<Guid?> ValueChanged { get; set; }
+
+    /// <summary>The <c>data-testid</c> of the select.</summary>
+    [Parameter]
+    public string TestId { get; set; } = string.Empty;
+
+    /// <summary>CSS classes of the select; the caller decides the styling.</summary>
+    [Parameter]
+    public string Class { get; set; } = "form-select form-select-sm";
+
+    private Task OnChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        return ValueChanged.InvokeAsync(Guid.TryParse(e.Value?.ToString(), out Guid parsed) ? parsed : null);
+    }
+}

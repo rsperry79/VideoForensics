@@ -21,7 +21,8 @@ public sealed record ReviewUrlState(
     ReviewTab Tab,
     string? Provider,
     Guid? Account,
-    Guid? CaseId = null)
+    Guid? CaseId = null,
+    Guid? Location = null)
 {
     /// <summary>Compares every field, with <see cref="Devices"/> compared by sequence.</summary>
     public bool Equals(ReviewUrlState? other)
@@ -34,7 +35,8 @@ public sealed record ReviewUrlState(
             && Tab == other.Tab
             && Provider == other.Provider
             && Account == other.Account
-            && CaseId == other.CaseId;
+            && CaseId == other.CaseId
+            && Location == other.Location;
     }
 
     /// <summary>Hash code that agrees with <see cref="Equals(ReviewUrlState)"/>.</summary>
@@ -53,6 +55,7 @@ public sealed record ReviewUrlState(
         hash.Add(Provider);
         hash.Add(Account);
         hash.Add(CaseId);
+        hash.Add(Location);
         return hash.ToHashCode();
     }
 }
@@ -60,7 +63,7 @@ public sealed record ReviewUrlState(
 /// <summary>
 /// Reads and writes the review page's query string. Devices, from, and to use the same names and formats as
 /// the global scope, so a scope link and a review link read the same way; the review page adds cursor (t),
-/// tab, provider, and account.
+/// tab, provider, account, and location.
 /// </summary>
 public static class ReviewUrl
 {
@@ -81,6 +84,7 @@ public static class ReviewUrl
         string? provider = null;
         Guid? account = null;
         Guid? caseId = null;
+        Guid? location = null;
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -119,6 +123,9 @@ public static class ReviewUrl
                     case "account":
                         account = Guid.TryParse(value.Trim(), out Guid accountValue) ? accountValue : account;
                         break;
+                    case "location":
+                        location = Guid.TryParse(value.Trim(), out Guid locationValue) ? locationValue : location;
+                        break;
                     case "reviewcase":
                         caseId = Guid.TryParse(value.Trim(), out Guid caseValue) ? caseValue : caseId;
                         break;
@@ -134,7 +141,8 @@ public static class ReviewUrl
             tab,
             provider,
             account,
-            caseId);
+            caseId,
+            location);
     }
 
     /// <summary>
@@ -198,6 +206,11 @@ public static class ReviewUrl
         if (state.Account is Guid account)
         {
             parts.Add("account=" + account.ToString("D"));
+        }
+
+        if (state.Location is Guid location)
+        {
+            parts.Add("location=" + location.ToString("D"));
         }
 
         if (state.CaseId is Guid caseGuid)

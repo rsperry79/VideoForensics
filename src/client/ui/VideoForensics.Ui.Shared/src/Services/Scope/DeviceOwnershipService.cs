@@ -8,13 +8,19 @@ namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 /// <param name="AccountNames">Operator-facing label per account: the user's display name, else the provider name.</param>
 /// <param name="ProviderNames">Distinct provider names, sorted, for the Provider filter.</param>
 /// <param name="Ownership">Device-to-account links derived from location membership.</param>
+/// <param name="Locations">Distinct provider locations across the accounts, sorted by name, for the Location filter.</param>
 /// <param name="LoadError">The exception that stopped the load, or null. Callers that must not hide devices on failure check this.</param>
 public sealed record DeviceOwnershipSnapshot(
     IReadOnlyList<ProviderAccount> Accounts,
     IReadOnlyDictionary<Guid, string> AccountNames,
     IReadOnlyList<string> ProviderNames,
     IReadOnlyList<DeviceOwnership> Ownership,
-    Exception? LoadError = null);
+    IReadOnlyList<FilterLocation>? Locations = null,
+    Exception? LoadError = null)
+{
+    /// <summary>The Location filter's choices. Empty when the snapshot carries none.</summary>
+    public IReadOnlyList<FilterLocation> Locations { get; init; } = Locations ?? Array.Empty<FilterLocation>();
+}
 
 /// <summary>
 /// Loads the provider accounts, their locations and display names once, so every page that offers the
@@ -48,10 +54,18 @@ public sealed class DeviceOwnershipService
             var accounts = (await _accounts.ListAsync(ct)).ToList();
 
             var locationIdsByAccount = new Dictionary<Guid, IReadOnlyList<Guid>>();
+            var locationsById = new Dictionary<Guid, FilterLocation>();
             foreach (ProviderAccount? account in accounts)
             {
                 IReadOnlyList<Location> locations = await _locations.ListByProviderAccountIdAsync(account.Id, ct);
                 locationIdsByAccount[account.Id] = locations.Select(l => l.Id).ToList();
+                foreach (Location location in locations)
+                {
+                    // A location shared by several accounts is listed once.
+                    locationsById.TryAdd(
+                        location.Id,
+                        new FilterLocation(location.Id, string.IsNullOrWhiteSpace(location.Name) ? location.ProviderLocationId : location.Name));
+                }
             }
 
             IReadOnlyList<DeviceOwnership> ownership = ScopeDeviceFilter.BuildOwnership(devices, accounts, locationIdsByAccount);
@@ -62,7 +76,10 @@ public sealed class DeviceOwnershipService
                 .ToList();
 
             IReadOnlyDictionary<Guid, string> names = await LoadAccountNamesAsync(accounts, ct);
-            return new DeviceOwnershipSnapshot(accounts, names, providerNames, ownership);
+            var filterLocations = locationsById.Values
+                .OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return new DeviceOwnershipSnapshot(accounts, names, providerNames, ownership, filterLocations);
         }
         catch (Exception ex)
         {
@@ -71,6 +88,7 @@ public sealed class DeviceOwnershipService
                 new Dictionary<Guid, string>(),
                 Array.Empty<string>(),
                 Array.Empty<DeviceOwnership>(),
+                Array.Empty<FilterLocation>(),
                 ex);
         }
     }

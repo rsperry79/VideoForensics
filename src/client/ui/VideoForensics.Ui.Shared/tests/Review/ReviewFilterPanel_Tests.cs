@@ -5,6 +5,10 @@ using AngleSharp.Html.Dom;
 using Bunit;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+
+using VideoForensics.Client.Ui.Shared.Resources;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Review;
@@ -36,16 +40,22 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     {
         var ownership = new List<DeviceOwnership>
         {
-            new(Devices[0].Id, _ring.Id, "Ring"),
-            new(Devices[1].Id, _ring.Id, "Ring"),
-            new(Devices[2].Id, _wyze.Id, "Wyze"),
+            new(Devices[0].Id, _ring.Id, "Ring", Devices[0].LocationId),
+            new(Devices[1].Id, _ring.Id, "Ring", Devices[1].LocationId),
+            new(Devices[2].Id, _wyze.Id, "Wyze", Devices[2].LocationId),
         };
         var names = new Dictionary<Guid, string>
         {
             [_ring.Id] = "Front door account",
             [_wyze.Id] = "Garage account",
         };
-        return new DeviceOwnershipSnapshot(Accounts.ToList(), names, ["Ring", "Wyze"], ownership);
+        List<FilterLocation> locations =
+        [
+            new(Devices[0].LocationId, "Porch"),
+            new(Devices[1].LocationId, "Yard"),
+            new(Devices[2].LocationId, "Garage"),
+        ];
+        return new DeviceOwnershipSnapshot(Accounts.ToList(), names, ["Ring", "Wyze"], ownership, Locations: locations);
     }
 
     private IRenderedComponent<ReviewFilterPanel> RenderPanel()
@@ -232,6 +242,68 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Assert
         Assert.Equal("Ring", ReviewState.ProviderFilter);
         Assert.Equal(_ring.Id, ReviewState.AccountFilter);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_LocationSelectListsTheSnapshotLocations()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert
+        IReadOnlyList<string> options = cut.FindAll("[data-testid='review-filter-location'] option").Select(o => o.TextContent).ToList();
+        string all = Services.GetRequiredService<IStringLocalizer<SharedResources>>()["ScopeAllLocations"];
+        Assert.Equal([all, "Porch", "Yard", "Garage"], options);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_LocationChosen_CountAndPickerFollowIt()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Act
+        cut.Find("[data-testid='review-filter-location']").Change(Devices[2].LocationId.ToString("D"));
+
+        // Assert
+        Assert.Single(cut.FindAll("[data-testid^='review-camera-toggle-']"));
+        Assert.Single(cut.FindAll(CameraToggle(Devices[2].Id)));
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_ApplyWithLocation_SetsTheStateLocationFilter()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        cut.Find("[data-testid='review-filter-location']").Change(Devices[2].LocationId.ToString("D"));
+
+        // Act
+        cut.Find("[data-testid='review-filter-apply']").Click();
+
+        // Assert
+        Assert.Equal(Devices[2].LocationId, ReviewState.LocationFilter);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Reset_ClearsTheLocationChoice()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        cut.Find("[data-testid='review-filter-location']").Change(Devices[2].LocationId.ToString("D"));
+
+        // Act
+        cut.Find("[data-testid='review-filter-reset']").Click();
+        cut.Find("[data-testid='review-filter-apply']").Click();
+
+        // Assert
+        Assert.Null(ReviewState.LocationFilter);
+        Assert.Equal(3, cut.FindAll("[data-testid^='review-camera-toggle-']").Count);
     }
 
     [Fact]

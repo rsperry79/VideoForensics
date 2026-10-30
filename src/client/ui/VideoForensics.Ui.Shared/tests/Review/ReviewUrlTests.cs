@@ -45,6 +45,37 @@ public class ReviewUrl_Tests
     }
 
     [Fact]
+    public void Parse_LocationParameter_IsRead_AndGarbageIsIgnored()
+    {
+        // Arrange
+        Guid location = Guid.NewGuid();
+
+        // Act
+        ReviewUrlState good = ReviewUrl.Parse($"location={location:D}");
+        ReviewUrlState bad = ReviewUrl.Parse("location=nope");
+
+        // Assert
+        Assert.Equal(location, good.Location);
+        Assert.Null(bad.Location);
+    }
+
+    [Fact]
+    public void Build_Location_RoundTripsAndIsOmittedWhenNull()
+    {
+        // Arrange
+        Guid location = Guid.NewGuid();
+        ReviewUrlState withLocation = DefaultState() with { Location = location };
+
+        // Act
+        string built = ReviewUrl.Build(withLocation);
+
+        // Assert
+        Assert.Equal($"location={location:D}", built);
+        Assert.Equal(location, ReviewUrl.Parse(built).Location);
+        Assert.DoesNotContain("location", ReviewUrl.Build(DefaultState()));
+    }
+
+    [Fact]
     public void Parse_UnknownParameters_AreIgnored()
     {
         // Arrange

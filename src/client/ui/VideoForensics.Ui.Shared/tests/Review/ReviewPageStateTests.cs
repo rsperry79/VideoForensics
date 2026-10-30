@@ -454,6 +454,37 @@ public class ReviewPageState_Tests
     }
 
     [Fact]
+    public void SetFilters_Location_Stored()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        Guid location = Guid.NewGuid();
+
+        // Act
+        state.SetFilters(null, null, location);
+
+        // Assert
+        Assert.Equal(location, state.LocationFilter);
+    }
+
+    [Fact]
+    public void SetFilters_LocationChanged_RaisesOnChangeOnce_AndSameValueRaisesNothing()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        Guid location = Guid.NewGuid();
+        int raised = 0;
+        state.OnChange += () => raised++;
+
+        // Act
+        state.SetFilters(null, null, location);
+        state.SetFilters(null, null, location);
+
+        // Assert
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
     public void SelectEvent_NewId_RaisesOnChangeOnce()
     {
         // Arrange

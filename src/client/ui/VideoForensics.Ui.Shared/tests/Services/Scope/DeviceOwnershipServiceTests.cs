@@ -67,6 +67,26 @@ public class DeviceOwnershipServiceTests
     }
 
     [Fact]
+    public async Task LoadAsync_SharedAndBlankNamedLocations_AreDistinctSortedAndNamed()
+    {
+        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccount wyze = MakeAccount("Wyze", Guid.NewGuid());
+        var shared = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L1", Name = "home" };
+        var unnamed = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L2", Name = " " };
+        var cabin = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L3", Name = "Cabin" };
+
+        _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring, wyze });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, unnamed });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, cabin });
+        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(Array.Empty<Device>(), CancellationToken.None);
+
+        Assert.Equal(new[] { "Cabin", "home", "L2" }, snapshot.Locations.Select(l => l.Name));
+        Assert.Equal(new[] { cabin.Id, shared.Id, unnamed.Id }, snapshot.Locations.Select(l => l.Id));
+    }
+
+    [Fact]
     public async Task LoadAsync_UserLookupThrows_FallsBackToProviderName()
     {
         ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());

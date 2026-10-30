@@ -116,8 +116,8 @@ public class ScopeDeviceFilterTests
         Device wyzeDevice = MakeDevice(Guid.NewGuid());
         DeviceOwnership[] ownership = new[]
         {
-            new DeviceOwnership(ringDevice.Id, ring.Id, "Ring"),
-            new DeviceOwnership(wyzeDevice.Id, wyze.Id, "Wyze"),
+            new DeviceOwnership(ringDevice.Id, ring.Id, "Ring", Guid.Empty),
+            new DeviceOwnership(wyzeDevice.Id, wyze.Id, "Wyze", Guid.Empty),
         };
 
         IReadOnlyList<Device> visible = ScopeDeviceFilter.Filter(new[] { ringDevice, wyzeDevice }, ownership, "ring", null);
@@ -134,8 +134,8 @@ public class ScopeDeviceFilterTests
         Device secondDevice = MakeDevice(Guid.NewGuid());
         DeviceOwnership[] ownership = new[]
         {
-            new DeviceOwnership(firstDevice.Id, first.Id, "Ring"),
-            new DeviceOwnership(secondDevice.Id, second.Id, "Ring"),
+            new DeviceOwnership(firstDevice.Id, first.Id, "Ring", Guid.Empty),
+            new DeviceOwnership(secondDevice.Id, second.Id, "Ring", Guid.Empty),
         };
 
         IReadOnlyList<Device> visible = ScopeDeviceFilter.Filter(new[] { firstDevice, secondDevice }, ownership, null, second.Id);
