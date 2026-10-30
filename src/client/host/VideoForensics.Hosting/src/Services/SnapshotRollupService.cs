@@ -45,6 +45,7 @@ namespace VideoForensics.Client.Hosting.Services
         // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
         private readonly ISnapshotCaptureRepository? _captures;
         private readonly ISnapshotStillMapper? _stillMapper;
+        private readonly IMediaPathResolver _mediaPaths;
         private readonly IForensicsConfigurationService? _configurationService;
 
         public SnapshotRollupService(
@@ -59,8 +60,10 @@ namespace VideoForensics.Client.Hosting.Services
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
-            IForensicsConfigurationService? configurationService = null)
+            IForensicsConfigurationService? configurationService = null,
+            IMediaPathResolver? mediaPaths = null)
         {
+            _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _captures = captures;
             _stillMapper = stillMapper;
             _configurationService = configurationService;
@@ -168,16 +171,24 @@ namespace VideoForensics.Client.Hosting.Services
 
             // Format, marker and time window are filtered in SQL. Only the file-on-disk check stays here: the file system is not queryable.
             IReadOnlyList<MediaItem> rows = await _mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cancellationToken);
-            var snapshots = rows.Where(m => File.Exists(m.FilePath)).ToList();
+            var snapshots = new List<(MediaItem Row, string Path)>();
+            foreach (MediaItem row in rows)
+            {
+                string path = await _mediaPaths.ToAbsoluteAsync(row.FilePath, cancellationToken);
+                if (File.Exists(path))
+                {
+                    snapshots.Add((row, path));
+                }
+            }
 
             var stills = new List<TimelineStill>(snapshots.Count);
             for (int i = 0; i < snapshots.Count; i++)
             {
-                DateTime capturedAt = snapshots[i].RecordedAtUtc;
-                DateTime holdUntil = i + 1 < snapshots.Count ? snapshots[i + 1].RecordedAtUtc : toUtc;
+                DateTime capturedAt = snapshots[i].Row.RecordedAtUtc;
+                DateTime holdUntil = i + 1 < snapshots.Count ? snapshots[i + 1].Row.RecordedAtUtc : toUtc;
                 TimeSpan hold = holdUntil - capturedAt;
                 stills.Add(new TimelineStill(
-                    snapshots[i].FilePath,
+                    snapshots[i].Path,
                     new DateTimeOffset(capturedAt, TimeSpan.Zero),
                     hold < MinimumHold ? MinimumHold : hold));
             }
@@ -221,7 +232,7 @@ namespace VideoForensics.Client.Hosting.Services
                 Id = Guid.NewGuid(),
                 DeviceId = device.Id,
                 FileName = Path.GetFileName(mp4Path),
-                FilePath = mp4Path,
+                FilePath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken),
                 MediaFormat = "mp4",
                 FileSizeBytes = new FileInfo(mp4Path).Length,
                 RecordedAtUtc = windowEndUtc,

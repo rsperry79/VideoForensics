@@ -40,6 +40,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IMediaFrameExtractor _frameExtractor;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly ICaseRepository _caseRepository;
+        private readonly IMediaPathResolver _paths;
 
         public MediaStillCaptureOrchestrator(
             ILogger<MediaStillCaptureOrchestrator> logger,
@@ -48,8 +49,10 @@ namespace VideoForensics.Client.Core.Services
             IMediaStorageProvider storageProvider,
             IMediaFrameExtractor frameExtractor,
             IActionLogRepository actionLogRepository,
-            ICaseRepository caseRepository)
+            ICaseRepository caseRepository,
+            IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _mediaItemRepository = mediaItemRepository;
             _mediaStillRepository = mediaStillRepository;
@@ -93,9 +96,10 @@ namespace VideoForensics.Client.Core.Services
             // Recompute the source file's hash independently at the moment of capture (forensic
             // requirement) rather than trusting the already-stored Sha256Hash column, which could
             // in principle be stale relative to the file on disk.
-            string sourceHashAtCapture = await ComputeSha256Async(source.FilePath, ct);
+            string sourcePath = await _paths.ToAbsoluteAsync(source.FilePath, ct);
+            string sourceHashAtCapture = await ComputeSha256Async(sourcePath, ct);
 
-            FrameExtractionResult extraction = await _frameExtractor.ExtractFrameAsync(source.FilePath, frameOffsetMs, ct);
+            FrameExtractionResult extraction = await _frameExtractor.ExtractFrameAsync(sourcePath, frameOffsetMs, ct);
 
             byte[]? stillBytes;
             MediaStillCaptureMethod method;

@@ -70,7 +70,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
                 IUnitOfWork unitOfWork = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUnitOfWork>();
                 IActionLogger actionLogger = sp.GetRequiredService<IActionLogger>();
                 int days = retentionDays ?? 90;
-                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days);
+                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days, sp.GetService<IMediaPathResolver>());
             });
 
             _ = services.AddScoped<IRedactionService, RedactionService>();

@@ -164,7 +164,8 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<IVideoForensicsDataClient>(),
                 notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
-                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>()
+                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>(),
+                mediaPaths: provider.GetService<VideoForensics.Data.Common.Contracts.IMediaPathResolver>()
             );
         }
 
@@ -520,6 +521,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddScoped<SignalDeviationAlerts>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
+            _ = services.AddHostedService<MediaPathMigrationService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
             _ = services.AddHostedService<MediaPreviewBackfillService>();
             _ = services.AddHostedService<JammingAnalysisBackfillService>();
@@ -550,7 +552,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHostedService(sp => (VideoForensics.Client.Hosting.BackgroundServices.UpdateCheckService)sp.GetRequiredService<Client.Common.Contracts.IUpdateCheckService>());
 
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
-            _ = services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
+            _ = services.AddScoped<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
+            _ = services.AddScoped<IMediaPathResolver, VideoForensics.Data.Core.Services.MediaPathResolver>();
 
             // Evidence "grab still with hash" (plan §8a): server-side ffmpeg frame extraction plus
             // the orchestrator that persists the derived still, its chain-of-custody entry, and an
@@ -569,7 +572,8 @@ namespace VideoForensics.Client.Hosting
                     serviceProvider.GetRequiredService<IMediaStorageProvider>(),
                     serviceProvider.GetRequiredService<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(),
                     serviceProvider.GetRequiredService<IActionLogRepository>(),
-                    serviceProvider.GetRequiredService<ICaseRepository>()));
+                    serviceProvider.GetRequiredService<ICaseRepository>(),
+                    serviceProvider.GetRequiredService<IMediaPathResolver>()));
 
             // IMemoryCache backs the short-lived auth caches registered below (WebAuthn ceremonies, 2FA pending
             // logins, login attempts). Registered here so every server-tier host gets it, not only WebApp.
@@ -685,7 +689,8 @@ namespace VideoForensics.Client.Hosting
                     deviceConfigRepository: provider.GetRequiredService<IDeviceConfigRepository>(),
                     storage: provider.GetService<IStorageLocationProvider>(),
                     configurationService: provider.GetService<IForensicsConfigurationService>(),
-                    progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>()));
+                    progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>(),
+                    mediaPaths: provider.GetService<IMediaPathResolver>()));
             }
 
             return services;

@@ -13,15 +13,18 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<IntegrityVerificationService> _logger;
+        private readonly IMediaPathResolver _paths;
 
         public IntegrityVerificationService(
             IMediaItemRepository mediaItemRepository,
             IIntegrityRecordRepository integrityRecordRepository,
-            ILogger<IntegrityVerificationService> logger)
+            ILogger<IntegrityVerificationService> logger,
+            IMediaPathResolver? paths = null)
         {
             _mediaItemRepository = mediaItemRepository;
             _integrityRecordRepository = integrityRecordRepository;
             _logger = logger;
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
 
         public async Task<string> ComputeHashAsync(string filePath, CancellationToken ct)
@@ -57,22 +60,23 @@ namespace VideoForensics.Data.Core.Services
                 return false;
             }
 
-            if (!File.Exists(mediaItem.FilePath))
+            string filePath = await _paths.ToAbsoluteAsync(mediaItem.FilePath, ct);
+            if (!File.Exists(filePath))
             {
-                _logger.LogError("File not found during verification: {FilePath}", mediaItem.FilePath);
+                _logger.LogError("File not found during verification: {FilePath}", filePath);
                 await RecordResultAsync(mediaItemId, mediaItem.Sha256Hash, passed: false, failureReason: "File not found", ct);
                 return false;
             }
 
             try
             {
-                string currentHash = await ComputeHashAsync(mediaItem.FilePath, ct);
+                string currentHash = await ComputeHashAsync(filePath, ct);
                 bool passed = currentHash.Equals(mediaItem.Sha256Hash, StringComparison.OrdinalIgnoreCase);
 
                 _logger.Log(passed ? LogLevel.Debug : LogLevel.Warning,
                     "Verification {Result} for {FilePath}: stored={StoredHash}, current={CurrentHash}",
                     passed ? "passed" : "FAILED",
-                    mediaItem.FilePath,
+                    filePath,
                     mediaItem.Sha256Hash,
                     currentHash);
 
@@ -87,7 +91,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during integrity verification of {FilePath}", mediaItem.FilePath);
+                _logger.LogError(ex, "Error during integrity verification of {FilePath}", filePath);
                 await RecordResultAsync(mediaItemId, mediaItem.Sha256Hash, passed: false, failureReason: ex.Message, ct);
                 return false;
             }

@@ -57,7 +57,8 @@ namespace VideoForensics.Client.Common.Contracts
                 DeviceId = item.DeviceId,
                 DownloadEventId = item.DownloadEventId,
                 FileName = item.FileName,
-                RelativeMediaPath = string.IsNullOrEmpty(downloadLocationRoot)
+                // A stored path is already relative to the media root; only a full path (legacy row) needs rebasing.
+                RelativeMediaPath = string.IsNullOrEmpty(downloadLocationRoot) || !Path.IsPathRooted(item.FilePath)
                 ? item.FilePath
                 : Path.GetRelativePath(downloadLocationRoot, item.FilePath),
                 MediaFormat = item.MediaFormat,

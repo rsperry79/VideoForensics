@@ -24,6 +24,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IForensicsConfiguration _forensicsConfiguration;
         private readonly IMediaMetadataTagger _metadataTagger;
+        private readonly IMediaPathResolver _paths;
 
         public BackupExportOrchestrator(
             ILogger<BackupExportOrchestrator> logger,
@@ -34,8 +35,10 @@ namespace VideoForensics.Client.Core.Services
             IDownloadEventRepository downloadEventRepository,
             IMediaItemRepository mediaItemRepository,
             IForensicsConfiguration forensicsConfiguration,
-            IMediaMetadataTagger metadataTagger)
+            IMediaMetadataTagger metadataTagger,
+            IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _providerAccountRepository = providerAccountRepository;
             _locationRepository = locationRepository;
@@ -68,14 +71,15 @@ namespace VideoForensics.Client.Core.Services
                 IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDownloadEventIdAsync(downloadEvent.Id, ct);
                 foreach (MediaItem mediaItem in mediaItems)
                 {
-                    if (!File.Exists(mediaItem.FilePath))
+                    string mediaPath = await _paths.ToAbsoluteAsync(mediaItem.FilePath, ct);
+                    if (!File.Exists(mediaPath))
                     {
                         result.MissingMedia++;
-                        result.Details.Add($"Missing media file for event {evt.Id}: {mediaItem.FilePath}");
+                        result.Details.Add($"Missing media file for event {evt.Id}: {mediaPath}");
                         continue;
                     }
 
-                    string sidecarPath = Path.ChangeExtension(mediaItem.FilePath, ".json");
+                    string sidecarPath = Path.ChangeExtension(mediaPath, ".json");
                     Guid? sidecarEventId = TryReadSidecarEventId(sidecarPath);
                     if (sidecarEventId == evt.Id)
                     {
@@ -86,14 +90,14 @@ namespace VideoForensics.Client.Core.Services
                     try
                     {
                         await BackfillSidecarAsync(sidecarPath, evt.Id, ct);
-                        _ = await _metadataTagger.TagEventIdAsync(mediaItem.FilePath, evt.Id, ct);
+                        _ = await _metadataTagger.TagEventIdAsync(mediaPath, evt.Id, ct);
                         result.Backfilled++;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to backfill sidecar for event {EventId}", evt.Id);
                         result.MissingSidecarUnrecoverable++;
-                        result.Details.Add($"Could not reconcile sidecar for event {evt.Id}: {mediaItem.FilePath}");
+                        result.Details.Add($"Could not reconcile sidecar for event {evt.Id}: {mediaPath}");
                     }
                 }
             }

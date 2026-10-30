@@ -16,6 +16,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<RetentionService> _logger;
         private readonly int _retentionDays;
+        private readonly IMediaPathResolver _paths;
 
         public RetentionService(
             IMediaItemRepository mediaItemRepository,
@@ -23,7 +24,8 @@ namespace VideoForensics.Data.Core.Services
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<RetentionService> logger,
-            int retentionDays = 90)
+            int retentionDays = 90,
+            IMediaPathResolver? paths = null)
         {
             _mediaItemRepository = mediaItemRepository;
             _legalHoldRepository = legalHoldRepository;
@@ -31,6 +33,7 @@ namespace VideoForensics.Data.Core.Services
             _actionLogger = actionLogger;
             _logger = logger;
             _retentionDays = retentionDays;
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
 
         public async Task<int> PurgeExpiredAsync(CancellationToken ct)
@@ -61,14 +64,15 @@ namespace VideoForensics.Data.Core.Services
                     {
                         _ = await _unitOfWork.ExecuteAsync(async context =>
                         {
-                            if (File.Exists(item.FilePath))
+                            string filePath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
+                            if (File.Exists(filePath))
                             {
-                                File.Delete(item.FilePath);
-                                _logger.LogDebug("Deleted file during retention purge: {FilePath}", item.FilePath);
+                                File.Delete(filePath);
+                                _logger.LogDebug("Deleted file during retention purge: {FilePath}", filePath);
                             }
 
                             // The stored thumbnail is derived from the clip, so it goes too, even if the clip was already gone.
-                            string thumbnail = MediaThumbnailService.ThumbnailPathFor(item.FilePath);
+                            string thumbnail = MediaThumbnailService.ThumbnailPathFor(filePath);
                             if (File.Exists(thumbnail))
                             {
                                 File.Delete(thumbnail);

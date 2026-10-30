@@ -21,6 +21,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
         private readonly Data.Core.Contracts.IMediaThumbnailService _thumbnails;
         private readonly Data.Core.Contracts.IProviderReconciliationService _reconciliationService;
+        private readonly Data.Common.Contracts.IMediaPathResolver _paths;
 
         /// <summary>Retry configuration for transient provider API failures.</summary>
         private const int MaxRetries = 3;
@@ -35,8 +36,10 @@ namespace VideoForensics.Client.Core.Services
             Data.Common.Contracts.IIntegrityVerificationService integrityService,
             Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
             Data.Core.Contracts.IMediaThumbnailService thumbnails,
-            Data.Core.Contracts.IProviderReconciliationService reconciliationService)
+            Data.Core.Contracts.IProviderReconciliationService reconciliationService,
+            Data.Common.Contracts.IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? Data.Common.Contracts.PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _eventAndConfigService = eventAndConfigService;
             _eventRepository = eventRepository;
@@ -81,14 +84,15 @@ namespace VideoForensics.Client.Core.Services
                         // existence here first so "file gone" and "hash mismatch" aren't
                         // reported identically to the caller.
                         MediaVerificationResult result;
-                        if (!File.Exists(item.FilePath))
+                        string itemPath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
+                        if (!File.Exists(itemPath))
                         {
                             result = new MediaVerificationResult
                             {
                                 MediaItemId = item.Id,
                                 FileName = item.FileName,
                                 Status = "missing",
-                                FailureReason = $"File not found at {item.FilePath}"
+                                FailureReason = $"File not found at {itemPath}"
                             };
                         }
                         else

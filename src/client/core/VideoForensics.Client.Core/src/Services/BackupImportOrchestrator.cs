@@ -15,9 +15,11 @@ namespace VideoForensics.Client.Core.Services
     {
         private readonly ILogger<BackupImportOrchestrator> _logger;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMediaPathResolver _paths;
 
-        public BackupImportOrchestrator(ILogger<BackupImportOrchestrator> logger, IUnitOfWork unitOfWork)
+        public BackupImportOrchestrator(ILogger<BackupImportOrchestrator> logger, IUnitOfWork unitOfWork, IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _unitOfWork = unitOfWork;
         }
@@ -208,23 +210,28 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        if (File.Exists(mediaItem.FilePath))
+                        // ToMediaItem builds a full path under the import's media root. The row stores it relative to the
+                        // configured media root when it lies under it.
+                        string mediaPath = mediaItem.FilePath;
+                        mediaItem.FilePath = await _paths.ToStoredAsync(mediaPath, ct);
+
+                        if (File.Exists(mediaPath))
                         {
-                            byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaItem.FilePath), ct);
+                            byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaPath), ct);
                             string actualHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
                             mediaItem.IntegrityVerified = actualHash == mediaItem.Sha256Hash;
                             mediaItem.LastVerifiedAtUtc = DateTime.UtcNow;
                             if (!mediaItem.IntegrityVerified)
                             {
                                 importResult.MediaItems.IntegrityIssues++;
-                                importResult.Details.Add($"Hash mismatch for MediaItem {mediaItem.Id} at {mediaItem.FilePath}");
+                                importResult.Details.Add($"Hash mismatch for MediaItem {mediaItem.Id} at {mediaPath}");
                             }
                         }
                         else
                         {
                             mediaItem.IntegrityVerified = false;
                             importResult.MediaItems.IntegrityIssues++;
-                            importResult.Details.Add($"Media file missing for MediaItem {mediaItem.Id}: {mediaItem.FilePath}");
+                            importResult.Details.Add($"Media file missing for MediaItem {mediaItem.Id}: {mediaPath}");
                         }
 
                         await ctx.MediaItems.AddAsync(mediaItem, ct);

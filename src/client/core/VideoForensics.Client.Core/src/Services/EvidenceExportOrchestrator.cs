@@ -24,6 +24,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IReportGenerationService? _reportService;
         private readonly IForensicsConfigurationService? _configurationService;
         private readonly IStorageLocationProvider? _storageLocationProvider;
+        private readonly IMediaPathResolver _paths;
 
         private static readonly JsonSerializerOptions ReportJsonOptions = new()
         {
@@ -42,8 +43,10 @@ namespace VideoForensics.Client.Core.Services
             ICaseRepository? caseRepository = null,
             IReportGenerationService? reportService = null,
             IForensicsConfigurationService? configurationService = null,
-            IStorageLocationProvider? storageLocationProvider = null)
+            IStorageLocationProvider? storageLocationProvider = null,
+            IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _caseRepository = caseRepository;
             _reportService = reportService;
             _configurationService = configurationService;
@@ -285,16 +288,17 @@ namespace VideoForensics.Client.Core.Services
                     {
                         try
                         {
-                            if (!File.Exists(item.FilePath))
+                            string itemPath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
+                            if (!File.Exists(itemPath))
                             {
-                                _logger.LogWarning("Media file not found at {FilePath}, skipping", item.FilePath);
+                                _logger.LogWarning("Media file not found at {FilePath}, skipping", itemPath);
                                 continue;
                             }
 
                             var entry = new ZipEntry(item.FileName);
                             zipStream.PutNextEntry(entry);
 
-                            using (FileStream fileStream = File.OpenRead(item.FilePath))
+                            using (FileStream fileStream = File.OpenRead(itemPath))
                             {
                                 await fileStream.CopyToAsync(zipStream, ct);
                             }

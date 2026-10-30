@@ -50,6 +50,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _items;
         private readonly IFfmpegToolLocation _tools;
         private readonly IPreviewProcessRunner _runner;
+        private readonly IMediaPathResolver _paths;
         private readonly ILogger<MediaPreviewService> _logger;
 
         /// <summary>Creates the service. <paramref name="processRunner"/> defaults to the real ffmpeg runner when null.</summary>
@@ -57,12 +58,14 @@ namespace VideoForensics.Data.Core.Services
             IMediaItemRepository items,
             IFfmpegToolLocation tools,
             ILogger<MediaPreviewService> logger,
-            IPreviewProcessRunner? processRunner = null)
+            IPreviewProcessRunner? processRunner = null,
+            IMediaPathResolver? paths = null)
         {
             _items = items;
             _tools = tools;
             _logger = logger;
             _runner = processRunner ?? new DefaultPreviewProcessRunner();
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
 
         /// <summary>File name of a clip's preview: the stem plus ".preview.mp4".</summary>
@@ -81,7 +84,8 @@ namespace VideoForensics.Data.Core.Services
         /// <inheritdoc />
         public async Task<bool> EnsurePreviewAsync(MediaItem media, CancellationToken ct)
         {
-            string preview = PreviewPathFor(media.FilePath);
+            string source = await _paths.ToAbsoluteAsync(media.FilePath, ct);
+            string preview = PreviewPathFor(source);
             if (IsNonEmptyFile(preview))
             {
                 await RecordPathAsync(media, preview, ct);
@@ -97,7 +101,7 @@ namespace VideoForensics.Data.Core.Services
                 DeleteQuietly(temp);
 
                 string ffmpeg = FfmpegPathResolver.Resolve(null, "ffmpeg", _tools.BinDirectory);
-                ProcessStartInfo startInfo = BuildStartInfo(ffmpeg, media.FilePath, temp);
+                ProcessStartInfo startInfo = BuildStartInfo(ffmpeg, source, temp);
                 ProcessResult result = await _runner.RunAsync(startInfo, EncodeTimeout, ct);
 
                 if (result.ExitCode != 0)
@@ -145,12 +149,13 @@ namespace VideoForensics.Data.Core.Services
         /// </summary>
         private async Task RecordPathAsync(MediaItem media, string preview, CancellationToken ct)
         {
-            if (media.PreviewPath == preview)
+            string stored = await _paths.ToStoredAsync(preview, ct);
+            if (media.PreviewPath == stored)
             {
                 return;
             }
 
-            media.PreviewPath = preview;
+            media.PreviewPath = stored;
             try
             {
                 await _items.UpdateAsync(media, ct);

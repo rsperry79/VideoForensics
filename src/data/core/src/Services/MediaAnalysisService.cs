@@ -34,6 +34,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IAudioClipAnalyzer _audio;
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaAnalysisService> _logger;
+        private readonly IMediaPathResolver _paths;
 
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
@@ -44,7 +45,8 @@ namespace VideoForensics.Data.Core.Services
             IAudioClipAnalyzer audio,
             IMediaThumbnailService thumbnails,
             IOptions<MediaAnalysisOptions> options,
-            ILogger<MediaAnalysisService> logger)
+            ILogger<MediaAnalysisService> logger,
+            IMediaPathResolver? paths = null)
         {
             _items = items;
             _devices = devices;
@@ -54,6 +56,7 @@ namespace VideoForensics.Data.Core.Services
             _audio = audio;
             _thumbnails = thumbnails;
             _logger = logger;
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
         /// <summary>
         /// False for stills (images) and roll-up loops, which are built from images and carry no audio. Any other clip has audio.
@@ -80,11 +83,12 @@ namespace VideoForensics.Data.Core.Services
             // never leaves a video without one. Never fails the analysis: the service reports false instead.
             _ = await _thumbnails.EnsureThumbnailAsync(media, ct);
 
-            MediaBitrateAnalysis? bitrate = await _bitrate.AnalyzeAsync(media.FilePath, media.FileSizeBytes, ct);
-            ClipColorStats? color = await _color.AnalyzeAsync(media.FilePath, ct);
+            string filePath = await _paths.ToAbsoluteAsync(media.FilePath, ct);
+            MediaBitrateAnalysis? bitrate = await _bitrate.AnalyzeAsync(filePath, media.FileSizeBytes, ct);
+            ClipColorStats? color = await _color.AnalyzeAsync(filePath, ct);
             // Stills and roll-up loops have no audio track, so the audio measurement cannot exist for them and is not required.
             bool audioApplicable = HasAudioTrack(media);
-            AudioClipStats? audio = audioApplicable ? await _audio.AnalyzeAsync(media.FilePath, bitrate?.DurationSeconds, ct) : null;
+            AudioClipStats? audio = audioApplicable ? await _audio.AnalyzeAsync(filePath, bitrate?.DurationSeconds, ct) : null;
 
             if (bitrate is not null)
             {

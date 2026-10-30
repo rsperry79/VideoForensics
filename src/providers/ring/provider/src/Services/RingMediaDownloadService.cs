@@ -460,9 +460,13 @@ namespace VideoForensics.Providers.Ring.Services
         // Thread-safe atomic increment for peak active downloads (diagnostic tracking)
         private int _peakActiveDownloadsForBatch;
 
+        private readonly IMediaPathResolver _mediaPaths;
+
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
-            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null)
+            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null,
+            IMediaPathResolver? mediaPaths = null)
         {
+            _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
@@ -831,7 +835,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             DeviceId = deviceGuid,
                                             DownloadEventId = downloadEvent.Id,
                                             FileName = Path.GetFileName(fileName),
-                                            FilePath = fileName,
+                                            FilePath = await _mediaPaths.ToStoredAsync(fileName, cancellationToken),
                                             MediaFormat = "mp4",
                                             FileSizeBytes = downloadedSize,
                                             RecordedAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
@@ -1271,7 +1275,7 @@ namespace VideoForensics.Providers.Ring.Services
                             DeviceId = deviceGuid,
                             DownloadEventId = downloadEvent.Id,
                             FileName = Path.GetFileName(fileName),
-                            FilePath = fileName,
+                            FilePath = await _mediaPaths.ToStoredAsync(fileName, cancellationToken),
                             MediaFormat = "jpg",
                             FileSizeBytes = fileSize,
                             RecordedAtUtc = DateTime.UtcNow,

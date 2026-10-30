@@ -17,18 +17,21 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _items;
         private readonly IMediaThumbnailNotifier _notifier;
         private readonly ILogger<MediaThumbnailService> _logger;
+        private readonly IMediaPathResolver _paths;
 
         /// <summary>Creates the service.</summary>
         public MediaThumbnailService(
             IMediaFrameExtractor frames,
             IMediaItemRepository items,
             IMediaThumbnailNotifier notifier,
-            ILogger<MediaThumbnailService> logger)
+            ILogger<MediaThumbnailService> logger,
+            IMediaPathResolver? paths = null)
         {
             _frames = frames;
             _items = items;
             _notifier = notifier;
             _logger = logger;
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
 
         /// <summary>
@@ -55,7 +58,7 @@ namespace VideoForensics.Data.Core.Services
                 return;
             }
 
-            if (File.Exists(ThumbnailPathFor(media.FilePath)))
+            if (File.Exists(ThumbnailPathFor(await _paths.ToAbsoluteAsync(media.FilePath, ct))))
             {
                 await RecordPathAsync(media, ct);
                 return;
@@ -84,7 +87,8 @@ namespace VideoForensics.Data.Core.Services
         /// <inheritdoc />
         public async Task<string?> ResolveThumbnailPathAsync(MediaItem media, CancellationToken ct)
         {
-            return !IsVideo(media.MediaFormat) ? media.FilePath : await EnsureThumbnailAsync(media, ct) ? ThumbnailPathFor(media.FilePath) : null;
+            string source = await _paths.ToAbsoluteAsync(media.FilePath, ct);
+            return !IsVideo(media.MediaFormat) ? source : await EnsureThumbnailAsync(media, ct) ? ThumbnailPathFor(source) : null;
         }
 
         /// <inheritdoc />
@@ -95,7 +99,8 @@ namespace VideoForensics.Data.Core.Services
                 return false;
             }
 
-            string thumbnail = ThumbnailPathFor(media.FilePath);
+            string source = await _paths.ToAbsoluteAsync(media.FilePath, ct);
+            string thumbnail = ThumbnailPathFor(source);
             if (File.Exists(thumbnail))
             {
                 await RecordPathAsync(media, ct);
@@ -104,7 +109,7 @@ namespace VideoForensics.Data.Core.Services
 
             try
             {
-                byte[]? png = await ExtractFirstFrameAsync(media.FilePath, ct);
+                byte[]? png = await ExtractFirstFrameAsync(source, ct);
                 if (png is null)
                 {
                     _logger.LogWarning("No thumbnail frame could be extracted for media item {MediaItemId}", media.Id);

@@ -61,6 +61,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IMediaPreviewService? _previewService;
         private readonly IMediaItemRepository? _mediaItems;
         private readonly ISyncProgressStore? _progress;
+        private readonly IMediaPathResolver _mediaPaths;
         private readonly TimeSpan _progressPollInterval;
 
         // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
@@ -86,9 +87,11 @@ namespace VideoForensics.Client.Hosting.Services
             IStorageLocationProvider? storage = null,
             IForensicsConfigurationService? configurationService = null,
             ISyncProgressStore? progress = null,
-            TimeSpan? progressPollInterval = null)
+            TimeSpan? progressPollInterval = null,
+            IMediaPathResolver? mediaPaths = null)
         {
             _progress = progress;
+            _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _progressPollInterval = progressPollInterval ?? TimeSpan.FromMilliseconds(500);
             _deviceConfigRepository = deviceConfigRepository;
             _previewService = previewService;
@@ -585,9 +588,14 @@ namespace VideoForensics.Client.Hosting.Services
             {
                 IReadOnlyList<MediaItem> clips = await _mediaItems!.GetByDeviceAndDateRangeAsync(deviceId, startTime, endTime, cancellationToken);
                 // The repository returns purged rows too. A clip with a preview already on disk needs no encode.
-                List<MediaItem> pending = clips
-                    .Where(c => !c.IsPurged && !(c.PreviewPath != null && File.Exists(c.PreviewPath)))
-                    .ToList();
+                var pending = new List<MediaItem>();
+                foreach (MediaItem c in clips.Where(c => !c.IsPurged))
+                {
+                    if (c.PreviewPath == null || !File.Exists(await _mediaPaths.ToAbsoluteAsync(c.PreviewPath, cancellationToken)))
+                    {
+                        pending.Add(c);
+                    }
+                }
 
                 int generated = 0, failed = 0;
 

@@ -12,16 +12,19 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _items;
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaThumbnailBackfill> _logger;
+        private readonly IMediaPathResolver _paths;
 
         /// <summary>Creates the backfill.</summary>
         public MediaThumbnailBackfill(
             IMediaItemRepository items,
             IMediaThumbnailService thumbnails,
-            ILogger<MediaThumbnailBackfill> logger)
+            ILogger<MediaThumbnailBackfill> logger,
+            IMediaPathResolver? paths = null)
         {
             _items = items;
             _thumbnails = thumbnails;
             _logger = logger;
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
 
         /// <inheritdoc />
@@ -39,7 +42,7 @@ namespace VideoForensics.Data.Core.Services
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (!File.Exists(media.FilePath))
+                if (!File.Exists(await _paths.ToAbsoluteAsync(media.FilePath, ct)))
                 {
                     missingFile++;
                     continue;

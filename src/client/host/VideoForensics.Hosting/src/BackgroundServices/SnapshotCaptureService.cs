@@ -439,7 +439,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Id = Guid.NewGuid(),
                     DeviceId = device.Id,
                     FileName = Path.GetFileName(mediaFilePath),
-                    FilePath = mediaFilePath,
+                    FilePath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct),
                     MediaFormat = "jpg",
                     FileSizeBytes = new FileInfo(mediaFilePath).Length,
                     RecordedAtUtc = capturedAt.UtcDateTime,
