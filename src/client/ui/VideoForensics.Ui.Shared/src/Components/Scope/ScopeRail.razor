@@ -1,8 +1,12 @@
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.Extensions.DependencyInjection
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
+@using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IAsyncDisposable
 @inject ScopeState ScopeState
@@ -16,36 +20,33 @@
 @inject PairedSessionState SessionState
 @inject NavigationManager Nav
 @inject TimeProvider TimeProvider
+@inject IServiceProvider Services
 
 <div class="scope-rail">
-    <div class="scope-section">
-        <div class="scope-section-label">@L["ScopeCase"]</div>
-        @if (_caseLoadError)
-        {
-            <div class="scope-rail-message">@L["ScopeCasesUnavailable"]</div>
-        }
-        else
-        {
-            <select class="scope-case-select" data-testid="case-picker" @onchange="OnCasePicked">
-                <option value="">@L["ScopeNoCase"]</option>
-                @foreach (var openCase in _openCases)
-                {
-                    <option value="@openCase.Id" selected="@(CaseState.ActiveCase?.Id == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
-                }
+    <div class="scope-section" data-testid="scope-time-range">
+        <ReviewSidebarSection Title="@L["ScopeTimeRange"]">
+            <select class="form-select form-select-sm mb-2" data-testid="scope-range" aria-label="@L["ScopeTimeRange"]" @onchange="OnRangeChanged">
+                <option value="day" selected="@(CurrentRange == ScopeRange.Last24Hours)">@L["ScopeRangeLast24Hours"]</option>
+                <option value="week" selected="@(CurrentRange == ScopeRange.Last7Days)">@L["ScopeRangeLast7Days"]</option>
+                <option value="month" selected="@(CurrentRange == ScopeRange.Last30Days)">@L["ScopeRangeLast30Days"]</option>
+                <option value="custom" selected="@(CurrentRange == ScopeRange.Custom)">@L["ScopeRangeCustom"]</option>
             </select>
 
-            @* A no-match filter is not a device list, so it can't be saved to a case as one. *@
-            @if (ScopeRailRules.ShowSaveScopeToCase(CaseState.ActiveCase is not null, CaseState.ScopeDiffersFromCase, _role, ScopeState.Current.MatchesNoDevices))
+            @if (CurrentRange == ScopeRange.Custom)
             {
-                <button type="button" class="scope-quick-range-btn" data-testid="save-scope-to-case" @onclick="OnSaveScopeToCaseClicked">@L["ScopeSaveToCase"]</button>
+                @* One column: the From label and its picker, then the To label and its picker. *@
+                <div class="scope-range-dates d-flex flex-column gap-2">
+                    <label class="form-label small mb-0">
+                        @L["ScopeFrom"]
+                        <input type="date" class="form-control form-control-sm" data-testid="scope-range-from" value="@FromDateValue" @onchange="OnFromChanged" />
+                    </label>
+                    <label class="form-label small mb-0">
+                        @L["ScopeTo"]
+                        <input type="date" class="form-control form-control-sm" data-testid="scope-range-to" value="@ToDateValue" @onchange="OnToChanged" />
+                    </label>
+                </div>
             }
-
-            @if (_saveScopeError is not null)
-            {
-                <div class="scope-rail-message">@_saveScopeError</div>
-            }
-        }
-        <a class="scope-hint" href="/cases">@L["ScopeAllCases"]</a>
+        </ReviewSidebarSection>
     </div>
 
     @if (_devicesLoaded)
@@ -57,76 +58,78 @@
         else
         {
             <div class="scope-section" data-testid="scope-provider-account">
-                <div class="scope-section-label">@L["ScopeProvider"]</div>
-                <FilterProviderSelect ProviderNames="_providerNames" Value="@_providerFilter" ValueChanged="OnProviderPicked"
-                                      TestId="scope-provider-filter" Class="scope-case-select" />
-                <div class="scope-section-label">@L["ScopeAccount"]</div>
-                <FilterAccountSelect Accounts="AccountOptions" AccountNames="_accountNames" Value="_accountFilter" ValueChanged="OnAccountPicked"
-                                     TestId="scope-account-filter" Class="scope-case-select" />
-                <div class="scope-section-label">@L["ScopeLocation"]</div>
-                <FilterLocationSelect Locations="_locations" Value="_locationFilter" ValueChanged="OnLocationPicked"
-                                      TestId="scope-location-filter" Class="scope-case-select" />
-            </div>
+                <ReviewSidebarSection Title="@L["ScopeFilters"]">
+                    @* No labels above the dropdowns: each one's first option says what it filters, and each keeps its own aria-label. *@
+                    <FilterProviderSelect ProviderNames="_providerNames" Value="@_providerFilter" ValueChanged="OnProviderPicked"
+                                          TestId="scope-provider-filter" Class="form-select form-select-sm mb-2" />
+                    <FilterAccountSelect Accounts="AccountOptions" AccountNames="_accountNames" Value="_accountFilter" ValueChanged="OnAccountPicked"
+                                         TestId="scope-account-filter" Class="form-select form-select-sm mb-2" />
+                    <FilterLocationSelect Locations="_locations" Value="_locationFilter" ValueChanged="OnLocationPicked"
+                                          TestId="scope-location-filter" Class="form-select form-select-sm mb-2" />
 
-            <div class="scope-section">
-                <div class="scope-section-label">@L["ScopeDevices"]</div>
-                @if (_visibleDevices.Count == 0)
-                {
-                    <div class="scope-hint">@L["ScopeNoDevices"]</div>
-                }
-                else
-                {
-                    <div class="scope-device-list">
-                        @foreach (var device in _visibleDevices)
-                        {
-                            <label class="scope-device-item">
-                                <input type="checkbox"
-                                       data-device-id="@device.Id"
-                                       checked="@IsDeviceSelected(device.Id)"
-                                       @onchange="@(e => OnDeviceToggled(device.Id, e))" />
-                                <span>@device.Name</span>
-                            </label>
-                        }
-                    </div>
-                    @if (ScopeState.Current.IncludesAllDevices)
+                    @if (_visibleDevices.Count == 0)
                     {
-                        <div class="scope-hint">@L["ScopeAllDevices"]</div>
+                        <div class="scope-hint">@L["ScopeNoDevices"]</div>
                     }
-                }
-            </div>
+                    else
+                    {
+                        @* The summary says which device is picked, or how many: the name for one, "N Devices" for more, "All devices" for all. *@
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="scope-device-button"
+                                aria-expanded="@(_devicesOpen ? "true" : "false")" @onclick="OnDevicesToggled">@DeviceSummary</button>
 
-            <div class="scope-section">
-                <div class="scope-section-label">@L["ScopeTimeRange"]</div>
-                <div class="scope-date-row">
-                    <label class="scope-date-label">
-                        <span>@L["ScopeFrom"]</span>
-                        <input type="date" class="scope-date-input" value="@FromDateValue" @onchange="OnFromChanged" />
-                    </label>
-                    <label class="scope-date-label">
-                        <span>@L["ScopeTo"]</span>
-                        <input type="date" class="scope-date-input" value="@ToDateValue" @onchange="OnToChanged" />
-                    </label>
-                </div>
-                <div class="scope-quick-ranges">
-                    <button type="button" class="scope-quick-range-btn" @onclick="@(() => OnQuickRangeClicked(QuickRange24HoursDaysBack))">@L["ScopeQuick24Hours"]</button>
-                    <button type="button" class="scope-quick-range-btn" @onclick="@(() => OnQuickRangeClicked(QuickRange7DaysDaysBack))">@L["ScopeQuick7Days"]</button>
-                    <button type="button" class="scope-quick-range-btn" @onclick="@(() => OnQuickRangeClicked(QuickRange30DaysDaysBack))">@L["ScopeQuick30Days"]</button>
-                    <button type="button" class="scope-quick-range-btn" @onclick="OnResetClicked">@L["ScopeReset"]</button>
-                </div>
-            </div>
-
-            <div class="scope-section">
-                <div class="scope-section-label">@L["ScopeSearch"]</div>
-                <input type="text"
-                       class="scope-search-input"
-                       value="@_searchDraft"
-                       placeholder="@L["SearchPlaceholder"]"
-                       @oninput="OnSearchInput"
-                       @onchange="OnSearchChanged"
-                       @onkeydown="OnSearchKeyDown" />
+                        @if (_devicesOpen)
+                        {
+                            <div class="scope-device-list" data-testid="scope-device-list">
+                                @foreach (var device in _visibleDevices)
+                                {
+                                    <label class="scope-device-item">
+                                        <input type="checkbox"
+                                               data-device-id="@device.Id"
+                                               checked="@IsDeviceSelected(device.Id)"
+                                               @onchange="@(e => OnDeviceToggled(device.Id, e))" />
+                                        <span>@device.Name</span>
+                                    </label>
+                                }
+                            </div>
+                        }
+                    }
+                </ReviewSidebarSection>
             </div>
         }
+
     }
+
+    @* Case sits last, under the time range and the filters. *@
+    <div class="scope-section">
+        <ReviewSidebarSection Title="@L["ScopeCase"]">
+            @if (_caseLoadError)
+            {
+                <div class="scope-rail-message">@L["ScopeCasesUnavailable"]</div>
+            }
+            else
+            {
+                <select class="form-select form-select-sm mb-1" data-testid="case-picker" aria-label="@L["ScopeCase"]" @onchange="OnCasePicked">
+                    <option value="">@L["ScopeNoCase"]</option>
+                    @foreach (var openCase in _openCases)
+                    {
+                        <option value="@openCase.Id" selected="@(CaseState.ActiveCase?.Id == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
+                    }
+                </select>
+
+                @* A no-match filter is not a device list, so it can't be saved to a case as one. *@
+                @if (ScopeRailRules.ShowSaveScopeToCase(CaseState.ActiveCase is not null, CaseState.ScopeDiffersFromCase, _role, ScopeState.Current.MatchesNoDevices))
+                {
+                    <button type="button" class="scope-quick-range-btn" data-testid="save-scope-to-case" @onclick="OnSaveScopeToCaseClicked">@L["ScopeSaveToCase"]</button>
+                }
+
+                @if (_saveScopeError is not null)
+                {
+                    <div class="scope-rail-message">@_saveScopeError</div>
+                }
+            }
+            <a class="scope-hint" href="/cases">@L["ScopeAllCases"]</a>
+        </ReviewSidebarSection>
+    </div>
 </div>
 
 @code {
@@ -149,7 +152,13 @@
     private Guid? _locationFilter;
     private bool _devicesLoaded = false;
     private bool _deviceLoadError = false;
-    private string _searchDraft = string.Empty;
+
+    // The device list opens from its summary button; the time range shows its pickers once Custom is chosen.
+    private bool _devicesOpen;
+    private bool _customRange;
+
+    // The settings Media shares with this rail. Resolved on demand, so a host that does not register the store just skips saving.
+    private ReviewSettingsStore? _settings;
 
     private List<ForensicCase> _openCases = new();
     private bool _caseLoadError = false;
@@ -204,9 +213,92 @@
         // Apply initial query string from URL, then activate any case named by the URL. No
         // StateHasChanged here - this runs before the component's first render, which will
         // already reflect the applied scope/case.
+        bool addressHasNoScope = new Uri(Nav.Uri).Query.Length == 0;
         ApplyUrlQueryStringCore();
         await ApplyCaseFromUrlAsync();
-        _searchDraft = ScopeState.Current.Search ?? string.Empty;
+
+        // A bare address takes the settings last saved here or on Media. An address that carries a scope wins over them.
+        _settings = Services.GetService<ReviewSettingsStore>();
+        if (addressHasNoScope)
+        {
+            await RestoreSettingsAsync();
+        }
+    }
+
+    /// <summary>
+    /// Applies the settings saved by this rail or by Media: filters, devices, time range and case. When the saved devices are
+    /// every camera, Media was only showing its default set, so the scope stays on all devices instead of narrowing to them.
+    /// </summary>
+    private async Task RestoreSettingsAsync()
+    {
+        SavedReviewSettings? saved = _settings is null ? null : await _settings.LoadAsync();
+        if (saved is null)
+        {
+            return;
+        }
+
+        ReviewUrlState url = ReviewUrl.Parse(saved.Query);
+        _providerFilter = url.Provider;
+        _accountFilter = url.Account;
+        _locationFilter = url.Location;
+        RecomputeVisibleDevices();
+
+        IReadOnlyList<Guid> devices = url.Devices;
+        if (devices.Count > 0 && _devices.Where(d => DeviceKinds.IsCamera(d.Type)).All(d => devices.Contains(d.Id)))
+        {
+            devices = [];
+        }
+
+        // The rail works in whole days with an exclusive upper bound; a saved time of day rounds out to the day.
+        DateTime from = url.FromUtc?.Date ?? ScopeState.Current.FromUtc;
+        DateTime to = url.ToUtc is DateTime end ? (end.TimeOfDay == TimeSpan.Zero ? end : end.Date.AddDays(1)) : ScopeState.Current.ToUtc;
+        if (to <= from)
+        {
+            (from, to) = (ScopeState.Current.FromUtc, ScopeState.Current.ToUtc);
+        }
+
+        ForensicScope restored = ScopeState.Current with { DeviceIds = devices, FromUtc = from, ToUtc = to, MatchesNoDevices = false };
+        if (_providerFilter is not null || _accountFilter is not null || _locationFilter is not null)
+        {
+            restored = ScopeRailRules.ApplyFilters(restored, _visibleDevices.Select(d => d.Id).ToList(), _providerFilter, _accountFilter, _locationFilter);
+        }
+
+        ScopeState.Set(restored);
+
+        if (url.CaseId is Guid caseId)
+        {
+            await CaseState.ActivateAsync(caseId, CancellationToken.None);
+        }
+    }
+
+    /// <summary>Saves this rail's settings into the shared copy, keeping what Media owns (the tab and the cursor).</summary>
+    private async Task SaveSettingsAsync()
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        ForensicScope scope = ScopeState.Current;
+        string? provider = _providerFilter;
+        Guid? account = _accountFilter;
+        Guid? location = _locationFilter;
+        Guid? caseId = CaseState.ActiveCase?.Id;
+        await _settings.UpdateAsync(current =>
+        {
+            // Media shows at most nine cameras, so only that many ids go into the shared copy.
+            ReviewUrlState next = ReviewUrl.Parse(current.Query) with
+            {
+                Devices = scope.DeviceIds.Take(CameraSync.MaxTiles).ToList(),
+                FromUtc = scope.FromUtc,
+                ToUtc = scope.ToUtc,
+                Provider = provider,
+                Account = account,
+                Location = location,
+                CaseId = caseId,
+            };
+            return current with { Query = ReviewUrl.Build(next) };
+        });
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -216,7 +308,6 @@
         {
             ApplyUrlQueryStringCore();
             await ApplyCaseFromUrlAsync();
-            _searchDraft = ScopeState.Current.Search ?? string.Empty;
             StateHasChanged();
         });
     }
@@ -257,7 +348,7 @@
     private void OnScopeChanged()
     {
         UpdateUrl();
-        _searchDraft = ScopeState.Current.Search ?? string.Empty;
+        _ = SaveSettingsAsync();
 
         // ScopeState can change from outside this component's own handlers (another component
         // sharing the same scoped ScopeState instance), so marshal back onto the sync context.
@@ -327,6 +418,9 @@
 
         var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
         ScopeState.Set(ScopeRailRules.ApplyFilters(ScopeState.Current, visibleIds, _providerFilter, _accountFilter, _locationFilter));
+
+        // A filter change may leave the scope as it was, so it does not always raise OnScopeChanged.
+        _ = SaveSettingsAsync();
     }
 
     private bool IsDeviceSelected(Guid deviceId) => ScopeState.Current.DeviceIds.Contains(deviceId);
@@ -353,32 +447,60 @@
         }
     }
 
-    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private enum ScopeRange
     {
-        _searchDraft = e.Value?.ToString() ?? string.Empty;
+        Last24Hours,
+        Last7Days,
+        Last30Days,
+        Custom,
     }
 
-    private void OnSearchChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    /// <summary>The preset whose whole-day window matches the scope, or Custom. Picking Custom keeps it selected while the dates are edited.</summary>
+    private ScopeRange CurrentRange
     {
-        _searchDraft = e.Value?.ToString() ?? string.Empty;
-        ApplySearch();
-    }
-
-    private void OnSearchKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
+        get
         {
-            ApplySearch();
+            if (_customRange)
+            {
+                return ScopeRange.Custom;
+            }
+
+            (ScopeRange Range, int DaysBack)[] presets =
+            [
+                (ScopeRange.Last24Hours, QuickRange24HoursDaysBack),
+                (ScopeRange.Last7Days, QuickRange7DaysDaysBack),
+                (ScopeRange.Last30Days, QuickRange30DaysDaysBack),
+            ];
+            foreach ((ScopeRange range, int daysBack) in presets)
+            {
+                ForensicScope preset = ScopeRailRules.ApplyQuickRange(ScopeState.Current, TodayUtc, daysBack);
+                if (preset.FromUtc == ScopeState.Current.FromUtc && preset.ToUtc == ScopeState.Current.ToUtc)
+                {
+                    return range;
+                }
+            }
+
+            return ScopeRange.Custom;
         }
     }
 
-    private void ApplySearch()
+    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        var scope = ScopeRailRules.ApplySearch(ScopeState.Current, _searchDraft);
-        if (scope.Search != ScopeState.Current.Search)
+        string? value = e.Value?.ToString();
+        if (value == "custom")
         {
-            ScopeState.Set(scope);
+            // Only the pickers appear; the window stays as it is until a date is entered.
+            _customRange = true;
+            return;
         }
+
+        _customRange = false;
+        OnQuickRangeClicked(value switch
+        {
+            "week" => QuickRange7DaysDaysBack,
+            "month" => QuickRange30DaysDaysBack,
+            _ => QuickRange24HoursDaysBack,
+        });
     }
 
     private void OnQuickRangeClicked(int daysBack)
@@ -386,9 +508,32 @@
         ScopeState.Set(ScopeRailRules.ApplyQuickRange(ScopeState.Current, TodayUtc, daysBack));
     }
 
-    private void OnResetClicked()
+    private void OnDevicesToggled()
     {
-        ScopeState.Set(ForensicScope.Default(TimeProvider.GetUtcNow().UtcDateTime));
+        _devicesOpen = !_devicesOpen;
+    }
+
+    /// <summary>The device button's text: all devices, the one device's name, or how many are picked.</summary>
+    private string DeviceSummary
+    {
+        get
+        {
+            IReadOnlyList<Guid> chosen = ScopeState.Current.DeviceIds;
+            bool all = ScopeState.Current.IncludesAllDevices
+                || (_visibleDevices.Count > 0 && _visibleDevices.All(d => chosen.Contains(d.Id)));
+            if (all)
+            {
+                return L["ScopeAllDevices"].Value;
+            }
+
+            if (chosen.Count == 1)
+            {
+                VideoForensics.Data.Common.Entities.Device? only = _devices.FirstOrDefault(d => d.Id == chosen[0]);
+                return only?.Name ?? chosen[0].ToString("D");
+            }
+
+            return L["ScopeDevicesCount", chosen.Count].Value;
+        }
     }
 
     private async Task OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
@@ -418,7 +563,6 @@
         }
 
         UpdateUrlWithCase(caseId);
-        _searchDraft = ScopeState.Current.Search ?? string.Empty;
     }
 
     private void UpdateUrlWithCase(Guid? caseId)
@@ -452,6 +596,7 @@
     {
         // CaseState can change from outside this component (e.g. another component sharing the
         // same scoped CaseState instance), so marshal back onto the sync context.
+        _ = SaveSettingsAsync();
         _ = InvokeAsync(StateHasChanged);
     }
 

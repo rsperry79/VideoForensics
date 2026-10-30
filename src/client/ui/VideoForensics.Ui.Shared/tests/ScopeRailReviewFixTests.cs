@@ -55,6 +55,7 @@ public class ScopeRail_ReviewFixes_Tests : BunitContext
 
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
         component.Find("[data-testid='scope-provider-filter']").Change("Ring");
+        component.Find("[data-testid='scope-device-button']").Click();
         component.Find($"input[data-device-id='{device.Id:D}']").Change(false);
 
         ForensicScope scope = Services.GetRequiredService<ScopeState>().Current;

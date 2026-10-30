@@ -231,6 +231,25 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewPage_RightPanel_ListsTimeRangeThenFiltersThenCaseThenActions()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        IRenderedComponent<IComponent> right = RenderRightPanel();
+
+        // Assert
+        string[] order = right
+            .FindAll("[data-testid='review-time-range'], [data-testid='review-filter-panel'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
+            .Select(e => e.GetAttribute("data-testid")!)
+            .ToArray();
+        Assert.Equal(new[] { "review-time-range", "review-filter-panel", "review-case-section", "review-actions-panel" }, order);
+    }
+
+    [Fact]
     public void ReviewPage_TabInTheAddressChanges_SwitchesTheTab()
     {
         // Arrange - the left menu navigates to /media?tab=Events; the page is already open, so it is not rebuilt

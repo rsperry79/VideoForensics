@@ -12,10 +12,8 @@
 @using VideoForensics.Data.Common.Contracts
 @using Device = VideoForensics.Data.Common.Entities.Device
 @using VideoForensics.Client.Common.Viewer
-@using System.Text.Json
-@using Microsoft.JSInterop
 @implements IDisposable
-@inject IJSRuntime JS
+@inject ReviewSettingsStore SettingsStore
 @inject IDeviceRepository DeviceRepository
 @inject ReviewPageState State
 @inject ReviewCaseMode CaseMode
@@ -39,9 +37,9 @@ else
     <ReviewTimelineFeeder />
 
     <PageRightPanelContent>
-        <ReviewCaseSection State="State" Devices="_visibleIds" />
-        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
         <ReviewTimeRange State="State" />
+        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
+        <ReviewCaseSection State="State" Devices="_visibleIds" />
         <ReviewActionsPanel State="State" />
     </PageRightPanelContent>
 
@@ -154,7 +152,7 @@ else
             return;
         }
 
-        SavedReviewState? saved = await LoadSavedStateAsync();
+        SavedReviewSettings? saved = await SettingsStore.LoadAsync();
         if (saved is null)
         {
             return;
@@ -168,34 +166,6 @@ else
 
         ReadUrlOnce(url);
         State.SelectEvent(saved.EventId);
-    }
-
-    /// <summary>Reads the saved state. A missing, unreadable or unavailable store means nothing is restored.</summary>
-    private async Task<SavedReviewState?> LoadSavedStateAsync()
-    {
-        try
-        {
-            string? json = await JS.InvokeAsync<string?>("localStorage.getItem", SavedStateKey);
-            return string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<SavedReviewState>(json, SavedStateOptions);
-        }
-        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or JsonException)
-        {
-            // Local storage is a convenience: a failure here leaves the page on its defaults.
-            return null;
-        }
-    }
-
-    /// <summary>Writes the state to localStorage. A failure here only means the next reload starts from the defaults.</summary>
-    private async Task SaveStateAsync(string query)
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("localStorage.setItem", SavedStateKey, JsonSerializer.Serialize(new SavedReviewState(query, State.SelectedEventId), SavedStateOptions));
-        }
-        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
-        {
-            // Nothing to do: the page keeps working, and only the reload restore is lost.
-        }
     }
 
     /// <summary>
@@ -277,7 +247,7 @@ else
         ComputeVisibleCameras();
         HashSet<Guid> visible = _visibleIds.ToHashSet();
 
-        List<Guid> cameras = url.Devices.Where(visible.Contains).ToList();
+        List<Guid> cameras = url.Devices.Where(visible.Contains).Take(CameraSync.MaxTiles).ToList();
         if (cameras.Count == 0 && CaseMode.Active)
         {
             cameras = CaseMode.DeviceIds.Where(visible.Contains).Take(CameraSync.MaxTiles).ToList();
@@ -347,7 +317,7 @@ else
             State.LocationFilter);
 
         string target = ReviewUrl.Build(current);
-        _ = SaveStateAsync(target);
+        _ = SettingsStore.SaveAsync(new SavedReviewSettings(target, State.SelectedEventId));
 
         string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
         if (target == existing)
@@ -403,13 +373,6 @@ else
         NavigationManager.LocationChanged -= OnLocationChanged;
         CaseMode.Exit();
     }
-
-    // The key and shape of the state kept in localStorage. Query is the review URL query, EventId the selected event.
-    private const string SavedStateKey = "vf.review.state";
-
-    private static readonly JsonSerializerOptions SavedStateOptions = new(JsonSerializerDefaults.Web);
-
-    private sealed record SavedReviewState(string Query, Guid? EventId);
 
     private bool _arrivedWithoutQuery;
     private bool _restoreChecked;
