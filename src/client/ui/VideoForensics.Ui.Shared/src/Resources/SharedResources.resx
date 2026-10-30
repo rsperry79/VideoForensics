@@ -821,4 +821,7 @@
   <data name="SingleCameraOthers" xml:space="preserve">
     <value>Other cameras</value>
   </data>
+  <data name="Database" xml:space="preserve">
+    <value>Database</value>
+  </data>
 </root>

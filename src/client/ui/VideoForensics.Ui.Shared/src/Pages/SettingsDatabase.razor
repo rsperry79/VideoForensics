@@ -1,0 +1,242 @@
+@page "/settings/database"
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Api.Contracts
+@inject ISelfApiHttpClientFactory ClientFactory
+@inject StepUpService StepUp
+@inject IStringLocalizer<SettingsDatabase> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger" role="alert">@_error</div>
+}
+
+@if (_message is not null)
+{
+    <div class="alert alert-success" role="status">@_message</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">@L["StatsHeading"]</h5>
+        @if (_stats is null)
+        {
+            <p>@L["Loading"]</p>
+        }
+        else
+        {
+            <dl class="row mb-3">
+                <dt class="col-sm-4">@L["Engine"]</dt>
+                <dd class="col-sm-8">@_stats.Engine</dd>
+                <dt class="col-sm-4">@L["Location"]</dt>
+                <dd class="col-sm-8">@_stats.Location</dd>
+                <dt class="col-sm-4">@L["FileSize"]</dt>
+                <dd class="col-sm-8">@FormatBytes(_stats.FileBytes)</dd>
+                <dt class="col-sm-4">@L["Pages"]</dt>
+                <dd class="col-sm-8">@_stats.PageCount (@L["FreePages"]: @_stats.FreePageCount)</dd>
+                <dt class="col-sm-4">@L["JournalMode"]</dt>
+                <dd class="col-sm-8">@_stats.JournalMode</dd>
+                <dt class="col-sm-4">@L["MediaRows"]</dt>
+                <dd class="col-sm-8">@_stats.MediaItemCount (@L["PurgedRows"]: @_stats.PurgedMediaItemCount)</dd>
+                <dt class="col-sm-4">@L["ActionLogEntries"]</dt>
+                <dd class="col-sm-8">@_stats.ActionLogEntryCount</dd>
+            </dl>
+        }
+        <button type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="LoadStatsAsync">@L["RefreshButton"]</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">@L["MaintenanceHeading"]</h5>
+        <p>@L["MaintenanceDescription"]</p>
+        <button type="button" class="btn btn-outline-primary me-2" disabled="@_busy" @onclick="CompactAsync">@L["CompactButton"]</button>
+        <button type="button" class="btn btn-outline-primary me-2" disabled="@_busy" @onclick="RepairAsync">@L["RepairButton"]</button>
+        <button type="button" class="btn btn-outline-primary" disabled="@_busy" @onclick="ValidateAsync">@L["ValidateButton"]</button>
+    </div>
+</div>
+
+@if (_validation is not null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["ValidationHeading"]</h5>
+
+            @if (_validation.IsClean)
+            {
+                <div class="alert alert-success mb-0" role="status">@L["ValidationClean"]</div>
+            }
+
+            @if (_validation.MissingMedia.Count > 0)
+            {
+                <div class="alert alert-warning">
+                    <p>@string.Format(L["MissingFilesFound"], _validation.MissingMedia.Count)</p>
+                    <ul class="small mb-2">
+                        @foreach (MissingMediaDto item in _validation.MissingMedia.Take(50))
+                        {
+                            <li>@item.FileName <span class="text-muted">@item.ResolvedPath</span></li>
+                        }
+                    </ul>
+                    @if (_validation.MissingMedia.Count > 50)
+                    {
+                        <p class="small">@string.Format(L["MoreMissingFiles"], _validation.MissingMedia.Count - 50)</p>
+                    }
+                    <p class="mb-2">@L["PurgeQuestion"]</p>
+                    <button type="button" class="btn btn-danger" disabled="@_busy" @onclick="PurgeMissingAsync">@string.Format(L["PurgeButton"], _validation.MissingMedia.Count)</button>
+                </div>
+            }
+
+            @if (!_validation.Chain.IsValid)
+            {
+                @if (_validation.Chain.Break == PreviousHashMismatch)
+                {
+                    <div class="alert alert-warning">
+                        <p>@L["ChainGapFound"]</p>
+                        <p class="mb-2">@L["RepairChainQuestion"]</p>
+                        <button type="button" class="btn btn-warning" disabled="@_busy" @onclick="RepairChainAsync">@L["RepairChainButton"]</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-danger mb-0">@L["ChainAltered"]</div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    // The break kind the API reports for a missing link. An altered entry reports a different kind and is never bridged.
+    private const string PreviousHashMismatch = "PreviousHashMismatch";
+
+    private DatabaseStatsDto? _stats;
+    private DatabaseValidationDto? _validation;
+    private bool _busy;
+    private string? _error;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatsAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        await RunAsync(async client =>
+        {
+            _stats = await client.GetFromJsonAsync<DatabaseStatsDto>("/api/v1/database/stats");
+        });
+    }
+
+    private async Task CompactAsync()
+    {
+        await RunAsync(async client =>
+        {
+            HttpResponseMessage response = await client.PostAsync("/api/v1/database/compact", null);
+            response.EnsureSuccessStatusCode();
+            _message = L["CompactDone"];
+            _stats = await client.GetFromJsonAsync<DatabaseStatsDto>("/api/v1/database/stats");
+        });
+    }
+
+    private async Task RepairAsync()
+    {
+        await RunAsync(async client =>
+        {
+            HttpResponseMessage response = await client.PostAsync("/api/v1/database/repair", null);
+            response.EnsureSuccessStatusCode();
+            RepairVerdictDto? verdict = await response.Content.ReadFromJsonAsync<RepairVerdictDto>();
+            _message = verdict?.Verdict == "ok"
+                ? L["RepairOk"].Value
+                : string.Format(L["RepairFailed"], verdict?.Verdict);
+        });
+    }
+
+    private async Task ValidateAsync()
+    {
+        await RunAsync(async client =>
+        {
+            _validation = await client.GetFromJsonAsync<DatabaseValidationDto>("/api/v1/database/validate");
+        });
+    }
+
+    private async Task PurgeMissingAsync()
+    {
+        if (_validation is null)
+        {
+            return;
+        }
+
+        var ids = _validation.MissingMedia.Select(m => m.MediaItemId).ToList();
+        await RunAsync(async client =>
+        {
+            HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/database/purge-missing", new PurgeMissingRequest(ids));
+            response.EnsureSuccessStatusCode();
+            PurgeMissingResultDto? result = await response.Content.ReadFromJsonAsync<PurgeMissingResultDto>();
+            _message = string.Format(L["PurgeDone"], result?.Purged ?? 0);
+            _validation = await client.GetFromJsonAsync<DatabaseValidationDto>("/api/v1/database/validate");
+        }, stepUp: true);
+    }
+
+    private async Task RepairChainAsync()
+    {
+        await RunAsync(async client =>
+        {
+            HttpResponseMessage response = await client.PostAsync("/api/v1/database/repair-chain", null);
+            response.EnsureSuccessStatusCode();
+            ChainRepairResultDto? result = await response.Content.ReadFromJsonAsync<ChainRepairResultDto>();
+            _message = string.Format(L["ChainRepairDone"], result?.BridgesAdded ?? 0);
+            _validation = await client.GetFromJsonAsync<DatabaseValidationDto>("/api/v1/database/validate");
+        }, stepUp: true);
+    }
+
+    // Runs one API call with busy state and error capture. Destructive calls carry a step-up token, which the server requires.
+    private async Task RunAsync(Func<HttpClient, Task> call, bool stepUp = false)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            if (stepUp)
+            {
+                string? token = await StepUp.GetStepUpTokenAsync();
+                if (string.IsNullOrEmpty(token))
+                {
+                    _message = L["StepUpCancelled"];
+                    return;
+                }
+
+                client.DefaultRequestHeaders.Add("X-StepUp-Token", token);
+            }
+
+            await call(client);
+        }
+        catch (HttpRequestException)
+        {
+            _error = L["RequestFailed"];
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return $"{value:0.#} {units[unit]}";
+    }
+}

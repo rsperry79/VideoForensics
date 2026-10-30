@@ -108,6 +108,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
                 new("Network Access", "/settings/network", Section: "System & Network"),
                 new("Infrastructure", "/settings/infrastructure", Section: "System & Network"),
+                new("Database", "/settings/database", Section: "System & Network"),
 
                 new("Storage", "/settings/storage", Section: "Storage & Data"),
                 new("Import / Export", "/tools/import-export", Section: "Storage & Data"),

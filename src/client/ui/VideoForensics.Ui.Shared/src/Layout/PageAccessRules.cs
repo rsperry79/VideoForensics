@@ -83,6 +83,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
                 // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
                 ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,
+                // Database maintenance (stats, compact, repair, validate) is Super Admin only, on the local tier like Storage and Logs.
+                ["/settings/database"] = AccessPolicy.SuperAdminLocal,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/notifications"] = AccessPolicy.NotificationSettings,
                 ["/settings/security-log"] = AccessPolicy.Admin,
