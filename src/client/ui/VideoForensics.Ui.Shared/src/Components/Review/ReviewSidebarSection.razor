@@ -1,0 +1,35 @@
+<div class="review-sidebar-section">
+    <button type="button" class="review-sidebar-section-header" aria-expanded="@(_open ? "true" : "false")" @onclick="OnToggle">
+        <span class="fw-semibold small" data-testid="@TitleTestId">@Title</span>
+        <span class="review-sidebar-section-chevron @(_open ? "is-open" : null)" aria-hidden="true"></span>
+    </button>
+
+    @if (_open)
+    {
+        <div class="review-sidebar-section-body">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The heading text, already localized by the caller.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Optional <c>data-testid</c> for the heading text.</summary>
+    [Parameter]
+    public string? TitleTestId { get; set; }
+
+    /// <summary>The section's content, shown while the section is open.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    // Sections start open; the choice lasts until the sidebar is rebuilt.
+    private bool _open = true;
+
+    private void OnToggle()
+    {
+        _open = !_open;
+    }
+}

@@ -13,17 +13,17 @@
 @inject IStringLocalizer<SharedResources> SharedL
 
 <div class="review-case-section p-2" data-testid="review-case-section">
-    <div class="small fw-semibold mb-2">@SharedL["ScopeCase"]</div>
+    <ReviewSidebarSection Title="@SharedL["ScopeCase"]">
+        <select class="form-select form-select-sm mb-1" data-testid="review-case-picker" aria-label="@SharedL["ScopeCase"]" @onchange="OnCasePicked">
+            <option value="" selected="@(!CaseMode.Active)">@SharedL["ScopeNoCase"]</option>
+            @foreach (ForensicCase openCase in _openCases)
+            {
+                <option value="@openCase.Id" selected="@(CaseMode.CaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
+            }
+        </select>
 
-    <select class="form-select form-select-sm mb-1" data-testid="review-case-picker" @onchange="OnCasePicked">
-        <option value="" selected="@(!CaseMode.Active)">@SharedL["ScopeNoCase"]</option>
-        @foreach (ForensicCase openCase in _openCases)
-        {
-            <option value="@openCase.Id" selected="@(CaseMode.CaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
-        }
-    </select>
-
-    <a class="small" href="/cases">@SharedL["ScopeAllCases"]</a>
+        <a class="small" href="/cases">@SharedL["ScopeAllCases"]</a>
+    </ReviewSidebarSection>
 </div>
 
 @code {

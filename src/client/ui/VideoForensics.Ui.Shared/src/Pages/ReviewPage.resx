@@ -54,13 +54,28 @@
     <value>All cameras</value>
   </data>
   <data name="CamerasSelected" xml:space="preserve">
-    <value>{0} cameras</value>
-  </data>
-  <data name="CameraSelectedOne" xml:space="preserve">
-    <value>1 camera</value>
+    <value>{0} Cameras</value>
   </data>
   <data name="CamerasLabel" xml:space="preserve">
     <value>Cameras</value>
+  </data>
+  <data name="AllDevices" xml:space="preserve">
+    <value>All devices</value>
+  </data>
+  <data name="DevicesSelected" xml:space="preserve">
+    <value>{0} Devices</value>
+  </data>
+  <data name="DevicesLabel" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="NoDevices" xml:space="preserve">
+    <value>No devices are available.</value>
+  </data>
+  <data name="TooManyDevices" xml:space="preserve">
+    <value>At most {0} devices can be shown at once.</value>
+  </data>
+  <data name="SelectAtLeastOneDevice" xml:space="preserve">
+    <value>Select at least one device.</value>
   </data>
   <data name="RangeLabel" xml:space="preserve">
     <value>Time range</value>

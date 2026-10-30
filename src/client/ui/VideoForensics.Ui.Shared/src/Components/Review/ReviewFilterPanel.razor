@@ -7,27 +7,21 @@
 @implements IDisposable
 @using VideoForensics.Client.Ui.Shared.Components.Filters
 @inject IStringLocalizer<ReviewPage> L
-@inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources> SharedL
 
 <div class="review-filter-panel p-2" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel">
-    <ReviewCaseSection State="State" Devices="Devices" />
+    <ReviewSidebarSection Title="@L["FilterTitle"]">
+        @* No labels above the dropdowns: each one's first option says what it filters, and each keeps its own aria-label. *@
+        <FilterProviderSelect ProviderNames="ProviderNames" Value="@_provider" ValueChanged="OnProviderChanged"
+                              TestId="review-filter-provider" Class="form-select form-select-sm mb-2" />
 
-    <div class="small fw-semibold mb-2">@L["FilterTitle"]</div>
+        <FilterAccountSelect Accounts="AccountOptions" AccountNames="AccountNames" Value="_account" ValueChanged="OnAccountChanged"
+                             TestId="review-filter-account" Class="form-select form-select-sm mb-2" />
 
-    <label class="form-label small mb-1">@L["FilterProvider"]</label>
-    <FilterProviderSelect ProviderNames="ProviderNames" Value="@_provider" ValueChanged="OnProviderChanged"
-                          TestId="review-filter-provider" Class="form-select form-select-sm mb-2" />
+        <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
+                              TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
 
-    <label class="form-label small mb-1">@L["FilterAccount"]</label>
-    <FilterAccountSelect Accounts="AccountOptions" AccountNames="AccountNames" Value="_account" ValueChanged="OnAccountChanged"
-                         TestId="review-filter-account" Class="form-select form-select-sm mb-2" />
-
-    <label class="form-label small mb-1">@SharedL["ScopeLocation"]</label>
-    <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
-                          TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
-
-    <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
-
+        <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+    </ReviewSidebarSection>
 </div>
 
 @code {

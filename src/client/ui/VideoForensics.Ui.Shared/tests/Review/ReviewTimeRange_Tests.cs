@@ -71,6 +71,22 @@ public class ReviewTimeRange_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimeRange_CustomChosen_StacksFromThenToEachWithItsPickerUnderItsLabel()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTimeRange> cut = RenderSection();
+
+        // Act
+        cut.Find("[data-testid='review-range']").Change("custom");
+
+        // Assert - one column: From label and picker, then To label and picker
+        IElement dates = cut.Find(".review-range-dates");
+        Assert.Contains("flex-column", dates.ClassName);
+        Assert.Equal(new[] { "review-range-from", "review-range-to" }, dates.QuerySelectorAll("input").Select(i => i.GetAttribute("data-testid")).ToArray());
+        Assert.Equal(2, dates.QuerySelectorAll("label").Length);
+    }
+
+    [Fact]
     public void ReviewTimeRange_CustomDates_SetRangeFromStartOfFromDayToEndOfToDay()
     {
         // Arrange

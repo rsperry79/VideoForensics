@@ -14,15 +14,15 @@
 
     @if (Popups.IsOpen(ReviewPopupState.Camera))
     {
-        <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["CamerasLabel"]" data-testid="review-camera-popup">
+        <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@Text("CamerasLabel", "DevicesLabel")" data-testid="review-camera-popup">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="review-camera-all" data-testid="review-camera-all" checked="@AllChecked" @onchange="OnAllChanged" />
-                <label class="form-check-label" for="review-camera-all">@L["AllCameras"]</label>
+                <label class="form-check-label" for="review-camera-all">@AllLabel</label>
             </div>
 
             @if (Devices.Count == 0)
             {
-                <p class="small mb-2">@L["NoCameras"]</p>
+                <p class="small mb-2">@Text("NoCameras", "NoDevices")</p>
             }
 
             @foreach (Guid id in Devices)
@@ -35,11 +35,11 @@
 
             @if (_pending.Count > CameraSync.MaxTiles)
             {
-                <small class="d-block mt-2" data-testid="review-camera-hint">@L["TooManyCameras", CameraSync.MaxTiles]</small>
+                <small class="d-block mt-2" data-testid="review-camera-hint">@Text("TooManyCameras", "TooManyDevices", CameraSync.MaxTiles)</small>
             }
             else if (_pending.Count == 0)
             {
-                <small class="d-block mt-2" data-testid="review-camera-hint">@L["SelectAtLeastOneCamera"]</small>
+                <small class="d-block mt-2" data-testid="review-camera-hint">@Text("SelectAtLeastOneCamera", "SelectAtLeastOneDevice")</small>
             }
         </div>
     }
@@ -57,6 +57,18 @@
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>Cameras only (the default) or every kind of device. It sets the wording: "cameras" or "devices".</summary>
+    [Parameter]
+    public DevicePickerMode Mode { get; set; } = DevicePickerMode.Cameras;
+
+    /// <summary>The wording for the current mode: the camera key, or the device key.</summary>
+    private string Text(string cameraKey, string deviceKey, params object[] arguments)
+    {
+        return L[Mode == DevicePickerMode.Cameras ? cameraKey : deviceKey, arguments].Value;
+    }
+
+    private string AllLabel => Text("AllCameras", "AllDevices");
 
     /// <summary>The selection being edited in the popup. It reaches the review state after the debounce.</summary>
     private HashSet<Guid> _pending = [];
@@ -76,10 +88,17 @@
                 && Devices.All(State.CameraIds.Contains);
             if (allSelected)
             {
-                return L["AllCameras"].Value;
+                return AllLabel;
             }
 
-            return State.CameraIds.Count == 1 ? L["CameraSelectedOne"].Value : L["CamerasSelected", State.CameraIds.Count].Value;
+            // One selected device is named; two or more are counted.
+            if (State.CameraIds.Count == 1)
+            {
+                Guid only = State.CameraIds[0];
+                return DeviceNames.GetValueOrDefault(only, only.ToString("D"));
+            }
+
+            return Text("CamerasSelected", "DevicesSelected", State.CameraIds.Count);
         }
     }
 

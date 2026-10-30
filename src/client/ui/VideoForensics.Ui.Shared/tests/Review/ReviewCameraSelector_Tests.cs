@@ -2,6 +2,7 @@ using Bunit;
 
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
@@ -49,11 +50,11 @@ public class ReviewCameraSelector_Tests : ReviewTestContext
 
         // Assert
         Assert.Equal(L["CamerasSelected", 2].Value, cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
-        Assert.Equal("2 cameras", cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+        Assert.Equal("2 Cameras", cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
     }
 
     [Fact]
-    public void ReviewCameraSelector_OneCameraSelected_ShowsTheSingularCountLabel()
+    public void ReviewCameraSelector_OneCameraSelected_ShowsTheCameraName()
     {
         // Arrange
         AddDevices(3);
@@ -63,8 +64,43 @@ public class ReviewCameraSelector_Tests : ReviewTestContext
         IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
 
         // Assert
-        Assert.Equal(L["CameraSelectedOne"].Value, cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
-        Assert.Equal("1 camera", cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+        Assert.Equal(NameOf(Devices[0]), cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_AllDevicesMode_TwoSelected_ShowsTheDeviceCount()
+    {
+        // Arrange
+        AddDevices(3);
+        SelectOnly(0, 1);
+
+        // Act
+        IRenderedComponent<ReviewCameraSelector> cut = Render<ReviewCameraSelector>(parameters => parameters
+            .Add(p => p.State, ReviewState)
+            .Add(p => p.Mode, DevicePickerMode.AllDevices)
+            .Add(p => p.Devices, Devices.Select(d => d.Id).ToList())
+            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
+
+        // Assert
+        Assert.Equal("2 Devices", cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_AllDevicesMode_EveryDeviceSelected_ShowsAllDevices()
+    {
+        // Arrange
+        AddDevices(3);
+        SelectOnly(0, 1, 2);
+
+        // Act
+        IRenderedComponent<ReviewCameraSelector> cut = Render<ReviewCameraSelector>(parameters => parameters
+            .Add(p => p.State, ReviewState)
+            .Add(p => p.Mode, DevicePickerMode.AllDevices)
+            .Add(p => p.Devices, Devices.Select(d => d.Id).ToList())
+            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
+
+        // Assert
+        Assert.Equal(L["AllDevices"].Value, cut.Find("[data-testid='review-camera-button']").TextContent.Trim());
     }
 
     [Fact]

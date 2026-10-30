@@ -8,18 +8,18 @@
 @inject IStringLocalizer<ReviewPage> L
 
 <section class="review-actions-panel position-relative p-2 mt-2 @(IsOpen ? "review-actions-panel-open" : null)" aria-label="@L["Actions"]" data-testid="review-actions-panel" @onkeydown="OnKeyDown">
-    <div class="small fw-semibold mb-2" data-testid="review-actions-heading">@L["Actions"]</div>
+    <ReviewSidebarSection Title="@L["Actions"]" TitleTestId="review-actions-heading">
+        <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(!StillCommand.CanGrab)" @onclick="() => StillCommand.GrabAsync()">@L["GrabStill"]</button>
 
-    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(!StillCommand.CanGrab)" @onclick="() => StillCommand.GrabAsync()">@L["GrabStill"]</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-actions-button" aria-expanded="@IsOpen.ToString().ToLowerInvariant()" @onclick="OnToggle">@L["ActionsMenuTitle"]</button>
 
-    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-actions-button" aria-expanded="@IsOpen.ToString().ToLowerInvariant()" @onclick="OnToggle">@L["ActionsMenuTitle"]</button>
-
-    @if (IsOpen)
-    {
-        <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["ActionsMenuLabel"]" data-testid="review-actions-dropdown">
-            <ReviewActionsMenu State="State" />
-        </div>
-    }
+        @if (IsOpen)
+        {
+            <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["ActionsMenuLabel"]" data-testid="review-actions-dropdown">
+                <ReviewActionsMenu State="State" />
+            </div>
+        }
+    </ReviewSidebarSection>
 </section>
 
 @code {

@@ -297,6 +297,35 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewFilterPanel_Rendered_HasNoLabelsAboveTheDropdowns()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - each dropdown's first option already says what it filters, and it keeps an aria-label
+        Assert.Empty(cut.FindAll("label.form-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-provider']").GetAttribute("aria-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-account']").GetAttribute("aria-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-location']").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_DoesNotHoldTheCaseSection()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - the Case section is its own section above the filters
+        Assert.Empty(cut.FindAll("[data-testid='review-case-section']"));
+    }
+
+    [Fact]
     public void ReviewFilterPanel_Inline_HasNoPopupChrome()
     {
         // Arrange

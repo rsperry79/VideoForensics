@@ -211,6 +211,25 @@ public class ReviewPage_Tests : ReviewTestContext
         Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
     }
 
+    [Theory]
+    [InlineData("review-case-section")]
+    [InlineData("review-filter-panel")]
+    [InlineData("review-time-range")]
+    [InlineData("review-actions-panel")]
+    public void ReviewPage_RightPanelSection_HasACollapsibleHeading(string testId)
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        IRenderedComponent<IComponent> right = RenderRightPanel();
+
+        // Assert
+        Assert.Single(right.FindAll($"[data-testid='{testId}'] button.review-sidebar-section-header[aria-expanded]"));
+    }
+
     [Fact]
     public void ReviewPage_TabInTheAddressChanges_SwitchesTheTab()
     {
