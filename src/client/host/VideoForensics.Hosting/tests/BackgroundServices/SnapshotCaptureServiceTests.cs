@@ -117,7 +117,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             {
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                     NullLogger<SnapshotCaptureService>.Instance,
                     _time,
                     _storage.Object);
@@ -183,7 +182,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             {
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                     logger.Object,
                     _time,
                     _storage.Object);

@@ -16,11 +16,10 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// existing media file becomes a still, and a non-200 ends the hold of the still before it.
     /// </param>
     /// <param name="DeviceId">The device whose stills to map.</param>
-    /// <param name="SnapshotRoot">Directory that <see cref="SnapshotStillRecord.MediaFilePath"/> is relative to.</param>
     /// <param name="LastStillHold">
     /// How long the newest still is held. It has no later capture to end it, so the caller supplies the hold. Must be positive.
     /// </param>
-    public sealed record SnapshotStillMapRequest(IReadOnlyList<SnapshotStillRecord> Records, Guid DeviceId, string SnapshotRoot, TimeSpan LastStillHold);
+    public sealed record SnapshotStillMapRequest(IReadOnlyList<SnapshotStillRecord> Records, Guid DeviceId, TimeSpan LastStillHold);
 
     /// <summary>
     /// Turns stored snapshot attempts into timeline stills. An attempt is a current still only when it returned 200 and its

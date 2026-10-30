@@ -219,7 +219,11 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
         private SnapshotStillMapRequest Request(IReadOnlyList<SnapshotStillRecord> records, TimeSpan lastHold)
         {
-            return new(records, _device, _root, lastHold);
+            // The mapper takes full paths; the tests write under _root, so rebase each record's relative name onto it.
+            List<SnapshotStillRecord> full = records
+                .Select(r => r with { MediaFilePath = r.MediaFilePath is null ? null : Path.Combine(_root, r.MediaFilePath) })
+                .ToList();
+            return new(full, _device, lastHold);
         }
 
         private static SnapshotStillRecord Record(Guid device, DateTimeOffset capturedAt, int status, string? media)

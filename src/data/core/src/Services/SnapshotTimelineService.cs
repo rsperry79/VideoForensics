@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -20,7 +19,6 @@ namespace VideoForensics.Data.Core.Services
         private readonly ISnapshotCaptureRepository _captures;
         private readonly ISnapshotStillMapper _stillMapper;
         private readonly ITimelineVideoBuilder _builder;
-        private readonly SnapshotTimelineOptions _options;
         private readonly ILogger<SnapshotTimelineService> _logger;
         private readonly IMediaPathResolver _paths;
 
@@ -28,7 +26,6 @@ namespace VideoForensics.Data.Core.Services
             ISnapshotCaptureRepository captures,
             ISnapshotStillMapper stillMapper,
             ITimelineVideoBuilder builder,
-            IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotTimelineService> logger,
             IMediaPathResolver? paths = null)
         {
@@ -36,7 +33,6 @@ namespace VideoForensics.Data.Core.Services
             _captures = captures;
             _stillMapper = stillMapper;
             _builder = builder;
-            _options = options.Value;
             _logger = logger;
         }
 
@@ -55,7 +51,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             IReadOnlyList<TimelineStill> stills = _stillMapper.MapCurrentStills(
-                new SnapshotStillMapRequest(records, deviceId, _options.SnapshotRoot, LastStillHold));
+                new SnapshotStillMapRequest(records, deviceId, LastStillHold));
 
             // The builder rejects an empty still list, so an empty window is a normal "nothing to build" outcome.
             if (stills.Count == 0)

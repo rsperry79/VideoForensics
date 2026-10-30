@@ -41,7 +41,6 @@ namespace VideoForensics.Data.Core.DependencyInjection
             _ = services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
             // Snapshot timelines: the mapper has no dependencies; the service reads stored captures and drives the builder above.
             services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.ISnapshotStillMapper, VideoForensics.Core.Providers.Core.SnapshotStillMapper>();
-            _ = services.AddOptions<VideoForensics.Data.Core.Services.SnapshotTimelineOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.ISnapshotTimelineService, VideoForensics.Data.Core.Services.SnapshotTimelineService>();
             services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
             services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IEvidenceChangeNotifier, VideoForensics.Data.Core.Services.NullEvidenceChangeNotifier>();
