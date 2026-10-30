@@ -106,6 +106,15 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Provider Accounts", "/accounts", Section: "Sources"),
                 new("Query API", "/query", Section: "Sources"),
 
+                new("Network Access", "/settings/network", Section: "System & Network"),
+                new("Infrastructure", "/settings/infrastructure", Section: "System & Network"),
+
+                new("Storage", "/settings/storage", Section: "Storage & Data"),
+                new("Import / Export", "/tools/import-export", Section: "Storage & Data"),
+
+                new("LLM API", "/settings/llm", Section: "Integrations"),
+                new("Email", "/settings/integrations/email", Section: "Integrations"),
+
                 new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
@@ -116,15 +125,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
                 new("Server Logs", "/settings/logs", Section: "Diagnostics & Updates"),
                 new("App Update", "/settings/update-check", Section: "Diagnostics & Updates"),
-
-                new("Network Access", "/settings/network", Section: "Devices & Network"),
-                new("Infrastructure", "/settings/infrastructure", Section: "Devices & Network"),
-
-                new("Storage", "/settings/storage", Section: "Storage & Data"),
-                new("Import / Export", "/tools/import-export", Section: "Storage & Data"),
-
-                new("LLM API", "/settings/llm", Section: "Integrations"),
-                new("Email", "/settings/integrations/email", Section: "Integrations"),
             ])
         ];
 
