@@ -76,13 +76,13 @@ public class LiveViewPageTests : BunitContext
     }
 
     [Fact]
-    public void LiveView_Rendered_RegistersTheViewNavInTheLeftPanel()
+    public void LiveView_Rendered_LeavesTheLeftPanelToTheMainMenu()
     {
         // Act
         _ = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
 
-        // Assert
-        Assert.NotNull(Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>().Content);
+        // Assert - the Media views, Live included, are items of the main left menu
+        Assert.Null(Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>().Content);
     }
 
     [Fact]

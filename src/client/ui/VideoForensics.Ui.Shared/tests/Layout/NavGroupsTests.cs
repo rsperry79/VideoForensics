@@ -25,12 +25,14 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Media_TabHasNoSidebarItems()
+    public void Media_TabListsTheReviewViewsInTheLeftMenu()
     {
-        // The top Media tab leads to the review page; its menu is the review view menu in the left panel.
+        // The review views are ordinary menu items, shown in the same place and style as the other groups' items.
         NavGroup media = NavGroups.All.First(g => g.Key == "media");
         Assert.Equal("/media", media.Path);
-        Assert.Empty(media.Items);
+        Assert.Equal(
+            new[] { ("Timeline", "/media"), ("Events", "/media?tab=Events"), ("Detail", "/media?tab=Detail"), ("Live", "/live-view") },
+            media.Items.Select(i => (i.Text, i.Path)).ToArray());
     }
 
     [Fact]

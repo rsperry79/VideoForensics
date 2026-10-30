@@ -51,8 +51,6 @@ else
         <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
     }
 
-    <ReviewViewNav Tabs="true" />
-
     <div class="review-body">
         <div class="review-content">
             @if (State.ActiveTab == ReviewTab.Timeline)
@@ -103,6 +101,7 @@ else
         State.OnChange += OnReviewStateChanged;
         ScopeState.OnChange += OnScopeChanged;
         CaseMode.OnChange += OnCaseModeChanged;
+        NavigationManager.LocationChanged += OnLocationChanged;
 
         // Read before anything writes the address bar: a bare /media is the only address that restores the saved state.
         _arrivedWithoutQuery = CurrentQuery().Length == 0;
@@ -366,6 +365,27 @@ else
     }
 
     /// <summary>Entering or leaving a case changes the address bar too, so a reload keeps the case.</summary>
+    /// <summary>
+    /// The left menu switches views by navigating to /media?tab=..., and the page is already open, so it is not rebuilt.
+    /// This follows the tab in the address. Only review routes count: a move to another page must not touch the state.
+    /// </summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        var location = new Uri(e.Location);
+        bool onReviewRoute = location.AbsolutePath.Equals("/media", StringComparison.OrdinalIgnoreCase)
+            || location.AbsolutePath.Equals("/media/review", StringComparison.OrdinalIgnoreCase);
+        if (!_urlParsed || !onReviewRoute)
+        {
+            return;
+        }
+
+        ReviewTab tab = ReviewUrl.Parse(location.Query).Tab;
+        if (tab != State.ActiveTab)
+        {
+            State.SetTab(tab);
+        }
+    }
+
     private void OnCaseModeChanged()
     {
         if (_urlParsed)
@@ -379,6 +399,7 @@ else
         State.OnChange -= OnReviewStateChanged;
         ScopeState.OnChange -= OnScopeChanged;
         CaseMode.OnChange -= OnCaseModeChanged;
+        NavigationManager.LocationChanged -= OnLocationChanged;
         CaseMode.Exit();
     }
 

@@ -69,8 +69,14 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            // The Media tab has no sidebar items: its menu is the review view menu in the left panel, which the review page registers.
-            new("media", "Media", "/media", [], Visible: ctx => ctx.IsSignedIn),
+            // The review views are ordinary menu items. The review page follows the ?tab= value, so a click on the same page switches the view.
+            new("media", "Media", "/media",
+            [
+                new("Timeline", "/media"),
+                new("Events", "/media?tab=Events"),
+                new("Detail", "/media?tab=Detail"),
+                new("Live", "/live-view")
+            ], Visible: ctx => ctx.IsSignedIn),
 
             new("cases", "Review", "/cases",
             [
