@@ -42,8 +42,11 @@ namespace VideoForensics.Data.Core.Services
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (!File.Exists(await _paths.ToAbsoluteAsync(media.FilePath, ct)))
+                string absolutePath = await _paths.ToAbsoluteAsync(media.FilePath, ct);
+                if (!File.Exists(absolutePath))
                 {
+                    // Why: a stored path with no file behind it means a row points at lost media, which needs review, not a skip.
+                    _logger.LogError("Thumbnail backfill: media file missing at {Path}", absolutePath);
                     missingFile++;
                     continue;
                 }
@@ -59,9 +62,18 @@ namespace VideoForensics.Data.Core.Services
                 }
             }
 
-            _logger.LogInformation(
-                "Thumbnail backfill: checked {Checked} video(s), {Available} with a thumbnail, {Unavailable} unavailable, {MissingFile} with no file on disk.",
-                checkedCount, available, unavailable, missingFile);
+            if (missingFile > 0)
+            {
+                _logger.LogError(
+                    "Thumbnail backfill: checked {Checked} video(s), {Available} with a thumbnail, {Unavailable} unavailable, {MissingFile} with no file on disk.",
+                    checkedCount, available, unavailable, missingFile);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Thumbnail backfill: checked {Checked} video(s), {Available} with a thumbnail, {Unavailable} unavailable, {MissingFile} with no file on disk.",
+                    checkedCount, available, unavailable, missingFile);
+            }
 
             return new MediaThumbnailBackfillResult(checkedCount, available, unavailable, missingFile);
         }
