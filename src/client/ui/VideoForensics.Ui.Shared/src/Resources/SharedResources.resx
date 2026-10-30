@@ -488,6 +488,24 @@
   <data name="ScopeAllDevices" xml:space="preserve">
     <value>All devices</value>
   </data>
+  <data name="ScopeDevicesCount" xml:space="preserve">
+    <value>{0} Devices</value>
+  </data>
+  <data name="ScopeFilters" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="ScopeRangeLast24Hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="ScopeRangeLast7Days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="ScopeRangeLast30Days" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="ScopeRangeCustom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
   <data name="ScopeTimeRange" xml:space="preserve">
     <value>Time range</value>
   </data>

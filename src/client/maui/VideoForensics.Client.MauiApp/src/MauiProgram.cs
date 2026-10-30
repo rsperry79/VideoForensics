@@ -197,6 +197,7 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.ScopeState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSettingsStore>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
