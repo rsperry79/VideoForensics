@@ -156,6 +156,21 @@ public class ReviewViewNav_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewViewNav_TabsMode_RendersSubpageTabsWithTheActiveOneMarked()
+    {
+        // Arrange
+        ReviewState.SetTab(ReviewTab.Events);
+
+        // Act
+        IRenderedComponent<ReviewViewNav> cut = Render<ReviewViewNav>(p => p.Add(n => n.Tabs, true));
+
+        // Assert
+        Assert.Single(cut.FindAll("ul.nav.nav-tabs [data-testid='review-tab-button-events'].nav-link.active"));
+        Assert.Single(cut.FindAll("ul.nav.nav-tabs [data-testid='review-live'].nav-link"));
+        Assert.DoesNotContain("e-btn", cut.Find("[data-testid='review-view-nav']").InnerHtml);
+    }
+
+    [Fact]
     public void ReviewViewNav_Dispose_UnsubscribesFromStateChanges()
     {
         // Arrange

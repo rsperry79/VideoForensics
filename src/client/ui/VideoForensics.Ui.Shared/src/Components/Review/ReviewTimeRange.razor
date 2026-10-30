@@ -1,0 +1,150 @@
+@using System.Globalization
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@implements IDisposable
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="review-time-range p-2" data-testid="review-time-range">
+    <div class="small fw-semibold mb-2">@L["RangeLabel"]</div>
+
+    <select class="form-select form-select-sm mb-2" data-testid="review-range" aria-label="@L["RangeLabel"]" @onchange="OnRangeChanged">
+        <option value="hour" selected="@(_choice == RangeChoice.LastHour)">@L["RangeLastHour"]</option>
+        <option value="day" selected="@(_choice == RangeChoice.Last24Hours)">@L["RangeLast24Hours"]</option>
+        <option value="week" selected="@(_choice == RangeChoice.Last7Days)">@L["RangeLast7Days"]</option>
+        <option value="month" selected="@(_choice == RangeChoice.Last30Days)">@L["RangeLast30Days"]</option>
+        <option value="custom" selected="@(_choice == RangeChoice.Custom)">@L["RangeCustom"]</option>
+    </select>
+
+    @if (_choice == RangeChoice.Custom)
+    {
+        <div class="d-flex gap-2">
+            <label class="form-label small mb-0 flex-fill">
+                @L["RangeFrom"]
+                <input type="date" class="form-control form-control-sm" data-testid="review-range-from" value="@FromDate" @onchange="OnFromChanged" />
+            </label>
+            <label class="form-label small mb-0 flex-fill">
+                @L["RangeTo"]
+                <input type="date" class="form-control form-control-sm" data-testid="review-range-to" value="@ToDate" @onchange="OnToChanged" />
+            </label>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The review state the section reads and writes.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>The clock the presets end at. Tests pass a fixed clock; the page uses the system clock.</summary>
+    [Parameter]
+    public Func<DateTime> UtcNow { get; set; } = static () => DateTime.UtcNow;
+
+    private enum RangeChoice
+    {
+        LastHour,
+        Last24Hours,
+        Last7Days,
+        Last30Days,
+        Custom,
+    }
+
+    // Set when the operator picks Custom. It stays set while the dates are edited, even when they happen to match a preset.
+    private bool _customChosen;
+
+    private RangeChoice _choice => _customChosen ? RangeChoice.Custom : PresetOf(State.ToUtc - State.FromUtc);
+
+    // The dates shown and edited are whole days. The window ends at the start of the day after the To date, so the To day is included.
+    private string FromDate => State.FromUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private string ToDate
+    {
+        get
+        {
+            DateTime end = State.ToUtc.TimeOfDay == TimeSpan.Zero ? State.ToUtc.AddDays(-1) : State.ToUtc;
+            return end.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>The preset a span matches within a minute. A span that matches none is a custom window.</summary>
+    private static RangeChoice PresetOf(TimeSpan span)
+    {
+        static bool Matches(TimeSpan span, TimeSpan preset) => Math.Abs((span - preset).TotalSeconds) < 60;
+
+        if (Matches(span, TimeSpan.FromHours(1))) return RangeChoice.LastHour;
+        if (Matches(span, TimeSpan.FromHours(24))) return RangeChoice.Last24Hours;
+        if (Matches(span, TimeSpan.FromDays(7))) return RangeChoice.Last7Days;
+        if (Matches(span, TimeSpan.FromDays(30))) return RangeChoice.Last30Days;
+        return RangeChoice.Custom;
+    }
+
+    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        string? value = args.Value?.ToString();
+        if (value == "custom")
+        {
+            // Only the picker changes here. The window stays as it is until the operator enters dates.
+            _customChosen = true;
+            return;
+        }
+
+        _customChosen = false;
+        DateTime now = UtcNow();
+        State.SetRange(now - PresetSpan(value), now);
+    }
+
+    private static TimeSpan PresetSpan(string? value)
+    {
+        return value switch
+        {
+            "hour" => TimeSpan.FromHours(1),
+            "week" => TimeSpan.FromDays(7),
+            "month" => TimeSpan.FromDays(30),
+            _ => TimeSpan.FromHours(24),
+        };
+    }
+
+    private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        if (TryParseDay(args.Value?.ToString(), out DateTime from) && from < State.ToUtc)
+        {
+            State.SetRange(from, State.ToUtc);
+        }
+    }
+
+    private void OnToChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        if (TryParseDay(args.Value?.ToString(), out DateTime toDay) && toDay.AddDays(1) > State.FromUtc)
+        {
+            State.SetRange(State.FromUtc, toDay.AddDays(1));
+        }
+    }
+
+    /// <summary>Parses a date-input value as midnight UTC. The pickers work in whole days, so the time of day is always zero.</summary>
+    private static bool TryParseDay(string? value, out DateTime day)
+    {
+        if (!DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsed))
+        {
+            day = default;
+            return false;
+        }
+
+        day = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+        return true;
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

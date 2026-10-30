@@ -15,7 +15,7 @@ using VideoForensics.Utils.LogViewer;
 // This app is the client: it connects, prints each entry, and reconnects when the server goes away.
 //
 // Usage:
-//   VideoForensics.Utils.LogViewer [--pipe <name>] [--raw] [--help]
+//   VideoForensics.Utils.LogViewer [--pipe <name>] [--level <name>] [--raw] [--help]
 //
 // Run with --help for the option list. Formatted lines use the same Serilog console sink and layout as the
 // WebApp, so the level colours match the server's console.
@@ -29,18 +29,37 @@ if (parsed.Errors.Any())
 
 LogViewerOptions options = parsed.Value;
 
+if (!TryParseLevel(options.Level, out LogEventLevel minimumLevel))
+{
+    Console.Error.WriteLine($"Unknown level '{options.Level}'. Use Trace, Debug, Information, Warning, Error or Critical.");
+    return 1;
+}
+
 // Same output template as the WebApp's console sink (Program.cs there). No theme is set, so the sink's default applies.
 Logger logger = new LoggerConfiguration()
-    .MinimumLevel.Verbose()
+    .MinimumLevel.Is(minimumLevel)
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
+// Ctrl+C is left to the console: with text selected it copies, as in any console window. Ctrl+D is the exit key.
 using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) =>
+
+// Ctrl+D exits too. It is read as a key, not as end-of-input, so the console keeps working when input is redirected.
+if (!Console.IsInputRedirected)
 {
-    e.Cancel = true;
-    cts.Cancel();
-};
+    _ = Task.Run(() =>
+    {
+        while (!cts.IsCancellationRequested)
+        {
+            ConsoleKeyInfo key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.D && key.Modifiers.HasFlag(ConsoleModifiers.Control))
+            {
+                cts.Cancel();
+                return;
+            }
+        }
+    });
+}
 
 // Where the server setting lives, so a user who sees no output knows what to turn on.
 Console.WriteLine("The server's log pipe is off by default. To turn it on, open the WebApp and go to:");
@@ -48,7 +67,7 @@ Console.WriteLine("  Admin > Devices & Network > Infrastructure > Diagnostics");
 Console.WriteLine("  tick \"Open the log pipe for LogViewer\", then press Save.");
 Console.WriteLine();
 
-Console.WriteLine($"Waiting for logger on pipe '{options.Pipe}'. Press Ctrl+C to exit.");
+Console.WriteLine($"Waiting for logger on pipe '{options.Pipe}'. Press Ctrl+D to exit. Ctrl+C copies a selection.");
 
 while (!cts.IsCancellationRequested)
 {
@@ -151,3 +170,19 @@ static LogEventLevel ToSerilogLevel(string level) => level switch
     "Critical" => LogEventLevel.Fatal,
     _ => LogEventLevel.Information,
 };
+
+// Reads the --level value, ignoring case. Returns false for a name that is not a logger level.
+static bool TryParseLevel(string name, out LogEventLevel level)
+{
+    foreach (string known in new[] { "Trace", "Debug", "Information", "Warning", "Error", "Critical" })
+    {
+        if (string.Equals(known, name, StringComparison.OrdinalIgnoreCase))
+        {
+            level = ToSerilogLevel(known);
+            return true;
+        }
+    }
+
+    level = LogEventLevel.Verbose;
+    return false;
+}

@@ -35,12 +35,9 @@ else
 {
     <ReviewTimelineFeeder />
 
-    <PageLeftPanelContent>
-        <ReviewViewNav />
-    </PageLeftPanelContent>
-
     <PageRightPanelContent>
         <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
+        <ReviewTimeRange State="State" />
         <ReviewActionsPanel State="State" />
     </PageRightPanelContent>
 
@@ -50,6 +47,8 @@ else
     {
         <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
     }
+
+    <ReviewViewNav Tabs="true" />
 
     <div class="review-body">
         <div class="review-content">

@@ -27,18 +27,10 @@
 
             <div class="mb-2">
                 <button type="button" class="dropdown-item" data-testid="review-action-tag" disabled="@(TagReason is not null)" @onclick="OnTagAsync">@L["ActionTagEvidence"]</button>
-                @if (TagReason is { } tagReason)
-                {
-                    <small class="text-muted d-block" data-testid="review-action-reason-tag">@tagReason</small>
-                }
             </div>
 
             <div class="mb-2">
                 <button type="button" class="dropdown-item" data-testid="review-action-new-case" disabled="@(TagReason is not null)" @onclick="OnStartNewCaseAsync">@L["ActionStartNewCase"]</button>
-                @if (TagReason is { } newCaseReason)
-                {
-                    <small class="text-muted d-block" data-testid="review-action-reason-new-case">@newCaseReason</small>
-                }
             </div>
 
             <div class="mb-2">
@@ -49,10 +41,6 @@
                 else
                 {
                     <button type="button" class="dropdown-item" data-testid="review-action-release" disabled="@(HoldReason is not null || _holdMode != HoldMode.None)" @onclick="OnBeginRelease">@L["ActionReleaseHold"]</button>
-                }
-                @if (HoldReason is { } holdReason)
-                {
-                    <small class="text-muted d-block" data-testid="review-action-reason-hold">@holdReason</small>
                 }
 
                 @if (_holdMode != HoldMode.None)
@@ -69,10 +57,6 @@
 
             <div class="mb-2">
                 <button type="button" class="dropdown-item" data-testid="review-action-verify" disabled="@(VerifyReason is not null)" @onclick="OnVerifyAsync">@L["ActionVerifyIntegrity"]</button>
-                @if (VerifyReason is { } verifyReason)
-                {
-                    <small class="text-muted d-block" data-testid="review-action-reason-verify">@verifyReason</small>
-                }
             </div>
 
             <div class="mb-2">
@@ -83,7 +67,6 @@
                 else
                 {
                     <button type="button" class="dropdown-item" data-testid="review-action-export" disabled>@L["ActionExport"]</button>
-                    <small class="text-muted d-block" data-testid="review-action-reason-export">@ExportReason</small>
                 }
             </div>
 
