@@ -159,6 +159,7 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped<CaseState>();
         _ = Services.AddScoped<ReviewEvidenceTagger>();
         _ = Services.AddScoped<ReviewSelection>();
+        _ = Services.AddScoped<ReviewStillCommand>();
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         _ = Services.AddScoped(_ => EventRepositoryMock.Object);
         _ = Services.AddScoped(sp => new ReviewCaseMode(

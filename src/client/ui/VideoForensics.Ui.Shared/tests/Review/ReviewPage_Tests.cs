@@ -51,7 +51,7 @@ public class ReviewPage_Tests : ReviewTestContext
         string topBar = cut.Find("[data-testid='review-top-bar']").TextContent;
         foreach (string key in new[]
         {
-            "Back", "RangeLast24Hours", "Actions",
+            "Back", "RangeLast24Hours",
         })
         {
             Assert.Contains(L[key].Value, topBar);
@@ -59,6 +59,11 @@ public class ReviewPage_Tests : ReviewTestContext
 
         string cameras = RenderRightPanel().Find("[data-testid='review-camera-button']").TextContent;
         Assert.Contains(L["AllCameras"].Value, cameras);
+
+        // Actions and Grab still live in the right sidebar, under the filters.
+        string actions = RenderRightPanel().Find("[data-testid='review-actions-panel']").TextContent;
+        Assert.Contains(L["Actions"].Value, actions);
+        Assert.Contains(L["GrabStill"].Value, actions);
 
         string nav = RenderLeftPanel().Find("[data-testid='review-view-nav']").TextContent;
         foreach (string key in new[] { "Live", "TabTimeline", "TabEvents", "TabDetail" })

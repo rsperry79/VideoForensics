@@ -45,6 +45,13 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
             call.DeviceIds.Select(id => Clip(id, ClipStart, withPreview: true)).ToList(), false));
     }
 
+    // The Grab still button lives in the right sidebar, so it is read from its own render. The sidebar starts the
+    // capture this tab publishes, so it is created on first use, after the tab has rendered.
+    private IRenderedComponent<ReviewActionsPanel>? _sidebar;
+
+    private IRenderedComponent<ReviewActionsPanel> Sidebar =>
+        _sidebar ??= Render<ReviewActionsPanel>(parameters => parameters.Add(p => p.State, ReviewState));
+
     private IRenderedComponent<ReviewTimelineTab> RenderTab()
     {
         return Render<ReviewTimelineTab>(parameters => parameters
@@ -453,7 +460,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTimelineTab_GridMode_RendersNoGrabStillButton()
+    public void ReviewTimelineTab_GridMode_GrabStillDisabledWithTheSingleCameraReason()
     {
         // Arrange
         AddDevices(2);
@@ -465,7 +472,9 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<CameraGrid>()));
-        Assert.Empty(cut.FindAll("[data-testid='review-grab-still']"));
+        IElement button = Sidebar.Find("[data-testid='review-grab-still']");
+        Assert.True(button.HasAttribute("disabled"));
+        Assert.Equal(L["GrabStillNeedsSingleCamera"].Value, button.GetAttribute("title"));
     }
 
     [Fact]
@@ -480,7 +489,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
-        IElement button = cut.Find("[data-testid='review-grab-still']");
+        IElement button = Sidebar.Find("[data-testid='review-grab-still']");
         Assert.True(button.HasAttribute("disabled"));
         Assert.Equal(L["GrabStillNeedsRole"].Value, button.GetAttribute("title"));
     }
@@ -499,7 +508,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
-        IElement button = cut.Find("[data-testid='review-grab-still']");
+        IElement button = Sidebar.Find("[data-testid='review-grab-still']");
         Assert.True(button.HasAttribute("disabled"));
         Assert.Equal(L["GrabStillNoClip"].Value, button.GetAttribute("title"));
     }
@@ -515,7 +524,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
-        IElement button = cut.Find("[data-testid='review-grab-still']");
+        IElement button = Sidebar.Find("[data-testid='review-grab-still']");
         Assert.False(button.HasAttribute("disabled"));
         Assert.Equal(L["GrabStill"].Value, button.GetAttribute("title"));
     }
@@ -532,7 +541,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
 
         // Act
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
 
         // Assert
         cut.WaitForAssertion(() => StillCaptureMock.Verify(
@@ -554,11 +563,11 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
 
         // Act
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
 
         // Assert
-        cut.WaitForAssertion(() => Assert.True(cut.Find("[data-testid='review-grab-still']").HasAttribute("disabled")));
-        IElement button = cut.Find("[data-testid='review-grab-still']");
+        cut.WaitForAssertion(() => Assert.True(Sidebar.Find("[data-testid='review-grab-still']").HasAttribute("disabled")));
+        IElement button = Sidebar.Find("[data-testid='review-grab-still']");
         Assert.Equal(L["GrabStillInProgress"].Value, button.GetAttribute("title"));
         Assert.Equal(L["GrabStillInProgress"].Value, cut.Find("[data-testid='review-grab-still-status']").TextContent.Trim());
         pending.SetResult(MediaStillCaptureResult.Ok(StillInfo(Guid.NewGuid())));
@@ -576,7 +585,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
 
         // Act
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='review-grab-still-open']")));
@@ -595,7 +604,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
 
         // Act
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains("ffmpeg missing", cut.Find("[data-testid='review-grab-still-status']").TextContent, StringComparison.Ordinal));
@@ -622,7 +631,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
 
         // Act
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains("boom", cut.Find("[data-testid='review-grab-still-status']").TextContent, StringComparison.Ordinal));
@@ -646,7 +655,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
 
         // Act
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Equal(L["GrabStillNoPosition"].Value, cut.Find("[data-testid='review-grab-still-status']").TextContent.Trim()));
@@ -670,7 +679,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         SetupCaptureReturns(MediaStillCaptureResult.Ok(StillInfo(Guid.NewGuid())));
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
-        cut.Find("[data-testid='review-grab-still']").Click();
+        Sidebar.Find("[data-testid='review-grab-still']").Click();
         cut.WaitForAssertion(() => Assert.Contains("abcdef123456", cut.Find("[data-testid='review-grab-still-status']").TextContent, StringComparison.Ordinal));
 
         // Act

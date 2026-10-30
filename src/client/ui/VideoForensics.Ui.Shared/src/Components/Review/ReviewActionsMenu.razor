@@ -20,14 +20,9 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ReviewPage> L
 @inject ILogger<ReviewActionsMenu> Logger
-@inject ReviewPopupState Popups
 
-<div class="review-actions-menu position-relative d-inline-block" data-testid="review-actions-menu">
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-actions" aria-haspopup="true" aria-expanded="@(Popups.IsOpen(ReviewPopupState.Actions) ? "true" : "false")" @onclick="OnToggleAsync">@L["Actions"]</button>
-
-    @if (Popups.IsOpen(ReviewPopupState.Actions))
-    {
-        <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["ActionsMenuLabel"]" data-testid="review-actions-popup" style="min-width: 20rem; top: 100%; right: 0;">
+<div class="review-actions-menu" data-testid="review-actions-menu">
+    <div aria-label="@L["ActionsMenuLabel"]" data-testid="review-actions-popup">
             <div class="small fw-semibold mb-2">@L["ActionsMenuTitle"]</div>
 
             <div class="mb-2">
@@ -96,8 +91,7 @@
             {
                 <div class="small mt-2" role="status" data-testid="review-actions-message">@_message</div>
             }
-        </div>
-    }
+    </div>
 </div>
 
 @code {
@@ -153,8 +147,8 @@
     {
         State.OnChange += OnSelectionChanged;
         TimelineModel.OnChange += OnSelectionChanged;
-        Popups.OnChange += OnPopupChanged;
         await SessionState.EnsureLoadedAsync();
+        await LoadActiveHoldAsync();
     }
 
     /// <summary>Returns the reason a minimum role is refused, or null when the operator meets it.</summary>
@@ -184,37 +178,13 @@
         // Re-read the hold for the covering clip when it changes under an open menu, so Place and Release follow the cursor.
         _ = InvokeAsync(async () =>
         {
-            if (Popups.IsOpen(ReviewPopupState.Actions) && _holdLoadedFor != Selection.MediaItemId)
+            if (_holdLoadedFor != Selection.MediaItemId)
             {
                 await LoadActiveHoldAsync();
             }
 
             StateHasChanged();
         });
-    }
-
-    /// <summary>
-    /// Clears the menu's message and any open hold prompt whenever the menu is closed, whether by its own toggle,
-    /// the backdrop, Escape, or another popup opening. A reopened menu then starts clean.
-    /// </summary>
-    private void OnPopupChanged()
-    {
-        if (!Popups.IsOpen(ReviewPopupState.Actions))
-        {
-            _message = null;
-            ClearHoldPrompt();
-        }
-
-        _ = InvokeAsync(StateHasChanged);
-    }
-
-    private async Task OnToggleAsync()
-    {
-        Popups.Toggle(ReviewPopupState.Actions);
-        if (Popups.IsOpen(ReviewPopupState.Actions))
-        {
-            await LoadActiveHoldAsync();
-        }
     }
 
     /// <summary>Loads the active legal hold on the covering clip. A failure is shown and logged, never thrown.</summary>
@@ -325,7 +295,6 @@
                 ToUtc = State.ToUtc,
                 MatchesNoDevices = false,
             });
-            Popups.Close(ReviewPopupState.Actions);
             NavigationManager.NavigateTo("/cases/new");
         });
     }
@@ -429,6 +398,5 @@
     {
         State.OnChange -= OnSelectionChanged;
         TimelineModel.OnChange -= OnSelectionChanged;
-        Popups.OnChange -= OnPopupChanged;
     }
 }

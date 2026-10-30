@@ -22,6 +22,7 @@
 @inject PairedSessionState SessionState
 @inject ReviewSelection Selection
 @inject ReviewTimelineModel TimelineModel
+@inject ReviewStillCommand StillCommand
 
 <div class="review-timeline-tab" data-testid="review-timeline-tab">
     @if (State.CameraIds.Count == 0)
@@ -49,17 +50,16 @@
         }
         else if (State.CameraIds.Count == 1)
         {
-            <div class="review-grab-still-bar">
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(GrabStillReason is not null)" @onclick="OnGrabStillAsync">@L["GrabStill"]</button>
-                @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
-                {
+            @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
+            {
+                <div class="review-grab-still-bar">
                     <span class="@(_stillStatus.IsError ? "text-danger" : null)" data-testid="review-grab-still-status">@_stillStatus.Text</span>
                     @if (_stillStatus.OpenUrl is not null)
                     {
                         <a href="@_stillStatus.OpenUrl" target="_blank" rel="noopener" data-testid="review-grab-still-open">@L["GrabStillOpen"]</a>
                     }
-                }
-            </div>
+                </div>
+            }
             <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
         }
         else
@@ -383,8 +383,30 @@
         }
     }
 
-    /// <summary>The button's tooltip: why it is disabled, or its own name when it is enabled.</summary>
-    private string GrabStillTitle => (GrabStillReason ?? L["GrabStill"]).Value;
+    /// <summary>
+    /// Publishes the Grab still reason and handler to the sidebar button. Grab still needs the single-camera player, so
+    /// a grid of several cameras reports that instead of the capture reasons.
+    /// </summary>
+    private void PublishGrabStill()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (State.CameraIds.Count != 1)
+        {
+            StillCommand.Publish(L["GrabStillNeedsSingleCamera"].Value, null);
+            return;
+        }
+
+        StillCommand.Publish(GrabStillReason?.Value, OnGrabStillAsync);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        PublishGrabStill();
+    }
 
     /// <summary>
     /// Grabs the covering clip's current frame as a new evidence still. The position comes from the single-camera player and
@@ -504,6 +526,7 @@
         }
 
         _disposed = true;
+        StillCommand.Publish(L["GrabStillNeedsSingleCamera"].Value, null);
         State.OnChange -= OnReviewStateChanged;
         TimelineModel.OnChange -= OnTimelineChanged;
         _evidenceSubscription?.Dispose();

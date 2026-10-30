@@ -1,0 +1,37 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@implements IDisposable
+@inject ReviewStillCommand StillCommand
+@inject IStringLocalizer<ReviewPage> L
+
+<section class="review-actions-panel p-2 mt-2" aria-label="@L["Actions"]" data-testid="review-actions-panel">
+    <div class="small fw-semibold mb-2">@L["Actions"]</div>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2" data-testid="review-grab-still" title="@GrabStillTitle" disabled="@(!StillCommand.CanGrab)" @onclick="() => StillCommand.GrabAsync()">@L["GrabStill"]</button>
+
+    <ReviewActionsMenu State="State" />
+</section>
+
+@code {
+    /// <summary>The review state the actions read the selection and the cameras from.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    private string GrabStillTitle => StillCommand.Reason ?? L["GrabStill"].Value;
+
+    protected override void OnInitialized()
+    {
+        StillCommand.OnChange += OnStillChanged;
+    }
+
+    private void OnStillChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        StillCommand.OnChange -= OnStillChanged;
+    }
+}

@@ -36,5 +36,26 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 return Array.Empty<DirectoryEntry>();
             }
         }
+
+        public string? CreateSubdirectory(string parentPath, string name)
+        {
+            // Reject separators and other invalid characters so the name cannot escape the parent folder.
+            string trimmed = name?.Trim() ?? string.Empty;
+            if (trimmed.Length == 0 || trimmed.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                string fullPath = Path.Combine(parentPath, trimmed);
+                _ = Directory.CreateDirectory(fullPath);
+                return fullPath;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or SecurityException)
+            {
+                return null;
+            }
+        }
     }
 }

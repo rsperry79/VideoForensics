@@ -94,4 +94,37 @@ public class FolderBrowserDialog_Tests : BunitContext
         Assert.True(cut.Find("[data-testid='folder-select']").HasAttribute("disabled"));
         Assert.Empty(cut.FindAll("[data-testid='folder-up']"));
     }
+
+    [Fact]
+    public void FolderBrowserDialog_CreateFolder_OpensNewFolderSoSelectPicksIt()
+    {
+        string? result = "unset";
+        _ = _browser.Setup(b => b.CreateSubdirectory("C:\\", "Backups")).Returns("C:\\Backups");
+        _ = _browser.Setup(b => b.GetSubdirectories("C:\\Backups")).Returns(Array.Empty<DirectoryEntry>());
+        IRenderedComponent<FolderBrowserDialog> cut = RenderDialog(p => result = p);
+
+        cut.Find("[data-testid='folder-entry']").Click();
+        cut.Find("[data-testid='folder-new']").Click();
+        cut.Find("[data-testid='folder-new-name']").Input("Backups");
+        cut.Find("[data-testid='folder-create']").Click();
+        cut.Find("[data-testid='folder-select']").Click();
+
+        Assert.Equal("C:\\Backups", result);
+        _browser.Verify(b => b.CreateSubdirectory("C:\\", "Backups"), Times.Once);
+    }
+
+    [Fact]
+    public void FolderBrowserDialog_CreateFolderFails_ShowsErrorAndStaysInParent()
+    {
+        _ = _browser.Setup(b => b.CreateSubdirectory("C:\\", "Bad*Name")).Returns((string?)null);
+        IRenderedComponent<FolderBrowserDialog> cut = RenderDialog(_ => { });
+
+        cut.Find("[data-testid='folder-entry']").Click();
+        cut.Find("[data-testid='folder-new']").Click();
+        cut.Find("[data-testid='folder-new-name']").Input("Bad*Name");
+        cut.Find("[data-testid='folder-create']").Click();
+
+        Assert.Contains("alert-danger", cut.Markup);
+        Assert.Contains("Videos", cut.Markup);
+    }
 }
