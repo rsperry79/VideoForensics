@@ -31,6 +31,6 @@
     <ProjectReference Include="..\..\dbsetup\src\VideoForensics.Utils.DbSetup.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
 </Project>
