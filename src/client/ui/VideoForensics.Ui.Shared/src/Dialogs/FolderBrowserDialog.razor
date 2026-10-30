@@ -18,6 +18,26 @@
         }
     </div>
 
+    @if (_currentPath is not null)
+    {
+        @if (_showNewFolder)
+        {
+            <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+                <input class="form-control" style="max-width: 280px;" placeholder="@L["NewFolderName"]" @bind="_newFolderName" @bind:event="oninput" data-testid="folder-new-name" />
+                <SfButton Content="@L["CreateFolder"]" OnClick="CreateFolder" Disabled="@string.IsNullOrWhiteSpace(_newFolderName)" CssClass="e-primary" data-testid="folder-create" />
+                <SfButton Content="@L["Cancel"]" OnClick="@(() => _showNewFolder = false)" CssClass="e-flat" />
+            </div>
+            @if (_createFailed)
+            {
+                <div class="alert alert-danger mt-2">@L["CreateFolderFailed"]</div>
+            }
+        }
+        else
+        {
+            <SfButton Content="@L["NewFolder"]" OnClick="@(() => _showNewFolder = true)" CssClass="e-flat" data-testid="folder-new" />
+        }
+    }
+
     <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
         <SfButton Content="@L["Cancel"]" OnClick="@(() => OnClosed.InvokeAsync(null))" data-testid="folder-cancel" />
         <SfButton Content="@L["SelectThisFolder"]" OnClick="@(() => OnClosed.InvokeAsync(_currentPath))" CssClass="e-primary" Disabled="@(_currentPath is null)" data-testid="folder-select" />
@@ -37,10 +57,35 @@
         _entries = _roots;
     }
 
+    private bool _showNewFolder;
+    private bool _createFailed;
+    private string _newFolderName = string.Empty;
+
     private void NavigateInto(string path)
     {
         _currentPath = path;
         _entries = DirectoryBrowser.GetSubdirectories(path);
+    }
+
+    private void CreateFolder()
+    {
+        if (_currentPath is null)
+        {
+            return;
+        }
+
+        string? created = DirectoryBrowser.CreateSubdirectory(_currentPath, _newFolderName);
+        if (created is null)
+        {
+            _createFailed = true;
+            return;
+        }
+
+        // Open the new folder so "Select This Folder" picks it with one click.
+        _createFailed = false;
+        _showNewFolder = false;
+        _newFolderName = string.Empty;
+        NavigateInto(created);
     }
 
     private void NavigateUp()
