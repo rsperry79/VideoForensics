@@ -278,7 +278,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
 
         // Assert
-        Assert.Equal(L["FilterMatchingCameras", 2].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
     }
 
     [Fact]
@@ -295,7 +294,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
 
         // Assert
-        Assert.Equal(L["FilterMatchingCameras", 3].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
     }
 
     [Fact]
@@ -330,7 +328,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Assert
         Assert.Equal("Wyze", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
         Assert.Equal(_wyze.Id.ToString("D"), ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
-        Assert.Equal(L["FilterMatchingCameras", 1].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
     }
 
     [Fact]

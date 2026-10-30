@@ -26,7 +26,6 @@
 
     <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
 
-    <small class="d-block mb-2" data-testid="review-filter-count">@L["FilterMatchingCameras", MatchingCount]</small>
 </div>
 
 @code {
@@ -66,7 +65,6 @@
 
     private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
 
-    private int MatchingCount => ReviewDeviceFilter.VisibleDeviceIds(AllDeviceIds, Ownership?.Ownership, _provider, _account, _location).Count;
 
     // The state filters the edit fields were last seeded from. A different value on a state change means something
     // else (the URL, a restore) set the filters, so the edit fields follow it.

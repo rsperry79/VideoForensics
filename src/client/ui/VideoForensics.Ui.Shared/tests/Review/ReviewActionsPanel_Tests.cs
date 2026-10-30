@@ -28,7 +28,8 @@ public class ReviewActionsPanel_Tests : ReviewTestContext
         Assert.Contains("w-100", button.ClassName);
         Assert.Equal("false", button.GetAttribute("aria-expanded"));
         Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
-        Assert.Empty(cut.FindAll("[data-testid='review-grab-still']"));
+        Assert.Single(cut.FindAll("[data-testid='review-grab-still']"));
+        Assert.Single(cut.FindAll("[data-testid='review-actions-heading']"));
     }
 
     [Fact]
@@ -44,7 +45,8 @@ public class ReviewActionsPanel_Tests : ReviewTestContext
         var dialog = cut.Find("[data-testid='review-actions-dropdown']");
         Assert.Equal("dialog", dialog.GetAttribute("role"));
         Assert.Contains("review-popup", dialog.ClassName);
-        foreach (string id in new[] { "review-action-tag", "review-action-new-case", "review-action-hold", "review-action-verify", "review-action-export", "review-grab-still" })
+        Assert.Single(cut.FindAll("[data-testid='review-grab-still']"));
+        foreach (string id in new[] { "review-action-tag", "review-action-new-case", "review-action-hold", "review-action-verify", "review-action-export" })
         {
             Assert.Single(cut.FindAll($"[data-testid='{id}']"));
         }
