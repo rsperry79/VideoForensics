@@ -23,6 +23,50 @@ namespace VideoForensics.Providers.Ring.Services
             return $"{sanitizedName}_{dateTime}_{sanitizedType}.{extension.TrimStart('.')}";
         }
 
+        // Ring CV detection_type -> (name suffix, priority). Lower priority wins. other_motion and unknown values have no
+        // sub-category, so a motion event with only those stays plain "motion". The priority order matches the one the stored
+        // event types use, so file names and the event type filter agree.
+        private static readonly Dictionary<string, (string Suffix, int Priority)> DetectionSuffixes = new(StringComparer.Ordinal)
+        {
+            ["human"] = ("person", 10),
+            ["animal"] = ("animal", 20),
+            ["vehicle"] = ("vehicle", 30),
+            ["package_delivery"] = ("package", 40),
+        };
+
+        /// <summary>
+        /// The type segment of a media file name. A motion event names its most important detection, for example
+        /// <c>motion-person</c>, and falls back to plain <c>motion</c> when Ring gave no sub-category. Any other event kind
+        /// keeps its own name, and a missing kind is <c>video</c>.
+        /// </summary>
+        /// <param name="rawKind">The event kind as Ring reports it (for example "motion" or "ding").</param>
+        /// <param name="detectionTypes">Ring CV detection types for the event. Null and unknown values are ignored.</param>
+        public static string FormatEventTypeSegment(string? rawKind, IEnumerable<string?> detectionTypes)
+        {
+            if (string.IsNullOrWhiteSpace(rawKind))
+            {
+                return "video";
+            }
+
+            if (!string.Equals(rawKind, "motion", StringComparison.OrdinalIgnoreCase))
+            {
+                return rawKind;
+            }
+
+            string? best = null;
+            int bestPriority = int.MaxValue;
+            foreach (string? type in detectionTypes)
+            {
+                if (type is not null && DetectionSuffixes.TryGetValue(type, out (string Suffix, int Priority) entry) && entry.Priority < bestPriority)
+                {
+                    best = entry.Suffix;
+                    bestPriority = entry.Priority;
+                }
+            }
+
+            return best is null ? rawKind : rawKind + "-" + best;
+        }
+
         /// <summary>
         /// Remove or replace characters that OneDrive/Windows don't allow in filenames:
         /// &lt; &gt; : " / \ | ? * and control characters.

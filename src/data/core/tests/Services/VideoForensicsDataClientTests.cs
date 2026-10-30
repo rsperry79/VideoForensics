@@ -131,6 +131,58 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task GetDownloadedMediaPathAsync_EventHasDownloadedVideo_ReturnsItsStoredPath()
+        {
+            var deviceId = Guid.NewGuid();
+            var downloadEvent = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "evt-1", AppVersion = "test" };
+            _ = _mockDownloadEventRepository
+                .Setup(r => r.GetByProviderEventIdAsync(deviceId, "evt-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(downloadEvent);
+            _ = _mockMediaItemRepository
+                .Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() { Id = Guid.NewGuid(), DeviceId = deviceId, FileName = "a.jpg", FilePath = "ring/a.jpg", MediaFormat = "jpg", Sha256Hash = "h1" },
+                    new() { Id = Guid.NewGuid(), DeviceId = deviceId, FileName = "a_motion-person.mp4", FilePath = "ring/a_motion-person.mp4", MediaFormat = "mp4", Sha256Hash = "h2" },
+                });
+
+            string? path = await _dataClient.GetDownloadedMediaPathAsync(deviceId, "evt-1", CancellationToken.None);
+
+            Assert.Equal("ring/a_motion-person.mp4", path);
+        }
+
+        [Fact]
+        public async Task GetDownloadedMediaPathAsync_NoDownloadEvent_ReturnsNull()
+        {
+            _ = _mockDownloadEventRepository
+                .Setup(r => r.GetByProviderEventIdAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((DownloadEvent?)null);
+
+            string? path = await _dataClient.GetDownloadedMediaPathAsync(Guid.NewGuid(), "missing", CancellationToken.None);
+
+            Assert.Null(path);
+        }
+
+        [Fact]
+        public async Task GetDownloadedMediaPathAsync_OnlyPurgedVideo_ReturnsNull()
+        {
+            var downloadEvent = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), ProviderEventId = "evt-2", AppVersion = "test" };
+            _ = _mockDownloadEventRepository
+                .Setup(r => r.GetByProviderEventIdAsync(downloadEvent.DeviceId, "evt-2", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(downloadEvent);
+            _ = _mockMediaItemRepository
+                .Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() { Id = Guid.NewGuid(), DeviceId = downloadEvent.DeviceId, FileName = "p.mp4", FilePath = "ring/p.mp4", MediaFormat = "mp4", Sha256Hash = "h", IsPurged = true },
+                });
+
+            string? path = await _dataClient.GetDownloadedMediaPathAsync(downloadEvent.DeviceId, "evt-2", CancellationToken.None);
+
+            Assert.Null(path);
+        }
+
+        [Fact]
         public async Task IsMediaAlreadyDownloadedAsync_DelegatesToDownloadEventRepository()
         {
             // Arrange
