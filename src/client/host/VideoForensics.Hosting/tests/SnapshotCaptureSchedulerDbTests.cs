@@ -91,7 +91,6 @@ namespace VideoForensics.Client.Hosting.Tests
         {
             return new(
             provider.GetRequiredService<IServiceScopeFactory>(),
-            Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotCaptureService>.Instance,
             TimeProvider.System,
             MediaStorage());

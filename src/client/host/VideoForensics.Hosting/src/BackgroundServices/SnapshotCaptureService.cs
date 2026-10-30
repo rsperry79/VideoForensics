@@ -61,7 +61,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private static readonly TimeSpan AccountErrorBackoff = TimeSpan.FromMinutes(1);
 
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotCaptureService> _logger;
         private readonly TimeProvider _time;
         private readonly IStorageLocationProvider _storage;
@@ -75,14 +74,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>Creates the capture service.</summary>
         public SnapshotCaptureService(
             IServiceScopeFactory scopeFactory,
-            IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotCaptureService> logger,
             TimeProvider time,
             IStorageLocationProvider storage,
             ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
-            _options = options;
             _logger = logger;
             _time = time;
             _storage = storage;

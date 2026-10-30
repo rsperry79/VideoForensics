@@ -69,9 +69,17 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _accounts.Object,
             _storage.Object,
             _builder.Object,
-            Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotRollupService>.Instance,
             configurationService: _configuration.Object);
+        }
+
+        /// <summary>Resolver that roots stored (relative) paths at the test folder.</summary>
+        private IMediaPathResolver RootedPaths()
+        {
+            var paths = new Mock<IMediaPathResolver>();
+            _ = paths.Setup(p => p.ToAbsoluteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string stored, CancellationToken _) => Path.Combine(_root, stored));
+            return paths.Object;
         }
 
         private string WriteJpeg(string name)
@@ -258,10 +266,10 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             SnapshotRollupService service = new(
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
-                Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                 NullLogger<SnapshotRollupService>.Instance,
                 captures: captures.Object,
-                stillMapper: new SnapshotStillMapper());
+                stillMapper: new SnapshotStillMapper(),
+                mediaPaths: RootedPaths());
 
             SnapshotRollupResult result = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 

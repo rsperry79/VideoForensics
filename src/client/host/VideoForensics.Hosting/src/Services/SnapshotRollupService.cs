@@ -39,7 +39,6 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
         private readonly ITimelineVideoBuilder _builder;
-        private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotRollupService> _logger;
 
         // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
@@ -55,7 +54,6 @@ namespace VideoForensics.Client.Hosting.Services
             IProviderAccountRepository accounts,
             IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
-            IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotRollupService> logger,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
@@ -74,7 +72,6 @@ namespace VideoForensics.Client.Hosting.Services
             _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
             _builder = builder;
-            _options = options;
             _logger = logger;
         }
 
@@ -220,7 +217,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             TimeSpan lastHold = new DateTimeOffset(toUtc, TimeSpan.Zero) - newestStill.Value;
-            return _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, _options.Value.SnapshotRoot, lastHold < MinimumHold ? MinimumHold : lastHold));
+            return _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, lastHold < MinimumHold ? MinimumHold : lastHold));
         }
 
         /// <summary>Registers the MP4 as a Media row. RecordedAtUtc is the window end, which is unique per roll-up tick.</summary>
