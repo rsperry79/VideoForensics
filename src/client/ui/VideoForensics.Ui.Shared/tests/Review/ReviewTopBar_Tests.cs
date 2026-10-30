@@ -105,20 +105,14 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_Actions_IsEnabledAndOpensTheMenu()
+    public void ReviewTopBar_Rendered_HasNoActionsMenu()
     {
         // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
-        // Assert
-        IElement actions = cut.Find("[data-testid='review-actions']");
-        Assert.False(actions.HasAttribute("disabled"));
-
-        // Act: the button opens the actions popup
-        actions.Click();
-
-        // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
+        // Assert - Actions moved to the right sidebar under the filters
+        Assert.Empty(cut.FindAll("[data-testid='review-actions']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-actions-menu']"));
     }
 
     [Fact]
@@ -175,60 +169,4 @@ public class ReviewTopBar_Tests : ReviewTestContext
         Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
     }
 
-    [Fact]
-    public void ReviewTopBar_PopupOpen_RendersABackdrop()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-
-        // Act
-        cut.Find("[data-testid='review-actions']").Click();
-
-        // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-popup-backdrop']"));
-    }
-
-    [Fact]
-    public void ReviewTopBar_BackdropClicked_ClosesThePopup()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-actions']").Click();
-        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
-
-        // Act
-        cut.Find("[data-testid='review-popup-backdrop']").Click();
-
-        // Assert
-        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
-        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
-    }
-
-    [Fact]
-    public void ReviewTopBar_EscapePressedOnTheTopBar_ClosesThePopup()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-actions']").Click();
-
-        // Act
-        cut.Find("[data-testid='review-top-bar']").KeyDown("Escape");
-
-        // Assert
-        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
-    }
-
-    [Fact]
-    public void ReviewTopBar_OtherKeyPressedOnTheTopBar_KeepsThePopupOpen()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        cut.Find("[data-testid='review-actions']").Click();
-
-        // Act
-        cut.Find("[data-testid='review-top-bar']").KeyDown("a");
-
-        // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
-    }
 }

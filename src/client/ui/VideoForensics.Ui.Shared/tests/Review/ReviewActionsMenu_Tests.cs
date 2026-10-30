@@ -56,11 +56,10 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         return Render<ReviewActionsMenu>(parameters => parameters.Add(p => p.State, ReviewState));
     }
 
-    private async Task<IRenderedComponent<ReviewActionsMenu>> OpenMenuAsync()
+    // The menu is an inline section of the right sidebar, so it is open as soon as it renders.
+    private Task<IRenderedComponent<ReviewActionsMenu>> OpenMenuAsync()
     {
-        IRenderedComponent<ReviewActionsMenu> cut = RenderMenu();
-        await ClickAsync(cut, "[data-testid='review-actions']");
-        return cut;
+        return Task.FromResult(RenderMenu());
     }
 
     private static async Task ClickAsync(IRenderedComponent<ReviewActionsMenu> cut, string selector)
@@ -111,19 +110,17 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     }
 
     [Fact]
-    public async Task ReviewActionsMenu_ToggleClick_OpensThePopup()
+    public void ReviewActionsMenu_Renders_InlineWithoutAToggle()
     {
         // Arrange
         SelectClipAtCursor();
-        IRenderedComponent<ReviewActionsMenu> cut = RenderMenu();
-        Assert.Empty(cut.FindAll("[data-testid='review-actions-popup']"));
 
         // Act
-        await ClickAsync(cut, "[data-testid='review-actions']");
+        IRenderedComponent<ReviewActionsMenu> cut = RenderMenu();
 
         // Assert
         Assert.Single(cut.FindAll("[data-testid='review-actions-popup']"));
-        Assert.Equal("true", cut.Find("[data-testid='review-actions']").GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll("[data-testid='review-actions']"));
     }
 
     [Fact]
@@ -275,7 +272,6 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Act
         IRenderedComponent<ReviewActionsMenu> cut = RenderMenu();
-        cut.Find("[data-testid='review-actions']").Click();
 
         // Assert
         Assert.True(cut.Find("[data-testid='review-action-tag']").HasAttribute("disabled"));

@@ -461,6 +461,9 @@
   <data name="GrabStill" xml:space="preserve">
     <value>Grab still</value>
   </data>
+  <data name="GrabStillNeedsSingleCamera" xml:space="preserve">
+    <value>Select one camera to grab a still.</value>
+  </data>
   <data name="GrabStillInProgress" xml:space="preserve">
     <value>Grabbing the still...</value>
   </data>
