@@ -48,14 +48,8 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Assert
-        string topBar = cut.Find("[data-testid='review-top-bar']").TextContent;
-        foreach (string key in new[]
-        {
-            "Back",
-        })
-        {
-            Assert.Contains(L[key].Value, topBar);
-        }
+        // The Media page has no Back button; the top bar keeps only the case banner and the pending tags.
+        Assert.Empty(cut.FindAll("[data-testid='review-back']"));
 
         string cameras = RenderRightPanel().Find("[data-testid='review-camera-button']").TextContent;
         Assert.Contains(L["AllCameras"].Value, cameras);

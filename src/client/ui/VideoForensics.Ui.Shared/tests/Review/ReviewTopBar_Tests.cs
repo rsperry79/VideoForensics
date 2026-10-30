@@ -89,18 +89,13 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_BackClick_GoesBackInBrowserHistory()
+    public void ReviewTopBar_Rendered_HasNoBackButton()
     {
-        // Arrange
+        // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        string before = CurrentUri;
 
-        // Act
-        cut.Find("[data-testid='review-back']").Click();
-
-        // Assert: /media is this page, so Back uses history rather than navigating to it.
-        Assert.Contains(JSInterop.Invocations, i => i.Identifier == "history.back");
-        Assert.Equal(before, CurrentUri);
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-back']"));
     }
 
     [Fact]
