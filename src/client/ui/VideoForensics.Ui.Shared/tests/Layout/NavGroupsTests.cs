@@ -12,39 +12,24 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 public class NavGroups_Tests
 {
     [Fact]
-    public void All_HasExactlyThreeGroups()
+    public void All_HasExactlyTwoGroups()
     {
-        Assert.Equal(3, NavGroups.All.Count);
+        Assert.Equal(2, NavGroups.All.Count);
     }
 
     [Fact]
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "media", "cases", "admin" }, groupKeys);
+        Assert.Equal(new[] { "cases", "admin" }, groupKeys);
     }
 
     [Fact]
-    public void Media_GroupHasCorrectProperties()
+    public void All_HasNoMediaGroup()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "media");
-        Assert.Equal("Media", group.Text);
-        Assert.Equal("/media", group.Path);
-
-        // Media has no sub menu: Signal history and Chat moved under Cases.
-        Assert.Equal(new[] { "/media" }, group.Items.Select(i => i.Path).ToList());
-    }
-
-    [Fact]
-    public void Media_GroupNoLongerHasEventGrid()
-    {
-        // The Events page ("Event Grid") was retired in phase 8: its actions moved to Media's
-        // Grid context menu and Inspector (see EvidenceActions/EvidenceInspectorMapper), and the
-        // old /events route now just redirects (see EventsRedirect).
-        NavGroup group = NavGroups.All.First(g => g.Key == "media");
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.DoesNotContain("/events", itemPaths);
-        Assert.DoesNotContain(group.Items, i => i.Text == "Event Grid");
+        // The Media item is removed from the nav. The review page at /media is still reached through "/" and direct links.
+        Assert.DoesNotContain(NavGroups.All, g => g.Key == "media");
+        Assert.DoesNotContain(NavGroups.All.SelectMany(g => g.Items), i => i.Path == "/media");
     }
 
     [Fact]

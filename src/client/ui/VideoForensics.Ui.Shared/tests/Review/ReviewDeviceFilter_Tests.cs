@@ -15,13 +15,16 @@ public class ReviewDeviceFilter_Tests
     private static readonly Guid WyzeGarage = new("aaaaaaaa-0000-0000-0000-000000000003");
     private static readonly Guid Unowned = new("aaaaaaaa-0000-0000-0000-000000000004");
 
+    private static readonly Guid Porch = new("33333333-3333-3333-3333-333333333331");
+    private static readonly Guid Garage = new("33333333-3333-3333-3333-333333333332");
+
     private static readonly Guid[] All = [RingFront, RingBack, WyzeGarage, Unowned];
 
     private static readonly List<DeviceOwnership> Ownership =
     [
-        new(RingFront, RingAccount, "Ring"),
-        new(RingBack, RingAccount, "Ring"),
-        new(WyzeGarage, WyzeAccount, "Wyze"),
+        new(RingFront, RingAccount, "Ring", Porch),
+        new(RingBack, RingAccount, "Ring", Garage),
+        new(WyzeGarage, WyzeAccount, "Wyze", Garage),
     ];
 
     [Fact]
@@ -78,6 +81,30 @@ public class ReviewDeviceFilter_Tests
         IReadOnlyList<Guid> visible = ReviewDeviceFilter.VisibleDeviceIds(All, Ownership, "Ring", null);
 
         Assert.DoesNotContain(Unowned, visible);
+    }
+
+    [Fact]
+    public void ReviewDeviceFilter_LocationFilter_KeepsOnlyDevicesAtThatLocation()
+    {
+        IReadOnlyList<Guid> visible = ReviewDeviceFilter.VisibleDeviceIds(All, Ownership, null, null, Garage);
+
+        Assert.Equal([RingBack, WyzeGarage], visible);
+    }
+
+    [Fact]
+    public void ReviewDeviceFilter_LocationAndProvider_KeepsDevicesMatchingBoth()
+    {
+        IReadOnlyList<Guid> visible = ReviewDeviceFilter.VisibleDeviceIds(All, Ownership, "Ring", null, Garage);
+
+        Assert.Equal([RingBack], visible);
+    }
+
+    [Fact]
+    public void ReviewDeviceFilter_NoOwnershipDataWithLocation_KeepsEveryDevice()
+    {
+        IReadOnlyList<Guid> visible = ReviewDeviceFilter.VisibleDeviceIds(All, null, null, null, Garage);
+
+        Assert.Equal(All, visible);
     }
 
     [Fact]

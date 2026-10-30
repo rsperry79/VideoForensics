@@ -56,6 +56,9 @@ public sealed class ReviewPageState
     /// <summary>Account filter, or null for all accounts.</summary>
     public Guid? AccountFilter { get; private set; }
 
+    /// <summary>Location filter, or null for all locations.</summary>
+    public Guid? LocationFilter { get; private set; }
+
     /// <summary>The event the user selected, or null.</summary>
     public Guid? SelectedEventId { get; private set; }
 
@@ -106,10 +109,10 @@ public sealed class ReviewPageState
         OnChange?.Invoke();
     }
 
-    /// <summary>Sets the provider and account filters. A blank provider is stored as null.</summary>
-    public void SetFilters(string? provider, Guid? account)
+    /// <summary>Sets the provider, account and location filters. A blank provider is stored as null.</summary>
+    public void SetFilters(string? provider, Guid? account, Guid? location = null)
     {
-        if (SetFiltersCore(provider, account))
+        if (SetFiltersCore(provider, account, location))
         {
             OnChange?.Invoke();
         }
@@ -211,16 +214,17 @@ public sealed class ReviewPageState
         return true;
     }
 
-    private bool SetFiltersCore(string? provider, Guid? account)
+    private bool SetFiltersCore(string? provider, Guid? account, Guid? location)
     {
         string? normalizedProvider = string.IsNullOrWhiteSpace(provider) ? null : provider;
-        if (normalizedProvider == ProviderFilter && account == AccountFilter)
+        if (normalizedProvider == ProviderFilter && account == AccountFilter && location == LocationFilter)
         {
             return false;
         }
 
         ProviderFilter = normalizedProvider;
         AccountFilter = account;
+        LocationFilter = location;
         return true;
     }
 }

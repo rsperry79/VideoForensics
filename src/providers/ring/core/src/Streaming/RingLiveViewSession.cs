@@ -104,7 +104,8 @@ namespace VideoForensics.Providers.Ring.Streaming
             };
             var audioFormats = new List<AudioFormat>
             {
-                new(AudioCodecsEnum.OPUS, 111, 48000, 2, string.Empty)
+                // No fmtp parameters. An empty string makes SIPSorcery write "a=fmtp:111 " with a trailing space, which Ring rejects.
+                new(AudioCodecsEnum.OPUS, 111, 48000, 2, null)
             };
 
             _pc.addTrack(new MediaStreamTrack(videoFormats, MediaStreamStatusEnum.RecvOnly));

@@ -51,11 +51,14 @@ public class ReviewPage_Tests : ReviewTestContext
         string topBar = cut.Find("[data-testid='review-top-bar']").TextContent;
         foreach (string key in new[]
         {
-            "Back", "AllCameras", "RangeLast24Hours", "Actions",
+            "Back", "RangeLast24Hours", "Actions",
         })
         {
             Assert.Contains(L[key].Value, topBar);
         }
+
+        string filters = RenderRightPanel().Find("[data-testid='review-filter-panel']").TextContent;
+        Assert.Contains(L["AllCameras"].Value, filters);
 
         string nav = RenderLeftPanel().Find("[data-testid='review-view-nav']").TextContent;
         foreach (string key in new[] { "Live", "TabTimeline", "TabEvents", "TabDetail" })
@@ -330,7 +333,6 @@ public class ReviewPage_Tests : ReviewTestContext
         Assert.Equal("Wyze", ReviewState.ProviderFilter);
         Assert.Equal([wyzeDevice], ReviewState.CameraIds);
         Assert.DoesNotContain(ringDevice, ReviewState.CameraIds);
-        Assert.Single(cut.FindAll("[data-testid='review-camera-button']"));
     }
 
     [Fact]
@@ -351,7 +353,7 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_CameraSelectorOpened_OffersOnlyVisibleCameras()
+    public void ReviewPage_FilterPanel_OffersOnlyVisibleCameras()
     {
         // Arrange
         (Guid ringDevice, Guid wyzeDevice) = SetUpRingAndWyze();
@@ -359,11 +361,11 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Act
-        cut.Find("[data-testid='review-camera-button']").Click();
+        IRenderedComponent<IComponent> filters = RenderRightPanel();
 
         // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
-        Assert.Empty(cut.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
+        Assert.Single(filters.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
+        Assert.Empty(filters.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
     }
 
     [Fact]
@@ -426,7 +428,6 @@ public class ReviewPage_Tests : ReviewTestContext
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
-        Assert.Single(cut.FindAll("[data-testid='review-camera-button']"));
     }
 
     [Fact]

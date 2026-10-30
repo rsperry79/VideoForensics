@@ -244,6 +244,33 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
+        public async Task StartLiveView_Offer_HasNoLinesWithTrailingWhitespace()
+        {
+            // SIPSorcery writes an empty Opus fmtp as "a=fmtp:111 " with a trailing space. Ring closes the session on that line
+            // with "key 'config' not found"; the reference client's offer has no such line.
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport);
+
+            string sdp = transport.SentMessages
+                .Select(m => JsonDocument.Parse(m).RootElement)
+                .First(el => el.GetProperty("method").GetString() == "live_view")
+                .GetProperty("body").GetProperty("sdp").GetString()!;
+            string[] trailing = sdp.Split("\r\n", StringSplitOptions.RemoveEmptyEntries)
+                .Where(line => line.Length > 0 && char.IsWhiteSpace(line[^1]))
+                .ToArray();
+            Assert.Empty(trailing);
+
+            await liveView.CloseAsync();
+        }
+
+        [Fact]
         public async Task StartLiveView_IceCandidates_AreSentOnlyAfterTheOffer()
         {
             // Ring closes a session whose ICE arrives before its live_view offer ("key 'config' not found"). The reference

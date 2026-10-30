@@ -58,21 +58,14 @@
         {
             <div class="scope-section" data-testid="scope-provider-account">
                 <div class="scope-section-label">@L["ScopeProvider"]</div>
-                <select class="scope-case-select" data-testid="scope-provider-filter" aria-label="@L["ScopeProvider"]" @onchange="OnProviderPicked">
-                    <option value="" selected="@(_providerFilter is null)">@L["ScopeAllProviders"]</option>
-                    @foreach (var provider in _providerNames)
-                    {
-                        <option value="@provider" selected="@(_providerFilter == provider)">@provider</option>
-                    }
-                </select>
+                <FilterProviderSelect ProviderNames="_providerNames" Value="@_providerFilter" ValueChanged="OnProviderPicked"
+                                      TestId="scope-provider-filter" Class="scope-case-select" />
                 <div class="scope-section-label">@L["ScopeAccount"]</div>
-                <select class="scope-case-select" data-testid="scope-account-filter" aria-label="@L["ScopeAccount"]" @onchange="OnAccountPicked">
-                    <option value="" selected="@(_accountFilter is null)">@L["ScopeAllAccounts"]</option>
-                    @foreach (var account in AccountOptions)
-                    {
-                        <option value="@account.Id" selected="@(_accountFilter == account.Id)">@_accountNames.GetValueOrDefault(account.Id, account.ProviderName)</option>
-                    }
-                </select>
+                <FilterAccountSelect Accounts="AccountOptions" AccountNames="_accountNames" Value="_accountFilter" ValueChanged="OnAccountPicked"
+                                     TestId="scope-account-filter" Class="scope-case-select" />
+                <div class="scope-section-label">@L["ScopeLocation"]</div>
+                <FilterLocationSelect Locations="_locations" Value="_locationFilter" ValueChanged="OnLocationPicked"
+                                      TestId="scope-location-filter" Class="scope-case-select" />
             </div>
 
             <div class="scope-section">
@@ -152,6 +145,8 @@
     private IReadOnlyList<string> _providerNames = Array.Empty<string>();
     private string? _providerFilter;
     private Guid? _accountFilter;
+    private IReadOnlyList<FilterLocation> _locations = Array.Empty<FilterLocation>();
+    private Guid? _locationFilter;
     private bool _devicesLoaded = false;
     private bool _deviceLoadError = false;
     private string _searchDraft = string.Empty;
@@ -234,7 +229,7 @@
         // A no-match flag restored from the URL is only meaningful while a Provider/Account filter is shown.
         // This rail does not restore its filter controls from the URL, so an orphaned flag is dropped rather than
         // left blocking every page with a notice the operator cannot act on.
-        var scope = ScopeRailRules.ClearOrphanedNoMatch(ScopeState.Current, _providerFilter, _accountFilter);
+        var scope = ScopeRailRules.ClearOrphanedNoMatch(ScopeState.Current, _providerFilter, _accountFilter, _locationFilter);
         if (scope != ScopeState.Current)
         {
             ScopeState.Set(scope);
@@ -292,31 +287,38 @@
         _accountNames = snapshot.AccountNames.ToDictionary(kv => kv.Key, kv => kv.Value);
         _ownership = snapshot.Ownership;
         _providerNames = snapshot.ProviderNames;
+        _locations = snapshot.Locations;
         RecomputeVisibleDevices();
     }
 
-    private IEnumerable<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);
+    private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);
 
     private void RecomputeVisibleDevices()
     {
-        _visibleDevices = ScopeRailRules.VisibleDevices(_devices, _ownership, _providerFilter, _accountFilter).ToList();
+        _visibleDevices = ScopeRailRules.VisibleDevices(_devices, _ownership, _providerFilter, _accountFilter, _locationFilter).ToList();
     }
 
-    private void OnProviderPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private void OnProviderPicked(string? provider)
     {
         // An account outside the newly picked provider is cleared by the rule.
-        (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(_accounts, _accountFilter, e.Value?.ToString());
+        (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(_accounts, _accountFilter, provider);
         ApplyFilters();
     }
 
-    private void OnAccountPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private void OnAccountPicked(Guid? account)
     {
-        _accountFilter = ScopeRailRules.ParseAccountPick(e.Value?.ToString());
+        _accountFilter = account;
+        ApplyFilters();
+    }
+
+    private void OnLocationPicked(Guid? location)
+    {
+        _locationFilter = location;
         ApplyFilters();
     }
 
     /// <summary>
-    /// Recomputes the visible device list and, while a provider or account filter is active, scopes the
+    /// Recomputes the visible device list and, while a provider, account or location filter is active, scopes the
     /// investigation to exactly the visible devices. Clearing the filters keeps the current device selection.
     /// </summary>
     private void ApplyFilters()
@@ -324,7 +326,7 @@
         RecomputeVisibleDevices();
 
         var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
-        ScopeState.Set(ScopeRailRules.ApplyFilters(ScopeState.Current, visibleIds, _providerFilter, _accountFilter));
+        ScopeState.Set(ScopeRailRules.ApplyFilters(ScopeState.Current, visibleIds, _providerFilter, _accountFilter, _locationFilter));
     }
 
     private bool IsDeviceSelected(Guid deviceId) => ScopeState.Current.DeviceIds.Contains(deviceId);
@@ -332,7 +334,7 @@
     private void OnDeviceToggled(Guid deviceId, Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         var isChecked = e.Value is bool value && value;
-        ScopeState.Set(ScopeRailRules.ToggleDevice(ScopeState.Current, deviceId, isChecked, _providerFilter, _accountFilter));
+        ScopeState.Set(ScopeRailRules.ToggleDevice(ScopeState.Current, deviceId, isChecked, _providerFilter, _accountFilter, _locationFilter));
     }
 
     private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
