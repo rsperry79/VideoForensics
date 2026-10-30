@@ -43,6 +43,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
         public ValueTask DisposeAsync()
         {
+            GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
 
