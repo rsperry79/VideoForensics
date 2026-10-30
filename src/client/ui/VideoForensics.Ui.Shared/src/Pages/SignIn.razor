@@ -2,9 +2,11 @@
 @layout MinimalLayout
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
 @inject WebAuthnClient WebAuthn
 @inject PairedSessionState SessionState
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 @inject IStringLocalizer<SignIn> L
 
 <div class="signin-card mx-auto">
@@ -96,6 +98,14 @@
                     }
             }
 
+            @if (!_requiresTwoFactor)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="remember-me" data-testid="remember-me" @bind="_rememberMe" />
+                    <label class="form-check-label" for="remember-me">@L["RememberMe"]</label>
+                </div>
+            }
+
             @if (_error is not null)
             {
                 <div class="alert alert-danger">@_error</div>
@@ -129,6 +139,10 @@
     private IReadOnlyList<string> _twoFactorMethods = Array.Empty<string>();
     private const string TwoFactorMethodPasskey = "passkey";
     private bool _webAuthnAvailable;
+    /// <summary>Remember me is ticked: the username is kept in localStorage after a successful sign-in.</summary>
+    private bool _rememberMe;
+    /// <summary>Passkey is tried automatically at most once per visit, for a remembered username.</summary>
+    private bool _autoPasskeyTried;
 
     /// <summary>True when the browser supports passkeys but this address does not (plain http on the LAN). Shows a message.</summary>
     private bool _passkeyBlockedByAddress;
@@ -147,7 +161,68 @@
             _webAuthnAvailable = browserSupportsPasskeys && !_passkeyBlockedByAddress;
             _authMethods = await WebAuthn.GetAuthMethodsAsync();
             _isLoading = false;
+
+            // A remembered username pre-fills the form. Passkey is tried once on load; when it does not sign in, the password box shows.
+            string? remembered = await LoadRememberedUsernameAsync();
+            if (!string.IsNullOrWhiteSpace(remembered))
+            {
+                _username = remembered;
+                _rememberMe = true;
+
+                // The server does not offer passkey sign-in, so this sign-in is by password.
+                if (!_authMethods.PasskeyEnabled)
+                {
+                    _showPasswordForm = true;
+                }
+                else if (_webAuthnAvailable && !_autoPasskeyTried)
+                {
+                    _autoPasskeyTried = true;
+                    await SignInWithPasskeyAsync();
+                }
+            }
+
+            if (_passkeyFailed)
+            {
+                _showPasswordForm = true;
+            }
+
             StateHasChanged();
+        }
+    }
+
+    /// <summary>Reads the remembered username from localStorage. An unavailable store means nothing is remembered.</summary>
+    private async Task<string?> LoadRememberedUsernameAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("localStorage.getItem", RememberedLogin.StorageKey);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// After a successful sign-in, keeps the username when Remember me is ticked and forgets it when it is not.
+    /// Local storage is a convenience, so a failure here only means the next visit starts empty.
+    /// </summary>
+    private async Task RememberUsernameAsync()
+    {
+        try
+        {
+            if (_rememberMe)
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", RememberedLogin.StorageKey, _username.Trim());
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("localStorage.removeItem", RememberedLogin.StorageKey);
+            }
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
+        {
+            // Nothing to do: the sign-in itself has already succeeded.
         }
     }
 
@@ -181,6 +256,7 @@
             }
 
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
+            await RememberUsernameAsync();
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
         }
         catch (Exception ex)
@@ -319,6 +395,7 @@
             }
 
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword: false, passkeySetupOnly: false);
+            await RememberUsernameAsync();
             NavigationManager.NavigateTo(GetReturnUrl());
         }
         catch (Exception ex)

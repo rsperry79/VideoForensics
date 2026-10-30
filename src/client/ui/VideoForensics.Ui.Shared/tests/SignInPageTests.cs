@@ -442,7 +442,7 @@ public class SignInPageTests : BunitContext
     }
 
     [Fact]
-    public async Task SignIn_NormalState_HasNoRememberMeOrForgotPassword()
+    public async Task SignIn_NormalState_HasRememberMeButNoForgotPassword()
     {
         // Arrange - no backing behavior exists for these, so they must not be rendered
         _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
@@ -452,7 +452,7 @@ public class SignInPageTests : BunitContext
         IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
         component.WaitForAssertion(() => Assert.NotNull(FindButton(component, localizer["SignInButton"])));
-        Assert.DoesNotContain("Remember", component.Markup);
+        Assert.Contains("remember-me", component.Markup);
         Assert.DoesNotContain("Forgot", component.Markup);
     }
     [Fact]

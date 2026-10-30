@@ -292,6 +292,23 @@ namespace VideoForensics.Client.Ui.Shared.Services
             await PersistAsync();
         }
 
+        /// <summary>
+        /// A user-initiated sign-out: clears the session and also forgets the remembered username, so the sign-in page
+        /// starts empty and does not try a passkey on its own. Session expiry uses <see cref="ClearAsync"/> and keeps it.
+        /// </summary>
+        public async Task SignOutAsync()
+        {
+            await ClearAsync();
+            try
+            {
+                await _js.InvokeVoidAsync("localStorage.removeItem", RememberedLogin.StorageKey);
+            }
+            catch (JSException)
+            {
+                // Local storage is unavailable; the remembered username stays until the browser clears it.
+            }
+        }
+
         public async Task ClearAsync()
         {
             SessionToken = null;

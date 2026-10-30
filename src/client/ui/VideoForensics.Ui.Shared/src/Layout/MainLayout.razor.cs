@@ -305,7 +305,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         private async Task SignOutAsync()
         {
-            await SessionState.ClearAsync();
+            await SessionState.SignOutAsync();
             Nav.NavigateTo("/signin");
         }
 

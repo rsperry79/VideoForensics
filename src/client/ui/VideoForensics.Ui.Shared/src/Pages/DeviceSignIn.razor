@@ -183,6 +183,6 @@ else
 
     private async Task SignOutAsync()
     {
-        await SessionState.ClearAsync();
+        await SessionState.SignOutAsync();
     }
 }

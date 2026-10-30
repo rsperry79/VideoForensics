@@ -87,7 +87,7 @@
 
     private async Task SignOutAsync()
     {
-        await SessionState.ClearAsync();
+        await SessionState.SignOutAsync();
         Nav.NavigateTo("/signin");
     }
 
