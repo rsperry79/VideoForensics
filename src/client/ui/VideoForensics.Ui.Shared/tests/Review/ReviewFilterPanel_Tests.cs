@@ -4,7 +4,6 @@ using AngleSharp.Html.Dom;
 
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
@@ -19,7 +18,7 @@ using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
-/// <summary>The review filter panel: provider and account choices, the account reset on a provider change, Apply, Reset, and the matching-camera note.</summary>
+/// <summary>The review filter panel: provider, account and location choices, the account reset on a provider change, the debounced auto-apply, the camera selector below the location select, and the matching-camera note.</summary>
 public class ReviewFilterPanel_Tests : ReviewTestContext
 {
     private ProviderAccount _ring = null!;
@@ -113,13 +112,12 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
 
         // Assert: the Ring account is not offered by Wyze, so the account choice reads "All accounts" again
         Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
-        cut.Find("[data-testid='review-filter-apply']").Click();
-        Assert.Equal("Wyze", ReviewState.ProviderFilter);
+        cut.WaitForAssertion(() => Assert.Equal("Wyze", ReviewState.ProviderFilter));
         Assert.Null(ReviewState.AccountFilter);
     }
 
     [Fact]
-    public void ReviewFilterPanel_ApplyWithProviderAndAccount_SetsTheStateFilters()
+    public void ReviewFilterPanel_ProviderAndAccountChosen_SetsTheStateFiltersAfterTheDebounce()
     {
         // Arrange
         SetUpTwoProviders();
@@ -127,11 +125,10 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
         cut.Find("[data-testid='review-filter-account']").Change(_ring.Id.ToString("D"));
 
-        // Act
-        cut.Find("[data-testid='review-filter-apply']").Click();
+        // Act - the debounce fires on its own
 
         // Assert
-        Assert.Equal("Ring", ReviewState.ProviderFilter);
+        cut.WaitForAssertion(() => Assert.Equal("Ring", ReviewState.ProviderFilter));
         Assert.Equal(_ring.Id, ReviewState.AccountFilter);
     }
 
@@ -151,75 +148,123 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewFilterPanel_ApplyWithLocation_SetsTheStateLocationFilter()
+    public void ReviewFilterPanel_LocationChosen_SetsTheStateLocationFilterAfterTheDebounce()
     {
         // Arrange
         SetUpTwoProviders();
         IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
         cut.Find("[data-testid='review-filter-location']").Change(Devices[2].LocationId.ToString("D"));
 
-        // Act
-        cut.Find("[data-testid='review-filter-apply']").Click();
-
         // Assert
-        Assert.Equal(Devices[2].LocationId, ReviewState.LocationFilter);
+        cut.WaitForAssertion(() => Assert.Equal(Devices[2].LocationId, ReviewState.LocationFilter));
     }
 
     [Fact]
-    public void ReviewFilterPanel_Reset_ClearsTheLocationChoice()
+    public void ReviewFilterPanel_Rendered_HasNoApplyOrResetButtons()
     {
         // Arrange
         SetUpTwoProviders();
+
+        // Act
         IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-        cut.Find("[data-testid='review-filter-location']").Change(Devices[2].LocationId.ToString("D"));
-
-        // Act
-        cut.Find("[data-testid='review-filter-reset']").Click();
-        cut.Find("[data-testid='review-filter-apply']").Click();
 
         // Assert
-        Assert.Null(ReviewState.LocationFilter);
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-apply']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-filter-reset']"));
     }
 
     [Fact]
-    public void ReviewFilterPanel_Apply_InvokesTheCloseCallback()
+    public void ReviewFilterPanel_ProviderChosen_DoesNotApplyBeforeTheDebounceElapses()
     {
         // Arrange
         SetUpTwoProviders();
-        bool closed = false;
-        ReviewState.SetCameras([Devices[0].Id]);
+        ReviewState.DebounceDelay = TimeSpan.FromHours(1);
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Act
+        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
+
+        // Assert
+        Assert.Null(ReviewState.ProviderFilter);
+        Assert.Equal("Ring", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_ProviderChosenTwiceInABurst_AppliesOnlyTheLastPick()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        ReviewState.DebounceDelay = TimeSpan.FromMilliseconds(150);
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        int changes = 0;
+        ReviewState.OnChange += () => changes++;
+
+        // Act
+        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
+        cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Equal("Wyze", ReviewState.ProviderFilter));
+        Thread.Sleep(300);
+        Assert.Equal(1, Volatile.Read(ref changes));
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_ExternalChangeWhileAnEditIsPending_WinsOverTheStaleEdit()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        ReviewState.DebounceDelay = TimeSpan.FromMilliseconds(150);
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
+
+        // Act - something else sets the filters before the debounce fires
+        cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
+        Thread.Sleep(400);
+
+        // Assert
+        Assert.Equal("Wyze", ReviewState.ProviderFilter);
+        Assert.Equal("Wyze", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_DisposedWithAPendingEdit_NeverApplies()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        ReviewState.DebounceDelay = TimeSpan.FromMilliseconds(100);
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
+
+        // Act
+        ((IDisposable)cut.Instance).Dispose();
+        Thread.Sleep(300);
+
+        // Assert
+        Assert.Null(ReviewState.ProviderFilter);
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_PutsTheCameraSelectorDirectlyBelowTheLocationSelect()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
         IRenderedComponent<ReviewFilterPanel> cut = Render<ReviewFilterPanel>(parameters => parameters
             .Add(p => p.State, ReviewState)
             .Add(p => p.AllDeviceIds, Devices.Select(d => d.Id).ToList())
             .Add(p => p.Ownership, Snapshot())
-            .Add(p => p.OnClose, EventCallback.Factory.Create(this, () => closed = true)));
-
-        // Act
-        cut.Find("[data-testid='review-filter-apply']").Click();
+            .Add(p => p.Devices, Devices.Select(d => d.Id).ToList())
+            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, d => "Cam " + d.Id.ToString("N")[..4])));
 
         // Assert
-        Assert.True(closed);
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_Reset_ReturnsTheChoicesToAllAndApplyClearsTheState()
-    {
-        // Arrange
-        SetUpTwoProviders();
-        ReviewState.SetFilters("Ring", _ring.Id);
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-
-        // Act
-        cut.Find("[data-testid='review-filter-reset']").Click();
-
-        // Assert: the choices are back to all, and the note counts every camera again
-        Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
-        Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
-        Assert.Equal(L["FilterMatchingCameras", 3].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
-
-        cut.Find("[data-testid='review-filter-apply']").Click();
-        Assert.Null(ReviewState.ProviderFilter);
-        Assert.Null(ReviewState.AccountFilter);
+        IElement panel = cut.Find("[data-testid='review-filter-panel']");
+        IElement location = cut.Find("[data-testid='review-filter-location']");
+        IElement selector = cut.Find("[data-testid='review-camera-selector']");
+        Assert.True(panel.Contains(selector));
+        Assert.Equal("review-camera-selector", location.NextElementSibling?.GetAttribute("data-testid"));
+        Assert.Contains("w-100", cut.Find("[data-testid='review-camera-button']").ClassName);
     }
 
     [Fact]
@@ -233,7 +278,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
 
         // Assert
-        Assert.Equal(L["FilterMatchingCameras", 2].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
     }
 
     [Fact]
@@ -250,7 +294,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
 
         // Assert
-        Assert.Equal(L["FilterMatchingCameras", 3].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
     }
 
     [Fact]
@@ -285,7 +328,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Assert
         Assert.Equal("Wyze", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
         Assert.Equal(_wyze.Id.ToString("D"), ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
-        Assert.Equal(L["FilterMatchingCameras", 1].Value, cut.Find("[data-testid='review-filter-count']").TextContent.Trim());
     }
 
     [Fact]

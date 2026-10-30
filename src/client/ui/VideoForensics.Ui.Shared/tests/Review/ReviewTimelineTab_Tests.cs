@@ -49,8 +49,15 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     // capture this tab publishes, so it is created on first use, after the tab has rendered.
     private IRenderedComponent<ReviewActionsPanel>? _sidebar;
 
-    private IRenderedComponent<ReviewActionsPanel> Sidebar =>
-        _sidebar ??= Render<ReviewActionsPanel>(parameters => parameters.Add(p => p.State, ReviewState));
+    private IRenderedComponent<ReviewActionsPanel> Sidebar => _sidebar ??= OpenSidebar();
+
+    // The actions live in a dropdown, so it is opened once after rendering.
+    private IRenderedComponent<ReviewActionsPanel> OpenSidebar()
+    {
+        IRenderedComponent<ReviewActionsPanel> panel = Render<ReviewActionsPanel>(parameters => parameters.Add(p => p.State, ReviewState));
+        panel.Find("[data-testid='review-actions-button']").Click();
+        return panel;
+    }
 
     private IRenderedComponent<ReviewTimelineTab> RenderTab()
     {

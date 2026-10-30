@@ -127,7 +127,7 @@ public abstract class ReviewTestContext : BunitContext
 
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);
-        ReviewState = new ReviewPageState(timeProvider);
+        ReviewState = new ReviewPageState(timeProvider) { DebounceDelay = TimeSpan.FromMilliseconds(20) };
 
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<TimeProvider>(timeProvider);

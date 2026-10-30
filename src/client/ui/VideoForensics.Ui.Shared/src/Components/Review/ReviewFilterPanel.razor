@@ -24,16 +24,12 @@
     <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
                           TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
 
-    <small class="d-block mb-2" data-testid="review-filter-count">@L["FilterMatchingCameras", MatchingCount]</small>
+    <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
 
-    <div class="d-flex justify-content-end gap-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter-reset" @onclick="OnReset">@L["Reset"]</button>
-        <button type="button" class="btn btn-sm btn-primary" data-testid="review-filter-apply" @onclick="OnApply">@L["Apply"]</button>
-    </div>
 </div>
 
 @code {
-    /// <summary>The review state the panel writes to on Apply.</summary>
+    /// <summary>The review state the panel writes to once the debounce fires.</summary>
     [Parameter, EditorRequired]
     public ReviewPageState State { get; set; } = default!;
 
@@ -45,11 +41,16 @@
     [Parameter]
     public DeviceOwnershipSnapshot? Ownership { get; set; }
 
-    /// <summary>Raised after Apply. Optional: the panel is inline in the right sidebar and has nothing to close.</summary>
+    /// <summary>The cameras left after the provider, account and location filters, in display order. The camera selector lists these.</summary>
     [Parameter]
-    public EventCallback OnClose { get; set; }
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
 
-    // The choices being edited. They reach the review state only when the user presses Apply.
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    // The choices being edited. They reach the review state after the debounce, one second after the last edit.
+    private DebouncedAction _debounce = default!;
     private string? _provider;
     private Guid? _account;
     private Guid? _location;
@@ -64,7 +65,6 @@
 
     private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
 
-    private int MatchingCount => ReviewDeviceFilter.VisibleDeviceIds(AllDeviceIds, Ownership?.Ownership, _provider, _account, _location).Count;
 
     // The state filters the edit fields were last seeded from. A different value on a state change means something
     // else (the URL, a restore) set the filters, so the edit fields follow it.
@@ -72,6 +72,7 @@
 
     protected override void OnInitialized()
     {
+        _debounce = new DebouncedAction(State.DebounceDelay, () => InvokeAsync(ApplyEdits));
         SeedFromState();
         State.OnChange += OnStateChanged;
     }
@@ -91,12 +92,15 @@
             return;
         }
 
+        // Something else set the filters: a stale pending edit must not overwrite it.
+        _debounce.Cancel();
         SeedFromState();
         _ = InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
+        _debounce?.Dispose();
         State.OnChange -= OnStateChanged;
     }
 
@@ -104,28 +108,25 @@
     {
         // The rule clears the account when the newly picked provider does not own it.
         (_provider, _account) = ScopeRailRules.ApplyProviderPick(Accounts, _account, provider);
+        _debounce.Schedule();
     }
 
     private void OnAccountChanged(Guid? account)
     {
         _account = account;
+        _debounce.Schedule();
     }
 
     private void OnLocationChanged(Guid? location)
     {
         _location = location;
+        _debounce.Schedule();
     }
 
-    private void OnReset()
+    private void ApplyEdits()
     {
-        _provider = null;
-        _account = null;
-        _location = null;
-    }
-
-    private async Task OnApply()
-    {
+        // Mark these values as seen first, so this change is not mistaken for an external one that discards a newer edit.
+        _seenFilters = (_provider, _account, _location);
         State.SetFilters(_provider, _account, _location);
-        await OnClose.InvokeAsync();
     }
 }

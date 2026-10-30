@@ -12,24 +12,25 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 public class NavGroups_Tests
 {
     [Fact]
-    public void All_HasExactlyTwoGroups()
+    public void All_HasExactlyThreeGroups()
     {
-        Assert.Equal(2, NavGroups.All.Count);
+        Assert.Equal(3, NavGroups.All.Count);
     }
 
     [Fact]
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "cases", "admin" }, groupKeys);
+        Assert.Equal(new[] { "media", "cases", "admin" }, groupKeys);
     }
 
     [Fact]
-    public void All_HasNoMediaGroup()
+    public void Media_TabHasNoSidebarItems()
     {
-        // The Media item is removed from the nav. The review page at /media is still reached through "/" and direct links.
-        Assert.DoesNotContain(NavGroups.All, g => g.Key == "media");
-        Assert.DoesNotContain(NavGroups.All.SelectMany(g => g.Items), i => i.Path == "/media");
+        // The top Media tab leads to the review page; its menu is the review view menu in the left panel.
+        NavGroup media = NavGroups.All.First(g => g.Key == "media");
+        Assert.Equal("/media", media.Path);
+        Assert.Empty(media.Items);
     }
 
     [Fact]

@@ -62,8 +62,7 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Actions and Grab still live in the right sidebar, under the filters.
         string actions = RenderRightPanel().Find("[data-testid='review-actions-panel']").TextContent;
-        Assert.Contains(L["Actions"].Value, actions);
-        Assert.Contains(L["GrabStill"].Value, actions);
+        Assert.Contains(L["ActionsMenuTitle"].Value, actions);
 
         string nav = RenderLeftPanel().Find("[data-testid='review-view-nav']").TextContent;
         foreach (string key in new[] { "Live", "TabTimeline", "TabEvents", "TabDetail" })
@@ -358,6 +357,22 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewPage_RightPanel_RendersTheCameraSelectorInsideTheFilterPanel()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        IRenderedComponent<IComponent> panel = RenderRightPanel();
+
+        // Assert
+        Assert.Single(panel.FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
+        Assert.Single(panel.FindAll("[data-testid='review-camera-selector']"));
+    }
+
+    [Fact]
     public void ReviewPage_FilterPanel_OffersOnlyVisibleCameras()
     {
         // Arrange
@@ -387,10 +402,9 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Act
         filters.Find("[data-testid='review-filter-provider']").Change("Ring");
-        filters.Find("[data-testid='review-filter-apply']").Click();
 
         // Assert
-        Assert.Equal([ringDevice], ReviewState.CameraIds);
+        filters.WaitForAssertion(() => Assert.Equal([ringDevice], ReviewState.CameraIds));
     }
 
     [Fact]
@@ -406,10 +420,9 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Act
         filters.Find("[data-testid='review-filter-provider']").Change("Wyze");
-        filters.Find("[data-testid='review-filter-apply']").Click();
 
         // Assert
-        Assert.Equal([wyzeDevice], ReviewState.CameraIds);
+        filters.WaitForAssertion(() => Assert.Equal([wyzeDevice], ReviewState.CameraIds));
     }
 
     [Fact]

@@ -91,6 +91,9 @@ Log.Logger = new LoggerConfiguration()
         path: Path.Combine(logsDir, "audit-.txt"),
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
         rollingInterval: RollingInterval.Day,
+        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 256L * 1024 * 1024,
         retainedFileCountLimit: 30,
         shared: true)
     // JSON format: structured output with all properties
@@ -98,6 +101,9 @@ Log.Logger = new LoggerConfiguration()
         path: Path.Combine(logsDir, "audit-.json"),
         outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
         rollingInterval: RollingInterval.Day,
+        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 256L * 1024 * 1024,
         retainedFileCountLimit: 30,
         shared: true)
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")

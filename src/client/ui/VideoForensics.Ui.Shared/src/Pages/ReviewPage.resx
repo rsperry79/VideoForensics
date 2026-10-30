@@ -62,12 +62,6 @@
   <data name="CamerasLabel" xml:space="preserve">
     <value>Cameras</value>
   </data>
-  <data name="Apply" xml:space="preserve">
-    <value>Apply</value>
-  </data>
-  <data name="Reset" xml:space="preserve">
-    <value>Reset</value>
-  </data>
   <data name="RangeLabel" xml:space="preserve">
     <value>Time range</value>
   </data>

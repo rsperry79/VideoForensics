@@ -94,6 +94,14 @@ namespace VideoForensics.Core.Logging.Services
         private static DateOnly? TryParseDay(string fileName)
         {
             string stem = fileName[FilePrefix.Length..^FileSuffix.Length];
+
+            // A day rolled by size is audit-yyyyMMdd_001.json; the date is the part before the underscore.
+            int underscore = stem.IndexOf('_', StringComparison.Ordinal);
+            if (underscore >= 0)
+            {
+                stem = stem[..underscore];
+            }
+
             return DateOnly.TryParseExact(stem, DayFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly day)
                 ? day
                 : null;
