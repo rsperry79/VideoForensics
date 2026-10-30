@@ -1,3 +1,5 @@
+using AngleSharp.Dom;
+
 using Bunit;
 
 using Microsoft.AspNetCore.Components;
@@ -52,7 +54,10 @@ public class FolderPicker_Tests : BunitContext
         string? result = "unset";
         IRenderedComponent<FolderPicker> cut = RenderPicker(p => result = p);
 
-        cut.Find("[data-testid='folder-cancel']").Click();
+        // SfButton re-renders after its JS initialises, so wait for the settled element before clicking.
+        IElement? cancel = null;
+        cut.WaitForAssertion(() => cancel = cut.Find("[data-testid='folder-cancel']"));
+        cancel!.Click();
 
         Assert.Null(result);
     }
