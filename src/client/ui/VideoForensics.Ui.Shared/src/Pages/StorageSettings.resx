@@ -59,8 +59,11 @@
   <data name="ColFreeSpace" xml:space="preserve">
     <value>Free Space</value>
   </data>
-  <data name="ChangeButton" xml:space="preserve">
-    <value>Change...</value>
+  <data name="ChangePathButton" xml:space="preserve">
+    <value>Change path...</value>
+  </data>
+  <data name="CategoryNotFound" xml:space="preserve">
+    <value>Storage category not found.</value>
   </data>
   <data name="BrowseFolderTitle" xml:space="preserve">
     <value>Select new folder</value>

@@ -95,6 +95,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/integrations/email"] = AccessPolicy.EmailSettings,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/storage/details"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/llm"] = AccessPolicy.LlmSettings,
