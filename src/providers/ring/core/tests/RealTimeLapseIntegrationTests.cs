@@ -1,14 +1,15 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading;
 
+using FFMpegCore;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -50,6 +51,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task RealTimeLapse_SixSnapshotsFiveSecondsApart_RegistersLoopAndKeepsSnapshots()
         {
             RealSessionHelper.RequireLive();
+            string ffprobe = ResolveFfprobeOrSkip();
             CancellationToken ct = TestContext.Current.CancellationToken;
 
             using IServiceScope scope = RealSessionHelper.Services.CreateScope();
@@ -181,7 +183,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(Math.Abs((loop.RecordedAtUtc - end.UtcDateTime).TotalSeconds) < 1, "The time lapse is not stamped with the end of the capture timeframe.");
 
             // The file itself must run for the capture timeframe, so the loop's length is read from the MP4 and compared to end - start.
-            double lapseSeconds = ProbeDurationSeconds(loop.FilePath);
+            double lapseSeconds = await ProbeDurationSecondsAsync(ffprobe, loop.FilePath, ct);
             double captureSeconds = (end - start).TotalSeconds;
             Assert.True(Math.Abs(lapseSeconds - captureSeconds) <= 1,
                 $"The time lapse runs {lapseSeconds:F1}s but the capture timeframe is {captureSeconds:F1}s.");
@@ -196,20 +198,28 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
         }
 
-        /// <summary>Length of an MP4 in seconds, read with ffprobe so the test checks the file rather than the database row.</summary>
-        private static double ProbeDurationSeconds(string path)
+        /// <summary>
+        /// Resolves ffprobe the way the app does (config, bin folder, bundled, then PATH) and skips the test before the slow
+        /// Ring capture when no executable is found.
+        /// </summary>
+        private static string ResolveFfprobeOrSkip()
         {
-            var info = new ProcessStartInfo("ffprobe")
+            string ffprobe = FfmpegPathResolver.Resolve(null, "ffprobe");
+            if (!File.Exists(ffprobe))
             {
-                ArgumentList = { "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path },
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-            };
+                Xunit.Assert.Skip("ffprobe was not found. Install ffmpeg or add its bin folder to PATH to run this check.");
+            }
 
-            using Process process = Process.Start(info) ?? throw new InvalidOperationException("ffprobe did not start.");
-            string output = process.StandardOutput.ReadToEnd().Trim();
-            process.WaitForExit();
-            return double.Parse(output, CultureInfo.InvariantCulture);
+            return ffprobe;
+        }
+
+        /// <summary>Length of an MP4 in seconds, read with FFMpegCore so the test checks the file rather than the database row.</summary>
+        private static async Task<double> ProbeDurationSecondsAsync(string ffprobe, string path, CancellationToken ct)
+        {
+            string? folder = Path.GetDirectoryName(ffprobe);
+            var options = new FFOptions { BinaryFolder = string.IsNullOrEmpty(folder) ? null : folder };
+            IMediaAnalysis analysis = await FFProbe.AnalyseAsync(path, options, ct);
+            return analysis.Duration.TotalSeconds;
         }
     }
 }

@@ -57,8 +57,8 @@ public class ReviewPage_Tests : ReviewTestContext
             Assert.Contains(L[key].Value, topBar);
         }
 
-        string filters = RenderRightPanel().Find("[data-testid='review-filter-panel']").TextContent;
-        Assert.Contains(L["AllCameras"].Value, filters);
+        string cameras = RenderRightPanel().Find("[data-testid='review-camera-button']").TextContent;
+        Assert.Contains(L["AllCameras"].Value, cameras);
 
         // Actions and Grab still live in the right sidebar, under the filters.
         string actions = RenderRightPanel().Find("[data-testid='review-actions-panel']").TextContent;
@@ -367,6 +367,7 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Act
         IRenderedComponent<IComponent> filters = RenderRightPanel();
+        filters.Find("[data-testid='review-camera-button']").Click();
 
         // Assert
         Assert.Single(filters.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));

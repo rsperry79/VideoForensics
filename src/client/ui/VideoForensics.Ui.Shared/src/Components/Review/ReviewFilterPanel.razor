@@ -24,13 +24,11 @@
     <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
                           TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
 
-    <ReviewCameraPicker Devices="VisibleIds" DeviceNames="DeviceNames" Selected="_cameras" SelectedChanged="OnCamerasChanged" />
-
-    <small class="d-block my-2" data-testid="review-filter-count">@L["FilterMatchingCameras", MatchingCount]</small>
+    <small class="d-block mb-2" data-testid="review-filter-count">@L["FilterMatchingCameras", MatchingCount]</small>
 
     <div class="d-flex justify-content-end gap-2">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter-reset" @onclick="OnReset">@L["Reset"]</button>
-        <button type="button" class="btn btn-sm btn-primary" data-testid="review-filter-apply" disabled="@ApplyDisabled" @onclick="OnApply">@L["Apply"]</button>
+        <button type="button" class="btn btn-sm btn-primary" data-testid="review-filter-apply" @onclick="OnApply">@L["Apply"]</button>
     </div>
 </div>
 
@@ -47,10 +45,6 @@
     [Parameter]
     public DeviceOwnershipSnapshot? Ownership { get; set; }
 
-    /// <summary>Display name for each camera id.</summary>
-    [Parameter]
-    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
-
     /// <summary>Raised after Apply. Optional: the panel is inline in the right sidebar and has nothing to close.</summary>
     [Parameter]
     public EventCallback OnClose { get; set; }
@@ -59,7 +53,6 @@
     private string? _provider;
     private Guid? _account;
     private Guid? _location;
-    private HashSet<Guid> _cameras = [];
 
     private IReadOnlyList<string> ProviderNames => Ownership?.ProviderNames ?? Array.Empty<string>();
 
@@ -71,20 +64,11 @@
 
     private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
 
-    // The cameras that follow the pending provider and account choices, in display order.
-    private IReadOnlyList<Guid> VisibleIds => ReviewDeviceFilter.VisibleDeviceIds(AllDeviceIds, Ownership?.Ownership, _provider, _account, _location);
-
-    private int MatchingCount => VisibleIds.Count;
-
-    // Only visible cameras count: a pick the filters hide is dropped on Apply.
-    private int PickedCount => VisibleIds.Count(_cameras.Contains);
-
-    private bool ApplyDisabled => PickedCount == 0 || PickedCount > CameraSync.MaxTiles;
+    private int MatchingCount => ReviewDeviceFilter.VisibleDeviceIds(AllDeviceIds, Ownership?.Ownership, _provider, _account, _location).Count;
 
     // The state filters the edit fields were last seeded from. A different value on a state change means something
     // else (the URL, a restore) set the filters, so the edit fields follow it.
     private (string? Provider, Guid? Account, Guid? Location) _seenFilters;
-    private IReadOnlyList<Guid> _seenCameras = [];
 
     protected override void OnInitialized()
     {
@@ -98,13 +82,11 @@
         _account = State.AccountFilter;
         _location = State.LocationFilter;
         _seenFilters = (_provider, _account, _location);
-        _cameras = State.CameraIds.ToHashSet();
-        _seenCameras = State.CameraIds.ToList();
     }
 
     private void OnStateChanged()
     {
-        if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter) == _seenFilters && State.CameraIds.SequenceEqual(_seenCameras))
+        if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter) == _seenFilters)
         {
             return;
         }
@@ -122,30 +104,16 @@
     {
         // The rule clears the account when the newly picked provider does not own it.
         (_provider, _account) = ScopeRailRules.ApplyProviderPick(Accounts, _account, provider);
-        ResetCameras();
     }
 
     private void OnAccountChanged(Guid? account)
     {
         _account = account;
-        ResetCameras();
     }
 
     private void OnLocationChanged(Guid? location)
     {
         _location = location;
-        ResetCameras();
-    }
-
-    private void OnCamerasChanged(HashSet<Guid> cameras)
-    {
-        _cameras = cameras;
-    }
-
-    // The default pick: every visible camera, up to the tile limit.
-    private void ResetCameras()
-    {
-        _cameras = VisibleIds.Take(CameraSync.MaxTiles).ToHashSet();
     }
 
     private void OnReset()
@@ -153,20 +121,11 @@
         _provider = null;
         _account = null;
         _location = null;
-        ResetCameras();
     }
 
     private async Task OnApply()
     {
-        if (ApplyDisabled)
-        {
-            return;
-        }
-
-        // Taken before SetFilters, which can change the state cameras and re-seed the pending set.
-        List<Guid> chosen = VisibleIds.Where(_cameras.Contains).Take(CameraSync.MaxTiles).ToList();
         State.SetFilters(_provider, _account, _location);
-        State.SetCameras(chosen);
         await OnClose.InvokeAsync();
     }
 }

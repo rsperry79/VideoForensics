@@ -63,118 +63,9 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         return Render<ReviewFilterPanel>(parameters => parameters
             .Add(p => p.State, ReviewState)
             .Add(p => p.AllDeviceIds, Devices.Select(d => d.Id).ToList())
-            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf))
             .Add(p => p.Ownership, Snapshot()));
     }
 
-    private static string CameraToggle(Guid id)
-    {
-        return $"[data-testid='review-camera-toggle-{id:D}']";
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_Rendered_ShowsTheCameraPickerWithOneSwitchPerVisibleCamera()
-    {
-        // Arrange
-        SetUpTwoProviders();
-
-        // Act
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-
-        // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-camera-all']"));
-        Assert.Equal(3, cut.FindAll("[data-testid^='review-camera-toggle-']").Count);
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_ProviderChosen_PickerListsOnlyThatProvidersCameras()
-    {
-        // Arrange
-        SetUpTwoProviders();
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-
-        // Act
-        cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
-
-        // Assert
-        Assert.Single(cut.FindAll("[data-testid^='review-camera-toggle-']"));
-        Assert.Single(cut.FindAll(CameraToggle(Devices[2].Id)));
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_ApplyWithChangedCameras_SetsThoseCameras()
-    {
-        // Arrange
-        SetUpTwoProviders();
-        ReviewState.SetCameras(Devices.Select(d => d.Id));
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-        cut.Find(CameraToggle(Devices[1].Id)).Change(false);
-
-        // Act
-        cut.Find("[data-testid='review-filter-apply']").Click();
-
-        // Assert
-        Assert.Equal([Devices[0].Id, Devices[2].Id], ReviewState.CameraIds);
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_NoCameraPicked_DisablesApplyAndShowsTheHint()
-    {
-        // Arrange
-        SetUpTwoProviders();
-        ReviewState.SetCameras([Devices[0].Id]);
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-
-        // Act
-        cut.Find(CameraToggle(Devices[0].Id)).Change(false);
-
-        // Assert
-        Assert.True(cut.Find("[data-testid='review-filter-apply']").HasAttribute("disabled"));
-        Assert.Equal(L["SelectAtLeastOneCamera"].Value, cut.Find("[data-testid='review-camera-hint']").TextContent.Trim());
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_TenCamerasPicked_DisablesApply()
-    {
-        // Arrange
-        AddDevices(10);
-        ReviewState.SetCameras([Devices[0].Id]);
-        IRenderedComponent<ReviewFilterPanel> cut = Render<ReviewFilterPanel>(parameters => parameters
-            .Add(p => p.State, ReviewState)
-            .Add(p => p.AllDeviceIds, Devices.Select(d => d.Id).ToList())
-            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
-        foreach (Device device in Devices.Skip(1))
-        {
-            cut.Find(CameraToggle(device.Id)).Change(true);
-        }
-
-        // Assert
-        Assert.True(cut.Find("[data-testid='review-filter-apply']").HasAttribute("disabled"));
-    }
-
-    [Fact]
-    public void ReviewFilterPanel_ResetAfterCameraEdits_RestoresTheDefaults()
-    {
-        // Arrange
-        SetUpTwoProviders();
-        ReviewState.SetCameras([Devices[0].Id]);
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-        cut.Find("[data-testid='review-filter-provider']").Change("Ring");
-        cut.Find(CameraToggle(Devices[1].Id)).Change(true);
-
-        // Act
-        cut.Find("[data-testid='review-filter-reset']").Click();
-        cut.Find("[data-testid='review-filter-apply']").Click();
-
-        // Assert: provider cleared and every visible camera picked again
-        Assert.Null(ReviewState.ProviderFilter);
-        Assert.Equal(Devices.Select(d => d.Id), ReviewState.CameraIds);
-    }
-
-    private static string[] OptionValues(IElement select)
-    {
-        return select.QuerySelectorAll("option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray();
-    }
 
     [Fact]
     public void ReviewFilterPanel_Rendered_ListsAllProvidersAndTheProvidersThatExist()
@@ -260,21 +151,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewFilterPanel_LocationChosen_CountAndPickerFollowIt()
-    {
-        // Arrange
-        SetUpTwoProviders();
-        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
-
-        // Act
-        cut.Find("[data-testid='review-filter-location']").Change(Devices[2].LocationId.ToString("D"));
-
-        // Assert
-        Assert.Single(cut.FindAll("[data-testid^='review-camera-toggle-']"));
-        Assert.Single(cut.FindAll(CameraToggle(Devices[2].Id)));
-    }
-
-    [Fact]
     public void ReviewFilterPanel_ApplyWithLocation_SetsTheStateLocationFilter()
     {
         // Arrange
@@ -303,7 +179,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
 
         // Assert
         Assert.Null(ReviewState.LocationFilter);
-        Assert.Equal(3, cut.FindAll("[data-testid^='review-camera-toggle-']").Count);
     }
 
     [Fact]
@@ -441,5 +316,10 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
 
         // Assert
         Assert.Null(error);
+    }
+
+    private static string[] OptionValues(IElement select)
+    {
+        return select.QuerySelectorAll("option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray();
     }
 }
