@@ -12,7 +12,10 @@
 @using VideoForensics.Data.Common.Contracts
 @using Device = VideoForensics.Data.Common.Entities.Device
 @using VideoForensics.Client.Common.Viewer
+@using System.Text.Json
+@using Microsoft.JSInterop
 @implements IDisposable
+@inject IJSRuntime JS
 @inject IDeviceRepository DeviceRepository
 @inject ReviewPageState State
 @inject ReviewCaseMode CaseMode
@@ -99,6 +102,10 @@ else
     {
         State.OnChange += OnReviewStateChanged;
         ScopeState.OnChange += OnScopeChanged;
+        CaseMode.OnChange += OnCaseModeChanged;
+
+        // Read before anything writes the address bar: a bare /media is the only address that restores the saved state.
+        _arrivedWithoutQuery = CurrentQuery().Length == 0;
 
         await SessionState.EnsureLoadedAsync();
         _isAuthenticated = SessionState.IsSignedIn;
@@ -128,6 +135,67 @@ else
         }
 
         _isLoading = false;
+    }
+
+    /// <summary>
+    /// On the first render of a bare /media, applies the state saved in localStorage. The saved query goes through the same
+    /// path as a URL, so the case, range, cameras and tab come back as they were. The JS call is skipped during prerender.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _restoreChecked)
+        {
+            return;
+        }
+
+        _restoreChecked = true;
+        if (!_isAuthenticated || !_arrivedWithoutQuery)
+        {
+            return;
+        }
+
+        SavedReviewState? saved = await LoadSavedStateAsync();
+        if (saved is null)
+        {
+            return;
+        }
+
+        ReviewUrlState url = ReviewUrl.Parse(saved.Query);
+        if (url.CaseId is Guid caseId)
+        {
+            await EnterCaseAsync(caseId);
+        }
+
+        ReadUrlOnce(url);
+        State.SelectEvent(saved.EventId);
+    }
+
+    /// <summary>Reads the saved state. A missing, unreadable or unavailable store means nothing is restored.</summary>
+    private async Task<SavedReviewState?> LoadSavedStateAsync()
+    {
+        try
+        {
+            string? json = await JS.InvokeAsync<string?>("localStorage.getItem", SavedStateKey);
+            return string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<SavedReviewState>(json, SavedStateOptions);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or JsonException)
+        {
+            // Local storage is a convenience: a failure here leaves the page on its defaults.
+            return null;
+        }
+    }
+
+    /// <summary>Writes the state to localStorage. A failure here only means the next reload starts from the defaults.</summary>
+    private async Task SaveStateAsync(string query)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", SavedStateKey, JsonSerializer.Serialize(new SavedReviewState(query, State.SelectedEventId), SavedStateOptions));
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
+        {
+            // Nothing to do: the page keeps working, and only the reload restore is lost.
+        }
     }
 
     /// <summary>
@@ -279,6 +347,8 @@ else
             State.LocationFilter);
 
         string target = ReviewUrl.Build(current);
+        _ = SaveStateAsync(target);
+
         string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
         if (target == existing)
         {
@@ -295,10 +365,30 @@ else
         return new Uri(NavigationManager.Uri).Query;
     }
 
+    /// <summary>Entering or leaving a case changes the address bar too, so a reload keeps the case.</summary>
+    private void OnCaseModeChanged()
+    {
+        if (_urlParsed)
+        {
+            WriteBackUrl();
+        }
+    }
+
     public void Dispose()
     {
         State.OnChange -= OnReviewStateChanged;
         ScopeState.OnChange -= OnScopeChanged;
+        CaseMode.OnChange -= OnCaseModeChanged;
         CaseMode.Exit();
     }
+
+    // The key and shape of the state kept in localStorage. Query is the review URL query, EventId the selected event.
+    private const string SavedStateKey = "vf.review.state";
+
+    private static readonly JsonSerializerOptions SavedStateOptions = new(JsonSerializerDefaults.Web);
+
+    private sealed record SavedReviewState(string Query, Guid? EventId);
+
+    private bool _arrivedWithoutQuery;
+    private bool _restoreChecked;
 }
