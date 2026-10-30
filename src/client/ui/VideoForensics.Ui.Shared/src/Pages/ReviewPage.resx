@@ -59,6 +59,12 @@
   <data name="CamerasLabel" xml:space="preserve">
     <value>Cameras</value>
   </data>
+  <data name="MaxCamerasReached" xml:space="preserve">
+    <value>{0} cameras are selected, the most that can be shown. Clear one to pick another.</value>
+  </data>
+  <data name="MaxDevicesReached" xml:space="preserve">
+    <value>{0} devices are selected, the most that can be shown. Clear one to pick another.</value>
+  </data>
   <data name="AllDevices" xml:space="preserve">
     <value>All devices</value>
   </data>

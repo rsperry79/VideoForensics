@@ -10,7 +10,7 @@
 @inject IStringLocalizer<ReviewPage> L
 
 <div class="review-camera-selector position-relative w-100 mb-2 @(Popups.IsOpen(ReviewPopupState.Camera) ? "review-camera-selector-open" : null)" data-testid="review-camera-selector" @onkeydown="OnKeyDown">
-    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-camera-button" aria-expanded="@Popups.IsOpen(ReviewPopupState.Camera).ToString().ToLowerInvariant()" @onclick="OnToggle">@ButtonLabel</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start @(ShowFirstNineWarning ? "text-danger" : null)" data-testid="review-camera-button" aria-expanded="@Popups.IsOpen(ReviewPopupState.Camera).ToString().ToLowerInvariant()" @onclick="OnToggle">@ButtonLabel</button>
 
     @if (Popups.IsOpen(ReviewPopupState.Camera))
     {
@@ -28,7 +28,7 @@
             @foreach (Guid id in Devices)
             {
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" role="switch" id="@CameraInputId(id)" data-testid="@CameraTestId(id)" checked="@_pending.Contains(id)" @onchange="args => OnCameraChanged(id, args)" />
+                    <input class="form-check-input" type="checkbox" role="switch" id="@CameraInputId(id)" data-testid="@CameraTestId(id)" checked="@_pending.Contains(id)" disabled="@(!_pending.Contains(id) && _pending.Count >= CameraSync.MaxTiles)" @onchange="args => OnCameraChanged(id, args)" />
                     <label class="form-check-label" for="@CameraInputId(id)">@DeviceNames.GetValueOrDefault(id, id.ToString("D"))</label>
                 </div>
             }
@@ -36,6 +36,11 @@
             @if (_pending.Count > CameraSync.MaxTiles)
             {
                 <small class="d-block mt-2" data-testid="review-camera-hint">@Text("TooManyCameras", "TooManyDevices", CameraSync.MaxTiles)</small>
+            }
+            else if (_pending.Count >= CameraSync.MaxTiles && Devices.Count > CameraSync.MaxTiles)
+            {
+                @* Every camera is listed, but only nine can be on screen; the rest stay disabled until one is cleared. *@
+                <small class="d-block mt-2" data-testid="review-camera-hint">@Text("MaxCamerasReached", "MaxDevicesReached", CameraSync.MaxTiles)</small>
             }
             else if (_pending.Count == 0)
             {
@@ -79,6 +84,18 @@
 
     private bool CanApply => _pending.Count > 0 && _pending.Count <= CameraSync.MaxTiles;
 
+    // Set once the operator opens the dropdown or changes the selection. Until then, a first-nine selection is flagged.
+    private bool _acknowledged;
+
+    /// <summary>
+    /// True while there are more cameras than the grid shows and the selection is just the first nine of them, which
+    /// the page picked, not the operator. The button text is red to say so, until the operator opens it or picks cameras.
+    /// </summary>
+    private bool ShowFirstNineWarning =>
+        !_acknowledged
+        && Devices.Count > CameraSync.MaxTiles
+        && State.CameraIds.SequenceEqual(Devices.Take(CameraSync.MaxTiles));
+
     private string ButtonLabel
     {
         get
@@ -116,6 +133,7 @@
 
     private void OnToggle()
     {
+        _acknowledged = true;
         if (!Popups.IsOpen(ReviewPopupState.Camera))
         {
             _pending = State.CameraIds.ToHashSet();
@@ -134,6 +152,7 @@
 
     private void OnCameraChanged(Guid id, Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
+        _acknowledged = true;
         bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
         if (on)
         {
@@ -149,6 +168,7 @@
 
     private void OnAllChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
+        _acknowledged = true;
         bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
         _pending = on ? Devices.Take(CameraSync.MaxTiles).ToHashSet() : [];
         ScheduleApply();

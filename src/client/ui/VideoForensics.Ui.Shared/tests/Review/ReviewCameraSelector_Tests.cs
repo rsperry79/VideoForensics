@@ -1,3 +1,5 @@
+using AngleSharp.Dom;
+
 using Bunit;
 
 using VideoForensics.Client.Common.Viewer;
@@ -192,22 +194,97 @@ public class ReviewCameraSelector_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewCameraSelector_TenthCamera_DoesNotApplyAndShowsTheHint()
+    public void ReviewCameraSelector_NineSelectedOfTwelve_ListsEveryCameraButDisablesTheUnselectedOnes()
     {
         // Arrange
-        AddDevices(10);
+        AddDevices(12);
+        SelectOnly(0, 1, 2, 3, 4, 5, 6, 7, 8);
+        IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
+
+        // Act
+        cut.Find("[data-testid='review-camera-button']").Click();
+
+        // Assert - the menu shows all twelve; only the nine chosen can be changed
+        IReadOnlyList<IElement> toggles = cut.FindAll("[data-testid^='review-camera-toggle-']");
+        Assert.Equal(12, toggles.Count);
+        Assert.All(Devices.Take(9), d => Assert.False(cut.Find($"[data-testid='review-camera-toggle-{d.Id:D}']").HasAttribute("disabled")));
+        Assert.All(Devices.Skip(9), d => Assert.True(cut.Find($"[data-testid='review-camera-toggle-{d.Id:D}']").HasAttribute("disabled")));
+        Assert.Equal(L["MaxCamerasReached", CameraSync.MaxTiles].Value, cut.Find("[data-testid='review-camera-hint']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_UncheckingOne_EnablesTheOthersAgain()
+    {
+        // Arrange
+        AddDevices(12);
         SelectOnly(0, 1, 2, 3, 4, 5, 6, 7, 8);
         IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
         cut.Find("[data-testid='review-camera-button']").Click();
 
         // Act
-        cut.Find($"[data-testid='review-camera-toggle-{Devices[9].Id:D}']").Change(true);
-        Thread.Sleep(150);
+        cut.Find($"[data-testid='review-camera-toggle-{Devices[0].Id:D}']").Change(false);
 
         // Assert
-        Assert.Equal(CameraSync.MaxTiles, ReviewState.CameraIds.Count);
-        Assert.DoesNotContain(Devices[9].Id, ReviewState.CameraIds);
-        Assert.Equal(L["TooManyCameras", CameraSync.MaxTiles].Value, cut.Find("[data-testid='review-camera-hint']").TextContent.Trim());
+        Assert.False(cut.Find($"[data-testid='review-camera-toggle-{Devices[9].Id:D}']").HasAttribute("disabled"));
+        Assert.Empty(cut.FindAll("[data-testid='review-camera-hint']"));
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_MoreThanNineCameras_FirstNineSelected_ShowsTheButtonTextInRed()
+    {
+        // Arrange - the first nine were picked for the operator, not by them
+        AddDevices(12);
+        SelectOnly(0, 1, 2, 3, 4, 5, 6, 7, 8);
+
+        // Act
+        IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
+
+        // Assert
+        Assert.Contains("text-danger", cut.Find("[data-testid='review-camera-button']").ClassName);
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_OpeningTheDropdown_ClearsTheRedText()
+    {
+        // Arrange
+        AddDevices(12);
+        SelectOnly(0, 1, 2, 3, 4, 5, 6, 7, 8);
+        IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
+
+        // Act
+        cut.Find("[data-testid='review-camera-button']").Click();
+        cut.Find("[data-testid='review-camera-button']").Click();
+
+        // Assert - closed again, and still not red
+        Assert.DoesNotContain("text-danger", cut.Find("[data-testid='review-camera-button']").ClassName);
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_NineOrFewerCameras_ButtonIsNotRed()
+    {
+        // Arrange
+        AddDevices(9);
+        SelectOnly(0, 1, 2, 3, 4, 5, 6, 7, 8);
+
+        // Act
+        IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
+
+        // Assert
+        Assert.DoesNotContain("text-danger", cut.Find("[data-testid='review-camera-button']").ClassName);
+    }
+
+    [Fact]
+    public void ReviewCameraSelector_MoreThanNineCameras_SpecificCamerasSelected_ButtonIsNotRed()
+    {
+        // Arrange - the operator's own choice, not the first nine
+        AddDevices(12);
+        SelectOnly(3, 4, 5);
+
+        // Act
+        IRenderedComponent<ReviewCameraSelector> cut = RenderSelector();
+
+        // Assert
+        Assert.DoesNotContain("text-danger", cut.Find("[data-testid='review-camera-button']").ClassName);
     }
 
     [Fact]
