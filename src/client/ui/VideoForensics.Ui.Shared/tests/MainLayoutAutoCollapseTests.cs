@@ -44,18 +44,21 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         Assert.Equal(0, CountInvocations(CollapseIdentifier));
     }
 
-    [Fact]
-    public void MainLayout_MediaPage_CollapsesLeftNavWhenPrefIsCollapsed()
+    [Theory]
+    [InlineData("http://localhost/media")]
+    [InlineData("http://localhost/media/review")]
+    [InlineData("http://localhost/live-view")]
+    public void MainLayout_MediaPage_KeepsLeftNavOpenWhenPrefIsCollapsed(string uri)
     {
-        // Arrange - the saved preference still applies on the media pages
+        // Arrange - the media menu lives in the left pane, so the pane opens even with a collapsed saved preference
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
-        NavigateTo("http://localhost/media");
+        NavigateTo(uri);
 
         // Act
         _ = Render<MainLayout>();
 
-        // Assert
-        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+        // Assert - the pane stays open; it is never collapsed on these pages
+        Assert.Equal(0, CountInvocations(CollapseIdentifier));
     }
 
     [Fact]
@@ -92,7 +95,7 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
     }
 
     [Fact]
-    public async Task MainLayout_ToggleOnMediaPage_CollapsesPaneAndSavesPref()
+    public async Task MainLayout_ToggleOnMediaPage_CollapsesPaneWithoutSavingPref()
     {
         // Arrange - expanded saved preference on /media
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
@@ -103,9 +106,9 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         component.Find(".left-nav-toggle").Click();
         await component.InvokeAsync(() => Task.CompletedTask);
 
-        // Assert - the pane collapsed once and the preference was written, as on any other page
+        // Assert - the pane collapses for this visit only; the saved preference is untouched
         Assert.Equal(1, CountInvocations(CollapseIdentifier));
-        Assert.Equal(1, CountInvocations(SetPrefIdentifier));
+        Assert.Equal(0, CountInvocations(SetPrefIdentifier));
     }
 
     private void NavigateTo(string uri)

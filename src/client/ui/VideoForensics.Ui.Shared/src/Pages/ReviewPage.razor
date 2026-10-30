@@ -40,7 +40,8 @@ else
     </PageLeftPanelContent>
 
     <PageRightPanelContent>
-        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" DeviceNames="_deviceNames" />
+        <ReviewCameraSelector State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
+        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" />
     </PageRightPanelContent>
 
     <ReviewTopBar State="State" DeviceNames="_deviceNames" />
