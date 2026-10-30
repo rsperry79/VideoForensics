@@ -64,7 +64,7 @@ public class ReviewPage_Tests : ReviewTestContext
         string actions = RenderRightPanel().Find("[data-testid='review-actions-panel']").TextContent;
         Assert.Contains(L["ActionsMenuTitle"].Value, actions);
 
-        string nav = RenderLeftPanel().Find("[data-testid='review-view-nav']").TextContent;
+        string nav = cut.Find("[data-testid='review-view-nav']").TextContent;
         foreach (string key in new[] { "Live", "TabTimeline", "TabEvents", "TabDetail" })
         {
             Assert.Contains(L[key].Value, nav);
@@ -116,10 +116,8 @@ public class ReviewPage_Tests : ReviewTestContext
         NavigateToReview();
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
-        IRenderedComponent<IComponent> nav = RenderLeftPanel();
-
         // Act
-        nav.Find("[data-testid='review-tab-button-events']").Click();
+        cut.Find("[data-testid='review-tab-button-events']").Click();
 
         // Assert
         Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
@@ -209,20 +207,18 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_SignedIn_RegistersTheViewNavWithTheLeftPanel()
+    public void ReviewPage_SignedIn_ShowsTheViewTabsAboveTheContentAndLeavesTheLeftPanelEmpty()
     {
         // Arrange
         AddDevices(2);
         NavigateToReview();
-        _ = Render<ReviewPage>();
-
-        // Act
-        IRenderedComponent<IComponent> nav = RenderLeftPanel();
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Assert
-        Assert.Single(nav.FindAll("[data-testid='review-view-nav']"));
-        Assert.Single(nav.FindAll("[data-testid='review-tab-button-timeline']"));
-        Assert.Single(nav.FindAll("[data-testid='review-live']"));
+        Assert.Single(cut.FindAll("nav[data-testid='review-view-nav'] ul.nav-tabs"));
+        Assert.Single(cut.FindAll("[data-testid='review-tab-button-timeline']"));
+        Assert.Single(cut.FindAll("[data-testid='review-live']"));
+        Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
     }
 
     [Theory]
@@ -241,7 +237,7 @@ public class ReviewPage_Tests : ReviewTestContext
         // Assert - the panel is in the page body, inside the aside, never in the slots
         Assert.Single(cut.FindAll("aside.review-timeline-aside [data-testid='review-timeline-panel']"));
         Assert.Single(cut.FindAll(".review-body > .review-content"));
-        Assert.Empty(RenderLeftPanel().FindAll("[data-testid='review-timeline-panel']"));
+        Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
     }
 
     [Fact]
@@ -519,10 +515,8 @@ public class ReviewPage_Tests : ReviewTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?reviewcase=" + caseId.ToString("D"));
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
-        IRenderedComponent<IComponent> nav = RenderLeftPanel();
-
         // Act
-        nav.Find("[data-testid='review-tab-button-events']").Click();
+        cut.Find("[data-testid='review-tab-button-events']").Click();
 
         // Assert
         Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
@@ -537,10 +531,8 @@ public class ReviewPage_Tests : ReviewTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media");
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
-        IRenderedComponent<IComponent> nav = RenderLeftPanel();
-
         // Act
-        nav.Find("[data-testid='review-tab-button-events']").Click();
+        cut.Find("[data-testid='review-tab-button-events']").Click();
 
         // Assert
         Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
@@ -562,13 +554,6 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Assert
         Assert.False(CaseMode.Active);
-    }
-
-    private IRenderedComponent<IComponent> RenderLeftPanel()
-    {
-        LeftPanelContentService slot = Services.GetRequiredService<LeftPanelContentService>();
-        Assert.NotNull(slot.Content);
-        return Render(slot.Content!);
     }
 
     private IRenderedComponent<IComponent> RenderRightPanel()
