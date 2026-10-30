@@ -74,6 +74,9 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                 }
             });
 
+            // The SQLite side of database maintenance. The common IDatabaseMaintenanceService reaches it only through IDatabaseEngine.
+            _ = services.AddScoped<VideoForensics.Data.Common.Contracts.IDatabaseEngine, VideoForensics.Data.Database.Sqlite.Services.SqliteDatabaseEngine>();
+
             // Operational logs live in logs.db beside the main database, so error rows and telemetry do not bloat the audit file.
             string logsPath = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "logs.db");
             _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>((sp, options) =>
