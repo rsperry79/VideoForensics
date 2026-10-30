@@ -6,6 +6,7 @@
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @implements IAsyncDisposable
@@ -295,9 +296,23 @@ else
             {
                 // Best effort: the circuit may already be gone, and the server drops the connection on disconnect.
             }
+            catch (JSDisconnectedException)
+            {
+                // Disposal runs after the circuit has closed, so JavaScript can no longer be called. Nothing is left to stop.
+            }
         }
 
         if (_jsModule is not null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit closed first, so the module is already gone.
+            }
+        }
             await _jsModule.DisposeAsync();
     }
 
