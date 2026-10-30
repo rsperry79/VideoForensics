@@ -258,6 +258,8 @@ namespace VideoForensics.Client.Hosting.Services
                 ?? _services.GetRequiredService<IProviderAuthService>();
             IEventPullService eventPullService = _services.GetKeyedService<IEventPullService>(initial.ProviderName)
                 ?? _services.GetRequiredService<IEventPullService>();
+            IInventorySyncService inventorySync = _services.GetKeyedService<IInventorySyncService>(initial.ProviderName)
+                ?? _services.GetRequiredService<IInventorySyncService>();
 
             // Provider sessions are in-memory: after a server restart the account must be restored from its saved
             // credentials before discovery or pulls can reach the provider. A failed restore is recorded, not swallowed.
@@ -311,6 +313,24 @@ namespace VideoForensics.Client.Hosting.Services
             {
                 _activity.Append($"{initial.ProviderName}: history limited to one week per pull");
                 _logger.LogInformation("Sync start limited to one week back for {ProviderName} account", initial.ProviderName);
+            }
+
+            // Provider inventory and device configuration are refreshed here, on a manual sync, and never by the pull itself.
+            // A failed refresh is recorded the same way a failed restore is, so the pull does not run on stale inventory.
+            try
+            {
+                _ = await inventorySync.SyncAsync(accountId, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Device sync failed before the event pull");
+                string syncError = $"Device sync failed: {ex.Message}";
+                await RecordErrorAsync(accountId, syncError, cancellationToken);
+                return syncError;
             }
 
             // The pull records its own failures on the account; it does not throw for them.

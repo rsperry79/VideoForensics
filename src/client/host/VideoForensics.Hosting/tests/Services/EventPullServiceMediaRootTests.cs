@@ -69,7 +69,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _deviceRepository.Object,
                 _locationRepository.Object,
                 _accountRepository.Object,
-                _discovery.Object,
                 mediaDownloadService: _media.Object,
                 mediaRoot: mediaRoot,
                 storage: _storage.Object,

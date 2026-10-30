@@ -162,8 +162,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 mockEventAndConfigService.Object,
                 mockDeviceRepository.Object,
                 mockLocationRepository.Object,
-                mockProviderAccountRepository.Object,
-                mockDiscovery.Object
+                mockProviderAccountRepository.Object
             );
 
             // Act: Pull both accounts concurrently
@@ -194,18 +193,18 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 cancellationToken
             ), Times.Once);
 
-            // Verify GetDeviceConfigAsync was called with correct accountId for each account
+            // Why: a pull no longer fetches device configuration, so no account is queried for it here. The per-account sync is covered by InventorySyncService tests.
             mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync(
                 account1Id,
                 "device-account1",
                 cancellationToken
-            ), Times.Once);
+            ), Times.Never);
 
             mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync(
                 account2Id,
                 "device-account2",
                 cancellationToken
-            ), Times.Once);
+            ), Times.Never);
         }
 
         /// <summary>Tests that GetSession(accountId) returns different sessions for different accounts (mock-based test).</summary>
@@ -282,8 +281,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 mockEventAndConfigService.Object,
                 mockDeviceRepository.Object,
                 mockLocationRepository.Object,
-                mockProviderAccountRepository.Object,
-                mockDiscovery.Object
+                mockProviderAccountRepository.Object
             );
 
             // Act
@@ -404,8 +402,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 mockEventAndConfigService.Object,
                 mockDeviceRepository.Object,
                 mockLocationRepository.Object,
-                mockProviderAccountRepository.Object,
-                mockDiscovery.Object
+                mockProviderAccountRepository.Object
             );
 
             // Act: Pull all 3 accounts concurrently
@@ -472,8 +469,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 mockEventAndConfigService.Object,
                 mockDeviceRepository.Object,
                 mockLocationRepository.Object,
-                mockProviderAccountRepository.Object,
-                mockDiscovery.Object
+                mockProviderAccountRepository.Object
             );
 
             // Act: Pull single account (backward compatibility test)
@@ -481,8 +477,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             // Assert: All expected methods were called
             mockProviderAccountRepository.Verify(r => r.GetAsync(accountId, cancellationToken), Times.Once);
-            mockDiscovery.Verify(d => d.GetLocationsAsync(accountId, cancellationToken), Times.Once);
-            mockDiscovery.Verify(d => d.GetDevicesAsync(accountId, It.IsAny<string>(), cancellationToken), Times.Once);
+            // Why: a pull reads stored inventory; only the inventory sync asks the provider for locations and devices.
+            mockDiscovery.Verify(d => d.GetLocationsAsync(accountId, cancellationToken), Times.Never);
+            mockDiscovery.Verify(d => d.GetDevicesAsync(accountId, It.IsAny<string>(), cancellationToken), Times.Never);
             mockEventAndConfigService.Verify(s => s.GetEventsAsync(
                 accountId,
                 "device-123",

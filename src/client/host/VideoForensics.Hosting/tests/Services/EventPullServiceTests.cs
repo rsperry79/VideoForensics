@@ -25,8 +25,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _mockEventAndConfigService.Object,
                 _mockDeviceRepository.Object,
                 _mockLocationRepository.Object,
-                _mockProviderAccountRepository.Object,
-                _mockDiscovery.Object
+                _mockProviderAccountRepository.Object
             );
         }
 
@@ -111,7 +110,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 cancellationToken
             ), Times.Once);
 
-            _mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken), Times.Once);
+            // Why: device configuration is refreshed by the inventory sync, so a pull never asks the provider for it.
+            _mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken), Times.Never);
         }
 
         [Fact]

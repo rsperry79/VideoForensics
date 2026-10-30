@@ -20,6 +20,8 @@ namespace VideoForensics.Data.Core.DependencyInjection
             // Phase 1 core services
             _ = services.AddScoped<IWatermarkService, WatermarkService>();
             _ = services.AddActionLogger();
+            // Process-wide: reference rows (locations, devices) outlive a single scope, so every pull and download shares one snapshot.
+            services.TryAddSingleton<IReferenceDataCache, ReferenceDataCache>();
             // Holder for the configured ffmpeg bin directory; ForensicsConfigurationService writes it, tool consumers read it.
             services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation, VideoForensics.Core.Providers.Core.FfmpegToolLocation>();
             // Transient: the bin directory may be set after first resolve, so each resolve must read it fresh.

@@ -165,7 +165,8 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<IVideoForensicsDataClient>(),
                 notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
                 syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>(),
-                mediaPaths: provider.GetService<VideoForensics.Data.Common.Contracts.IMediaPathResolver>()
+                mediaPaths: provider.GetService<VideoForensics.Data.Common.Contracts.IMediaPathResolver>(),
+                referenceCache: provider.GetService<VideoForensics.Data.Common.Contracts.IReferenceDataCache>()
             );
         }
 
@@ -609,6 +610,8 @@ namespace VideoForensics.Client.Hosting
 
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
+            // The only provider inventory and device-configuration path: the scheduler and manual sync call it, pulls never do.
+            _ = services.AddScoped<IInventorySyncService, InventorySyncService>();
             _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
             _ = services.AddScoped<ISnapshotRollupService, SnapshotRollupService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
@@ -683,14 +686,21 @@ namespace VideoForensics.Client.Hosting
                     provider.GetRequiredService<IDeviceRepository>(),
                     provider.GetRequiredService<ILocationRepository>(),
                     provider.GetRequiredService<IProviderAccountRepository>(),
-                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
                     provider.GetService<ILogger<EventPullService>>(),
                     provider.GetKeyedService<IMediaDownloadService>(providerName),
-                    deviceConfigRepository: provider.GetRequiredService<IDeviceConfigRepository>(),
                     storage: provider.GetService<IStorageLocationProvider>(),
                     configurationService: provider.GetService<IForensicsConfigurationService>(),
                     progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>(),
-                    mediaPaths: provider.GetService<IMediaPathResolver>()));
+                    mediaPaths: provider.GetService<IMediaPathResolver>(),
+                    referenceCache: provider.GetRequiredService<IReferenceDataCache>()));
+                _ = services.AddKeyedScoped<IInventorySyncService>(providerName, (provider, key) => new InventorySyncService(
+                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
+                    provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
+                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<IDeviceRepository>(),
+                    provider.GetRequiredService<IReferenceDataCache>(),
+                    provider.GetRequiredService<ILogger<InventorySyncService>>(),
+                    provider.GetRequiredService<IDeviceConfigRepository>()));
             }
 
             return services;

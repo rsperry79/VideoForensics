@@ -1,5 +1,9 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
 
 using DeviceConfigEntity = VideoForensics.Data.Common.Entities.DeviceConfigSnapshot;
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -20,15 +24,16 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IDeviceConfigRepository> _configs = new();
 
-        private EventPullService CreateSut()
+        private InventorySyncService CreateSut()
         {
-            return new(
-            _eventAndConfig.Object,
-            _devices.Object,
-            _locations.Object,
-            _accounts.Object,
-            _discovery.Object,
-            deviceConfigRepository: _configs.Object);
+            return new InventorySyncService(
+                _discovery.Object,
+                _eventAndConfig.Object,
+                _locations.Object,
+                _devices.Object,
+                new ReferenceDataCache(),
+                NullLogger<InventorySyncService>.Instance,
+                _configs.Object);
         }
 
         private void SetUpAccountAndDevice(DeviceConfig fetched)
@@ -67,13 +72,13 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
-        public async Task PullAccountEventsAsync_ConfigFetchedWithNoPriorSnapshot_AppendsSnapshot()
+        public async Task SyncAsync_ConfigFetchedWithNoPriorSnapshot_AppendsSnapshot()
         {
             CancellationToken cancellationToken = CancellationToken.None;
             SetUpAccountAndDevice(Fetched());
             _ = _configs.Setup(r => r.GetLatestAsync(_deviceId, cancellationToken)).ReturnsAsync((DeviceConfigEntity?)null);
 
-            _ = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+            _ = await CreateSut().SyncAsync(_accountId, cancellationToken);
 
             _configs.Verify(r => r.AppendSnapshotAsync(
                 It.Is<DeviceConfigEntity>(s =>
@@ -86,7 +91,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
-        public async Task PullAccountEventsAsync_ConfigUnchangedSinceLatestSnapshot_DoesNotAppend()
+        public async Task SyncAsync_ConfigUnchangedSinceLatestSnapshot_DoesNotAppend()
         {
             CancellationToken cancellationToken = CancellationToken.None;
             SetUpAccountAndDevice(Fetched());
@@ -101,13 +106,13 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 Source = DeviceConfigSource.Fetched
             });
 
-            _ = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+            _ = await CreateSut().SyncAsync(_accountId, cancellationToken);
 
             _configs.Verify(r => r.AppendSnapshotAsync(It.IsAny<DeviceConfigEntity>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task PullAccountEventsAsync_ConfigChangedSinceLatestSnapshot_AppendsSnapshot()
+        public async Task SyncAsync_ConfigChangedSinceLatestSnapshot_AppendsSnapshot()
         {
             CancellationToken cancellationToken = CancellationToken.None;
             SetUpAccountAndDevice(Fetched(motion: false, sensitivity: 20, mode: "motion"));
@@ -122,7 +127,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 Source = DeviceConfigSource.Fetched
             });
 
-            _ = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+            _ = await CreateSut().SyncAsync(_accountId, cancellationToken);
 
             _configs.Verify(r => r.AppendSnapshotAsync(
                 It.Is<DeviceConfigEntity>(s => s.MotionDetectionEnabled == false && s.MotionSensitivity == "20" && s.RecordingMode == "motion"),
@@ -130,16 +135,17 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
-        public async Task PullAccountEventsAsync_ConfigHistoryWriteFails_DeviceStillCountsAsSynced()
+        public async Task SyncAsync_ConfigHistoryWriteFails_InventoryStillSynced()
         {
             CancellationToken cancellationToken = CancellationToken.None;
             SetUpAccountAndDevice(Fetched());
             _ = _configs.Setup(r => r.GetLatestAsync(_deviceId, cancellationToken)).ThrowsAsync(new InvalidOperationException("config store offline"));
 
-            EventPullResult result = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+            InventorySyncResult result = await CreateSut().SyncAsync(_accountId, cancellationToken);
 
-            // The events and media were already synced; a config-history failure must not fail the device pull.
-            Assert.Equal(0, result.FeedsFailed);
+            // The inventory was stored; a config-history failure must not fail the sync, and no configuration is counted as read.
+            Assert.Equal(1, result.DeviceCount);
+            Assert.Equal(0, result.DeviceConfigsRead);
         }
 
         [Fact]
@@ -148,11 +154,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             var first = new Dictionary<string, object> { ["alpha"] = 1, ["beta"] = new Dictionary<string, object> { ["x"] = "a", ["y"] = "b" } };
             var second = new Dictionary<string, object> { ["beta"] = new Dictionary<string, object> { ["y"] = "b", ["x"] = "a" }, ["alpha"] = 1 };
 
-            Assert.Equal(EventPullService.CanonicalJson(first), EventPullService.CanonicalJson(second));
+            Assert.Equal(InventorySyncService.CanonicalJson(first), InventorySyncService.CanonicalJson(second));
         }
 
         [Fact]
-        public async Task PullAccountEventsAsync_CustomSettingsReorderedOnly_DoesNotAppend()
+        public async Task SyncAsync_CustomSettingsReorderedOnly_DoesNotAppend()
         {
             CancellationToken cancellationToken = CancellationToken.None;
             var stored = new Dictionary<string, object> { ["alpha"] = 1, ["beta"] = "b" };
@@ -165,12 +171,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 MotionDetectionEnabled = true,
                 MotionSensitivity = "80",
                 RecordingMode = "always",
-                CustomSettingsJson = EventPullService.CanonicalJson(stored),
+                CustomSettingsJson = InventorySyncService.CanonicalJson(stored),
                 CapturedAtUtc = DateTime.UtcNow.AddHours(-1),
                 Source = DeviceConfigSource.Fetched
             });
 
-            _ = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+            _ = await CreateSut().SyncAsync(_accountId, cancellationToken);
 
             _configs.Verify(r => r.AppendSnapshotAsync(It.IsAny<DeviceConfigEntity>(), It.IsAny<CancellationToken>()), Times.Never);
         }

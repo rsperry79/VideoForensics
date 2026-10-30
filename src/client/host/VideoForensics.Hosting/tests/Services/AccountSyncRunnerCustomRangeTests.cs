@@ -43,7 +43,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private AccountSyncRunner Sut()
         {
-            var services = new ServiceCollection().AddScoped(_ => _auth.Object).AddScoped(_ => _pull.Object).BuildServiceProvider();
+            var services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => _auth.Object).AddScoped(_ => _pull.Object).BuildServiceProvider();
             return new(services, _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), _activity);
         }
 

@@ -10,6 +10,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Data.Core.Services;
 
 using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
@@ -51,13 +52,12 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ILocationRepository _locationRepository;
         private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ILogger<EventPullService> _logger;
-        private readonly IDeviceDiscoveryService _deviceDiscovery;
+        private readonly IReferenceDataCache _referenceCache;
         private readonly IMediaDownloadService? _mediaDownloadService;
         private readonly string? _mediaRootOverride;
         private readonly string _mediaRoot;
         private readonly IStorageLocationProvider? _storage;
         private readonly IForensicsConfigurationService? _configurationService;
-        private readonly IDeviceConfigRepository? _deviceConfigRepository;
         private readonly IMediaPreviewService? _previewService;
         private readonly IMediaItemRepository? _mediaItems;
         private readonly ISyncProgressStore? _progress;
@@ -77,23 +77,22 @@ namespace VideoForensics.Client.Hosting.Services
             IDeviceRepository deviceRepository,
             ILocationRepository locationRepository,
             IProviderAccountRepository providerAccountRepository,
-            IDeviceDiscoveryService deviceDiscovery,
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
             string? mediaRoot = null,
-            IDeviceConfigRepository? deviceConfigRepository = null,
             IMediaPreviewService? previewService = null,
             IMediaItemRepository? mediaItems = null,
             IStorageLocationProvider? storage = null,
             IForensicsConfigurationService? configurationService = null,
             ISyncProgressStore? progress = null,
             TimeSpan? progressPollInterval = null,
-            IMediaPathResolver? mediaPaths = null)
+            IMediaPathResolver? mediaPaths = null,
+            IReferenceDataCache? referenceCache = null)
         {
             _progress = progress;
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _progressPollInterval = progressPollInterval ?? TimeSpan.FromMilliseconds(500);
-            _deviceConfigRepository = deviceConfigRepository;
+            _referenceCache = referenceCache ?? new ReferenceDataCache();
             _previewService = previewService;
             _mediaItems = mediaItems;
             _eventAndConfigService = eventAndConfigService;
@@ -101,7 +100,6 @@ namespace VideoForensics.Client.Hosting.Services
             _locationRepository = locationRepository;
             _providerAccountRepository = providerAccountRepository;
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<EventPullService>.Instance;
-            _deviceDiscovery = deviceDiscovery;
             _mediaDownloadService = mediaDownloadService;
             _mediaRootOverride = mediaRoot;
             _storage = storage;
@@ -137,17 +135,16 @@ namespace VideoForensics.Client.Hosting.Services
                     return default;
                 }
 
-                Inventory inventory = await DiscoverInventoryAsync(accountId, cancellationToken);
+                // Why: a pull never asks the provider for inventory. Stored locations and devices come from the reference cache,
+                // which the scheduler or a manual sync fills; with none stored, a sync has to run before events can be linked.
+                Inventory inventory = await LoadInventoryAsync(accountId, cancellationToken);
                 locationsSynced = inventory.LocationCount;
                 devicesSynced = inventory.Devices.Count;
 
                 if (inventory.LocationCount == 0)
                 {
-                    _logger.LogDebug("No locations found for account");
-                    account.LastSuccessfulAuthUtc = DateTime.UtcNow;
-                    account.LastErrorMessage = null;
-                    await _providerAccountRepository.UpdateAsync(account, cancellationToken);
-                    return new EventPullResult(devicesSynced, locationsSynced);
+                    _logger.LogWarning("No stored locations for account; run a device sync before pulling events");
+                    return default;
                 }
 
                 _logger.LogInformation("Syncing events for {DeviceCount} device(s)", inventory.Devices.Count);
@@ -203,9 +200,8 @@ namespace VideoForensics.Client.Hosting.Services
                         if (_mediaDownloadService != null)
                         {
                             // Media lands in <root>\<provider>\<location>\<device>, the layout the Storage Settings page
-                            // assumes. Location names come from the DB, not the provider.
-                            string locationName = (await _locationRepository.GetByProviderLocationIdAsync(accountId, providerLocationId, cancellationToken))?.Name
-                                ?? providerLocationId;
+                            // assumes. The location name comes from the stored inventory, not the provider.
+                            string locationName = inventoryDevice.LocationName ?? providerLocationId;
                             string deviceFolder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, locationName, deviceName);
                             _ = Directory.CreateDirectory(deviceFolder);
 
@@ -229,22 +225,6 @@ namespace VideoForensics.Client.Hosting.Services
                                 {
                                     _logger.LogError(ex, "Preview generation failed; media was synced");
                                 }
-                            }
-                        }
-
-                        DeviceConfig? config = await _eventAndConfigService.GetDeviceConfigAsync(accountId, device.ProviderDeviceId, cancellationToken);
-                        if (config != null)
-                        {
-                            configAreasSynced++;
-                            // Config history is secondary to the events and media just synced. A failure here is logged and
-                            // does not count the whole device pull as failed.
-                            try
-                            {
-                                await PersistDeviceConfigIfChangedAsync(device.Id, config, cancellationToken);
-                            }
-                            catch (Exception ex) when (ex is not OperationCanceledException)
-                            {
-                                _logger.LogWarning(ex, "Could not record device configuration history; events were synced");
                             }
                         }
 
@@ -412,170 +392,52 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>The locations and devices a pull works from. <see cref="LocationCount"/> zero means nothing to pull.</summary>
         private sealed record Inventory(int LocationCount, List<InventoryDevice> Devices);
 
-        /// <summary>A stored device paired with its provider location id, which media downloads need for attribution.</summary>
-        private sealed record InventoryDevice(DeviceEntity Device, string ProviderLocationId);
+        /// <summary>A stored device paired with its provider location id and name, which media downloads need for attribution and folders.</summary>
+        private sealed record InventoryDevice(DeviceEntity Device, string ProviderLocationId, string? LocationName);
 
         /// <summary>
-        /// Asks the provider for the account's locations and devices and saves any that are new or changed. Errors propagate so the
-        /// caller records them on the account rather than pulling from a partial inventory.
+        /// Reads the account's stored inventory from the reference cache, loading it from the database on a miss. Only the
+        /// device rows are read per pull, because a pull updates their timestamps.
         /// </summary>
-        private async Task<Inventory> DiscoverInventoryAsync(Guid accountId, CancellationToken cancellationToken)
+        private async Task<Inventory> LoadInventoryAsync(Guid accountId, CancellationToken cancellationToken)
         {
-            IReadOnlyList<Location> remoteLocations = await _deviceDiscovery.GetLocationsAsync(accountId, cancellationToken);
-            var devices = new List<InventoryDevice>();
+            AccountReferenceData data = _referenceCache.Get(accountId) ?? await LoadReferenceDataFromDbAsync(accountId, cancellationToken);
+            var locationNames = data.Locations.ToDictionary(l => l.Id, l => l.Name);
 
-            foreach (Location remoteLocation in remoteLocations)
+            var devices = new List<InventoryDevice>();
+            foreach (CachedDevice cached in data.DevicesByProviderId.Values)
             {
-                LocationEntity location = await UpsertLocationAsync(accountId, remoteLocation, cancellationToken);
-                IReadOnlyList<Device> remoteDevices = await _deviceDiscovery.GetDevicesAsync(accountId, remoteLocation.Id, cancellationToken);
-                foreach (Device remoteDevice in remoteDevices)
+                DeviceEntity? device = await _deviceRepository.GetAsync(cached.Id, cancellationToken);
+                if (device is not null)
                 {
-                    devices.Add(new InventoryDevice(await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken), remoteLocation.Id));
+                    _ = locationNames.TryGetValue(cached.LocationId, out string? locationName);
+                    devices.Add(new InventoryDevice(device, cached.ProviderLocationId, locationName));
                 }
             }
 
-            _logger.LogDebug("Discovered {LocationCount} location(s) and {DeviceCount} device(s) for account", remoteLocations.Count, devices.Count);
-            return new Inventory(remoteLocations.Count, devices);
+            return new Inventory(data.Locations.Count, devices);
         }
 
-        private async Task<LocationEntity> UpsertLocationAsync(Guid accountId, Location remote, CancellationToken cancellationToken)
+        /// <summary>Builds the account's reference snapshot from the database and caches it, for a pull that finds the cache empty.</summary>
+        private async Task<AccountReferenceData> LoadReferenceDataFromDbAsync(Guid accountId, CancellationToken cancellationToken)
         {
-            LocationEntity? existing = await _locationRepository.GetByProviderLocationIdAsync(accountId, remote.Id, cancellationToken);
-            if (existing == null)
+            IReadOnlyList<LocationEntity> locations = await _locationRepository.ListByProviderAccountIdAsync(accountId, cancellationToken);
+            var cachedLocations = new List<CachedLocation>();
+            var devices = new Dictionary<string, CachedDevice>(StringComparer.Ordinal);
+
+            foreach (LocationEntity location in locations)
             {
-                existing = new LocationEntity
+                cachedLocations.Add(new CachedLocation(location.Id, location.ProviderLocationId, location.Name));
+                IReadOnlyList<DeviceEntity> locationDevices = await _deviceRepository.GetByLocationIdAsync(location.Id, cancellationToken);
+                foreach (DeviceEntity device in locationDevices)
                 {
-                    Id = Guid.NewGuid(),
-                    ProviderLocationId = remote.Id,
-                    Name = remote.Name,
-                    Address = remote.Address,
-                    LastSyncedUtc = DateTime.UtcNow,
-                    SyncStatus = SyncStatus.Synced
-                };
-                await _locationRepository.AddAsync(existing, cancellationToken);
+                    devices[device.ProviderDeviceId] = new CachedDevice(device.Id, location.Id, location.ProviderLocationId, device.ProviderDeviceId, device.Name);
+                }
             }
 
-            // Locations are shared across accounts; linking is idempotent.
-            await _locationRepository.LinkToProviderAccountAsync(existing.Id, accountId, cancellationToken);
-            return existing;
-        }
-
-        private async Task<DeviceEntity> UpsertDeviceAsync(Guid locationId, Device remote, CancellationToken cancellationToken)
-        {
-            DeviceEntity? existing = await _deviceRepository.GetByProviderDeviceIdAsync(locationId, remote.Id, cancellationToken);
-            if (existing == null)
-            {
-                existing = new DeviceEntity
-                {
-                    Id = Guid.NewGuid(),
-                    LocationId = locationId,
-                    ProviderDeviceId = remote.Id,
-                    Name = remote.Name,
-                    Type = remote.Type,
-                    IsOnline = remote.IsOnline,
-                    LastSyncedUtc = DateTime.UtcNow,
-                    SyncStatus = SyncStatus.Synced
-                };
-                await _deviceRepository.AddAsync(existing, cancellationToken);
-            }
-            else
-            {
-                existing.Name = remote.Name;
-                existing.Type = remote.Type;
-                existing.IsOnline = remote.IsOnline;
-                existing.LastSyncedUtc = DateTime.UtcNow;
-                await _deviceRepository.UpdateAsync(existing, cancellationToken);
-            }
-
-            return existing;
-        }
-
-        /// <summary>
-        /// Appends a configuration snapshot only when the fetched values differ from the latest stored one, so history
-        /// records changes rather than one row per sync.
-        /// </summary>
-        private async Task PersistDeviceConfigIfChangedAsync(Guid deviceId, DeviceConfig config, CancellationToken cancellationToken)
-        {
-            if (_deviceConfigRepository is null)
-            {
-                return;
-            }
-
-            string sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
-            string? customSettingsJson = CanonicalJson(config.CustomSettings);
-
-            DeviceConfigSnapshot? latest = await _deviceConfigRepository.GetLatestAsync(deviceId, cancellationToken);
-            if (latest is not null &&
-                latest.MotionDetectionEnabled == config.MotionDetectionEnabled &&
-                latest.MotionSensitivity == sensitivity &&
-                latest.RecordingMode == config.RecordingMode &&
-                latest.CustomSettingsJson == customSettingsJson)
-            {
-                return;
-            }
-
-            _ = await _deviceConfigRepository.AppendSnapshotAsync(new DeviceConfigSnapshot
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                MotionDetectionEnabled = config.MotionDetectionEnabled,
-                MotionSensitivity = sensitivity,
-                RecordingMode = config.RecordingMode,
-                CustomSettingsJson = customSettingsJson,
-                CapturedAtUtc = DateTime.UtcNow,
-                Source = DeviceConfigSource.Fetched
-            }, cancellationToken);
-        }
-
-        /// <summary>
-        /// Serializes settings with object keys sorted at every level. Dictionary enumeration order is not a stable
-        /// contract, so an unsorted serialization would make the same settings look changed on every sync and append a
-        /// duplicate snapshot each time.
-        /// </summary>
-        internal static string? CanonicalJson(object? value)
-        {
-            if (value is null)
-            {
-                return null;
-            }
-
-            using JsonDocument document = JsonSerializer.SerializeToDocument(value);
-            using MemoryStream stream = new();
-            using (Utf8JsonWriter writer = new(stream))
-            {
-                WriteSorted(document.RootElement, writer);
-            }
-
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
-        }
-
-        private static void WriteSorted(JsonElement element, Utf8JsonWriter writer)
-        {
-            switch (element.ValueKind)
-            {
-                case JsonValueKind.Object:
-                    writer.WriteStartObject();
-                    foreach (JsonProperty property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
-                    {
-                        writer.WritePropertyName(property.Name);
-                        WriteSorted(property.Value, writer);
-                    }
-
-                    writer.WriteEndObject();
-                    break;
-                case JsonValueKind.Array:
-                    writer.WriteStartArray();
-                    foreach (JsonElement item in element.EnumerateArray())
-                    {
-                        WriteSorted(item, writer);
-                    }
-
-                    writer.WriteEndArray();
-                    break;
-                default:
-                    element.WriteTo(writer);
-                    break;
-            }
+            var data = new AccountReferenceData(cachedLocations, devices);
+            _referenceCache.Replace(accountId, data);
+            return data;
         }
 
         /// <summary>

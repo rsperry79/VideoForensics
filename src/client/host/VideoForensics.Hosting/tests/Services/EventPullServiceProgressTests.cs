@@ -53,7 +53,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _deviceRepository.Object,
                 _locationRepository.Object,
                 _accountRepository.Object,
-                _discovery.Object,
                 mediaDownloadService: _media.Object,
                 mediaRoot: Path.Combine(_root, "media"),
                 progress: progress,

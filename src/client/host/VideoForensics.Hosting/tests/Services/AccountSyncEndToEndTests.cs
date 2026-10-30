@@ -95,13 +95,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _deviceRepository.Object,
                 _locationRepository.Object,
                 _accounts.Object,
-                _discovery.Object,
                 mediaDownloadService: _media.Object,
                 mediaRoot: _root,
                 progress: progress,
                 progressPollInterval: TimeSpan.FromMilliseconds(20));
 
-            var services = new ServiceCollection()
+            var services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>())
                 .AddScoped(_ => _auth.Object)
                 .AddScoped<IEventPullService>(_ => eventPull)
                 .BuildServiceProvider();

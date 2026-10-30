@@ -461,12 +461,14 @@ namespace VideoForensics.Providers.Ring.Services
         private int _peakActiveDownloadsForBatch;
 
         private readonly IMediaPathResolver _mediaPaths;
+        private readonly IReferenceDataCache? _referenceCache;
 
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
             INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null,
-            IMediaPathResolver? mediaPaths = null)
+            IMediaPathResolver? mediaPaths = null, IReferenceDataCache? referenceCache = null)
         {
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
+            _referenceCache = referenceCache;
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
@@ -1735,6 +1737,15 @@ namespace VideoForensics.Providers.Ring.Services
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
             {
                 return cachedDeviceId;
+            }
+
+            // Why: the inventory sync already stored this device under its real location. Linking to that row keeps events
+            // off the placeholder location below, which is only for a device the sync has not seen.
+            if (_referenceCache is not null && _cachedProviderAccountId is { } accountId &&
+                _referenceCache.FindDevice(accountId, providerDeviceId) is { } known)
+            {
+                _ = _deviceIdCache.TryAdd(providerDeviceId, known.Id);
+                return known.Id;
             }
 
             // Falls back to a synthetic "default" location only when the caller genuinely has no

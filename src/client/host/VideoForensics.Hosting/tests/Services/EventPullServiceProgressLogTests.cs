@@ -81,7 +81,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _devices.Object,
                 _locations.Object,
                 _accounts.Object,
-                _discovery.Object,
                 factory.CreateLogger<EventPullService>());
         }
 

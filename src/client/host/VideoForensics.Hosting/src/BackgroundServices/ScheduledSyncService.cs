@@ -359,19 +359,31 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     syncType = ProviderSyncRunRecorder.SyncTypeFor(from);
 
+                    // The scheduler is the place inventory and device configuration are refreshed from the provider. The pull below
+                    // then reads the stored inventory, so a failed refresh ends this run before any events are pulled.
+                    IReferenceDataCache referenceCache = sp.GetRequiredService<IReferenceDataCache>();
+                    var inventorySync = new InventorySyncService(
+                        deviceDiscovery,
+                        eventService,
+                        sp.GetRequiredService<ILocationRepository>(),
+                        sp.GetRequiredService<IDeviceRepository>(),
+                        referenceCache,
+                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<InventorySyncService>(),
+                        sp.GetRequiredService<IDeviceConfigRepository>());
+                    _ = await inventorySync.SyncAsync(accountId, ct);
+
                     // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(
                         eventService,
                         sp.GetRequiredService<IDeviceRepository>(),
                         sp.GetRequiredService<ILocationRepository>(),
                         sp.GetRequiredService<IProviderAccountRepository>(),
-                        deviceDiscovery,
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,
-                        deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>(),
                         storage: sp.GetService<IStorageLocationProvider>(),
                         configurationService: sp.GetService<IForensicsConfigurationService>(),
-                        progress: sp.GetService<ISyncProgressStore>());
+                        progress: sp.GetService<ISyncProgressStore>(),
+                        referenceCache: referenceCache);
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean

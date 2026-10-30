@@ -40,7 +40,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull)
         {
-            return new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+            return new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
         }
 
         private AccountSyncRunner Sut()
@@ -256,7 +256,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = wyzeAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             // Mirrors AddVideoForensicsMultiProviderServices: keyed per provider, with the unkeyed default being whichever registered last.
-            var services = new ServiceCollection();
+            var services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>());
             _ = services.AddKeyedScoped("Wyze", (_, _) => wyzeAuth.Object);
             _ = services.AddKeyedScoped("Wyze", (_, _) => wyzePull.Object);
             _ = services.AddKeyedScoped("Ring", (_, _) => ringAuth.Object);
