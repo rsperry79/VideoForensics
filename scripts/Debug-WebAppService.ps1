@@ -200,8 +200,14 @@ function Start-LogViewer {
         Where-Object { $_.CommandLine -and $_.CommandLine.Contains($ProjectPath) } |
         ForEach-Object { $_.ProcessId })
 
+    # An elevated script opens its own elevated window. A window of the other elevation cannot take the tab, so -w 0 is
+    # used only when the script is not elevated.
+    $elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+    $window = if ($elevated) { 'new' } else { '0' }
+
     Write-Host 'Opening the logger console as a Windows Terminal tab'
-    Start-Process -FilePath $wt.Source -ArgumentList "-w 0 new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
+    Start-Process -FilePath $wt.Source -ArgumentList "-w $window new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
 
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         $match = Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
