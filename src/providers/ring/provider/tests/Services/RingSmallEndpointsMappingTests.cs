@@ -230,15 +230,39 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             using JsonDocument doc = JsonDocument.Parse("""{"linked_doorbots":[{"id":12,"device_id":"12","kind":"doorbot","call_alerts":true,"motion_alerts":false}]}""");
 
-            IReadOnlyList<RingChimeLinkedDoorbot> rows = RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid);
+            IReadOnlyList<RingChimeLinkedDoorbot>? rows = RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid);
 
-            RingChimeLinkedDoorbot row = Assert.Single(rows);
+            RingChimeLinkedDoorbot row = Assert.Single(rows!);
             Assert.Equal(ChimeGuid, row.ChimeDeviceId);
             Assert.Equal(12L, row.LinkedDoorbotId);
             Assert.Equal("12", row.DeviceId);
             Assert.Equal("doorbot", row.Kind);
             Assert.True(row.CallAlerts);
             Assert.False(row.MotionAlerts);
+        }
+
+        [Fact]
+        public void MapChimeLinkedDoorbots_EmptyArray_MapsToNoRows()
+        {
+            using JsonDocument doc = JsonDocument.Parse("""{"linked_doorbots":[]}""");
+
+            IReadOnlyList<RingChimeLinkedDoorbot>? rows = RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid);
+
+            Assert.NotNull(rows);
+            Assert.Empty(rows!);
+        }
+
+        [Theory]
+        [InlineData("""{}""")]
+        [InlineData("""{"linked_doorbots":null}""")]
+        [InlineData("""{"linked_doorbots":{"id":12}}""")]
+        [InlineData("""[]""")]
+        public void MapChimeLinkedDoorbots_NoLinkedDoorbotsArray_IsNullNotEmpty(string json)
+        {
+            using JsonDocument doc = JsonDocument.Parse(json);
+
+            // Null tells the caller the answer is unusable; an empty list would clear the chime's stored rows.
+            Assert.Null(RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid));
         }
 
         [Fact]

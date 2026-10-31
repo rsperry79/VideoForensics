@@ -319,10 +319,10 @@ public class ReviewUrl_Tests
     public void Parse_EventTypesParameter_IsReadInDisplayOrderIgnoringUnknownTypes()
     {
         // Act
-        ReviewUrlState state = ReviewUrl.Parse("?eventtypes=person,bogus,motion,jamming");
+        ReviewUrlState state = ReviewUrl.Parse("?eventtypes=human,bogus,motion,jamming");
 
         // Assert
-        Assert.Equal(["motion", "person", "jamming"], state.EventTypes);
+        Assert.Equal(["motion", "human", "jamming"], state.EventTypes);
     }
 
     [Fact]

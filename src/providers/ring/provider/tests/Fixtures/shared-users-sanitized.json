@@ -1,0 +1,27 @@
+[
+  {
+    "id": 8001,
+    "verified": true,
+    "first_name": "Sample",
+    "last_name": "Viewer",
+    "email": "sample.viewer@example.com",
+    "object_type": "user",
+    "devices": [
+      {
+        "id": 1001,
+        "role": "shared",
+        "device_type": "doorbot",
+        "permissions": ["view", "edit"]
+      }
+    ]
+  },
+  {
+    "id": 8002,
+    "verified": false,
+    "first_name": "Sample",
+    "last_name": "Guest",
+    "email": "sample.guest@example.com",
+    "object_type": "user",
+    "devices": []
+  }
+]

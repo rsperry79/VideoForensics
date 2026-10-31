@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -612,7 +613,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _syncRunTally?.MarkConfigRan();
                 _ = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
-                _ = await PersistDeviceSettingsAsync(session, ct);
+                _ = await PersistDeviceSettingsAsync(session, providerAccountId, ct);
                 return;
             }
 
@@ -631,7 +632,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             _syncRunTally?.MarkConfigRan();
             bool accountLevelSucceeded = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
-            bool allDeviceSettingsStored = await PersistDeviceSettingsAsync(session, ct);
+            bool allDeviceSettingsStored = await PersistDeviceSettingsAsync(session, providerAccountId, ct);
             // A device skipped because its row does not exist yet keeps the gate open, so the next sync retries it.
             if (accountLevelSucceeded && allDeviceSettingsStored)
             {
@@ -646,8 +647,10 @@ namespace VideoForensics.Providers.Ring.Services
         /// The device list entry supplies owner, features and the other fields the settings endpoint does not carry.
         /// Returns true only when every device's settings were stored. A device that was skipped or failed, or a device list
         /// that could not be fetched, returns false so the config gate is not marked complete and the next sync retries.
+        /// The linked chime doorbots and snapshot timestamps are fetched from the same device list, but they are not part of
+        /// this result: a failure there never keeps the gate open.
         /// </summary>
-        private async Task<bool> PersistDeviceSettingsAsync(Session session, CancellationToken ct)
+        private async Task<bool> PersistDeviceSettingsAsync(Session session, Guid providerAccountId, CancellationToken ct)
         {
             RingDeviceSettingsPersister? persister = _deviceSettingsPersister;
             if (persister == null)
@@ -667,7 +670,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 bool stored = await PersistOneDeviceSettingsAsync(persister, session, devices, doorbot.Id, doorbot.Description, ct, root =>
                 {
-                    doorbot.Settings = KeepListOnlySettings(root.Deserialize<Entities.DoorbotSettings>() ?? new Entities.DoorbotSettings(), doorbot.Settings);
+                    doorbot.Settings = MergeOverListSettings(root, doorbot.Settings);
                     doorbot.ZoneSettings = ReadZoneSettings(root);
                 });
                 allStored = allStored && stored;
@@ -682,13 +685,182 @@ namespace VideoForensics.Providers.Ring.Services
 
                 bool stored = await PersistOneDeviceSettingsAsync(persister, session, devices, cam.Id.Value, cam.Description, ct, root =>
                 {
-                    cam.Settings = KeepListOnlySettings(root.Deserialize<Entities.StickupCamSettings>() ?? new Entities.StickupCamSettings(), cam.Settings);
+                    cam.Settings = MergeOverListSettings(root, cam.Settings);
                     cam.ZoneSettings = ReadZoneSettings(root);
                 });
                 allStored = allStored && stored;
             }
 
+            // Chimes have no settings endpoint, but their list entry carries the owner, firmware, volume, features, alerts and health that
+            // nothing else stores (the download path never visits a chime). A chime row that does not exist yet is not retried by the gate.
+            foreach (Entities.Chime chime in devices.Chimes ?? [])
+            {
+                try
+                {
+                    RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, chime.Id.ToString());
+                    if (details != null && await persister.PersistAsync(chime.Id.ToString(), details, ct))
+                    {
+                        _syncRunTally?.AddConfigArea();
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("Ring chime details failed for {DeviceName} ({ErrorType}); sync continues", chime.Description ?? "Unknown Device", ex.GetType().Name);
+                }
+            }
+
+            if (_settingsPersister != null)
+            {
+                await PersistSmallDeviceEndpointsAsync(session, providerAccountId, _settingsPersister, persister, devices, ct);
+            }
+
             return allStored;
+        }
+
+        /// <summary>
+        /// Fetches the linked doorbots of each stored chime, then the snapshot timestamps of each doorbot and stickup cam. Each
+        /// chime's rows are replaced on their own. The account's snapshot rows are one set, so they are replaced once, after every
+        /// doorbot's answer, and only when all of those calls succeeded: a failed call or a null answer keeps the stored set.
+        /// Every call is isolated and logged with the device name only. A chime that is not stored yet is skipped.
+        /// </summary>
+        private async Task PersistSmallDeviceEndpointsAsync(
+            Session session,
+            Guid providerAccountId,
+            RingAccountSettingsPersister accountPersister,
+            RingDeviceSettingsPersister devicePersister,
+            Entities.Devices devices,
+            CancellationToken ct)
+        {
+            foreach (Entities.Chime chime in devices.Chimes ?? [])
+            {
+                long chimeId = chime.Id;
+                string chimeName = chime.Description ?? "Unknown Device";
+                Guid? chimeDeviceId = await devicePersister.FindStoredDeviceIdAsync(chimeId.ToString(), ct);
+                if (chimeDeviceId is null)
+                {
+                    _logger.LogDebug("Ring linked chime doorbots skipped for {DeviceName}: device row not stored yet", chimeName);
+                    continue;
+                }
+
+                Guid storedChimeId = chimeDeviceId.Value;
+                bool linked = await FetchSmallEndpointAsync(
+                    "linked chime doorbots",
+                    chimeName,
+                    () => session.GetLinkedChimeDoorbots(chimeId, ct),
+                    response => AcceptLinkedDoorbotsAsync(accountPersister, response, storedChimeId, chimeName, ct),
+                    ct);
+                if (linked)
+                {
+                    _syncRunTally?.AddConfigArea();
+                }
+            }
+
+            // Doorbots and stickup cams both answer for their own id. A device listed twice is asked once.
+            var targets = (devices.Doorbots ?? []).Concat(devices.AuthorizedDoorbots ?? [])
+                .Select(d => (Id: (long)d.Id, Name: d.Description))
+                .Concat((devices.StickupCams ?? []).Where(c => c.Id.HasValue).Select(c => (Id: c.Id!.Value, Name: c.Description)))
+                .DistinctBy(t => t.Id);
+
+            var timestamps = new List<Entities.DoorbotTimestamp>();
+            bool allFetched = true;
+            foreach ((long doorbotId, string? name) in targets)
+            {
+                string deviceName = name ?? "Unknown Device";
+                if (doorbotId < int.MinValue || doorbotId > int.MaxValue)
+                {
+                    // The snapshot endpoint takes an int id. A Ring id this large is not expected; the account set is kept rather than replaced without it.
+                    _logger.LogWarning("Ring snapshot timestamps not requested for {DeviceName}: device id is out of range; stored rows left unchanged", deviceName);
+                    allFetched = false;
+                    continue;
+                }
+
+                bool fetched = await FetchSmallEndpointAsync(
+                    "snapshot timestamps",
+                    deviceName,
+                    () => session.GetDoorbotSnapshotTimestamp((int)doorbotId),
+                    response => Task.FromResult(AddSnapshotTimestamps(response, timestamps, deviceName)),
+                    ct);
+                allFetched &= fetched;
+            }
+
+            if (!allFetched)
+            {
+                _logger.LogWarning("Ring snapshot timestamps not stored: a device's call failed or returned no data; stored rows left unchanged");
+                return;
+            }
+
+            if (await accountPersister.PersistSnapshotTimestampsAsync(new Entities.DoorbotTimestamps { Timestamp = timestamps }, providerAccountId, ct))
+            {
+                _syncRunTally?.AddConfigArea();
+            }
+        }
+
+        /// <summary>
+        /// Stores one chime's linked doorbots. An answer with no linked_doorbots list is rejected and logged with the chime name,
+        /// so it cannot count as "no linked doorbots" and clear the chime's rows.
+        /// </summary>
+        private async Task<bool> AcceptLinkedDoorbotsAsync(RingAccountSettingsPersister persister, JsonElement response, Guid chimeDeviceId, string chimeName, CancellationToken ct)
+        {
+            if (RingSmallEndpointMapper.MapChimeLinkedDoorbots(response, chimeDeviceId) is null)
+            {
+                _logger.LogWarning("Ring linked chime doorbots response had no linked_doorbots list for {DeviceName}; stored rows left unchanged", chimeName);
+                return false;
+            }
+
+            return await persister.PersistChimeLinkedDoorbotsAsync(response, chimeDeviceId, ct);
+        }
+
+        /// <summary>
+        /// Adds one answer's timestamp entries to the account set. An answer with no timestamps list is rejected (logged with the
+        /// device name), so it cannot count as an empty answer.
+        /// </summary>
+        private bool AddSnapshotTimestamps(Entities.DoorbotTimestamps response, List<Entities.DoorbotTimestamp> into, string deviceName)
+        {
+            if (response.Timestamp is null)
+            {
+                _logger.LogWarning("Ring snapshot timestamps response had no timestamps list for {DeviceName}; stored rows left unchanged", deviceName);
+                return false;
+            }
+
+            into.AddRange(response.Timestamp);
+            return true;
+        }
+
+        /// <summary>
+        /// Runs one small-endpoint call and hands a non-null answer to <paramref name="accept"/>. Returns true only when the answer
+        /// was accepted. A failed call, a null answer, or an answer the accept step rejects returns false, so the caller keeps the
+        /// stored rows. A failure is logged at Warning with the area and the subject (an account or device name), the error type
+        /// and the message: no stack trace and no exception object. Cancellation is rethrown.
+        /// </summary>
+        private async Task<bool> FetchSmallEndpointAsync<T>(string area, string subject, Func<Task<T>> fetch, Func<T, Task<bool>> accept, CancellationToken ct)
+        {
+            T value;
+            try
+            {
+                value = await fetch();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Ring {Area} fetch failed for {Subject} ({ErrorType}): {Message}; stored rows left unchanged",
+                    area, subject, ex.GetType().Name, ex.Message);
+                return false;
+            }
+
+            if (value is null)
+            {
+                _logger.LogWarning("Ring {Area} returned no data for {Subject}; stored rows left unchanged", area, subject);
+                return false;
+            }
+
+            return await accept(value);
         }
 
         /// <summary>
@@ -748,70 +920,38 @@ namespace VideoForensics.Providers.Ring.Services
                 : null;
         }
 
-        /// <summary>Scalar settings keys that the device-settings body does not carry and that the device list's settings object does.</summary>
-        private static readonly string[] ListOnlyScalarKeys = ["advanced_motion_zones_enabled", "advanced_motion_zones_type"];
-
         /// <summary>
-        /// The device-settings body does not carry the keys the device list's settings object carries: presets, advanced and ignore zones, motion
-        /// arrays, detection-type names, the advanced-motion scalars and, when the body omits it, zone_settings. Replacing the list's settings with
-        /// the body wholesale cleared those rows on every config sync. Each such key the body lacks is taken from the list entry; a key the body
-        /// sends wins. The mapper reads zone_settings from the top level and then from settings, so keeping it on settings covers both shapes.
+        /// The device-settings body does not carry everything the device list's settings object carries (presets, zones, the offline-motion
+        /// object, per-type <c>record</c> flags, the advanced-motion scalars, stickup scalars such as <c>enable_vod</c>, and more). Replacing the
+        /// list's settings with the body wholesale cleared those rows and columns on every config sync. The body is overlaid on the list's
+        /// settings key by key, objects merged recursively: a key the body sends wins (arrays and scalars replace), a key it lacks is kept.
+        /// The mapper reads <c>zone_settings</c> from the top level and then from settings, so keeping it on settings covers both shapes.
         /// </summary>
-        private static Entities.DoorbotSettings KeepListOnlySettings(Entities.DoorbotSettings body, Entities.DoorbotSettings? listEntry)
+        private static T MergeOverListSettings<T>(JsonElement body, T? listEntry) where T : class, new()
         {
-            if (listEntry == null)
+            if (listEntry == null || JsonNode.Parse(body.GetRawText()) is not JsonObject bodyObject)
             {
-                return body;
+                return body.Deserialize<T>() ?? new T();
             }
 
-            body.AdvancedMotionZones ??= listEntry.AdvancedMotionZones;
-            body.IgnoreZones ??= listEntry.IgnoreZones;
-            body.LiveViewPresets ??= listEntry.LiveViewPresets;
-            body.MotionSnoozePresets ??= listEntry.MotionSnoozePresets;
-            body.MotionZones ??= listEntry.MotionZones;
-            body.AdvancedMotionDetectionTypes ??= listEntry.AdvancedMotionDetectionTypes;
-            body.ZoneSettings ??= listEntry.ZoneSettings;
-            body.AdditionalFields = KeepMissingScalars(body.AdditionalFields, listEntry.AdditionalFields);
-            return body;
+            JsonObject merged = JsonSerializer.SerializeToNode(listEntry) as JsonObject ?? [];
+            Overlay(merged, bodyObject);
+            return merged.Deserialize<T>() ?? new T();
         }
 
-        /// <summary>Stickup cam overload of <see cref="KeepListOnlySettings(Entities.DoorbotSettings, Entities.DoorbotSettings?)"/>; the same keys.</summary>
-        private static Entities.StickupCamSettings KeepListOnlySettings(Entities.StickupCamSettings body, Entities.StickupCamSettings? listEntry)
+        private static void Overlay(JsonObject target, JsonObject source)
         {
-            if (listEntry == null)
+            foreach ((string key, JsonNode? value) in source.ToList())
             {
-                return body;
-            }
-
-            body.AdvancedMotionZones ??= listEntry.AdvancedMotionZones;
-            body.IgnoreZones ??= listEntry.IgnoreZones;
-            body.LiveViewPresets ??= listEntry.LiveViewPresets;
-            body.MotionSnoozePresets ??= listEntry.MotionSnoozePresets;
-            body.MotionZones ??= listEntry.MotionZones;
-            body.AdvancedMotionDetectionTypes ??= listEntry.AdvancedMotionDetectionTypes;
-            body.ZoneSettings ??= listEntry.ZoneSettings;
-            body.AdditionalFields = KeepMissingScalars(body.AdditionalFields, listEntry.AdditionalFields);
-            return body;
-        }
-
-        /// <summary>Copies the list-only scalar keys the body lacks from the list entry's unmodelled fields.</summary>
-        private static Dictionary<string, JsonElement>? KeepMissingScalars(Dictionary<string, JsonElement>? body, Dictionary<string, JsonElement>? listEntry)
-        {
-            if (listEntry == null)
-            {
-                return body;
-            }
-
-            body ??= [];
-            foreach (string key in ListOnlyScalarKeys)
-            {
-                if (!body.ContainsKey(key) && listEntry.TryGetValue(key, out JsonElement value))
+                if (value is JsonObject sourceChild && target[key] is JsonObject targetChild)
                 {
-                    body[key] = value;
+                    Overlay(targetChild, sourceChild);
+                }
+                else
+                {
+                    target[key] = value?.DeepClone();
                 }
             }
-
-            return body;
         }
 
         /// <summary>
@@ -889,9 +1029,53 @@ namespace VideoForensics.Providers.Ring.Services
                     await _settingsPersister.PersistAccountMonitoringStatusAsync(monitoring, location.Id, ct);
                     _syncRunTally?.AddConfigArea();
                 }
+
+                await PersistSharedUsersAsync(session, location, locationGuid, _settingsPersister, ct);
             }
 
             return accountLevelSucceeded;
+        }
+
+        /// <summary>
+        /// Fetches the users shared onto one location and replaces that location's shared-user rows. The rows reference the stored
+        /// Locations row, so a location that is not stored yet is skipped without calling Ring; the next config sync retries it.
+        /// A failed call or a null answer is logged with the location name and leaves the stored rows as they are.
+        /// </summary>
+        private async Task PersistSharedUsersAsync(Session session, Location location, Guid locationGuid, RingAccountSettingsPersister persister, CancellationToken ct)
+        {
+            VideoForensics.Data.Common.Entities.Location? storedLocation;
+            try
+            {
+                storedLocation = _locationRepository == null ? null : await _locationRepository.GetByProviderLocationIdAsync(location.Id, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Ring shared users skipped for {LocationName}: location lookup failed ({ErrorType}): {Message}",
+                    location.Name, ex.GetType().Name, ex.Message);
+                return;
+            }
+
+            if (storedLocation == null)
+            {
+                _logger.LogDebug("Ring shared users skipped for {LocationName}: location row not stored yet; the next config sync retries", location.Name);
+                return;
+            }
+
+            Guid storedLocationId = storedLocation.Id;
+            bool saved = await FetchSmallEndpointAsync(
+                "shared users",
+                location.Name,
+                () => session.GetSharedUsers(locationGuid),
+                users => persister.PersistLocationSharedUsersAsync(users, storedLocationId, ct),
+                ct);
+            if (saved)
+            {
+                _syncRunTally?.AddConfigArea();
+            }
         }
 
         /// <summary>
