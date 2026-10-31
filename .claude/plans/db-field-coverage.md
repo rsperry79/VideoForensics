@@ -49,7 +49,18 @@ Checker on the saved 2026-10-31 run: 0 unmapped paths (from 665). That is a path
 8. ~~**Batch G**~~ done with H/I: `RingLocationDetails` (13 Ring-only keys), `LocationMetadata` +`StreetAddress2`/`CrossStreet` (country/lat/lon now filled).
 9. ~~**Batch H/I**~~ done (222 -> 136): new `RingLocationSharedUsers` (+devices, +permissions), `RingChimeLinkedDoorbot`, `RingSnapshotTimestamp`, key-moments / objects-per-lens / visualization / cek columns, extra health columns; `doorbot-health` / `chime-health` mapped to the same targets as the devices-response health object; `notYetParticipatingInMode[]` and `events[]` as `NotData`.
 
+## Next (open, in order)
+1. DECISION NEEDED: `RemainderJson` removes whole groups (`network_settings`, `cv_paid_features`, `other_paid_features`, `offline_motion_event_settings`), so unknown sub-keys in them are dropped without a note. Fix by removing only typed keys, or accept.
+2. DECISION NEEDED: wrong-typed values for the 12 newly removed paths (PIR, chime, motion detection, volume) are dropped without a note. Add notes, or accept.
+3. DECISION NEEDED: the stored "raw payload" was the app's serialized event model, not the Ring JSON, so a genuinely new Ring key never reaches the unknown list. Capturing it needs `[JsonExtensionData]` on `DoorbotHistoryEvent`, which changes hashes for payloads with such keys.
+4. Run `--strip-raw-payload --db-path <file> --dump-file <ndjson> --yes` on the real DB. Expected: 5,236 raw rows become NULL. Not run yet. It makes a backup first.
+5. Apply the migrations to the live DB (app start), run a real sync, then rerun `--check-dir` and `--list-unknown`.
+6. `zone_settings` is unproven: `DeviceZones` has 0 rows in the live DB.
+7. Nov 1: confirm the `battery_temp` unit (`plans/todo.md`).
+8. Remove the old `F:\VF-*` worktrees once confirmed merged.
+
 ## Working rules (cost and process)
+- **Subagents: HAIKU only.** Every subagent in this project runs on `model: "haiku"`. Anything above Haiku needs an explicit yes from the user, for that one spawn. Earlier non-Haiku spawns broke this rule and are logged.
 - Subagents: `haiku` for mechanical batches whose spec is complete (tables, columns, parser entries, map entries, tests from a given list). `sonnet` only for design, migration-sensitive or review work, with the criterion named before spawning. Verify every result yourself.
 - One agent at a time per shared file set; one `dotnet` build or test at a time; no full-suite runs while another build is active.
 - Keep large JSON and file dumps out of the main thread (use scripts that print counts).
