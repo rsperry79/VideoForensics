@@ -94,6 +94,11 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string RingId { get; set; }
 
+        /// <summary>Top-level created_at as Ring sends it (ISO-8601 text). Parsed to UTC by the settings parser.</summary>
+        [JsonPropertyName("created_at")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? CreatedAt { get; set; }
+
         [JsonPropertyName("owner")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Owner Owner { get; set; }

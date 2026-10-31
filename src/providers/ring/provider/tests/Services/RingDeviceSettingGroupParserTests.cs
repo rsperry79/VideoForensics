@@ -74,8 +74,8 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(remainder);
             JsonObject root = JsonNode.Parse(remainder!)!.AsObject();
             Assert.False(root.ContainsKey("offline_motion_event_settings"));
-            Assert.True(root.ContainsKey("motion_snooze_preset_profile"));
-            Assert.True(root.ContainsKey("advanced_motion_detection_enabled"));
+            Assert.False(root.ContainsKey("motion_snooze_preset_profile"));
+            Assert.False(root.ContainsKey("advanced_motion_detection_enabled"));
             JsonObject cv = root["cv_settings"]!.AsObject();
             Assert.False(cv.ContainsKey("detection_types"));
             Assert.True(cv.ContainsKey("concierge_settings"));
@@ -88,14 +88,14 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void RingDeviceSettingGroupParser_NoTypedKeys_ReturnsEmptyGroupsAndOriginalRemainder()
         {
-            Dictionary<string, JsonElement> fields = Fields("{\"motion_snooze_preset_profile\":\"low\"}");
+            Dictionary<string, JsonElement> fields = Fields("{\"unmodeled_fake_key\":\"low\"}");
 
             TypedSettingDetails groups = RingDeviceSettingGroupParser.Parse(fields);
 
             Assert.Null(groups.OfflineMotion);
             Assert.Empty(groups.DetectionTypes);
             Assert.Empty(groups.Thresholds);
-            Assert.Equal("{\"motion_snooze_preset_profile\":\"low\"}", RingDeviceSettingGroupParser.RemainderJson(fields)!.Replace(" ", string.Empty));
+            Assert.Equal("{\"unmodeled_fake_key\":\"low\"}", RingDeviceSettingGroupParser.RemainderJson(fields)!.Replace(" ", string.Empty));
         }
 
         [Fact]
@@ -112,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void RingDeviceSettingGroupParser_RemainderJson_ExcludesPaidFeatureAndNetworkGroups()
         {
             Dictionary<string, JsonElement> fields = Fields("""
-                {"motion_snooze_preset_profile": "low",
+                {"unmodeled_fake_key": "low",
                  "cv_paid_features": {"baby_cry": true},
                  "other_paid_features": {"ding_call": false},
                  "network_settings": {"multi_net_pref": 1, "network_diagnosis": {"tcp_port": 5201}}}
@@ -122,7 +122,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             Assert.NotNull(remainder);
             JsonObject root = JsonNode.Parse(remainder!)!.AsObject();
-            Assert.True(root.ContainsKey("motion_snooze_preset_profile"));
+            Assert.True(root.ContainsKey("unmodeled_fake_key"));
             Assert.False(root.ContainsKey("cv_paid_features"));
             Assert.False(root.ContainsKey("other_paid_features"));
             Assert.False(root.ContainsKey("network_settings"));

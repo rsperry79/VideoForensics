@@ -36,7 +36,9 @@ namespace VideoForensics.Providers.Ring.Services
         RingDeviceDetailsRow? RingRow = null,
         int? LedSecondsRemaining = null,
         bool? LedOn = null,
-        RingNetworkGroups? NetworkGroups = null);
+        RingNetworkGroups? NetworkGroups = null,
+        string? AlertOtaStatus = null,
+        RingSettingsGroups? SettingsGroups = null);
 
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
@@ -171,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Services
                 Stolen: s.Stolen,
                 EnableVod: st?.EnableVod,
                 ExposureControl: ToInt(st?.ExposureControl),
-                MotionSnoozePresetProfile: st?.MotionSnoozePresetProfile,
+                MotionSnoozePresetProfile: st?.MotionSnoozePresetProfile ?? NestedText(st?.AdditionalFields, "motion_settings", "motion_snooze_preset_profile"),
                 LiveViewPresetProfile: st?.LiveViewPresetProfile,
                 PirSensitivity1: ToInt(st?.PirSensitivity1),
                 VodSuspended: ToFlag(st?.VodSuspended),
@@ -384,6 +386,16 @@ namespace VideoForensics.Providers.Ring.Services
                 };
             }
 
+            // The Ring settings and general settings rows are null (stored rows untouched) when the device sent no settings object.
+            if (details.SettingsGroups is { } settingRows)
+            {
+                children = (children ?? new DeviceSettingsChildren([], [], [])) with
+                {
+                    RingSettings = settingRows.Ring == null ? null : CopyRow(settingRows.Ring, deviceId),
+                    GeneralSettings = settingRows.General == null ? null : CopyRow(settingRows.General, deviceId)
+                };
+            }
+
             return children;
         }
 
@@ -483,9 +495,48 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public static IReadOnlyList<DeviceAlerts> ToAlerts(RingDeviceDetails details, Guid deviceId)
         {
-            return string.IsNullOrWhiteSpace(details.AlertConnection)
-                ? []
-                : [new DeviceAlerts { Id = Guid.NewGuid(), DeviceId = deviceId, AlertType = "connection", IsEnabled = null, AlertValue = details.AlertConnection }];
+            var rows = new List<DeviceAlerts>();
+            if (!string.IsNullOrWhiteSpace(details.AlertConnection))
+            {
+                rows.Add(new DeviceAlerts { Id = Guid.NewGuid(), DeviceId = deviceId, AlertType = "connection", IsEnabled = null, AlertValue = details.AlertConnection });
+            }
+
+            // alerts.ota_status is stored the same way as the connection status: a row whose value is the Ring text.
+            if (!string.IsNullOrWhiteSpace(details.AlertOtaStatus))
+            {
+                rows.Add(new DeviceAlerts { Id = Guid.NewGuid(), DeviceId = deviceId, AlertType = "ota_status", IsEnabled = null, AlertValue = details.AlertOtaStatus });
+            }
+
+            return rows;
+        }
+
+        /// <summary>
+        /// Stickup cam settings keys that StickupCamSettings types are absent from AdditionalFields, so their typed values are copied onto the
+        /// settings row here. The row keeps the parser value for the snooze profile when the typed key is absent.
+        /// </summary>
+        private static void ApplyStickupTyped(RingDeviceSettings? ring, StickupCamSettings? st)
+        {
+            if (ring == null || st == null)
+            {
+                return;
+            }
+
+            ring.EnableVod = st.EnableVod;
+            ring.ExposureControl = ToInt(st.ExposureControl);
+            ring.VodSuspended = ToFlag(st.VodSuspended);
+            ring.PirSensitivity1 = ToInt(st.PirSensitivity1);
+            ring.EnableAudioRecording = st.EnableAudioRecording;
+            ring.AdvancedMotionDetectionEnabled = st.AdvancedMotionDetectionEnabled;
+            ring.AdvancedMotionDetectionHumanOnlyMode = st.AdvancedMotionDetectionHumanOnlyMode;
+            ring.LiveViewPresetProfile = st.LiveViewPresetProfile;
+            ring.MotionSnoozePresetProfile = st.MotionSnoozePresetProfile ?? ring.MotionSnoozePresetProfile;
+        }
+
+        /// <summary>A string value from a nested object of additional fields; null when absent or not a string.</summary>
+        private static string? NestedText(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
+        {
+            return fields != null && fields.TryGetValue(objectKey, out JsonElement obj) && obj.ValueKind == JsonValueKind.Object
+                && obj.TryGetProperty(valueKey, out JsonElement v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
         }
 
         /// <summary>Parses a features object and adds its unstored-value notes to the device's notes.</summary>
@@ -507,6 +558,8 @@ namespace VideoForensics.Providers.Ring.Services
             notes.AddRange(health?.Unstored ?? []);
             RingNetworkGroups groups = RingDeviceNetworkParser.Parse(d.Settings?.AdditionalFields);
             notes.AddRange(groups.Unstored);
+            RingSettingsGroups settings = RingDeviceSettingsParser.Parse(d.Settings != null, d.Settings?.AdditionalFields, d.CreatedAt);
+            notes.AddRange(settings.Unstored);
             return new RingDeviceDetails(
                 TimeZone: d.TimeZone,
                 FirmwareVersion: d.FirmwareVersion,
@@ -526,7 +579,9 @@ namespace VideoForensics.Providers.Ring.Services
                 ReportedHealth: health,
                 UnstoredNotes: notes,
                 RingRow: top.Row,
-                NetworkGroups: groups);
+                NetworkGroups: groups,
+                AlertOtaStatus: d.Alerts?.OtaStatus,
+                SettingsGroups: settings);
         }
 
         private static RingDeviceDetails FromStickupCam(StickupCam s)
@@ -541,6 +596,9 @@ namespace VideoForensics.Providers.Ring.Services
             notes.AddRange(health?.Unstored ?? []);
             RingNetworkGroups groups = RingDeviceNetworkParser.Parse(s.Settings?.AdditionalFields);
             notes.AddRange(groups.Unstored);
+            RingSettingsGroups settings = RingDeviceSettingsParser.Parse(s.Settings != null, s.Settings?.AdditionalFields, s.CreatedAt);
+            ApplyStickupTyped(settings.Ring, s.Settings);
+            notes.AddRange(settings.Unstored);
             return new RingDeviceDetails(
                 TimeZone: s.TimeZone,
                 FirmwareVersion: s.FirmwareVersion,
@@ -562,7 +620,9 @@ namespace VideoForensics.Providers.Ring.Services
                 RingRow: top.Row,
                 LedSecondsRemaining: ledSeconds,
                 LedOn: ledOn,
-                NetworkGroups: groups);
+                NetworkGroups: groups,
+                AlertOtaStatus: s.Alerts?.OtaStatus,
+                SettingsGroups: settings);
         }
 
         private static RingDeviceDetails FromChime(Chime c)
@@ -573,6 +633,8 @@ namespace VideoForensics.Providers.Ring.Services
             DeviceDetailFields fields = ToDeviceFields(c, top, notes);
             RingReportedHealth? health = RingDeviceHealthParser.Parse(c.Health);
             notes.AddRange(health?.Unstored ?? []);
+            RingSettingsGroups settings = RingDeviceSettingsParser.Parse(c.Settings != null, c.Settings?.AdditionalFields, c.CreatedAt);
+            notes.AddRange(settings.Unstored);
             return new RingDeviceDetails(
                 TimeZone: c.TimeZone,
                 FirmwareVersion: c.FirmwareVersion,
@@ -591,7 +653,9 @@ namespace VideoForensics.Providers.Ring.Services
                 FeatureDetails: c.Features == null ? null : ParseFeatures(c.Features.AdditionalFeatures, notes),
                 ReportedHealth: health,
                 UnstoredNotes: notes,
-                RingRow: top.Row);
+                RingRow: top.Row,
+                AlertOtaStatus: c.Alerts?.OtaStatus,
+                SettingsGroups: settings);
         }
 
         private static IReadOnlyList<AdvancedMotionZoneDetail> ToZoneDetails(AdvancedMotionZones zones)

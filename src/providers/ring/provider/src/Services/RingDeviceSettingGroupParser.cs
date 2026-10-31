@@ -86,6 +86,8 @@ namespace VideoForensics.Providers.Ring.Services
                 root[field.Key] = JsonNode.Parse(field.Value.GetRawText());
             }
 
+            // Keys the settings-row parser types (RingDeviceSettings, DeviceGeneralSettings) are not stored a second time in the remainder.
+            RingDeviceSettingsParser.RemoveTypedKeys(root);
             _ = root.Remove(OfflineMotionKey);
             // These groups have typed rows (RingDevicePaidFeatures, DeviceNetworkSettings, RingDeviceNetworkDiagnosis), so they are not stored twice.
             _ = root.Remove(CvPaidKey);

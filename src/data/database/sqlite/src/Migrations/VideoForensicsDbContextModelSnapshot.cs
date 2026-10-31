@@ -1181,6 +1181,50 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DeviceFeatures");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceGeneralSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ExtendedLiveView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FloodlightBrightness")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("LiveViewDisabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("LoiteringThreshold")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MotionAnnouncement")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("StatusLedEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UserSpecifiedRecordingTtl")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("VoiceVolume")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("DeviceGeneralSettings");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealth", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4792,6 +4836,173 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingDevicePaidFeatures");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("ActiveStreamingEventLedEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("AdvancedMotionDetectionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("AdvancedMotionDetectionHumanOnlyMode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ConciergeAlexaDelayMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ConciergeAutoreplyDelayMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ConciergeMode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("EnableAudioRecording")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EnableLiveViewAudioOverride")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EnableRichNotifications")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EnableVod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EncryptionEligibilityMode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("EncryptionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EncryptionMethod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ExposureControl")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FlickElimRecommendedMode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Lite24x7Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Lite24x7FootageTtl")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Lite24x7FrequencySecs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Lite24x7ResolutionP")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Lite24x7Subscribed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LiveViewPresetProfile")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MotionSensitivityProfile")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MotionSnoozePresetProfile")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("NaturalLanguageSearchEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NaturalLanguageSearchMode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PeopleDetectionEligible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirSensitivity1")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirZone1Sensitivity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirZone2Sensitivity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirZone3Sensitivity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirZone4Sensitivity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirZone5Sensitivity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirZone6Sensitivity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Recording24x7Mode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("RichNotificationsBillingEligible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("RichNotificationsFaceCropEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RichNotificationsSceneSource")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RingCreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("RingMediaServerEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RingMediaServerHost")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("SheilaCvProcessingEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SheilaLocalStorageEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("StarkEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("StarkEnrolled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TermsOfServiceAccepted")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("VodSuspended")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceSettings");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDoorbotHistoryEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6260,6 +6471,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceGeneralSettings", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithOne()
+                        .HasForeignKey("VideoForensics.Data.Common.Entities.DeviceGeneralSettings", "DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealthRpcCommand", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.DeviceHealth", null)
@@ -6494,6 +6714,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
                         .WithOne()
                         .HasForeignKey("VideoForensics.Data.Common.Entities.RingDevicePaidFeatures", "DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceSettings", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithOne()
+                        .HasForeignKey("VideoForensics.Data.Common.Entities.RingDeviceSettings", "DeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

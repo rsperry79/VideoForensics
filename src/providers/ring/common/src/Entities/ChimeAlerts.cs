@@ -6,5 +6,10 @@ namespace VideoForensics.Providers.Ring.Entities
     {
         [JsonPropertyName("connection")]
         public string Connection { get; set; }
+
+        /// <summary>alerts.ota_status (firmware update status text). Absent on some devices, so null is normal.</summary>
+        [JsonPropertyName("ota_status")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? OtaStatus { get; set; }
     }
 }

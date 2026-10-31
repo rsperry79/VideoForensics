@@ -340,6 +340,12 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the Ring-only network diagnosis of a device.</summary>
         public DbSet<RingDeviceNetworkDiagnosis> RingDeviceNetworkDiagnosis { get; set; }
 
+        /// <summary>Gets or sets the Ring-only scalar settings of a device (settings keys and created_at).</summary>
+        public DbSet<RingDeviceSettings> RingDeviceSettings { get; set; }
+
+        /// <summary>Gets or sets the provider-agnostic general settings of a device.</summary>
+        public DbSet<DeviceGeneralSettings> DeviceGeneralSettings { get; set; }
+
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
 

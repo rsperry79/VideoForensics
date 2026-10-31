@@ -1,9 +1,15 @@
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
     public class ChimeSettings
     {
+        /// <summary>Settings keys this model does not name (for example status_led_enable). Read by the settings parser; not stored as JSON.</summary>
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? AdditionalFields { get; set; }
+
         [JsonPropertyName("volume")]
         public int Volume { get; set; }
 
