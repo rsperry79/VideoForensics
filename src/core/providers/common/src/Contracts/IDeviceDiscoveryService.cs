@@ -100,7 +100,6 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         string? BatteryLife2 = null,
         decimal? BatteryVoltage = null,
         decimal? BatteryVoltage2 = null,
-        string? LedStatus = null,
         int? SirenSecondsRemaining = null,
         int? NightMode = null,
         string? MotionSnoozeJson = null,
@@ -122,8 +121,7 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         IReadOnlyList<DetectionTypeDetail>? DetectionTypes = null,
         IReadOnlyList<DetectionThresholdDetail>? DetectionThresholds = null,
         DateTime? DeactivatedAtUtc = null,
-        DateTime? SharedAtUtc = null,
-        int? LedSecondsRemaining = null
+        DateTime? SharedAtUtc = null
     );
 
     /// <summary>

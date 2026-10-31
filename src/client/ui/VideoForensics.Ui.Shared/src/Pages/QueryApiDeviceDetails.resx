@@ -98,9 +98,6 @@
   <data name="Detail_Latitude" xml:space="preserve">
     <value>Latitude</value>
   </data>
-  <data name="Detail_LedStatus" xml:space="preserve">
-    <value>Led Status</value>
-  </data>
   <data name="Detail_LightBrightness" xml:space="preserve">
     <value>Light Brightness</value>
   </data>

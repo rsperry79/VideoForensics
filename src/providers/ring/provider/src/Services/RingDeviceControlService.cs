@@ -22,19 +22,27 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ISessionProvider _sessionProvider;
         private readonly IDeviceRepository _devices;
         private readonly ILocationRepository _locations;
+        private readonly IDeviceLightEventRepository _lightEvents;
 
-        public RingDeviceControlService(ILogger logger, ISessionProvider sessionProvider, IDeviceRepository devices, ILocationRepository locations)
+        public RingDeviceControlService(ILogger logger, ISessionProvider sessionProvider, IDeviceRepository devices, ILocationRepository locations, IDeviceLightEventRepository lightEvents)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _devices = devices ?? throw new ArgumentNullException(nameof(devices));
             _locations = locations ?? throw new ArgumentNullException(nameof(locations));
+            _lightEvents = lightEvents ?? throw new ArgumentNullException(nameof(lightEvents));
         }
 
         public async Task SetLightAsync(string providerDeviceId, bool on, CancellationToken ct)
         {
             ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
             await target.Session.SetLight(target.DoorbotId, on, ct);
+            if (on)
+            {
+                // The call returns no duration, so the command event carries none. Recorded only after Ring accepted it.
+                await _lightEvents.AddCommandAsync(target.DeviceId, DateTime.UtcNow, null, ct);
+            }
+
             Audit(target.Name, "Light");
         }
 
@@ -82,7 +90,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         // Resolved once per control: the Ring SDK session for the device's single linked account, the numeric
         // Ring id, and the display name stored on the Device row. The control path never reads device state from Ring.
-        private sealed record ResolvedControlTarget(Session Session, long DoorbotId, string Name);
+        private sealed record ResolvedControlTarget(Session Session, long DoorbotId, string Name, Guid DeviceId);
 
         // Resolves the device by provider id, then the Ring account linked to its location. Fails closed:
         // zero or several Ring accounts throw before any provider call, so a control cannot land on the wrong account.
@@ -119,7 +127,7 @@ namespace VideoForensics.Providers.Ring.Services
             Session session = _sessionProvider.GetSession(ringAccounts[0].Id)
                 ?? throw new InvalidOperationException("Ring account is not signed in.");
 
-            return new ResolvedControlTarget(session, id, device.Name);
+            return new ResolvedControlTarget(session, id, device.Name, device.Id);
         }
 
         // Logs the device name and control name only, never Ring ids or URLs.

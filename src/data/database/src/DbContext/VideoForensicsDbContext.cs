@@ -95,6 +95,8 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the device setting change history.</summary>
         public DbSet<DeviceSettingChange> DeviceSettingChanges { get; set; }
 
+        public DbSet<DeviceLightEvent> DeviceLightEvents { get; set; }
+
         /// <summary>Gets or sets the provider reconciliation records.</summary>
         public DbSet<ProviderReconciliationRecord> ProviderReconciliationRecords { get; set; }
 

@@ -34,6 +34,7 @@ namespace VideoForensics.Providers.Ring.Tests
             public required CommonContracts.IDeviceControlService Service { get; init; }
             public required Mock<Session> Session { get; init; }
             public required Mock<ISessionProvider> SessionProvider { get; init; }
+            public required Mock<IDeviceLightEventRepository> LightEvents { get; init; }
         }
 
         private static List<DeviceEntity> BuildDeviceRows()
@@ -65,8 +66,9 @@ namespace VideoForensics.Providers.Ring.Tests
                 .ReturnsAsync(linkedAccounts ?? [BuildAccount(RingAccountId, "Ring")]);
 
             ILogger logger = new Mock<ILogger>().Object;
-            var service = new RingDeviceControlService(logger, sessionProvider.Object, deviceRepository.Object, locationRepository.Object);
-            return new Harness { Service = service, Session = session, SessionProvider = sessionProvider };
+            var lightEvents = new Mock<IDeviceLightEventRepository>();
+            var service = new RingDeviceControlService(logger, sessionProvider.Object, deviceRepository.Object, locationRepository.Object, lightEvents.Object);
+            return new Harness { Service = service, Session = session, SessionProvider = sessionProvider, LightEvents = lightEvents };
         }
 
         [Fact]
@@ -77,6 +79,38 @@ namespace VideoForensics.Providers.Ring.Tests
             await h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None);
 
             h.Session.Verify(s => s.SetLight(123L, true, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SetLightAsync_On_RecordsCommandEventWithNullSecondsForThatDevice()
+        {
+            List<DeviceEntity> rows = BuildDeviceRows();
+            Harness h = Build(deviceRows: rows);
+
+            await h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None);
+
+            h.LightEvents.Verify(r => r.AddCommandAsync(rows[0].Id, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SetLightAsync_Off_RecordsNoEvent()
+        {
+            Harness h = Build();
+
+            await h.Service.SetLightAsync(DoorbotProviderId, false, CancellationToken.None);
+
+            h.LightEvents.Verify(r => r.AddCommandAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SetLightAsync_SessionThrows_RecordsNoEvent()
+        {
+            Harness h = Build();
+            _ = h.Session.Setup(s => s.SetLight(It.IsAny<long>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None));
+
+            h.LightEvents.Verify(r => r.AddCommandAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -199,7 +233,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var locationRepository = new Mock<ILocationRepository>();
             _ = locationRepository.Setup(r => r.ListProviderAccountsForLocationAsync(LocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([BuildAccount(RingAccountId, "Ring")]);
-            var service = new RingDeviceControlService(new Mock<ILogger>().Object, sessionProvider.Object, deviceRepository.Object, locationRepository.Object);
+            var service = new RingDeviceControlService(new Mock<ILogger>().Object, sessionProvider.Object, deviceRepository.Object, locationRepository.Object, new Mock<IDeviceLightEventRepository>().Object);
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None));
 

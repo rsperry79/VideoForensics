@@ -91,7 +91,8 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ILogger<RingDeviceControlService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceRepository>(),
-                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationRepository>());
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationRepository>(),
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceLightEventRepository>());
         }
 
         /// <summary>

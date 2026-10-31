@@ -679,8 +679,6 @@ namespace VideoForensics.Data.Core.Services
             device.BatteryVoltage = details.BatteryVoltage;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryVoltage2), device.BatteryVoltage2, details.BatteryVoltage2);
             device.BatteryVoltage2 = details.BatteryVoltage2;
-            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LedStatus), device.LedStatus, details.LedStatus);
-            device.LedStatus = details.LedStatus;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SirenSecondsRemaining), device.SirenSecondsRemaining, details.SirenSecondsRemaining);
             device.SirenSecondsRemaining = details.SirenSecondsRemaining;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.NightMode), device.NightMode, details.NightMode);
@@ -715,8 +713,6 @@ namespace VideoForensics.Data.Core.Services
             device.DeactivatedAtUtc = details.DeactivatedAtUtc;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SharedAtUtc), device.SharedAtUtc, details.SharedAtUtc);
             device.SharedAtUtc = details.SharedAtUtc;
-            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LedSecondsRemaining), device.LedSecondsRemaining, details.LedSecondsRemaining);
-            device.LedSecondsRemaining = details.LedSecondsRemaining;
         }
 
         public async Task<Device> EnsureDeviceAsync(

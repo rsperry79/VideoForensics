@@ -123,9 +123,6 @@ namespace VideoForensics.Data.Common.Entities
 
         public decimal? BatteryVoltage2 { get; set; }
 
-        /// <summary>Stickup cam led_status as text: the string value, or the raw JSON when Ring sends an object or number.</summary>
-        public string? LedStatus { get; set; }
-
         /// <summary>Seconds remaining on a stickup cam siren_status.</summary>
         public int? SirenSecondsRemaining { get; set; }
 
@@ -171,9 +168,6 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Ring shared_at, UTC. Null in every captured sample, so the type is a best guess.</summary>
         public DateTime? SharedAtUtc { get; set; }
-
-        /// <summary>Seconds remaining on led_status.</summary>
-        public int? LedSecondsRemaining { get; set; }
 
         /// <summary>
         /// Local kill switch for server-side snapshot capture (SnapshotCaptureService). Not a Ring setting: Ring syncs update an

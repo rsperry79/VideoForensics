@@ -638,12 +638,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double?>("Latitude")
                         .HasColumnType("REAL");
 
-                    b.Property<int?>("LedSecondsRemaining")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LedStatus")
-                        .HasColumnType("TEXT");
-
                     b.Property<int?>("LightBrightness")
                         .HasColumnType("INTEGER");
 
@@ -1429,6 +1423,34 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceHealthId");
 
                     b.ToTable("DeviceHealthRpcCommands");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceLightEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsOn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SecondsRemaining")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "OccurredAtUtc");
+
+                    b.ToTable("DeviceLightEvents");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceLiveViewPreset", b =>
@@ -6036,6 +6058,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasOne("VideoForensics.Data.Common.Entities.DeviceHealth", null)
                         .WithMany("SupportedRpcCommands")
                         .HasForeignKey("DeviceHealthId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceLightEvent", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -369,6 +369,12 @@ namespace VideoForensics.Data.Database.Repositories
             await ReplaceFeatureStatesAsync(db, deviceId, settings, ct);
             await ReplaceReportedHealthAsync(db, deviceId, settings, ct);
             await ReplaceRingDetailsAsync(db, deviceId, settings, ct);
+            // An Observed light event is written only on an off-to-on transition, in the same save as the rest of the sync.
+            _ = await DeviceLightEventRepository.AddObservedIfTransitionAsync(db, deviceId, settings.LightSecondsRemaining, changedAtUtc, ct);
+            if (settings.LightIsOn is { } lightOn)
+            {
+                _ = await DeviceLightEventRepository.AddObservedStateIfChangedAsync(db, deviceId, lightOn, changedAtUtc, ct);
+            }
 
             db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
             db.DeviceLiveViewPresets.RemoveRange(storedLive);

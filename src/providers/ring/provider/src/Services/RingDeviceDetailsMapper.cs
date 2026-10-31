@@ -33,7 +33,9 @@ namespace VideoForensics.Providers.Ring.Services
         RingFeatureDetails? FeatureDetails = null,
         RingReportedHealth? ReportedHealth = null,
         IReadOnlyList<string>? UnstoredNotes = null,
-        RingDeviceDetailsRow? RingRow = null);
+        RingDeviceDetailsRow? RingRow = null,
+        int? LedSecondsRemaining = null,
+        bool? LedOn = null);
 
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
@@ -190,7 +192,6 @@ namespace VideoForensics.Providers.Ring.Services
                 BatteryLife2: s.BatteryLife2?.ToString(CultureInfo.InvariantCulture),
                 BatteryVoltage: s.BatteryVoltage,
                 BatteryVoltage2: s.BatteryVoltage2,
-                LedStatus: JsonText(s.LedStatus),
                 SirenSecondsRemaining: ToInt(s.SirenStatus?.SecondsRemaining),
                 NightMode: ToInt(s.NightMode),
                 MotionSnoozeJson: RawJson(s.MotionSnooze),
@@ -206,7 +207,6 @@ namespace VideoForensics.Providers.Ring.Services
                 PirSettingsZoneMask: ToInt(st?.PirSettings?.ZoneMask),
                 Zones: ToZoneSettingsDetails(s.ZoneSettings),
                 AdvancedObjectSettings: ToObjectSettingDetails(st?.AdvancedObjectSettings),
-                LedSecondsRemaining: LedSeconds(s.LedStatus, notes),
                 DeactivatedAtUtc: top.DeactivatedAtUtc, SharedAtUtc: top.SharedAtUtc);
         }
 
@@ -353,7 +353,12 @@ namespace VideoForensics.Providers.Ring.Services
                 children = (children ?? new DeviceSettingsChildren([], [], [])) with { FeatureStates = states };
             }
 
-            children = (children ?? new DeviceSettingsChildren([], [], [])) with { RingDetails = details.RingRow == null ? null : CopyRow(details.RingRow, deviceId) };
+            children = (children ?? new DeviceSettingsChildren([], [], [])) with
+            {
+                RingDetails = details.RingRow == null ? null : CopyRow(details.RingRow, deviceId),
+                LightSecondsRemaining = details.LedSecondsRemaining,
+                LightIsOn = details.LedOn
+            };
 
             // Health stays null (stored rows untouched) when Ring sent no health object; an empty object still yields a row of nulls.
             if (details.ReportedHealth != null)
@@ -508,6 +513,7 @@ namespace VideoForensics.Providers.Ring.Services
             var notes = new List<string>();
             RingTopLevelFields top = TopOf(s, notes);
             DeviceDetailFields fields = ToDeviceFields(s, top, notes);
+            (int? ledSeconds, bool? ledOn) = LedState(s.LedStatus, notes);
             RingReportedHealth? health = RingDeviceHealthParser.Parse(s.Health);
             notes.AddRange(health?.Unstored ?? []);
             return new RingDeviceDetails(
@@ -528,7 +534,9 @@ namespace VideoForensics.Providers.Ring.Services
                 FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures),
                 ReportedHealth: health,
                 UnstoredNotes: notes,
-                RingRow: top.Row);
+                RingRow: top.Row,
+                LedSecondsRemaining: ledSeconds,
+                LedOn: ledOn);
         }
 
         private static RingDeviceDetails FromChime(Chime c)
@@ -590,22 +598,40 @@ namespace VideoForensics.Providers.Ring.Services
             result.Add(new AdvancedMotionZoneDetail(zoneKey, zone.Name, ToInt(zone.State), present));
         }
 
-        /// <summary>Reads led_status.seconds_remaining. A non-object, or seconds that are not a whole number, are noted and not stored.</summary>
-        private static int? LedSeconds(JsonElement? led, List<string>? notes)
+        /// <summary>
+        /// Reads led_status for a light event: the object form gives seconds remaining; the plain strings "on" and "off" give the
+        /// state with no duration. Any other shape (a number, another string, an object without whole-number seconds) is noted by
+        /// key and JSON type only and not stored.
+        /// </summary>
+        private static (int? Seconds, bool? On) LedState(JsonElement? led, List<string>? notes)
         {
-            if (led is not { } e || e.ValueKind == JsonValueKind.Null)
+            if (led is not { } e || e.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             {
-                return null;
+                return (null, null);
             }
 
             if (e.ValueKind == JsonValueKind.Object && e.TryGetProperty("seconds_remaining", out JsonElement seconds)
                 && RingJsonValue.TryInt(seconds, out int? value))
             {
-                return value;
+                return (value, null);
+            }
+
+            if (e.ValueKind == JsonValueKind.String)
+            {
+                string? text = e.GetString();
+                if (string.Equals(text, "on", StringComparison.OrdinalIgnoreCase))
+                {
+                    return (null, true);
+                }
+
+                if (string.Equals(text, "off", StringComparison.OrdinalIgnoreCase))
+                {
+                    return (null, false);
+                }
             }
 
             notes?.Add($"led_status.seconds_remaining not stored: missing or unexpected shape ({e.ValueKind})");
-            return null;
+            return (null, null);
         }
 
         private static string? OwnerIdText(Owner? owner)
@@ -690,14 +716,6 @@ namespace VideoForensics.Providers.Ring.Services
         private static string? RawJson(JsonElement? value)
         {
             return value is { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined } element ? element.GetRawText() : null;
-        }
-
-        /// <summary>A string value as its text, or the raw JSON of a non-string value, or null when Ring omitted it.</summary>
-        private static string? JsonText(JsonElement? value)
-        {
-            return value is not { } element || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
-                ? null
-                : element.ValueKind == JsonValueKind.String ? element.GetString() : element.GetRawText();
         }
 
         /// <summary>Serializes the settings keys not modelled by a named column. Null when there are none.</summary>

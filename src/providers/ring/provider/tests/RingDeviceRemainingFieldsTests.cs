@@ -134,24 +134,6 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void ToDeviceFields_StickupCamLedStatusString_StoredAsText()
-        {
-            DeviceDetailFields? f = StickupFields(Parse<StickupCam>("{\"id\":9,\"led_status\":\"on\"}"));
-
-            Assert.NotNull(f);
-            Assert.Equal("on", f!.LedStatus);
-        }
-
-        [Fact]
-        public void ToDeviceFields_StickupCamLedStatusObject_StoredAsRawJson()
-        {
-            DeviceDetailFields? f = StickupFields(Parse<StickupCam>("{\"id\":9,\"led_status\":{\"seconds_remaining\":0}}"));
-
-            Assert.NotNull(f);
-            Assert.Equal("{\"seconds_remaining\":0}", f!.LedStatus);
-        }
-
-        [Fact]
         public void ToDeviceFields_StickupCamSirenStatus_MapsSecondsRemaining()
         {
             DeviceDetailFields? f = StickupFields(Parse<StickupCam>("{\"id\":9,\"siren_status\":{\"seconds_remaining\":30}}"));

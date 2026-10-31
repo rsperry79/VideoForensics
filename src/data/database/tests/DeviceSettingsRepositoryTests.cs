@@ -130,7 +130,6 @@ namespace VideoForensics.Data.Database.Tests
                 device.BatteryLife2 = "55";
                 device.BatteryVoltage = 12.5m;
                 device.BatteryVoltage2 = 3.3m;
-                device.LedStatus = "{\"seconds_remaining\":0}";
                 device.SirenSecondsRemaining = 30;
                 device.NightMode = 1;
                 device.MotionSnoozeJson = "{\"until\":5}";
@@ -156,7 +155,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("55", stored.BatteryLife2);
             Assert.Equal(12.5m, stored.BatteryVoltage);
             Assert.Equal(3.3m, stored.BatteryVoltage2);
-            Assert.Equal("{\"seconds_remaining\":0}", stored.LedStatus);
             Assert.Equal(30, stored.SirenSecondsRemaining);
             Assert.Equal(1, stored.NightMode);
             Assert.Equal("{\"until\":5}", stored.MotionSnoozeJson);

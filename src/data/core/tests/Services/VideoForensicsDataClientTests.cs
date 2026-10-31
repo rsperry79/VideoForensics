@@ -1125,7 +1125,7 @@ namespace VideoForensics.Data.Core.Tests
                 .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
                 RingType: "doorbot", RingRingId: "abc", BatteryLife2: "55", BatteryVoltage: 12.5m, BatteryVoltage2: 3.3m,
-                LedStatus: "on", SirenSecondsRemaining: 30, NightMode: 1, MotionSnoozeJson: "{\"until\":5}",
+                SirenSecondsRemaining: 30, NightMode: 1, MotionSnoozeJson: "{\"until\":5}",
                 SettingsMetadataJson: "{\"k\":1}", LightSettingsMetadataJson: "{\"s\":1}", PirSettingsSensitivity1: 1,
                 PirSettingsSensitivity2: 2, PirSettingsSensitivity3: 3, PirSettingsZoneEnable: 1, PirSettingsZoneMask: 15,
                 NightModeOn: true, MotionDetectionEnabled: false, SettingsChimeType: 2, SettingsChimeEnabled: true, SettingsChimeDuration: 3);
@@ -1138,7 +1138,6 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal("55", result.BatteryLife2);
             Assert.Equal(12.5m, result.BatteryVoltage);
             Assert.Equal(3.3m, result.BatteryVoltage2);
-            Assert.Equal("on", result.LedStatus);
             Assert.Equal(30, result.SirenSecondsRemaining);
             Assert.Equal(1, result.NightMode);
             Assert.Equal("{\"until\":5}", result.MotionSnoozeJson);

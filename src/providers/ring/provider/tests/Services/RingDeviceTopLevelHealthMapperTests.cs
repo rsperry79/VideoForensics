@@ -73,11 +73,10 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void ToDeviceFields_StickupCam_MapsLedAndSirenSecondsAndNullScalars()
+        public void ToDeviceFields_StickupCam_MapsSirenSecondsAndNullScalars()
         {
             DeviceDetailFields f = Load("2001").DeviceFields!;
 
-            Assert.Equal(7, f.LedSecondsRemaining);
             Assert.Equal(3, f.SirenSecondsRemaining);
             Assert.Null(f.DeactivatedAtUtc);
             Assert.Equal("ring-fake-2", f.RingRingId);

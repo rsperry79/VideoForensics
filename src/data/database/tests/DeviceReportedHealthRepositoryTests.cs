@@ -123,7 +123,6 @@ namespace VideoForensics.Data.Database.Tests
                 Device d = await write.Devices.SingleAsync(x => x.Id == _device.Id);
                 d.DeactivatedAtUtc = new DateTime(2025, 1, 2, 3, 4, 5, DateTimeKind.Utc);
                 d.SharedAtUtc = new DateTime(2025, 2, 3, 4, 5, 6, DateTimeKind.Utc);
-                d.LedSecondsRemaining = 9;
                 _ = await write.SaveChangesAsync();
             }
 
@@ -131,7 +130,6 @@ namespace VideoForensics.Data.Database.Tests
             Device stored = await db.Devices.SingleAsync(x => x.Id == _device.Id);
             Assert.Equal(2025, stored.DeactivatedAtUtc!.Value.Year);
             Assert.Equal(2, stored.SharedAtUtc!.Value.Month);
-            Assert.Equal(9, stored.LedSecondsRemaining);
         }
 
         [Fact]
