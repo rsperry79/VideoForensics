@@ -49,12 +49,13 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal("fake-flick", ring.FlickElimRecommendedMode);
             Assert.Equal(new DateTime(2021, 8, 29, 23, 7, 38, DateTimeKind.Utc), ring.RingCreatedAt);
 
-            Assert.True(ring.EnableVod);
-            Assert.Equal(2, ring.ExposureControl);
-            Assert.False(ring.VodSuspended);
-            Assert.Equal(10, ring.PirSensitivity1);
-            Assert.Equal("middle", ring.LiveViewPresetProfile);
-            Assert.Equal("low", ring.MotionSnoozePresetProfile);
+            DeviceDetailFields doorbotFields = Load("7001").DeviceFields!;
+            Assert.True(doorbotFields.EnableVod);
+            Assert.Equal(2, doorbotFields.ExposureControl);
+            Assert.False(doorbotFields.VodSuspended);
+            Assert.Equal(10, doorbotFields.PirSensitivity1);
+            Assert.Equal("middle", doorbotFields.LiveViewPresetProfile);
+            Assert.Equal("low", doorbotFields.MotionSnoozePresetProfile);
 
             DeviceGeneralSettings general = children.GeneralSettings!;
             Assert.Equal(DeviceId, general.DeviceId);
@@ -65,19 +66,12 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void ToSettingsChildren_StickupCam_TypedDeviceKeysFillRingSettings()
+        public void ToSettingsChildren_StickupCam_RingSettingsRowKeepsOtherScalars()
         {
             RingDeviceDetails details = Load("7002");
             DeviceSettingsChildren children = RingDeviceDetailsMapper.ToSettingsChildrenWithFeatures(details, DeviceId)!;
 
             RingDeviceSettings ring = children.RingSettings!;
-            Assert.True(ring.EnableVod);
-            Assert.Equal(2, ring.ExposureControl);
-            Assert.True(ring.VodSuspended);
-            Assert.Equal(10, ring.PirSensitivity1);
-            Assert.True(ring.EnableAudioRecording);
-            Assert.True(ring.AdvancedMotionDetectionHumanOnlyMode);
-            Assert.Equal("none", ring.MotionSnoozePresetProfile);
             Assert.Equal(new DateTime(2024, 10, 8, 22, 43, 15, DateTimeKind.Utc), ring.RingCreatedAt);
             Assert.Equal(5, ring.PirZone1Sensitivity);
             Assert.True(ring.Lite24x7Enabled);

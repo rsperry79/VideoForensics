@@ -200,6 +200,44 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public void ToDeviceFields_DoorbotSettings_MapsNineSettingsOntoDevicesFields()
+        {
+            // Values from the sample_doorbots.json settings object (doorbell_graham_cracker).
+            Doorbot doorbot = JsonSerializer.Deserialize<Doorbot>("""
+                {"id": 123, "device_id": "aabbcc", "kind": "doorbell_graham_cracker", "settings": {
+                 "enable_vod": 1, "exposure_control": 2, "vod_suspended": 0, "pir_sensitivity_1": 5,
+                 "enable_audio_recording": true, "advanced_motion_detection_enabled": true,
+                 "advanced_motion_detection_human_only_mode": true, "live_view_preset_profile": "middle",
+                 "motion_snooze_preset_profile": "low"}}
+                """)!;
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.NotNull(fields);
+            Assert.True(fields!.EnableVod);
+            Assert.Equal(2, fields.ExposureControl);
+            Assert.False(fields.VodSuspended);
+            Assert.Equal(5, fields.PirSensitivity1);
+            Assert.True(fields.EnableAudioRecording);
+            Assert.True(fields.AdvancedMotionDetectionEnabled);
+            Assert.True(fields.AdvancedMotionDetectionHumanOnlyMode);
+            Assert.Equal("middle", fields.LiveViewPresetProfile);
+            Assert.Equal("low", fields.MotionSnoozePresetProfile);
+        }
+
+        [Fact]
+        public void ToDeviceFields_DoorbotSnoozeOnlyNested_FallsBackToMotionSettingsProfile()
+        {
+            Doorbot doorbot = JsonSerializer.Deserialize<Doorbot>("""
+                {"id": 124, "device_id": "ddeeff", "settings": {"motion_settings": {"motion_snooze_preset_profile": "high"}}}
+                """)!;
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.Equal("high", fields!.MotionSnoozePresetProfile);
+        }
+
+        [Fact]
         public void ToDeviceFields_StickupCam_MapsBatteryLifeAsRawString()
         {
             var cam = new StickupCam

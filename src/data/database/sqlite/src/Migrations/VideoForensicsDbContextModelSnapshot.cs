@@ -5582,12 +5582,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("ActiveStreamingEventLedEnabled")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool?>("AdvancedMotionDetectionEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("AdvancedMotionDetectionHumanOnlyMode")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int?>("ConciergeAlexaDelayMs")
                         .HasColumnType("INTEGER");
 
@@ -5601,16 +5595,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool?>("EnableAudioRecording")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool?>("EnableLiveViewAudioOverride")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool?>("EnableRichNotifications")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("EnableVod")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("EncryptionEligibilityMode")
@@ -5621,9 +5609,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("EncryptionMethod")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("ExposureControl")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("FlickElimRecommendedMode")
@@ -5645,16 +5630,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("Lite24x7Subscribed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("LiveViewPresetProfile")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
                     b.Property<int?>("MotionSensitivityProfile")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("MotionSnoozePresetProfile")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
 
                     b.Property<bool?>("NaturalLanguageSearchEnabled")
                         .HasColumnType("INTEGER");
@@ -5664,9 +5641,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool?>("PeopleDetectionEligible")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("PirSensitivity1")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("PirZone1Sensitivity")
@@ -5728,9 +5702,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool?>("VodSuspended")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

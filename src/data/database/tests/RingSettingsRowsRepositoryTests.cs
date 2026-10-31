@@ -65,7 +65,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(2, ring.PirZone6Sensitivity);
             Assert.Equal(new DateTime(2021, 8, 29, 23, 7, 38, DateTimeKind.Utc), ring.RingCreatedAt);
             Assert.NotEqual(default, ring.UpdatedAtUtc);
-            Assert.Null(ring.EnableVod);
             DeviceGeneralSettings general = await db.DeviceGeneralSettings.SingleAsync(g => g.DeviceId == _device.Id);
             Assert.Equal(11, general.VoiceVolume);
             Assert.True(general.StatusLedEnabled);

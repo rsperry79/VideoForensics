@@ -19,8 +19,6 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(s => s.NaturalLanguageSearchMode).HasMaxLength(64);
             _ = builder.Property(s => s.ConciergeMode).HasMaxLength(64);
             _ = builder.Property(s => s.FlickElimRecommendedMode).HasMaxLength(64);
-            _ = builder.Property(s => s.LiveViewPresetProfile).HasMaxLength(64);
-            _ = builder.Property(s => s.MotionSnoozePresetProfile).HasMaxLength(64);
             _ = builder.HasOne<Device>().WithOne().HasForeignKey<RingDeviceSettings>(s => s.DeviceId).OnDelete(DeleteBehavior.Cascade);
         }
     }

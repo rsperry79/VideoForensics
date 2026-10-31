@@ -93,6 +93,7 @@ namespace VideoForensics.Providers.Ring.Services
             ["audio_settings", "enable_live_view_audio_override"],
             ["active_streaming_event_led_enabled"],
             ["flick_elim_recommended_mode"],
+            // The nine keys below are stored on Devices (DeviceDetailFields), not on RingDeviceSettings. They stay listed so they never reappear in the remainder.
             ["enable_vod"],
             ["exposure_control"],
             ["vod_suspended"],
@@ -385,15 +386,6 @@ namespace VideoForensics.Providers.Ring.Services
             r.EnableLiveViewAudioOverride = Bool(f, notes, "audio_settings", "enable_live_view_audio_override");
             r.ActiveStreamingEventLedEnabled = Bool(f, notes, "active_streaming_event_led_enabled");
             r.FlickElimRecommendedMode = Text(f, notes, "flick_elim_recommended_mode");
-            r.EnableVod = Flag(f, notes, "enable_vod");
-            r.ExposureControl = Int(f, notes, "exposure_control");
-            r.VodSuspended = Flag(f, notes, "vod_suspended");
-            r.PirSensitivity1 = Int(f, notes, "pir_sensitivity_1");
-            r.EnableAudioRecording = Bool(f, notes, "enable_audio_recording");
-            r.AdvancedMotionDetectionEnabled = Bool(f, notes, "advanced_motion_detection_enabled");
-            r.AdvancedMotionDetectionHumanOnlyMode = Bool(f, notes, "advanced_motion_detection_human_only_mode");
-            r.LiveViewPresetProfile = Text(f, notes, "live_view_preset_profile");
-            r.MotionSnoozePresetProfile = Text(f, notes, SnoozeKey) ?? Text(f, notes, MotionSettingsKey, SnoozeKey);
         }
 
         private static void ApplyGeneral(IReadOnlyDictionary<string, JsonElement> f, DeviceGeneralSettings g, List<string> notes)
@@ -470,24 +462,6 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             bool ok = RingJsonValue.TryText(e, out string? r);
-            return Stored(ok, r, path, e, notes);
-        }
-
-        /// <summary>A Ring 0/1 flag stored as a boolean. Booleans are read as they are; any other shape is noted and not stored.</summary>
-        private static bool? Flag(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
-        {
-            JsonElement? v = Find(f, notes, path);
-            if (v is not { } e)
-            {
-                return null;
-            }
-
-            if (e.ValueKind == JsonValueKind.Number && RingJsonValue.TryLong(e, out long? n) && n is 0 or 1)
-            {
-                return n == 1;
-            }
-
-            bool ok = RingJsonValue.TryBool(e, out bool? r);
             return Stored(ok, r, path, e, notes);
         }
 
