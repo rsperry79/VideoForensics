@@ -1,0 +1,372 @@
+@implements IAsyncDisposable
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services
+@inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
+@inject IMediaPlaybackPolicy Policy
+
+@* The only component that renders a video element. A source-scan test fails the build if another .razor file does. *@
+<div class="media-player" data-testid="media-player-root" data-state="@StateName">
+    @if (_hasVideo)
+    {
+        <video @attributes="AdditionalAttributes"
+               @ref="_video"
+               id="@ElementId"
+               class="@VideoClass"
+               data-testid="media-player"
+               src="@(Live ? null : Source)"
+               poster="@Poster"
+               controls="@(Controls == MediaPlayerControls.Native)"
+               loop="@Loop"
+               autoplay="@Autoplay"
+               muted="@_muted"
+               playsinline
+               preload="metadata"></video>
+        @if (_phase == Phase.Loading)
+        {
+            <div class="media-player-overlay" role="status" data-testid="media-player-loading">@L["MediaPlayerLoading"]</div>
+        }
+        else if (_phase == Phase.Error)
+        {
+            <div class="media-player-overlay media-player-overlay-error" role="alert" data-testid="media-player-error">@L["MediaPlayerError"]</div>
+        }
+    }
+    else if (Gap)
+    {
+        <div class="media-player-unavailable" data-testid="media-player-gap">@L["ReviewPlayerGap"]</div>
+    }
+    else
+    {
+        <div class="media-player-unavailable" data-testid="media-player-missing">@L["MediaPlayerMissing"]</div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    private const string Script = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js";
+
+    private enum Phase { Loading, Ready, Error }
+
+    /// <summary>The playable URL of the clip. Null or empty shows the missing state, or the gap state when <see cref="Gap"/> is set.</summary>
+    [Parameter] public string? Source { get; set; }
+
+    /// <summary>
+    /// Live mode: the video has no URL and the host attaches a stream to the element named by <see cref="ElementId"/>
+    /// (WebRTC <c>srcObject</c>). The element renders even though <see cref="Source"/> is empty.
+    /// </summary>
+    [Parameter] public bool Live { get; set; }
+
+    /// <summary>The shared playback time (UTC). A change seeks to its offset from <see cref="SourceStartUtc"/>.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>The UTC time of the start of <see cref="Source"/>. Maps <see cref="Cursor"/> and <see cref="SeekToUtcAsync"/> to an offset.</summary>
+    [Parameter] public DateTime? SourceStartUtc { get; set; }
+
+    /// <summary>Length of <see cref="Source"/> in seconds. When set, <see cref="SeekToUtcAsync"/> ignores times past the end.</summary>
+    [Parameter] public double? SourceDurationSeconds { get; set; }
+
+    /// <summary>The requested playback rate. <see cref="IMediaPlaybackPolicy"/> caps it, and mutes above its threshold.</summary>
+    [Parameter] public double PlaybackRate { get; set; } = 1.0;
+
+    /// <summary>Mutes the audio. Playback is also muted when the policy requires it for the rate.</summary>
+    [Parameter] public bool Muted { get; set; }
+
+    /// <summary>Which transport controls to show.</summary>
+    [Parameter] public MediaPlayerControls Controls { get; set; } = MediaPlayerControls.Native;
+
+    /// <summary>Restarts at the end.</summary>
+    [Parameter] public bool Loop { get; set; }
+
+    /// <summary>Starts playing when the source loads.</summary>
+    [Parameter] public bool Autoplay { get; set; }
+
+    /// <summary>How the picture fills the box.</summary>
+    [Parameter] public MediaFitMode Fit { get; set; } = MediaFitMode.Contain;
+
+    /// <summary>Image shown until the first frame.</summary>
+    [Parameter] public string? Poster { get; set; }
+
+    /// <summary>True when there is no recording at the cursor. With no source this shows the gap message instead of the missing one.</summary>
+    [Parameter] public bool Gap { get; set; }
+
+    /// <summary>The id of the video element. Needed in <see cref="Live"/> mode, where the host finds the element by id.</summary>
+    [Parameter] public string? ElementId { get; set; }
+
+    /// <summary>Extra CSS classes for the video element.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Overlay content (markers, context panels), drawn over the video inside the player's box.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Playback position, at most about 4 times a second. Nothing is sent from the browser unless this has a handler.</summary>
+    [Parameter] public EventCallback<MediaProgress> OnProgress { get; set; }
+
+    /// <summary>The source reached its end.</summary>
+    [Parameter] public EventCallback OnEnded { get; set; }
+
+    /// <summary>The browser could not load or play the source. The value is one of aborted, network, decode, unsupported, unknown.</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    /// <summary>The first frame is available. The value is the duration in seconds, or null if it is unknown.</summary>
+    [Parameter] public EventCallback<double?> OnReady { get; set; }
+
+    /// <summary>Attributes that the component does not declare (for example data-* or style) are placed on the video element.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _video;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<MediaPlayerJsBridge>? _bridgeRef;
+    private Phase _phase = Phase.Loading;
+    private bool _attached;
+    private bool _disposed;
+    private double _rate = 1.0;
+    private bool _muted;
+    private (double Rate, bool Muted, bool Progress)? _applied;
+    private string? _lastSource;
+    private bool _lastLive;
+    private (string? Source, DateTime Cursor, DateTime Start)? _lastSeekKey;
+    private double? _pendingSeek;
+
+    private bool _hasVideo => Live || !string.IsNullOrEmpty(Source);
+
+    private string VideoClass =>
+        $"media-player-video media-player-fit-{(Fit == MediaFitMode.Cover ? "cover" : "contain")}{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}";
+
+    private string StateName => !_hasVideo ? (Gap ? "gap" : "missing") : _phase.ToString().ToLowerInvariant();
+
+    /// <summary>Starts playback.</summary>
+    public Task PlayAsync() => CallAsync("play");
+
+    /// <summary>Pauses playback.</summary>
+    public Task PauseAsync() => CallAsync("pause");
+
+    /// <summary>Plays when paused and pauses when playing.</summary>
+    public Task TogglePlayAsync() => CallAsync("togglePlay");
+
+    /// <summary>Steps by a number of seconds (negative steps back). Pauses first and stays within the source.</summary>
+    public Task StepAsync(double seconds) => CallAsync("step", seconds);
+
+    /// <summary>
+    /// Seeks to an absolute UTC time. Does nothing without <see cref="SourceStartUtc"/>, or when the time falls outside the
+    /// source, so a tile in a gap keeps playing where it is.
+    /// </summary>
+    public Task SeekToUtcAsync(DateTime utc)
+    {
+        if (SourceStartUtc is not DateTime start)
+        {
+            return Task.CompletedTask;
+        }
+
+        double offsetSeconds = (utc - start).TotalSeconds;
+        if (offsetSeconds < 0 || (SourceDurationSeconds is double duration && offsetSeconds > duration))
+        {
+            return Task.CompletedTask;
+        }
+
+        return CallAsync("seek", offsetSeconds);
+    }
+
+    /// <summary>
+    /// The playback position in whole milliseconds. Null when no video is rendered or the browser call fails, so the caller
+    /// shows a message rather than a guessed position.
+    /// </summary>
+    public async Task<long?> GetCurrentTimeMsAsync()
+    {
+        double? ms = await ReadAsync("getCurrentTimeMs");
+        return ms is double value ? (long)Math.Round(value) : null;
+    }
+
+    /// <summary>
+    /// The playback position as absolute UTC seconds since the Unix epoch: <see cref="SourceStartUtc"/> plus the video's
+    /// current offset. Null without a start time, without a video, or when the browser call fails.
+    /// </summary>
+    public async Task<double?> GetPlaybackUtcSecondsAsync()
+    {
+        if (SourceStartUtc is not DateTime start)
+        {
+            return null;
+        }
+
+        double? offset = await ReadAsync("getCurrentTime");
+        return offset is double value ? (start - DateTime.UnixEpoch).TotalSeconds + value : null;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _rate = Policy.ResolveRate(PlaybackRate);
+        _muted = Muted || Policy.ShouldMute(_rate);
+
+        string? source = Live ? null : Source;
+        if (source != _lastSource || Live != _lastLive)
+        {
+            _lastSource = source;
+            _lastLive = Live;
+            _phase = Phase.Loading;
+        }
+
+        if (_hasVideo && Cursor is DateTime cursor && SourceStartUtc is DateTime start)
+        {
+            // The cursor can precede the clip by a rounding error, and a negative offset is meaningless.
+            var key = (Source, cursor, start);
+            if (_lastSeekKey != key)
+            {
+                _lastSeekKey = key;
+                _pendingSeek = Math.Max(0, (cursor - start).TotalSeconds);
+            }
+        }
+        else
+        {
+            _lastSeekKey = null;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                var bridge = new MediaPlayerJsBridge(HandleProgressAsync, HandleReadyAsync, HandleEndedAsync, HandleErrorAsync);
+                _bridgeRef = DotNetObjectReference.Create(bridge);
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", Script);
+            }
+
+            if (_module is null)
+            {
+                return;
+            }
+
+            if (!_hasVideo)
+            {
+                // The element is gone; a new one is attached when a source returns.
+                _attached = false;
+                _applied = null;
+                _pendingSeek = null;
+                return;
+            }
+
+            var wanted = (Rate: _rate, Muted: _muted, Progress: OnProgress.HasDelegate);
+            var options = new { rate = _rate, muted = _muted, reportProgress = wanted.Progress };
+            if (!_attached)
+            {
+                await _module.InvokeVoidAsync("attach", _video, _bridgeRef, options);
+                _attached = true;
+                _applied = wanted;
+            }
+            else if (_applied != wanted)
+            {
+                await _module.InvokeVoidAsync("configure", _video, options);
+                _applied = wanted;
+            }
+
+            if (_pendingSeek is double seconds)
+            {
+                _pendingSeek = null;
+                await _module.InvokeVoidAsync("seek", _video, seconds);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is already gone, so there is no player left to update.
+        }
+    }
+
+    private async Task CallAsync(string function, params object?[] args)
+    {
+        if (_module is null || !_hasVideo)
+        {
+            return;
+        }
+
+        try
+        {
+            await _module.InvokeVoidAsync(function, [_video, .. args]);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is already gone, so there is no player left to control.
+        }
+    }
+
+    private async Task<double?> ReadAsync(string function)
+    {
+        if (_module is null || !_hasVideo)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await _module.InvokeAsync<double>(function, _video);
+        }
+        catch (JSDisconnectedException)
+        {
+            return null;
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    private async Task HandleProgressAsync(double positionSeconds, double? durationSeconds)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        DateTime? utc = SourceStartUtc?.AddSeconds(positionSeconds);
+        await OnProgress.InvokeAsync(new MediaProgress(positionSeconds, durationSeconds, utc));
+    }
+
+    private async Task HandleReadyAsync(double? durationSeconds)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _phase = Phase.Ready;
+        await InvokeAsync(StateHasChanged);
+        await OnReady.InvokeAsync(durationSeconds);
+    }
+
+    private Task HandleEndedAsync() => _disposed ? Task.CompletedTask : OnEnded.InvokeAsync();
+
+    private async Task HandleErrorAsync(string code)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _phase = Phase.Error;
+        await InvokeAsync(StateHasChanged);
+        await OnError.InvokeAsync(code);
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        _disposed = true;
+        if (_module is not null)
+        {
+            try
+            {
+                if (_attached)
+                {
+                    await _module.InvokeVoidAsync("detach", _video);
+                }
+
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit closed first, so the module and the listeners are already gone.
+            }
+        }
+
+        _bridgeRef?.Dispose();
+    }
+}

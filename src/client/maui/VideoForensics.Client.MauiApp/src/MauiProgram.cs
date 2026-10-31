@@ -218,6 +218,7 @@ namespace VideoForensics.Client.MauiApp
                 sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<VideoForensics.Client.Common.Contracts.IMediaContentUrlProvider>(),
                 sp.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources>>()));
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.IViewportService, VideoForensics.Client.Ui.Shared.Services.DefaultViewportService>();
+            builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Client.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();
 

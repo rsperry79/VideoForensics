@@ -2,6 +2,7 @@
 @inherits AccountTabPageBase
 @implements IDisposable
 @using Microsoft.Extensions.DependencyInjection
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Services.Devices
 @using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
@@ -116,7 +117,7 @@ else
                                 }
                                 else if (row.LoopUrl is not null && row.LoopAtUtc is { } loopAt)
                                 {
-                                    <video src="@row.LoopUrl" controls preload="metadata" style="max-width: 14rem;"></video>
+                                    <MediaPlayer Source="@row.LoopUrl" style="max-width: 14rem;" />
                                     <div class="small text-muted"><LocalTimeText Value="@loopAt" Format="g" /></div>
                                 }
                                 else
