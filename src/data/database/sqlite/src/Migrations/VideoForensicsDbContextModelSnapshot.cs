@@ -1600,6 +1600,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("BatteryNumber")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal?>("BatteryTempCelsius")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("Charging")
                         .HasColumnType("INTEGER");
 
@@ -1664,6 +1667,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double?>("BatteryTemp")
                         .HasColumnType("REAL");
 
+                    b.Property<decimal?>("BatteryTempCelsius")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("Connected")
                         .HasColumnType("INTEGER");
 
@@ -1690,6 +1696,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<bool?>("SirenOn")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("StatusAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("StatusTime")
                         .HasColumnType("INTEGER");

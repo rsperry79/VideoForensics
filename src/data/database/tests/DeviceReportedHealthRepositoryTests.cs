@@ -46,12 +46,13 @@ namespace VideoForensics.Data.Database.Tests
 
         private static DeviceReportedHealth Health(bool connected, long updateTime)
         {
-            return new DeviceReportedHealth { Connected = connected, LastUpdateTime = updateTime, Rssi = -60.5, StatusTime = 58766634686231L };
+            return new DeviceReportedHealth { Connected = connected, LastUpdateTime = updateTime, Rssi = -60.5, StatusTime = 58766634686231L,
+                StatusAtUtc = new DateTime(2026, 10, 31, 2, 56, 5, 180, DateTimeKind.Utc), BatteryTemp = 2921.0, BatteryTempCelsius = 18.95m };
         }
 
         private static DeviceReportedBattery Battery(int position, int number, int? percent)
         {
-            return new DeviceReportedBattery { Position = position, BatteryNumber = number, Percentage = percent, Charging = false, Temp = 2921.0, FwVersion = "0.9" };
+            return new DeviceReportedBattery { Position = position, BatteryNumber = number, Percentage = percent, Charging = false, Temp = 2921.0, BatteryTempCelsius = 18.95m, FwVersion = "0.9" };
         }
 
         [Fact]
@@ -67,12 +68,17 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(-60.5, stored.Rssi);
             Assert.Equal(17.55m, (await db.RingDeviceHealthExtras.SingleAsync(x => x.DeviceId == _device.Id)).TransformerVoltage);
             Assert.Equal(58766634686231L, stored.StatusTime);
+            Assert.Equal(new DateTime(2026, 10, 31, 2, 56, 5, 180, DateTimeKind.Utc), stored.StatusAtUtc);
+            Assert.Equal(2921.0, stored.BatteryTemp);
+            Assert.Equal(18.95m, stored.BatteryTempCelsius);
             Assert.NotEqual(default, stored.UpdatedAtUtc);
             List<DeviceReportedBattery> batteries = await db.DeviceReportedBatteries.Where(b => b.DeviceId == _device.Id).OrderBy(b => b.Position).ToListAsync();
             Assert.Equal([1, 2], batteries.Select(b => b.BatteryNumber));
             Assert.Equal(88, batteries[0].Percentage);
             Assert.Null(batteries[1].Percentage);
             Assert.Equal("0.9", batteries[0].FwVersion);
+            Assert.Equal(2921.0, batteries[0].Temp);
+            Assert.Equal(18.95m, batteries[0].BatteryTempCelsius);
         }
 
         [Fact]
