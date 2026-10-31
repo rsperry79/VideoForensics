@@ -11,12 +11,12 @@ namespace VideoForensics.Client.Hosting.Signal
     {
         public static BitrateSampleDto ToDto(this BitrateSample sample)
         {
-            return new BitrateSampleDto(sample.CapturedAtUtc, sample.Kbps, sample.LightingMode, sample.Collapsed);
+            return new BitrateSampleDto(sample.CapturedAtUtc, sample.Kbps, sample.LightingMode, sample.Collapsed, sample.MediaItemId, sample.FlagId);
         }
 
         public static BitrateSample ToDomain(this BitrateSampleDto dto)
         {
-            return new BitrateSample(dto.CapturedAtUtc, dto.Kbps, dto.LightingMode, dto.Collapsed);
+            return new BitrateSample(dto.CapturedAtUtc, dto.Kbps, dto.LightingMode, dto.Collapsed, dto.MediaItemId, dto.FlagId);
         }
 
         /// <summary>The calendar's 168 cells, 24 hour profiles and 7 day profiles, in the order the DTO documents.</summary>

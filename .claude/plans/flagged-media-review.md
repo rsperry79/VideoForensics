@@ -111,7 +111,7 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
 - B4a `MediaPlayer` (D8): build the control, JS module, tests, then migrate every existing `<video>` site onto it; add the source-scan test. No data dependency. **DONE (2026-10-31, on wip: MediaPlayer + JS module + policy seam + source-scan test; five video sites migrated, LiveView via Live mode. Unit/bUnit only, never played in a browser).**
 - B4 Shell: `FlagReviewShell`, `MediaFit` (uses `MediaPlayer`), resize module, CSS (no data dependency; after B4a; parallel with B1b/B2).
 - B5 `PlaybackTimeline`: `SfSlider` scrub bar, `FlagMarkerLayer`, `SfTimeline` flag list, transport buttons driving `MediaPlayer` (needs B4a, B4 and a marker DTO shape).
-- B3a `MeasuredBitrate` + chart gains MediaItemId/flag id (needs B1b).
+- B3a `MeasuredBitrate` + chart gains MediaItemId/flag id (needs B1b). **DONE (2026-10-31): `MeasuredBitrate.MediaItemId`, `BitrateSample`/DTO `MediaItemId` + `FlagId` (flag looked up per camera via `IMediaFlagRepository`); FlagId stays null until B2 writes flags. Estimated-bit-rate clips still have no marker.**
 - B3 `FlaggedMediaTable` + wire into both reports (needs B1b, B3a). Touches `SignalHistory.razor` and `BitrateHistory.razor` and their resx: never parallel with B7.
 - B6 `FlagActionsPanel` + `ClipNavigator` (needs B1b, B4).
 - B7 `RssiReview`, `BitrateReview`, context panels, breadcrumb, nav (needs all above).

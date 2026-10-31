@@ -111,7 +111,7 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.MediaItems
                 .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
                 .OrderBy(m => m.RecordedAtUtc)
-                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags))
+                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id))
                 .ToListAsync(ct);
         }
 

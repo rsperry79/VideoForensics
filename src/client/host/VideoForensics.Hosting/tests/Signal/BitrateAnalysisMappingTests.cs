@@ -16,7 +16,7 @@ public class BitrateAnalysisMappingTests
         BitrateSample[] readings =
         [
             new(From.AddHours(9), 1_000, "Day", false),
-            new(From.AddHours(10), 4_000, null, true),
+            new(From.AddHours(10), 4_000, null, true, Guid.NewGuid(), Guid.NewGuid()),
             new(From.AddHours(11), 2_500, "Ir", false),
         ];
         SignalSample[] samples = [.. readings.Select(r => r.ToSignalSample())];

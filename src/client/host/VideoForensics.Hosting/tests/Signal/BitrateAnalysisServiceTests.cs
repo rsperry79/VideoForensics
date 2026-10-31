@@ -24,7 +24,7 @@ public class BitrateAnalysisServiceTests
         return new MeasuredBitrate(at, bps, lighting, flags);
     }
 
-    private static BitrateAnalysisService Create(Device[] devices, Dictionary<Guid, MeasuredBitrate[]> history)
+    private static BitrateAnalysisService Create(Device[] devices, Dictionary<Guid, MeasuredBitrate[]> history, MediaFlag[]? flags = null)
     {
         var deviceRepo = new Mock<IDeviceRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
@@ -32,7 +32,34 @@ public class BitrateAnalysisServiceTests
         _ = media
             .Setup(r => r.GetMeasuredBitrateByDeviceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out MeasuredBitrate[]? rows) ? rows : []);
-        return new BitrateAnalysisService(deviceRepo.Object, media.Object);
+        var flagRepo = new Mock<IMediaFlagRepository>();
+        _ = flagRepo
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(flags ?? [], flags?.Length ?? 0));
+        return new BitrateAnalysisService(deviceRepo.Object, media.Object, flagRepo.Object);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_CollapsedClip_CarriesItsMediaItemIdAndFlagId()
+    {
+        var id = Guid.NewGuid();
+        var collapsedClip = Guid.NewGuid();
+        var flagId = Guid.NewGuid();
+        MeasuredBitrate[] rows =
+        [
+            new(From.AddHours(9), 1_000_000, "Day", null, Guid.NewGuid()),
+            new(From.AddHours(10), 200_000, "Day", "BitrateCollapse", collapsedClip),
+        ];
+        MediaFlag[] flags = [new() { Id = flagId, FlagType = MediaFlagType.BitrateCollapse, DeviceId = id, MediaItemId = collapsedClip }];
+        BitrateAnalysisService service = Create([Camera(id)], new() { [id] = rows }, flags);
+
+        BitrateAnalysis result = await service.AnalyzeAsync([id], From, To, CancellationToken.None);
+
+        BitrateSample[] readings = [.. Assert.Single(result.Devices).Readings];
+        Assert.Null(readings[0].FlagId);
+        Assert.Equal(rows[0].MediaItemId, readings[0].MediaItemId);
+        Assert.Equal(collapsedClip, readings[1].MediaItemId);
+        Assert.Equal(flagId, readings[1].FlagId);
     }
 
     [Fact]

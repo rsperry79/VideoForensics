@@ -53,8 +53,10 @@ namespace VideoForensics.Data.Database.Tests
         public async Task GetMeasuredBitrateByDeviceAsync_SkipsEstimatedAndUnmeasuredAndOtherDevices_OldestFirst()
         {
             var device = Guid.NewGuid();
-            await _repository.AddAsync(Row(device, "late", Start.AddMinutes(9), 2_000_000, false, "Day", "BitrateCollapse,ClippedAudio"), CancellationToken.None);
-            await _repository.AddAsync(Row(device, "early", Start.AddMinutes(1), 1_000_000, false, "Ir"), CancellationToken.None);
+            MediaItem late = Row(device, "late", Start.AddMinutes(9), 2_000_000, false, "Day", "BitrateCollapse,ClippedAudio");
+            MediaItem early = Row(device, "early", Start.AddMinutes(1), 1_000_000, false, "Ir");
+            await _repository.AddAsync(late, CancellationToken.None);
+            await _repository.AddAsync(early, CancellationToken.None);
             await _repository.AddAsync(Row(device, "null-flag", Start.AddMinutes(5), 1_500_000, null), CancellationToken.None);
             await _repository.AddAsync(Row(device, "estimated", Start.AddMinutes(2), 900_000, true), CancellationToken.None);
             await _repository.AddAsync(Row(device, "unmeasured", Start.AddMinutes(3), null, null), CancellationToken.None);
@@ -66,6 +68,8 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("Ir", rows[0].LightingMode);
             Assert.Equal("BitrateCollapse,ClippedAudio", rows[2].RedFlags);
             Assert.Equal(Start.AddMinutes(1), rows[0].RecordedAtUtc);
+            Assert.Equal(early.Id, rows[0].MediaItemId);
+            Assert.Equal(late.Id, rows[2].MediaItemId);
         }
     }
 }
