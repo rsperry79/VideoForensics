@@ -45,12 +45,19 @@ public static class SignalChartModel
     /// </summary>
     public static string Polyline(IEnumerable<SignalSample> samples, DateTime from, DateTime to, SignalScale scale)
     {
+        return Polyline(samples, from, to, scale.MapY);
+    }
+
+    /// <summary>The same polyline for any axis: <paramref name="mapY"/> turns a reading into its y coordinate (for example <see cref="BitrateScale.MapY"/>).</summary>
+    public static string Polyline(IEnumerable<SignalSample> samples, DateTime from, DateTime to, Func<double, double> mapY)
+    {
         ArgumentNullException.ThrowIfNull(samples);
+        ArgumentNullException.ThrowIfNull(mapY);
 
         return string.Join(' ', samples
             .Where(s => s.RssiDbm is not null && s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
             .OrderBy(s => s.CapturedAtUtc)
-            .Select(s => $"{MapX(s.CapturedAtUtc, from, to):0.#},{scale.MapY(s.RssiDbm!.Value):0.#}"));
+            .Select(s => $"{MapX(s.CapturedAtUtc, from, to):0.#},{mapY(s.RssiDbm!.Value):0.#}"));
     }
 
     /// <summary>

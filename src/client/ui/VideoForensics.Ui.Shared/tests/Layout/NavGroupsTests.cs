@@ -45,6 +45,7 @@ public class NavGroups_Tests
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/cases", itemPaths);
         Assert.Contains("/signal-history", itemPaths);
+        Assert.Contains("/bitrate-history", itemPaths);
         Assert.Contains("/chat", itemPaths);
         Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/analyze/chain-of-custody", itemPaths);
