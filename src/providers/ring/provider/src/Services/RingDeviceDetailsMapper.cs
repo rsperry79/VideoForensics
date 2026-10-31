@@ -126,14 +126,14 @@ namespace VideoForensics.Providers.Ring.Services
                 OwnerEmail: d.Owner?.Email,
                 RingType: d.Type,
                 MotionSnoozeJson: RawJson(d.MotionSnooze),
-                DoorbellVolume: ToInt(NestedLong(d.Settings?.AdditionalFields, "volume_settings", "doorbell_volume") ?? d.Settings?.DoorbellVolume),
-                PirSettingsSensitivity1: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_1")),
-                PirSettingsSensitivity2: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_2")),
-                PirSettingsSensitivity3: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_3")),
-                PirSettingsZoneEnable: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "zone_enable")),
-                PirSettingsZoneMask: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "zone_mask")),
+                DoorbellVolume: ToInt(NestedLong(d.Settings?.AdditionalFields, "volume_settings", "doorbell_volume", notes) ?? d.Settings?.DoorbellVolume),
+                PirSettingsSensitivity1: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_1", notes)),
+                PirSettingsSensitivity2: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_2", notes)),
+                PirSettingsSensitivity3: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_3", notes)),
+                PirSettingsZoneEnable: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "zone_enable", notes)),
+                PirSettingsZoneMask: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "zone_mask", notes)),
                 NightModeOn: d.Settings?.NightModeOn,
-                MotionDetectionEnabled: NestedBool(d.Settings?.AdditionalFields, "motion_settings", "motion_detection_enabled") ?? d.Settings?.MotionDetectionEnabled,
+                MotionDetectionEnabled: NestedBool(d.Settings?.AdditionalFields, "motion_settings", "motion_detection_enabled", notes) ?? d.Settings?.MotionDetectionEnabled,
                 EnableVod: d.Settings?.EnableVod,
                 ExposureControl: ToInt(d.Settings?.ExposureControl),
                 MotionSnoozePresetProfile: d.Settings?.MotionSnoozePresetProfile ?? NestedText(d.Settings?.AdditionalFields, "motion_settings", "motion_snooze_preset_profile"),
@@ -199,13 +199,13 @@ namespace VideoForensics.Providers.Ring.Services
                 LiveViewPresetProfile: st?.LiveViewPresetProfile,
                 PirSensitivity1: ToInt(st?.PirSensitivity1),
                 VodSuspended: ToFlag(st?.VodSuspended),
-                DoorbellVolume: ToInt(NestedLong(st?.AdditionalFields, "volume_settings", "doorbell_volume") ?? st?.DoorbellVolume),
+                DoorbellVolume: ToInt(NestedLong(st?.AdditionalFields, "volume_settings", "doorbell_volume", notes) ?? st?.DoorbellVolume),
                 VodStatus: st?.VodStatus,
                 // A stickup cam's motion switch and chime settings arrive as nested groups in the settings body and as a flat key in the device list.
-                MotionDetectionEnabled: NestedBool(st?.AdditionalFields, "motion_settings", "motion_detection_enabled") ?? FlatBool(st?.AdditionalFields, "motion_detection_enabled"),
-                SettingsChimeType: ToInt(NestedLong(st?.AdditionalFields, "chime_settings", "type")),
-                SettingsChimeEnabled: NestedBool(st?.AdditionalFields, "chime_settings", "enable"),
-                SettingsChimeDuration: ToInt(NestedLong(st?.AdditionalFields, "chime_settings", "duration")),
+                MotionDetectionEnabled: NestedBool(st?.AdditionalFields, "motion_settings", "motion_detection_enabled", notes) ?? FlatBool(st?.AdditionalFields, "motion_detection_enabled", notes),
+                SettingsChimeType: ToInt(NestedLong(st?.AdditionalFields, "chime_settings", "type", notes)),
+                SettingsChimeEnabled: NestedBool(st?.AdditionalFields, "chime_settings", "enable", notes),
+                SettingsChimeDuration: ToInt(NestedLong(st?.AdditionalFields, "chime_settings", "duration", notes)),
                 AdvancedMotionDetectionEnabled: st?.AdvancedMotionDetectionEnabled,
                 AdvancedMotionDetectionHumanOnlyMode: st?.AdvancedMotionDetectionHumanOnlyMode,
                 EnableAudioRecording: st?.EnableAudioRecording,
@@ -924,34 +924,99 @@ namespace VideoForensics.Providers.Ring.Services
         /// Reads a number from a nested settings object kept in AdditionalFields (e.g. volume_settings.doorbell_volume).
         /// Real captures put doorbell_volume and motion_detection_enabled there, not at the settings root.
         /// </summary>
-        private static long? NestedLong(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
+        /// <summary>
+        /// Reads a number from a nested settings object kept in AdditionalFields (e.g. volume_settings.doorbell_volume). Null when absent or null. A value
+        /// that is not a number that fits a long, or a group that is not an object, gives null and a note (key and JSON type only, never the value).
+        /// </summary>
+        private static long? NestedLong(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey, List<string>? notes)
         {
-            return fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object
-                ? null
-                : obj.TryGetProperty(valueKey, out JsonElement value) && value.TryGetInt64(out long number) ? number : null;
+            if (fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind is JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            if (!TryNestedValue(obj, objectKey, valueKey, notes, out JsonElement value))
+            {
+                return null;
+            }
+
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long number))
+            {
+                return number;
+            }
+
+            AddNote(notes, $"{objectKey}.{valueKey} not stored: unexpected shape ({value.ValueKind})");
+            return null;
         }
 
-        /// <summary>Reads a boolean stored directly under <paramref name="key"/> in AdditionalFields. Null when absent or not a boolean.</summary>
-        private static bool? FlatBool(Dictionary<string, JsonElement>? fields, string key)
+        /// <summary>
+        /// Reads a boolean stored directly under <paramref name="key"/> in AdditionalFields. Null when absent or null. A value that is not a boolean gives
+        /// null and a note (key and JSON type only).
+        /// </summary>
+        private static bool? FlatBool(Dictionary<string, JsonElement>? fields, string key, List<string>? notes)
         {
-            return fields != null && fields.TryGetValue(key, out JsonElement value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
-                ? value.GetBoolean()
-                : null;
+            if (fields == null || !fields.TryGetValue(key, out JsonElement value) || value.ValueKind is JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return value.GetBoolean();
+            }
+
+            AddNote(notes, $"{key} not stored: unexpected shape ({value.ValueKind})");
+            return null;
         }
 
-        /// <summary>Reads a boolean from a nested settings object kept in AdditionalFields. Null when absent or not a boolean.</summary>
-        private static bool? NestedBool(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
+        /// <summary>
+        /// Reads a boolean from a nested settings object kept in AdditionalFields. Null when absent or null. A value that is not a boolean gives null and
+        /// a note (key and JSON type only), and so does a group that is not an object.
+        /// </summary>
+        private static bool? NestedBool(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey, List<string>? notes)
         {
-            return fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object
-                ? null
-                : !obj.TryGetProperty(valueKey, out JsonElement value)
-                ? null
-                : value.ValueKind switch
-                {
-                    JsonValueKind.True => true,
-                    JsonValueKind.False => false,
-                    _ => null
-                };
+            if (fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind is JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            if (!TryNestedValue(obj, objectKey, valueKey, notes, out JsonElement value))
+            {
+                return null;
+            }
+
+            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return value.GetBoolean();
+            }
+
+            AddNote(notes, $"{objectKey}.{valueKey} not stored: unexpected shape ({value.ValueKind})");
+            return null;
+        }
+
+        /// <summary>
+        /// Finds <paramref name="valueKey"/> inside the group <paramref name="obj"/>. False when the group is not an object (noted once, by name and type)
+        /// or the key is absent or null (no note).
+        /// </summary>
+        private static bool TryNestedValue(JsonElement obj, string objectKey, string valueKey, List<string>? notes, out JsonElement value)
+        {
+            value = default;
+            if (obj.ValueKind != JsonValueKind.Object)
+            {
+                AddNote(notes, $"{objectKey} not stored: expected an object ({obj.ValueKind})");
+                return false;
+            }
+
+            return obj.TryGetProperty(valueKey, out value) && value.ValueKind is not JsonValueKind.Null;
+        }
+
+        /// <summary>Adds a note once; no-op when there is no notes list.</summary>
+        private static void AddNote(List<string>? notes, string note)
+        {
+            if (notes != null && !notes.Contains(note))
+            {
+                notes.Add(note);
+            }
         }
 
         /// <summary>Narrows a Ring number to int, or null when it does not fit (never truncates silently).</summary>

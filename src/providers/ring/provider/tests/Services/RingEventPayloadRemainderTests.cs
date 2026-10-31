@@ -56,6 +56,28 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public void Compute_InventedRootKeyOnTypedEvent_SurvivesTheTypedRoundTrip()
+        {
+            // DoorbotHistoryEvent keeps unknown Ring keys (JsonExtensionData), so an invented key reaches the remainder as an unknown leaf.
+            string json = RealShapedEvent.Replace("\"riid\": \"abc\"", "\"riid\": \"abc\", \"invented_ring_key\": \"fake-value\"", StringComparison.Ordinal);
+
+            Assert.Equal("""{"invented_ring_key":"fake-value"}""", RingEventPayloadRemainder.Compute(Serialized(json)));
+        }
+
+        [Fact]
+        public void Split_InventedRootKey_RemainderHoldsItAndTheHashCoversIt()
+        {
+            string json = RealShapedEvent.Replace("\"riid\": \"abc\"", "\"riid\": \"abc\", \"invented_ring_key\": \"fake-value\"", StringComparison.Ordinal);
+            DoorbotHistoryEvent evt = JsonSerializer.Deserialize<DoorbotHistoryEvent>(json)!;
+
+            (string? remainder, string hash) = RingEventPayloadRemainder.Split(evt);
+
+            Assert.Equal("""{"invented_ring_key":"fake-value"}""", remainder);
+            Assert.NotEqual(PinnedHash, hash);
+            Assert.Equal(ExpectedHashFor(evt), hash);
+        }
+
+        [Fact]
         public void Compute_NullAndEmptyInput_ReturnsNull()
         {
             Assert.Null(RingEventPayloadRemainder.Compute(null));

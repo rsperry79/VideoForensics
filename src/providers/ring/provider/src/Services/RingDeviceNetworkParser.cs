@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using VideoForensics.Data.Common.Entities;
 
@@ -26,6 +27,28 @@ namespace VideoForensics.Providers.Ring.Services
         private const string OtherPaidKey = "other_paid_features";
         private const string NetworkKey = "network_settings";
         private const string DiagnosisKey = "network_diagnosis";
+
+        // The keys each switch below stores. Keep in step with ApplyCvPaid, ApplyOtherPaid, ApplyNetwork and ApplyDiagnosis.
+        private static readonly string[] CvPaidKeys =
+        [
+            "baby_cry", "car_alarm", "co2_smoke_alarm", "dog_bark", "general_sound", "glass_break", "human", "loitering", "motion", "other_motion",
+            "package_delivery", "package_pickup", "cv_triggers", "vehicle", "animal",
+        ];
+
+        private static readonly string[] OtherPaidKeys =
+        [
+            "alexa_concierge", "sheila_cv", "sheila_recording", "critical_alerts", "system_level_pip", "extended_live_view", "snapshot_capture_plus",
+            "live_speak", "closed_caption", "daily_digest", "ding_call", "natural_language_search", "multicam_live_view", "package_protection",
+            "alarm_triggered_recording", "recording_24x7",
+        ];
+
+        private static readonly string[] NetworkKeys =
+            ["mac_address_ble", "mac_address_wifi_24", "mac_address_wifi_5", "max_dynamic_listen_interval", "multi_net_pref", "data_restriction_enabled"];
+
+        private static readonly string[] DiagnosisKeys =
+        [
+            "channel_analysis", "periodic_diagnosis", "lan_performance", "tcp_iperf", "udp_iperf", "tcp_host", "udp_host", "tcp_port", "udp_port", "udp_bandwidth",
+        ];
 
         /// <summary>Parses the three groups from a settings object's AdditionalFields. Null fields (no settings sent) yield no rows and no notes.</summary>
         public static RingNetworkGroups Parse(Dictionary<string, JsonElement>? fields)
@@ -144,6 +167,50 @@ namespace VideoForensics.Providers.Ring.Services
         private static JsonElement? Get(Dictionary<string, JsonElement> fields, string key)
         {
             return fields.TryGetValue(key, out JsonElement v) ? v : null;
+        }
+
+        /// <summary>
+        /// Removes from a settings remainder the keys this parser stores: the cv and other paid-feature keys, the network keys and the diagnosis keys.
+        /// Any other key inside these groups stays. A group left empty is removed. A group that is not an object is kept, since nothing in it is stored.
+        /// </summary>
+        internal static void RemoveTypedKeys(JsonObject root)
+        {
+            RemoveTypedObjectKeys(root, CvPaidKey, CvPaidKeys);
+            RemoveTypedObjectKeys(root, OtherPaidKey, OtherPaidKeys);
+            if (root[NetworkKey] is not JsonObject network)
+            {
+                return;
+            }
+
+            RemoveTypedObjectKeys(network, DiagnosisKey, DiagnosisKeys);
+            foreach (string key in NetworkKeys)
+            {
+                _ = network.Remove(key);
+            }
+
+            if (network.Count == 0)
+            {
+                _ = root.Remove(NetworkKey);
+            }
+        }
+
+        /// <summary>Removes the listed keys from the object at <paramref name="groupKey"/>, and the object too when that leaves it empty.</summary>
+        private static void RemoveTypedObjectKeys(JsonObject parent, string groupKey, string[] keys)
+        {
+            if (parent[groupKey] is not JsonObject group)
+            {
+                return;
+            }
+
+            foreach (string key in keys)
+            {
+                _ = group.Remove(key);
+            }
+
+            if (group.Count == 0)
+            {
+                _ = parent.Remove(groupKey);
+            }
         }
 
         /// <summary>Applies a cv_paid_features key. False when the key is unknown or its value has an unexpected shape.</summary>
