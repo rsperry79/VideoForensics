@@ -4,6 +4,7 @@ using CloudflaredKit.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.Hosting.Tests
@@ -48,6 +49,59 @@ namespace VideoForensics.Client.Hosting.Tests
             Assert.Equal(1, CountLogs(logger, LogLevel.Error));
             Assert.Contains(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error)
                 && i.Arguments[2]!.ToString()!.Contains("exited unexpectedly") && i.Arguments[2]!.ToString()!.Contains("1"));
+        }
+
+        [Fact]
+        public async Task StartPermanentTunnelAsync_Succeeds_TiesCloudflaredChildrenToTheServiceLifetime()
+        {
+            // cloudflared outlives a service that exits without stopping it, and orphans fill the tunnel's 25-replica cap.
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<TunnelInfo>(null!));
+            var reaper = new Mock<IChildProcessReaper>();
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, new Mock<ILogger<CloudflaredTunnelService>>().Object, reaper.Object);
+
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None);
+
+            reaper.Verify(r => r.AdoptChildren("cloudflared.exe"), Times.Once);
+        }
+
+        [Fact]
+        public async Task StartPermanentTunnelAsync_Fails_DoesNotAdoptAnything()
+        {
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
+            var reaper = new Mock<IChildProcessReaper>();
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, new Mock<ILogger<CloudflaredTunnelService>>().Object, reaper.Object);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
+
+            reaper.Verify(r => r.AdoptChildren(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TunnelExitedUnexpectedly_WhileRunning_ReportsFailedWithExitCode()
+        {
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<TunnelInfo>(null!));
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, new Mock<ILogger<CloudflaredTunnelService>>().Object);
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None);
+
+            cloudflared.Raise(c => c.TunnelExitedUnexpectedly += null, 1);
+
+            TunnelState state = service.GetState();
+            Assert.Equal(TunnelStatus.Failed, state.Status);
+            Assert.Contains("exit code 1", state.ErrorMessage);
+        }
+
+        [Fact]
+        public void TunnelExitedUnexpectedly_WhenNothingWasRunning_LeavesTheStateAlone()
+        {
+            var cloudflared = new Mock<ICloudflaredService>();
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, new Mock<ILogger<CloudflaredTunnelService>>().Object);
+
+            cloudflared.Raise(c => c.TunnelExitedUnexpectedly += null, 1);
+
+            Assert.Equal(TunnelStatus.Stopped, service.GetState().Status);
         }
 
         [Fact]

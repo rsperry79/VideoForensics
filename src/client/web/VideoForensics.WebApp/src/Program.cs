@@ -492,6 +492,17 @@ else if (OperatingSystem.IsWindows())
 // One maintenance gate for the process. Scheduled sync, the update drain and the Database coordinator all share it.
 _ = builder.Services.AddServerMaintenance();
 
+// cloudflared children are tied to this process, so an update restart or a crash cannot orphan them. Orphans each hold four
+// connections and Cloudflare caps a tunnel at 25 replicas, after which every new tunnel start exits.
+if (OperatingSystem.IsWindows())
+{
+    _ = builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.IChildProcessReaper, VideoForensics.Client.Platform.Windows.WindowsJobChildProcessReaper>();
+}
+else
+{
+    builder.Services.TryAddSingleton<VideoForensics.Client.Common.Contracts.IChildProcessReaper, VideoForensics.Client.Common.Contracts.NoOpChildProcessReaper>();
+}
+
 if (updatesActiveAsService)
 {
     // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,

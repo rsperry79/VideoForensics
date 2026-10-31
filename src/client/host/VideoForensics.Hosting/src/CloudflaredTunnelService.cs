@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Client.Common.Contracts;
+
 namespace VideoForensics.Client.Hosting
 {
     public enum TunnelKind
@@ -40,6 +42,7 @@ namespace VideoForensics.Client.Hosting
         private readonly ICloudflaredService _cloudflared;
         private readonly IOptionsMonitorCache<CloudflaredOptions> _optionsCache;
         private readonly ILogger<CloudflaredTunnelService> _logger;
+        private readonly IChildProcessReaper _childProcessReaper;
         private readonly object _gate = new();
         private TunnelState _state = new(
             TunnelKind.None,
@@ -51,11 +54,13 @@ namespace VideoForensics.Client.Hosting
         public CloudflaredTunnelService(
             ICloudflaredService cloudflared,
             IOptionsMonitorCache<CloudflaredOptions> optionsCache,
-            ILogger<CloudflaredTunnelService>? logger = null)
+            ILogger<CloudflaredTunnelService>? logger = null,
+            IChildProcessReaper? childProcessReaper = null)
         {
             _cloudflared = cloudflared;
             _optionsCache = optionsCache;
             _logger = logger ?? NullLogger<CloudflaredTunnelService>.Instance;
+            _childProcessReaper = childProcessReaper ?? new NoOpChildProcessReaper();
 
             // CloudflaredKit reports its own process dying only as a warning. A dead tunnel cuts off remote access, so it is
             // logged here at Error, with the exit code.
@@ -90,6 +95,10 @@ namespace VideoForensics.Client.Hosting
                 });
 
                 _ = await _cloudflared.StartAsync(ct);
+
+                // cloudflared outlives a service that exits without stopping it (an update restart, or a crash). Orphans each hold
+                // four connections and Cloudflare caps a tunnel at 25 replicas, so enough of them block every new start.
+                _ = _childProcessReaper.AdoptChildren("cloudflared.exe");
                 _logger.LogInformation("Cloudflare tunnel started");
                 lock (_gate)
                 {
@@ -126,6 +135,19 @@ namespace VideoForensics.Client.Hosting
         private void OnTunnelExitedUnexpectedly(int exitCode)
         {
             _logger.LogError("Cloudflare tunnel exited unexpectedly (exit code {ExitCode}); remote access through it is down", exitCode);
+
+            // Only a tunnel that was up or starting can have died. Without this the page would keep saying it is running.
+            lock (_gate)
+            {
+                if (_state.Status is TunnelStatus.Starting or TunnelStatus.Running)
+                {
+                    _state = _state with
+                    {
+                        Status = TunnelStatus.Failed,
+                        ErrorMessage = $"The Cloudflare tunnel stopped unexpectedly (exit code {exitCode})."
+                    };
+                }
+            }
         }
 
         public async Task StopAsync(CancellationToken ct)
