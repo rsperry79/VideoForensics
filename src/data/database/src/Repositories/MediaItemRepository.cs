@@ -101,6 +101,20 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>
+        /// A device's stream-reported bitrates, oldest first. Estimated and missing bitrates are excluded and only the needed
+        /// columns are read, all in SQL.
+        /// </summary>
+        public async Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags))
+                .ToListAsync(ct);
+        }
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {

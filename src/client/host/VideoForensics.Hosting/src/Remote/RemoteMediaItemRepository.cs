@@ -131,6 +131,12 @@ namespace VideoForensics.Client.Hosting.Remote
                 .ToList();
         }
 
+        /// <remarks>The bit rate analysis runs on the server only; a client reads it through the analysis endpoint.</remarks>
+        public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            throw new NotSupportedException("Bit rate analysis runs on the server only.");
+        }
+
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));

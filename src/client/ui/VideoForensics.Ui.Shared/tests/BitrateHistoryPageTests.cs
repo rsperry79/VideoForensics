@@ -1,0 +1,150 @@
+using Bunit;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+
+using Moq;
+
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services.Signal;
+
+using Xunit;
+
+using Device = VideoForensics.Data.Common.Entities.Device;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
+
+/// <summary>The Bit rate history page shows the server's bit rate analysis per device, in kbps, with collapsed clips marked.</summary>
+public class BitrateHistory_Tests : ScopeRailTestContext
+{
+    private readonly Device _device = MakeDevice("Front door");
+
+    private IStringLocalizer<BitrateHistory> Localizer => Services.GetRequiredService<IStringLocalizer<BitrateHistory>>();
+
+    private static BitrateDeviceAnalysis Analysis(Device device, IReadOnlyList<BitrateSample> readings)
+    {
+        DateTime from = DateTime.UtcNow.AddDays(-30);
+        DateTime to = DateTime.UtcNow.AddDays(1);
+        List<SignalSample> samples = readings.Select(r => r.ToSignalSample()).ToList();
+        SignalStats allTime = SignalStats.Compute(samples);
+        return new BitrateDeviceAnalysis(
+            device.Id,
+            device.Name,
+            "Ring",
+            device.ProviderDeviceId,
+            allTime,
+            allTime,
+            readings,
+            SignalDeviation.Windows(samples, from, to, allTime),
+            SignalCalendar.Compute(samples, from, to),
+            SignalBuckets.Compute(samples, from, to, SignalBucket.Hour),
+            SignalBuckets.Compute(samples, from, to, SignalBucket.Day),
+            SignalBuckets.Compute(samples, from, to, SignalBucket.Week));
+    }
+
+    private IRenderedComponent<BitrateHistory> RenderWith(params BitrateDeviceAnalysis[] devices)
+    {
+        _ = RegisterDeviceRepository(_device);
+        var service = new Mock<IBitrateAnalysisService>();
+        _ = service
+            .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BitrateAnalysis(devices));
+        _ = Services.AddScoped(_ => service.Object);
+        _ = Services.AddScoped<SignalDrillTrail>();
+        return Render<BitrateHistory>();
+    }
+
+    private static List<BitrateSample> Steady(int count, int kbps = 2000, int collapsed = 0)
+    {
+        DateTime start = DateTime.UtcNow.AddDays(-3);
+        return Enumerable.Range(0, count)
+            .Select(i => new BitrateSample(start.AddHours(i * 3), kbps, "Day", i < collapsed))
+            .ToList();
+    }
+
+    [Fact]
+    public void Renders_ADeviceCardWithStatsInKbps()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(6)));
+
+        Assert.Single(page.FindAll("[data-testid='bitrate-device']"));
+        Assert.Contains("Front door", page.Markup);
+        Assert.Contains("2000 kbps", page.Find("[data-testid='bitrate-stats']").TextContent);
+        Assert.Empty(page.FindAll("[data-testid='signal-device']"));
+    }
+
+    [Fact]
+    public void Renders_TheCollapsedClipCount_AndMarksEachCollapsedReading()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(6, collapsed: 2)));
+
+        Assert.Equal("2", page.Find("[data-testid='bitrate-collapsed-count']").TextContent.Trim());
+        Assert.Equal(2, page.FindAll("circle.bitrate-collapse").Count);
+        Assert.Contains(Localizer["LegendCollapse"].Value, page.Find("[data-testid='bitrate-legend']").TextContent);
+    }
+
+    [Fact]
+    public void Renders_NoSignalOverlays_NoWeakRow_AndNoRingSettingsLink()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(6)));
+
+        Assert.Empty(page.FindAll(".signal-period"));
+        Assert.Empty(page.FindAll("a[href*='ring']"));
+        Assert.DoesNotContain("%", page.Find("[data-testid='bitrate-stats']").TextContent);
+    }
+
+    [Fact]
+    public void ADeviceWithNoReadings_ShowsTheNoReadingsMessage()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, []));
+
+        Assert.Contains(Localizer["NoReadings"].Value, page.Find("[data-testid='bitrate-device']").TextContent);
+        Assert.Empty(page.FindAll("[data-testid='bitrate-stats']"));
+    }
+
+    [Fact]
+    public void TheBucketPicker_SwitchesTheRowsShown()
+    {
+        // Eight readings every 12 hours cover several days inside one or two weeks.
+        DateTime start = DateTime.UtcNow.AddDays(-4);
+        List<BitrateSample> readings = Enumerable.Range(0, 8)
+            .Select(i => new BitrateSample(start.AddHours(i * 12), 2000 + i, "Day", false))
+            .ToList();
+        BitrateDeviceAnalysis analysis = Analysis(_device, readings);
+        IRenderedComponent<BitrateHistory> page = RenderWith(analysis);
+
+        Assert.Equal(analysis.Weekly.Count, page.FindAll("[data-testid='bitrate-buckets'] tbody tr").Count);
+
+        page.FindAll("[data-testid='bitrate-bucket-picker'] button")[1].Click();
+
+        Assert.Equal(analysis.Daily.Count, page.FindAll("[data-testid='bitrate-buckets'] tbody tr").Count);
+
+        page.FindAll("[data-testid='bitrate-bucket-picker'] button")[0].Click();
+
+        Assert.Equal(analysis.Hourly.Count, page.FindAll("[data-testid='bitrate-buckets'] tbody tr").Count);
+    }
+
+    [Fact]
+    public void ATwoSigmaOutlier_ShowsTheAlert_ThatDismisses()
+    {
+        List<BitrateSample> readings = Steady(20);
+        readings.Add(new BitrateSample(DateTime.UtcNow.AddHours(-1), 9000, "Day", false));
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, readings));
+
+        Assert.Single(page.FindAll("[data-testid='bitrate-alert']"));
+        Assert.NotEmpty(page.FindAll("rect.bitrate-deviation[data-level='TwoSigma']"));
+
+        page.Find("[data-testid='bitrate-alert-close']").Click();
+
+        Assert.Empty(page.FindAll("[data-testid='bitrate-alert']"));
+    }
+
+    [Fact]
+    public void SteadyReadings_ShowNoAlert()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(10)));
+
+        Assert.Empty(page.FindAll("[data-testid='bitrate-alert']"));
+    }
+}

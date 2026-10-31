@@ -197,6 +197,9 @@
   <data name="Signal history" xml:space="preserve">
     <value>Signal history</value>
   </data>
+  <data name="Bit rate history" xml:space="preserve">
+    <value>Bit rate history</value>
+  </data>
   <data name="Chat Assistant" xml:space="preserve">
     <value>Chat Assistant</value>
   </data>

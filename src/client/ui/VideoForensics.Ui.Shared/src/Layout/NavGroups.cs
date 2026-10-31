@@ -82,6 +82,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             [
                 new("All Cases", "/cases"),
                 new("Signal history", "/signal-history"),
+                new("Bit rate history", "/bitrate-history"),
                 new("Chat Assistant", "/chat"),
                 new("Analyze", "/analyze",
                     Children:

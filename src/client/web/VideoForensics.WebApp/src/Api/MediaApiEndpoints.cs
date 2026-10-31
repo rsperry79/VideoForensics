@@ -59,6 +59,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/bitrate-analysis", GetBitrateAnalysisAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/devices/{id:guid}/health", GetDeviceHealthHistoryAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -535,6 +539,40 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             SignalAnalysis result = await analysis.AnalyzeAsync(ids, from.Value, to.Value, ct);
+            return Results.Ok(result.ToDto());
+        }
+
+        /// <summary>
+        /// Handler for GET /bitrate-analysis: the measured bit rate figures for the cameras in <paramref name="devices"/> over
+        /// the window. Same query rules as <see cref="GetSignalAnalysisAsync"/>.
+        /// </summary>
+        public static async Task<IResult> GetBitrateAnalysisAsync(
+            string? devices,
+            DateTime? from,
+            DateTime? to,
+            IBitrateAnalysisService analysis,
+            CancellationToken ct)
+        {
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            var ids = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(devices))
+            {
+                foreach (string part in devices.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (!Guid.TryParse(part, out Guid id))
+                    {
+                        return Results.BadRequest();
+                    }
+
+                    ids.Add(id);
+                }
+            }
+
+            BitrateAnalysis result = await analysis.AnalyzeAsync(ids, from.Value, to.Value, ct);
             return Results.Ok(result.ToDto());
         }
 
