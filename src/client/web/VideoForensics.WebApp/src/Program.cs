@@ -542,6 +542,8 @@ builder.Services.Replace(ServiceDescriptor.Singleton<IDeviceHealthChangeNotifier
 builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
 builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
 builder.Services.AddScoped<IDeviceHealthChangedSource, LocalDeviceHealthChangedSource>();
+// Media-flag review changes: the flag endpoints publish, open review pages subscribe (in-process and over LiveHub).
+builder.Services.AddMediaFlagChangeServices();
 // The dispatcher runs in this process, so each raised notice is published to open Notices pages directly.
 builder.Services.AddSingleton<LocalNoticeFeed>();
 builder.Services.AddSingleton<INoticeFeed>(sp => sp.GetRequiredService<LocalNoticeFeed>());
@@ -850,6 +852,7 @@ app.MapSystemVersionEndpoints();
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
+app.MapMediaFlagEndpoints();
 app.MapReportEndpoints();
 app.MapLiveViewEndpoints();
 app.MapAuthEndpoints();

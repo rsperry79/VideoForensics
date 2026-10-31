@@ -33,6 +33,9 @@ namespace VideoForensics.Client.Hosting.Contracts
         /// <summary>Device health readings recorded on the server (the "DeviceHealthChanged" hub push).</summary>
         IObservable<DeviceHealthChangedDto> DeviceHealthChanged { get; }
 
+        /// <summary>Media flags reviewed or re-opened on the server (the "MediaFlagChanged" hub push). Raw push, no replay.</summary>
+        IObservable<MediaFlagChangedDto> MediaFlagChanged { get; }
+
         /// <summary>Settings were saved on the server (the "ClientConfigChanged" hub push). Carries the client-safe snapshot.</summary>
         IObservable<ClientConfigDto> ClientConfigChanged { get; }
 
