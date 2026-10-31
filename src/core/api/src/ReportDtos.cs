@@ -256,13 +256,21 @@
     /// <param name="AuditTrail">Hash-chained sequence of all actions affecting evidence.</param>
     /// <param name="ChainIntegrityVerified">True if the entire chain-of-custody chain was verified successfully, False otherwise.</param>
     /// <param name="ChainVerificationStatus">Human-readable status of chain verification. Null if no verification performed.</param>
+    /// <param name="ChainEntriesChecked">Entries that verified before the break, or every entry when the chain is valid.</param>
+    /// <param name="ChainBreak">Kind of break by name (PreviousHashMismatch, EntryHashMismatch), or None when the chain is valid.</param>
+    /// <param name="ChainFailedEntryId">The first entry that failed verification, or null when the chain is valid.</param>
+    /// <param name="ChainFailedAtUtc">When the first failing entry was recorded, in UTC, or null when the chain is valid.</param>
     public record ChainOfCustodyReportDto(
         DateTime GeneratedAtUtc,
         DateTime ReportFromUtc,
         DateTime ReportToUtc,
         IReadOnlyList<ActionLogEntryDto> AuditTrail,
         bool ChainIntegrityVerified,
-        string? ChainVerificationStatus
+        string? ChainVerificationStatus,
+        int ChainEntriesChecked = 0,
+        string ChainBreak = "None",
+        Guid? ChainFailedEntryId = null,
+        DateTime? ChainFailedAtUtc = null
     );
 
     /// <summary>Extension methods for mapping domain report models to ReportDtos.</summary>
@@ -479,7 +487,11 @@
                 ReportToUtc: model.ReportToUtc,
                 AuditTrail: model.AuditTrail.Select(x => x.ToDto()).ToList().AsReadOnly(),
                 ChainIntegrityVerified: model.ChainIntegrityVerified,
-                ChainVerificationStatus: model.ChainVerificationStatus
+                ChainVerificationStatus: model.ChainVerificationStatus,
+                ChainEntriesChecked: model.ChainEntriesChecked,
+                ChainBreak: model.ChainBreak.ToString(),
+                ChainFailedEntryId: model.ChainFailedEntryId,
+                ChainFailedAtUtc: model.ChainFailedAtUtc
             );
         }
     }

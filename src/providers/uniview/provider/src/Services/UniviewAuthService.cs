@@ -251,6 +251,15 @@ namespace VideoForensics.Providers.Uniview.Services
         }
 
         /// <summary>
+        /// Gets the non-secret status payload. Uniview has a client or none, with no token metadata, so the token fields stay null.
+        /// </summary>
+        public ProviderAuthStatus? GetAuthStatusDetails()
+        {
+            UniviewClient? client = _sessionProvider.GetClient();
+            return new ProviderAuthStatus(IsAuthenticated: client != null, TokenType: null, ExpiresAtUtc: null, Scope: null);
+        }
+
+        /// <summary>
         /// Persists Uniview credentials to the database for later restoration.
         /// Returns the provider account ID if successful, null otherwise.
         /// </summary>

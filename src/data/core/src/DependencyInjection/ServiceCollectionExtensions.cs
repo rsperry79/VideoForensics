@@ -43,12 +43,15 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.ISnapshotStillMapper, VideoForensics.Core.Providers.Core.SnapshotStillMapper>();
             _ = services.AddOptions<VideoForensics.Data.Core.Services.SnapshotTimelineOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.ISnapshotTimelineService, VideoForensics.Data.Core.Services.SnapshotTimelineService>();
-            services.TryAddSingleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
-            services.TryAddSingleton<VideoForensics.Data.Core.Services.IEvidenceChangeNotifier, VideoForensics.Data.Core.Services.NullEvidenceChangeNotifier>();
-            services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
-            services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
-            services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
-            services.TryAddScoped<VideoForensics.Data.Core.Services.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
+            services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
+            services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IEvidenceChangeNotifier, VideoForensics.Data.Core.Services.NullEvidenceChangeNotifier>();
+            services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IDeviceHealthChangeNotifier, VideoForensics.Data.Core.Services.NullDeviceHealthChangeNotifier>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaPreviewService, VideoForensics.Data.Core.Services.MediaPreviewService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaPreviewBackfill, VideoForensics.Data.Core.Services.MediaPreviewBackfill>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
 
             // IntegrityVerificationService implementation (implements IIntegrityVerificationService from Data.Common)

@@ -8,6 +8,9 @@ namespace VideoForensics.Client.Ui.Shared.Services
     public class DefaultServerLocationInformationService : IServerLocationInformationService
     {
         /// <inheritdoc/>
+        public bool IsApplicable => false;
+
+        /// <inheritdoc/>
         public Uri? CurrentServerAddress => null;
 
         /// <inheritdoc/>

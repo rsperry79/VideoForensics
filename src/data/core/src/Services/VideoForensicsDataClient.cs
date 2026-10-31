@@ -29,6 +29,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILogger<VideoForensicsDataClient> _logger;
         private readonly IMediaAnalysisService _mediaAnalysis;
         private readonly IEvidenceChangeNotifier _evidenceChangeNotifier;
+        private readonly IDeviceHealthChangeNotifier _deviceHealthChangeNotifier;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -54,7 +55,8 @@ namespace VideoForensics.Data.Core.Services
             IActionLogRepository actionLogRepository,
             ILogger<VideoForensicsDataClient> logger,
             IMediaAnalysisService mediaAnalysis,
-            IEvidenceChangeNotifier? evidenceChangeNotifier = null)
+            IEvidenceChangeNotifier? evidenceChangeNotifier = null,
+            IDeviceHealthChangeNotifier? deviceHealthChangeNotifier = null)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -76,6 +78,7 @@ namespace VideoForensics.Data.Core.Services
             _logger = logger;
             _mediaAnalysis = mediaAnalysis;
             _evidenceChangeNotifier = evidenceChangeNotifier ?? new NullEvidenceChangeNotifier();
+            _deviceHealthChangeNotifier = deviceHealthChangeNotifier ?? new NullDeviceHealthChangeNotifier();
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -98,7 +101,9 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _deviceHealthRepository.AddAsync(health, ct);
+                DeviceHealth recorded = await _deviceHealthRepository.AddAsync(health, ct);
+                await _deviceHealthChangeNotifier.DeviceHealthRecordedAsync(recorded.DeviceId, ct);
+                return recorded;
             }
             catch (Exception ex)
             {
@@ -242,7 +247,20 @@ namespace VideoForensics.Data.Core.Services
 
                     if (media != null)
                     {
-                        await context.MediaItems.AddAsync(media, ct);
+                        // A clip is unique by (DeviceId, RecordedAtUtc). When the file was lost but the row remains, the
+                        // re-download must update that row; a blind insert would violate the index and roll back the event.
+                        // The range is a single instant, so the list holds at most the one matching row.
+                        MediaItem? sameRecording = (await context.MediaItems.GetByDeviceAndDateRangeAsync(
+                            media.DeviceId, media.RecordedAtUtc, media.RecordedAtUtc, ct)).FirstOrDefault();
+                        if (sameRecording != null)
+                        {
+                            media.Id = sameRecording.Id;
+                            await context.MediaItems.UpdateAsync(media, ct);
+                        }
+                        else
+                        {
+                            await context.MediaItems.AddAsync(media, ct);
+                        }
                     }
 
                     // Persist detection-related entities if provided
@@ -261,9 +279,10 @@ namespace VideoForensics.Data.Core.Services
                         await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, ct);
                     }
 
+                    // Downloads run in the background as the service account, which is not a person.
                     _ = await context.ActionLog.AppendAsync(
                         Environment.UserName,
-                        ActorType.Human,
+                        ActorTypes.ForAccount(Environment.UserName),
                         "MediaDownloaded",
                         nameof(DownloadEvent),
                         evt.Id,
@@ -766,7 +785,8 @@ namespace VideoForensics.Data.Core.Services
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced,
                                 // Local operator setting, not a Ring value: carry it over so a move does not re-enable capture.
-                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled
+                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled,
+                                HealthCaptureEnabled = existingDevice.HealthCaptureEnabled
                             };
                             ApplyDetailFields(newDevice, details);
 

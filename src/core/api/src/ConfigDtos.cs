@@ -20,7 +20,6 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="LogLevel">Minimum log level for server diagnostics (e.g., "Information", "Debug").</param>
     /// <param name="MaxConcurrentDownloads">Maximum number of simultaneous media downloads from providers.</param>
     /// <param name="DownloadStartDate">Start date for downloads as "yyyy-MM-dd" string; empty if unset.</param>
-    /// <param name="ActiveProviderAccountId">ID of the currently active provider account, or null if none selected.</param>
     /// <param name="EnableHealthSync">Toggles periodic RSSI/device-health background sync.</param>
     /// <param name="EnableMdnsAdvertisement">Toggles mDNS advertisement on LAN (_videoforensics._tcp.local) for device discovery.</param>
     /// <param name="EnableEmailNotifications">Toggles the email notification channel for urgent security events.</param>
@@ -51,7 +50,6 @@ namespace VideoForensics.Core.Api.Contracts
         string LogLevel,
         int MaxConcurrentDownloads,
         string DownloadStartDate,
-        Guid? ActiveProviderAccountId,
         bool EnableHealthSync,
         bool EnableMdnsAdvertisement,
         bool EnableEmailNotifications,
@@ -92,7 +90,6 @@ namespace VideoForensics.Core.Api.Contracts
                 LogLevel: config.LogLevel,
                 MaxConcurrentDownloads: config.MaxConcurrentDownloads,
                 DownloadStartDate: config.DownloadStartDate,
-                ActiveProviderAccountId: config.ActiveProviderAccountId,
                 EnableHealthSync: config.EnableHealthSync,
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,

@@ -141,27 +141,4 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             }
         }
     }
-
-    /// <summary>
-    /// Test DpapiKeyStorageProvider against the contract.
-    /// </summary>
-    internal class DpapiKeyStorageProviderContractTests : IKeyStorageProviderContractTests
-    {
-        protected override IKeyStorageProvider CreateProvider()
-        {
-            return new DpapiKeyStorageProvider();
-        }
-    }
-
-    /// <summary>
-    /// Test TpmKeyStorageProvider against the contract.
-    /// </summary>
-    [SupportedOSPlatform("windows")]
-    internal class TpmKeyStorageProviderContractTests : IKeyStorageProviderContractTests
-    {
-        protected override IKeyStorageProvider CreateProvider()
-        {
-            return new TpmKeyStorageProvider();
-        }
-    }
 }

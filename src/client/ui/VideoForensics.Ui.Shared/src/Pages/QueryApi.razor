@@ -6,6 +6,7 @@
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.QueryApi
 @using VideoForensics.Client.Ui.Shared.Services.Inspector
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Dump
 @using VideoForensics.Core.Providers.Common.Contracts
@@ -19,7 +20,6 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">@L["Title"]</h4>
-    <NavLink class="btn btn-outline-secondary" href="/query/api-tester">@SharedL["API Tester"]</NavLink>
 </div>
 
 <ul class="nav nav-tabs mb-4" data-testid="query-api-tabs">
@@ -30,10 +30,21 @@
 
 <div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["AccountStatus"]</h5>
-    <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatus" CssClass="e-primary" />
+    <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatusAsync" CssClass="e-primary" />
     @if (_accountStatus is not null)
     {
         <p class="mt-2">@_accountStatus</p>
+        @if (_accountStatusDetails is not null)
+        {
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_accountStatusDetails" InitialExpandDepth="1" />
+            </details>
+        }
+        else
+        {
+            <p class="mt-2">@L["NoStatusDetail"]</p>
+        }
     }
 </div>
 
@@ -69,7 +80,18 @@
     }
 </div>
 
+<div data-testid="api-tester" class="card border rounded p-4 mb-4">
+    <h5 class="mb-2">@SharedL["API Tester"]</h5>
+    <RingSelfTest />
+</div>
+
 @code {
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used so a time is never shown in the wrong zone.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
     private List<(string Label, string? Url)> BreadcrumbItems =>
     [
         (SharedL["Sources"], "/accounts"),
@@ -78,9 +100,12 @@
 
     // Account Status
     private string? _accountStatus;
+    private ProviderAuthStatus? _accountStatusDetails;
 
-    private void RunAccountStatus()
+    // Fetches first: on the remote client the synchronous status reads the value this call just refreshed.
+    private async Task RunAccountStatusAsync()
     {
+        _accountStatusDetails = await AuthService.GetAuthStatusDetailsAsync();
         _accountStatus = AuthService.GetAuthStatus();
     }
 
@@ -113,7 +138,7 @@
     // Inspector Mapper
     private InspectorModel ToLocationInspector(Location location)
     {
-        return LocationInspectorMapper.ToInspector(location, _locationsRetrievedAt);
+        return LocationInspectorMapper.ToInspector(location, _locationsRetrievedAt, Zone);
     }
 
     // Row Selection: selecting a location sets the shared location used by the Devices and Events subpages

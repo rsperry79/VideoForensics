@@ -25,10 +25,17 @@ namespace VideoForensics.Core.Logging.Providers
         private readonly object _syncRoot = new();
         private readonly Queue<string> _circularBuffer = new();
         private NamedPipeServerStream? _pipeServer;
+        private readonly NamedPipeLogGate? _gate;
         private bool _disposed;
 
-        public NamedPipeLoggerProvider()
+        /// <param name="gate">Optional runtime switch. Null leaves the pipe always open, as before.</param>
+        public NamedPipeLoggerProvider(NamedPipeLogGate? gate = null)
         {
+            _gate = gate;
+            if (_gate is not null)
+            {
+                _gate.Changed += OnGateChanged;
+            }
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -43,6 +50,11 @@ namespace VideoForensics.Core.Logging.Providers
                 return;
             }
 
+            if (_gate is not null)
+            {
+                _gate.Changed -= OnGateChanged;
+            }
+
             lock (_syncRoot)
             {
                 _pipeServer?.Dispose();
@@ -50,10 +62,25 @@ namespace VideoForensics.Core.Logging.Providers
             }
         }
 
+        // Releases the pipe the moment the gate closes, so a closed gate leaves no pipe for clients to connect to.
+        private void OnGateChanged(object? sender, EventArgs e)
+        {
+            if (_gate is { IsOpen: true })
+            {
+                return;
+            }
+
+            lock (_syncRoot)
+            {
+                _pipeServer?.Dispose();
+                _pipeServer = null;
+            }
+        }
+
         /// <summary>Internal: writes a log entry to the pipe and circular buffer.</summary>
         internal void WriteLog(LogEntry entry)
         {
-            if (_disposed)
+            if (_disposed || _gate is { IsOpen: false })
             {
                 return;
             }

@@ -37,6 +37,18 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<LogPage> GetHistoryAsync(LogHistoryQuery query, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(query);
+
+            using HttpRequestMessage request = BuildHistoryRequest(query);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
+            _ = response.EnsureSuccessStatusCode();
+            LogPageDto? dto = await response.Content.ReadFromJsonAsync<LogPageDto>(JsonOptions, ct);
+            return (dto ?? new LogPageDto(Array.Empty<LogEntryDto>(), 0, false)).ToDomain();
+        }
+
+        /// <inheritdoc />
         public async IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, [EnumeratorCancellation] CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(query);
@@ -57,6 +69,32 @@ namespace VideoForensics.Client.Hosting.Remote
                     yield return dto.ToDomain();
                 }
             }
+        }
+
+        private static HttpRequestMessage BuildHistoryRequest(LogHistoryQuery query)
+        {
+            // Timestamps go as round-trip ("o") strings so the server parses the exact offset the client sent.
+            var parts = new List<string>
+            {
+                "from=" + Uri.EscapeDataString(query.FromUtc.ToString("o", CultureInfo.InvariantCulture)),
+                "to=" + Uri.EscapeDataString(query.ToUtc.ToString("o", CultureInfo.InvariantCulture)),
+            };
+            if (!string.IsNullOrEmpty(query.MinLevel))
+            {
+                parts.Add("minLevel=" + Uri.EscapeDataString(query.MinLevel));
+            }
+
+            if (!string.IsNullOrEmpty(query.Search))
+            {
+                parts.Add("search=" + Uri.EscapeDataString(query.Search));
+            }
+
+            if (query.Limit > 0)
+            {
+                parts.Add("limit=" + query.Limit.ToString(CultureInfo.InvariantCulture));
+            }
+
+            return new HttpRequestMessage(HttpMethod.Get, "/api/v1/logs/history?" + string.Join('&', parts));
         }
 
         private static HttpRequestMessage BuildRequest(string path, LogQuery query)

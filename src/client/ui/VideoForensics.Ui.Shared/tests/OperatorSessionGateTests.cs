@@ -1,11 +1,15 @@
 
 using Bunit;
 
+using System.Net;
+using System.Net.Http;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.JSInterop;
 
 using Moq;
+using Moq.Protected;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
@@ -28,6 +32,19 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 public abstract class OperatorSessionGateTestBase : BunitContext
 {
     protected const string NotSignedIn = "You are not signed in.";
+
+    /// <summary>A factory whose client answers every request with 404, so page loads fail as HttpRequestException.</summary>
+    protected static ISelfApiHttpClientFactory SelfApiFactoryReturning404()
+    {
+        var handler = new Mock<HttpMessageHandler>();
+        _ = handler.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("https://localhost/") };
+        var factory = new Mock<ISelfApiHttpClientFactory>();
+        _ = factory.Setup(f => f.CreateClient()).Returns(client);
+        return factory.Object;
+    }
 
     protected OperatorSessionGateTestBase()
     {
@@ -54,6 +71,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         _ = Services.AddScoped(_ => Mock.Of<IForensicsConfiguration>());
         _ = Services.AddScoped(_ => Mock.Of<IForensicsConfigurationService>());
         _ = Services.AddScoped(_ => Mock.Of<IServerLocationInformationService>());
+        _ = Services.AddScoped(_ => SelfApiFactoryReturning404());
         _ = Services.AddScoped(sp => new ConfigToolsOrchestrator(
             NullLogger<ConfigToolsOrchestrator>.Instance, sp.GetRequiredService<IForensicsConfigurationService>()));
         // The export page runs a passkey step-up before exporting; the gate test only checks the operator is signed in.

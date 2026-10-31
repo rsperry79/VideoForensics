@@ -146,7 +146,6 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Theory]
         [InlineData("shared-users")]
         [InlineData("location-events")]
-        [InlineData("invitations")]
         public void EndpointRegistry_OtherLocationEndpoint_IsNotFlaggedNotApplicable(string key)
         {
             EndpointDescriptor? descriptor = EndpointRegistry.Find(key);

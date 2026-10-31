@@ -1,0 +1,728 @@
+@page "/signal-history"
+@implements IAsyncDisposable
+@using System.Globalization
+@using System.Net
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@using VideoForensics.Client.Ui.Shared.Components.Scope
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services.Signal
+@using VideoForensics.Client.Ui.Shared.Services.Time
+@using VideoForensics.Data.Common.Contracts
+@using Device = VideoForensics.Data.Common.Entities.Device
+@inject IDeviceRepository DeviceRepository
+@using VideoForensics.Client.Ui.Shared.Contracts
+@inject ISignalAnalysisService SignalAnalysisService
+@inject ScopeState ScopeState
+@inject SignalDrillTrail Trail
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject IStringLocalizer<SignalHistory> L
+
+<PageRightPanelContent>
+    <ScopeRail />
+</PageRightPanelContent>
+
+<h4 class="mb-2">@L["PageTitle"]</h4>
+
+@{
+    IReadOnlyList<SignalDrillTrail.Crumb> ancestors = Trail.AncestorsOf(ScopeState.Current);
+}
+@if (ancestors.Count > 0)
+{
+    <nav aria-label="breadcrumb" class="mb-2" data-testid="signal-breadcrumb">
+        <ol class="breadcrumb mb-0">
+            @for (int i = 0; i < ancestors.Count; i++)
+            {
+                int index = i;
+                <li class="breadcrumb-item">
+                    <a href="#" @onclick="() => RestoreLevel(index)" @onclick:preventDefault="true">@ancestors[i].Label</a>
+                </li>
+            }
+            <li class="breadcrumb-item active" aria-current="page">@ScopeLabel(ScopeState.Current)</li>
+        </ol>
+    </nav>
+}
+
+<p class="text-muted small">@L["PageIntro"]</p>
+<p class="small mb-3" data-testid="signal-scope-summary">@L["ScopeHint", _sections.Count, Zone.Format(_from, "d"), Zone.Format(_to, "d")]</p>
+
+@if (_sections.Count == 0)
+{
+    <p class="text-muted">@L["NoDevicesInScope"]</p>
+}
+
+@{
+    List<(DeviceSignal Section, SignalDeviationWindow Window)> alerts = _sections
+        .SelectMany(s => s.Deviations.Where(w => w.Level == SignalDeviationLevel.TwoSigma).Select(w => (Section: s, Window: w)))
+        .ToList();
+}
+@{
+    string alertSignature = AlertSignature(alerts);
+}
+@if (alerts.Count > 0 && alertSignature != _dismissedAlertSignature)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert" data-testid="signal-alert">
+        <button type="button" class="btn-close" aria-label="@L["CloseMenu"]" data-testid="signal-alert-close" @onclick="() => DismissAlerts(alertSignature)"></button>
+        <strong>@L["AlertTitle"]</strong>
+        <ul class="mb-0">
+            @foreach ((DeviceSignal section, SignalDeviationWindow window) in alerts)
+            {
+                <li>@L["AlertLine", section.Name, window.WorstRssiDbm, Zone.Format(window.HourStartUtc, "ddd MMM d HH:00")]</li>
+            }
+        </ul>
+    </div>
+}
+
+@foreach (DeviceSignal section in _sections)
+{
+    <div class="card mb-3" data-testid="signal-device">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <strong>@section.Name</strong>
+            @if (IsRing(section))
+            {
+                <a href="@RingSettingsRoute.Href(section.DeviceId)">@L["DeviceSettings"]</a>
+            }
+        </div>
+        <div class="card-body">
+            @if (section.AllTime.Count == 0)
+            {
+                <p class="text-muted mb-0">@L["NoReadings"]</p>
+            }
+            else
+            {
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr><th>@L["StatCount"]</th><td>@section.AllTime.Count</td></tr>
+                                <tr><th>@L["StatLatest"]</th><td>@section.AllTime.Latest dBm</td></tr>
+                                <tr><th>@L["StatMin"]</th><td>@section.AllTime.Min dBm</td></tr>
+                                <tr><th>@L["StatMax"]</th><td>@section.AllTime.Max dBm</td></tr>
+                                <tr><th>@L["StatDelta"]</th><td data-testid="signal-delta">@section.AllTime.Delta dBm</td></tr>
+                                <tr><th>@L["StatPeriodDelta"]</th><td data-testid="signal-period-delta">@(section.PeriodStats.Delta is int periodDelta ? $"{periodDelta} dBm" : "-")</td></tr>
+                                <tr><th>@L["StatAverage"]</th><td>@section.AllTime.Average.ToString("0.0") dBm</td></tr>
+                                <tr><th>@L["StatPercentWeak"]</th><td>@section.AllTime.PercentWeak.ToString("0") %</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-lg-8">
+                        <p class="small text-muted mb-1">@L["TimelineLabel"]</p>
+                        @if (section.InRangeCount == 0)
+                        {
+                            <p class="small text-muted mb-1" data-testid="signal-no-range">@L["NoReadingsInRange"]</p>
+                        }
+                        <div class="position-relative">
+                            <svg id="@PlotId(section.DeviceId)"
+                                 viewBox="0 0 @SignalChartModel.ViewWidth @SignalChartModel.ViewHeight"
+                                 width="100%"
+                                 role="img"
+                                 aria-label="@L["TimelineLabel"]"
+                                 class="signal-chart"
+                                 style="user-select: none; border: 1px solid var(--bs-border-color);"
+                                 @onmousedown="e => BeginSelectionAsync(section, e)"
+                                 @onmousemove="e => MoveAsync(section, e)"
+                                 @onmouseup="() => EndSelection(section)"
+                                 @onmouseleave="() => LeaveChart(section)"
+                                 @oncontextmenu="e => OpenMenu(section, e)"
+                                 @oncontextmenu:preventDefault="true">
+                                @* y-axis: gridlines and labels, fitted to the displayed readings *@
+                                @foreach (int dbm in section.Scale.Ticks())
+                                {
+                                    double y = section.Scale.MapY(dbm);
+                                    <line x1="@SignalChartModel.PlotLeft" x2="@(SignalChartModel.PlotLeft + SignalChartModel.PlotWidth)" y1="@y" y2="@y" style="stroke: var(--bs-border-color);" stroke-dasharray="2 4" />
+                                    @SvgText(SignalChartModel.PlotLeft - 6, y, "end", "currentColor", dbm.ToString(CultureInfo.InvariantCulture), dominantBaseline: "middle")
+                                }
+                                @SvgText(6, SignalChartModel.PlotTop + 10, "start", "currentColor", L["AxisDbm"].Value)
+
+                                @* x-axis: evenly spaced time labels across the visible window *@
+                                <line x1="@SignalChartModel.PlotLeft" x2="@(SignalChartModel.PlotLeft + SignalChartModel.PlotWidth)" y1="@(SignalChartModel.PlotTop + SignalChartModel.PlotHeight)" y2="@(SignalChartModel.PlotTop + SignalChartModel.PlotHeight)" style="stroke: var(--bs-border-color);" />
+                                @foreach (DateTime tick in SignalChartModel.TimeTicks(_from, _to, 5))
+                                {
+                                    @SvgText(SignalChartModel.MapX(tick, _from, _to), SignalChartModel.PlotTop + SignalChartModel.PlotHeight + 16, "middle", "currentColor", SignalChartModel.FormatTick(tick, _to - _from, Zone))
+                                }
+
+                                @* Hours with a reading more than 1 std dev from the mean (amber), or more than 2 (red, with an alert). *@
+                                @foreach (SignalDeviationWindow window in section.Deviations)
+                                {
+                                    double bandLeft = SignalChartModel.MapX(window.HourStartUtc, _from, _to);
+                                    double bandRight = SignalChartModel.MapX(window.HourStartUtc.AddHours(1), _from, _to);
+                                    if (window.Level == SignalDeviationLevel.TwoSigma)
+                                    {
+                                        <rect class="signal-deviation" data-level="TwoSigma" x="@bandLeft" y="@SignalChartModel.PlotTop" width="@(bandRight - bandLeft)" height="@SignalChartModel.PlotHeight" style="fill: var(--bs-danger); opacity: 0.35; stroke: var(--bs-danger); stroke-width: 2;" />
+                                    }
+                                    else
+                                    {
+                                        <rect class="signal-deviation" data-level="OneSigma" x="@bandLeft" y="@SignalChartModel.PlotTop" width="@(bandRight - bandLeft)" height="@SignalChartModel.PlotHeight" style="fill: var(--bs-warning); opacity: 0.22;" />
+                                    }
+                                }
+
+                                @* Low-signal and missed-check periods sit under the gray no-signal periods, so both stay visible where they overlap. *@
+                                @foreach (SignalPeriod period in section.Periods.Where(p => p.Kind != SignalPeriodKind.NoSignal))
+                                {
+                                    @PeriodRect(period, "var(--bs-danger)", 0.18)
+                                }
+                                @foreach (SignalPeriod period in section.Periods.Where(p => p.Kind == SignalPeriodKind.NoSignal))
+                                {
+                                    @PeriodRect(period, "var(--bs-secondary)", 0.45)
+                                }
+
+                                <polyline points="@section.Points" fill="none" stroke="currentColor" stroke-width="2" />
+
+                                @* All-time reference bars: average, strongest and weakest, drawn across the whole plot. *@
+                                @{
+                                    double averageY = section.Scale.MapY(section.AllTime.Average);
+                                    @ReferenceBar(averageY, "var(--bs-primary)", 2, "6 4", $"{L["AllTimeAverage"].Value} {section.AllTime.Average.ToString("0.0", CultureInfo.InvariantCulture)}")
+                                }
+                                @if (section.AllTime.Max is int strongest)
+                                {
+                                    @ReferenceBar(section.Scale.MapY(strongest), "var(--bs-success)", 3, null, $"{L["AllTimeStrongest"].Value} {strongest}")
+                                }
+                                @if (section.AllTime.Min is int weakest)
+                                {
+                                    @ReferenceBar(section.Scale.MapY(weakest), "var(--bs-danger)", 3, null, $"{L["AllTimeWeakest"].Value} {weakest}")
+                                }
+
+                                @if (SelectionRangeFor(section) is { } selected)
+                                {
+                                    double left = SignalChartModel.MapX(selected.start, _from, _to);
+                                    double right = SignalChartModel.MapX(selected.end, _from, _to);
+                                    <rect class="signal-selection" x="@left" y="@SignalChartModel.PlotTop" width="@(right - left)" height="@SignalChartModel.PlotHeight" style="fill: var(--bs-primary); opacity: 0.15;" />
+                                }
+
+                                @if (section.HoverFraction is double hoverFraction)
+                                {
+                                    double hoverX = SignalChartModel.MapX(SignalChartModel.TimeAt(hoverFraction, _from, _to), _from, _to);
+                                    <line class="signal-hover" x1="@hoverX" x2="@hoverX" y1="@SignalChartModel.PlotTop" y2="@(SignalChartModel.PlotTop + SignalChartModel.PlotHeight)" style="stroke: currentColor; opacity: 0.5;" />
+                                }
+                            </svg>
+
+                            @if (HoverTooltip(section) is { } tip)
+                            {
+                                <div class="signal-tooltip small" data-testid="signal-tooltip" style="position: absolute; top: 0; left: @tip.Left.ToString("0.##", CultureInfo.InvariantCulture)%; transform: translateX(-50%); pointer-events: none; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 4px; padding: 2px 6px; white-space: nowrap; z-index: 2;">@tip.Text</div>
+                            }
+                        </div>
+                        <p class="small text-muted mb-0 mt-1">@L["SelectionHint"]</p>
+                        <p class="small mb-0 mt-1" data-testid="signal-legend">
+                            <span style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-secondary); opacity: 0.45;"></span> @L["LegendNoSignal"]
+                            <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-danger); opacity: 0.18;"></span> @L["LegendLowOrMissed"]
+                            <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-warning); opacity: 0.22;"></span> @L["LegendOneSigma"]
+                            <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-danger); opacity: 0.35; border: 2px solid var(--bs-danger);"></span> @L["LegendTwoSigma"]
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-3" data-testid="signal-calendar">
+                    <span class="small fw-semibold">@L["CalendarTitle"]</span>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0 text-center" style="font-size: 0.75rem;">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    @for (int hour = 0; hour < 24; hour++)
+                                    {
+                                        <th>@hour</th>
+                                    }
+                                    <th class="text-nowrap">@L["CalendarDayStdDev"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int day = 0; day < 7; day++)
+                                {
+                                    <tr>
+                                        <th class="text-nowrap">@DayName(day)</th>
+                                        @for (int hour = 0; hour < 24; hour++)
+                                        {
+                                            SignalStats cell = section.Calendar.Cell(day, hour);
+                                            <td title="@cell.Count readings">@(cell.Count == 0 ? "-" : cell.Average.ToString("0", CultureInfo.InvariantCulture))</td>
+                                        }
+                                        <td class="fw-semibold">@StdDevText(section.Calendar.DayOfWeek(day))</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th class="text-nowrap">@L["CalendarHourStdDev"]</th>
+                                    @for (int hour = 0; hour < 24; hour++)
+                                    {
+                                        <td class="fw-semibold">@StdDevText(section.Calendar.HourOfDay(hour))</td>
+                                    }
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-3" data-testid="signal-over-time">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                        <span class="small fw-semibold">@L["BucketTitle"]</span>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="@L["BucketTitle"]" data-testid="signal-bucket-picker">
+                            @foreach (SignalBucket size in Enum.GetValues<SignalBucket>())
+                            {
+                                SignalBucket chosen = size;
+                                <button type="button" class="btn @(chosen == _bucket ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetBucket(chosen)">@L[$"Bucket{chosen}"]</button>
+                            }
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0" data-testid="signal-buckets">
+                            <thead>
+                                <tr>
+                                    <th>@L["BucketColStart"]</th>
+                                    <th>@L["BucketColReadings"]</th>
+                                    <th>@L["StatMin"]</th>
+                                    <th>@L["StatMax"]</th>
+                                    <th>@L["StatAverage"]</th>
+                                    <th>@L["BucketColStdDev"]</th>
+                                    <th>@L["BucketColDelta"]</th>
+                                    <th>@L["BucketColNoSignal"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (SignalBucketStats bucket in BucketsFor(section))
+                                {
+                                    <tr>
+                                        <td>@FormatBucketStart(bucket.StartUtc)</td>
+                                        <td>@bucket.Stats.Count</td>
+                                        <td>@Dbm(bucket.Stats.Min)</td>
+                                        <td>@Dbm(bucket.Stats.Max)</td>
+                                        <td>@(bucket.Stats.Count == 0 ? "-" : bucket.Stats.Average.ToString("0.0", CultureInfo.InvariantCulture))</td>
+                                        <td>@StdDevText(bucket.Stats)</td>
+                                        <td>@Dbm(bucket.Stats.Delta)</td>
+                                        <td>@bucket.NoSignalCount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (_menuDeviceId is Guid)
+{
+    <div class="card shadow position-fixed" style="left: @(_menuX)px; top: @(_menuY)px; z-index: 1050; min-width: 200px;" data-testid="signal-menu">
+        <div class="list-group list-group-flush">
+            @if (_menuRange is null)
+            {
+                <div class="list-group-item small text-muted">@L["NoSelection"]</div>
+            }
+            else
+            {
+                <button type="button" class="list-group-item list-group-item-action" data-testid="signal-drill-down" @onclick="DrillDown">@L["DrillDown"]</button>
+                <button type="button" class="list-group-item list-group-item-action" data-testid="signal-create-case" @onclick="CreateCase">@L["CreateCase"]</button>
+            }
+            <button type="button" class="list-group-item list-group-item-action small" @onclick="CloseMenu">@L["CloseMenu"]</button>
+        </div>
+    </div>
+}
+
+@code {
+    private sealed class DeviceSignal
+    {
+        public required Guid DeviceId { get; init; }
+        public required string Name { get; init; }
+        public required string? ProviderName { get; init; }
+        public required IReadOnlyList<SignalBucketStats> Hourly { get; init; }
+        public required IReadOnlyList<SignalBucketStats> Daily { get; init; }
+        public required IReadOnlyList<SignalBucketStats> Weekly { get; init; }
+        public required SignalStats AllTime { get; init; }
+        public required SignalStats PeriodStats { get; init; }
+        public required SignalCalendar Calendar { get; init; }
+        public required IReadOnlyList<SignalDeviationWindow> Deviations { get; init; }
+        public required SignalScale Scale { get; init; }
+        public required string Points { get; init; }
+        public required int InRangeCount { get; init; }
+        public required IReadOnlyList<SignalSample> Readings { get; init; }
+        public required IReadOnlyList<SignalPeriod> Periods { get; init; }
+        public double? SelectionStart { get; set; }
+        public double? SelectionEnd { get; set; }
+        public double? HoverFraction { get; set; }
+        public bool Dragging { get; set; }
+    }
+
+    /// <summary>The offset of a pointer on the chart, and the chart's rendered width, both in CSS pixels.</summary>
+    private sealed record PlotPointer(double Offset, double Width);
+
+    /// <summary>The tooltip's position across the chart (percent of its width) and its text.</summary>
+    private sealed record HoverTip(double Left, string Text);
+
+    private List<DeviceSignal> _sections = new();
+    private SignalBucket _bucket = SignalBucket.Week;
+    private string? _dismissedAlertSignature;
+    private List<Device> _allDevices = new();
+    private DateTime _from;
+    private DateTime _to;
+    private IJSObjectReference? _module;
+    private Guid? _menuDeviceId;
+    private double _menuX;
+    private double _menuY;
+    private (DateTime start, DateTime end)? _menuRange;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ScopeState.OnChange += OnScopeChanged;
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/VideoForensics.Client.Ui.Shared/scripts/signal-chart.js");
+        }
+    }
+
+    private async void OnScopeChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            _menuDeviceId = null;
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>
+    /// Loads one section per device in the investigation scope. The right-hand scope panel chooses the devices and the
+    /// time window. The figures (stats, grid, deviations, periods, buckets) come from the server's signal analysis, so
+    /// every client shows the same numbers; only the drawing (axis fit and the polyline) is worked out here.
+    /// </summary>
+    private async Task LoadAsync()
+    {
+        ForensicScope scope = ScopeState.Current;
+        _from = scope.FromUtc;
+        _to = scope.ToUtc;
+
+        _allDevices = (await DeviceRepository.ListAsync(CancellationToken.None)).OrderBy(d => d.Name).ToList();
+        List<Guid> inScopeIds = (scope.MatchesNoDevices
+            ? []
+            : scope.IncludesAllDevices ? _allDevices : _allDevices.Where(d => scope.DeviceIds.Contains(d.Id)))
+            .Select(d => d.Id)
+            .ToList();
+
+        SignalAnalysis analysis = await SignalAnalysisService.AnalyzeAsync(inScopeIds, _from, _to, CancellationToken.None);
+
+        _sections = analysis.Devices.Select(device =>
+        {
+            // The axis fits the all-time min and max, the figures the bars show, so the readings are legible.
+            SignalScale scale = device.AllTime.Min is int min && device.AllTime.Max is int max
+                ? SignalScale.Fit(min, max)
+                : SignalScale.Default;
+
+            return new DeviceSignal
+            {
+                DeviceId = device.DeviceId,
+                Name = device.Name,
+                ProviderName = device.ProviderName,
+                AllTime = device.AllTime,
+                PeriodStats = device.PeriodStats,
+                Calendar = device.Calendar,
+                Deviations = device.Deviations,
+                Hourly = device.Hourly,
+                Daily = device.Daily,
+                Weekly = device.Weekly,
+                Scale = scale,
+                Points = SignalChartModel.Polyline(device.Readings, _from, _to, scale),
+                InRangeCount = device.Readings.Count(s => s.RssiDbm is not null),
+                Readings = device.Readings,
+                Periods = device.Periods,
+            };
+        }).ToList();
+    }
+
+    /// <summary>The camera's buckets for the size the user picked.</summary>
+    private IReadOnlyList<SignalBucketStats> BucketsFor(DeviceSignal section) => _bucket switch
+    {
+        SignalBucket.Hour => section.Hourly,
+        SignalBucket.Week => section.Weekly,
+        _ => section.Daily,
+    };
+
+    /// <summary>Whether the camera is a Ring device, which has a strongly typed settings page.</summary>
+    private static bool IsRing(DeviceSignal section) => string.Equals(section.ProviderName, "Ring", StringComparison.Ordinal);
+
+    /// <summary>Identifies the current set of 2 std dev alerts, so a dismissed banner stays hidden until the set changes.</summary>
+    private static string AlertSignature(IEnumerable<(DeviceSignal Section, SignalDeviationWindow Window)> alerts)
+    {
+        return string.Join("|", alerts.Select(a => $"{a.Section.DeviceId:N}@{a.Window.HourStartUtc:O}"));
+    }
+
+    private void DismissAlerts(string signature)
+    {
+        _dismissedAlertSignature = signature;
+    }
+
+    private void SetBucket(SignalBucket size)
+    {
+        _bucket = size;
+    }
+
+    /// <summary>The start of a group, in the form the bucket size suits: hours show the clock, weeks show their Monday.</summary>
+    private string FormatBucketStart(DateTime startUtc)
+    {
+        return _bucket switch
+        {
+            SignalBucket.Hour => Zone.Format(startUtc, "MMM d HH:00"),
+            SignalBucket.Week => $"{L["BucketWeekOf"].Value} {Zone.Format(startUtc, "MMM d")}",
+            _ => Zone.Format(startUtc, "ddd MMM d"),
+        };
+    }
+
+    /// <summary>The std dev for a table cell, or "-" when there are fewer than two readings to measure spread from.</summary>
+    private static string StdDevText(SignalStats stats)
+    {
+        return stats.StdDev is double sd ? sd.ToString("0.0", CultureInfo.InvariantCulture) : "-";
+    }
+
+    /// <summary>The short weekday name for a calendar row (0 = Monday).</summary>
+    private static string DayName(int day)
+    {
+        return DateTimeFormatInfo.CurrentInfo.GetAbbreviatedDayName((DayOfWeek)((day + 1) % 7));
+    }
+
+    /// <summary>A dBm figure for a table cell, or "-" when the group has no signal values.</summary>
+    private static string Dbm(int? value)
+    {
+        return value is int v ? v.ToString(CultureInfo.InvariantCulture) : "-";
+    }
+
+    private string DeviceName(Device device)
+    {
+        return string.IsNullOrWhiteSpace(device.Name) ? DeviceLabel.For(device.Name, device.ProviderDeviceId) : device.Name;
+    }
+
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used so a time is never shown in the wrong zone.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
+    private static string PlotId(Guid deviceId) => $"signal-plot-{deviceId:N}";
+
+    /// <summary>
+    /// An SVG text label. Razor reserves the text tag and rejects attributes on it, so the label is built as markup
+    /// here, with its content encoded.
+    /// </summary>
+    private static MarkupString SvgText(double x, double y, string anchor, string fill, string content, string? dominantBaseline = null)
+    {
+        string baseline = dominantBaseline is null ? string.Empty : $" dominant-baseline=\"{dominantBaseline}\"";
+        return new MarkupString(
+            $"<text x=\"{Format(x)}\" y=\"{Format(y)}\" text-anchor=\"{anchor}\"{baseline} font-size=\"11\" style=\"fill: {fill};\">{WebUtility.HtmlEncode(content)}</text>");
+    }
+
+    /// <summary>A horizontal reference bar across the plot, with its label at the right edge just above the bar.</summary>
+    private static MarkupString ReferenceBar(double y, string colour, int width, string? dash, string label)
+    {
+        double right = SignalChartModel.PlotLeft + SignalChartModel.PlotWidth;
+        string dashAttribute = dash is null ? string.Empty : $" stroke-dasharray=\"{dash}\"";
+        string bar = $"<line class=\"signal-bar\" x1=\"{Format(SignalChartModel.PlotLeft)}\" x2=\"{Format(right)}\" y1=\"{Format(y)}\" y2=\"{Format(y)}\" stroke-width=\"{width}\"{dashAttribute} style=\"stroke: {colour};\" />";
+        return new MarkupString(bar + SvgText(right - 4, y - 4, "end", colour, label).Value);
+    }
+
+    private static string Format(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>One overlay rectangle over the plot, with a hover title naming what it marks and when it starts.</summary>
+    private MarkupString PeriodRect(SignalPeriod period, string colour, double opacity)
+    {
+        double start = SignalChartModel.MapX(period.StartUtc, _from, _to);
+        double end = SignalChartModel.MapX(period.EndUtc, _from, _to);
+        string label = L[PeriodLabelKey(period.Kind)].Value;
+        string when = SignalChartModel.FormatTooltipTime(period.StartUtc, Zone);
+        return new MarkupString(
+            $"<rect class=\"signal-period\" data-kind=\"{period.Kind}\" x=\"{Format(start)}\" y=\"{Format(SignalChartModel.PlotTop)}\" width=\"{Format(end - start)}\" height=\"{Format(SignalChartModel.PlotHeight)}\" style=\"fill: {colour}; opacity: {Format(opacity)};\"><title>{WebUtility.HtmlEncode($"{label}, {when}")}</title></rect>");
+    }
+
+    private static string PeriodLabelKey(SignalPeriodKind kind) => kind switch
+    {
+        SignalPeriodKind.NoSignal => "PeriodNoSignal",
+        SignalPeriodKind.Weak => "PeriodWeak",
+        _ => "PeriodMissed",
+    };
+
+    private async Task<PlotPointer> MeasureAsync(Guid deviceId, double clientX)
+    {
+        if (_module is null)
+        {
+            return new PlotPointer(0, 0);
+        }
+
+        return await _module.InvokeAsync<PlotPointer>("measure", PlotId(deviceId), clientX);
+    }
+
+    private async Task BeginSelectionAsync(DeviceSignal section, MouseEventArgs e)
+    {
+        _menuDeviceId = null;
+        if (e.Button != 0)
+        {
+            // Right-button presses open the menu and must not clear or move the selection.
+            return;
+        }
+
+        double fraction = await FractionAsync(section, e.ClientX);
+        section.SelectionStart = fraction;
+        section.SelectionEnd = fraction;
+        section.Dragging = true;
+    }
+
+    /// <summary>Tracks the pointer for the tooltip, and extends the selection while dragging.</summary>
+    private async Task MoveAsync(DeviceSignal section, MouseEventArgs e)
+    {
+        double fraction = await FractionAsync(section, e.ClientX);
+        section.HoverFraction = fraction;
+        if (section.Dragging)
+        {
+            section.SelectionEnd = fraction;
+        }
+    }
+
+    private static void EndSelection(DeviceSignal section)
+    {
+        section.Dragging = false;
+    }
+
+    private static void LeaveChart(DeviceSignal section)
+    {
+        section.Dragging = false;
+        section.HoverFraction = null;
+    }
+
+    private async Task<double> FractionAsync(DeviceSignal section, double clientX)
+    {
+        PlotPointer pointer = await MeasureAsync(section.DeviceId, clientX);
+        return SignalChartModel.FractionFromCanvasOffset(pointer.Offset, pointer.Width);
+    }
+
+    /// <summary>
+    /// What the tooltip shows for the hovered time: the nearest reading's value and time, and the period it falls in,
+    /// if any. Null when nothing is hovered or the camera has no readings in the window.
+    /// </summary>
+    private HoverTip? HoverTooltip(DeviceSignal section)
+    {
+        if (section.HoverFraction is not double fraction)
+        {
+            return null;
+        }
+
+        DateTime time = SignalChartModel.TimeAt(fraction, _from, _to);
+        SignalSample? nearest = SignalChartModel.NearestReading(section.Readings, time);
+        if (nearest is null)
+        {
+            return null;
+        }
+
+        string reading = nearest.RssiDbm is int rssi ? $"{rssi} dBm" : L["PeriodNoSignal"].Value;
+        string text = $"{reading} · {SignalChartModel.FormatTooltipTime(nearest.CapturedAtUtc, Zone)}";
+        SignalPeriod? period = section.Periods.FirstOrDefault(p => time >= p.StartUtc && time <= p.EndUtc);
+        if (period is not null)
+        {
+            text += $" · {L[PeriodLabelKey(period.Kind)].Value}";
+        }
+
+        double left = SignalChartModel.MapX(time, _from, _to) / SignalChartModel.ViewWidth * 100;
+        return new HoverTip(left, text);
+    }
+
+    private (DateTime start, DateTime end)? SelectionRangeFor(DeviceSignal section)
+    {
+        if (section.SelectionStart is not double start || section.SelectionEnd is not double end)
+        {
+            return null;
+        }
+
+        return SignalChartModel.SelectionRange(start, end, _from, _to);
+    }
+
+    private void OpenMenu(DeviceSignal section, MouseEventArgs e)
+    {
+        _menuDeviceId = section.DeviceId;
+        _menuX = e.ClientX;
+        _menuY = e.ClientY;
+        _menuRange = SelectionRangeFor(section);
+    }
+
+    private void CloseMenu()
+    {
+        _menuDeviceId = null;
+    }
+
+    /// <summary>
+    /// Narrows the scope to this camera and the selected period, and records where the drill came from so the
+    /// breadcrumb can return to it. The graph reloads to show only that period.
+    /// </summary>
+    private void DrillDown()
+    {
+        ApplySelectionToScope();
+    }
+
+    /// <summary>Sets the scope to the selected period, then opens the new-case page, which picks the scope up.</summary>
+    private void CreateCase()
+    {
+        if (ApplySelectionToScope())
+        {
+            NavigationManager.NavigateTo("/cases/new");
+        }
+    }
+
+    private bool ApplySelectionToScope()
+    {
+        if (_menuDeviceId is not Guid deviceId || _menuRange is not { } range)
+        {
+            return false;
+        }
+
+        ForensicScope before = ScopeState.Current;
+        string beforeLabel = ScopeLabel(before);
+        ScopeState.Set(new ForensicScope([deviceId], range.start, range.end, before.Search));
+        Trail.DrillInto(before, beforeLabel, ScopeState.Current);
+        _menuDeviceId = null;
+        return true;
+    }
+
+    /// <summary>Goes back to a level in the breadcrumb: applies its scope and drops the levels below it.</summary>
+    private void RestoreLevel(int index)
+    {
+        ForensicScope target = Trail.RestoreTo(index);
+        ScopeState.Set(target);
+    }
+
+    /// <summary>A short label for a scope: the cameras, then the period, for the breadcrumb.</summary>
+    private string ScopeLabel(ForensicScope scope)
+    {
+        string cameras = scope.MatchesNoDevices ? L["NoCamerasLabel"].Value
+            : scope.DeviceIds.Count == 0 ? L["AllCamerasLabel"].Value
+            : scope.DeviceIds.Count == 1 ? DeviceNameById(scope.DeviceIds[0])
+            : L["CameraCountLabel", scope.DeviceIds.Count].Value;
+        return $"{cameras}, {SignalChartModel.FormatTooltipTime(scope.FromUtc, Zone)} – {SignalChartModel.FormatTooltipTime(scope.ToUtc, Zone)}";
+    }
+
+    private string DeviceNameById(Guid deviceId)
+    {
+        Device? device = _allDevices.FirstOrDefault(d => d.Id == deviceId);
+        return device is null ? L["CameraFallbackLabel"].Value : DeviceName(device);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ScopeState.OnChange -= OnScopeChanged;
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit has already gone, so the module's JS side is gone with it. Nothing left to release.
+            }
+        }
+    }
+}

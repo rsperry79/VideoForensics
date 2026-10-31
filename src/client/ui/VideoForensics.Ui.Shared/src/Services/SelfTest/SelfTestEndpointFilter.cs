@@ -7,6 +7,7 @@ public enum SelfTestCategory
 {
     ReadOnly,
     Destructive,
+    Alarm,
 }
 
 /// <summary>One dropdown entry: the stable <see cref="Value"/> and the localized, human-readable <see cref="Label"/>.</summary>
@@ -19,9 +20,17 @@ public sealed record SelfTestFilterOption(string Value, string Label);
 public static class SelfTestEndpointFilter
 {
     /// <summary>Destructive and physical endpoints share the destructive group.</summary>
+    private static readonly HashSet<string> AlarmKeys = new(StringComparer.Ordinal) { "signalling-ticket" };
+
     public static SelfTestCategory CategoryOf(SelfTestEndpointDto endpoint)
     {
-        return endpoint.Destructive || endpoint.Physical ? SelfTestCategory.Destructive : SelfTestCategory.ReadOnly;
+        if (endpoint.Destructive || endpoint.Physical)
+        {
+            return SelfTestCategory.Destructive;
+        }
+
+        // Alarm-hub endpoints that only read state get their own group. Keys are the endpoint registry keys.
+        return AlarmKeys.Contains(endpoint.Key) ? SelfTestCategory.Alarm : SelfTestCategory.ReadOnly;
     }
 
     /// <summary>Endpoints matching every non-null filter.</summary>

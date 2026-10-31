@@ -28,7 +28,7 @@ using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccoun
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for the /accounts page tests: repository and auth mocks, the real
-/// <see cref="AccountSelectionState"/> / <see cref="PairedSessionState"/> over the bUnit JS runtime,
+/// <see cref="PairedSessionState"/> over the bUnit JS runtime,
 /// and two linked accounts on different providers (Ring, Wyze). The grid is the real SfGrid; the
 /// provider filter lives in the right-panel slot, so tests render the captured
 /// <see cref="RightPanelContentService.Content"/> fragment to reach it.
@@ -43,9 +43,12 @@ public abstract class AccountsPageTestBase : BunitContext
     protected static readonly Guid RingAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     protected static readonly Guid WyzeAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
 
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
@@ -89,7 +92,6 @@ public abstract class AccountsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => new Mock<IMultiProviderAuthService>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         // Signed-in passkey session so StepUpService can fetch a step-up token for remove/retire/export.
         _ = Services.AddScoped(sp =>
         {
@@ -167,14 +169,14 @@ public class AccountsPage_Grid_Tests : AccountsPageTestBase
     }
 
     [Fact]
-    public void Accounts_GridRows_EachRowShowsOnlyDetailsButton()
+    public void Accounts_GridRows_HaveNoButtons()
     {
+        // A row click opens the account, so the grid carries no per-row Details button.
         IRenderedComponent<Accounts> cut = RenderPage();
 
         var buttonTexts = cut.FindAll("#active-accounts .e-gridcontent tbody td button").Select(b => b.TextContent.Trim()).ToList();
 
-        Assert.Equal(2, buttonTexts.Count(t => t == "Details"));
-        Assert.Equal(2, buttonTexts.Count);
+        Assert.Empty(buttonTexts);
     }
 
     [Fact]

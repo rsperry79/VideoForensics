@@ -17,6 +17,7 @@ using Syncfusion.Blazor;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.WebApp.Api;
@@ -34,6 +35,7 @@ using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
+using VideoForensics.Core.Logging.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -53,6 +55,11 @@ using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.WebApp.Components;
 
+// Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
+VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
+
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
 // pipeline (which needs the host built first) the way every other setting in this app does. This
@@ -68,8 +75,11 @@ var storageProvider = new StorageLocationProvider();
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
 
+// The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
+ServerLogLevel serverLogLevel = new();
+
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
+    .MinimumLevel.ControlledBy(serverLogLevel.Switch)
     // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
     // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
@@ -81,6 +91,9 @@ Log.Logger = new LoggerConfiguration()
         path: Path.Combine(logsDir, "audit-.txt"),
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
         rollingInterval: RollingInterval.Day,
+        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 256L * 1024 * 1024,
         retainedFileCountLimit: 30,
         shared: true)
     // JSON format: structured output with all properties
@@ -88,11 +101,85 @@ Log.Logger = new LoggerConfiguration()
         path: Path.Combine(logsDir, "audit-.json"),
         outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
         rollingInterval: RollingInterval.Day,
+        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 256L * 1024 * 1024,
         retainedFileCountLimit: 30,
         shared: true)
+    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// In-place updates are off by default (Updates:Enabled). Apply a staged package before the host starts. Only as a real
+// Windows service: a debug run from Visual Studio must never rewrite its own build output.
+bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuration.GetValue<bool>("Updates:Enabled");
+string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
+bool updatesActiveAsService = inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
+if (OperatingSystem.IsWindows() && updatesActiveAsService)
+{
+    // Files renamed aside by the previous apply (the exe and dlls that were in use) can be deleted now.
+    VideoForensics.Client.Hosting.Updates.UpdateApplier.DeleteLeftoverFiles(AppContext.BaseDirectory);
+
+    // Only SYSTEM and Administrators may write the folder this service applies updates from as SYSTEM.
+    // Dev mode adds the developer (Updates:DevWriterUser, set once by enable-dev-updates.ps1) so Visual Studio can stage without admin.
+    var updateWriters = new List<System.Security.Principal.SecurityIdentifier>();
+    string? devWriterUser = builder.Configuration["Updates:DevWriterUser"];
+    if (allowDevUpdatePackages && !string.IsNullOrWhiteSpace(devWriterUser))
+    {
+        try
+        {
+            updateWriters.Add((System.Security.Principal.SecurityIdentifier)new System.Security.Principal.NTAccount(devWriterUser)
+                .Translate(typeof(System.Security.Principal.SecurityIdentifier)));
+        }
+        catch (System.Security.Principal.IdentityNotMappedException)
+        {
+            Log.Error("Updates:DevWriterUser '{User}' is not a known account; only SYSTEM and Administrators can stage updates", devWriterUser);
+        }
+    }
+
+    VideoForensics.Client.Platform.Windows.UpdatesFolderAcl.Ensure(updatesRoot, updateWriters);
+
+    // The apply below ends with an exit that the service manager must turn into a restart. If that cannot be guaranteed,
+    // leave the staged package alone: a stopped service is worse than an old version.
+    VideoForensics.Client.Platform.Windows.ServiceRecoveryResult recovery = await new VideoForensics.Client.Platform.Windows.WindowsServiceRecoveryConfigurator(
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Platform.Windows.WindowsServiceRecoveryConfigurator>.Instance)
+        .EnsureAsync("VideoForensics", CancellationToken.None);
+    if (!recovery.Success)
+    {
+        Log.Error("Service recovery is not configured ({Message}); staged updates will not be applied", recovery.Message);
+    }
+
+    var startupApplier = new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        new VideoForensics.Client.Hosting.Updates.UpdateApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>.Instance),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>.Instance);
+    string runningVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0";
+    VideoForensics.Client.Hosting.Updates.StartupUpdateResult updateResult = recovery.Success
+        ? await startupApplier.TryApplyStagedAsync(updatesRoot, AppContext.BaseDirectory, runningVersion, allowDevUpdatePackages, CancellationToken.None)
+        : new VideoForensics.Client.Hosting.Updates.StartupUpdateResult(VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None, "recovery not configured", null);
+
+    if (updateResult.Outcome == VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.Applied)
+    {
+        Log.Information("Applied staged update {Version}; exiting so the service manager restarts the new version", updateResult.Version);
+        await Log.CloseAndFlushAsync();
+
+        // This process still has the old files mapped, so it must not keep running. It has not connected to the service
+        // manager yet, so exiting counts as a failed start and the recovery action does not run: a detached helper starts
+        // the service again instead. (Updates applied while the service is running restart through recovery.)
+        if (!VideoForensics.Client.Platform.Windows.ServiceRestartScheduler.TrySchedule("VideoForensics"))
+        {
+            Log.Error("Could not schedule the service restart after applying the update; the service must be started manually");
+        }
+
+        Environment.Exit(1);
+    }
+    else if (updateResult.Outcome != VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None)
+    {
+        Log.Error("Staged update {Outcome}: {Message}", updateResult.Outcome, updateResult.Message);
+    }
+}
 
 // Must run before AddSyncfusionBlazor() below. Resolves the key from env vars and Client.Core user secrets
 // itself, so it does not depend on builder.Configuration having been built.
@@ -106,6 +193,15 @@ builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics"
 // systemd integration on Linux - enables running under systemd while keeping dotnet run/debugging
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
 builder.Host.UseSystemd();
+
+// The saved HTTP and HTTPS ports are read the same way as the tier, before Kestrel binds. A zero means nothing is
+// saved, so the urls configuration keeps deciding that listener's port.
+SavedServerPorts savedPorts = new ServerPortConfigReader(new StorageLocationProvider()).ReadSavedPorts();
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["ServerHttpPort"] = savedPorts.HttpPort.ToString(),
+    ["ServerHttpsPort"] = savedPorts.HttpsPort.ToString(),
+});
 
 IReadOnlyList<ListenEndpoint> listenEndpoints = ServerAddressResolver.ResolveListenEndpoints(builder.Configuration);
 
@@ -143,14 +239,29 @@ builder.WebHost.ConfigureKestrel(options =>
     }
 });
 
+// The endpoints above are the only addresses this server binds. Clearing the urls setting stops Kestrel from logging that it
+// is overriding a launch-profile or ASPNETCORE_URLS address.
+builder.WebHost.UseUrls([]);
+
 // Serilog is already configured above with file sinks. Optionally enable additional sinks
 // (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
-builder.Logging.SetMinimumLevel(LogLevel.Information);
+// Serilog writes the console, so the framework's own console provider is dropped to avoid printing every line twice.
+builder.Logging.ClearProviders();
+builder.Logging.SetMinimumLevel(LogLevel.Trace);
+// The Server Logs history reads the daily audit files in logsDir, which hold the levels the saved setting allows.
+builder.Services.AddSingleton(new LogFileDirectory(logsDir));
+builder.Services.AddSingleton(serverLogLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
-builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true);
+// The named pipe feeds VideoForensics.Utils.LogViewer. The gate starts closed; the saved Infrastructure setting opens it after build.
+var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate();
+builder.Services.AddSingleton(namedPipeGate);
+builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
+    enableNamedPipeLogger: true,
+    eventLogProvider: OperatingSystem.IsWindows() ? (Action<ILoggingBuilder>?)VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null,
+    namedPipeGate: namedPipeGate);
 
 // Add services to the container.
 // Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
@@ -215,6 +326,10 @@ builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
 
+// Read per request, so a change on the Permissions page applies without a restart.
+builder.Services.AddScoped<IProviderAccountEditPolicy, ProviderAccountEditPolicy>();
+builder.Services.AddScoped<ISettingsAccessPolicy, SettingsAccessPolicy>();
+
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
 // Core's default key-storage heuristic (usually %LOCALAPPDATA%\ASP.NET\DataProtection-Keys on
@@ -236,7 +351,7 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // decrypt it. Otherwise DPAPI (machine scope) protects it.
 if (OperatingSystem.IsWindows())
 {
-    X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
+    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate();
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
         : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
@@ -257,7 +372,7 @@ builder.Services.Configure<BrowserLiveViewOptions>(
     builder.Configuration.GetSection(BrowserLiveViewOptions.SectionName));
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
-// Per-circuit, like the scoped IVideoDownloadService it samples. Replaces the Razor panel's polling timer.
+// Per-circuit, so each circuit samples the sync activity log itself. Replaces the Razor panel's polling timer.
 builder.Services.AddScoped<IDownloadProgressSource, LocalDownloadProgressSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
 builder.Services.AddScoped<ISelfTestStatusSource, LocalSelfTestStatusSource>();
@@ -339,20 +454,72 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
 
-// Windows update installer (downloads the release .exe and launches it with /passive). AddVideoForensicsServerCore
-// registers the Debian default first, so this registration comes after it and wins.
-if (OperatingSystem.IsWindows())
+// Platform update installer. Windows downloads the release .exe and launches it with /passive; Linux downloads the
+// .deb to a pending-update location for a manual dpkg install. AddVideoForensicsServerCore registers no default.
+if (inPlaceUpdatesEnabled)
+{
+    // Stage the release zip; StartupUpdateApplier applies it on the next service start. No installer is launched.
+    _ = builder.Services.AddHttpClient();
+    _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier());
+    _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateStager>(sp =>
+        new VideoForensics.Client.Hosting.Updates.UpdateStager(
+            updatesRoot,
+            sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(),
+            allowDevUpdatePackages,
+            () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateStager>>()));
+    _ = builder.Services.AddSingleton<IUpdateInstaller>(sp =>
+        new VideoForensics.Client.Hosting.Updates.StagedUpdateInstaller(
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateStager>(),
+            updatesRoot,
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StagedUpdateInstaller>>()));
+}
+else if (OperatingSystem.IsWindows())
 {
     _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+}
+
+if (updatesActiveAsService)
+{
+    // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,
+    // and the service then exits so the service manager restarts it on the new version.
+    // NoOpUpdateDrain is replaced by the scheduler's drain when that lands.
+    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.NoOpUpdateDrain>();
+    _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
+        updatesRoot,
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
+        new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
+            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+            new VideoForensics.Client.Hosting.Updates.UpdateApplier(sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>>()),
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>>()),
+        AppContext.BaseDirectory,
+        allowDevUpdatePackages,
+        () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
+        code => { Log.CloseAndFlush(); Environment.Exit(code); },
+        TimeSpan.FromSeconds(5),
+        sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher>>()));
+}
+else
+{
+    _ = builder.Services.AddSingleton<IUpdateInstaller, VideoForensics.Client.Platform.Web.LinuxUpdateInstaller>();
 }
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
 builder.Services.AddSingleton<ThumbnailReadyBus>();
 builder.Services.AddSingleton<EvidenceChangedBus>();
+builder.Services.AddSingleton<DeviceHealthChangedBus>();
 builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, LiveThumbnailNotifier>());
 builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
+builder.Services.Replace(ServiceDescriptor.Singleton<IDeviceHealthChangeNotifier, LiveDeviceHealthNotifier>());
 builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
 builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
+builder.Services.AddScoped<IDeviceHealthChangedSource, LocalDeviceHealthChangedSource>();
+// The dispatcher runs in this process, so each raised notice is published to open Notices pages directly.
+builder.Services.AddSingleton<LocalNoticeFeed>();
+builder.Services.AddSingleton<INoticeFeed>(sp => sp.GetRequiredService<LocalNoticeFeed>());
 // Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
 // circuit's link never reaches another circuit; both interfaces share one bus instance.
 builder.Services.AddScoped<AccountLinkedBus>();
@@ -445,6 +612,9 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // Trusted certificate for the Internet hostname, issued through Let's Encrypt DNS-01 with the stored
 // Cloudflare token. Acme:UseStaging (default true) keeps issuance on the staging CA until it is switched off.
 builder.Services.AddSingleton(certificateHolder);
+// Plain-http LAN requests are redirected to the tunnel or to https; see LocalTransportMiddleware.
+int? httpsPort = listenEndpoints.FirstOrDefault(endpoint => endpoint.Scheme == "https")?.Port;
+builder.Services.AddSingleton(new LocalTransportOptions(httpsPort, () => certificateHolder.Current is not null));
 builder.Services.AddSingleton<IAcmeCertificateIssuer, CertesAcmeCertificateIssuer>();
 builder.Services.AddScoped<ILetsEncryptCertificateStore, LetsEncryptCertificateStore>();
 builder.Services.AddScoped<LetsEncryptCertificateManager>();
@@ -489,6 +659,7 @@ builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdm
 // same reasoning as AddSelfHttpService above. Registered ahead of Ui.Shared's
 // DefaultSelfApiHttpClientFactory TryAddScoped registration so this one wins.
 builder.Services.AddScoped<ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
+builder.Services.AddScoped<IProviderAccountEditAccess, ProviderAccountEditAccess>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
@@ -497,15 +668,28 @@ builder.Services.AddScoped<WebPushClient>();
 // right-panel page-context slot, and per-operator theme/culture, all circuit-scoped like
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
-builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<LeftPanelContentService>();
 builder.Services.AddScoped<InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ScopeState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewStillCommand>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewClipLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewClipLoader>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewEventLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewEventLoader>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewDetailLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewDetailLoader>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewUrlCache>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
 builder.Services.AddScoped<DeviceOwnershipService>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewEvidenceTagger>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
 builder.Services.AddScoped<SimpleHomeBuilder>(sp => new SimpleHomeBuilder(
@@ -527,7 +711,12 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 // both hosts (both run on the same local machine as the user in this app's deployment model).
 builder.Services.AddSingleton<ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
+builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
+builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
+// The folder picker answers in-process on this host (see InProcessFolderBrowserEndpoint). MAUI registers the
+// remote version instead, which calls the /api/v1/filesystem route below.
+builder.Services.AddScoped<IFolderBrowserEndpoint, InProcessFolderBrowserEndpoint>();
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
 builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
@@ -538,6 +727,34 @@ builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
 WebApplication app = builder.Build();
+
+// Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
+using (IServiceScope levelScope = app.Services.CreateScope())
+{
+    try
+    {
+        IForensicsConfiguration savedConfig = await levelScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
+        serverLogLevel.Apply(savedConfig.LogLevel);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
+
+// Open the LogViewer pipe only if the Infrastructure setting says so. A failure keeps it closed.
+using (IServiceScope pipeScope = app.Services.CreateScope())
+{
+    try
+    {
+        string? storedPipe = await pipeScope.ServiceProvider.GetRequiredService<IAppSettingRepository>().GetAsync(LogPipeEndpoints.SettingKey, CancellationToken.None);
+        namedPipeGate.SetOpen(LogPipeEndpoints.IsEnabled(storedPipe));
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved log pipe setting, keeping it closed: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
 
 // Debug trace of every Ring API call: method, path and query, and status. Response bodies are not logged because
 // they hold camera and account data; enable the "VideoForensics.Providers.Ring.Api" category at Debug to see the trace.
@@ -550,6 +767,8 @@ VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
         Uri.TryCreate(call.Url, UriKind.Absolute, out Uri? target) ? target.PathAndQuery : call.Url,
         call.StatusCode,
         call.Body?.Length ?? 0);
+
+app.UseMiddleware<LocalTransportMiddleware>();
 
 // The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
 // keep the RP ID on the saved address for the current request.
@@ -617,13 +836,14 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
-app.MapSoftwarePathsEndpoints();
 app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
+app.MapProviderPermissionEndpoints();
 app.MapBannedIpsEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
+app.MapDeviceCaptureModeEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
@@ -631,16 +851,17 @@ app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapJammingEndpoints();
-app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();
+app.MapFolderBrowseEndpoints();
 app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
+app.MapLogPipeEndpoints();
 app.MapSnapshotProbeEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)

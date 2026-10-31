@@ -372,9 +372,13 @@ else
                 {
                     foreach (var dto in dtos)
                     {
+                        // The server serializes the role as a number unless a string enum converter is configured, so accept both.
+                        var roleElement = dto.GetProperty("role");
                         var req = new TwoFactorRoleRequirement
                         {
-                            Role = Enum.Parse<OperatorRole>(dto.GetProperty("role").GetString() ?? "ReadOnly"),
+                            Role = roleElement.ValueKind == System.Text.Json.JsonValueKind.Number
+                                ? (OperatorRole)roleElement.GetInt32()
+                                : Enum.Parse<OperatorRole>(roleElement.GetString() ?? "ReadOnly"),
                             RequireTwoFactor = dto.GetProperty("requireTwoFactor").GetBoolean()
                         };
                         _twoFactorRequirements.Add(req);

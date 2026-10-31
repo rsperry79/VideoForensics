@@ -314,4 +314,142 @@
   <data name="NotSavedText" xml:space="preserve">
     <value>Not saved</value>
   </data>
+  <data name="OfferLocalPasswordText" xml:space="preserve">
+    <value>Tunnel is running. Also turn on password sign-in for local access? Passkeys cannot run on the plain-http LAN address, so a password keeps local sign-in working.</value>
+  </data>
+  <data name="EnableLocalPasswordButton" xml:space="preserve">
+    <value>Enable local password</value>
+  </data>
+  <data name="NotNowButton" xml:space="preserve">
+    <value>Not now</value>
+  </data>
+  <data name="LetsEncryptHeading" xml:space="preserve">
+    <value>Let's Encrypt certificate</value>
+  </data>
+  <data name="ContactEmailLabel" xml:space="preserve">
+    <value>Contact email</value>
+  </data>
+  <data name="UseStagingLabel" xml:space="preserve">
+    <value>Use Let's Encrypt staging</value>
+  </data>
+  <data name="UseStagingHelp" xml:space="preserve">
+    <value>Staging certificates are not trusted by browsers. Turn this off only once staging has issued successfully, because production issuance is rate-limited.</value>
+  </data>
+  <data name="SaveCertSettingsButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="RequestCertificateButton" xml:space="preserve">
+    <value>Request certificate</value>
+  </data>
+  <data name="CertificateSettingsSaved" xml:space="preserve">
+    <value>Let's Encrypt settings saved.</value>
+  </data>
+  <data name="CertificateSettingsFailed" xml:space="preserve">
+    <value>Could not save Let's Encrypt settings: {0}</value>
+  </data>
+  <data name="CertificateRequestSucceeded" xml:space="preserve">
+    <value>Certificate issued.</value>
+  </data>
+  <data name="CertificateRequestFailed" xml:space="preserve">
+    <value>Certificate request failed: {0}</value>
+  </data>
+  <data name="NetworkDiscoverySection" xml:space="preserve">
+    <value>Network Discovery</value>
+  </data>
+  <data name="EnableMdnsAdvertisement" xml:space="preserve">
+    <value>Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP</value>
+  </data>
+  <data name="MdnsStatus" xml:space="preserve">
+    <value>mDNS advertisement {0}</value>
+  </data>
+  <data name="MdnsError" xml:space="preserve">
+    <value>Failed to update mDNS advertisement: {0}</value>
+  </data>
+  <data name="AdminOnlySettingsNote" xml:space="preserve">
+    <value>Only an administrator can change these settings. Ask an administrator to make the change.</value>
+  </data>
+  <data name="ConfigurationNotSupported" xml:space="preserve">
+    <value>This setting can only be changed from the server directly.</value>
+  </data>
+  <data name="DownloadsSection" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloads" xml:space="preserve">
+    <value>Max concurrent downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloadsHelp" xml:space="preserve">
+    <value>How many media files download at the same time from your providers. Higher finishes sooner but uses more bandwidth and computer resources. Lower is gentler on your connection.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="CertificateStatusIssued" xml:space="preserve">
+    <value>Certificate for {0} is valid until {1}.</value>
+  </data>
+  <data name="CertificateStatusNone" xml:space="preserve">
+    <value>No certificate has been issued yet.</value>
+  </data>
+  <data name="CertificateStatusRenewalDue" xml:space="preserve">
+    <value>Renewal is due. Request a certificate to renew it.</value>
+  </data>
+  <data name="DownloadCertificateButton" xml:space="preserve">
+    <value>Download certificate</value>
+  </data>
+  <data name="CertificateDownloadFailed" xml:space="preserve">
+    <value>Downloading the certificate failed: {0}</value>
+  </data>
+  <data name="ResetCertificateButton" xml:space="preserve">
+    <value>Reset certificate</value>
+  </data>
+  <data name="ResetCertificateSucceeded" xml:space="preserve">
+    <value>Certificate and Let's Encrypt account removed. The server presents its default certificate until a new one is requested.</value>
+  </data>
+  <data name="ResetCertificateFailed" xml:space="preserve">
+    <value>Resetting the certificate failed: {0}</value>
+  </data>
+  <data name="NetworkTierHelp" xml:space="preserve">
+    <value>Choose which networks can reach this server. Widening the tier asks you to confirm first.</value>
+  </data>
+  <data name="InternalUrlHeading" xml:space="preserve">
+    <value>Internal URL</value>
+  </data>
+  <data name="InternalUrlHelp" xml:space="preserve">
+    <value>The address other devices on your local network use to reach this server. Defaults to this machine's DNS name, not localhost. The name must resolve before it can be saved.</value>
+  </data>
+  <data name="InternalUrlLabel" xml:space="preserve">
+    <value>Internal URL</value>
+  </data>
+  <data name="InternalUrlSaved" xml:space="preserve">
+    <value>Internal URL saved.</value>
+  </data>
+  <data name="InternalUrlSaveFailed" xml:space="preserve">
+    <value>Saving the internal URL failed: {0}</value>
+  </data>
+  <data name="ServerPortsHeading" xml:space="preserve">
+    <value>Server ports</value>
+  </data>
+  <data name="ServerPortsHelp" xml:space="preserve">
+    <value>Ports this server listens on. Each must be free or already used by this server. Changes take effect after the server restarts.</value>
+  </data>
+  <data name="HttpPortLabel" xml:space="preserve">
+    <value>HTTP port</value>
+  </data>
+  <data name="HttpsPortLabel" xml:space="preserve">
+    <value>HTTPS port</value>
+  </data>
+  <data name="ServerPortsSaved" xml:space="preserve">
+    <value>Ports saved. Restart the server to apply them.</value>
+  </data>
+  <data name="ServerPortsSaveFailed" xml:space="preserve">
+    <value>Saving the ports failed: {0}</value>
+  </data>
+  <data name="HttpsPortNeedsCertificate" xml:space="preserve">
+    <value>HTTPS needs a valid Let's Encrypt certificate. Request one below first.</value>
+  </data>
+  <data name="LocalNetworkSection" xml:space="preserve">
+    <value>Local Network</value>
+  </data>
+  <data name="LocalNetworkHelp" xml:space="preserve">
+    <value>Settings for devices on this network: the ports the server listens on, the address they use to reach it, and discovery.</value>
+  </data>
 </root>

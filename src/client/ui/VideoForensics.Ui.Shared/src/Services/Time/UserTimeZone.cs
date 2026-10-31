@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Time;
 /// The Blazor Server host runs on the server, so its machine zone is not the user's. The host publishes the browser's
 /// zone (see <c>UserTimeZoneHost</c>) and until that arrives the zone is UTC, so a time is never shown in the wrong zone.
 /// </remarks>
-public sealed record UserTimeZone(TimeZoneInfo Zone)
+public sealed record UserTimeZone(TimeZoneInfo Zone, TimeFormatPreference Clock = TimeFormatPreference.Locale)
 {
     /// <summary>Zone used before the browser's zone is known.</summary>
     public static UserTimeZone Unavailable { get; } = new(TimeZoneInfo.Utc);
@@ -29,9 +29,12 @@ public sealed record UserTimeZone(TimeZoneInfo Zone)
         return TimeZoneInfo.ConvertTimeFromUtc(AsUtc(value), Zone);
     }
 
-    /// <summary>Formats a stored instant in this zone with the given format string, using the current culture.</summary>
+    /// <summary>
+    /// Formats a stored instant in this zone, using the current culture. The clock follows <see cref="Clock"/>, so every
+    /// time shown through this zone honours the operator's 12-hour or 24-hour choice.
+    /// </summary>
     public string Format(DateTime value, string? format)
     {
-        return ToLocal(value).ToString(format, CultureInfo.CurrentCulture);
+        return ToLocal(value).ToString(ClockFormat.Apply(format, Clock, CultureInfo.CurrentCulture), CultureInfo.CurrentCulture);
     }
 }

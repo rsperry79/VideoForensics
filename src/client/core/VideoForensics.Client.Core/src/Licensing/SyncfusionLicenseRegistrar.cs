@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 
 using System.Reflection;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 
@@ -15,9 +16,19 @@ namespace VideoForensics.Client.Core.Licensing
     {
         private const string LicenseKeyName = "SYNCFUSION_LICENSE_KEY";
 
+        private readonly ILicenseKeySource _fileKeySource;
+
+        /// <param name="fileKeySource">
+        /// Source for the external key file. Defaults to the file under the platform data root; tests and platform heads can pass their own.
+        /// </param>
+        public SyncfusionLicenseRegistrar(ILicenseKeySource? fileKeySource = null)
+        {
+            _fileKeySource = fileKeySource ?? new FileLicenseKeySource(new StorageLocationProvider().GetDataRoot());
+        }
+
         /// <summary>
         /// Registers the Syncfusion Blazor license key if present. Priority order:
-        /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
+        /// 1. External license key file in the data root, syncfusion-license.key (if present, overrides all)
         /// 2. SYNCFUSION_LICENSE_KEY from Client.Core user secrets (developer machines: dotnet user-secrets set)
         /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
         /// Falls back to unlicensed/dev-mode behavior if no source provides a key.
@@ -30,10 +41,10 @@ namespace VideoForensics.Client.Core.Licensing
         /// <summary>
         /// Resolves the key from the three sources in priority order and registers it. Logs nothing about the key value.
         /// </summary>
-        private static void RegisterLicense(string? configuredKey)
+        private void RegisterLicense(string? configuredKey)
         {
             string? key = ResolveSyncfusionLicenseKey(
-                ReadSyncfusionLicenseKeyFile(),
+                NormalizeLicenseKey(_fileKeySource.ReadKey()),
                 configuredKey,
                 GetBakedInSyncfusionLicenseKey());
             if (key != null)
@@ -84,15 +95,6 @@ namespace VideoForensics.Client.Core.Licensing
         {
             ArgumentNullException.ThrowIfNull(configuration);
             return NormalizeLicenseKey(configuration[LicenseKeyName]);
-        }
-
-        /// <summary>
-        /// Reads %ProgramData%\VideoForensics\syncfusion-license.key, trimmed. Returns null when the file is missing or blank.
-        /// </summary>
-        private static string? ReadSyncfusionLicenseKeyFile()
-        {
-            string syncfusionLicenseKeyPath = Path.Combine(new StorageLocationProvider().GetDataRoot(), "syncfusion-license.key");
-            return File.Exists(syncfusionLicenseKeyPath) ? NormalizeLicenseKey(File.ReadAllText(syncfusionLicenseKeyPath)) : null;
         }
 
         /// <summary>

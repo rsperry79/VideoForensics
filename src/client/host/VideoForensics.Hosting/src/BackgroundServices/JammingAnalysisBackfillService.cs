@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
@@ -22,9 +23,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<JammingAnalysisBackfillService> _logger;
 
         /// <summary>Creates the service.</summary>
-        public JammingAnalysisBackfillService(IServiceScopeFactory scopeFactory, ILogger<JammingAnalysisBackfillService> logger)
+        private readonly ThreadHeartbeats? _heartbeats;
+
+        public JammingAnalysisBackfillService(IServiceScopeFactory scopeFactory, ILogger<JammingAnalysisBackfillService> logger, ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
+            _heartbeats = heartbeats;
             _logger = logger;
         }
 
@@ -36,6 +40,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             using var timer = new PeriodicTimer(PassInterval);
             do
             {
+                _heartbeats?.Beat(nameof(JammingAnalysisBackfillService), DateTimeOffset.UtcNow, PassInterval);
                 await RunPassAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));

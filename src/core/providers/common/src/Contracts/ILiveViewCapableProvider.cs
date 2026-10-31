@@ -18,11 +18,15 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// (e.g., a Ring doorbot ID as a string), not the DB Guid.
         /// </summary>
         /// <param name="providerDeviceId">Provider-specific device identifier (e.g., "doorbot:1234567" for Ring).</param>
+        /// <param name="providerAccountId">The provider account that owns the device, so the implementation uses that account's session.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>A connected live view session providing media and telemetry events.</returns>
         /// <exception cref="InvalidOperationException">Thrown if not authenticated or the device cannot be accessed.</exception>
         /// <exception cref="NotSupportedException">Thrown by provider implementations that do not support live view.</exception>
-        Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct);
+        Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, Guid providerAccountId, CancellationToken ct);
+
+        /// <summary>The provider this implementation serves, matching <c>ProviderAccount.ProviderName</c> (e.g. "Ring").</summary>
+        string ProviderName { get; }
     }
 
     /// <summary>

@@ -43,6 +43,10 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasMaxLength(256);
 
             _ = builder.Property(d => d.SnapshotCaptureEnabled).HasDefaultValue(true);
+            _ = builder.Property(d => d.HealthCaptureEnabled).HasDefaultValue(true);
+
+            // CaptureMode is computed from the two switches above; it is not a column of its own.
+            _ = builder.Ignore(d => d.CaptureMode);
 
             _ = builder.Property(d => d.MotionSnoozePresetProfile).HasMaxLength(256);
             _ = builder.Property(d => d.LiveViewPresetProfile).HasMaxLength(256);

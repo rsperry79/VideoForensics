@@ -10,7 +10,6 @@ namespace VideoForensics.Client.Core.Services
     /// <summary>
     /// CLI-layer adapter combining IEventAndConfigService (provider) and IVideoForensicsDataClient (data)
     /// to orchestrate integrity verification and provider reconciliation.
-    /// Mirrors the architectural role of VideoDownloadServiceAdapter.
     /// </summary>
     public class EvidenceValidationOrchestrator : IEvidenceValidationService
     {
@@ -20,7 +19,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly Data.Common.Contracts.IDeviceRepository _deviceRepository;
         private readonly Data.Common.Contracts.IIntegrityVerificationService _integrityService;
         private readonly Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
-        private readonly Data.Core.Services.IMediaThumbnailService _thumbnails;
+        private readonly Data.Core.Contracts.IMediaThumbnailService _thumbnails;
         private readonly Data.Core.Contracts.IProviderReconciliationService _reconciliationService;
 
         /// <summary>Retry configuration for transient provider API failures.</summary>
@@ -35,7 +34,7 @@ namespace VideoForensics.Client.Core.Services
             Data.Common.Contracts.IDeviceRepository deviceRepository,
             Data.Common.Contracts.IIntegrityVerificationService integrityService,
             Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
-            Data.Core.Services.IMediaThumbnailService thumbnails,
+            Data.Core.Contracts.IMediaThumbnailService thumbnails,
             Data.Core.Contracts.IProviderReconciliationService reconciliationService)
         {
             _logger = logger;

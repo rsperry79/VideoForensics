@@ -21,6 +21,8 @@ public static class DeviceTypeNames
     /// <summary>True for a camera type. Snapshots and time lapses exist only for cameras.</summary>
     public static bool IsCamera(string? type)
     {
-        return type is "doorbot" or "authorized_doorbot" or "stickup_cam";
+        // Ring's doorbells report several kinds (doorbell, doorbell_v3, doorbell_v5, doorbell_portal, ...), all of them cameras.
+        return type is "doorbot" or "authorized_doorbot" or "stickup_cam"
+            || (type?.StartsWith("doorbell", StringComparison.Ordinal) ?? false);
     }
 }

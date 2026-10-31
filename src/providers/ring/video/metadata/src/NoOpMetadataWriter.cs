@@ -12,7 +12,7 @@ namespace VideoForensics.Providers.Ring
     /// Platform-agnostic implementation using System.IO.Abstractions for testability.
     /// Useful when metadata tagging tools (FFmpeg) are not available.
     /// </summary>
-    public class NoOpMetadataWriter : IMetadataWriter
+    public class NoOpMetadataWriter : IVideoMetadataWriter
     {
         private readonly IFileSystem _fileSystem;
 

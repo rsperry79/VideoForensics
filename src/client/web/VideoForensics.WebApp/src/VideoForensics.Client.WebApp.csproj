@@ -18,20 +18,22 @@
     <!-- mDNS service advertisement for local network discovery (plan §5.2). -->
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <!-- Console sink for the recording level (Program.cs); the same level governs the audit files. -->
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="TimezoneDetectorCore" Version="4.1.0" />
     <!-- Web Push Notifications (RFC 8291) - push subscription management and VAPID key handling. -->
     <PackageReference Include="WebPush" Version="1.0.13" />
     <!-- WebAuthn/passkey attestation+assertion verification (plan §5.1/§6). Fido2NetLib does the
          CBOR/COSE parsing and attestation-statement cryptographic verification - explicitly called
          out in the plan as a "looks right and isn't" risk area not to hand-roll. -->
-    <PackageReference Include="Fido2" Version="4.3.1" />
-    <PackageReference Include="Fido2.AspNet" Version="4.3.1" />
+    <PackageReference Include="Fido2" Version="4.3.2" />
+    <PackageReference Include="Fido2.AspNet" Version="4.3.2" />
     <PackageReference Include="QRCoder" Version="1.8.1" />
     <!-- Windows Service hosting (plan: allows dotnet run/debug unchanged, becomes a Windows Service
          in production when installed via deploy/install-service.ps1). -->
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.14" />
     <!-- systemd integration on Linux (plan: allows app to run as a systemd service; no-op on other platforms). -->
-    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.14" />
     <!-- MCP (Model Context Protocol) HTTP hosting over ASP.NET Core (Milestone 8 client/server split) -->
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
     <!-- GeoIP lookup using MaxMind GeoLite2 database for country-based login blocking. -->
@@ -43,11 +45,24 @@
     <InternalsVisibleTo Include="VideoForensics.Client.WebApp.Tests" />
   </ItemGroup>
 
+  <!-- Ui.Shared's src\ts\tsconfig.json is a TypeScript build input, not a runtime file. It reaches the publish
+       list through the project reference and collides with this project's own copy at the same relative path
+       (NETSDK1152). Dropping it from the list does not delete the file. -->
+  <Target Name="ExcludeUiSharedTypeScriptConfigFromPublish" BeforeTargets="_HandleFileConflictsForPublish">
+    <PropertyGroup>
+      <UiSharedTsConfig>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\ui\VideoForensics.Ui.Shared\src\ts\tsconfig.json'))</UiSharedTsConfig>
+    </PropertyGroup>
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="$(UiSharedTsConfig)" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\..\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
     <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
+    <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Web/src/VideoForensics.Client.Platform.Web.csproj" />
     <ProjectReference Include="../../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
   </ItemGroup>
 

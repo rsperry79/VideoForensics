@@ -89,4 +89,16 @@
   <data name="AllAccounts" xml:space="preserve">
     <value>All accounts</value>
   </data>
+  <data name="OpenNoticeLink" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="NoticeReview" xml:space="preserve">
+    <value>Review chain of custody</value>
+  </data>
+  <data name="NoticeReviewSignal" xml:space="preserve">
+    <value>Review</value>
+  </data>
+  <data name="NoticeDeviceSettings" xml:space="preserve">
+    <value>Device settings</value>
+  </data>
 </root>

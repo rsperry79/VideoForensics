@@ -1,6 +1,6 @@
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Models;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures;
+using VideoForensics.Providers.Ring.Testing.Fixtures;
 
 using Xunit;
 
@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 {
     public class SnapshotMetadataExtractorTests
     {
-        private readonly IMetadataExtractor _extractor = null!;
+        private readonly ISnapshotMetadataExtractor _extractor = null!;
         private readonly SnapshotProcessingOptions _defaultOptions = null!;
 
         public SnapshotMetadataExtractorTests()

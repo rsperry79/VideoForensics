@@ -47,6 +47,9 @@
   <data name="Next" xml:space="preserve">
     <value>Next</value>
   </data>
+  <data name="EditAccessRequired" xml:space="preserve">
+    <value>Your role cannot add provider accounts under the current permissions setting. Ask a SuperAdmin to change who may edit provider accounts.</value>
+  </data>
   <data name="UniviewAuthHeading" xml:space="preserve">
     <value>Uniview NVR Authentication</value>
   </data>

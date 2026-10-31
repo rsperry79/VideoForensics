@@ -3,6 +3,9 @@ using Microsoft.Extensions.Options;
 
 using System.Security.Cryptography;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -32,23 +35,40 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ILocationRepository _locations;
         private readonly IDeviceRepository _devices;
         private readonly IMediaItemRepository _mediaItems;
+        private readonly IProviderAccountRepository _accounts;
+        private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
         private readonly ITimelineVideoBuilder _builder;
         private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotRollupService> _logger;
 
+        // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
+        private readonly ISnapshotCaptureRepository? _captures;
+        private readonly ISnapshotStillMapper? _stillMapper;
+        private readonly IForensicsConfigurationService? _configurationService;
+
         public SnapshotRollupService(
             ILocationRepository locations,
             IDeviceRepository devices,
             IMediaItemRepository mediaItems,
+            IProviderAccountRepository accounts,
+            IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
             IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotRollupService> logger,
-            IEvidenceChangeNotifier? evidenceChanges = null)
+            IEvidenceChangeNotifier? evidenceChanges = null,
+            ISnapshotCaptureRepository? captures = null,
+            ISnapshotStillMapper? stillMapper = null,
+            IForensicsConfigurationService? configurationService = null)
         {
+            _captures = captures;
+            _stillMapper = stillMapper;
+            _configurationService = configurationService;
             _locations = locations;
             _devices = devices;
             _mediaItems = mediaItems;
+            _accounts = accounts;
+            _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
             _builder = builder;
             _options = options;
@@ -58,22 +78,38 @@ namespace VideoForensics.Client.Hosting.Services
         /// <inheritdoc />
         public async Task<SnapshotRollupResult> RollUpAccountAsync(Guid accountId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
-            var devices = new List<DeviceEntity>();
+            // Human-readable name only: raw account GUIDs must not reach the logs.
+            ProviderAccount? account = await _accounts.GetAsync(accountId, cancellationToken);
+            if (account is null)
+            {
+                return new SnapshotRollupResult(ErrorMessage: "Account not found");
+            }
+
+            // Same folder layout as the event pull and snapshot captures, so each loop sits with its device's other media.
+            // Read per roll-up so the loop follows the Storage Settings Media folder, the same root the frames were written to.
+            string? configuredMediaRoot = _configurationService is null
+                ? null
+                : (await _configurationService.LoadConfigurationAsync(string.Empty, cancellationToken)).DownloadLocation;
+            string mediaRoot = _storage.GetEffectiveRoot(StorageCategory.Media, configuredMediaRoot);
+            var devices = new List<(DeviceEntity Device, string DeviceFolder)>();
             foreach (VideoForensics.Data.Common.Entities.Location location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
             {
-                devices.AddRange(await _devices.GetByLocationIdAsync(location.Id, cancellationToken));
+                foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
+                {
+                    devices.Add((device, MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, location.Name, device.Name)));
+                }
             }
 
             int rolledUp = 0;
             int failed = 0;
             string? firstError = null;
 
-            foreach (DeviceEntity device in devices)
+            foreach ((DeviceEntity device, string deviceFolder) in devices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    if (await RollUpDeviceAsync(device, fromUtc, toUtc, cancellationToken))
+                    if (await RollUpDeviceAsync(device, deviceFolder, fromUtc, toUtc, cancellationToken))
                     {
                         rolledUp++;
                     }
@@ -95,7 +131,7 @@ namespace VideoForensics.Client.Hosting.Services
         }
 
         /// <summary>Builds and registers one device's loop. Returns false when the window has no usable snapshots.</summary>
-        private async Task<bool> RollUpDeviceAsync(DeviceEntity device, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        private async Task<bool> RollUpDeviceAsync(DeviceEntity device, string deviceFolder, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             IReadOnlyList<TimelineStill> stills = await LoadStillsAsync(device.Id, fromUtc, toUtc, cancellationToken);
             if (stills.Count == 0)
@@ -105,7 +141,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             // The loop file is named by its window end, so a retried window gets a fresh path.
-            string outputPath = Path.Combine(_options.Value.SnapshotRoot, "rollups", device.Id.ToString("D"), $"{toUtc:yyyyMMddHHmmss}.mp4");
+            string outputPath = Path.Combine(deviceFolder, $"{toUtc:yyyyMMddHHmmss}.mp4");
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
             TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);
@@ -124,6 +160,12 @@ namespace VideoForensics.Client.Hosting.Services
         /// </summary>
         private async Task<IReadOnlyList<TimelineStill>> LoadStillsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
+            if (_captures is not null && _stillMapper is not null)
+            {
+                return await LoadStillsFromCapturesAsync(deviceId, fromUtc, toUtc, cancellationToken);
+            }
+
+
             // Format, marker and time window are filtered in SQL. Only the file-on-disk check stays here: the file system is not queryable.
             IReadOnlyList<MediaItem> rows = await _mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cancellationToken);
             var snapshots = rows.Where(m => File.Exists(m.FilePath)).ToList();
@@ -141,6 +183,28 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             return stills;
+        }
+
+        /// <summary>
+        /// Stills from the window's capture attempts, mapped the same way as the timeline. A failed attempt ends the hold of
+        /// the still before it, so an outage becomes a gap that the builder fills with gray. The newest still is held to the
+        /// window end unless a failure ends it first.
+        /// </summary>
+        private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<SnapshotCapture> rows = await _captures!.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
+            var records = rows.Select(r => new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, r.MediaFilePath)).ToList();
+
+            // The newest 200 is the only still that can be held to the window end; the mapper cuts it short at a later failure.
+            DateTimeOffset? newestStill = rows.Where(r => r.HttpStatus == 200 && !string.IsNullOrWhiteSpace(r.MediaFilePath))
+                .Select(r => (DateTimeOffset?)r.CapturedAtUtc).Max();
+            if (newestStill is null)
+            {
+                return [];
+            }
+
+            TimeSpan lastHold = new DateTimeOffset(toUtc, TimeSpan.Zero) - newestStill.Value;
+            return _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, _options.Value.SnapshotRoot, lastHold < MinimumHold ? MinimumHold : lastHold));
         }
 
         /// <summary>Registers the MP4 as a Media row. RecordedAtUtc is the window end, which is unique per roll-up tick.</summary>

@@ -36,6 +36,7 @@ public class SignInPageTests : BunitContext
 
         WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
         _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(false);
+        _ = WebAuthn.Setup(w => w.IsPasskeyAvailableOnThisAddressAsync()).ReturnsAsync(true);
         _ = WebAuthn.Setup(w => w.GetAuthMethodsAsync())
             .ReturnsAsync(new AuthMethodsInfo(PasswordEnabled: true, PasskeyEnabled: false));
         _ = Services.AddScoped(_ => WebAuthn.Object);
@@ -233,6 +234,27 @@ public class SignInPageTests : BunitContext
         Assert.Empty(component.FindAll("pre"));
         Assert.Empty(component.FindAll("[class*='diag']"));
     }
+    [Fact]
+    public async Task SignIn_PasskeyUnavailableOnThisAddress_ShowsMessageAndNoPasskeyButton()
+    {
+        // Arrange - the browser supports passkeys, but the server says this address (plain http on the LAN) cannot use them
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        _ = WebAuthn.Setup(w => w.IsPasskeyAvailableOnThisAddressAsync()).ReturnsAsync(false);
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+
+        // Act
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
+
+        // Assert - the message is shown, the passkey sign-in button is not, and the password form is available
+        component.WaitForAssertion(() =>
+        {
+            Assert.Contains(localizer["PasskeyUnavailableHere"], component.Markup);
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.DoesNotContain(localizer["SignInWithPasskeyButton"], labels);
+            Assert.NotEmpty(component.FindAll("input[type='password']"));
+        });
+    }
+
 
     [Fact]
     public async Task SignIn_TwoFactorRequired_ShowsTitleAndNoIntroOrSignInPasskey()

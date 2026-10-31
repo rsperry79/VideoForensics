@@ -327,7 +327,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                            IsOnline: d.Health?.Connected ?? d.Subscribed,
+                            IsOnline: d.Health?.Connected,
                             Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                             Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                         );
@@ -347,7 +347,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "stickup_cam",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
@@ -368,7 +368,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
@@ -377,7 +377,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Add Chimes. Chimes have no video/event history (there's nothing for
-                // VideoDownloadServiceAdapter to download from one), but they're still a real
+                // the sync path to download from one), but they're still a real
                 // device on the account and belong in the Devices table for forensic completeness -
                 // see DbCompletenessChecker, which flags a chime present on the account but absent
                 // from the DB. IsOnline uses Health.Connected (chimes have no Subscribed field).
@@ -1115,7 +1115,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                            IsOnline: d.Health?.Connected ?? d.Subscribed,
+                            IsOnline: d.Health?.Connected,
                             Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                             Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                         );
@@ -1134,7 +1134,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
@@ -1154,7 +1154,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: s.Description ?? "Unknown Device",
                                 Type: "stickup_cam",
                                 LocationId: s.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: s.Health?.Connected ?? s.Subscribed,
+                                IsOnline: s.Health?.Connected,
                                 Metadata: DeviceMetadata(s.Kind, s.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(s)
                             );
@@ -1174,7 +1174,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );

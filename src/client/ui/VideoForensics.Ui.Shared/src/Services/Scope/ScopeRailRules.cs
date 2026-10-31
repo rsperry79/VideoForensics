@@ -19,9 +19,10 @@ public static class ScopeRailRules
         IEnumerable<Device> devices,
         IReadOnlyList<DeviceOwnership> ownership,
         string? providerFilter,
-        Guid? accountFilter)
+        Guid? accountFilter,
+        Guid? locationFilter = null)
     {
-        return ScopeDeviceFilter.Filter(devices, ownership, providerFilter, accountFilter);
+        return ScopeDeviceFilter.Filter(devices, ownership, providerFilter, accountFilter, locationFilter);
     }
 
     /// <summary>
@@ -59,9 +60,10 @@ public static class ScopeRailRules
         ForensicScope current,
         IReadOnlyList<Guid> visibleDeviceIds,
         string? providerFilter,
-        Guid? accountFilter)
+        Guid? accountFilter,
+        Guid? locationFilter = null)
     {
-        if (providerFilter is not null || accountFilter is not null)
+        if (providerFilter is not null || accountFilter is not null || locationFilter is not null)
         {
             var ids = visibleDeviceIds.ToList();
             return current with { DeviceIds = ids, MatchesNoDevices = ids.Count == 0 };
@@ -79,7 +81,8 @@ public static class ScopeRailRules
         Guid deviceId,
         bool isChecked,
         string? providerFilter,
-        Guid? accountFilter)
+        Guid? accountFilter,
+        Guid? locationFilter = null)
     {
         IReadOnlyList<Guid> existing = current.DeviceIds;
 
@@ -87,7 +90,7 @@ public static class ScopeRailRules
             ? (existing.Contains(deviceId) ? existing.ToList() : existing.Append(deviceId).ToList())
             : existing.Where(id => id != deviceId).ToList();
 
-        bool filtered = providerFilter is not null || accountFilter is not null;
+        bool filtered = providerFilter is not null || accountFilter is not null || locationFilter is not null;
         return current with { DeviceIds = updated, MatchesNoDevices = filtered && updated.Count == 0 };
     }
 
@@ -154,9 +157,9 @@ public static class ScopeRailRules
     /// Clears a no-match flag that no Provider/Account filter can explain. Such a flag would block pages with a
     /// notice the operator cannot act on, because the rail does not restore its filter controls from the URL.
     /// </summary>
-    public static ForensicScope ClearOrphanedNoMatch(ForensicScope current, string? providerFilter, Guid? accountFilter)
+    public static ForensicScope ClearOrphanedNoMatch(ForensicScope current, string? providerFilter, Guid? accountFilter, Guid? locationFilter = null)
     {
-        return current.MatchesNoDevices && providerFilter is null && accountFilter is null
+        return current.MatchesNoDevices && providerFilter is null && accountFilter is null && locationFilter is null
             ? (current with { MatchesNoDevices = false })
             : current;
     }

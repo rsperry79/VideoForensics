@@ -23,11 +23,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
     <PackageReference Include="Moq" Version="4.21.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.13" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../testing/src/VideoForensics.Providers.Ring.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Core.csproj" />
     <ProjectReference Include="../../auth/src/VideoForensics.Providers.Ring.Auth.csproj" />
     <ProjectReference Include="../../video/src/VideoForensics.Providers.Ring.Video.csproj" />
@@ -35,6 +36,6 @@
     <ProjectReference Include="..\..\..\..\client\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
 </Project>

@@ -1,7 +1,9 @@
 @page "/settings/notifications"
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Core.Api.Contracts
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Notifications> L
@@ -31,57 +33,12 @@ else if (_loadError is not null)
 {
     <div class="alert alert-danger">@_loadError</div>
 }
+else if (_noAccess)
+{
+    <div class="alert alert-info">@L["NoAccessNote"]</div>
+}
 else
 {
-    <h6 class="mt-4 mb-2">@L["EmailSection"]</h6>
-    <div class="card border p-4 mb-4">
-        <div class="d-flex flex-column gap-2">
-            <p>
-                @L["EmailDescription"]
-            </p>
-            <SfCheckBox TChecked="bool" @bind-Checked="_enableEmail" Label="@L["EnableEmailNotifications"].Value" />
-            <div class="d-flex flex-row gap-2">
-                <div>
-                    <label>@L["LabelSmtpHost"]</label>
-                    <SfTextBox @bind-Value="_smtpHost" Style="max-width: 260px;" />
-                </div>
-                <div>
-                    <label>@L["LabelPort"]</label>
-                    <SfNumericTextBox TValue="int" @bind-Value="_smtpPort" Style="max-width: 120px;" />
-                </div>
-                <SfCheckBox TChecked="bool" @bind-Checked="_smtpUseTls" Label="@L["LabelUseStarttls"].Value" />
-            </div>
-            <div class="d-flex flex-row gap-2">
-                <div>
-                    <label>@L["LabelSmtpUsername"]</label>
-                    <SfTextBox @bind-Value="_smtpUsername" Style="max-width: 260px;" />
-                </div>
-                <div>
-                    <label>@L["LabelSmtpPassword"]</label>
-                    <SfTextBox @bind-Value="_smtpPassword" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["PlaceholderPassword"]" Style="max-width: 260px;" />
-                </div>
-            </div>
-            <div class="d-flex flex-row gap-2">
-                <div>
-                    <label>@L["LabelFromAddress"]</label>
-                    <SfTextBox @bind-Value="_smtpFromAddress" Style="max-width: 300px;" />
-                </div>
-                <div>
-                    <label>@L["LabelNotifyAddress"]</label>
-                    <SfTextBox @bind-Value="_recipientEmail" Style="max-width: 300px;" />
-                </div>
-            </div>
-            <div class="d-flex flex-row gap-2">
-                <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveSettingsAsync" CssClass="e-primary" Disabled="@_isSaving" />
-                <SfButton Content="@(_isSendingTest ? L["SendingTestButton"] : L["SendTestEmailButton"])" OnClick="SendTestEmailAsync" CssClass="e-flat" Disabled="@_isSendingTest" />
-            </div>
-            @if (_settingsMessage is not null)
-            {
-                <span style="color: @(_settingsSuccess ? "#4caf50" : "#f44336")">@_settingsMessage</span>
-            }
-        </div>
-    </div>
-
     <h6 class="mt-4 mb-2">@L["UrgentEventOverrides"]</h6>
     <div class="card border p-4 mb-4">
         <p class="mb-2">
@@ -127,6 +84,10 @@ else
                     </GridColumn>
                 </GridColumns>
             </SfGrid>
+        }
+        @if (_settingsMessage is not null)
+        {
+            <span style="color: @(_settingsSuccess ? "#4caf50" : "#f44336")">@_settingsMessage</span>
         }
     </div>
 
@@ -184,21 +145,11 @@ else
 
 @code {
     private bool _isLoading = true;
-    private bool _isSaving;
-    private bool _isSendingTest;
     private string? _authError;
     private string? _loadError;
+    private bool _noAccess;
     private string? _settingsMessage;
     private bool _settingsSuccess;
-
-    private bool _enableEmail;
-    private string _smtpHost = "";
-    private int _smtpPort = 587;
-    private bool _smtpUseTls = true;
-    private string _smtpUsername = "";
-    private string _smtpPassword = "";
-    private string _smtpFromAddress = "";
-    private string _recipientEmail = "";
 
     private record UrgencyRow(string EventType, bool DefaultUrgent, bool? OverrideUrgent, bool EffectiveUrgent);
     private List<UrgencyRow> _urgencyRows = new();
@@ -246,27 +197,18 @@ else
         _isLoading = true;
         _authError = null;
         _loadError = null;
+        _noAccess = false;
         try
         {
             var client = CreateClient();
 
-            var settingsResponse = await client.GetAsync("api/notifications/settings");
-            if (settingsResponse.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            // Admins only reach the controls when a Super Admin has opened notification settings to them.
+            var permissions = await client.GetFromJsonAsync<SettingsAccessLevelDto>("api/v1/permissions/notifications");
+            _noAccess = !SettingsAccessGate.CanChange(permissions?.Access, NavContext.FromSession(SessionState, appLockSupported: false));
+            if (_noAccess)
             {
-                _authError = L["NotAuthorizedToView"];
                 return;
             }
-
-            settingsResponse.EnsureSuccessStatusCode();
-            var settings = await settingsResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            _enableEmail = settings.GetProperty("enableEmailNotifications").GetBoolean();
-            _smtpHost = settings.GetProperty("smtpHost").GetString() ?? "";
-            _smtpPort = settings.GetProperty("smtpPort").GetInt32();
-            _smtpUseTls = settings.GetProperty("smtpUseTls").GetBoolean();
-            _smtpUsername = settings.GetProperty("smtpUsername").GetString() ?? "";
-            _smtpFromAddress = settings.GetProperty("smtpFromAddress").GetString() ?? "";
-            _recipientEmail = settings.GetProperty("notificationRecipientEmail").GetString() ?? "";
-            _smtpPassword = "";
 
             var overridesResponse = await client.GetAsync("api/notifications/urgency-overrides");
             if (overridesResponse.IsSuccessStatusCode)
@@ -288,77 +230,6 @@ else
         finally
         {
             _isLoading = false;
-        }
-    }
-
-    private async Task SaveSettingsAsync()
-    {
-        _isSaving = true;
-        _settingsMessage = null;
-        try
-        {
-            var client = CreateClient();
-            var response = await client.PostAsJsonAsync("api/notifications/settings", new
-            {
-                enableEmailNotifications = _enableEmail,
-                smtpHost = _smtpHost,
-                smtpPort = _smtpPort,
-                smtpUseTls = _smtpUseTls,
-                smtpUsername = _smtpUsername,
-                smtpPassword = string.IsNullOrEmpty(_smtpPassword) ? null : _smtpPassword,
-                smtpFromAddress = _smtpFromAddress,
-                notificationRecipientEmail = _recipientEmail
-            });
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _settingsSuccess = false;
-                _settingsMessage = L["SaveFailed", response.StatusCode.ToString()];
-                return;
-            }
-
-            _smtpPassword = "";
-            _settingsSuccess = true;
-            _settingsMessage = L["Saved"];
-        }
-        catch (Exception ex)
-        {
-            _settingsSuccess = false;
-            _settingsMessage = L["SaveFailed", ex.Message];
-        }
-        finally
-        {
-            _isSaving = false;
-        }
-    }
-
-    private async Task SendTestEmailAsync()
-    {
-        _isSendingTest = true;
-        _settingsMessage = null;
-        try
-        {
-            var client = CreateClient();
-            var response = await client.PostAsync("api/notifications/test-email", null);
-            if (!response.IsSuccessStatusCode)
-            {
-                var body = await SafeReadErrorAsync(response);
-                _settingsSuccess = false;
-                _settingsMessage = body ?? L["TestEmailFailed", response.StatusCode.ToString()];
-                return;
-            }
-
-            _settingsSuccess = true;
-            _settingsMessage = L["TestEmailSent"];
-        }
-        catch (Exception ex)
-        {
-            _settingsSuccess = false;
-            _settingsMessage = L["TestEmailFailed", ex.Message];
-        }
-        finally
-        {
-            _isSendingTest = false;
         }
     }
 

@@ -1,0 +1,184 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@implements IDisposable
+@inject ScopeState ScopeState
+@inject ReviewPopupState Popups
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="review-camera-selector position-relative w-100 mb-2 @(Popups.IsOpen(ReviewPopupState.Camera) ? "review-camera-selector-open" : null)" data-testid="review-camera-selector" @onkeydown="OnKeyDown">
+    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-camera-button" aria-expanded="@Popups.IsOpen(ReviewPopupState.Camera).ToString().ToLowerInvariant()" @onclick="OnToggle">@ButtonLabel</button>
+
+    @if (Popups.IsOpen(ReviewPopupState.Camera))
+    {
+        <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["CamerasLabel"]" data-testid="review-camera-popup">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="review-camera-all" data-testid="review-camera-all" checked="@AllChecked" @onchange="OnAllChanged" />
+                <label class="form-check-label" for="review-camera-all">@L["AllCameras"]</label>
+            </div>
+
+            @if (Devices.Count == 0)
+            {
+                <p class="small mb-2">@L["NoCameras"]</p>
+            }
+
+            @foreach (Guid id in Devices)
+            {
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="@CameraInputId(id)" data-testid="@CameraTestId(id)" checked="@_pending.Contains(id)" @onchange="args => OnCameraChanged(id, args)" />
+                    <label class="form-check-label" for="@CameraInputId(id)">@DeviceNames.GetValueOrDefault(id, id.ToString("D"))</label>
+                </div>
+            }
+
+            @if (_pending.Count > CameraSync.MaxTiles)
+            {
+                <small class="d-block mt-2" data-testid="review-camera-hint">@L["TooManyCameras", CameraSync.MaxTiles]</small>
+            }
+            else if (_pending.Count == 0)
+            {
+                <small class="d-block mt-2" data-testid="review-camera-hint">@L["SelectAtLeastOneCamera"]</small>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The review state the selector writes to.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Every camera the user can see, in display order.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The selection being edited in the popup. It reaches the review state after the debounce.</summary>
+    private HashSet<Guid> _pending = [];
+
+    private DebouncedAction _debounce = default!;
+
+    private bool AllChecked => Devices.Count > 0 && Devices.All(_pending.Contains);
+
+    private bool CanApply => _pending.Count > 0 && _pending.Count <= CameraSync.MaxTiles;
+
+    private string ButtonLabel
+    {
+        get
+        {
+            bool allSelected = Devices.Count > 0
+                && State.CameraIds.Count == Devices.Count
+                && Devices.All(State.CameraIds.Contains);
+            if (allSelected)
+            {
+                return L["AllCameras"].Value;
+            }
+
+            return State.CameraIds.Count == 1 ? L["CameraSelectedOne"].Value : L["CamerasSelected", State.CameraIds.Count].Value;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _debounce = new DebouncedAction(State.DebounceDelay, () => InvokeAsync(ApplyPending));
+        State.OnChange += OnStateChanged;
+        Popups.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnToggle()
+    {
+        if (!Popups.IsOpen(ReviewPopupState.Camera))
+        {
+            _pending = State.CameraIds.ToHashSet();
+        }
+
+        Popups.Toggle(ReviewPopupState.Camera);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Popups.Close(ReviewPopupState.Camera);
+        }
+    }
+
+    private void OnCameraChanged(Guid id, Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        if (on)
+        {
+            _ = _pending.Add(id);
+        }
+        else
+        {
+            _ = _pending.Remove(id);
+        }
+
+        ScheduleApply();
+    }
+
+    private void OnAllChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        _pending = on ? Devices.Take(CameraSync.MaxTiles).ToHashSet() : [];
+        ScheduleApply();
+    }
+
+    // An over-limit or empty selection is never applied; the hint explains why and any pending apply is dropped.
+    private void ScheduleApply()
+    {
+        if (CanApply)
+        {
+            _debounce.Schedule();
+        }
+        else
+        {
+            _debounce.Cancel();
+        }
+    }
+
+    private void ApplyPending()
+    {
+        if (!CanApply)
+        {
+            return;
+        }
+
+        List<Guid> chosen = Devices.Where(_pending.Contains).ToList();
+        if (chosen.Count == 0)
+        {
+            return;
+        }
+
+        ScopeState.Set(ScopeState.Current with { DeviceIds = chosen, MatchesNoDevices = false });
+        State.SetCameras(chosen);
+    }
+
+    private static string CameraTestId(Guid id)
+    {
+        return "review-camera-toggle-" + id.ToString("D");
+    }
+
+    private static string CameraInputId(Guid id)
+    {
+        return "review-camera-input-" + id.ToString("D");
+    }
+
+    public void Dispose()
+    {
+        _debounce?.Dispose();
+        State.OnChange -= OnStateChanged;
+        Popups.OnChange -= OnStateChanged;
+    }
+}

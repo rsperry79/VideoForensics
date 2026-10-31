@@ -72,5 +72,19 @@ namespace VideoForensics.Client.Hosting.Tests
             Assert.Equal("ops@example.com", await _store.GetContactEmailAsync(CancellationToken.None));
             _encryption.Verify(e => e.EncryptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        [Fact]
+        public async Task LetsEncryptCertificateStore_UseStagingNeverSet_ReturnsNull()
+        {
+            Assert.Null(await _store.GetUseStagingAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task LetsEncryptCertificateStore_UseStagingSetToFalse_RoundTrips()
+        {
+            await _store.SetUseStagingAsync(false, CancellationToken.None);
+
+            Assert.False(await _store.GetUseStagingAsync(CancellationToken.None));
+        }
     }
 }

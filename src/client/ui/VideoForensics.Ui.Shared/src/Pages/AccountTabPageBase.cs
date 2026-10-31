@@ -38,6 +38,9 @@ public abstract class AccountTabPageBase : ComponentBase
     [Inject]
     protected IStringLocalizer<AccountDetails> L { get; set; } = null!;
 
+    [Inject]
+    protected IProviderAccountEditAccess EditAccess { get; set; } = null!;
+
     protected ProviderAccountEntity? Account { get; set; }
 
     protected string? AccountEmail { get; set; }
@@ -47,6 +50,12 @@ public abstract class AccountTabPageBase : ComponentBase
     protected string? StatusMessage { get; set; }
 
     /// <summary>
+    /// True when the stored edit setting lets this operator change provider accounts. Gates the Remove, Reauthenticate
+    /// and Sync actions; the server enforces the same rule, so a hidden control is a convenience, not the security.
+    /// </summary>
+    protected bool CanEditAccount { get; private set; }
+
+    /// <summary>
     /// Loads the account and, when it exists, the provider login (the account's name). A failed user lookup is
     /// tolerated; a failed account lookup is shown as a status message.
     /// </summary>
@@ -54,6 +63,7 @@ public abstract class AccountTabPageBase : ComponentBase
     {
         IsLoading = true;
         StatusMessage = null;
+        CanEditAccount = await EditAccess.CanEditAsync(CancellationToken.None);
         try
         {
             Account = await ProviderAccountRepository.GetAsync(Id, CancellationToken.None);

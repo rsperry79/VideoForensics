@@ -15,8 +15,8 @@ public class NavGroups_ActiveGroupFor_Tests
     [Theory]
     [InlineData("/analyze/chain-of-custody", "cases")]
     [InlineData("/analyze", "cases")]
-    [InlineData("/media", "media")]
     [InlineData("/cases/123", "cases")]
+    [InlineData("/media", "media")]
     public void ActiveGroupFor_MostSpecificItemWins_SelectsExpectedGroup(string currentPath, string expectedKey)
     {
         NavGroup group = NavGroups.ActiveGroupFor(NavGroups.All, AdminCtx, currentPath, null);

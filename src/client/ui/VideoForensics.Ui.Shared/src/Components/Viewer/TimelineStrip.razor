@@ -1,0 +1,157 @@
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Services.Time
+@using Microsoft.AspNetCore.Components.Web
+
+@if (Orientation == TimelineOrientation.Vertical)
+{
+    double length = VerticalLength;
+    <div class="review-timeline review-timeline-vertical" data-testid="timeline-strip" role="group" aria-label="@Label" style="height:@(length)px" @onclick="HandleClick">
+        @foreach (ClipWindow clip in Clips)
+        {
+            double top = VerticalY(clip.StartUtc.AddSeconds(clip.DurationSeconds), length);
+            double bottom = VerticalY(clip.StartUtc, length);
+            string style = $"top:{top}px;height:{Math.Max(1, bottom - top)}px";
+            string? background = BackgroundImageStyle(clip.ThumbnailUrl);
+            if (background is not null)
+            {
+                style += ";" + background;
+            }
+            <div class="review-timeline-segment" data-testid="timeline-segment" style="@style"></div>
+        }
+        @foreach (DateTime tick in HourTicks())
+        {
+            <div class="review-timeline-tick" data-testid="timeline-tick" style="top:@(VerticalY(tick, length))px">@ZoneOrLocal.Format(tick, "HH:mm")</div>
+        }
+        @if (Cursor is DateTime cursorTime)
+        {
+            <div class="review-timeline-cursor-line" data-testid="timeline-cursor" style="top:@(VerticalY(cursorTime, length))px"></div>
+        }
+    </div>
+}
+else
+{
+<div class="review-timeline" data-testid="timeline-strip" style="width:@(WidthPx)px" @onclick="HandleClick">
+    @foreach (ClipWindow clip in Clips)
+    {
+        double left = ReviewTimeline.ToPixel(clip.StartUtc, WindowStartUtc, WindowEndUtc, WidthPx);
+        double right = ReviewTimeline.ToPixel(clip.StartUtc.AddSeconds(clip.DurationSeconds), WindowStartUtc, WindowEndUtc, WidthPx);
+        string style = $"left:{left}px;width:{Math.Max(1, right - left)}px";
+        string? background = BackgroundImageStyle(clip.ThumbnailUrl);
+        if (background is not null)
+        {
+            style += ";" + background;
+        }
+        <div class="review-timeline-segment" data-testid="timeline-segment" style="@style"></div>
+    }
+    @if (Cursor is DateTime cursor)
+    {
+        <div class="review-timeline-cursor" data-testid="timeline-cursor" style="left:@(ReviewTimeline.ToPixel(cursor, WindowStartUtc, WindowEndUtc, WidthPx))px"></div>
+    }
+</div>
+}
+
+@code {
+    /// <summary>Length used by the vertical strip when <see cref="LengthPx"/> is not set.</summary>
+    private const int DefaultLengthPx = 600;
+
+    /// <summary>Clips to draw as segments, in any order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ClipWindow> Clips { get; set; } = [];
+
+    /// <summary>Start of the visible window (UTC).</summary>
+    [Parameter, EditorRequired] public DateTime WindowStartUtc { get; set; }
+
+    /// <summary>End of the visible window (UTC). Must be after <see cref="WindowStartUtc"/>.</summary>
+    [Parameter, EditorRequired] public DateTime WindowEndUtc { get; set; }
+
+    /// <summary>Strip width in pixels for a horizontal strip. Clicks are mapped with this same width.</summary>
+    [Parameter] public double WidthPx { get; set; } = 800;
+
+    /// <summary>Strip length in pixels for a vertical strip (its height). Clicks are mapped with this same length.</summary>
+    [Parameter] public int? LengthPx { get; set; }
+
+    /// <summary>Whether time runs left to right (horizontal, the default) or top to bottom with the newest at the top (vertical).</summary>
+    [Parameter] public TimelineOrientation Orientation { get; set; } = TimelineOrientation.Horizontal;
+
+    /// <summary>Accessible name for the strip. Callers pass localized text; the strip adds none of its own.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Current playback time (UTC), drawn as a cursor when set.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>Raised with the UTC time under the click.</summary>
+    [Parameter] public EventCallback<DateTime> OnSeek { get; set; }
+
+    /// <summary>
+    /// Zone the vertical strip's hour labels are shown in, supplied by <c>UserTimeZoneHost</c>. Without it, the machine's
+    /// local zone is used, the same fallback <c>LocalTimeText</c> applies.
+    /// </summary>
+    [CascadingParameter] public UserTimeZone? Zone { get; set; }
+
+    private double VerticalLength => LengthPx ?? DefaultLengthPx;
+
+    private UserTimeZone ZoneOrLocal => Zone ?? new UserTimeZone(TimeZoneInfo.Local);
+
+    /// <summary>
+    /// The vertical pixel for a time, with the newest time at the top. The window start is the bottom edge and the
+    /// window end is the top edge, so this is the horizontal math turned upside down.
+    /// </summary>
+    private double VerticalY(DateTime time, double length)
+    {
+        return length - ReviewTimeline.ToPixel(time, WindowStartUtc, WindowEndUtc, length);
+    }
+
+    /// <summary>
+    /// Whole hours in the user's zone within the window, newest first. The phase comes from the zone's offset at the window
+    /// start, so a half-hour zone gets its ticks on the half hour in UTC and its labels still read as whole local hours.
+    /// </summary>
+    private IEnumerable<DateTime> HourTicks()
+    {
+        int offsetMinutes = (int)Math.Round(ZoneOrLocal.Zone.GetUtcOffset(WindowStartUtc).TotalMinutes);
+        int phase = ((-offsetMinutes) % 60 + 60) % 60;
+        var first = new DateTime(WindowStartUtc.Year, WindowStartUtc.Month, WindowStartUtc.Day, WindowStartUtc.Hour, phase, 0, DateTimeKind.Utc);
+        if (first < WindowStartUtc)
+        {
+            first = first.AddHours(1);
+        }
+
+        var ticks = new List<DateTime>();
+        for (DateTime tick = first; tick <= WindowEndUtc; tick = tick.AddHours(1))
+        {
+            ticks.Add(tick);
+        }
+
+        ticks.Reverse();
+        return ticks;
+    }
+
+    /// <summary>
+    /// Builds a background-image declaration for a clip thumbnail, or null when there is none. The URL sits inside CSS url('...'),
+    /// so characters that could end the string or the function early are percent-encoded. Razor HTML-encodes the attribute once,
+    /// so the URL is not HTML-encoded here; encoding twice would turn the quotes into literal text and break the image.
+    /// </summary>
+    private static string? BackgroundImageStyle(string? thumbnailUrl)
+    {
+        if (string.IsNullOrEmpty(thumbnailUrl) || thumbnailUrl.Any(char.IsControl))
+        {
+            return null;
+        }
+
+        string safeUrl = thumbnailUrl
+            .Replace("\\", "%5C", StringComparison.Ordinal)
+            .Replace("'", "%27", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal)
+            .Replace("(", "%28", StringComparison.Ordinal)
+            .Replace(")", "%29", StringComparison.Ordinal)
+            .Replace(" ", "%20", StringComparison.Ordinal);
+
+        return $"background-image:url('{safeUrl}')";
+    }
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        DateTime time = Orientation == TimelineOrientation.Vertical
+            ? ReviewTimeline.FromPixel(VerticalLength - e.OffsetY, WindowStartUtc, WindowEndUtc, VerticalLength)
+            : ReviewTimeline.FromPixel(e.OffsetX, WindowStartUtc, WindowEndUtc, WidthPx);
+        await OnSeek.InvokeAsync(time);
+    }
+}

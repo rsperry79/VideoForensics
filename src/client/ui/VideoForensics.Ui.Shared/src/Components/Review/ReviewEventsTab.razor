@@ -1,0 +1,305 @@
+@implements IDisposable
+@using System.Reactive.Linq
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject IReviewEventLoader EventLoader
+@inject IServiceProvider ServiceProvider
+@inject IStringLocalizer<ReviewPage> L
+@inject ILogger<ReviewEventsTab> Logger
+
+<section class="review-tab-panel review-events-tab" data-testid="review-tab-events">
+    @if (State.CameraIds.Count == 0)
+    {
+        <p class="review-events-message" data-testid="review-events-no-cameras">@L["EventsNoCameras"]</p>
+    }
+    else if (_error)
+    {
+        <p class="review-events-message text-danger" role="alert" data-testid="review-events-error">@L["EventsLoadFailed"]</p>
+    }
+    else if (_loaded is null || !_loaded.Key.Matches(State))
+    {
+        <p class="review-events-message" role="status" data-testid="review-events-loading">@L["EventsLoading"]</p>
+    }
+    else if (_loaded.Items.Count == 0)
+    {
+        <p class="review-events-message" data-testid="review-events-empty">@L["EventsEmpty"]</p>
+    }
+    else
+    {
+        <p class="review-events-total" data-testid="review-events-total">@string.Format(L["EventsTotal"].Value, _loaded.Total)</p>
+
+        <div class="list-group review-events-list" aria-label="@L["EventsListLabel"]">
+            @foreach (Event evt in _loaded.Items)
+            {
+                bool selected = evt.Id == State.SelectedEventId;
+                <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center @(selected ? "active" : string.Empty)"
+                        aria-current="@(selected ? "true" : null)" data-testid="review-event-row" data-event-id="@evt.Id.ToString("D")"
+                        @onclick="() => OnRowClick(evt)">
+                    <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
+                    <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
+                    <span class="review-event-type">@TypeLabel(evt.EventType)</span>
+                </button>
+            }
+        </div>
+
+        @if (_loaded.Items.Count < _loaded.Total)
+        {
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-testid="review-events-load-more" disabled="@_loadingMore" @onclick="LoadMoreAsync">@L["EventsLoadMore"]</button>
+        }
+    }
+</section>
+
+@code {
+    private static readonly TimeSpan ReloadQuietPeriod = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>Most rows an evidence refresh re-queries. Matches the repository's take limit.</summary>
+    private const int MaxRefreshRows = 500;
+
+    /// <summary>The review state the tab reads and writes (cameras, range, selected event, cursor, tab).</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Display name for each camera id. A camera missing here shows its id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    private LoadedEvents? _loaded;
+    private LoadKey? _requested;
+    private IReadOnlySet<Guid> _shownDeviceIds = new HashSet<Guid>();
+    private CancellationTokenSource? _loadCts;
+    private IDisposable? _evidenceSubscription;
+    private bool _error;
+    private bool _loadingMore;
+    private bool _disposed;
+
+    protected override Task OnInitializedAsync()
+    {
+        State.OnChange += OnReviewStateChanged;
+
+        // Optional, like the timeline tab: a host with no realtime feed simply never refreshes from evidence changes.
+        // The throttle collapses a burst of changes into one re-query, so a busy camera does not query per event.
+        IEvidenceChangedSource? evidence = ServiceProvider.GetService(typeof(IEvidenceChangedSource)) as IEvidenceChangedSource;
+        _evidenceSubscription = evidence?.EvidenceChanged
+            .Where(change => _shownDeviceIds.Contains(change.DeviceId))
+            .Throttle(ReloadQuietPeriod)
+            .Subscribe(change => { _ = InvokeAsync(() => RefreshAsync()); });
+
+        _ = ReloadAsync(LoadMode.Reset);
+        return Task.CompletedTask;
+    }
+
+    private void OnReviewStateChanged()
+    {
+        _ = InvokeAsync(OnReviewStateChangedAsync);
+    }
+
+    /// <summary>
+    /// A camera or range change starts again from the newest row. A cursor, tab, or selection change only re-renders,
+    /// so the list keeps the user's place.
+    /// </summary>
+    private async Task OnReviewStateChangedAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (_requested is null || !_requested.Matches(State))
+        {
+            await ReloadAsync(LoadMode.Reset);
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private Task RefreshAsync()
+    {
+        if (_disposed || _loaded is null || !_loaded.Key.Matches(State))
+        {
+            return Task.CompletedTask;
+        }
+
+        return ReloadAsync(LoadMode.Refresh);
+    }
+
+    private Task LoadMoreAsync()
+    {
+        if (_disposed || _loaded is null || _loadingMore || _loaded.Items.Count >= _loaded.Total)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ReloadAsync(LoadMode.More);
+    }
+
+    /// <summary>
+    /// Runs one page query. A newer query cancels this one, and a result that is no longer current is dropped, so a slow
+    /// answer never overwrites a newer list.
+    /// </summary>
+    private async Task ReloadAsync(LoadMode mode)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _loadCts = cts;
+        CancellationToken ct = cts.Token;
+
+        var key = new LoadKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc);
+        _requested = key;
+        _error = false;
+
+        if (key.Cameras.Count == 0)
+        {
+            _loaded = null;
+            _loadingMore = false;
+            _shownDeviceIds = new HashSet<Guid>();
+            StateHasChanged();
+            return;
+        }
+
+        int skip = 0;
+        int take = ReviewEventFilters.PageSize;
+        switch (mode)
+        {
+            case LoadMode.Reset:
+                _loaded = null;
+                break;
+            case LoadMode.Refresh:
+                // Re-read the rows already on screen, so the list refreshes without losing the user's place.
+                take = Math.Clamp(_loaded?.Items.Count ?? 0, 1, MaxRefreshRows);
+                break;
+            case LoadMode.More:
+                skip = _loaded?.Items.Count ?? 0;
+                _loadingMore = true;
+                break;
+        }
+
+        // Set before the call, so a change that arrives while the query runs still counts.
+        _shownDeviceIds = key.Cameras.ToHashSet();
+        if (mode == LoadMode.Reset)
+        {
+            StateHasChanged();
+        }
+
+        try
+        {
+            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, skip, take, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            _loaded = mode == LoadMode.More && _loaded is not null
+                ? _loaded with { Items = _loaded.Items.Concat(page.Items).ToList(), Total = page.TotalCount }
+                : new LoadedEvents(key, page.Items.ToList(), page.TotalCount);
+            _loadingMore = false;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // A newer query or the disposal replaced this one; it owns the list now.
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load review events: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _loaded = null;
+            _loadingMore = false;
+            _error = true;
+        }
+
+        if (IsCurrent(cts))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private bool IsCurrent(CancellationTokenSource cts)
+    {
+        return !_disposed && ReferenceEquals(_loadCts, cts) && !cts.IsCancellationRequested;
+    }
+
+    /// <summary>
+    /// Selects the event's camera, the event, and its time, then switches to the Timeline tab, where the player lives.
+    /// The camera is only changed when it is not already the one and only selected camera.
+    /// </summary>
+    private void OnRowClick(Event evt)
+    {
+        bool alreadyOnlyCamera = State.CameraIds.Count == 1 && State.CameraIds[0] == evt.DeviceId;
+        if (!alreadyOnlyCamera)
+        {
+            State.SetCameras([evt.DeviceId]);
+        }
+
+        State.SelectEvent(evt.Id);
+        State.SetCursor(evt.OccurredAtUtc);
+        State.SetTab(ReviewTab.Timeline);
+    }
+
+    private string CameraName(Guid deviceId)
+    {
+        return DeviceNames.TryGetValue(deviceId, out string? name) ? name : deviceId.ToString("D");
+    }
+
+    /// <summary>The localized label for a provider event type. A type with no label shows its raw string.</summary>
+    private string TypeLabel(string eventType)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
+        {
+            return L["EventTypeUnknown"].Value;
+        }
+
+        LocalizedString label = L["EventType_" + eventType.ToLowerInvariant()];
+        return label.ResourceNotFound ? eventType : label.Value;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        State.OnChange -= OnReviewStateChanged;
+        _evidenceSubscription?.Dispose();
+        _evidenceSubscription = null;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+    }
+
+    private enum LoadMode
+    {
+        Reset,
+        Refresh,
+        More,
+    }
+
+    /// <summary>The cameras and range one query asked for. The list is only shown while this still matches the state.</summary>
+    private sealed record LoadKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc)
+    {
+        public bool Matches(ReviewPageState state)
+        {
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc;
+        }
+    }
+
+    /// <summary>The rows shown, the total the server reported, and the query that produced them.</summary>
+    private sealed record LoadedEvents(LoadKey Key, IReadOnlyList<Event> Items, int Total);
+}

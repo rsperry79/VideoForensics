@@ -4,6 +4,8 @@ using AngleSharp.Html.Dom;
 
 using Bunit;
 
+using Moq;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -154,6 +156,20 @@ public sealed class FakeLogViewerService : ILogViewerService
         get { lock (_gate) { return _streamCalls.ToList(); } }
     }
 
+    public List<LogHistoryQuery> HistoryCalls { get; } = [];
+
+    public Func<LogHistoryQuery, LogPage> OnGetHistory { get; set; } = _ => new LogPage(Array.Empty<LogEntry>(), 0, false);
+
+    public Task<LogPage> GetHistoryAsync(LogHistoryQuery query, CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            HistoryCalls.Add(query);
+        }
+
+        return Task.FromResult(OnGetHistory(query));
+    }
+
     public Task<LogPage> GetPageAsync(LogQuery query, CancellationToken ct)
     {
         int index;
@@ -219,7 +235,7 @@ public abstract class ServerLogsPageTestBase : BunitContext
     protected ServerLogsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/server-logs.js");
+        Module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/server-logs.js");
         Module.Mode = JSRuntimeMode.Loose;
 
         _ = Services.AddLocalization();
@@ -227,7 +243,12 @@ public abstract class ServerLogsPageTestBase : BunitContext
         _ = Services.AddSingleton<TimeProvider>(Time);
 
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(_ => ConfigMock.Object);
+        _ = Services.AddScoped(_ => ConfigToolsMock.Object);
     }
+
+    protected Mock<IForensicsConfiguration> ConfigMock { get; } = new();
+    protected Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator> ConfigToolsMock { get; } = new();
 
     protected FakeLogViewerService Logs { get; } = new();
     protected ManualTimeProvider Time { get; } = new();
@@ -734,7 +755,52 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     }
 
     [Fact]
-    public async Task ServerLogsPage_Row_ShowsLevelBadgeShortCategoryAndUtcTooltip()
+    public async Task ServerLogsPage_Row_ShowsLocalDateInItsOwnColumn()
+    {
+        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, "Information", "hello"));
+        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        page.WaitForAssertion(() => Assert.Single(RowSequences(page)));
+
+        // The date is its own column, so the time column keeps only the clock.
+        string expectedDate = TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 9, 25, 10, 0, 0, 1, DateTimeKind.Utc), TimeZoneInfo.Local)
+            .ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(expectedDate, page.Find("[data-testid='log-date']").TextContent.Trim());
+        Assert.Equal(2, page.FindAll("thead th").Count(th => th.ClassName is "col-time" or "col-date"));
+    }
+
+    [Fact]
+    public async Task ServerLogsPage_RangeMode_ShowsHistoryForTheTypedRange()
+    {
+        Logs.OnGetHistory = _ => new LogPage(new[] { Entry(7, "Error", "past failure") }, 0, false);
+        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        page.WaitForAssertion(() => Assert.NotEmpty(Logs.StreamCalls));
+
+        page.Find("[data-testid='logs-mode-range']").Click();
+        page.Find("[data-testid='logs-range-from']").Change("2026-10-26T10:00");
+        page.Find("[data-testid='logs-range-to']").Change("2026-10-26T12:00");
+        page.Find("[data-testid='logs-range-show']").Click();
+
+        page.WaitForAssertion(() => Assert.Equal("past failure", page.Find("[data-testid='log-message']").TextContent.Trim()));
+        LogHistoryQuery sent = Assert.Single(Logs.HistoryCalls);
+        Assert.True(sent.FromUtc < sent.ToUtc);
+        // The pickers are in the user's zone; the query must carry the same instants in UTC.
+        Assert.Equal(TimeZoneInfo.ConvertTimeToUtc(new DateTime(2026, 10, 26, 10, 0, 0), TimeZoneInfo.Local), sent.FromUtc.UtcDateTime);
+    }
+
+    [Fact]
+    public async Task ServerLogsPage_LiveButton_ReturnsToLiveRows()
+    {
+        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        page.Find("[data-testid='logs-mode-range']").Click();
+        Assert.NotNull(page.Find("[data-testid='logs-range-show']"));
+
+        page.Find("[data-testid='logs-mode-live']").Click();
+
+        Assert.Empty(page.FindAll("[data-testid='logs-range-show']"));
+    }
+
+    [Fact]
+    public async Task ServerLogsPage_Row_ShowsLevelBadgeShortCategoryAndZonedTooltip()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, "Error", "boom", category: "VideoForensics.Client.Hosting.Remote.Thing"));
         IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
@@ -746,7 +812,12 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
         IElement category = page.Find("[data-testid='log-category']");
         Assert.Equal("Thing", category.TextContent.Trim());
         Assert.Equal("VideoForensics.Client.Hosting.Remote.Thing", category.GetAttribute("title"));
-        Assert.Contains("2026-09-25 10:00:00.001 UTC", page.Find("[data-testid='log-time']").GetAttribute("title"));
+        // No user zone cascades here, so the page falls back to the machine zone; the tooltip must show that zone's clock, not UTC.
+        string expected = TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 9, 25, 10, 0, 0, 1, DateTimeKind.Utc), TimeZoneInfo.Local)
+            .ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+        string title = page.Find("[data-testid='log-time']").GetAttribute("title")!;
+        Assert.Contains(expected, title);
+        Assert.DoesNotContain("UTC", title);
     }
 
     [Fact]

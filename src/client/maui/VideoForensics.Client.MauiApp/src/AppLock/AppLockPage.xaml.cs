@@ -42,11 +42,10 @@ namespace VideoForensics.Client.MauiApp.AppLock
             {
                 if (!await _authGate.IsAvailableAsync())
                 {
-                    // No biometric/PIN enrolled at the OS level and no fallback available - failing
-                    // open here would defeat the point of app-lock, so this stays locked with an
-                    // explanation rather than silently granting access.
-                    ErrorLabel.Text = "No Windows Hello or PIN is configured on this device. Set one up in Windows Settings to use VideoForensics.";
-                    ErrorLabel.IsVisible = true;
+                    // No Windows Hello or PIN on this device, so the OS cannot verify the user here. The lock
+                    // steps aside and username/password sign-in becomes the gate. With Hello set up, the lock applies as before.
+                    StartupTrace.Mark("app lock skipped: no Windows Hello or PIN on this device");
+                    Unlocked?.Invoke(this, EventArgs.Empty);
                     return;
                 }
 

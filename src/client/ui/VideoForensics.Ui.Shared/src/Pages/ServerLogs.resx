@@ -83,6 +83,36 @@
   <data name="DownloadButton" xml:space="preserve">
     <value>Download visible (.txt)</value>
   </data>
+  <data name="ColDate" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="ModeLive" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="ModeRange" xml:space="preserve">
+    <value>Range</value>
+  </data>
+  <data name="RangeFromLabel" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="RangeToLabel" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="RangeShowButton" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="RangeInvalid" xml:space="preserve">
+    <value>Enter a From and a To time, with To not earlier than From.</value>
+  </data>
+  <data name="RangeFailed" xml:space="preserve">
+    <value>Could not load the log history.</value>
+  </data>
+  <data name="RangeTruncated" xml:space="preserve">
+    <value>Only the first {0} entries in this range are shown. Narrow the range to see the rest.</value>
+  </data>
+  <data name="StatusHistory" xml:space="preserve">
+    <value>History</value>
+  </data>
   <data name="ColTime" xml:space="preserve">
     <value>Time</value>
   </data>
@@ -106,5 +136,11 @@
   </data>
   <data name="HideException" xml:space="preserve">
     <value>Hide exception</value>
+  </data>
+  <data name="RecordingLevelLabel" xml:space="preserve">
+    <value>Recording level</value>
+  </data>
+  <data name="RecordingLevelHelp" xml:space="preserve">
+    <value>The lowest level the console and the audit log files record. Changes apply at once. The Min level filter below only changes what this page shows.</value>
   </data>
 </root>

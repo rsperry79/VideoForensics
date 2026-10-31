@@ -23,7 +23,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<ILogger<AccountSyncRunner>> _mockLogger = new();
         private readonly SyncActivityLog _activity = new();
         private readonly Guid _accountId = Guid.NewGuid();
-        private readonly DateTime _lastAuth = new(2026, 10, 14, 18, 0, 0, DateTimeKind.Utc);
+        // Within the one-week pull limit, so the pull starts from this auth rather than the floor.
+        private readonly DateTime _lastAuth = DateTime.UtcNow.AddDays(-2);
 
         private AccountSyncRunner CreateSut()
         {

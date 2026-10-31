@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -753,18 +754,4 @@ namespace VideoForensics.Data.Database.Tests
     /// <summary>
     /// A fake time provider that returns a fixed time for testing.
     /// </summary>
-    internal sealed class FakeTimeProvider : TimeProvider
-    {
-        private readonly DateTime _fixedTime;
-
-        public FakeTimeProvider(DateTime fixedTime)
-        {
-            _fixedTime = fixedTime;
-        }
-
-        public override DateTimeOffset GetUtcNow()
-        {
-            return new(_fixedTime, TimeSpan.Zero);
-        }
-    }
 }

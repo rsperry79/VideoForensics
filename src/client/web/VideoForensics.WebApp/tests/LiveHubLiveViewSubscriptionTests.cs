@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Tests
 
             var groups = new Mock<IGroupManager>();
 
-            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
+            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance, new VideoForensics.Client.Hosting.Services.SyncProgressStore())
             {
                 Clients = new Mock<IHubCallerClients>().Object,
                 Groups = groups.Object,

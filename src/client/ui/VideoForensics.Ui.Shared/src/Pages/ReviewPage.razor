@@ -1,0 +1,304 @@
+@page "/media"
+@page "/media/review"
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Ui.Shared.Components.Review
+@using VideoForensics.Client.Ui.Shared.Extensions
+@using VideoForensics.Client.Ui.Shared.Layout.LeftPanel
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Data.Common.Contracts
+@using Device = VideoForensics.Data.Common.Entities.Device
+@using VideoForensics.Client.Common.Viewer
+@implements IDisposable
+@inject IDeviceRepository DeviceRepository
+@inject ReviewPageState State
+@inject ReviewCaseMode CaseMode
+@inject ScopeState ScopeState
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject DeviceOwnershipService OwnershipService
+@inject ILogger<ReviewPage> Logger
+@inject IStringLocalizer<ReviewPage> L
+
+@if (_isLoading)
+{
+    <p data-testid="review-loading">@L["LoadingDevices"]</p>
+}
+else if (!_isAuthenticated)
+{
+    <p data-testid="review-sign-in">@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToReview"]</p>
+}
+else
+{
+    <ReviewTimelineFeeder />
+
+    <PageRightPanelContent>
+        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
+        <ReviewTimeRange State="State" />
+        <ReviewActionsPanel State="State" />
+    </PageRightPanelContent>
+
+    <ReviewTopBar State="State" DeviceNames="_deviceNames" />
+
+    @if (_caseNotFound)
+    {
+        <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
+    }
+
+    <ReviewViewNav Tabs="true" />
+
+    <div class="review-body">
+        <div class="review-content">
+            @if (State.ActiveTab == ReviewTab.Timeline)
+            {
+                <section class="review-tab-panel" data-testid="review-tab-timeline">
+                    <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
+                </section>
+            }
+            else if (State.ActiveTab == ReviewTab.Events)
+            {
+                <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
+            }
+            else
+            {
+                <ReviewDetailTab State="State" DeviceNames="_deviceNames" />
+            }
+        </div>
+
+        <aside class="review-timeline-aside">
+            <ReviewTimelinePanel />
+        </aside>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+
+    // Set when the URL names a case that does not exist (or could not be read). The page then shows all evidence.
+    private bool _caseNotFound;
+
+    // The URL is read once, on the first load. Until then the write-back stays off, so a half-read state
+    // never overwrites the query the user arrived with.
+    private bool _urlParsed;
+    private IReadOnlyList<Guid> _deviceIds = [];
+    private IReadOnlyDictionary<Guid, string> _deviceNames = new Dictionary<Guid, string>();
+
+    // Accounts and device ownership, from the same service the scope rail uses. Null when the load failed,
+    // in which case every camera stays visible.
+    private DeviceOwnershipSnapshot? _ownership;
+
+    // The cameras left after the Provider and Account filters, and the filters they were computed for.
+    private IReadOnlyList<Guid> _visibleIds = [];
+    private (string? Provider, Guid? Account, Guid? Location) _appliedFilters;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnReviewStateChanged;
+        ScopeState.OnChange += OnScopeChanged;
+
+        await SessionState.EnsureLoadedAsync();
+        _isAuthenticated = SessionState.IsSignedIn;
+        if (_isAuthenticated)
+        {
+            // Only cameras have video to review. Chimes, bridges and sensors are left out of every list on this page.
+            IReadOnlyList<Device> devices = (await DeviceRepository.ListAsync(CancellationToken.None))
+                .Where(device => DeviceKinds.IsCamera(device.Type))
+                .ToList();
+            _deviceIds = devices.Select(device => device.Id).ToList();
+            _deviceNames = devices.ToDictionary(
+                device => device.Id,
+                device => DeviceLabel.For(device.Name, device.ProviderDeviceId));
+
+            await LoadOwnershipAsync(devices);
+
+            // The case is entered before the URL is applied, so the case's cameras and range can seed what the URL leaves out.
+            ReviewUrlState url = ReviewUrl.Parse(CurrentQuery());
+            if (url.CaseId is Guid caseId)
+            {
+                await EnterCaseAsync(caseId);
+            }
+
+            ReadUrlOnce(url);
+            _urlParsed = true;
+            WriteBackUrl();
+        }
+
+        _isLoading = false;
+    }
+
+    /// <summary>
+    /// Loads the provider accounts and device ownership the Provider and Account filters use. A failed load is
+    /// logged (type and message only) and leaves <see cref="_ownership"/> null, so every camera stays visible.
+    /// </summary>
+    private async Task LoadOwnershipAsync(IReadOnlyList<Device> devices)
+    {
+        DeviceOwnershipSnapshot snapshot = await OwnershipService.LoadAsync(devices, CancellationToken.None);
+        if (snapshot.LoadError is not null)
+        {
+            Logger.LogWarning(
+                "Could not load review device ownership, showing every camera: {ExceptionType}: {Message}",
+                snapshot.LoadError.GetType().FullName,
+                snapshot.LoadError.Message);
+            _ownership = null;
+            return;
+        }
+
+        _ownership = snapshot;
+    }
+
+    /// <summary>Recomputes the visible cameras for the current Provider and Account filters.</summary>
+    private void ComputeVisibleCameras()
+    {
+        _visibleIds = ReviewDeviceFilter.VisibleDeviceIds(_deviceIds, _ownership?.Ownership, State.ProviderFilter, State.AccountFilter, State.LocationFilter);
+        _appliedFilters = (State.ProviderFilter, State.AccountFilter, State.LocationFilter);
+    }
+
+    /// <summary>
+    /// After a Provider or Account change, drops selected cameras the filter hides. If that empties the selection,
+    /// the first visible cameras (up to the tile limit) are selected instead.
+    /// </summary>
+    private void ReconcileCameras()
+    {
+        ComputeVisibleCameras();
+
+        IReadOnlyList<Guid> kept = ReviewDeviceFilter.ClampCameras(State.CameraIds, _visibleIds);
+        if (kept.Count == 0)
+        {
+            kept = _visibleIds.Take(CameraSync.MaxTiles).ToList();
+        }
+
+        if (!kept.SequenceEqual(State.CameraIds))
+        {
+            State.SetCameras(kept);
+        }
+    }
+
+    /// <summary>
+    /// Enters the case the URL names. A case that does not exist, or a load that fails, leaves the page in normal
+    /// mode with the not-found message. The failure is logged by type and message only.
+    /// </summary>
+    private async Task EnterCaseAsync(Guid caseId)
+    {
+        try
+        {
+            _caseNotFound = !await CaseMode.EnterAsync(caseId, CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(
+                "Could not open the case for review, showing all evidence: {ExceptionType}: {Message}",
+                ex.GetType().FullName,
+                ex.Message);
+            CaseMode.Exit();
+            _caseNotFound = true;
+        }
+    }
+
+    /// <summary>
+    /// Seeds the state from the parsed query string. The filters are read first, so cameras the filters hide are dropped.
+    /// Cameras fall back to the case's cameras (when a case is entered), then the global scope's, then the first nine visible
+    /// devices. The case's range and cursor apply only where the URL leaves them out.
+    /// </summary>
+    private void ReadUrlOnce(ReviewUrlState url)
+    {
+        State.SetFilters(url.Provider, url.Account, url.Location);
+        ComputeVisibleCameras();
+        HashSet<Guid> visible = _visibleIds.ToHashSet();
+
+        List<Guid> cameras = url.Devices.Where(visible.Contains).ToList();
+        if (cameras.Count == 0 && CaseMode.Active)
+        {
+            cameras = CaseMode.DeviceIds.Where(visible.Contains).Take(CameraSync.MaxTiles).ToList();
+        }
+
+        if (cameras.Count == 0)
+        {
+            cameras = ScopeState.Current.DeviceIds.Where(visible.Contains).ToList();
+        }
+
+        if (cameras.Count == 0)
+        {
+            cameras = _visibleIds.Take(CameraSync.MaxTiles).ToList();
+        }
+
+        State.SetCameras(cameras);
+
+        if (url.FromUtc is DateTime from && url.ToUtc is DateTime to && from < to)
+        {
+            State.SetRange(from, to);
+        }
+        else if (CaseMode.Active && CaseMode.FromUtc is DateTime caseFrom && CaseMode.ToUtc is DateTime caseTo)
+        {
+            State.SetRange(caseFrom, caseTo);
+        }
+
+        DateTime? caseCursor = CaseMode.Active ? CaseMode.EarliestItemUtc : null;
+        State.SetCursor(url.CursorUtc ?? caseCursor);
+        State.SetTab(url.Tab);
+    }
+
+    private void OnReviewStateChanged()
+    {
+        if (_urlParsed)
+        {
+            if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter) != _appliedFilters)
+            {
+                ReconcileCameras();
+            }
+
+            WriteBackUrl();
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnScopeChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Replaces the query with the current state, only when the normalised state differs from the query
+    /// already in the address bar. Comparing normalised forms stops a navigation from re-triggering itself.
+    /// </summary>
+    private void WriteBackUrl()
+    {
+        var current = new ReviewUrlState(
+            State.CameraIds,
+            State.FromUtc,
+            State.ToUtc,
+            State.Cursor,
+            State.ActiveTab,
+            State.ProviderFilter,
+            State.AccountFilter,
+            CaseMode.Active ? CaseMode.CaseId : null,
+            State.LocationFilter);
+
+        string target = ReviewUrl.Build(current);
+        string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
+        if (target == existing)
+        {
+            return;
+        }
+
+        // Stay on the route the user is on (/media or /media/review), so a write-back never moves them to another path.
+        string path = new Uri(NavigationManager.Uri).AbsolutePath;
+        NavigationManager.NavigateTo(target.Length == 0 ? path : path + "?" + target, replace: true);
+    }
+
+    private string CurrentQuery()
+    {
+        return new Uri(NavigationManager.Uri).Query;
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnReviewStateChanged;
+        ScopeState.OnChange -= OnScopeChanged;
+        CaseMode.Exit();
+    }
+}

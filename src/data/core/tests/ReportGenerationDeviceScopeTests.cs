@@ -72,7 +72,7 @@ namespace VideoForensics.Data.Core.Tests
                 Entry("MediaDownloaded", null, $"{{\"deviceId\":\"{device:D}\"}}", day.AddHours(1)),
                 Entry("DeviceRegistered", other, null, day.AddHours(2)),
             ]);
-            _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(ChainIntegrityResult.Valid(2));
 
             ChainOfCustodyReport report = await CreateService().BuildChainOfCustodyReportAsync(device, From, To, CancellationToken.None);
 
@@ -85,7 +85,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             var device = Guid.NewGuid();
             _ = _actionLog.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
-            _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
 
             ChainOfCustodyReport report = await CreateService().BuildChainOfCustodyReportAsync(device, From, To, CancellationToken.None);
 
@@ -115,7 +115,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task BuildChainOfCustodyReportAsync_BrokenChainTwiceWithinWindow_AlertsOnce()
         {
             _ = _actionLog.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
-            _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
             ReportGenerationService service = CreateService();
 
             _ = await service.BuildChainOfCustodyReportAsync(Guid.NewGuid(), From, To, CancellationToken.None);

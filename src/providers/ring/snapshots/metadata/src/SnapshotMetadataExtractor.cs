@@ -12,7 +12,7 @@ namespace VideoForensics.Providers.Ring
     /// Extracts metadata from snapshot events into SnapshotMetadata objects.
     /// Handles GPS, device info, detection data, and generates PhotoPrism tags.
     /// </summary>
-    public class SnapshotMetadataExtractor : IMetadataExtractor
+    public class SnapshotMetadataExtractor : ISnapshotMetadataExtractor
     {
         private readonly SnapshotProcessingOptions _options;
 

@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Services
         private const int MaxDelayMs = 30000;
 
         // Files within a single device download concurrently (devices themselves stay sequential —
-        // see VideoDownloadServiceAdapter — to keep the deliberate inter-device rate-limit backoff).
+        // see the sync path's device loop — to keep the deliberate inter-device rate-limit backoff).
         // Configurable via SetMaxConcurrentDownloads (backed by IForensicsConfiguration.MaxConcurrentDownloads)
         // since Ring's per-account (not just per-connection) throttling means the right value varies
         // by account; 10 is a reasonable default.
@@ -167,7 +167,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 await pacer.WaitTurnAsync(cancellationToken);
-                await session.UpdateSnapshot(doorbotId);
+                await RequestFreshSnapshotAsync(session, doorbotId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -178,8 +178,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                await pacer.WaitTurnAsync(cancellationToken);
-                HttpUtility.DownloadResult snapshot = await session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+                HttpUtility.DownloadResult snapshot = await ReadLatestSnapshotWithRetryAsync(session, doorbotId, pacer, cancellationToken);
                 if (snapshot.Status == HttpStatusCode.TooManyRequests)
                 {
                     // Same path as a thrown 429: record the throttle, then report 429 with the pause.
@@ -195,6 +194,45 @@ namespace VideoForensics.Providers.Ring.Services
                 return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
             }
         }
+
+        /// <summary>Largest number of latest-snapshot reads one capture makes before it reports the last status.</summary>
+        internal const int MaxSnapshotReads = 4;
+
+        /// <summary>
+        /// Reads the latest frame. Ring answers 404 until the refreshed frame is built, so a 404 is read again after a growing
+        /// wait (2s, 4s, 6s). Any other status is returned at once. Every read takes a turn on the account's pacer.
+        /// </summary>
+        /// <remarks>The wait is taken before each re-read, so the first read follows the settle delay that the capture already applied.</remarks>
+        private async Task<HttpUtility.DownloadResult> ReadLatestSnapshotWithRetryAsync(Session session, int doorbotId, MediaRequestPacer pacer, CancellationToken cancellationToken)
+        {
+            int read = 0;
+            HttpUtility.DownloadResult snapshot;
+            do
+            {
+                if (read > 0)
+                {
+                    await DelaySnapshotRetryAsync(TimeSpan.FromSeconds(2 * read), cancellationToken);
+                }
+
+                await pacer.WaitTurnAsync(cancellationToken);
+                snapshot = await ReadLatestSnapshotAsync(session, doorbotId, cancellationToken);
+                read++;
+            }
+            while (snapshot.Status == HttpStatusCode.NotFound && read < MaxSnapshotReads);
+
+            return snapshot;
+        }
+
+        /// <summary>
+        /// Reads the latest frame once. Virtual so tests can script the status sequence, because <see cref="Session"/> cannot be mocked for this call.
+        /// </summary>
+        protected virtual Task<HttpUtility.DownloadResult> ReadLatestSnapshotAsync(Session session, int doorbotId, CancellationToken cancellationToken) =>
+            session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+
+        /// <summary>
+        /// Waits before a latest-snapshot re-read. Virtual so tests run without real waits.
+        /// </summary>
+        protected virtual Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.Delay(delay, cancellationToken);
 
         /// <summary>
         /// Maps the real HTTP status and body of a latest-snapshot read to an attempt. Only a 200 with a JPEG body carries an image;
@@ -1043,7 +1081,15 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
+                if (ex is ThrottledException throttled)
+                {
+                    // A throttle is handled and expected: log the reason, not the stack.
+                    _logger.LogWarning("Video download for device {DeviceName} skipped: {Reason}", deviceName, throttled.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
+                }
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -1051,6 +1097,12 @@ namespace VideoForensics.Providers.Ring.Services
                 );
             }
         }
+
+        /// <summary>
+        /// Asks Ring to capture a fresh snapshot. Virtual so tests can simulate a refresh failure,
+        /// because <see cref="Session.UpdateSnapshot"/> is not overridable and cannot be mocked.
+        /// </summary>
+        protected virtual Task RequestFreshSnapshotAsync(Session session, int doorbotId) => session.UpdateSnapshot(doorbotId);
 
         /// <summary>
         /// Downloads the single latest available snapshot for a device. Ring does not expose historical,
@@ -1090,23 +1142,28 @@ namespace VideoForensics.Providers.Ring.Services
                 _ = Directory.CreateDirectory(outputPath);
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
 
-                // Best-effort: ask Ring to capture a fresh snapshot before fetching it. Not every
-                // device/plan supports on-demand refresh, so failures here are non-fatal — fall back
-                // to whatever snapshot Ring already has on hand.
+                // Ask Ring to capture a fresh snapshot before fetching it. If that fails we stop here:
+                // Ring's cached image would look current, and saving it gives a false sense of security.
                 try
                 {
-                    await session.UpdateSnapshot(doorbotId);
+                    await RequestFreshSnapshotAsync(session, doorbotId);
                     await Task.Delay(2000, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; not saving the cached image", deviceId);
+                    _currentStatus = _currentStatus with { IsDownloading = false };
+                    return new DownloadResult(
+                        Success: false,
+                        ErrorMessage: $"Could not capture a fresh snapshot for device {deviceId}: {ex.Message}"
+                    );
                 }
 
                 // Snapshots carry no event data, so take the name from the device list (cached, so the
                 // state/details lookups below reuse it). Falls back to deviceId if unavailable.
                 string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
-                _logger.LogInformation("Snapshot starting for {DeviceName}", deviceNameForSnapshot);
+                // The name can repeat across cameras, so the log also carries the full device ID.
+                _logger.LogInformation("Snapshot starting for {DeviceName} (ID {DeviceId})", deviceNameForSnapshot, deviceId);
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
@@ -1262,7 +1319,11 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading snapshot for device {DeviceId}", deviceId);
+                // The status is logged so a Ring refusal shows its cause here; the body stays in the provider API error log.
+                string httpStatus = RingProviderApiErrorClassifier.GetHttpStatusCode(ex)?.ToString() ?? "none";
+                // The exception is not passed to the logger: the message and type are enough, and a stack trace only adds noise.
+                _logger.LogError("Error downloading snapshot for device {DeviceId} (HTTP {HttpStatus}): {ExceptionType}: {ErrorMessage}",
+                    deviceId, httpStatus, ex.GetType().Name, ex.Message);
                 _currentStatus = _currentStatus with { IsDownloading = false };
 
                 if (resolvedDeviceGuid.HasValue)
@@ -1658,7 +1719,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         // Discovery's device Metadata["kind"] is the raw Ring kind; when Ring omits it, discovery's Type
-        // (the list the device came from) is the fallback, which is the same thing VideoDownloadServiceAdapter does.
+        // (the list the device came from) is the fallback, which is the same thing the sync path does.
         private static string KindOrListType(string? kind, string listType)
         {
             return string.IsNullOrWhiteSpace(kind) ? listType : kind;
@@ -1673,9 +1734,9 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             // Falls back to a synthetic "default" location only when the caller genuinely has no
-            // real Ring location id for this device — matches VideoDownloadServiceAdapter's own
-            // fallback so both layers agree on the placeholder's identity instead of creating two
-            // different "default" locations.
+            // real Ring location id for this device. The sync path uses the same fallback, so
+            // both agree on the placeholder's identity instead of creating two different
+            // "default" locations.
             string effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
 
             // Resolve Account/Location once per effectiveLocationId and cache them
@@ -1846,7 +1907,7 @@ namespace VideoForensics.Providers.Ring.Services
         // served by filtering the cached events in memory - no network call at all. A request that
         // needs data older than what's cached (a device with an earlier watermark) fetches the union
         // of the two ranges once and widens the cache, rather than narrowing back down - so as long
-        // as devices are processed widest-range-first (see VideoDownloadServiceAdapter), the whole
+        // as devices are processed widest-range-first (see the sync path's device loop), the whole
         // batch costs exactly one real history fetch.
         private async Task<List<Entities.DoorbotHistoryEvent>> GetHistoryEventsAsync(Session session, DateTime startDate, DateTime endDate)
         {

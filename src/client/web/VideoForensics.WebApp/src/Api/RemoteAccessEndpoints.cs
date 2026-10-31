@@ -1,3 +1,5 @@
+using System.Text;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Infrastructure;
@@ -198,7 +200,7 @@ namespace VideoForensics.Client.WebApp.Api
                     return Results.BadRequest(new { error = "Configure the Cloudflare tunnel token first." });
                 }
 
-                await tunnels.StartPermanentTunnelAsync(token, ct);
+                await tunnels.StartPermanentTunnelAsync(token, ct, config.InternetServerUrl);
                 await AuditAsync(auditLog, tierResolver, context, SecurityAuditEventTypes.TunnelStarted, "Permanent Cloudflare tunnel started", ct);
                 return Results.Ok();
             }).AddEndpointFilter<StepUpEndpointFilter>();
@@ -240,6 +242,97 @@ namespace VideoForensics.Client.WebApp.Api
                     : Results.BadRequest(new { error = result.Message });
             }).AddEndpointFilter<StepUpEndpointFilter>();
 
+            // The Let's Encrypt contact email and staging choice, saved without issuing anything. Issuing a
+            // certificate stays on the step-up gated /certificate route.
+            _ = group.MapGet("/certificate-settings", async (
+                ILetsEncryptCertificateStore store,
+                IConfiguration appConfiguration,
+                CancellationToken ct) =>
+            {
+                string? email = await store.GetContactEmailAsync(ct);
+                bool? savedUseStaging = await store.GetUseStagingAsync(ct);
+                return Results.Ok(new
+                {
+                    contactEmail = email,
+                    useStaging = savedUseStaging ?? appConfiguration.GetValue("Acme:UseStaging", true)
+                });
+            });
+
+            _ = group.MapPut("/certificate-settings", async (
+                SaveCertificateSettingsRequest request,
+                ILetsEncryptCertificateStore store,
+                CancellationToken ct) =>
+            {
+                if (string.IsNullOrWhiteSpace(request.ContactEmail) || !request.ContactEmail.Contains('@', StringComparison.Ordinal))
+                {
+                    return Results.BadRequest(new { error = "Enter a valid contact email for Let's Encrypt." });
+                }
+
+                await store.SetContactEmailAsync(request.ContactEmail, ct);
+                await store.SetUseStagingAsync(request.UseStaging, ct);
+                return Results.Ok(new { contactEmail = request.ContactEmail.Trim(), useStaging = request.UseStaging });
+            });
+
+            // Whether a certificate is stored for the Internet hostname, when it expires, and whether renewal is due.
+            _ = group.MapGet("/certificate-status", async (
+                ILetsEncryptCertificateStore store,
+                IForensicsConfiguration config,
+                CancellationToken ct) =>
+            {
+                IssuedCertificate? issued = await store.GetCertificateAsync(ct);
+                return Results.Ok(new
+                {
+                    hostname = InternetHost(config),
+                    issued = issued is not null,
+                    notAfter = issued?.NotAfter,
+                    renewalDue = issued is not null && CertificateRenewalPolicy.IsRenewalDue(issued.NotAfter, DateTimeOffset.UtcNow)
+                });
+            });
+
+            // Downloads a zip with the server certificate (cert.pem) and its intermediates (chain.pem). The private key is
+            // never sent; it stays encrypted in the store.
+            _ = group.MapGet("/certificate/download", async (
+                ILetsEncryptCertificateStore store,
+                IForensicsConfiguration config,
+                CancellationToken ct) =>
+            {
+                IssuedCertificate? issued = await store.GetCertificateAsync(ct);
+                if (issued is null)
+                {
+                    return Results.NotFound(new { error = "No certificate has been issued yet." });
+                }
+
+                // The public chain lists the server certificate first, then its intermediates.
+                List<string> blocks = LetsEncryptCertificateManager.PublicChainPem(issued.PemBundle)
+                    .Split("-----END CERTIFICATE-----", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(block => block + "\n-----END CERTIFICATE-----\n")
+                    .ToList();
+
+                using var archiveStream = new MemoryStream();
+                using (var archive = new System.IO.Compression.ZipArchive(archiveStream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    await WriteEntryAsync(archive, "cert.pem", blocks.Count > 0 ? blocks[0] : string.Empty, ct);
+                    await WriteEntryAsync(archive, "chain.pem", string.Concat(blocks.Skip(1)), ct);
+                }
+
+                return Results.File(archiveStream.ToArray(), "application/zip", $"{InternetHost(config) ?? "certificate"}-certificate.zip");
+            });
+
+            // Removes the stored certificate and Let's Encrypt account. Until a new certificate is requested, Kestrel
+            // presents its default one, so this changes what the server presents and is step-up gated.
+            _ = group.MapPost("/certificate/reset", async (
+                LetsEncryptCertificateManager certificates,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                await certificates.ResetAsync(ct);
+                await AuditAsync(auditLog, tierResolver, context, SecurityAuditEventTypes.CertificateReset,
+                    "Let's Encrypt certificate and account removed", ct);
+                return Results.Ok();
+            }).AddEndpointFilter<StepUpEndpointFilter>();
+
             // Stops the tunnel and deletes both stored Cloudflare tokens. The configured address is kept so
             // that re-connecting only needs the tokens again.
             _ = group.MapPost("/disconnect", async (
@@ -275,6 +368,20 @@ namespace VideoForensics.Client.WebApp.Api
             return Uri.TryCreate($"https://{value}", UriKind.Absolute, out Uri? uri)
                         && uri.Host == value?.Trim().TrimEnd('.').ToLowerInvariant()
                         && uri.Host.Contains('.', StringComparison.Ordinal);
+        }
+
+        /// <summary>Adds one UTF-8 text entry to the certificate download archive.</summary>
+        private static async Task WriteEntryAsync(System.IO.Compression.ZipArchive archive, string name, string content, CancellationToken ct)
+        {
+            System.IO.Compression.ZipArchiveEntry entry = archive.CreateEntry(name, System.IO.Compression.CompressionLevel.Optimal);
+            await using Stream stream = entry.Open();
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(content), ct);
+        }
+
+        /// <summary>The host of the saved Internet address, or null when none is configured.</summary>
+        internal static string? InternetHost(IForensicsConfiguration config)
+        {
+            return Uri.TryCreate(config.InternetServerUrl, UriKind.Absolute, out Uri? url) ? url.Host : null;
         }
 
         /// <summary>Builds the lower-case public hostname from a validated prefix and domain.</summary>
@@ -361,4 +468,6 @@ namespace VideoForensics.Client.WebApp.Api
     public sealed record ConfigureCloudflareTunnelRequest(string TunnelToken, string HostnamePrefix, string Domain);
     public sealed record ProvisionCloudflareTunnelRequest(string HostnamePrefix, string Domain);
     public sealed record RequestCertificateRequest(string ContactEmail);
+
+    public sealed record SaveCertificateSettingsRequest(string ContactEmail, bool UseStaging);
 }

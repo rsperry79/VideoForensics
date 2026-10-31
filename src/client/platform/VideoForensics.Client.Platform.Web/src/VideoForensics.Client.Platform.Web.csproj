@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- net10.0 so the server WebApp can reference it. Server-side (Linux and web host) platform code;
+             Windows-only code lives in VideoForensics.Client.Platform.Windows. -->
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Client.Platform.Web</AssemblyName>
+        <RootNamespace>VideoForensics.Client.Platform.Web</RootNamespace>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Server-side (Linux and web host) platform services (Debian update installer) for the VideoForensics server</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="VideoForensics.Client.Platform.Web.Tests" />
+    </ItemGroup>
+
+</Project>

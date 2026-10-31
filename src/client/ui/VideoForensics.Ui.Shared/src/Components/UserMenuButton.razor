@@ -7,9 +7,10 @@
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
 @inject IUiModeService UiModeService
+@inject ThemePreferenceService ThemeService
 
 @* The operator's OWN login (paired-device / WebAuthn session) - kept separate from provider
-   account logins, which are switched via AccountSwitcher in the right panel. *@
+   account logins, which are managed on the Accounts pages. *@
 <div class="user-menu" data-testid="user-menu" data-role-label="@ButtonLabel">
     <SfButton Content="@ButtonLabel" CssClass="user-menu-toggle e-flat" OnClick="@Toggle" title="@L["AccountMenuTitle"]" data-testid="user-menu-toggle" />
 
@@ -71,6 +72,16 @@
     {
         _open = false;
         
+        if (action.StartsWith("set-theme:", StringComparison.Ordinal))
+        {
+            if (Enum.TryParse<ThemeMode>(action.Substring("set-theme:".Length), out var theme))
+            {
+                await ThemeService.SetModeAsync(theme);
+            }
+
+            return;
+        }
+
         if (action.StartsWith("set-ui-mode:"))
         {
             var mode = action.Substring("set-ui-mode:".Length);
@@ -85,4 +96,4 @@
             }
         }
     }
-}
+}

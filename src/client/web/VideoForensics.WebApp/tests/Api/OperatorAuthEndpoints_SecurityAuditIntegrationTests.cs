@@ -61,7 +61,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             LoginPasswordRequest request = CreateLoginRequest(op.Username, TestPassword);
 
             // Act
-            IResult result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
@@ -102,7 +102,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             LoginPasswordRequest request = CreateLoginRequest(op.Username, "WrongPassword123!");
 
             // Act
-            IResult result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
@@ -150,7 +150,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             LoginPasswordRequest request = CreateLoginRequest(op.Username, "WrongPassword123!");
 
             // Act
-            IResult result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
@@ -267,7 +267,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     /// <summary>
     /// Helper class to invoke the private LoginPasswordAsync method in OperatorAuthEndpoints for testing.
     /// </summary>
-    internal static class OperatorAuthEndpointsInvoker
+    internal static class OperatorAuthEndpointsSecurityAuditInvoker
     {
         public static async Task<IResult> LoginPasswordAsync(
             LoginPasswordRequest request,

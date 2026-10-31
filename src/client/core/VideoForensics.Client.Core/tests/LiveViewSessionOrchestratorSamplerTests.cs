@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid id, CancellationToken _) => new LiveViewSession { Id = id, State = LiveViewSessionState.Active, TriggerReason = LiveViewTriggerReason.Manual });
             _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = _providerMock.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _providerMock.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_connectionMock.Object);
 
             SetupWritesToList();
@@ -75,7 +75,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
-            _ = sp.Setup(s => s.GetService(typeof(ILiveViewCapableProvider))).Returns(_providerMock.Object);
+            LiveViewProviderWiring.Register(sp, _providerMock);
             _ = sp.Setup(s => s.GetService(typeof(ILiveViewTelemetryRepository))).Returns(_telemetryRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(ICameraBitrateBaselineRepository))).Returns(_baselineRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(INotificationDispatcher))).Returns(Mock.Of<INotificationDispatcher>());

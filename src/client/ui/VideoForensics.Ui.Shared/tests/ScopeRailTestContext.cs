@@ -6,6 +6,7 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services;

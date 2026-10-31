@@ -4,6 +4,7 @@
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient
 @inject PairedSessionState SessionState
+@inject IProviderAccountEditAccess EditAccess
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountSyncSchedule> L
@@ -24,15 +25,14 @@ else
         </div>
     }
 
-    <div class="card p-4">
-        <div class="card-body">
-            <h5 class="card-title">@L["ConfigureSyncSettings"]</h5>
+    <div>
+        <div>
 
             <div id="config-sync-interval" class="mb-4">
                 <label for="config-sync-interval-hours" class="form-label fw-bold">@L["ConfigSyncIntervalLabel"]</label>
                 <div>
                     <input id="config-sync-interval-hours" type="number" class="form-control" style="width: 8rem;"
-                           min="1" max="720" value="@_configSyncHours" @onchange="OnConfigSyncIntervalChangedAsync" />
+                           min="1" max="720" value="@_configSyncHours" disabled="@(!_canEditAccount)" @onchange="OnConfigSyncIntervalChangedAsync" />
                 </div>
                 @if (_configSyncIntervalError)
                 {
@@ -43,63 +43,65 @@ else
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
                     <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
-                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => _snapshotRssiIntervalSeconds = v" />
+                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => { _snapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
                 </div>
                 <div class="mb-3">
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
-                    <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" Min="1" Step="1" />
+                    <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="1" Step="1" />
                 </div>
                 <div class="mb-3">
                     <label for="snapshot-rollup-interval">@L["SnapshotRollupIntervalLabel"]</label>
-                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" Min="1" Step="1" />
+                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="1" Step="1" />
                 </div>
 
                 <div class="mb-3">
                     <label for="is-enabled">
-                        <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" TChecked="bool" />
+                        <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" @bind-Checked:after="QueueAutoSave" TChecked="bool" />
                         @L["EnableSync"]
                     </label>
                 </div>
-
-                @if (_schedule != null)
-                {
-                    <div class="mb-3">
-                        <label>@L["LastEventPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.EventLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label>@L["NextEventPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.EventNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label>@L["LastSnapshotPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.SnapshotLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label>@L["NextSnapshotPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.SnapshotNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
-                    </div>
-                }
 
                 <hr class="my-4" />
 
                 <div class="mb-3">
                     <label for="use-advanced-jamming">
-                        <SfCheckBox ID="use-advanced-jamming" @bind-Checked="_useAdvancedJammingSchedule" TChecked="bool" />
+                        <SfCheckBox ID="use-advanced-jamming" @bind-Checked="_useAdvancedJammingSchedule" @bind-Checked:after="QueueAutoSave" TChecked="bool" />
                         @L["AdvancedJammingSchedule"]
                     </label>
                 </div>
 
+                <div class="mb-4">
+                    <h6 class="mb-2">@L["DeviceCaptureModesHeading"]</h6>
+                    <div>
+                        <p class="text-muted small">@L["DeviceCaptureModesHelp"]</p>
+                        @if (_deviceModes.Count == 0)
+                        {
+                            <p class="text-muted mb-0">@L["NoDevicesForSchedule"]</p>
+                        }
+                        else
+                        {
+                            @foreach (DeviceModeRow row in _deviceModes)
+                            {
+                                string label = DeviceLabel.For(row.Name, row.ProviderDeviceId);
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <span class="flex-grow-1">@label</span>
+                                    <select class="form-select form-select-sm" style="max-width: 220px;" aria-label="@label" value="@row.Mode" disabled="@_isBusy"
+                                            @onchange="e => SetDeviceModeAsync(row, e.Value?.ToString())">
+                                        <option value="Capture">@L["DeviceModeCapture"]</option>
+                                        <option value="HealthOnly">@L["DeviceModeHealthOnly"]</option>
+                                        <option value="Off">@L["DeviceModeOff"]</option>
+                                    </select>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
                 @if (_useAdvancedJammingSchedule)
                 {
-                    <div class="card border-secondary mb-4">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">@L["JammingDetectionWindows"]</h6>
-                        </div>
-                        <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="mb-2">@L["JammingDetectionWindows"]</h6>
+                        <div>
                             @if (_jammingWindows == null || _jammingWindows.Count == 0)
                             {
                                 <p class="text-muted">@L["NoJammingWindows"]</p>
@@ -122,22 +124,22 @@ else
                                             {
                                                 <tr>
                                                     <td>
-                                                        <SfDropDownList TValue="int" TItem="(int Value, string Display)" DataSource="@_dayOfWeekOptions" @bind-Value="window.DayOfWeek">
+                                                        <SfDropDownList TValue="int" TItem="(int Value, string Display)" DataSource="@_dayOfWeekOptions" @bind-Value="window.DayOfWeek" @bind-Value:after="QueueAutoSave">
                                                             <DropDownListFieldSettings Text="Display" Value="Value"></DropDownListFieldSettings>
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.StartMinuteOfDay">
+                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.StartMinuteOfDay" @bind-Value:after="QueueAutoSave">
                                                             <DropDownListFieldSettings Text="@nameof(TimeOption.Display)" Value="@nameof(TimeOption.Minutes)"></DropDownListFieldSettings>
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.EndMinuteOfDay">
+                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.EndMinuteOfDay" @bind-Value:after="QueueAutoSave">
                                                             <DropDownListFieldSettings Text="@nameof(TimeOption.Display)" Value="@nameof(TimeOption.Minutes)"></DropDownListFieldSettings>
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => window.SnapshotRssiIntervalSeconds = v" />
+                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => { window.SnapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
                                                     </td>
                                                     <td>
                                                         <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
@@ -156,9 +158,6 @@ else
                     </div>
                 }
 
-                <div class="mt-4">
-                    <SfButton type="submit" CssClass="e-primary" Disabled="@_isBusy" Content="@(_isBusy ? L["Saving"] : L["Save"])" />
-                </div>
             </EditForm>
         </div>
     </div>
@@ -170,6 +169,11 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
+    /// <summary>Pause after the last settings change before the schedule is saved.</summary>
+    private static readonly TimeSpan AutoSaveDelay = TimeSpan.FromSeconds(1);
+
+    private CancellationTokenSource? _autoSaveCts;
+
     private SyncSchedule? _schedule;
     private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
     private int _eventPollIntervalMinutes = 60;
@@ -179,6 +183,7 @@ else
     private List<JammingScheduleWindow>? _jammingWindows;
     private bool _isLoading = true;
     private bool _isBusy;
+    private bool _canEditAccount;
     private string? _statusMessage;
     private bool _statusIsError;
 
@@ -190,6 +195,7 @@ else
     {
         _timeOptions = BuildTimeOptions();
         _dayOfWeekOptions = BuildDayOfWeekOptions();
+        _canEditAccount = await EditAccess.CanEditAsync(CancellationToken.None);
         await LoadScheduleAsync();
         await LoadConfigSyncIntervalAsync();
     }
@@ -269,6 +275,51 @@ else
     /// <summary>
     /// GET against the account API with the paired-device bearer token.
     /// </summary>
+    /// <summary>One device on the schedule page: its capture choice, saved as "Capture", "HealthOnly", or "Off".</summary>
+    private sealed record DeviceModeRow(Guid DeviceId, string Name, string ProviderDeviceId, string Mode);
+
+    private List<DeviceModeRow> _deviceModes = new();
+
+    private async Task LoadDeviceModesAsync()
+    {
+        try
+        {
+            _deviceModes = await GetApiAsync<List<DeviceModeRow>>($"api/v1/device-capture-modes?providerAccountId={Id}") ?? new List<DeviceModeRow>();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = L["FailedToLoadDeviceModes", ex.Message];
+            _statusIsError = true;
+        }
+    }
+
+    private async Task SetDeviceModeAsync(DeviceModeRow row, string? mode)
+    {
+        if (string.IsNullOrEmpty(mode) || mode == row.Mode)
+        {
+            return;
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await SendApiAsync(HttpMethod.Put, $"api/v1/device-capture-modes/{row.DeviceId}", new { mode });
+            response.EnsureSuccessStatusCode();
+            int index = _deviceModes.IndexOf(row);
+            if (index >= 0)
+            {
+                _deviceModes[index] = row with { Mode = mode };
+            }
+
+            _statusMessage = L["DeviceModeSaved", DeviceLabel.For(row.Name, row.ProviderDeviceId)];
+            _statusIsError = false;
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = L["FailedToSaveDeviceMode", ex.Message];
+            _statusIsError = true;
+        }
+    }
+
     private async Task<T?> GetApiAsync<T>(string relativePath)
     {
         using HttpResponseMessage response = await SendApiAsync(HttpMethod.Get, relativePath);
@@ -349,12 +400,14 @@ else
         }
         finally
         {
+            await LoadDeviceModesAsync();
             _isLoading = false;
         }
     }
 
     private void AddWindow()
     {
+        QueueAutoSave();
         if (_jammingWindows == null)
         {
             _jammingWindows = [];
@@ -376,6 +429,7 @@ else
 
     private void RemoveWindow(JammingScheduleWindow window)
     {
+        QueueAutoSave();
         _jammingWindows?.Remove(window);
     }
 
@@ -456,6 +510,33 @@ else
         6 => L["Saturday"],
         _ => L["Unknown"]
     };
+
+    /// <summary>
+    /// Restarts the auto-save countdown on every settings change. Saving waits for a short pause, so a run of edits
+    /// (typing a number, nudging a spinner) produces one write rather than one per keystroke.
+    /// </summary>
+    private void QueueAutoSave()
+    {
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        _autoSaveCts = new CancellationTokenSource();
+        _ = AutoSaveAfterPauseAsync(_autoSaveCts.Token);
+    }
+
+    private async Task AutoSaveAfterPauseAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(AutoSaveDelay, token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer change restarted the countdown.
+            return;
+        }
+
+        await InvokeAsync(SaveScheduleAsync);
+    }
 
     private async Task SaveScheduleAsync()
     {

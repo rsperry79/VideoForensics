@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Utils.SelfTest
@@ -62,7 +63,7 @@ namespace VideoForensics.Utils.SelfTest
         {
             var report = new DbCompletenessReport { DbPath = dbPath, GeneratedAtUtc = DateTime.UtcNow };
 
-            string connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
+            string connectionString = SqliteConnectionStrings.ForFile(dbPath);
             var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
             _ = optionsBuilder.UseSqlite(connectionString, b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
 

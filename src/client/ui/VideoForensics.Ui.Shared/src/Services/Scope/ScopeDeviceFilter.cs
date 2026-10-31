@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>A device's link to the provider account that can see it, via the device's location.</summary>
-public sealed record DeviceOwnership(Guid DeviceId, Guid ProviderAccountId, string ProviderName);
+public sealed record DeviceOwnership(Guid DeviceId, Guid ProviderAccountId, string ProviderName, Guid LocationId);
 
 /// <summary>The devices left after a Provider/Account filter, and whether any filter is set.</summary>
 public sealed record DeviceFilterResult(IReadOnlyList<Device> Devices, bool IsFiltered);
@@ -57,7 +57,7 @@ public static class ScopeDeviceFilter
 
             foreach (ProviderAccount owner in owners)
             {
-                result.Add(new DeviceOwnership(device.Id, owner.Id, owner.ProviderName));
+                result.Add(new DeviceOwnership(device.Id, owner.Id, owner.ProviderName, device.LocationId));
             }
         }
 
@@ -65,16 +65,17 @@ public static class ScopeDeviceFilter
     }
 
     /// <summary>
-    /// Returns the devices visible under the filters. A null filter matches everything; with both null the
+    /// Returns the devices visible under the filters. A null filter matches everything; with all null the
     /// input is returned unchanged. A device with no ownership row is excluded whenever a filter is set.
     /// </summary>
     public static IReadOnlyList<Device> Filter(
         IEnumerable<Device> devices,
         IEnumerable<DeviceOwnership> ownership,
         string? providerName,
-        Guid? providerAccountId)
+        Guid? providerAccountId,
+        Guid? locationId = null)
     {
-        if (providerName is null && providerAccountId is null)
+        if (providerName is null && providerAccountId is null && locationId is null)
         {
             return devices.ToList();
         }
@@ -82,6 +83,7 @@ public static class ScopeDeviceFilter
         var allowed = ownership
             .Where(o => providerName is null || string.Equals(o.ProviderName, providerName, StringComparison.OrdinalIgnoreCase))
             .Where(o => providerAccountId is null || o.ProviderAccountId == providerAccountId.Value)
+            .Where(o => locationId is null || o.LocationId == locationId.Value)
             .Select(o => o.DeviceId)
             .ToHashSet();
 

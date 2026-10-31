@@ -133,4 +133,39 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
 
         Assert.Equal(new[] { otherDevice.Id.ToString() }, VisibleDeviceIds(component));
     }
+
+    [Fact]
+    public void LocationPicked_ShowsOnlyThatLocationsDevices_AndScopesToThem()
+    {
+        ProviderAccount ringAccount = MakeAccount("Ring");
+        Location porch = MakeLocation();
+        Location garage = MakeLocation();
+        porch.Name = "Porch";
+        garage.Name = "Garage";
+        Device porchDevice = MakeDevice("Ring Front", porch.Id);
+        Device garageDevice = MakeDevice("Ring Garage", garage.Id);
+
+        var deviceRepository = new Mock<IDeviceRepository>();
+        _ = deviceRepository
+            .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([porchDevice, garageDevice]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
+
+        ScopeOwnershipTestDoubles.Register(
+            Services,
+            new[] { ringAccount },
+            new Dictionary<Guid, IReadOnlyList<Location>>
+            {
+                [ringAccount.Id] = new[] { porch, garage },
+            });
+
+        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
+        Assert.Equal(3, component.FindAll("[data-testid='scope-location-filter'] option").Count);
+        Assert.Equal(2, VisibleDeviceIds(component).Count);
+
+        component.Find("[data-testid='scope-location-filter']").Change(garage.Id.ToString());
+
+        Assert.Equal(new[] { garageDevice.Id.ToString() }, VisibleDeviceIds(component));
+        Assert.Equal(new[] { garageDevice.Id }, Services.GetRequiredService<ScopeState>().Current.DeviceIds);
+    }
 }

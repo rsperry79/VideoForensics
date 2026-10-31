@@ -1,6 +1,7 @@
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
@@ -83,7 +84,22 @@ public class LocationInspectorMapper_ToInspector_Tests
         Assert.Contains("Source", provenanceDict.Keys);
         Assert.Contains("RetrievedAtUtc", provenanceDict.Keys);
         Assert.Equal("IDeviceDiscoveryService.GetLocationsAsync", provenanceDict["Source"]);
-        Assert.Equal(retrievedAt.ToString("u"), provenanceDict["RetrievedAtUtc"]);
+        Assert.Equal("2026-09-20 14:30:45", provenanceDict["RetrievedAtUtc"]);
+    }
+
+    [Fact]
+    public void ToInspector_ProvenanceShowsTimeInTheUserZone()
+    {
+        // Arrange
+        var location = new Location(Id: "loc-123", Name: "Home");
+        var retrievedAt = new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc);
+        var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
+
+        // Act
+        InspectorModel inspector = LocationInspectorMapper.ToInspector(location, retrievedAt, minusFive);
+
+        // Assert
+        Assert.Equal("2026-09-20 09:30:45", inspector.Provenance!.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)["RetrievedAtUtc"]);
     }
 }
 
@@ -334,7 +350,7 @@ public class DeviceConfigInspectorMapper_ToInspector_Tests
         Assert.Contains("RetrievedAtUtc", provenanceDict.Keys);
         Assert.Equal("dev-456", provenanceDict["DeviceId"]);
         Assert.Equal("IEventAndConfigService.GetDeviceConfigAsync", provenanceDict["Source"]);
-        Assert.Equal(retrievedAt.ToString("u"), provenanceDict["RetrievedAtUtc"]);
+        Assert.Equal("2026-09-20 14:30:45", provenanceDict["RetrievedAtUtc"]);
     }
 
     [Fact]

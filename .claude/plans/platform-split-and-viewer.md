@@ -1,6 +1,49 @@
 # Plan: platform split and media viewer
 
-Status: draft. Nothing implemented. Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
+Status (audited 2026-10-28): Parts 1, 2, and 3 are implemented and merged to `wip`. Remaining: verify WebView2 range playback on the MAUI Windows head (no test or note exists in code), and the Frigate-style review page that uses these components (see `media-page-rework.md`, Step 2). The viewer components are built and tested but no page uses them yet. Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
+
+## Status (2026-10-25)
+
+Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item below.
+
+### Part 1: done
+- `Platform.Windows` holds the Windows implementations: storage overrides, TPM and DPAPI key storage, Event Log, directory ACL, firewall, update installer, OneDrive paths, WebView2 locator, hotswap and dev launcher.
+- Common seams: `ILicenseKeySource`, `IBackupStagingLocator`, `IFirewallRuleManager`, `IUpdateInstaller`.
+- Core seams: `IStorageOverrideSource`, `IMachineGuidSource`, `IDataDirectoryAccess`, `IKeyStorageProvider` platform registration, and a delegate for the Event Log.
+- Heads register the Windows implementations: WebApp, MAUI, dbrepair, dbsetup, selftest.
+
+### Part 1: not done or deviated
+- `Platform.Web` was created in `e34882b5` (2026-10-24): `src/client/platform/VideoForensics.Client.Platform.Web` holds `LinuxUpdateInstaller` and has a test project; `WebApp.csproj` references it. The media range code stays in WebApp, which is a head, so it is allowed there.
+- Remaining platform calls in shared layers, found by review:
+  - `Ui.Shared/Pages/ImportExport.razor` (`File.*`, lines near 143, 191, 195).
+  - `Ui.Shared/Dialogs/FolderBrowserDialog.razor:53` and `Services/DirectoryBrowserService.cs:18,28`.
+  - `Hosting/BackgroundServices/UpdateCheckService.cs:347` (`LocalApplicationData`, Linux download path).
+  - `Client.Core/Tools/ConfigToolsOrchestrator.cs:205` (`UserProfile`).
+  - `Client.MCP/ServerDiscovery/FileApiKeyStore.cs:24` (`LocalApplicationData`). Decision: stays in MCP.
+  - `Core.Helpers` `StorageLocationProvider` and `PlatformDirectoryService` (`OperatingSystem.Is*`). Core is the generic default; Windows branches are the registered overrides.
+- Not verified: Uniview `Process.Start` calls; whether Ring ffmpeg calls go through `IFfmpegToolLocation`; cloudflared and installer-asset seams; `.snk` and csproj naming for new projects.
+
+### Part 2: done
+- Backend: `GetPageByDevicesAndDateRangeAsync` (SQL paging, purged excluded, take 1-500); `/api/v1/media-items/page` with validation; media rate limit 30 per tile per minute across 9 tiles.
+- Common: `ReviewTimeline` (time to pixel, pixel to time, `ClipAt`), `CameraSync` (`DriftSeconds`, `NeedsResync`, `MaxTiles` = 9).
+- Ui.Shared: `ReviewPlayer`, `TimelineStrip`, `CameraGrid` with bUnit tests; strings localized.
+- Decided: playback across clips is a playlist (no server stitch); thumbnail strip uses existing `ThumbnailPath`; max tiles 9; audit records one entry per clip open (range requests not starting at byte 0 are skipped).
+
+### Part 2: resolved (merged to `wip`; the `feat/finish-parts-1-2` branch no longer exists)
+- Grid drift resync: `CameraGrid` checks each tile against tile 0 once a second (`CameraSync.NeedsResync`), and seeks a drifting tile. Commit `866a4dac`.
+- 206 and 416 range tests on `/media/{id}/content`: `MediaContentRangeTests`. Commit `03875b3e`.
+- `RemoteMediaItemRepository` page query test: commit `74c7f729`.
+- Thumbnails on the timeline strip: `ClipWindow.ThumbnailUrl`, drawn as the segment background. Commit `255e8df4`.
+- Still open: WebView2 range playback on the Windows head is unverified. This needs a manual check on the MAUI app.
+
+### Part 1: decisions recorded
+- `Platform.Web` now exists (see above); it holds server-only platform code (`LinuxUpdateInstaller`).
+- `DirectoryBrowserService` drive enumeration moved behind `IFileSystemRootProvider` (Common). Windows drives in `Platform.Windows`, POSIX root in Core. Commit `06b96c88`.
+- Accepted as portable .NET, not platform code: `ImportExport` `File.*`, `ConfigToolsOrchestrator` user profile and Pictures folder, `Ring` and `Uniview` `Process.Start` (ffmpeg paths come from `IFfmpegToolLocation`, which I did not re-verify in every call site).
+- `UpdateCheckService` Linux download path (`LocalApplicationData`) is Linux-only. Accepted for now.
+- `FileApiKeyStore` (MCP) stays in MCP, as decided.
+
+### Part 3: done (audited 2026-10-28)
 
 ## Goals
 1. Split client code into a common layer and per-platform sublibs.
@@ -17,7 +60,7 @@ Part 1 (platform split) comes first. The viewer is built on the common layer.
 - Platform-specific code found by grep (non-test): `SyncfusionLicenseRegistrar` (`%ProgramData%` path), `FfmpegPathResolver` use in `Tools/`, `FileServerLocationSettingsStore` in MCP, `Program.cs` in WebApp and MauiProgram.
 - Recordings: downloaded MP4 clips indexed in `MediaItem` (`FilePath`, `DeviceId`, `RecordedAtUtc`, `DurationSeconds`, `ThumbnailPath`).
 - Browser video already works: `GET /api/v1/media/{id}/content` streams with range processing (`WebApp/src/Api/MediaApiEndpoints.cs:70,212`). Per-item tickets come from `POST /media/tickets` (`:66`), via `IMediaAccessTicketService` and `IMediaContentUrlProvider`. `Ui.Shared/src/Components/Evidence/MediaViewer.razor:98` already has a `<video>`.
-- Clip listing already exists: `GET /api/v1/media-items?deviceId&from&to` (`MediaApiEndpoints.cs:39,323-350`). It returns unpaged lists, which breaks `.claude/rules/data.md`.
+- Clip listing: `GET /api/v1/media-items?deviceId&from&to` is unpaged (breaks `.claude/rules/data.md`); the paged `GET /api/v1/media-items/page` was added in Part 2 and is the one to use.
 
 ## Part 1: platform split
 
@@ -98,7 +141,9 @@ Part 1 (platform split) comes first. The viewer is built on the common layer.
 - Multi-camera max tile count.
 - Does the WebView on the Windows head play MP4 range requests the same as a browser? Verify.
 
-## Part 3: preview strips (single-camera view)
+## Part 3: preview strips (single-camera view): implemented
+
+Status: all of this is done. `MediaItem.PreviewPath` with migration `AddMediaItemPreviewPath`; `MediaPreviewService` (320 px, 1 fps, `.preview.mp4`, temp file moved into place after ffmpeg succeeds); generation after download in `EventPullService` (two at a time, failures logged and not failing the pull); `MediaPreviewBackfillService`; `GET /api/v1/media/{id}/preview` with range requests and tests; `SingleCameraView` with 6 tests. The text below is the original plan, kept for reference. The preview strip is not on any page yet.
 
 Goal: in single-camera view, show thumbnail previews of the other cameras for the same time window. Clicking one switches the main player to that camera at the same time offset.
 

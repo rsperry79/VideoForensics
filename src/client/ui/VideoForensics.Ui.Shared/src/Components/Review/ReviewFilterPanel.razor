@@ -1,0 +1,132 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@using VideoForensics.Client.Ui.Shared.Components.Filters
+@inject IStringLocalizer<ReviewPage> L
+@inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources> SharedL
+
+<div class="review-filter-panel p-2" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel">
+    <div class="small fw-semibold mb-2">@L["FilterTitle"]</div>
+
+    <label class="form-label small mb-1">@L["FilterProvider"]</label>
+    <FilterProviderSelect ProviderNames="ProviderNames" Value="@_provider" ValueChanged="OnProviderChanged"
+                          TestId="review-filter-provider" Class="form-select form-select-sm mb-2" />
+
+    <label class="form-label small mb-1">@L["FilterAccount"]</label>
+    <FilterAccountSelect Accounts="AccountOptions" AccountNames="AccountNames" Value="_account" ValueChanged="OnAccountChanged"
+                         TestId="review-filter-account" Class="form-select form-select-sm mb-2" />
+
+    <label class="form-label small mb-1">@SharedL["ScopeLocation"]</label>
+    <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
+                          TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
+
+    <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+
+</div>
+
+@code {
+    /// <summary>The review state the panel writes to once the debounce fires.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Every camera the page knows about, before any filter.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> AllDeviceIds { get; set; } = [];
+
+    /// <summary>Accounts, provider names and device ownership. Null when the ownership load failed, so every camera counts as visible.</summary>
+    [Parameter]
+    public DeviceOwnershipSnapshot? Ownership { get; set; }
+
+    /// <summary>The cameras left after the provider, account and location filters, in display order. The camera selector lists these.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    // The choices being edited. They reach the review state after the debounce, one second after the last edit.
+    private DebouncedAction _debounce = default!;
+    private string? _provider;
+    private Guid? _account;
+    private Guid? _location;
+
+    private IReadOnlyList<string> ProviderNames => Ownership?.ProviderNames ?? Array.Empty<string>();
+
+    private IReadOnlyList<ProviderAccount> Accounts => Ownership?.Accounts ?? Array.Empty<ProviderAccount>();
+
+    private IReadOnlyList<FilterLocation> Locations => Ownership?.Locations ?? Array.Empty<FilterLocation>();
+
+    private IReadOnlyDictionary<Guid, string> AccountNames => Ownership?.AccountNames ?? new Dictionary<Guid, string>();
+
+    private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
+
+
+    // The state filters the edit fields were last seeded from. A different value on a state change means something
+    // else (the URL, a restore) set the filters, so the edit fields follow it.
+    private (string? Provider, Guid? Account, Guid? Location) _seenFilters;
+
+    protected override void OnInitialized()
+    {
+        _debounce = new DebouncedAction(State.DebounceDelay, () => InvokeAsync(ApplyEdits));
+        SeedFromState();
+        State.OnChange += OnStateChanged;
+    }
+
+    private void SeedFromState()
+    {
+        _provider = State.ProviderFilter;
+        _account = State.AccountFilter;
+        _location = State.LocationFilter;
+        _seenFilters = (_provider, _account, _location);
+    }
+
+    private void OnStateChanged()
+    {
+        if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter) == _seenFilters)
+        {
+            return;
+        }
+
+        // Something else set the filters: a stale pending edit must not overwrite it.
+        _debounce.Cancel();
+        SeedFromState();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _debounce?.Dispose();
+        State.OnChange -= OnStateChanged;
+    }
+
+    private void OnProviderChanged(string? provider)
+    {
+        // The rule clears the account when the newly picked provider does not own it.
+        (_provider, _account) = ScopeRailRules.ApplyProviderPick(Accounts, _account, provider);
+        _debounce.Schedule();
+    }
+
+    private void OnAccountChanged(Guid? account)
+    {
+        _account = account;
+        _debounce.Schedule();
+    }
+
+    private void OnLocationChanged(Guid? location)
+    {
+        _location = location;
+        _debounce.Schedule();
+    }
+
+    private void ApplyEdits()
+    {
+        // Mark these values as seen first, so this change is not mistaken for an external one that discards a newer edit.
+        _seenFilters = (_provider, _account, _location);
+        State.SetFilters(_provider, _account, _location);
+    }
+}

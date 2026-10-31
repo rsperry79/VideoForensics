@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="TimelinePanelTitle" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="TimelinePanelEmpty" xml:space="preserve">
+    <value>No clips for the selected camera in this range.</value>
+  </data>
+  <data name="TimelineNewestAtTop" xml:space="preserve">
+    <value>Newest at the top. Click to move the cursor to that time.</value>
+  </data>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Review</value>
+  </data>
+  <data name="Live" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="AllCameras" xml:space="preserve">
+    <value>All cameras</value>
+  </data>
+  <data name="CamerasSelected" xml:space="preserve">
+    <value>{0} cameras</value>
+  </data>
+  <data name="CameraSelectedOne" xml:space="preserve">
+    <value>1 camera</value>
+  </data>
+  <data name="CamerasLabel" xml:space="preserve">
+    <value>Cameras</value>
+  </data>
+  <data name="RangeLabel" xml:space="preserve">
+    <value>Time range</value>
+  </data>
+  <data name="RangeLastHour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="RangeLast24Hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="RangeLast7Days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="RangeLast30Days" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="RangeCustom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="RangeFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="RangeTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="ActionsMenuLabel" xml:space="preserve">
+    <value>Evidence actions</value>
+  </data>
+  <data name="ViewNavLabel" xml:space="preserve">
+    <value>Review navigation</value>
+  </data>
+  <data name="TabsLabel" xml:space="preserve">
+    <value>Review views</value>
+  </data>
+  <data name="TabTimeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="TabEvents" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="TabDetail" xml:space="preserve">
+    <value>Detail</value>
+  </data>
+  <data name="TabPlaceholder" xml:space="preserve">
+    <value>The {0} view is built in a later step.</value>
+  </data>
+  <data name="TooManyCameras" xml:space="preserve">
+    <value>At most {0} cameras can be shown at once.</value>
+  </data>
+  <data name="SelectAtLeastOneCamera" xml:space="preserve">
+    <value>Select at least one camera.</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToReview" xml:space="preserve">
+    <value>to review media.</value>
+  </data>
+  <data name="LoadingDevices" xml:space="preserve">
+    <value>Loading cameras...</value>
+  </data>
+  <data name="NoCameras" xml:space="preserve">
+    <value>No cameras are available.</value>
+  </data>
+  <data name="LoadingClips" xml:space="preserve">
+    <value>Loading clips...</value>
+  </data>
+  <data name="NoCamerasSelected" xml:space="preserve">
+    <value>Select a camera to see its clips.</value>
+  </data>
+  <data name="NoClipsInRange" xml:space="preserve">
+    <value>No clips in this time range.</value>
+  </data>
+  <data name="ClipsTruncated" xml:space="preserve">
+    <value>Showing the first {0} clips. Narrow the time range to see the rest.</value>
+  </data>
+  <data name="ClipsLoadFailed" xml:space="preserve">
+    <value>Clips could not be loaded. Change the cameras or time range to try again.</value>
+  </data>
+  <data name="EventsNoCameras" xml:space="preserve">
+    <value>Select a camera to see its events.</value>
+  </data>
+  <data name="EventsEmpty" xml:space="preserve">
+    <value>No events for the selected cameras in this time range.</value>
+  </data>
+  <data name="EventsLoading" xml:space="preserve">
+    <value>Loading events...</value>
+  </data>
+  <data name="EventsLoadMore" xml:space="preserve">
+    <value>Load more</value>
+  </data>
+  <data name="EventsTotal" xml:space="preserve">
+    <value>{0} events</value>
+  </data>
+  <data name="EventsLoadFailed" xml:space="preserve">
+    <value>Events could not be loaded. Change the cameras or time range to try again.</value>
+  </data>
+  <data name="EventsListLabel" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="EventTypeUnknown" xml:space="preserve">
+    <value>Unknown event</value>
+  </data>
+  <data name="EventType_motion" xml:space="preserve">
+    <value>Motion</value>
+  </data>
+  <data name="EventType_ding" xml:space="preserve">
+    <value>Doorbell press</value>
+  </data>
+  <data name="EventType_doorbell" xml:space="preserve">
+    <value>Doorbell</value>
+  </data>
+  <data name="EventType_on_demand" xml:space="preserve">
+    <value>On demand</value>
+  </data>
+  <data name="EventType_alarm" xml:space="preserve">
+    <value>Alarm</value>
+  </data>
+  <data name="EventType_person" xml:space="preserve">
+    <value>Person</value>
+  </data>
+  <data name="FilterTitle" xml:space="preserve">
+    <value>Filter cameras</value>
+  </data>
+  <data name="FilterProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="FilterAllProviders" xml:space="preserve">
+    <value>All providers</value>
+  </data>
+  <data name="FilterAccount" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="FilterAllAccounts" xml:space="preserve">
+    <value>All accounts</value>
+  </data>
+  <data name="FilterMatchingCameras" xml:space="preserve">
+    <value>{0} cameras match</value>
+  </data>
+  <data name="DetailNoCameras" xml:space="preserve">
+    <value>Select a camera to see its details.</value>
+  </data>
+  <data name="DetailJammingTitle" xml:space="preserve">
+    <value>Suspected jamming</value>
+  </data>
+  <data name="DetailJammingLoading" xml:space="preserve">
+    <value>Loading suspected jamming.</value>
+  </data>
+  <data name="DetailJammingEmpty" xml:space="preserve">
+    <value>No suspected jamming in this time range.</value>
+  </data>
+  <data name="DetailJammingLoadFailed" xml:space="preserve">
+    <value>Could not load suspected jamming.</value>
+  </data>
+  <data name="DetailJammingAffected" xml:space="preserve">
+    <value>{0} events affected</value>
+  </data>
+  <data name="DetailAnomaliesTitle" xml:space="preserve">
+    <value>Anomalies</value>
+  </data>
+  <data name="DetailAnomaliesLoading" xml:space="preserve">
+    <value>Loading anomalies.</value>
+  </data>
+  <data name="DetailAnomaliesEmpty" xml:space="preserve">
+    <value>No anomalies in this time range.</value>
+  </data>
+  <data name="DetailAnomaliesLoadFailed" xml:space="preserve">
+    <value>Could not load anomalies.</value>
+  </data>
+  <data name="DetailLevelOneSigma" xml:space="preserve">
+    <value>Unusual (over 1 std dev)</value>
+  </data>
+  <data name="DetailLevelTwoSigma" xml:space="preserve">
+    <value>Very unusual (over 2 std devs)</value>
+  </data>
+  <data name="DetailEventsTitle" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="DetailEventsLoading" xml:space="preserve">
+    <value>Loading events.</value>
+  </data>
+  <data name="DetailEventsEmpty" xml:space="preserve">
+    <value>No events for the selected cameras in this time range.</value>
+  </data>
+  <data name="DetailEventsLoadFailed" xml:space="preserve">
+    <value>Could not load events.</value>
+  </data>
+  <data name="DetailEventsLoadMore" xml:space="preserve">
+    <value>Load more</value>
+  </data>
+  <data name="DetailEventsTotal" xml:space="preserve">
+    <value>{0} events</value>
+  </data>
+  <data name="DetailEventLoading" xml:space="preserve">
+    <value>Loading event details.</value>
+  </data>
+  <data name="DetailEventLoadFailed" xml:space="preserve">
+    <value>Could not load this event's details.</value>
+  </data>
+  <data name="DetailExpand" xml:space="preserve">
+    <value>Show event details</value>
+  </data>
+  <data name="DetailCollapse" xml:space="preserve">
+    <value>Hide event details</value>
+  </data>
+  <data name="DetailNone" xml:space="preserve">
+    <value>No detail recorded for this event.</value>
+  </data>
+  <data name="DetailFieldDescription" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="DetailFieldDetectionType" xml:space="preserve">
+    <value>Detection type</value>
+  </data>
+  <data name="DetailFieldConfidence" xml:space="preserve">
+    <value>Confidence</value>
+  </data>
+  <data name="DetailFieldAnomaly" xml:space="preserve">
+    <value>Anomaly</value>
+  </data>
+  <data name="DetailFieldSimilarity" xml:space="preserve">
+    <value>Similarity</value>
+  </data>
+  <data name="DetailFieldModelVersion" xml:space="preserve">
+    <value>Model version</value>
+  </data>
+  <data name="DetailFieldStreamBroken" xml:space="preserve">
+    <value>Stream broken</value>
+  </data>
+  <data name="DetailFieldOccurrences" xml:space="preserve">
+    <value>Occurrences</value>
+  </data>
+  <data name="DetailFieldZones" xml:space="preserve">
+    <value>Zones</value>
+  </data>
+  <data name="DetailFieldPeople" xml:space="preserve">
+    <value>People</value>
+  </data>
+  <data name="DetailFieldAlerts" xml:space="preserve">
+    <value>Security alerts</value>
+  </data>
+  <data name="JammingConfidence_Low" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="JammingConfidence_Medium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="JammingConfidence_High" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="JammingConfidence_Definite" xml:space="preserve">
+    <value>Definite</value>
+  </data>
+  <data name="DetectionType_human" xml:space="preserve">
+    <value>Human</value>
+  </data>
+  <data name="DetectionType_person" xml:space="preserve">
+    <value>Person</value>
+  </data>
+  <data name="DetectionType_motion" xml:space="preserve">
+    <value>Motion</value>
+  </data>
+  <data name="DetectionType_vehicle" xml:space="preserve">
+    <value>Vehicle</value>
+  </data>
+  <data name="DetectionType_animal" xml:space="preserve">
+    <value>Animal</value>
+  </data>
+  <data name="DetectionType_package" xml:space="preserve">
+    <value>Package</value>
+  </data>
+  <data name="DetectionType_package_delivery" xml:space="preserve">
+    <value>Package delivery</value>
+  </data>
+  <data name="DetectionType_other_motion" xml:space="preserve">
+    <value>Other motion</value>
+  </data>
+  <data name="DetectionType_loitering" xml:space="preserve">
+    <value>Loitering</value>
+  </data>
+  <data name="PendingTagsCount" xml:space="preserve">
+    <value>{0} tagged</value>
+  </data>
+  <data name="PendingTagsHelp" xml:space="preserve">
+    <value>Tags are kept in memory until you open a case, then attached to it. They are lost if the session or connection restarts.</value>
+  </data>
+  <data name="PendingTagsOpen" xml:space="preserve">
+    <value>Pending tags</value>
+  </data>
+  <data name="PendingTagKindEvent" xml:space="preserve">
+    <value>Event</value>
+  </data>
+  <data name="PendingTagKindMedia" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="PendingTagRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="PendingTagsAttached" xml:space="preserve">
+    <value>{0} tagged items attached to the case</value>
+  </data>
+  <data name="PendingTagsDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="TagDefaultReason" xml:space="preserve">
+    <value>Tagged during review</value>
+  </data>
+  <data name="ActionsMenuTitle" xml:space="preserve">
+    <value>Selected evidence</value>
+  </data>
+  <data name="ActionTagEvidence" xml:space="preserve">
+    <value>Tag evidence</value>
+  </data>
+  <data name="ActionStartNewCase" xml:space="preserve">
+    <value>Start new case with this evidence</value>
+  </data>
+  <data name="ActionPlaceHold" xml:space="preserve">
+    <value>Place legal hold</value>
+  </data>
+  <data name="ActionReleaseHold" xml:space="preserve">
+    <value>Release legal hold</value>
+  </data>
+  <data name="ActionVerifyIntegrity" xml:space="preserve">
+    <value>Verify integrity</value>
+  </data>
+  <data name="ActionExport" xml:space="preserve">
+    <value>Export evidence</value>
+  </data>
+  <data name="ActionFailed" xml:space="preserve">
+    <value>The action failed. See the log for details.</value>
+  </data>
+  <data name="ReasonNoSelection" xml:space="preserve">
+    <value>Select an event, or move the cursor onto a clip.</value>
+  </data>
+  <data name="ReasonNoClipAtCursor" xml:space="preserve">
+    <value>No clip covers the cursor. Move the cursor onto a clip.</value>
+  </data>
+  <data name="ReasonSignInRequired" xml:space="preserve">
+    <value>You must be signed in to perform this action.</value>
+  </data>
+  <data name="ReasonRequiresReview" xml:space="preserve">
+    <value>Needs the Review role or higher.</value>
+  </data>
+  <data name="ReasonRequiresAdmin" xml:space="preserve">
+    <value>Needs the Admin role or higher.</value>
+  </data>
+  <data name="ReasonRequiresSuperAdmin" xml:space="preserve">
+    <value>Needs the SuperAdmin role.</value>
+  </data>
+  <data name="ResultTagPinned" xml:space="preserve">
+    <value>Tagged and pinned to the open case.</value>
+  </data>
+  <data name="ResultTagKeptPending" xml:space="preserve">
+    <value>Kept until a case opens. It is held in memory, so a restart clears it.</value>
+  </data>
+  <data name="ResultTagAlreadyTagged" xml:space="preserve">
+    <value>Already tagged.</value>
+  </data>
+  <data name="ResultTagFailed" xml:space="preserve">
+    <value>The tag could not be saved.</value>
+  </data>
+  <data name="HoldReasonPlaceholder" xml:space="preserve">
+    <value>Reason for the legal hold</value>
+  </data>
+  <data name="HoldReleaseReasonPlaceholder" xml:space="preserve">
+    <value>Reason for releasing the hold</value>
+  </data>
+  <data name="HoldConfirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="HoldCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="HoldPlaced" xml:space="preserve">
+    <value>Legal hold placed.</value>
+  </data>
+  <data name="HoldReleased" xml:space="preserve">
+    <value>Legal hold released.</value>
+  </data>
+  <data name="HoldFailed" xml:space="preserve">
+    <value>The legal hold could not be changed.</value>
+  </data>
+  <data name="VerifyVerified" xml:space="preserve">
+    <value>Verified: the clip matches its stored hash.</value>
+  </data>
+  <data name="VerifyMismatch" xml:space="preserve">
+    <value>Mismatch: the clip does not match its stored hash.</value>
+  </data>
+  <data name="VerifyMissing" xml:space="preserve">
+    <value>The clip file is missing from storage.</value>
+  </data>
+  <data name="VerifyNotChecked" xml:space="preserve">
+    <value>This clip was not in the integrity run.</value>
+  </data>
+  <data name="VerifyFailed" xml:space="preserve">
+    <value>The integrity check returned an unknown result.</value>
+  </data>
+  <data name="GrabStill" xml:space="preserve">
+    <value>Grab still</value>
+  </data>
+  <data name="GrabStillNeedsSingleCamera" xml:space="preserve">
+    <value>Select one camera to grab a still.</value>
+  </data>
+  <data name="GrabStillInProgress" xml:space="preserve">
+    <value>Grabbing the still...</value>
+  </data>
+  <data name="GrabStillResultPrefix" xml:space="preserve">
+    <value>Still captured. Hash:</value>
+  </data>
+  <data name="GrabStillOpen" xml:space="preserve">
+    <value>Open still</value>
+  </data>
+  <data name="GrabStillErrorPrefix" xml:space="preserve">
+    <value>Could not grab the still:</value>
+  </data>
+  <data name="GrabStillNeedsRole" xml:space="preserve">
+    <value>Grabbing a still needs the Review role or higher.</value>
+  </data>
+  <data name="GrabStillNoClip" xml:space="preserve">
+    <value>No clip covers the cursor. Move the cursor onto a clip.</value>
+  </data>
+  <data name="GrabStillNoPosition" xml:space="preserve">
+    <value>Could not read the playback position. Try again.</value>
+  </data>
+  <data name="CaseModeBanner" xml:space="preserve">
+    <value>Reviewing evidence of case {0}</value>
+  </data>
+  <data name="CaseModeTruncated" xml:space="preserve">
+    <value>Showing the {0} newest pinned items; older pins are not shown.</value>
+  </data>
+  <data name="CaseModeLeave" xml:space="preserve">
+    <value>Leave case view</value>
+  </data>
+  <data name="CaseNotFound" xml:space="preserve">
+    <value>The case was not found. Showing all evidence.</value>
+  </data>
+</root>

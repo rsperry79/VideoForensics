@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -42,6 +45,30 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapGet("/providers", (IMultiProviderAuthService multi, CancellationToken ct) => multi.GetAvailableProvidersAsync(ct))
                 .WithSummary("List provider names available for account linking")
                 .WithDescription("Returns the names of all providers this server can authenticate against (e.g. Ring, Wyze, Uniview), for populating a provider picker in the Add Account UI.");
+
+            // Gated, unlike the sign-in routes above: it reports whether the account is signed in.
+            _ = group.MapGet("/status", GetStatusAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Admin)
+                .WithSummary("Get a provider's non-secret session status")
+                .WithDescription("Returns the authenticated flag, token type, expiry and scope for one provider. Never returns access or refresh tokens. " +
+                    "Omit provider for the default provider. Responds 204 when the provider reports no details.");
+        }
+
+        /// <summary>Returns the non-secret session status of the named provider, or of the default provider when none is named.</summary>
+        public static async Task<Results<Ok<ProviderAuthStatusDto>, NoContent>> GetStatusAsync(
+            string? provider,
+            IProviderAuthService defaultAuthService,
+            IMultiProviderAuthService multiProviderAuthService,
+            CancellationToken cancellationToken)
+        {
+            IProviderAuthService service = string.IsNullOrEmpty(provider)
+                ? defaultAuthService
+                : multiProviderAuthService.GetService(provider);
+
+            ProviderAuthStatus? status = await service.GetAuthStatusDetailsAsync(cancellationToken);
+            return status is null
+                ? TypedResults.NoContent()
+                : TypedResults.Ok(status.ToDto());
         }
 
         private static async Task<IResult> LoginAsync(

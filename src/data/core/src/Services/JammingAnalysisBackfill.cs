@@ -1,17 +1,11 @@
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Core.Services
 {
-    /// <summary>Runs media analysis on items that have never been analysed: old clips, and rows written without analysis.</summary>
-    public interface IJammingAnalysisBackfill
-    {
-        /// <summary>Analyses one batch of unanalysed media. Returns how many items were analysed.</summary>
-        Task<int> BackfillAsync(CancellationToken ct);
-    }
-
     /// <summary>
     /// One batch per pass, oldest first. Analysis sets the baseline version on every result, so an analysed item drops out of
     /// the next pass. A single item that throws is logged and skipped, so one bad file does not stop the batch.

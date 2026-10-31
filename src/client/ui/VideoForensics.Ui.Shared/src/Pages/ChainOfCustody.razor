@@ -2,6 +2,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
@@ -39,7 +40,6 @@ else
             <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <small class="mt-2">@L["ToLabel"]</small>
             <SfDatePicker TValue="DateTime" @bind-Value="_toDate" ValueChange="RunReportAsync" CssClass="w-100" />
-            <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary" class="mt-3 w-100" />
         </div>
 
     </PageRightPanelContent>
@@ -58,7 +58,19 @@ else
         }
         else
         {
-            <div class="alert alert-danger">@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</div>
+            <div class="alert alert-danger" data-testid="chain-integrity-failed">
+                <div>@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</div>
+                @if (_report.ChainBreak != ChainBreakKind.None)
+                {
+                    <div class="small mt-1">@BreakReason(_report.ChainBreak)</div>
+                }
+                <div class="small mt-1">@L["ChainEntriesChecked", _report.ChainEntriesChecked]</div>
+                @if (_report.ChainFailedEntryId is { } failedId)
+                {
+                    <div class="small mt-1">@L["ChainFailedEntry", failedId.ToString("N")[..8]] <LocalTimeText Value="@(_report.ChainFailedAtUtc ?? DateTime.MinValue)" /></div>
+                }
+                <SfButton Content="@L["ChainReverify"]" OnClick="RunReportAsync" CssClass="e-outline mt-2" data-testid="chain-reverify" />
+            </div>
         }
 
         <h5 class="mt-4 mb-2">@L["AuditTrailTitle"]</h5>
@@ -232,10 +244,22 @@ else
         {
             ChainIntegrityVerified = first!.ChainIntegrityVerified,
             ChainVerificationStatus = first.ChainVerificationStatus,
+            ChainEntriesChecked = first.ChainEntriesChecked,
+            ChainBreak = first.ChainBreak,
+            ChainFailedEntryId = first.ChainFailedEntryId,
+            ChainFailedAtUtc = first.ChainFailedAtUtc,
             AuditTrail = new List<ActionLogEntry>(),
         };
         _auditRows = rows.OrderByDescending(r => r.TimestampUtc).ToList();
     }
+
+    /// <summary>Plain-language reason for a break, so the operator can tell an inserted or reordered entry from an altered one.</summary>
+    private string BreakReason(ChainBreakKind kind) => kind switch
+    {
+        ChainBreakKind.PreviousHashMismatch => L["ChainBreakPrevious"].Value,
+        ChainBreakKind.EntryHashMismatch => L["ChainBreakEntryHash"].Value,
+        _ => string.Empty,
+    };
 
     private static ChainAuditRow ToRow(string deviceName, ActionLogEntry entry) => new(
         deviceName,

@@ -53,7 +53,10 @@ namespace VideoForensics.Data.Common.Entities
         public const string CloudflareTunnelConfigured = nameof(CloudflareTunnelConfigured);
         public const string CloudflareDisconnected = nameof(CloudflareDisconnected);
         public const string InternetServerUrlChanged = nameof(InternetServerUrlChanged);
+        public const string InternalServerUrlChanged = nameof(InternalServerUrlChanged);
+        public const string ServerPortChanged = nameof(ServerPortChanged);
         public const string CertificateIssued = nameof(CertificateIssued);
+        public const string CertificateReset = nameof(CertificateReset);
         public const string ProviderRateLimitHit = nameof(ProviderRateLimitHit);
         public const string ProviderApiVolumeAnomaly = nameof(ProviderApiVolumeAnomaly);
         public const string EvidenceExported = nameof(EvidenceExported);
@@ -61,6 +64,8 @@ namespace VideoForensics.Data.Common.Entities
         public const string BackupImported = nameof(BackupImported);
         public const string SetupAdminCreated = nameof(SetupAdminCreated);
         public const string LockoutPolicyUpdated = nameof(LockoutPolicyUpdated);
+        public const string ProviderPermissionsUpdated = nameof(ProviderPermissionsUpdated);
+        public const string SettingsPermissionsUpdated = nameof(SettingsPermissionsUpdated);
         public const string TwoFactorPolicyUpdated = nameof(TwoFactorPolicyUpdated);
         public const string AuthMethodsUpdated = nameof(AuthMethodsUpdated);
         public const string OperatorUnlocked = nameof(OperatorUnlocked);
@@ -109,7 +114,10 @@ namespace VideoForensics.Data.Common.Entities
             [CloudflareTunnelConfigured] = true,
             [CloudflareDisconnected] = true,
             [InternetServerUrlChanged] = true,
+            [InternalServerUrlChanged] = true,
+            [ServerPortChanged] = true,
             [CertificateIssued] = true,
+            [CertificateReset] = true,
             [ProviderRateLimitHit] = true,
             [ProviderApiVolumeAnomaly] = true,
             [EvidenceExported] = true,
@@ -117,6 +125,8 @@ namespace VideoForensics.Data.Common.Entities
             [BackupImported] = true,
             [SetupAdminCreated] = true,
             [LockoutPolicyUpdated] = true,
+            [ProviderPermissionsUpdated] = true,
+            [SettingsPermissionsUpdated] = true,
             [TwoFactorPolicyUpdated] = true,
             [AuthMethodsUpdated] = true,
             [OperatorUnlocked] = true,

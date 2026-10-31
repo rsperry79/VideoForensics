@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
@@ -17,6 +18,21 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>SuperAdmin on the Local tier, or any tier with an operator-passkey session.</summary>
         SuperAdminLocalOrPasskey,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened report settings to admins.</summary>
+        ReportSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened email settings to admins.</summary>
+        EmailSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened notification settings to admins.</summary>
+        NotificationSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened LLM settings to admins.</summary>
+        LlmSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened the Infrastructure settings page to admins.</summary>
+        InfrastructureSettings,
     }
 
     /// <summary>
@@ -31,25 +47,29 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             new Dictionary<string, AccessPolicy>(StringComparer.OrdinalIgnoreCase)
             {
                 ["/chat"] = AccessPolicy.ReadOnly,
-                // Mirrors /api/v1/accounts (AccountEndpoints) and the device-config API, both SuperAdminLocal. On the WebApp
-                // these pages call repositories in-process, so this row is the only gate there.
-                ["/accounts"] = AccessPolicy.SuperAdminLocal,
+                // Reads and edits follow /api/v1/accounts (AccountEndpoints): Admin, with edits narrowable to SuperAdmin by the
+                // Permissions setting. Permanent delete is SuperAdminLocal (AccountRemovePanel and the Accounts grid hide it from
+                // others). On the WebApp these pages call repositories in-process, so the guarded repository is the second gate.
+                ["/accounts"] = AccessPolicy.Admin,
                 // Analyze tabs are query-keyed, so each tab has its own row. The first three read the server database
                 // under the paired session (Analyze.razor); jamming can change incidents and recompute stats, so Admin.
                 ["/analyze?analysis=reports"] = AccessPolicy.ReadOnly,
                 ["/analyze?analysis=anomalies"] = AccessPolicy.ReadOnly,
                 ["/analyze?analysis=access"] = AccessPolicy.ReadOnly,
                 ["/analyze?analysis=jamming"] = AccessPolicy.Admin,
-                // Query API calls provider services directly with the linked account, with no server policy, so it is
-                // treated like the other provider-credential pages.
-                ["/query"] = AccessPolicy.SuperAdminLocal,
+                // Query API calls provider services directly with the linked account, with no server policy. Admin
+                // is the operator level for this page; the API Tester embedded here keeps its own SuperAdminLocal
+                // check for destructive and physical endpoints (RingSelfTest).
+                ["/query"] = AccessPolicy.Admin,
                 // Account wizard: initial sync and account creation are SuperAdminLocal (AccountEndpoints).
-                ["/accounts/add"] = AccessPolicy.SuperAdminLocal,
-                // Account detail and schedule pages call /api/v1/accounts (SuperAdminLocal) and sync endpoints.
-                ["/accounts/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
+                // Account wizard creates the link and starts the first sync: both are provider-account edits.
+                ["/accounts/add"] = AccessPolicy.Admin,
+                // Account detail and schedule pages call /api/v1/accounts (Admin reads, edit-level writes).
+                ["/accounts/{Id:guid}"] = AccessPolicy.Admin,
                 // Account tabs: Sync and Cases read the same /api/v1/accounts data as the Details tab.
-                ["/accounts/{Id:guid}/sync"] = AccessPolicy.SuperAdminLocal,
-                ["/accounts/{Id:guid}/cases"] = AccessPolicy.SuperAdminLocal,
+                ["/accounts/{Id:guid}/sync"] = AccessPolicy.Admin,
+                ["/accounts/{Id:guid}/cases"] = AccessPolicy.Admin,
+                // Device config is SuperAdminLocal on the server, so this tab stays SuperAdmin on the Local tier.
                 ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocal,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
@@ -60,19 +80,24 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Approving credentials needs SuperAdminLocalOrPasskey (DeviceManagementEndpoints approve route); the
                 // list itself needs Admin, but the page exists only to act on approvals, so the stricter policy applies.
                 ["/admin/pending-credentials"] = AccessPolicy.SuperAdminLocalOrPasskey,
-                // In-process orchestrator calls (factory reset, key storage), not HTTP: no server policy backs this
-                // page, so the table is the only gate. Local tier is the conservative choice.
-                ["/settings/infrastructure"] = AccessPolicy.SuperAdminLocal,
+                // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
+                // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
+                ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/notifications"] = AccessPolicy.Admin,
+                ["/settings/notifications"] = AccessPolicy.NotificationSettings,
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
+                // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).
+                ["/settings/permissions"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                // SuperAdmin by default; Admin only once the Permissions page opens the page to admins. The nav and the
+                // route guard hide it otherwise, and the server enforces the same setting on the writes.
+                ["/settings/reports"] = AccessPolicy.ReportSettings,
+                ["/settings/integrations/email"] = AccessPolicy.EmailSettings,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/software-paths"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/llm"] = AccessPolicy.SuperAdmin,
+                ["/settings/llm"] = AccessPolicy.LlmSettings,
                 ["/settings/lockout-policy"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/auth-methods"] = AccessPolicy.SuperAdminLocal,
             };
@@ -101,8 +126,19 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRole.SuperAdmin),
                 AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRole.SuperAdmin) && ctx.IsLocalTier,
                 AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRole.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
+                AccessPolicy.ReportSettings => AllowsSetting(RestrictedSettings.Reports, ctx),
+                AccessPolicy.EmailSettings => AllowsSetting(RestrictedSettings.Email, ctx),
+                AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
+                AccessPolicy.LlmSettings => AllowsSetting(RestrictedSettings.Llm, ctx),
+                AccessPolicy.InfrastructureSettings => AllowsSetting(RestrictedSettings.Infrastructure, ctx),
                 _ => false,
             };
+        }
+
+        /// <summary>SuperAdmin always; Admin only once a Super Admin has opened that settings page to admins.</summary>
+        private static bool AllowsSetting(RestrictedSettings area, NavContext ctx)
+        {
+            return ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.OpenToAdmin.HasFlag(area) && ctx.HasRole(OperatorRole.Admin));
         }
 
         private static string StripQuery(string path)

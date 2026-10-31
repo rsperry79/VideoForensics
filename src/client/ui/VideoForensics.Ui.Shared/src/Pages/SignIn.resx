@@ -77,6 +77,9 @@
   <data name="UsePasskeyButton" xml:space="preserve">
     <value>Use passkey</value>
   </data>
+  <data name="PasskeyUnavailableHere" xml:space="preserve">
+    <value>Passkeys can't be used on this address because it isn't secure. Use the secure address (https or the Cloudflare tunnel) to sign in with a passkey, or sign in with your password.</value>
+  </data>
   <data name="CreatePasskeyButton" xml:space="preserve">
     <value>Create a new passkey</value>
   </data>

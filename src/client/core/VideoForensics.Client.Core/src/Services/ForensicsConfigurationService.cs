@@ -109,7 +109,6 @@ namespace VideoForensics.Client.Core.Services
                 config.LogLevel = await GetStringSetting("LogLevel", config.LogLevel, cancellationToken);
                 config.MaxConcurrentDownloads = await GetIntSetting("MaxConcurrentDownloads", config.MaxConcurrentDownloads, cancellationToken);
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
-                config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
@@ -126,6 +125,9 @@ namespace VideoForensics.Client.Core.Services
                 config.NotificationRecipientEmail = await GetStringSetting("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 config.ConfiguredNetworkTier = await GetEnumSetting("ConfiguredNetworkTier", config.ConfiguredNetworkTier, cancellationToken);
                 config.InternetServerUrl = await GetStringSetting("InternetServerUrl", config.InternetServerUrl, cancellationToken);
+                config.InternalServerUrl = await GetStringSetting("InternalServerUrl", config.InternalServerUrl, cancellationToken);
+                config.ServerHttpPort = await GetIntSetting("ServerHttpPort", config.ServerHttpPort, cancellationToken);
+                config.ServerHttpsPort = await GetIntSetting("ServerHttpsPort", config.ServerHttpsPort, cancellationToken);
                 config.UniviewNvrHost = await GetStringSetting("UniviewNvrHost", config.UniviewNvrHost, cancellationToken);
                 config.UniviewFfmpegPath = await GetStringSetting("UniviewFfmpegPath", config.UniviewFfmpegPath, cancellationToken);
                 config.FfmpegBinDirectory = await GetStringSetting("FfmpegBinDirectory", config.FfmpegBinDirectory, cancellationToken);
@@ -176,7 +178,6 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("LogLevel", config.LogLevel, cancellationToken);
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
-                await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
@@ -193,6 +194,9 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 await _settingRepository!.SetAsync("ConfiguredNetworkTier", config.ConfiguredNetworkTier.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("InternalServerUrl", config.InternalServerUrl ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("ServerHttpPort", config.ServerHttpPort.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ServerHttpsPort", config.ServerHttpsPort.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? string.Empty, cancellationToken);
@@ -241,12 +245,6 @@ namespace VideoForensics.Client.Core.Services
         {
             string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : (T)Enum.Parse(typeof(T), value);
-        }
-
-        private async Task<Guid?> GetGuidSetting(string key, Guid? defaultValue, CancellationToken ct)
-        {
-            string? value = await _settingRepository!.GetAsync(key, ct);
-            return string.IsNullOrEmpty(value) ? defaultValue : Guid.Parse(value);
         }
     }
 }

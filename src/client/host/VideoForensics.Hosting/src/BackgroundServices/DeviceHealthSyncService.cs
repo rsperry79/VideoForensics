@@ -39,14 +39,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<DeviceHealthSyncService> _logger;
         private readonly ElevatedPollingWindowTracker _elevatedTracker;
 
+        private readonly ThreadHeartbeats? _heartbeats;
+
         public DeviceHealthSyncService(
             IServiceScopeFactory scopeFactory,
             IForensicsConfiguration config,
             IBatteryStatusProvider batteryStatusProvider,
             ILogger<DeviceHealthSyncService> logger,
-            ElevatedPollingWindowTracker elevatedTracker)
+            ElevatedPollingWindowTracker elevatedTracker, ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
+            _heartbeats = heartbeats;
             _config = config;
             _batteryStatusProvider = batteryStatusProvider;
             _logger = logger;
@@ -92,6 +95,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                 }
 
+                _heartbeats?.Beat(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, TimeSpan.FromMinutes(45));
                 await RunOneTickAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
@@ -119,6 +123,22 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
+        /// <summary>
+        /// Runs the signal-deviation check for one camera. A failure is logged and does not stop the poll: the reading
+        /// is already saved, and the next poll checks again.
+        /// </summary>
+        private async Task CheckSignalDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            try
+            {
+                _ = await sp.GetRequiredService<SignalDeviationAlerts>().CheckAsync(device, ct);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Signal deviation check failed for {DeviceName}", device.Name);
+            }
+        }
+
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             using IServiceScope scope = _scopeFactory.CreateScope();
@@ -179,7 +199,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     foreach (DeviceHealthReading reading in readings)
                     {
-                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device))
+                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device) || !device.HealthCaptureEnabled)
                         {
                             continue;
                         }
@@ -227,8 +247,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         persisted++;
                         if (wentOffline)
                         {
-                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
                         }
+
+                        // Readings more than 2 std devs from the camera's mean raise an alert. Base poll only: the elevated
+                        // poll runs far more often and each check reads the camera's full history.
+                        await CheckSignalDeviationAsync(sp, device, ct);
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try
@@ -343,7 +367,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     foreach (DeviceHealthReading reading in readings)
                     {
-                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device))
+                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device) || !device.HealthCaptureEnabled)
                         {
                             continue;
                         }
@@ -397,7 +421,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         persisted++;
                         if (wentOffline)
                         {
-                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
                         }
                     }
 
@@ -485,8 +509,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             return previous is { IsOnline: true };
         }
 
+        /// <summary>
+        /// Relative path of the sync page for the first provider account linked to the device's location, or null when none is linked.
+        /// The page is where the device's polling mode is set. A relative path works in the app, where the user is signed in.
+        /// </summary>
+        private static async Task<string?> SyncPagePathAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            ILocationRepository? locations = sp.GetService<ILocationRepository>();
+            if (locations is null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<ProviderAccount> accounts = await locations.ListProviderAccountsForLocationAsync(device.LocationId, ct);
+            return accounts.Count > 0 ? $"/accounts/{accounts[0].Id}/sync" : null;
+        }
+
         /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
-        private async Task NotifyDeviceOfflineAsync(INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task NotifyDeviceOfflineAsync(IServiceProvider sp, INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             if (dispatcher == null)
             {
@@ -503,7 +543,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     SourceIp: null,
                     Details: $"{device.Name} went offline",
                     Audience: NotificationAudience.AdminsOnly,
-                    Severity: NoticeSeverity.Alert), ct);
+                    Severity: NoticeSeverity.Alert,
+                    ActionPath: await SyncPagePathAsync(sp, device, ct)), ct);
                 _logger.LogInformation("Health sync: device {DeviceName} went offline; DeviceOffline alert dispatched", device.Name);
             }
             catch (Exception ex)

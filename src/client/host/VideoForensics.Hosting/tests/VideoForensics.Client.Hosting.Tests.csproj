@@ -19,9 +19,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.21.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="..\src\VideoForensics.Client.Hosting.csproj" />
     <ProjectReference Include="../../../../core/telemetry/src/VideoForensics.Core.Telemetry.csproj" />
     <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
@@ -30,7 +31,7 @@
     <ProjectReference Include="../../../../data/core/src/VideoForensics.Data.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
 </Project>
 

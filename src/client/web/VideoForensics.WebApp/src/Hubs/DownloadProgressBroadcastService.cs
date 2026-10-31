@@ -11,9 +11,8 @@ namespace VideoForensics.Client.WebApp.Hubs
     /// Periodically pushes the server's own download progress out over <see cref="LiveHub"/> (plan
     /// §6) - a remote paired client (MAUI) has no other way to see live progress, since it isn't
     /// the process actually running the download (only the server executes downloads, plan §1).
-    /// A tick with nothing to report is cheap (one scoped <see cref="IVideoDownloadService"/>
-    /// resolution + four already-in-memory getters), so a fixed short interval is used rather than
-    /// only ticking while a download happens to be running.
+    /// A tick with nothing to report is cheap (one drain of the in-memory <see cref="ISyncActivityLog"/>),
+    /// so a fixed short interval is used.
     /// <para>
     /// Send-on-change: the timer only samples. A payload is pushed when its state differs from the
     /// last one sent, or when it carries activity lines (which are drained here, the single consumer,
@@ -24,20 +23,23 @@ namespace VideoForensics.Client.WebApp.Hubs
     {
         private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(750);
 
-        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ISyncActivityLog _syncActivity;
         private readonly IHubContext<LiveHub> _hubContext;
         private readonly IDownloadProgressChangeDetector _changeDetector;
+        private readonly ISyncProgressStore _progress;
         private readonly ILogger<DownloadProgressBroadcastService> _logger;
 
         public DownloadProgressBroadcastService(
-            IServiceScopeFactory scopeFactory,
+            ISyncActivityLog syncActivity,
             IHubContext<LiveHub> hubContext,
             IDownloadProgressChangeDetector changeDetector,
+            ISyncProgressStore progress,
             ILogger<DownloadProgressBroadcastService> logger)
         {
-            _scopeFactory = scopeFactory;
+            _syncActivity = syncActivity;
             _hubContext = hubContext;
             _changeDetector = changeDetector;
+            _progress = progress;
             _logger = logger;
         }
 
@@ -49,10 +51,8 @@ namespace VideoForensics.Client.WebApp.Hubs
             {
                 try
                 {
-                    using IServiceScope scope = _scopeFactory.CreateScope();
-                    IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
-
-                    var payload = downloadService.ToDownloadProgressDto(scope.ServiceProvider.GetService<ISyncActivityLog>());
+                    // Drains the sync log here, the single consumer, so each line is broadcast exactly once.
+                    DownloadProgressDto payload = _syncActivity.ToDownloadProgressDto(_progress);
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {

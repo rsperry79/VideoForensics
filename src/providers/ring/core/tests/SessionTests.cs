@@ -1,4 +1,4 @@
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
+using VideoForensics.Providers.Ring.Testing.Mocks;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {

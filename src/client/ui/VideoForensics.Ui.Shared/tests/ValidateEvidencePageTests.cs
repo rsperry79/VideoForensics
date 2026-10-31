@@ -36,6 +36,7 @@ public class ValidateEvidencePageTests : OperatorSessionGateTestBase
         await SignInOperatorAsync();
 
         IRenderedComponent<ValidateEvidencePage> component = Render<ValidateEvidencePage>();
+        component.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Validate locally").Click();
 
         component.WaitForAssertion(() =>
         {
@@ -52,6 +53,7 @@ public class ValidateEvidencePageTests : OperatorSessionGateTestBase
         await SignInOperatorAsync();
 
         IRenderedComponent<ValidateEvidencePage> component = Render<ValidateEvidencePage>();
+        component.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Validate locally").Click();
 
         component.WaitForAssertion(() =>
         {

@@ -16,11 +16,11 @@ namespace VideoForensics.Providers.Ring.Clients;
 public class VideoDownloadClient : IVideoDownloadClient
 {
     private readonly IRecordingService _recordingService;
-    private readonly IDeviceDiscoveryService _deviceService;
+    private readonly IRingDeviceDiscoveryService _deviceService;
 
     public VideoDownloadClient(
         IRecordingService recordingService,
-        IDeviceDiscoveryService deviceService)
+        IRingDeviceDiscoveryService deviceService)
     {
         _recordingService = recordingService ?? throw new ArgumentNullException(nameof(recordingService));
         _deviceService = deviceService ?? throw new ArgumentNullException(nameof(deviceService));

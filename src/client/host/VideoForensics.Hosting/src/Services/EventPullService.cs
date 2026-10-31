@@ -3,10 +3,13 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Text.Json;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 
 using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
@@ -50,8 +53,18 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ILogger<EventPullService> _logger;
         private readonly IDeviceDiscoveryService _deviceDiscovery;
         private readonly IMediaDownloadService? _mediaDownloadService;
+        private readonly string? _mediaRootOverride;
         private readonly string _mediaRoot;
+        private readonly IStorageLocationProvider? _storage;
+        private readonly IForensicsConfigurationService? _configurationService;
         private readonly IDeviceConfigRepository? _deviceConfigRepository;
+        private readonly IMediaPreviewService? _previewService;
+        private readonly IMediaItemRepository? _mediaItems;
+        private readonly ISyncProgressStore? _progress;
+        private readonly TimeSpan _progressPollInterval;
+
+        // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
+        private static readonly SemaphoreSlim PreviewEncodeGate = new(2);
 
         /// <summary>
         /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices from
@@ -67,9 +80,19 @@ namespace VideoForensics.Client.Hosting.Services
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
             string? mediaRoot = null,
-            IDeviceConfigRepository? deviceConfigRepository = null)
+            IDeviceConfigRepository? deviceConfigRepository = null,
+            IMediaPreviewService? previewService = null,
+            IMediaItemRepository? mediaItems = null,
+            IStorageLocationProvider? storage = null,
+            IForensicsConfigurationService? configurationService = null,
+            ISyncProgressStore? progress = null,
+            TimeSpan? progressPollInterval = null)
         {
+            _progress = progress;
+            _progressPollInterval = progressPollInterval ?? TimeSpan.FromMilliseconds(500);
             _deviceConfigRepository = deviceConfigRepository;
+            _previewService = previewService;
+            _mediaItems = mediaItems;
             _eventAndConfigService = eventAndConfigService;
             _deviceRepository = deviceRepository;
             _locationRepository = locationRepository;
@@ -77,7 +100,25 @@ namespace VideoForensics.Client.Hosting.Services
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<EventPullService>.Instance;
             _deviceDiscovery = deviceDiscovery;
             _mediaDownloadService = mediaDownloadService;
+            _mediaRootOverride = mediaRoot;
+            _storage = storage;
+            _configurationService = configurationService;
             _mediaRoot = mediaRoot ?? new StorageLocationProvider().GetDefaultRoot(StorageCategory.Media);
+        }
+
+        /// <summary>
+        /// Resolves the Media root at pull time, so a change on the Storage Settings page applies to the next pull without a restart.
+        /// An explicit override wins. Without storage and configuration services the constructor default is used.
+        /// </summary>
+        private async Task<string> ResolveMediaRootAsync(CancellationToken cancellationToken)
+        {
+            if (_mediaRootOverride is not null || _storage is null || _configurationService is null)
+            {
+                return _mediaRoot;
+            }
+
+            IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync(string.Empty, cancellationToken);
+            return _storage.GetEffectiveRoot(StorageCategory.Media, config.DownloadLocation);
         }
 
         public async Task<EventPullResult> PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, DateTime? toTimestampUtc, CancellationToken cancellationToken)
@@ -115,18 +156,17 @@ namespace VideoForensics.Client.Hosting.Services
                     : DateTime.UtcNow;
                 var deviceErrors = new List<string>();
 
-                string accountFolder = string.Empty;
                 if (_mediaDownloadService == null)
                 {
                     _logger.LogWarning("No media download service is registered; media was not pulled");
                 }
                 else
                 {
-                    accountFolder = Path.Combine(_mediaRoot, accountId.ToString("N"));
-                    _ = Directory.CreateDirectory(accountFolder);
                     _mediaDownloadService.SetActiveProviderAccountId(accountId);
                 }
 
+                // Read once per pull so every device in this pull lands under the same root.
+                string mediaRoot = await ResolveMediaRootAsync(cancellationToken);
                 int deviceIndex = 0;
                 foreach (InventoryDevice inventoryDevice in inventory.Devices)
                 {
@@ -159,12 +199,33 @@ namespace VideoForensics.Client.Hosting.Services
 
                         if (_mediaDownloadService != null)
                         {
+                            // Media lands in <root>\<provider>\<location>\<device>, the layout the Storage Settings page
+                            // assumes. Location names come from the DB, not the provider.
+                            string locationName = (await _locationRepository.GetByProviderLocationIdAsync(accountId, providerLocationId, cancellationToken))?.Name
+                                ?? providerLocationId;
+                            string deviceFolder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, locationName, deviceName);
+                            _ = Directory.CreateDirectory(deviceFolder);
+
                             // A failed media pull throws so the per-device catch records it and counts the feed as failed.
-                            DownloadResult media = await _mediaDownloadService.DownloadVideosAsync(
-                                device.ProviderDeviceId, accountFolder, startTime, endTime, providerLocationId, cancellationToken);
+                            DownloadResult media = await DownloadWithProgressAsync(
+                                _mediaDownloadService, device.ProviderDeviceId, deviceFolder, startTime, endTime, providerLocationId,
+                                deviceName, deviceIndex, inventory.Devices.Count, cancellationToken);
                             if (!media.Success)
                             {
                                 throw new InvalidOperationException(media.ErrorMessage ?? "Media download failed");
+                            }
+
+                            if (_previewService != null && _mediaItems != null)
+                            {
+                                // Previews are a convenience. Their failure is logged here and never counts the device as failed.
+                                try
+                                {
+                                    await GeneratePreviewsAsync(device.Id, deviceName, startTime, endTime, cancellationToken);
+                                }
+                                catch (Exception ex) when (ex is not OperationCanceledException)
+                                {
+                                    _logger.LogError(ex, "Preview generation failed; media was synced");
+                                }
                             }
                         }
 
@@ -193,7 +254,16 @@ namespace VideoForensics.Client.Hosting.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to pull events for device");
+                        // A throttle is handled and expected: name the device and the reason, never the stack.
+                        if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException throttled)
+                        {
+                            _logger.LogWarning("Skipped device {DeviceName}: {Reason}", deviceName, throttled.Message);
+                        }
+                        else
+                        {
+                            _logger.LogError(ex, "Failed to pull events for device {DeviceName}", deviceName);
+                        }
+
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
@@ -215,7 +285,16 @@ namespace VideoForensics.Client.Hosting.Services
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                _logger.LogInformation("Successfully pulled events for account");
+                // Only report success when every device pulled; a partial pull must not read as a clean one in the log.
+                if (feedsFailed > 0)
+                {
+                    _logger.LogWarning("Pulled events for account with {FailedCount} of {DeviceCount} device(s) failed", feedsFailed, inventory.Devices.Count);
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully pulled events for account");
+                }
+
                 return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
             }
             catch (Exception ex)
@@ -239,6 +318,91 @@ namespace VideoForensics.Client.Hosting.Services
                 }
 
                 return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+            }
+            finally
+            {
+                // The pull is over, success or failure: the progress panel returns to idle.
+                _progress?.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Runs one device's media download while a lightweight poller publishes the download service's status to the
+        /// progress store. The download service is scoped to this pull, so only this loop can read its live status.
+        /// Without a store nothing is polled.
+        /// </summary>
+        private async Task<DownloadResult> DownloadWithProgressAsync(
+            IMediaDownloadService media,
+            string providerDeviceId,
+            string deviceFolder,
+            DateTime startTime,
+            DateTime endTime,
+            string providerLocationId,
+            string deviceName,
+            int deviceIndex,
+            int deviceTotal,
+            CancellationToken cancellationToken)
+        {
+            if (_progress is null)
+            {
+                return await media.DownloadVideosAsync(providerDeviceId, deviceFolder, startTime, endTime, providerLocationId, cancellationToken);
+            }
+
+            using var pollCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Task poller = PollProgressAsync(media, deviceName, deviceIndex, deviceTotal, pollCancellation.Token);
+            try
+            {
+                return await media.DownloadVideosAsync(providerDeviceId, deviceFolder, startTime, endTime, providerLocationId, cancellationToken);
+            }
+            finally
+            {
+                await pollCancellation.CancelAsync();
+                await poller;
+                // One last reading so the store reflects the end state of this device before the next one starts.
+                PublishProgress(media, deviceName, deviceIndex, deviceTotal);
+            }
+        }
+
+        /// <summary>Publishes a reading every poll interval until cancelled. A failed reading is logged and skipped, never thrown.</summary>
+        private async Task PollProgressAsync(IMediaDownloadService media, string deviceName, int deviceIndex, int deviceTotal, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                PublishProgress(media, deviceName, deviceIndex, deviceTotal);
+                try
+                {
+                    await Task.Delay(_progressPollInterval, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads the download service's status and stores it with the device position. A status failure must never fail the
+        /// pull, so it is logged with the exception type and message only.
+        /// </summary>
+        private void PublishProgress(IMediaDownloadService media, string deviceName, int deviceIndex, int deviceTotal)
+        {
+            try
+            {
+                DownloadStatus status = media.GetStatus();
+                _progress!.Set(new SyncProgress(
+                    status.IsDownloading,
+                    status.FilesTotal,
+                    status.FilesCompleted,
+                    status.BytesDownloaded,
+                    status.CurrentFile,
+                    status.ActiveConnections,
+                    deviceIndex,
+                    deviceTotal,
+                    deviceName));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Sync progress poll failed: {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
         }
 
@@ -408,6 +572,65 @@ namespace VideoForensics.Client.Hosting.Services
                 default:
                     element.WriteTo(writer);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Generates preview sidecars for the device's clips in the pulled window. At most two encodes run at once, so a large
+        /// pull does not saturate the host with ffmpeg. Per-clip failures are logged and skipped; only cancellation escapes.
+        /// </summary>
+        private async Task GeneratePreviewsAsync(Guid deviceId, string deviceName, DateTime startTime, DateTime endTime, CancellationToken cancellationToken)
+        {
+            try
+            {
+                IReadOnlyList<MediaItem> clips = await _mediaItems!.GetByDeviceAndDateRangeAsync(deviceId, startTime, endTime, cancellationToken);
+                // The repository returns purged rows too. A clip with a preview already on disk needs no encode.
+                List<MediaItem> pending = clips
+                    .Where(c => !c.IsPurged && !(c.PreviewPath != null && File.Exists(c.PreviewPath)))
+                    .ToList();
+
+                int generated = 0, failed = 0;
+
+                async Task ProcessAsync(MediaItem clip)
+                {
+                    await PreviewEncodeGate.WaitAsync(cancellationToken);
+                    try
+                    {
+                        bool ok = await _previewService!.EnsurePreviewAsync(clip, cancellationToken);
+                        if (ok)
+                        {
+                            _ = Interlocked.Increment(ref generated);
+                        }
+                        else
+                        {
+                            _ = Interlocked.Increment(ref failed);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _ = Interlocked.Increment(ref failed);
+                        _logger.LogError(ex, "Preview failed for clip {FileName}: {Message}", clip.FileName, ex.Message);
+                    }
+                    finally
+                    {
+                        _ = PreviewEncodeGate.Release();
+                    }
+                }
+
+                await Task.WhenAll(pending.Select(ProcessAsync));
+                _logger.LogInformation("Previews for device {DeviceName}: {Generated} generated, {Failed} failed", deviceName, generated, failed);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Preview generation failed for device {DeviceName}", deviceName);
             }
         }
 

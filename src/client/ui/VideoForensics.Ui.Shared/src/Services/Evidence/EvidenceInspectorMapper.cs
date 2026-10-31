@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
@@ -8,15 +9,18 @@ namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 /// </summary>
 public static class EvidenceInspectorMapper
 {
+    /// <param name="zone">The signed-in user's zone for the times shown. Null uses UTC, the zone before the browser's is known.</param>
     public static InspectorModel ToInspector(
         EvidenceItem item,
         IReadOnlyDictionary<Guid, LegalHold> holds,
-        IReadOnlyList<IntegrityRecord> integrity)
+        IReadOnlyList<IntegrityRecord> integrity,
+        UserTimeZone? zone = null)
     {
+        UserTimeZone clock = zone ?? UserTimeZone.Unavailable;
         string title = item.Kind switch
         {
-            EvidenceKind.Event => $"{item.Label} · {item.OccurredAtUtc:u}",
-            _ => $"{item.Label} · {item.DeviceName} · {item.OccurredAtUtc:u}"
+            EvidenceKind.Event => $"{item.Label} · {clock.Format(item.OccurredAtUtc, Clock)}",
+            _ => $"{item.Label} · {item.DeviceName} · {clock.Format(item.OccurredAtUtc, Clock)}"
         };
 
         // Fields: include event and media
@@ -41,13 +45,13 @@ public static class EvidenceInspectorMapper
 
             provenance.Add(new KeyValuePair<string, string>(
                 "DiscoveredAtUtc",
-                item.Event.DiscoveredAtUtc.ToString("u")));
+                clock.Format(item.Event.DiscoveredAtUtc, Clock)));
 
             if (item.Event.DownloadedAtUtc.HasValue)
             {
                 provenance.Add(new KeyValuePair<string, string>(
                     "DownloadedAtUtc",
-                    item.Event.DownloadedAtUtc.Value.ToString("u")));
+                    clock.Format(item.Event.DownloadedAtUtc.Value, Clock)));
             }
         }
 
@@ -78,11 +82,11 @@ public static class EvidenceInspectorMapper
 
             provenance.Add(new KeyValuePair<string, string>(
                 "RecordedAtUtc",
-                item.Media.RecordedAtUtc.ToString("u")));
+                clock.Format(item.Media.RecordedAtUtc, Clock)));
 
             provenance.Add(new KeyValuePair<string, string>(
                 "DownloadedAtUtc",
-                item.Media.DownloadedAtUtc.ToString("u")));
+                clock.Format(item.Media.DownloadedAtUtc, Clock)));
 
             if (!string.IsNullOrWhiteSpace(item.Media.Sha256Hash))
             {
@@ -103,7 +107,7 @@ public static class EvidenceInspectorMapper
             {
                 provenance.Add(new KeyValuePair<string, string>(
                     "LastVerifiedAtUtc",
-                    item.Media.LastVerifiedAtUtc.Value.ToString("u")));
+                    clock.Format(item.Media.LastVerifiedAtUtc.Value, Clock)));
             }
 
             if (!string.IsNullOrWhiteSpace(item.Media.ApiSourceHash))
@@ -148,4 +152,7 @@ public static class EvidenceInspectorMapper
             Pin: pinTarget,
             Actions: actions);
     }
+
+    /// <summary>Date and time to the second, with no zone suffix: the zone is the user's, so the label does not claim UTC.</summary>
+    private const string Clock = "yyyy-MM-dd HH:mm:ss";
 }

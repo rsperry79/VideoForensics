@@ -1,5 +1,6 @@
 @page "/query/devices"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.QueryApi
 @using VideoForensics.Client.Ui.Shared.Components
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Resources
@@ -22,14 +23,7 @@
 <PageRightPanelContent>
     <div class="right-panel-section">
         <small>@L["Title"]</small>
-        <div class="d-flex flex-column gap-2 mb-2">
-            <div>
-                <label>@L["LabelLocationId"]</label>
-                <SfDropDownList ID="query-api-location-filter" TValue="string" TItem="QueryApiSelectOption" @bind-Value="LocationIdValue" DataSource="@LocationOptions" Placeholder="@L["SelectLocation"]" CssClass="w-100">
-                    <DropDownListFieldSettings Text="Label" Value="Value" />
-                </SfDropDownList>
-            </div>
-        </div>
+        <QueryApiFilterBar LocationOptions="@LocationOptions" LocationElementId="query-api-location-filter" />
     </div>
 </PageRightPanelContent>
 
@@ -76,13 +70,6 @@
         (SharedL["Query API"], "/query"),
         (L["Title"], null)
     ];
-
-    // The shared location selection is read and written through the filter state, so it survives navigation.
-    private string LocationIdValue
-    {
-        get => FilterState.LocationId ?? string.Empty;
-        set => FilterState.SetLocationId(string.IsNullOrEmpty(value) ? null : value);
-    }
 
     private void OnFilterChanged()
     {
@@ -160,7 +147,7 @@
             <Template>
                 @{
                     var device = (Device)context;
-                    @(device.IsOnline == null ? L["Unknown"] : device.IsOnline == true ? L["Yes"] : L["No"])
+                    @(device.IsOnline == true ? L["Yes"] : L["No"])
                 }
             </Template>
         </GridColumn>

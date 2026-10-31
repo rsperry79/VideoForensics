@@ -13,7 +13,7 @@
     it is stopped and removed before reinstalling.
 
 .PARAMETER PublishedPath
-    Path to the published VideoForensics.WebApp output (containing VideoForensics.WebApp.exe).
+    Path to the published VideoForensics.WebApp output (containing VideoForensics.Client.WebApp.exe).
     Defaults to: $PSScriptRoot\..\src\client\web\VideoForensics.WebApp\bin\Release\net10.0\publish
 
 .PARAMETER InstallPath
@@ -58,8 +58,8 @@ if (-not (Test-Path -Path $PublishedPath -PathType Container)) {
     exit 1
 }
 
-if (-not (Test-Path -Path "$PublishedPath\VideoForensics.WebApp.exe")) {
-    Write-Host "ERROR: VideoForensics.WebApp.exe not found in $PublishedPath" -ForegroundColor Red
+if (-not (Test-Path -Path "$PublishedPath\VideoForensics.Client.WebApp.exe")) {
+    Write-Host "ERROR: VideoForensics.Client.WebApp.exe not found in $PublishedPath" -ForegroundColor Red
     exit 1
 }
 
@@ -125,7 +125,7 @@ Write-Host ""
 
 # Install the service
 Write-Host "Installing Windows Service..."
-$exePath = "$InstallPath\VideoForensics.WebApp.exe"
+$exePath = "$InstallPath\VideoForensics.Client.WebApp.exe"
 New-Service -Name "VideoForensics" `
     -BinaryPathName $exePath `
     -DisplayName "VideoForensics" `

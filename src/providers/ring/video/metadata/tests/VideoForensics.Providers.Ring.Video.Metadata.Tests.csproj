@@ -32,6 +32,7 @@
     <PackageReference Include="Moq" Version="4.21.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../testing/src/VideoForensics.Providers.Ring.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Video.Metadata.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -39,6 +40,6 @@
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
 </Project>

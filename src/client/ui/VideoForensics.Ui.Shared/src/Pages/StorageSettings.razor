@@ -4,6 +4,7 @@
 @using VideoForensics.Core.Helpers.Platform
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Dialogs
 @inject IStorageSettingsService StorageService
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Pages.StorageSettings> L
@@ -44,22 +45,7 @@ else
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridColumns>
             <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" MinWidth="100" />
-            <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" MinWidth="100" />
-            <GridColumn HeaderText="@L["ColDefault"]" MinWidth="100">
-                <Template>
-                    @{
-                        var status = (StorageCategoryStatus)context;
-                        @if (status.IsDefault)
-                        {
-                            <span class="badge bg-info">@L["DefaultBadge"]</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">@L["CustomBadge"]</span>
-                        }
-                    }
-                </Template>
-            </GridColumn>
+            <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" MinWidth="400" />
             <GridColumn HeaderText="@L["ColUsedSpace"]" MinWidth="100">
                 <Template>
                     @{
@@ -86,9 +72,10 @@ else
                             @if (_pendingRelocateCategory == status.Category)
                             {
                                 <div class="mt-2 d-flex flex-column gap-2">
-                                    <SfTextBox @bind-Value="_newPathInput" Placeholder="@L["PathPlaceholder"].Value" Style="max-width: 400px;" />
+                                    <span class="font-monospace">@_newPathInput</span>
+                                    <span class="text-muted">@L["MoveFilesWarning"]</span>
                                     <div class="d-flex flex-row gap-2">
-                                        <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRelocate(status.Category)" CssClass="e-primary" />
+                                        <SfButton Content="@L["ConfirmButton"]" OnClick="AskConfirmRelocate" CssClass="e-primary" />
                                         <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
                                     </div>
                                 </div>
@@ -99,6 +86,18 @@ else
             </GridColumn>
         </GridColumns>
     </SfGrid>
+
+    <SfDialog @bind-Visible="_folderDialogVisible" Header="@L["BrowseFolderTitle"]" Width="600px" IsModal="true">
+        <FolderPicker OnClosed="OnFolderSelected" />
+    </SfDialog>
+
+    <SfDialog @bind-Visible="_confirmMoveVisible" Header="@L["ConfirmMoveTitle"]" Width="500px" IsModal="true">
+        <div class="mb-3">@L["ConfirmMoveMessage"]</div>
+        <div class="d-flex flex-row gap-2 justify-content-end">
+            <SfButton Content="@L["CancelButton"]" OnClick="CancelConfirmMove" CssClass="e-flat" />
+            <SfButton Content="@L["MoveFilesButton"]" OnClick="ConfirmMoveAsync" CssClass="e-primary" />
+        </div>
+    </SfDialog>
 }
 
 @if (_actionMessage is not null)
@@ -124,6 +123,9 @@ else
     private bool _restartRequired;
     private StorageCategory? _pendingRelocateCategory;
     private string _newPathInput = string.Empty;
+    private StorageCategory? _browseCategory;
+    private bool _folderDialogVisible;
+    private bool _confirmMoveVisible;
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,15 +172,46 @@ else
 
     private void BeginRelocate(StorageCategory category)
     {
-        _pendingRelocateCategory = category;
-        _newPathInput = string.Empty;
+        _browseCategory = category;
+        _folderDialogVisible = true;
         _actionMessage = null;
+    }
+
+    private Task OnFolderSelected(string? path)
+    {
+        _folderDialogVisible = false;
+        if (path is not null && _browseCategory is { } category)
+        {
+            _pendingRelocateCategory = category;
+            _newPathInput = path;
+        }
+
+        _browseCategory = null;
+        return Task.CompletedTask;
     }
 
     private void CancelPending()
     {
         _pendingRelocateCategory = null;
         _newPathInput = string.Empty;
+    }
+
+    private void AskConfirmRelocate()
+    {
+        _confirmMoveVisible = true;
+    }
+
+    private void CancelConfirmMove()
+    {
+        _confirmMoveVisible = false;
+    }
+
+    private Task ConfirmMoveAsync()
+    {
+        _confirmMoveVisible = false;
+        return _pendingRelocateCategory is { } category
+            ? ConfirmRelocate(category)
+            : Task.CompletedTask;
     }
 
     private async Task ConfirmRelocate(StorageCategory category)

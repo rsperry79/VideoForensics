@@ -155,7 +155,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _download.Verify(d => d.DownloadSnapshotsAsync(
                 "1",
-                It.Is<string>(p => p.StartsWith(MediaRoot, StringComparison.OrdinalIgnoreCase) && p.Contains("Home") && p.Contains("Cam 1")),
+                Path.Combine(MediaRoot, "ring", "home", "cam_1"),
                 from,
                 to,
                 "loc-1",
@@ -242,6 +242,26 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _download.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Equal(1, result.DevicesAttempted);
             Assert.Equal(1, result.DevicesSucceeded);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_DeviceWithSnapshotCaptureOff_IsSkippedAndNotCounted()
+        {
+            // The per-device switch is the user's "sync off" choice; the scheduled sync must honour it as capture does.
+            _ = _devices
+                .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DeviceEntity>
+                {
+                    new() { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "1", Name = "Flood", Type = "doorbot", SnapshotCaptureEnabled = false },
+                    new() { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "2", Name = "Front", Type = "doorbot", SnapshotCaptureEnabled = true },
+                });
+            DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Equal(1, result.DevicesAttempted);
+            Assert.Equal(0, result.DevicesFailed);
         }
 
         [Fact]

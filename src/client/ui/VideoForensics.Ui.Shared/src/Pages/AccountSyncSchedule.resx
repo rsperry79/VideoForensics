@@ -182,4 +182,31 @@
   <data name="ErrorTitle" xml:space="preserve">
     <value>Error</value>
   </data>
+  <data name="DeviceCaptureModesHeading" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="DeviceCaptureModesHelp" xml:space="preserve">
+    <value>Capture takes snapshots and health readings. Health only keeps health readings and stops snapshots. Off stops both for that device.</value>
+  </data>
+  <data name="NoDevicesForSchedule" xml:space="preserve">
+    <value>No devices are linked to this account yet.</value>
+  </data>
+  <data name="DeviceModeCapture" xml:space="preserve">
+    <value>Capture</value>
+  </data>
+  <data name="DeviceModeHealthOnly" xml:space="preserve">
+    <value>Health only</value>
+  </data>
+  <data name="DeviceModeOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="DeviceModeSaved" xml:space="preserve">
+    <value>Saved the capture mode for {0}.</value>
+  </data>
+  <data name="FailedToSaveDeviceMode" xml:space="preserve">
+    <value>Could not save the capture mode: {0}</value>
+  </data>
+  <data name="FailedToLoadDeviceModes" xml:space="preserve">
+    <value>Could not load the devices: {0}</value>
+  </data>
 </root>

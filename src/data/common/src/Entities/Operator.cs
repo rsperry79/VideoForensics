@@ -100,6 +100,12 @@ namespace VideoForensics.Data.Common.Entities
         public TwoFactorRequirementOverride TwoFactorRequirementOverride { get; set; }
 
         /// <summary>
+        /// Whether this operator must use a passkey as the second factor. When false, a password sign-in on the local network
+        /// (a direct request, not the tunnel) completes without one. Tunnel sign-ins always need the passkey.
+        /// </summary>
+        public bool PasskeyRequired { get; set; } = true;
+
+        /// <summary>
         /// Navigation property for the operator's WebAuthn credentials (passkeys).
         /// </summary>
         public ICollection<OperatorCredential> OperatorCredentials { get; set; } = [];

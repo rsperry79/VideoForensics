@@ -23,18 +23,42 @@ public class WorkflowRedirect_Tests : BunitContext
     }
 }
 
-public class Evidence_Route_Tests
+public class Media_Route_Tests
 {
-    [Fact]
-    public void Evidence_HasRootRoute()
+    private static List<string> RouteTemplates(Type type)
     {
-        var templates = typeof(Evidence)
+        return type
             .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
             .Cast<RouteAttribute>()
             .Select(a => a.Template)
             .ToList();
+    }
 
-        Assert.Contains("/", templates);
+    [Fact]
+    public void ReviewPage_HasMediaAndMediaReviewRoutes()
+    {
+        // /media is the review page; /media/review stays as a second route for existing links.
+        List<string> templates = RouteTemplates(typeof(ReviewPage));
+
         Assert.Contains("/media", templates);
+        Assert.Contains("/media/review", templates);
+    }
+
+    [Fact]
+    public void Root_HasRootRoute()
+    {
+        // "/" belongs to Root, which redirects to /media.
+        Assert.Contains("/", RouteTemplates(typeof(Root)));
+    }
+
+    [Fact]
+    public void NoOtherPage_DeclaresMediaRoute()
+    {
+        List<Type> owners = typeof(ReviewPage).Assembly
+            .GetTypes()
+            .Where(t => RouteTemplates(t).Contains("/media"))
+            .ToList();
+
+        Assert.Equal(new[] { typeof(ReviewPage) }, owners);
     }
 }

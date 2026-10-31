@@ -17,5 +17,9 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// <summary>Returns the immediate subdirectories of <paramref name="path"/>, or an empty list if it
         /// can't be enumerated (e.g. access denied).</summary>
         IReadOnlyList<DirectoryEntry> GetSubdirectories(string path);
+
+        /// <summary>Creates <paramref name="name"/> under <paramref name="parentPath"/>.</summary>
+        /// <returns>The new folder's full path, or null when the name is invalid or the folder could not be created.</returns>
+        string? CreateSubdirectory(string parentPath, string name);
     }
 }

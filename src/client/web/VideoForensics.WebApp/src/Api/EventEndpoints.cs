@@ -22,6 +22,72 @@ namespace VideoForensics.Client.WebApp.Api
     /// </summary>
     public static class EventEndpoints
     {
+        /// <summary>
+        /// Pages events from one or more devices within a UTC range, newest first, for the review page's Events tab.
+        /// Semantics:
+        /// - deviceIds (1..64) and from/to (from must be &lt;= to) are required
+        /// - skip defaults to 0, must be &gt;= 0
+        /// - take defaults to 100, must be 1..500
+        /// - excludeTypes optionally drops events whose type exactly matches an entry
+        /// </summary>
+        public static async Task<IResult> ListEventPageAsync(
+            Guid[]? deviceIds,
+            DateTime? from,
+            DateTime? to,
+            string[]? excludeTypes,
+            int? skip,
+            int? take,
+            IEventRepository events,
+            CancellationToken ct)
+        {
+            const int MaxDevices = 64;
+            const int DefaultTake = 100;
+            const int MaxTake = 500;
+
+            if (deviceIds is null || deviceIds.Length == 0 || deviceIds.Length > MaxDevices)
+            {
+                return Results.BadRequest();
+            }
+
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            int effectiveSkip = skip ?? 0;
+            int effectiveTake = take ?? DefaultTake;
+            if (effectiveSkip < 0 || effectiveTake < 1 || effectiveTake > MaxTake)
+            {
+                return Results.BadRequest();
+            }
+
+            EventPage page = await events.ListPageByDevicesAndDateRangeAsync(
+                deviceIds, from.Value, to.Value, excludeTypes, effectiveSkip, effectiveTake, ct);
+
+            return Results.Ok(new EventPageDto([.. page.Items.Select(x => x.ToDto())], page.TotalCount));
+        }
+
+        /// <summary>
+        /// Returns the detection rows for up to 200 events in one call, for the review page's Detail tab.
+        /// Events with no detail rows are omitted. eventIds is required and must hold 1..200 ids.
+        /// </summary>
+        public static async Task<IResult> GetEventDetailsAsync(
+            Guid[]? eventIds,
+            IEventDetailRepository details,
+            CancellationToken ct)
+        {
+            const int MaxEventIds = 200;
+
+            if (eventIds is null || eventIds.Length == 0 || eventIds.Length > MaxEventIds)
+            {
+                return Results.BadRequest();
+            }
+
+            IReadOnlyList<EventDetail> found = await details.GetDetailsAsync(eventIds, ct);
+            IReadOnlyList<EventDetailDto> dtos = [.. found.Select(d => d.ToDto())];
+            return Results.Ok(dtos);
+        }
+
         public static void MapEventEndpoints(this WebApplication app)
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1/events").RequireAuthorization();
@@ -52,6 +118,16 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireRateLimiting("media")
                 .WithSummary("List all events")
                 .WithDescription("Retrieves all events from all devices. Supports optional pagination via pageNumber and pageSize query parameters (both required for pagination).");
+
+            _ = group.MapGet("/page", ListEventPageAsync)
+                .RequireRateLimiting("media")
+                .WithSummary("Page events")
+                .WithDescription("Pages events from one or more devices within a UTC range, newest first, for the review page's Events tab. deviceIds (1..64) and from/to (from <= to) are required; skip defaults to 0 (>= 0); take defaults to 100 (1..500); excludeTypes optionally drops event types.");
+
+            _ = group.MapGet("/details", GetEventDetailsAsync)
+                .RequireRateLimiting("media")
+                .WithSummary("Get event details")
+                .WithDescription("Returns the detection rows (detection, occurrences, zones, people, alerts) for up to 200 events, for the review page's Detail tab. Events with no detail rows are omitted.");
 
             _ = group.MapGet("/{id:guid}", async (Guid id, IEventRepository events, CancellationToken ct) =>
             {

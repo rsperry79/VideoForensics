@@ -47,6 +47,9 @@
   <data name="DataEncryptionSection" xml:space="preserve">
     <value>Data-at-Rest Encryption</value>
   </data>
+  <data name="Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
   <data name="EncryptionWarning" xml:space="preserve">
     <value>Neither the database nor downloaded media files are encrypted by this application. An application-level database encryption approach (SQLCipher) was evaluated and found to silently fail to apply schema changes under this platform's current SQLite provider version - a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe approach is available, protecting this data at rest is the owner's responsibility: enable full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding %ProgramData%\VideoForensics and your configured download location, and secure physical access to this machine.</value>
   </data>
@@ -73,5 +76,23 @@
   </data>
   <data name="AdminOnlySettingsNote" xml:space="preserve">
     <value>Only a SuperAdmin on this computer can change these settings.</value>
+  </data>
+  <data name="DiagnosticsSection" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="LogPipeDescription" xml:space="preserve">
+    <value>Shows server logs in the VideoForensics.Utils.LogViewer console. Any local user on this computer can connect while this is on.</value>
+  </data>
+  <data name="LogPipeLabel" xml:space="preserve">
+    <value>Open the log pipe for LogViewer</value>
+  </data>
+  <data name="LogPipeSaved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="LogPipeSaveFailed" xml:space="preserve">
+    <value>Could not save the log pipe setting: {0}</value>
+  </data>
+  <data name="LogPipeLoadFailed" xml:space="preserve">
+    <value>Could not load the log pipe setting: {0}</value>
   </data>
 </root>

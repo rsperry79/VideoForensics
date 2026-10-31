@@ -1,0 +1,43 @@
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.FileManager
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Api.Contracts
+@inject IFolderBrowserEndpoint Endpoint
+@inject IStringLocalizer<SharedResources> L
+
+<div style="min-width: 480px;">
+    <SfFileManager TValue="FileManagerDirectoryContent" AllowMultiSelection="false" AllowDragAndDrop="false" ShowThumbnail="false" ShowItemCheckBoxes="false" Height="360px">
+        <FileManagerAjaxSettings HttpClientInstance="Endpoint.Client" Url="@Endpoint.Url" />
+        <FileManagerToolbarSettings ToolbarItems="@_toolbarItems" />
+        <FileManagerContextMenuSettings Visible="false" />
+        <FileManagerEvents TValue="FileManagerDirectoryContent" FileSelected="OnFileSelected" />
+    </SfFileManager>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <SfButton Content="@L["Cancel"]" OnClick="@(() => OnClosed.InvokeAsync(null))" data-testid="folder-cancel" />
+        <SfButton Content="@L["SelectThisFolder"]" OnClick="@(() => OnClosed.InvokeAsync(_selectedPath))" CssClass="e-primary" Disabled="@(_selectedPath is null)" data-testid="folder-select" />
+    </div>
+</div>
+
+@code {
+    /// <summary>Called with the chosen folder's absolute path on Select, or null on Cancel.</summary>
+    [Parameter] public EventCallback<string?> OnClosed { get; set; }
+
+    // Only navigation and folder creation. Upload, delete, rename, copy and move are left out of the
+    // toolbar, and the protocol rejects them too.
+    private readonly List<ToolBarItemModel> _toolbarItems = new()
+    {
+        new ToolBarItemModel { Name = "NewFolder" },
+        new ToolBarItemModel { Name = "Refresh" },
+    };
+
+    private string? _selectedPath;
+
+    private Task OnFileSelected(FileSelectEventArgs<FileManagerDirectoryContent> args)
+    {
+        // The server puts each folder's absolute path in Id, so the picker never builds paths itself.
+        _selectedPath = args.Action == "select" && args.FileDetails is { IsFile: false } item ? item.Id : null;
+        return Task.CompletedTask;
+    }
+}

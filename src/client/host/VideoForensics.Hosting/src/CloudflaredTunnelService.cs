@@ -1,5 +1,7 @@
 using CloudflaredKit;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace VideoForensics.Client.Hosting
@@ -27,7 +29,8 @@ namespace VideoForensics.Client.Hosting
 
     public interface ICloudflaredTunnelService
     {
-        Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct);
+        /// <summary>Starts the named tunnel. <paramref name="publicUrl"/> is the saved Internet address that routes to it, reported in the state.</summary>
+        Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct, string? publicUrl = null);
         Task StopAsync(CancellationToken ct);
         TunnelState GetState();
     }
@@ -36,6 +39,7 @@ namespace VideoForensics.Client.Hosting
     {
         private readonly ICloudflaredService _cloudflared;
         private readonly IOptionsMonitorCache<CloudflaredOptions> _optionsCache;
+        private readonly ILogger<CloudflaredTunnelService> _logger;
         private readonly object _gate = new();
         private TunnelState _state = new(
             TunnelKind.None,
@@ -46,13 +50,15 @@ namespace VideoForensics.Client.Hosting
 
         public CloudflaredTunnelService(
             ICloudflaredService cloudflared,
-            IOptionsMonitorCache<CloudflaredOptions> optionsCache)
+            IOptionsMonitorCache<CloudflaredOptions> optionsCache,
+            ILogger<CloudflaredTunnelService>? logger = null)
         {
             _cloudflared = cloudflared;
             _optionsCache = optionsCache;
+            _logger = logger ?? NullLogger<CloudflaredTunnelService>.Instance;
         }
 
-        public async Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct)
+        public async Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct, string? publicUrl = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(tunnelToken);
 
@@ -80,9 +86,10 @@ namespace VideoForensics.Client.Hosting
                 });
 
                 _ = await _cloudflared.StartAsync(ct);
+                _logger.LogInformation("Cloudflare tunnel started");
                 lock (_gate)
                 {
-                    _state = _state with { Status = TunnelStatus.Running };
+                    _state = _state with { Status = TunnelStatus.Running, PublicUrl = publicUrl };
                 }
             }
             catch (OperationCanceledException)
@@ -97,12 +104,14 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex)
             {
+                // Every failure is logged and shown with its reason, so the page never reports a tunnel that did not start.
+                _logger.LogError(ex, "Cloudflare tunnel failed to start");
                 lock (_gate)
                 {
                     _state = _state with
                     {
                         Status = TunnelStatus.Failed,
-                        ErrorMessage = ex.Message
+                        ErrorMessage = $"Could not start the Cloudflare tunnel: {ex.Message}"
                     };
                 }
 

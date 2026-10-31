@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// Drives the three WebAuthn ceremonies against the server's pairing/auth API (plan §5.1/§5.7):
     /// passkey registration (pairing), passkey authentication (session sign-in), and step-up
     /// re-authentication. Each ceremony is the same three-step shape - fetch options from the
-    /// server, hand them to the browser's native WebAuthn API via <c>wwwroot/js/webauthn.js</c>,
+    /// server, hand them to the browser's native WebAuthn API via <c>wwwroot/scripts/webauthn.js</c>,
     /// post the result back - factored once here rather than duplicated across Pair.razor,
     /// DeviceSignIn.razor, and every step-up-gated action.
     ///
@@ -477,6 +477,54 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
             JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
             return result.GetProperty("stepUpToken").GetString()!;
+        }
+
+        /// <summary>
+        /// The tunnel's public address when the tunnel is running, or null. A passkey attempt from localhost is sent there, because
+        /// the passkey's RP ID is the tunnel host. Fails open to null on error.
+        /// </summary>
+        public virtual async Task<string?> GetTunnelUrlAsync()
+        {
+            try
+            {
+                using HttpClient client = CreateClient(null);
+                HttpResponseMessage response = await client.GetAsync("api/v1/auth/transport");
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return result.TryGetProperty("tunnelUrl", out JsonElement url) && url.ValueKind == JsonValueKind.String ? url.GetString() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Whether passkeys can run on the address this page was loaded from. A plain-http LAN address cannot, and the
+        /// server says so. Fails open (true) on error, so a failed check never hides passkeys that would have worked.
+        /// </summary>
+        public virtual async Task<bool> IsPasskeyAvailableOnThisAddressAsync()
+        {
+            try
+            {
+                using HttpClient client = CreateClient(null);
+                HttpResponseMessage response = await client.GetAsync("api/v1/auth/transport");
+                if (!response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return !result.TryGetProperty("passkeyAvailable", out JsonElement available) || available.GetBoolean();
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         /// <summary>Fetches the currently-enabled authentication methods. Fails open (all methods assumed enabled) on error to prevent lockout during connection issues.</summary>

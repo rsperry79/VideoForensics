@@ -10,11 +10,11 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for live-view telemetry samples.</summary>
     public class LiveViewTelemetryRepository : ILiveViewTelemetryRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IDbContextFactory<VideoForensicsLogsDbContext> _factory;
         private readonly ILogger<LiveViewTelemetryRepository> _logger;
 
         /// <summary>Initializes a new instance of the LiveViewTelemetryRepository.</summary>
-        public LiveViewTelemetryRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<LiveViewTelemetryRepository> logger)
+        public LiveViewTelemetryRepository(IDbContextFactory<VideoForensicsLogsDbContext> factory, ILogger<LiveViewTelemetryRepository> logger)
         {
             _factory = factory;
             _logger = logger;
@@ -23,7 +23,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Appends a new telemetry sample to the database.</summary>
         public async Task AddSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 if (sample.Id == Guid.Empty)
@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets all telemetry samples for a live-view session.</summary>
         public async Task<IReadOnlyList<LiveViewTelemetrySample>> GetSamplesAsync(Guid sessionId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.LiveViewTelemetrySamples
                 .Where(s => s.SessionId == sessionId)
                 .OrderBy(s => s.CapturedAtUtc)
@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes telemetry samples older than the specified age.</summary>
         public async Task<int> PruneOlderThanAsync(TimeSpan age, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 DateTime cutoff = DateTime.UtcNow - age;

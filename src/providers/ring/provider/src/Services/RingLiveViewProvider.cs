@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -16,26 +17,40 @@ namespace VideoForensics.Providers.Ring.Services
     /// </summary>
     public class RingLiveViewProvider : ILiveViewCapableProvider
     {
-        private const string ProviderName = "Ring";
+        private const string RingProviderName = "Ring";
+
         private readonly ISessionProvider _sessionProvider;
+        private readonly IProviderAuthService _authService;
         private readonly ILogger<RingLiveViewProvider> _logger;
 
-        public RingLiveViewProvider(ISessionProvider sessionProvider, ILogger<RingLiveViewProvider> logger)
+        /// <inheritdoc />
+        public string ProviderName => RingProviderName;
+
+        public RingLiveViewProvider(
+            ISessionProvider sessionProvider,
+            [FromKeyedServices("Ring")] IProviderAuthService authService,
+            ILogger<RingLiveViewProvider> logger)
         {
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Starts a live view connection with an explicit account ID.
+        /// Starts a live view connection for a device of the given Ring account. The account's session is held in memory,
+        /// so after a restart it is restored from the saved credentials first.
         /// </summary>
-        public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, Guid accountId, CancellationToken ct)
+        public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, Guid providerAccountId, CancellationToken ct)
         {
-            // Get the authenticated Session for the specific account
-            Session? session = _sessionProvider.GetSession(accountId);
+            Session? session = _sessionProvider.GetSession(providerAccountId);
+            if (session == null && await _authService.RestoreFromSavedCredentialsAsync(providerAccountId, ct))
+            {
+                session = _sessionProvider.GetSession(providerAccountId);
+            }
+
             if (session == null)
             {
-                throw new InvalidOperationException($"Not authenticated with Ring for account {accountId}.");
+                throw new InvalidOperationException("Not authenticated with Ring for this account. Sign in again from the account's page.");
             }
 
             // Parse Ring doorbot ID (should be numeric)
@@ -44,7 +59,7 @@ namespace VideoForensics.Providers.Ring.Services
                 throw new ArgumentException($"Invalid Ring doorbot ID '{providerDeviceId}'. Expected a numeric ID.", nameof(providerDeviceId));
             }
 
-            _logger.LogDebug("Starting Ring live view for doorbot {DoorbotId} with {ProviderName} account", doorbotId, ProviderName);
+            _logger.LogDebug("Starting Ring live view for doorbot {DoorbotId} with {ProviderName} account", doorbotId, RingProviderName);
 
             try
             {
@@ -62,16 +77,6 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogError(ex, "Failed to start Ring live view for doorbot {DoorbotId}", doorbotId);
                 throw;
             }
-        }
-
-        /// <summary>
-        /// Starts a live view connection using the default/current authenticated session.
-        /// Implements ILiveViewCapableProvider.StartLiveViewAsync.
-        /// </summary>
-        public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct)
-        {
-            // Delegate to the account-aware overload with Guid.Empty to use the default session
-            return await StartLiveViewAsync(providerDeviceId, Guid.Empty, ct);
         }
     }
 }

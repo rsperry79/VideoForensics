@@ -106,4 +106,52 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             m => m.BuildChainOfCustodyReportAsync(back.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
+
+    [Fact]
+    public async Task BrokenChain_ShowsBreakReasonEntriesCheckedAndFailedEntry()
+    {
+        var failedId = Guid.NewGuid();
+        _ = _deviceRepository
+            .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _ = _reportService
+            .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChainOfCustodyReport
+            {
+                ChainIntegrityVerified = false,
+                ChainVerificationStatus = "Chain integrity check failed",
+                ChainBreak = ChainBreakKind.EntryHashMismatch,
+                ChainEntriesChecked = 4,
+                ChainFailedEntryId = failedId,
+                ChainFailedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            });
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+
+        IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();
+
+        AngleSharp.Dom.IElement failed = Assert.Single(page.FindAll("[data-testid='chain-integrity-failed']"));
+        Assert.Contains("altered after it was written", failed.TextContent);
+        Assert.Contains("4 entries verified before the break", failed.TextContent);
+        Assert.Contains(failedId.ToString("N")[..8], failed.TextContent);
+    }
+
+    [Fact]
+    public async Task BrokenChain_ReverifyButton_RunsTheReportAgain()
+    {
+        _ = _deviceRepository
+            .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _ = _reportService
+            .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainBreak = ChainBreakKind.PreviousHashMismatch });
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+
+        IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();
+        page.Find("[data-testid='chain-reverify']").Click();
+
+        // Once when the page loads, once from the re-verify action.
+        _reportService.Verify(
+            m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
 }

@@ -220,3 +220,6 @@ test_results.txt
 plans/archive/
 
 .cr/
+
+# Debug launch output (scripts/Debug-WebAppService.ps1)
+artifacts/webapp-debug/

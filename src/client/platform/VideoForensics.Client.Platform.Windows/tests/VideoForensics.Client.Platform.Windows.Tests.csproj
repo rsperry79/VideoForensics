@@ -16,9 +16,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../src/VideoForensics.Client.Platform.Windows.csproj" />
+    <ProjectReference Include="../../../../core/helpers/forensics/tests/VideoForensics.Core.Helpers.Forensics.Tests.csproj" />
   </ItemGroup>
 </Project>

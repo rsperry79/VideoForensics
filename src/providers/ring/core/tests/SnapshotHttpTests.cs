@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -67,6 +68,64 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         private static HttpUtility HttpUtilityWith(Func<HttpRequestMessage, HttpResponseMessage> responder)
         {
             return new HttpUtility(messageHandler: new ScriptedHttpHandler(responder));
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshot_404_ThrowsDownloadFailedWithStatus()
+        {
+            Session session = await AuthenticatedSessionAsync(_ => ByteResponse(HttpStatusCode.NotFound, Encoding.ASCII.GetBytes("Not Found")));
+
+            DownloadFailedException ex = await Assert.ThrowsAsync<DownloadFailedException>(() => session.GetLatestSnapshot(123456));
+
+            Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
+            Assert.Equal("Not Found", ex.ResponseBody);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshot_SaveAs_404_WritesNoFile()
+        {
+            Session session = await AuthenticatedSessionAsync(_ => ByteResponse(HttpStatusCode.NotFound, Encoding.ASCII.GetBytes("Not Found")));
+            string path = Path.Combine(Path.GetTempPath(), $"snapshot-{Guid.NewGuid():N}.jpg");
+
+            _ = await Assert.ThrowsAsync<DownloadFailedException>(() => session.GetLatestSnapshot(123456, path));
+
+            Assert.False(File.Exists(path), "A non-image response must never be saved as a snapshot file.");
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshot_SaveAs_200_WritesJpegBytes()
+        {
+            Session session = await AuthenticatedSessionAsync(_ => ByteResponse(HttpStatusCode.OK, JpegBytes));
+            string path = Path.Combine(Path.GetTempPath(), $"snapshot-{Guid.NewGuid():N}.jpg");
+
+            try
+            {
+                await session.GetLatestSnapshot(123456, path);
+
+                Assert.Equal(JpegBytes, await File.ReadAllBytesAsync(path));
+            }
+            finally
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshot_429_ThrowsThrottledWithRetryAfter()
+        {
+            Session session = await AuthenticatedSessionAsync(_ =>
+            {
+                HttpResponseMessage response = ByteResponse((HttpStatusCode)429, []);
+                response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(30));
+                return response;
+            });
+
+            ThrottledException ex = await Assert.ThrowsAsync<ThrottledException>(() => session.GetLatestSnapshot(123456));
+
+            Assert.Equal(TimeSpan.FromSeconds(30), ex.RetryAfter);
         }
 
         private static readonly Uri SnapshotUri = new("https://api.ring.com/clients_api/snapshots/image/123456");

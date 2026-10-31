@@ -20,8 +20,8 @@
             }
         }
 
-        parts.Add("view=grid");
-
-        Nav.NavigateTo($"/media?{string.Join("&", parts)}", replace: true);
+        // The review page at /media has no view parameter, so only the scope keys carry over.
+        string target = parts.Count == 0 ? "/media" : $"/media?{string.Join("&", parts)}";
+        Nav.NavigateTo(target, replace: true);
     }
 }

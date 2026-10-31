@@ -1,0 +1,234 @@
+@page "/settings/integrations/email"
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Layout
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Api.Contracts
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject ISelfApiHttpClientFactory ClientFactory
+@inject IStringLocalizer<SettingsEmail> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToManage"]
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="spinner-border spinner-border-sm" role="status"></div>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (!_canChange)
+{
+    <div class="alert alert-info">@L["NoAccessNote"]</div>
+}
+else
+{
+    <p class="text-body-secondary">@L["EmailDescription"]</p>
+    <div class="card border p-4 mb-4">
+        <div class="d-flex flex-column gap-3">
+            <div>
+                <SfCheckBox TChecked="bool" @bind-Checked="_enableEmail" Label="@L["EnableEmailNotifications"].Value" />
+                <small class="d-block text-body-secondary">@L["EnableEmailNotificationsDescription"]</small>
+            </div>
+            <div class="d-flex flex-row flex-wrap gap-3">
+                <div>
+                    <label class="form-label fw-semibold">@L["LabelSmtpHost"]</label>
+                    <SfTextBox @bind-Value="_smtpHost" Style="max-width: 260px;" />
+                    <small class="d-block text-body-secondary">@L["SmtpHostDescription"]</small>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">@L["LabelPort"]</label>
+                    <SfNumericTextBox TValue="int" @bind-Value="_smtpPort" Style="max-width: 120px;" />
+                    <small class="d-block text-body-secondary">@L["PortDescription"]</small>
+                </div>
+                <div>
+                    <SfCheckBox TChecked="bool" @bind-Checked="_smtpUseTls" Label="@L["LabelUseStarttls"].Value" />
+                    <small class="d-block text-body-secondary">@L["UseStarttlsDescription"]</small>
+                </div>
+            </div>
+            <div class="d-flex flex-row flex-wrap gap-3">
+                <div>
+                    <label class="form-label fw-semibold">@L["LabelSmtpUsername"]</label>
+                    <SfTextBox @bind-Value="_smtpUsername" Style="max-width: 260px;" />
+                    <small class="d-block text-body-secondary">@L["SmtpUsernameDescription"]</small>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">@L["LabelSmtpPassword"]</label>
+                    <SfTextBox @bind-Value="_smtpPassword" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["PlaceholderPassword"]" Style="max-width: 260px;" />
+                    <small class="d-block text-body-secondary">@L["SmtpPasswordDescription"]</small>
+                </div>
+            </div>
+            <div class="d-flex flex-row flex-wrap gap-3">
+                <div>
+                    <label class="form-label fw-semibold">@L["LabelFromAddress"]</label>
+                    <SfTextBox @bind-Value="_smtpFromAddress" Style="max-width: 300px;" />
+                    <small class="d-block text-body-secondary">@L["FromAddressDescription"]</small>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">@L["LabelNotifyAddress"]</label>
+                    <SfTextBox @bind-Value="_recipientEmail" Style="max-width: 300px;" />
+                    <small class="d-block text-body-secondary">@L["NotifyAddressDescription"]</small>
+                </div>
+            </div>
+            <div class="d-flex flex-row gap-2">
+                <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveSettingsAsync" CssClass="e-primary" Disabled="@_isSaving" />
+                <SfButton Content="@(_isSendingTest ? L["SendingTestButton"] : L["SendTestEmailButton"])" OnClick="SendTestEmailAsync" CssClass="e-flat" Disabled="@_isSendingTest" />
+            </div>
+            <small class="text-body-secondary">@L["SendTestEmailDescription"]</small>
+            @if (_settingsMessage is not null)
+            {
+                <span style="color: @(_settingsSuccess ? "#4caf50" : "#f44336")">@_settingsMessage</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isSendingTest;
+    private bool _canChange;
+    private string? _loadError;
+    private string? _settingsMessage;
+    private bool _settingsSuccess;
+
+    private bool _enableEmail;
+    private string _smtpHost = "";
+    private int _smtpPort = 587;
+    private bool _smtpUseTls = true;
+    private string _smtpUsername = "";
+    private string _smtpPassword = "";
+    private string _smtpFromAddress = "";
+    private string _recipientEmail = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SessionState.EnsureLoadedAsync();
+        if (!SessionState.IsSignedIn)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            SettingsAccessLevelDto? permissions = await client.GetFromJsonAsync<SettingsAccessLevelDto>("/api/v1/permissions/email");
+            _canChange = SettingsAccessGate.CanChange(permissions?.Access, NavContext.FromSession(SessionState, appLockSupported: false));
+            if (!_canChange)
+            {
+                return;
+            }
+
+            System.Text.Json.JsonElement settings = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/notifications/settings");
+            _enableEmail = settings.GetProperty("enableEmailNotifications").GetBoolean();
+            _smtpHost = settings.GetProperty("smtpHost").GetString() ?? "";
+            _smtpPort = settings.GetProperty("smtpPort").GetInt32();
+            _smtpUseTls = settings.GetProperty("smtpUseTls").GetBoolean();
+            _smtpUsername = settings.GetProperty("smtpUsername").GetString() ?? "";
+            _smtpFromAddress = settings.GetProperty("smtpFromAddress").GetString() ?? "";
+            _recipientEmail = settings.GetProperty("notificationRecipientEmail").GetString() ?? "";
+            _smtpPassword = "";
+        }
+        catch (HttpRequestException ex)
+        {
+            _loadError = L["FailedToLoadSettings", ex.Message].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _isSaving = true;
+        _settingsMessage = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PostAsJsonAsync("/api/notifications/settings", new
+            {
+                enableEmailNotifications = _enableEmail,
+                smtpHost = _smtpHost,
+                smtpPort = _smtpPort,
+                smtpUseTls = _smtpUseTls,
+                smtpUsername = _smtpUsername,
+                smtpPassword = string.IsNullOrEmpty(_smtpPassword) ? null : _smtpPassword,
+                smtpFromAddress = _smtpFromAddress,
+                notificationRecipientEmail = _recipientEmail
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _settingsSuccess = false;
+                _settingsMessage = L["SaveFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _smtpPassword = "";
+            _settingsSuccess = true;
+            _settingsMessage = L["Saved"];
+        }
+        catch (HttpRequestException ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = L["SaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SendTestEmailAsync()
+    {
+        _isSendingTest = true;
+        _settingsMessage = null;
+        try
+        {
+            HttpClient client = ClientFactory.CreateClient();
+            HttpResponseMessage response = await client.PostAsync("/api/notifications/test-email", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                string? body = await SafeReadErrorAsync(response);
+                _settingsSuccess = false;
+                _settingsMessage = body ?? L["TestEmailFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _settingsSuccess = true;
+            _settingsMessage = L["TestEmailSent"];
+        }
+        catch (HttpRequestException ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = L["TestEmailFailed", ex.Message];
+        }
+        finally
+        {
+            _isSendingTest = false;
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            Dictionary<string, string>? doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            return doc is not null && doc.TryGetValue("error", out string? msg) ? msg : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+}

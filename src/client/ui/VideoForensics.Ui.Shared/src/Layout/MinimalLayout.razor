@@ -16,7 +16,7 @@
     // Pre-auth pages (SignIn, DeviceSignIn, Register, ChangePassword, Pair) share this layout for
     // a consistent branded card instead of each repeating their own wrapper/title markup - and,
     // unlike MainLayout's chrome, this must never inject anything that reads session/account data
-    // (see the security fix earlier this session for why AccountSwitcher leaked before sign-in).
+    // (see the security fix earlier this session for why right-panel account data leaked before sign-in).
     // ThemePreferenceService is safe here: it already handles the no-signed-in-operator case by
     // design (falls back to the OS/browser prefers-color-scheme snapshot without persisting
     // anything), it just was never wired up for these pages before now.

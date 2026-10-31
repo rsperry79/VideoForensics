@@ -1,9 +1,10 @@
 @page "/accounts/{Id:guid}"
 @inherits AccountTabPageBase
 @using VideoForensics.Client.Ui.Shared.Services
-@inject IForensicsConfiguration ForensicsConfig
-@inject IForensicsConfigurationService ForensicsConfigService
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
 @inject IMultiProviderAuthService MultiProviderAuthService
+@inject ISyncScheduleRepository SyncScheduleRepository
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -38,10 +39,37 @@ else
                     <p class="mb-0"><LocalTimeText Value="@Account.LinkedUtc" /></p>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">@L["ActiveLabel"]</label>
-                    <p class="mb-0">@(Account.IsActive ? L["Yes"] : L["No"])</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">@L["LastSuccessfulAuthLabel"]</label>
+                        <p class="mb-0"><LocalTimeText Value="@Account.LastSuccessfulAuthUtc" Fallback="@L["Never"]" /></p>
+                    </div>
                 </div>
+
+                @if (_schedule != null)
+                {
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">@L["LastEventPoll"]</label>
+                            <p class="mb-0"><LocalTimeText Value="@_schedule.EventLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">@L["NextEventPoll"]</label>
+                            <p class="mb-0"><LocalTimeText Value="@_schedule.EventNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">@L["LastSnapshotPoll"]</label>
+                            <p class="mb-0"><LocalTimeText Value="@_schedule.SnapshotLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">@L["NextSnapshotPoll"]</label>
+                            <p class="mb-0"><LocalTimeText Value="@_schedule.SnapshotNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
+                        </div>
+                    </div>
+                }
 
                 @if (Account.LastErrorUtc.HasValue || !string.IsNullOrEmpty(Account.LastErrorMessage))
                 {
@@ -60,14 +88,17 @@ else
 
                 <div class="mb-3 d-flex gap-2 align-items-center" style="color: #212529;">
                     <SfButton CssClass="e-warning" Content="@(_validationBusy ? L["Validating"] : L["ValidateCredential"])" OnClick="ValidateCredentialAsync" Disabled="@_validationBusy" />
-                    <SfButton CssClass="e-outline" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                    @if (CanEditAccount)
+                    {
+                        <SfButton CssClass="e-outline" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                    }
                     @if (!string.IsNullOrEmpty(_credentialStatus))
                     {
                         <span role="status">@_credentialStatus</span>
                     }
                 </div>
 
-                @if (_showReauthentication)
+                @if (_showReauthentication && CanEditAccount)
                 {
                     <div class="mb-3 p-3 border rounded" style="color: #212529;">
                         <h6>@L["ReauthenticateHeading"]</h6>
@@ -86,7 +117,7 @@ else
             {
                 <AccountRemovePanel AccountId="@Id" OnCompleted="OnRemoveCompletedAsync" OnCancelled="CancelRemove" />
             }
-            else
+            else if (CanEditAccount)
             {
                 <SfButton CssClass="e-danger" Content="@L["RemoveAccount"]" OnClick="PromptRemove" Disabled="@_isBusy" />
             }
@@ -101,11 +132,16 @@ else
     private bool _validationBusy;
     private bool _showReauthentication;
     private string? _credentialStatus;
+    private SyncSchedule? _schedule;
 
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], null) };
         await LoadAccountAsync();
+        if (Account is not null)
+        {
+            _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
+        }
     }
 
     private void ShowReauthentication()
@@ -178,20 +214,6 @@ else
         StatusMessage = null;
         try
         {
-            if (ForensicsConfig.ActiveProviderAccountId == Id)
-            {
-                ForensicsConfig.ActiveProviderAccountId = null;
-                try
-                {
-                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-                }
-                catch (NotSupportedException)
-                {
-                    StatusMessage = L["SettingServerOnly"];
-                    return;
-                }
-            }
-
             NavigationManager.NavigateTo("/accounts");
         }
         catch (Exception ex)

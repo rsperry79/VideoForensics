@@ -40,6 +40,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IDownloadEventRepository, DownloadEventRepository>();
             services.TryAddScoped<ICredentialRepository, CredentialRepository>();
             services.TryAddScoped<IEventRepository, EventRepository>();
+            services.TryAddScoped<IEventDetailRepository, EventDetailRepository>();
             services.TryAddScoped<IDeviceConfigRepository, DeviceConfigRepository>();
             services.TryAddScoped<IDeviceTypedSettingsReader, DeviceTypedSettingsReader>();
             services.TryAddScoped<IDeviceSettingChangeRepository, DeviceSettingChangeRepository>();
@@ -79,7 +80,8 @@ namespace VideoForensics.Data.Database.DependencyInjection
             // Register security audit service (Phase 0.5)
             services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
 
-            // Register unit of work
+            // Register unit of work. One tracker is shared by every scope, so the watchdog sees transactions from all of them.
+            services.TryAddSingleton<VideoForensics.Data.Common.Diagnostics.InFlightTransactions>();
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;

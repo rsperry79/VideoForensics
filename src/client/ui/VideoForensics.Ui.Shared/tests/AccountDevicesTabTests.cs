@@ -1,14 +1,34 @@
 
+using System.Reactive.Subjects;
+
 using Bunit;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
+
+/// <summary>Source double whose changes the test pushes directly, standing in for the realtime store.</summary>
+public sealed class DeviceHealthChangedSourceDouble : IDeviceHealthChangedSource
+{
+    private readonly IObservable<DeviceHealthChangedDto> _changes;
+
+    public DeviceHealthChangedSourceDouble(IObservable<DeviceHealthChangedDto> changes)
+    {
+        _changes = changes;
+    }
+
+    public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => _changes;
+}
+
 /// <summary>The Devices tab: one row per device with its uptime status, and a warning when it has gone quiet.</summary>
 public class AccountDevicesTabTests : AccountDetailsPageTestBase
 {
@@ -34,6 +54,23 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([device]);
         return device;
+    }
+
+    [Fact]
+    public void DeviceHealthChanged_ForShownDevice_ReloadsStatus()
+    {
+        SetEmptyLists();
+        Device device = AddDevice("Porch");
+        _ = DeviceHealthRepositoryMock.SetupSequence(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow })
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) });
+
+        IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='device-offline-warning']")));
+
+        DeviceHealthChanges.OnNext(new DeviceHealthChangedDto(device.Id));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='device-offline-warning']")));
     }
 
     [Fact]

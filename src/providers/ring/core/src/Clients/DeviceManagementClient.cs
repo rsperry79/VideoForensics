@@ -14,14 +14,14 @@ namespace VideoForensics.Providers.Ring.Clients;
 /// </summary>
 public class DeviceManagementClient : IDeviceManagementClient
 {
-    private readonly IDeviceDiscoveryService _discoveryService;
-    private readonly IDeviceControlService _controlService;
+    private readonly IRingDeviceDiscoveryService _discoveryService;
+    private readonly IRingDeviceControlService _controlService;
     private readonly IHealthMonitoringService _healthService;
     private readonly ILocationManagementService _locationService;
 
     public DeviceManagementClient(
-        IDeviceDiscoveryService discoveryService,
-        IDeviceControlService controlService,
+        IRingDeviceDiscoveryService discoveryService,
+        IRingDeviceControlService controlService,
         IHealthMonitoringService healthService,
         ILocationManagementService locationService)
     {

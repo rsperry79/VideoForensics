@@ -10,6 +10,8 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
@@ -303,7 +305,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     }
 
     [Fact]
-    public void StatusFilter_RendersInRightPanel_NotInPageBody()
+    public void StatusFilter_RendersInPageBody_NotInRightPanel()
     {
         _ = CaseRepositoryMock
             .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
@@ -311,27 +313,26 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         IRenderedComponent<Cases> component = RenderPage();
 
-        Assert.Empty(component.FindAll("[data-testid='case-status-filter']"));
+        _ = Assert.Single(component.FindAll("[data-testid='case-status-filter']"));
 
         IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
-        _ = Assert.Single(panel.FindAll("[data-testid='case-status-filter']"));
+        Assert.Empty(panel.FindAll("[data-testid='case-status-filter']"));
     }
 
     [Fact]
-    public void StatusFilter_InRightPanel_HasLocalizedLabel()
+    public void StatusFilter_InPageBody_HasLocalizedLabel()
     {
         _ = CaseRepositoryMock
             .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        _ = RenderPage();
-        IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
+        IRenderedComponent<Cases> component = RenderPage();
 
-        Assert.Contains("Status", panel.Markup);
+        Assert.Contains("Status", component.Markup);
     }
 
     [Fact]
-    public void StatusFilterChangedToAll_InRightPanel_CallsListAsyncWithNull_AndReRendersList()
+    public void StatusFilterChangedToAll_InPageBody_CallsListAsyncWithNull_AndReRendersList()
     {
         ForensicCase openCase = CreateTestCase(caseNumber: "CASE-OPEN", status: CaseStatus.Open);
         ForensicCase closedCase = CreateTestCase(caseNumber: "CASE-CLOSED", status: CaseStatus.Closed);
@@ -345,8 +346,7 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         IRenderedComponent<Cases> component = RenderPage();
 
-        IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
-        var filter = (IHtmlSelectElement)panel.Find("[data-testid='case-status-filter']");
+        var filter = (IHtmlSelectElement)component.Find("[data-testid='case-status-filter']");
         filter.Change(string.Empty);
 
         CaseRepositoryMock.Verify(r => r.ListAsync(null, It.IsAny<CancellationToken>()), Times.Once);
@@ -578,6 +578,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public CaseDetailsPage_Tests()
     {
         RegisterGridStub<CaseDetails.CaseItemRow>();
+        _ = Services.AddScoped<RightPanelContentService>();
     }
 
     private IRenderedComponent<CaseDetails> RenderPage(Guid caseId)
@@ -614,7 +615,9 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         Assert.Equal(2, rows.Count);
         CaseDetails.CaseItemRow eventRow = Assert.Single(rows, r => r.Kind == CaseItemKind.Event);
         Assert.Equal(PinIntegrity.NotApplicable, eventRow.Integrity);
-        Assert.Equal($"{@event.EventType} · {@event.OccurredAtUtc:u}", eventRow.Label);
+        // No user zone cascades here, so the page uses the machine zone.
+        string expectedClock = TimeZoneInfo.ConvertTimeFromUtc(@event.OccurredAtUtc, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal($"{@event.EventType} · {expectedClock}", eventRow.Label);
 
         CaseDetails.CaseItemRow mediaRow = Assert.Single(rows, r => r.Kind == CaseItemKind.Media);
         Assert.Equal(PinIntegrity.Match, mediaRow.Integrity);

@@ -10,8 +10,9 @@
 ; Independently selectable components:
 ;   - server:  VideoForensics.WebApp, installed as a Windows Service (LocalSystem, auto-start)
 ;   - desktop: VideoForensics.Client.MauiApp, a plain unpackaged desktop client (no service, no MSIX)
-;   - tools:   Optional Tools - VideoForensics.DbSetup, VideoForensics.DbDiagnostics, and
-;              VideoForensics.DbRepair CLI utilities (advanced/opt-in, unchecked by default)
+;   - tools:   Optional Tools - VideoForensics.Utils.DbSetup, VideoForensics.Utils.Diagnostics,
+;              VideoForensics.Utils.DbRepair CLI utilities and the VideoForensics.Utils.LogViewer
+;              console (advanced/opt-in, unchecked by default)
 ;   - mcp:     MCP Bridge (VideoForensics.Client.MCP) for AI-assistant hosts like Claude Desktop
 ;              (advanced/opt-in, unchecked by default)
 ;
@@ -47,6 +48,9 @@
 #ifndef McpPublishDir
   #define McpPublishDir "..\..\publish\mcp"
 #endif
+#ifndef LogViewerPublishDir
+  #define LogViewerPublishDir "..\..\publish\logviewer"
+#endif
 
 ; Only offer the Desktop Client component/shortcuts/files when a real MauiApp publish is actually
 ; present at compile time. Without this guard, a local/dev compile (or a CI run where the MauiApp
@@ -57,10 +61,11 @@
 #define DesktopExeExists FileExists(DesktopPublishDir + "\VideoForensics.Client.MauiApp.exe")
 ; Same guard pattern for the "Optional Tools" utilities and the MCP bridge - each is its own
 ; separate publish that a local/dev compile may not have produced.
-#define DbSetupExeExists FileExists(DbSetupPublishDir + "\VideoForensics.DbSetup.exe")
-#define DbDiagnosticsExeExists FileExists(DbDiagnosticsPublishDir + "\VideoForensics.DbDiagnostics.exe")
-#define DbRepairExeExists FileExists(DbRepairPublishDir + "\VideoForensics.DbRepair.exe")
+#define DbSetupExeExists FileExists(DbSetupPublishDir + "\VideoForensics.Utils.DbSetup.exe")
+#define DbDiagnosticsExeExists FileExists(DbDiagnosticsPublishDir + "\VideoForensics.Utils.Diagnostics.exe")
+#define DbRepairExeExists FileExists(DbRepairPublishDir + "\VideoForensics.Utils.DbRepair.exe")
 #define McpExeExists FileExists(McpPublishDir + "\VideoForensics.Client.MCP.exe")
+#define LogViewerExeExists FileExists(LogViewerPublishDir + "\VideoForensics.Utils.LogViewer.exe")
 
 [Setup]
 AppId={{6B1D9F0E-6A3C-4E9D-9F0B-2C7B2C2E9A11}
@@ -116,19 +121,18 @@ Name: "desktop"; Description: "Desktop Client"; Types: full custom
 ; switches to Custom. Neither is required for the server or desktop client to work: the service
 ; initializes its own database on first start regardless of whether "tools" is installed (DbSetup
 ; just does the same thing ahead of time so the very first request isn't delayed by migrations).
-#if DbSetupExeExists
-Name: "tools"; Description: "Optional Tools (database setup && diagnostics utilities)"; Types: custom
+#if DbSetupExeExists || DbDiagnosticsExeExists || DbRepairExeExists || LogViewerExeExists
+Name: "tools"; Description: "Optional Tools (database setup, diagnostics, repair and log viewer utilities)"; Types: custom
 #endif
 #if McpExeExists
 Name: "mcp"; Description: "MCP Bridge (for AI assistants such as Claude Desktop)"; Types: custom
 #endif
 
 [Tasks]
-Name: "ffmpeg"; Description: "Install bundled FFmpeg (video transcoding and metadata)"; Components: server; Flags: checkedonce
 #if DesktopExeExists
 Name: "shortcuts"; Description: "Create Desktop && Start Menu shortcuts"; Components: desktop; Flags: checkedonce
 #endif
-; Deliberately NO "checkedonce" (unlike ffmpeg/shortcuts above, which mean "checked by default the
+; Deliberately NO "checkedonce" (unlike shortcuts above, which mean "checked by default the
 ; first time only") - this must stay OFF by default on every single install/upgrade, never
 ; auto-checked, per explicit product decision: this data can include sensitive evidence, so sharing
 ; it over the network must always be an explicit opt-in click, never a default a user clicks past.
@@ -137,13 +141,10 @@ Name: "shortcuts"; Description: "Create Desktop && Start Menu shortcuts"; Compon
 Name: "networkshare"; Description: "Share the Reports and Media folders on the local network (adds you to a new VideoForensicsSuperUser group - see Tools Readme for adding others)"; Components: server; Flags: unchecked
 
 [Files]
-; Server: everything from the self-contained publish output except the optional ffmpeg binaries,
-; which are copied separately below only when the "ffmpeg" task is selected.
-Source: "{#ServerPublishDir}\*"; DestDir: "{app}"; Components: server; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "ffmpeg.exe,ffprobe.exe,ffmpeg-LICENSE.txt"
+; Server: everything from the self-contained publish output. FFmpeg and cloudflared are not bundled; the app uses
+; ffmpeg through FFMpegCore and finds cloudflared on PATH or in a folder the operator sets.
+Source: "{#ServerPublishDir}\*"; DestDir: "{app}"; Components: server; Flags: ignoreversion recursesubdirs createallsubdirs
 
-Source: "{#ServerPublishDir}\ffmpeg.exe"; DestDir: "{app}"; Components: server; Tasks: ffmpeg; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#ServerPublishDir}\ffprobe.exe"; DestDir: "{app}"; Components: server; Tasks: ffmpeg; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#ServerPublishDir}\ffmpeg-LICENSE.txt"; DestDir: "{app}"; Components: server; Tasks: ffmpeg; Flags: ignoreversion skipifsourcedoesntexist
 
 ; Desktop: everything from the MauiApp self-contained publish output. Guarded by #if DesktopExeExists
 ; above - see that #define's comment.
@@ -171,6 +172,9 @@ Source: "{#DesktopPublishDir}\*"; DestDir: "{app}\Desktop"; Components: desktop;
 ; became the only path to create an admin, which is a real security gap once "local network"
 ; access is also in play (see the Network Access race-condition warning in CurStepChanged).
 Source: "{#DbSetupPublishDir}\*"; DestDir: "{app}\Tools\DbSetup"; Components: server; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
+; The usage README is shipped whenever the "tools" component is offered, so it matches that guard.
+#if DbSetupExeExists || DbDiagnosticsExeExists || DbRepairExeExists || LogViewerExeExists
 Source: "ToolsReadme.txt"; DestDir: "{app}\Tools"; DestName: "README.txt"; Components: tools; Flags: ignoreversion
 #endif
 #if DbDiagnosticsExeExists
@@ -181,6 +185,11 @@ Source: "{#DbDiagnosticsPublishDir}\*"; DestDir: "{app}\Tools\DbDiagnostics"; Co
 ; confirmation (or --yes for scripted use) before touching anything. See ToolsReadme.txt.
 #if DbRepairExeExists
 Source: "{#DbRepairPublishDir}\*"; DestDir: "{app}\Tools\DbRepair"; Components: tools; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
+; VideoForensics.Utils.LogViewer: console client for the WebApp logger named pipe (see Program.cs in
+; src/utils/logviewer). Its own leaf folder for the same self-contained-collision reason as above.
+#if LogViewerExeExists
+Source: "{#LogViewerPublishDir}\*"; DestDir: "{app}\Tools\LogViewer"; Components: tools; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif
 
 ; MCP Bridge: stdio MCP server (VideoForensics.Client.MCP) that AI-assistant hosts like Claude Desktop
@@ -209,17 +218,22 @@ Name: "{group}\VideoForensics Logs Folder"; Filename: "{commonappdata}\VideoFore
 ; Optional Tools Start Menu group - a PowerShell prompt already cd'd into the Tools folder (so
 ; either exe is runnable by bare name without typing the full path or subfolder), and the usage
 ; README for both bundled CLI tools.
-#if DbSetupExeExists
+#if DbSetupExeExists || DbDiagnosticsExeExists || DbRepairExeExists || LogViewerExeExists
 Name: "{group}\Optional Tools\PowerShell in Tools Folder"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; WorkingDir: "{app}\Tools"; Components: tools
 Name: "{group}\Optional Tools\Tools Readme"; Filename: "{app}\Tools\README.txt"; Components: tools
+#endif
+#if LogViewerExeExists
+Name: "{group}\Optional Tools\Log Viewer"; Filename: "{app}\Tools\LogViewer\VideoForensics.Utils.LogViewer.exe"; Components: tools
 #endif
 
 [Run]
 ; Service registration only runs on a genuinely fresh install - on an upgrade the service is
 ; already registered (stopped, not deleted, in InitializeSetup) and "sc create" would just fail.
-Filename: "sc.exe"; Parameters: "create VideoForensics binPath= ""{app}\VideoForensics.WebApp.exe"" start= auto DisplayName= ""VideoForensics"""; Components: server; Check: IsFreshInstall; Flags: runhidden; StatusMsg: "Registering VideoForensics service..."
+Filename: "sc.exe"; Parameters: "create VideoForensics binPath= ""{app}\VideoForensics.Client.WebApp.exe"" start= auto DisplayName= ""VideoForensics"""; Components: server; Check: IsFreshInstall; Flags: runhidden; StatusMsg: "Registering VideoForensics service..."
 Filename: "sc.exe"; Parameters: "description VideoForensics ""VideoForensics web application and API server"""; Components: server; Check: IsFreshInstall; Flags: runhidden
 Filename: "sc.exe"; Parameters: "failure VideoForensics reset= 86400 actions= restart/5000/restart/5000/restart/5000"; Components: server; Check: IsFreshInstall; Flags: runhidden
+; failureflag makes a non-zero exit (not only a crash) trigger the restart actions; in-place updates exit this way.
+Filename: "sc.exe"; Parameters: "failureflag VideoForensics 1"; Components: server; Check: IsFreshInstall; Flags: runhidden
 
 ; DB init / admin-account creation / network-tier config all now run directly from
 ; CurStepChanged(ssPostInstall) in [Code] (via RunDbSetupTool), NOT as [Run] entries - moving them
@@ -235,6 +249,10 @@ Filename: "sc.exe"; Parameters: "failure VideoForensics reset= 86400 actions= re
 ; not auto-open the port on untrusted/public networks (e.g. coffee-shop wifi) even when local
 ; network access was chosen.
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""VideoForensics"" dir=in action=allow protocol=TCP localport=5162 profile=private,domain"; Components: server; Check: ShouldAddFirewallRule; Flags: runhidden; StatusMsg: "Adding firewall rule..."
+
+; Upgrades: an install from before the assembly rename still has the service pointing at
+; VideoForensics.WebApp.exe. Repoint it before the start below, or the new build never runs.
+Filename: "sc.exe"; Parameters: "config VideoForensics binPath= ""{app}\VideoForensics.Client.WebApp.exe"""; Components: server; Check: not IsFreshInstall; Flags: runhidden; StatusMsg: "Updating VideoForensics service path..."
 
 Filename: "sc.exe"; Parameters: "start VideoForensics"; Components: server; Flags: runhidden; StatusMsg: "Starting VideoForensics service..."
 
@@ -379,7 +397,7 @@ end;
 
 function DbSetupToolExists(): Boolean;
 begin
-  Result := FileExists(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.DbSetup.exe'));
+  Result := FileExists(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.Utils.DbSetup.exe'));
 end;
 
 { True only when the Administrator Account page was actually filled in - the username field being
@@ -413,7 +431,7 @@ var
 begin
   WizardForm.StatusLabel.Caption := StatusText;
   WizardForm.Update;
-  Result := Exec(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.DbSetup.exe'), Args, '',
+  Result := Exec(ExpandConstant('{app}\Tools\DbSetup\VideoForensics.Utils.DbSetup.exe'), Args, '',
     SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
 end;
 
@@ -518,7 +536,7 @@ begin
 end;
 
 { ---- System PATH management for the Optional Tools folders ------------------------------------
-  Lets someone open any terminal and just type "VideoForensics.DbSetup.exe" instead of needing the
+  Lets someone open any terminal and just type "VideoForensics.Utils.DbSetup.exe" instead of needing the
   full path or the "PowerShell in Tools Folder" shortcut. Broadcasts WM_SETTINGCHANGE afterwards so
   Explorer and freshly-opened terminals pick up the change immediately, without a reboot. }
 function SendMessageTimeoutA(hWnd: Longint; Msg: Longint; wParam: Longint; lParam: string;
@@ -626,7 +644,7 @@ begin
   WasAlreadyInstalled := IsServiceInstalled(ServiceName);
 
   { Stop the service (if this is an upgrade over an existing install) before any files copy, so
-    the running VideoForensics.WebApp.exe isn't locked during replace. Inno installs "on top of"
+    the running VideoForensics.Client.WebApp.exe isn't locked during replace. Inno installs "on top of"
     the same AppId's directory automatically - no separate uninstall-then-reinstall dance needed. }
   StopServiceIfRunning;
   Result := True;
@@ -812,7 +830,7 @@ begin
     { Event Log source registration - equivalent of WiX's never-finished util:EventSource TODO. }
     if WizardIsComponentSelected('server') then
     begin
-      RegWriteStringValue(HKLM, EventLogKey, 'EventMessageFile', ExpandConstant('{app}\VideoForensics.WebApp.exe'));
+      RegWriteStringValue(HKLM, EventLogKey, 'EventMessageFile', ExpandConstant('{app}\VideoForensics.Client.WebApp.exe'));
       RegWriteDWordValue(HKLM, EventLogKey, 'TypesSupported', 7);
     end;
 
@@ -951,6 +969,8 @@ begin
         AddDirToPath(ExpandConstant('{app}\Tools\DbDiagnostics'));
       if DirExists(ExpandConstant('{app}\Tools\DbRepair')) then
         AddDirToPath(ExpandConstant('{app}\Tools\DbRepair'));
+      if DirExists(ExpandConstant('{app}\Tools\LogViewer')) then
+        AddDirToPath(ExpandConstant('{app}\Tools\LogViewer'));
     end;
   end;
 end;
@@ -1056,6 +1076,7 @@ begin
     RemoveDirFromPath(ExpandConstant('{app}\Tools\DbSetup'));
     RemoveDirFromPath(ExpandConstant('{app}\Tools\DbDiagnostics'));
     RemoveDirFromPath(ExpandConstant('{app}\Tools\DbRepair'));
+    RemoveDirFromPath(ExpandConstant('{app}\Tools\LogViewer'));
 
     DataPath := ExpandConstant('{commonappdata}') + '\VideoForensics';
 

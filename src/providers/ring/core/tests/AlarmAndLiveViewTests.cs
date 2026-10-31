@@ -1,8 +1,9 @@
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Alarm;
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
+using VideoForensics.Providers.Ring.Testing.Mocks;
 using VideoForensics.Providers.Ring.Streaming;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
@@ -219,6 +220,88 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
+        public async Task StartLiveView_Offer_DeclaresTheH264ProfileTheRingPipelineExpects()
+        {
+            // Ring's pipeline closes an offer that has no H.264 profile ("key 'config' not found"). The reference client
+            // offers profile-level-id=640029.
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport);
+
+            string sdp = transport.SentMessages
+                .Select(m => JsonDocument.Parse(m).RootElement)
+                .First(el => el.GetProperty("method").GetString() == "live_view")
+                .GetProperty("body").GetProperty("sdp").GetString()!;
+            string[] lines = sdp.Split('\n', StringSplitOptions.TrimEntries);
+            Assert.Contains(lines, l => l.StartsWith("a=fmtp:", StringComparison.Ordinal) && l.Contains("profile-level-id=640029", StringComparison.Ordinal));
+
+            await liveView.CloseAsync();
+        }
+
+        [Fact]
+        public async Task StartLiveView_Offer_HasNoLinesWithTrailingWhitespace()
+        {
+            // SIPSorcery writes an empty Opus fmtp as "a=fmtp:111 " with a trailing space. Ring closes the session on that line
+            // with "key 'config' not found"; the reference client's offer has no such line.
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport);
+
+            string sdp = transport.SentMessages
+                .Select(m => JsonDocument.Parse(m).RootElement)
+                .First(el => el.GetProperty("method").GetString() == "live_view")
+                .GetProperty("body").GetProperty("sdp").GetString()!;
+            string[] trailing = sdp.Split("\r\n", StringSplitOptions.RemoveEmptyEntries)
+                .Where(line => line.Length > 0 && char.IsWhiteSpace(line[^1]))
+                .ToArray();
+            Assert.Empty(trailing);
+
+            await liveView.CloseAsync();
+        }
+
+        [Fact]
+        public async Task StartLiveView_IceCandidates_AreSentOnlyAfterTheOffer()
+        {
+            // Ring closes a session whose ICE arrives before its live_view offer ("key 'config' not found"). The reference
+            // client holds ICE until the offer is sent.
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport);
+
+            // Local candidates are gathered asynchronously, so give them time to fire before reading the order.
+            await Task.Delay(TimeSpan.FromSeconds(1));
+
+            List<string> methods = transport.SentMessages
+                .Select(m => JsonDocument.Parse(m).RootElement.GetProperty("method").GetString()!)
+                .ToList();
+            int offer = methods.IndexOf("live_view");
+            Assert.True(offer >= 0, "Expected a live_view offer.");
+            Assert.All(
+                methods.Select((method, index) => (method, index)).Where(x => x.method == "ice"),
+                x => Assert.True(x.index > offer, $"ICE message sent at {x.index} before the offer at {offer}."));
+
+            await liveView.CloseAsync();
+        }
+
+        [Fact]
         public async Task StartLiveView_ThrowsWhenNotAuthenticated()
         {
             Session session = _mockHelper.CreateSessionWithMockHandler();
@@ -244,8 +327,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var transport = new FakeWebSocketTransport();
             RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport, bitrateTimerIntervalMs: 100);
 
-            var bitrateSamples = new List<long>();
-            liveView.OnBitrateSampleBps += bitrateSamples.Add;
+            // The timer raises samples on a background thread, so collect them in a thread-safe queue
+            // and assert on a snapshot. Enumerating a List while the timer adds to it throws.
+            var bitrateSamples = new ConcurrentQueue<long>();
+            liveView.OnBitrateSampleBps += bitrateSamples.Enqueue;
 
             // Simulate receiving RTP packets with ~1000 bytes each
             for (int i = 0; i < 10; i++)
@@ -256,9 +341,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Wait for timer to fire a couple of times
             await Task.Delay(250);
 
+            long[] samples = bitrateSamples.ToArray();
+
             // Should have received bitrate samples
-            Assert.NotEmpty(bitrateSamples);
-            Assert.All(bitrateSamples, bitrate => Assert.True(bitrate >= 0, "Bitrate should be non-negative"));
+            Assert.NotEmpty(samples);
+            Assert.All(samples, bitrate => Assert.True(bitrate >= 0, "Bitrate should be non-negative"));
 
             await liveView.CloseAsync();
         }

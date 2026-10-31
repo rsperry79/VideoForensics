@@ -2,6 +2,7 @@ name: CI - Build and Test
 
 # Orchestrates the stages. Each stage is a reusable workflow in this folder, so each file is read on its own.
 #   check-dependencies  (PR only)     check-dependencies.yml   dependency review, parallel with the build
+#   check-js                          check-js.yml             TypeScript compile, lint, tests and output sync
 #   build-windows                     build-windows.yml        restore and build the solution
 #   test-windows                      test-windows.yml         run the tests against the build output
 #   determine-version   (dev/main)    determine-version.yml    read the NBGV version
@@ -22,12 +23,15 @@ jobs:
     if: github.event_name == 'pull_request'
     uses: ./.github/workflows/check-dependencies.yml
 
+  check-js:
+    uses: ./.github/workflows/check-js.yml
+
   build-windows:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
 
   test-windows:
-    needs: [build-windows]
+    needs: [build-windows, check-js]
     uses: ./.github/workflows/test-windows.yml
     secrets: inherit
 

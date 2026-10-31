@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 
@@ -291,7 +292,11 @@ namespace VideoForensics.Client.Hosting.Remote
                 ReportToUtc = dto.ReportToUtc,
                 AuditTrail = dto.AuditTrail.Select(x => x.ToDomain()).ToList().AsReadOnly(),
                 ChainIntegrityVerified = dto.ChainIntegrityVerified,
-                ChainVerificationStatus = dto.ChainVerificationStatus
+                ChainVerificationStatus = dto.ChainVerificationStatus,
+                ChainEntriesChecked = dto.ChainEntriesChecked,
+                ChainBreak = Enum.TryParse(dto.ChainBreak, out ChainBreakKind chainBreak) ? chainBreak : ChainBreakKind.None,
+                ChainFailedEntryId = dto.ChainFailedEntryId,
+                ChainFailedAtUtc = dto.ChainFailedAtUtc
             };
         }
     }

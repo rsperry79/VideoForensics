@@ -22,6 +22,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapGet("/roles", GetAllRolesAsync).WithName("GetTwoFactorRoleRequirements");
             _ = group.MapPut("/roles/{role}", UpdateRoleRequirementAsync).WithName("UpdateTwoFactorRoleRequirement").AddEndpointFilter<StepUpEndpointFilter>();
             _ = group.MapPut("/operators/{id}/override", UpdateOperatorOverrideAsync).WithName("UpdateOperatorTwoFactorOverride").AddEndpointFilter<StepUpEndpointFilter>();
+            _ = group.MapPut("/operators/{id}/passkey-required", UpdatePasskeyRequiredAsync).WithName("UpdateOperatorPasskeyRequired").AddEndpointFilter<StepUpEndpointFilter>();
         }
 
         private static async Task<IResult> GetAllRolesAsync(
@@ -87,6 +88,35 @@ namespace VideoForensics.Client.WebApp.Api
                 null, tierResolver.ResolveClientIp(context), details, isUrgent: true, ct);
 
             return Results.Ok(new { operatorId = op.Id, @override = request.Override.ToString() });
+        }
+
+        /// <summary>Request body for setting whether an operator must use a passkey on the local network.</summary>
+        public sealed record UpdatePasskeyRequiredRequest(bool PasskeyRequired);
+
+        private static async Task<IResult> UpdatePasskeyRequiredAsync(
+            Guid id,
+            UpdatePasskeyRequiredRequest request,
+            IOperatorRepository operators,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            if (op == null)
+            {
+                return Results.NotFound(new { error = "Operator not found" });
+            }
+
+            await operators.SetPasskeyRequiredAsync(id, request.PasskeyRequired, ct);
+
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            string details = $"Operator: {op.DisplayName}, Passkey required: {request.PasskeyRequired}";
+            await auditLog.LogAsync(SecurityAuditEventTypes.TwoFactorPolicyUpdated,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), details, isUrgent: true, ct);
+
+            return Results.Ok(new { operatorId = op.Id, passkeyRequired = request.PasskeyRequired });
         }
     }
 }

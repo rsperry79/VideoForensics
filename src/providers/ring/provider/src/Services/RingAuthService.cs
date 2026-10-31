@@ -581,6 +581,26 @@ namespace VideoForensics.Providers.Ring.Services
             return session?.OAuthToken == null ? "Not authenticated" : "Authenticated";
         }
 
+        /// <inheritdoc />
+        /// <remarks>
+        /// Reports the token's type, expiry and scope only. The access and refresh tokens are not copied, so
+        /// the payload is safe to show in the UI.
+        /// </remarks>
+        public ProviderAuthStatus? GetAuthStatusDetails()
+        {
+            var token = _sessionProvider.GetSession()?.OAuthToken;
+            if (token is null)
+            {
+                return new ProviderAuthStatus(IsAuthenticated: false, TokenType: null, ExpiresAtUtc: null, Scope: null);
+            }
+
+            return new ProviderAuthStatus(
+                IsAuthenticated: true,
+                TokenType: token.TokenType,
+                ExpiresAtUtc: token.ExpiresAt.ToUniversalTime(),
+                Scope: token.Scope);
+        }
+
         private async Task PersistRingAccountAsync(string username, Session session, Guid providerAccountId, CancellationToken ct)
         {
             if (_ringAccountRepository == null)
