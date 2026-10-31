@@ -70,7 +70,6 @@ if (-not $DebugDirectory) { $DebugDirectory = Join-Path $PSScriptRoot '..\artifa
 
 $project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
-$stageScript = (Resolve-Path (Join-Path $PSScriptRoot '..\deploy\windows\stage-update.ps1')).Path
 $updatesRoot = Join-Path $env:ProgramData 'VideoForensics\updates'
 $healthUrl = 'http://localhost:5162/healthz'
 $logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj')).Path
@@ -261,7 +260,7 @@ if ($useService) {
         throw "Service $ServiceName runs $(Split-Path -Leaf $serviceExe), not $exeName. Reinstall the service with deploy\install-service.ps1, then rerun this script."
     }
     if ($WhatIfPreference) {
-        Write-Host "Dry run: would stage the $Configuration build with deploy\windows\stage-update.ps1, then wait for service $ServiceName to apply it and answer $healthUrl."
+        Write-Host "Dry run: would wait for service $ServiceName to apply any staged build and answer $healthUrl. Visual Studio stages Debug builds."
         Write-Host 'Dry run only. Nothing was staged, stopped, started, or attached.'
         exit 0
     }
@@ -347,14 +346,10 @@ try {
     $processId = $null
     if ($useService) {
 
-        if ($PSCmdlet.ShouldProcess("service $ServiceName", "Stage the $Configuration build")) {
-            Write-Host "Staging the $Configuration build with stage-update.ps1"
-            & $stageScript -Build -Configuration $Configuration -FrameworkDependent
-            if ($LASTEXITCODE -ne 0) {
-                throw "stage-update.ps1 failed with exit code $LASTEXITCODE. If access was denied, run deploy\windows\enable-dev-updates.ps1 once as administrator."
-            }
-
-            Write-Host "Waiting for service $ServiceName to apply the staged build (up to $ReadyTimeoutSeconds s)"
+        # Visual Studio stages each Debug build (deploy\windows\stage-debug-build.ps1). Here the script waits for the
+        # service to apply that build, so build in Visual Studio first.
+        if ($PSCmdlet.ShouldProcess("service $ServiceName", "Wait for the service to run the current build")) {
+            Write-Host "Waiting for service $ServiceName to apply any staged build (up to $ReadyTimeoutSeconds s)"
             if (-not (Wait-ForStagedBuild -TimeoutSeconds $ReadyTimeoutSeconds)) {
                 throw "Service $ServiceName did not apply the staged build and answer $healthUrl within $ReadyTimeoutSeconds s."
             }

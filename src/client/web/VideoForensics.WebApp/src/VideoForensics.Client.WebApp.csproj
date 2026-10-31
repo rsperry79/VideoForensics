@@ -45,6 +45,12 @@
     <InternalsVisibleTo Include="VideoForensics.Client.WebApp.Tests" />
   </ItemGroup>
 
+  <!-- Visual Studio Debug builds stage themselves for the installed service, which applies the package and restarts.
+       Command-line builds, including the test projects, do not stage. -->
+  <Target Name="StageDebugBuildForService" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' == 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.ps1&quot; -ProjectPath &quot;$(MSBuildProjectFullPath)&quot; -Configuration $(Configuration)" />
+  </Target>
+
   <!-- Ui.Shared's src\ts\tsconfig.json is a TypeScript build input, not a runtime file. It reaches the publish
        list through the project reference and collides with this project's own copy at the same relative path
        (NETSDK1152). Dropping it from the list does not delete the file. -->
