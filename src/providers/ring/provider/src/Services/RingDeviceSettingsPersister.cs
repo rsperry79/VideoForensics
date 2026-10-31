@@ -61,6 +61,16 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
+        /// Returns the stored Devices row id for a Ring device id, or null when the device is not stored yet. Used by the
+        /// per-chime linked doorbots write, which keys on the Devices row.
+        /// </summary>
+        public async Task<Guid?> FindStoredDeviceIdAsync(string providerDeviceId, CancellationToken ct)
+        {
+            Device? device = (await _deviceRepository.ListAsync(ct)).FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
+            return device?.Id;
+        }
+
+        /// <summary>
         /// Records a kind the Ring catalog does not list, so the database knows the device model exists. The family comes from
         /// the device's Ring type. Known kinds and devices without a kind are left alone.
         /// </summary>

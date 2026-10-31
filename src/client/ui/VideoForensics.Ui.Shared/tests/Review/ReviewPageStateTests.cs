@@ -607,10 +607,10 @@ public class ReviewPageState_Tests
         state.OnChange += () => changes++;
 
         // Act
-        state.SetEventTypes(["person", "motion"]);
+        state.SetEventTypes(["human", "motion"]);
 
         // Assert: kept in the filter's display order, not the order given
-        Assert.Equal(["motion", "person"], state.EventTypes);
+        Assert.Equal(["motion", "human"], state.EventTypes);
         Assert.Equal(1, changes);
     }
 

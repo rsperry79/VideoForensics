@@ -620,6 +620,12 @@
   <data name="InspectorNoRawData" xml:space="preserve">
     <value>No raw provider data recorded for this item.</value>
   </data>
+  <data name="InspectorRawNotStored" xml:space="preserve">
+    <value>The provider's raw payload is not stored. This tab shows only data that has no structured field, plus the app's own markers. The provider's values are in the Fields tab.</value>
+  </data>
+  <data name="InspectorNoUnmappedData" xml:space="preserve">
+    <value>Nothing outside the structured fields was recorded for this item.</value>
+  </data>
   <data name="InspectorNoRelated" xml:space="preserve">
     <value>No related items.</value>
   </data>

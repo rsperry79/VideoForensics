@@ -55,4 +55,12 @@ public class ReviewEventFilters_Tests
         Assert.Contains("vehicle", ReviewEventFilters.KnownEventTypes);
         Assert.Contains("animal", ReviewEventFilters.KnownEventTypes);
     }
+
+    [Fact]
+    public void KnownEventTypes_IncludesHumanNotPerson()
+    {
+        // Ring reports a person as the detection type "human"; no event carries the type "person".
+        Assert.Contains("human", ReviewEventFilters.KnownEventTypes);
+        Assert.DoesNotContain("person", ReviewEventFilters.KnownEventTypes);
+    }
 }

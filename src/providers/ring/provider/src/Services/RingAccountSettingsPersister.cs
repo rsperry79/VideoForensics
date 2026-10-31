@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 
+using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
@@ -79,12 +81,50 @@ namespace VideoForensics.Providers.Ring.Services
                 RingAccountSettingsMapper.MapAccountMonitoringStatus(response, providerLocationId), ct), ct);
         }
 
+        /// <summary>
+        /// Replaces the shared users of one location. <paramref name="locationId"/> is the stored Location row's id (the rows
+        /// reference Locations.Id), not the Ring location id. Returns true when the rows were stored.
+        /// </summary>
+        public Task<bool> PersistLocationSharedUsersAsync(IReadOnlyList<SharedUser> users, Guid locationId, CancellationToken ct = default)
+        {
+            return TryWriteAsync("shared users", () => _writer.ReplaceLocationSharedUsersAsync(
+                locationId, RingSmallEndpointMapper.MapLocationSharedUsers(users, locationId), ct), ct);
+        }
+
+        /// <summary>
+        /// Replaces the doorbots linked to one stored chime. <paramref name="chimeDeviceId"/> is the stored Devices row's id.
+        /// A body with no linked_doorbots list is a null result: nothing is written and false is returned, so the stored rows stay.
+        /// The caller logs that case with the device name. Returns true when the rows were stored.
+        /// </summary>
+        public async Task<bool> PersistChimeLinkedDoorbotsAsync(JsonElement response, Guid chimeDeviceId, CancellationToken ct = default)
+        {
+            IReadOnlyList<RingChimeLinkedDoorbot>? links = RingSmallEndpointMapper.MapChimeLinkedDoorbots(response, chimeDeviceId);
+            if (links is null)
+            {
+                return false;
+            }
+
+            return await TryWriteAsync("linked chime doorbots", () => _writer.ReplaceChimeLinkedDoorbotsAsync(chimeDeviceId, links, ct), ct);
+        }
+
+        /// <summary>
+        /// Replaces the snapshot timestamps of one Ring account with the timestamps in <paramref name="response"/>. The caller
+        /// passes every doorbot's answer combined, because the rows are replaced as one set per account. Returns true when stored.
+        /// </summary>
+        public Task<bool> PersistSnapshotTimestampsAsync(DoorbotTimestamps response, Guid ringAccountId, CancellationToken ct = default)
+        {
+            return TryWriteAsync("snapshot timestamps", () => _writer.ReplaceSnapshotTimestampsAsync(
+                ringAccountId, RingSmallEndpointMapper.MapSnapshotTimestamps(response, ringAccountId), ct), ct);
+        }
+
         // Mapping runs inside the guarded call, so a malformed response is logged the same way as a failed write.
-        private async Task TryWriteAsync(string area, Func<Task> write, CancellationToken ct)
+        // Returns true when the write completed and false when it failed (the failure is logged).
+        private async Task<bool> TryWriteAsync(string area, Func<Task> write, CancellationToken ct)
         {
             try
             {
                 await write();
+                return true;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -93,6 +133,7 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ring {Area} settings were not stored; sync continues", area);
+                return false;
             }
         }
     }

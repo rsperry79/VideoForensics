@@ -849,7 +849,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                                         };
 
-                                        (string Json, string Hash) = SerializeMetadata(@event);
+                                        (string? Json, string Hash) = SerializeEventMetadata(@event);
                                         var mediaItem = new MediaItem
                                         {
                                             Id = Guid.NewGuid(),
@@ -1397,11 +1397,19 @@ namespace VideoForensics.Providers.Ring.Services
                 return (string.Empty, string.Empty);
             }
 
-            using var hash = SHA256.Create();
             string json = JsonSerializer.Serialize(apiResponse);
-            byte[] hashValue = hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
-            string hashHex = Convert.ToHexString(hashValue);
-            return (json, hashHex);
+            return (json, RingEventPayloadRemainder.HashOf(json));
+        }
+
+        /// <summary>
+        /// For a raw Ring event: the hash is over the full serialized payload (unchanged), but only the part with no structured
+        /// home is returned for <c>MetadataJson</c> (null when nothing is left). The raw payload itself is not stored, so the
+        /// hash cannot be re-verified from the database alone. App markers use <see cref="SerializeMetadata"/> and stay whole.
+        /// </summary>
+        private static (string? Json, string Hash) SerializeEventMetadata(object? apiResponse)
+        {
+            (string? remainder, string hash) = RingEventPayloadRemainder.Split(apiResponse);
+            return (remainder, hash);
         }
 
         private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
@@ -1410,7 +1418,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                (string Json, string Hash) = SerializeMetadata(apiResponse);
+                (string? Json, string Hash) = SerializeEventMetadata(apiResponse);
                 var evt = new Event
                 {
                     Id = Guid.NewGuid(),

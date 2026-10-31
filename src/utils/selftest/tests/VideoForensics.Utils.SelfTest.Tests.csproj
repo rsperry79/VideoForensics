@@ -26,6 +26,7 @@
   <ItemGroup>
     <None Include="fixtures/**/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../../providers/ring/provider/tests/Fixtures/doorbot-settings-sanitized.json" Link="ring-fixtures/doorbot-settings-sanitized.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="payload-fixtures/**/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />

@@ -30,7 +30,9 @@ public static class EvidenceInspectorMapper
             MediaItem = item.Media
         };
 
-        // RawJson: prefer event metadata, fall back to media metadata
+        // RawJson: prefer event metadata, fall back to media metadata. The provider's raw payload is no longer stored, so this
+        // is only the keys with no structured home plus app markers (RawJsonIsRemainder makes the Raw tab say so); the
+        // structured values are the Event and MediaItem fields above.
         string? rawJson = item.Event?.MetadataJson ?? item.Media?.MetadataJson;
 
         // Provenance: build from event and media properties
@@ -150,7 +152,8 @@ public static class EvidenceInspectorMapper
             Related: [],
             Provenance: provenance,
             Pin: pinTarget,
-            Actions: actions);
+            Actions: actions,
+            RawJsonIsRemainder: true);
     }
 
     /// <summary>Date and time to the second, with no zone suffix: the zone is the user's, so the label does not claim UTC.</summary>

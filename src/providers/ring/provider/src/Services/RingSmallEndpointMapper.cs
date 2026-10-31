@@ -8,7 +8,6 @@ namespace VideoForensics.Providers.Ring.Services
     /// <summary>
     /// Maps the shared users, linked chime doorbots and snapshot timestamp responses onto persistence rows. Each parent's
     /// rows are replaced as a whole. Null values stay null; a value of an unexpected JSON type is not stored.
-    /// None of these responses is fetched during sync yet, so these mappers have no caller in the sync flow.
     /// </summary>
     public static class RingSmallEndpointMapper
     {
@@ -73,17 +72,21 @@ namespace VideoForensics.Providers.Ring.Services
             return rows;
         }
 
-        /// <summary>Maps the raw linked_doorbots response of one chime. Items without an integer id are skipped.</summary>
-        public static IReadOnlyList<RingChimeLinkedDoorbot> MapChimeLinkedDoorbots(JsonElement response, Guid chimeDeviceId)
+        /// <summary>
+        /// Maps the raw linked_doorbots response of one chime. Items without an integer id are skipped. Returns null when the body
+        /// has no linked_doorbots array: an undefined, malformed or empty body is a null result, not "no linked doorbots", so it
+        /// must not be read as an empty list that would clear the chime's stored rows. An array that is present but empty maps to none.
+        /// </summary>
+        public static IReadOnlyList<RingChimeLinkedDoorbot>? MapChimeLinkedDoorbots(JsonElement response, Guid chimeDeviceId)
         {
-            var rows = new List<RingChimeLinkedDoorbot>();
             if (response.ValueKind != JsonValueKind.Object
                 || !response.TryGetProperty("linked_doorbots", out JsonElement list)
                 || list.ValueKind != JsonValueKind.Array)
             {
-                return rows;
+                return null;
             }
 
+            var rows = new List<RingChimeLinkedDoorbot>();
             DateTime now = DateTime.UtcNow;
             int position = 0;
             foreach (JsonElement item in list.EnumerateArray())

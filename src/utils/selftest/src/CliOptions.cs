@@ -44,6 +44,9 @@ namespace VideoForensics.Utils.SelfTest
         public string? DbPath;
         public string? CheckDir;
         public bool ListUnknown;
+        public bool StripRawPayload;
+        public string? DumpFile;
+        public bool Yes;
         public Uri? ClientsApiBaseUrl;
         public Uri? AppApiBaseUrl;
         public Uri? ModeApiBaseUrl;
@@ -408,6 +411,23 @@ namespace VideoForensics.Utils.SelfTest
                         options.ListUnknown = true;
                         break;
 
+                    case "--strip-raw-payload":
+                        options.StripRawPayload = true;
+                        break;
+
+                    case "--dump-file":
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --dump-file");
+                        }
+
+                        options.DumpFile = args[++i];
+                        break;
+
+                    case "--yes":
+                        options.Yes = true;
+                        break;
+
                     case "--db-path":
                         if (i + 1 >= args.Length)
                         {
@@ -608,6 +628,7 @@ namespace VideoForensics.Utils.SelfTest
         USAGE:
           Ring.Api.SelfTester --auth
           Ring.Api.SelfTester --list-unknown [--db-path <path>] [--output-dir <path>]
+          Ring.Api.SelfTester --strip-raw-payload --db-path <file> --dump-file <ndjson> --yes
           Ring.Api.SelfTester [--list | --list-endpoints-json] [--endpoints <csv>] [--output-dir <path>]
                      [--location-id <guid>] [--doorbot-id <id>] [--chime-id <id>]
                      [--history-limit <n>] [--destructive [--no-physical] [destructive-endpoint options]]
@@ -700,6 +721,14 @@ namespace VideoForensics.Utils.SelfTest
                                      %ProgramData%\VideoForensics\Database\videoforensics.db (same file the
                                      main VideoForensics app uses). Applies to credential storage and
                                      --verify-db alike.
+
+        STRIP RAW PAYLOAD (opt-in maintenance, never automatic):
+          --strip-raw-payload       Rewrites Events.MetadataJson and MediaItems.MetadataJson so a raw Ring event payload
+                                     keeps only its keys with no structured home (null when none). App markers such as
+                                     {"type":"snapshot"} are left as they are. Needs all three: --db-path <file>,
+                                     --dump-file <existing non-empty ndjson of the current raw payloads> and --yes.
+                                     Copies the database to <name>.pre-strip-<utc time>.db first, then updates in one
+                                     transaction. Prints counts only. Stop the app first.
 
         UNKNOWN KEY LIST:
           --list-unknown            Read-only and offline: no Ring calls, no credentials. Lists every leaf
