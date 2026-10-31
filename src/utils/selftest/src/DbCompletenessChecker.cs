@@ -19,7 +19,7 @@ namespace VideoForensics.Utils.SelfTest
     /// Cross-checks every device/location the Ring API reports for this account against the
     /// VideoForensics app's own SQLite database, so a gap between "what Ring says exists" and
     /// "what actually got persisted" is visible without manually diffing JSON against SQL.
-    /// Also validates metadata capture for forensics audit trail.
+    /// Fields that exist only inside a *Json column are never counted as stored.
     /// </summary>
     internal sealed class DbCompletenessReport
     {
@@ -30,28 +30,13 @@ namespace VideoForensics.Utils.SelfTest
         public int MissingDeviceCount => Devices.Count(d => !d.FoundInDb);
         public int MissingLocationCount => Locations.Count(l => !l.FoundInDb);
 
-        // Metadata capture statistics
-        public int DevicesWithMetadata { get; set; }
-        public int LocationsWithMetadata { get; set; }
-        public int EventsWithMetadata { get; set; }
-        public int MediaItemsWithMetadata { get; set; }
-        public int TotalEvents { get; set; }
-        public int TotalMediaItems { get; set; }
+        /// <summary>
+        /// Response fields per endpoint that have no structured column anywhere in the schema.
+        /// A field that only survives inside a *Json column does not count as stored.
+        /// </summary>
+        public Dictionary<string, List<string>> UnmappedFieldsByEndpoint { get; set; } = [];
 
-        public string MetadataCompleteness
-        {
-            get
-            {
-                if (TotalEvents == 0 && TotalMediaItems == 0)
-                {
-                    return "No events/media items to verify";
-                }
-
-                int eventPct = TotalEvents > 0 ? EventsWithMetadata * 100 / TotalEvents : 100;
-                int mediaPct = TotalMediaItems > 0 ? MediaItemsWithMetadata * 100 / TotalMediaItems : 100;
-                return $"Events: {eventPct}% ({EventsWithMetadata}/{TotalEvents}), MediaItems: {mediaPct}% ({MediaItemsWithMetadata}/{TotalMediaItems})";
-            }
-        }
+        public int UnmappedFieldCount => UnmappedFieldsByEndpoint.Values.Sum(v => v.Count);
     }
 
     internal static class DbCompletenessChecker
@@ -59,7 +44,8 @@ namespace VideoForensics.Utils.SelfTest
         public static async Task<DbCompletenessReport> CheckAsync(
             Devices? devices,
             List<Location>? locations,
-            string dbPath)
+            string dbPath,
+            string? outputDir = null)
         {
             var report = new DbCompletenessReport { DbPath = dbPath, GeneratedAtUtc = DateTime.UtcNow };
 
@@ -135,27 +121,107 @@ namespace VideoForensics.Utils.SelfTest
                 }
             }
 
-            // Verify metadata capture for forensics audit trail
-            try
+            if (outputDir is not null)
             {
-                int devicesWithMeta = await db.Devices.CountAsync(d => d.MetadataJson != null);
-                int eventsWithMeta = await db.Events.CountAsync(e => e.MetadataJson != null);
-                int totalEvents = await db.Events.CountAsync();
-                int mediaItemsWithMeta = await db.MediaItems.CountAsync(m => m.MetadataJson != null);
-                int totalMediaItems = await db.MediaItems.CountAsync();
-
-                report.DevicesWithMetadata = devicesWithMeta;
-                report.EventsWithMetadata = eventsWithMeta;
-                report.TotalEvents = totalEvents;
-                report.MediaItemsWithMetadata = mediaItemsWithMeta;
-                report.TotalMediaItems = totalMediaItems;
-            }
-            catch
-            {
-                // Metadata columns may not exist in schema yet - silently skip
+                report.UnmappedFieldsByEndpoint = FindUnmappedFields(db, outputDir);
             }
 
             return report;
+        }
+
+        /// <summary>Endpoints whose response keys are data (flag names), not columns; stored as rows.</summary>
+        private static readonly HashSet<string> KeyedMapEndpoints = new(StringComparer.Ordinal) { "profile" };
+
+        /// <summary>
+        /// Compares every scalar key in each saved endpoint response with the non-JSON columns of the
+        /// EF model. Names are compared ignoring case and punctuation (snake_case vs PascalCase).
+        /// </summary>
+        private static Dictionary<string, List<string>> FindUnmappedFields(VideoForensicsDbContext db, string outputDir)
+        {
+            var columns = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var entity in db.Model.GetEntityTypes())
+            {
+                foreach (var prop in entity.GetProperties().Where(p => !p.Name.EndsWith("Json", StringComparison.Ordinal)))
+                {
+                    _ = columns.Add(Normalize(prop.Name));
+                }
+            }
+
+            var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (string file in Directory.EnumerateFiles(outputDir, "*.json"))
+            {
+                string name = Path.GetFileName(file);
+                if (name is "index.json" or "db-completeness.json")
+                {
+                    continue;
+                }
+
+                string endpoint = name[..name.IndexOf('_', StringComparison.Ordinal)];
+                if (KeyedMapEndpoints.Contains(endpoint))
+                {
+                    continue;
+                }
+
+                var keys = new HashSet<string>(StringComparer.Ordinal);
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+                    CollectLeafKeys(doc.RootElement, keys);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    continue;
+                }
+
+                var missing = keys.Where(k => !columns.Contains(Normalize(k))).ToList();
+                if (missing.Count == 0)
+                {
+                    continue;
+                }
+
+                if (!result.TryGetValue(endpoint, out List<string>? existing))
+                {
+                    result[endpoint] = existing = [];
+                }
+
+                existing.AddRange(missing.Where(m => !existing.Contains(m)));
+                existing.Sort(StringComparer.Ordinal);
+            }
+
+            return result;
+        }
+
+        private static void CollectLeafKeys(System.Text.Json.JsonElement element, HashSet<string> keys)
+        {
+            switch (element.ValueKind)
+            {
+                case System.Text.Json.JsonValueKind.Object:
+                    foreach (System.Text.Json.JsonProperty p in element.EnumerateObject())
+                    {
+                        if (p.Value.ValueKind is System.Text.Json.JsonValueKind.Object or System.Text.Json.JsonValueKind.Array)
+                        {
+                            CollectLeafKeys(p.Value, keys);
+                        }
+                        else
+                        {
+                            _ = keys.Add(p.Name);
+                        }
+                    }
+
+                    break;
+                case System.Text.Json.JsonValueKind.Array:
+                    foreach (System.Text.Json.JsonElement item in element.EnumerateArray())
+                    {
+                        CollectLeafKeys(item, keys);
+                    }
+
+                    break;
+            }
+        }
+
+        private static string Normalize(string name)
+        {
+            return new string(name.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
         }
     }
 }

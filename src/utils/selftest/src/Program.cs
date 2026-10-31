@@ -310,7 +310,7 @@ namespace VideoForensics.Utils.SelfTest
             DbCompletenessReport report;
             try
             {
-                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath);
+                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath, outputDir);
             }
             catch (Exception ex)
             {
@@ -336,15 +336,13 @@ namespace VideoForensics.Utils.SelfTest
                 Console.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
                     $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
 
-                // Display metadata capture statistics
-                if (report.TotalEvents > 0 || report.TotalMediaItems > 0)
+                // JSON columns do not count as stored: only fields with a structured column are "in the DB".
+                foreach (KeyValuePair<string, List<string>> gap in report.UnmappedFieldsByEndpoint.OrderBy(g => g.Key, StringComparer.Ordinal))
                 {
-                    Console.WriteLine($"Metadata capture: {report.MetadataCompleteness}");
-                    if (report.DevicesWithMetadata > 0 || report.LocationsWithMetadata > 0)
-                    {
-                        Console.WriteLine($"  Devices with metadata: {report.DevicesWithMetadata}, Locations: {report.LocationsWithMetadata}");
-                    }
+                    Console.WriteLine($"   NO COLUMN: {gap.Key} ({gap.Value.Count}): {string.Join(", ", gap.Value)}");
                 }
+
+                Console.WriteLine($"Response fields with no structured column: {report.UnmappedFieldCount}.");
             }
 
             Console.WriteLine(reportPath);
