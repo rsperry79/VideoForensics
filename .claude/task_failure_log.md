@@ -15,6 +15,10 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-24 | test flake | AccountLinkedWiringTests_Accounts.Accounts_Disposed_UnsubscribesFromAccountLinked (Ui.Shared bUnit) timed out under full-suite load once; passed alone and on rerun | flaky under load | OPEN: investigate the WaitForAssertion timing
 2026-10-24 | git | new .razor/.cs files written with LF; repo files are CRLF | git warns on every commit | OPEN (low): normalise on next touch
 
+2026-10-31 | bash | sed used to strip a Windows path in a grep pipeline failed (unterminated s command) | backslash path inside sed | RESOLVED: wrote test output to a scratchpad log and grepped it
+2026-10-31 | bash | find with an unset shell variable returned no path, and the call errored | variable not set in that call | RESOLVED: used grep -rln for the path
+2026-10-31 | Edit | Edit refused on RingDeviceDetailsMapper.cs after a sed line-ending conversion | file changed outside Edit after the last Read | RESOLVED: Read the ranges, then edited
+
 ## Rules (covered)
 
 - Edit files with the Edit or Write tool, or a script file. Never pipe a bare python3 or a heredoc into bash (hangs on stdin, unbalanced quotes).
