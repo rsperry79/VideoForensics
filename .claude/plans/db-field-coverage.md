@@ -4,28 +4,34 @@ Rule: a value kept only in a `*Json` column is NOT in the DB. Every response fie
 
 Reviewed by a Sonnet agent; its corrections are folded in below.
 
-## Done
+## Done (all merged to `wip`)
 - Selftester ignores `*Json` columns and reports unmapped response fields per endpoint (name matcher, see Batch 0).
-- `account-monitoring-status`: `RingAccountMonitoringStatus` + `RingAccountMonitoringPlan` (merged to `wip`).
-- Device `features`: `DeviceFeatureState`, `DeviceFeatureReason`, 20 `DeviceFeatures` columns (merged to `wip`).
+- `account-monitoring-status`: `RingAccountMonitoringStatus` + `RingAccountMonitoringPlan`.
+- Device `features`: `DeviceFeatureState`, `DeviceFeatureReason`, 20 `DeviceFeatures` columns.
+- Batch B: generic `DeviceReportedHealth` + `DeviceReportedBattery`, Ring-only `RingDeviceHealthExtras` and `RingDeviceDetails` (1:1, replaces the Ring-only columns first added to `Devices`), alerts connection row, `RingUnstoredValueLog` (Info, one line per device per sync: key + JSON type, never the value).
+- Health units: `StatusAtUtc` (`status_time` is a 32768 Hz tick count since the Unix epoch; verified against `last_update_time`) and `BatteryTempCelsius` (`battery_temp` assumed deci-Kelvin) beside the raw values; factors live in `RingHealthUnits`; out-of-range values store null and are logged.
+- Light events: `DeviceLightEvent` (`IsOn`, `Source` Observed|Command, `SecondsRemaining`); `led_status` object and plain `'on'`/`'off'` strings handled; `Devices.LedStatus` and `Devices.LedSecondsRemaining` dropped. Consumers listing light-on events filter `IsOn = true`.
 
-## In flight
-- Batch B (branch `feature/db-device-fields`, uncommitted): generic `DeviceReportedHealth` + `DeviceReportedBattery`, Ring-only `RingDeviceHealthExtras`, top-level device scalars, alerts, led/siren seconds, logging of unstored values.
-  - Correction before it merges: it added ~13 columns to `Devices`. Keep on `Devices` only provider-agnostic ones (`DeactivatedAtUtc`, `SharedAtUtc`, time zone). Move Ring-only ones (`SchemaId`, `DeviceResourceId`, `RingNetId`, `ActiveScheduleUuid`, `FlickElimRecommendedMode`, `ExtPowerState`, `EncryptionGroupId`, `AccountGroupRevisionId`, `IsSidewalkGateway`) to a 1:1 `RingDeviceDetails`.
-  - `snooze_settings` / `motion_snooze`: model as rows or typed columns, not a text column that drops objects. Ask before adding any fallback shim (CLAUDE.md backwards-compat rule).
-  - Decide the source of truth between `DeviceReportedHealth` (devices response) and the time-series `DeviceHealths` (health endpoint); they overlap on battery, rssi, firmware. Default: `DeviceHealths` stays the time series, `DeviceReportedHealth` is the latest devices-response state; document it in the entity comments.
+## Open decisions and follow-ups
+- **2026-11-01 check (also in `plans/todo.md`):** confirm the `battery_temp` unit by comparing stored readings with hourly ambient temperature (deci-Kelvin moves ~10 raw units per °C, hundredths of °C ~100). On 2026-10-30 02:56 UTC the Front Door read 2921 with ambient 5.6 °C (42 °F): deci-Kelvin gives 66 °F, hundredths of °C 85 °F. If the slope says otherwise, change `RingHealthUnits` only.
+- `wifi_name` (SSID) is stored in `RingDeviceHealthExtras`; personal-ish data, kept because every field is wanted. Revisit if exports or reports should redact it.
+- Light-event limits: a quick on, off, on inside one reported seconds window inserts no second event; Command events never count as "on" (a command followed by a sync that sees the light on gives two rows); `SetLight` returns no duration.
+- Existing `*Json` columns on `Devices` still exist (see rules); dropping them is the final cleanup.
+- Flaky test: `CaseRepositoryNumberingTests.CreateAsync_ConcurrentParallelCreatesAllSucceed` fails intermittently in full `Data.Database.Tests` runs and passes alone; not caused by these batches, not yet proven on a clean `wip`. Fix or quarantine it separately.
 
 ## Rules for every batch
 - Failing test first (record the red run), sanitized fixture, client model keeps unknown keys, parser/mapper, persister replace-on-sync (null object leaves rows untouched), EF config, `dotnet ef migrations add`.
 - Before `migrations add`: merge the latest `wip`. If the snapshot conflicts, delete the new migration and Designer, restore the snapshot from `wip`, regenerate. Never hand-merge the snapshot.
+- When two unmerged branches each add a migration: merge the first into the second, delete the second's migration and Designer, restore the snapshot from the FIRST branch's commit (not the merged one; a snapshot that already contains the second model makes `migrations add` produce an empty migration), `dotnet build`, then regenerate. `dotnet ef migrations remove` does not delete the files reliably. Verify with `InitialCreate_Schema_MatchesCurrentModel` and `dotnet ef migrations has-pending-model-changes`.
+- Run MTP test projects with `dotnet test --project <csproj>` (global.json requires the Microsoft Testing Platform); include Data.Core tests whenever `VideoForensicsDataClient` or `DeviceDetailFields` change.
 - Lite gate: build touched projects, run the full provider, database, sqlite migration and Ring common test projects. Then commit, merge to `wip`, push `origin wip`.
 - Types for fields null in every sample are guesses: use nullable string unless the shape is evident, and log the first non-null value (Info, device name not GUID, message and exception type only, no stack trace; Error level on a parser exception) so the guess can be fixed.
 - No new `*Json` column or `MetadataJson` write. If a client model change breaks the Ring API tester or MAUI, update CLAUDE.md and the commit message.
 - Existing `*Json` columns on `Devices` (`MetadataJson`, `SettingsMetadataJson`, `MotionSnoozeJson`, `LightSettingsMetadataJson`) conflict with the providers rule. Each batch that stores a group's keys in rows must stop writing that group to the JSON column; final cleanup drops the columns.
 
 ## Order
-1. **Batch B** merged with the corrections above.
-2. **Rename** `DeviceFeatureState`/`DeviceFeatureReason` to `RingDeviceFeatureState`/`RingDeviceFeatureReason` (EF may scaffold drop/create; hand-edit the migration to `RenameTable` + `RenameIndex`; this is the one allowed migration hand-edit, not the snapshot). Do it before C so later batches don't reference the old names. Add the features-parser logging here.
+1. ~~Batch B~~, health units and light events: done.
+2. **Rename** `DeviceFeatureState`/`DeviceFeatureReason` to `RingDeviceFeatureState`/`RingDeviceFeatureReason` (EF may scaffold drop/create; hand-edit the migration to `RenameTable` + `RenameIndex`; this is the one allowed migration hand-edit, not the snapshot). Do it before C so later batches don't reference the old names. Extend `RingUnstoredValueLog` coverage to the features parser here (unknown scalar keys directly under `features`, nested shapes that are skipped, non-scalar reasons, and first non-null values for guessed-type columns).
 3. **Batch 0: replace the checker** (before C, so C-I are measured correctly).
    - Explicit `endpoint JSON path -> table.column` map, checked in as a fixture; match by path, not leaf name.
    - Include arrays of scalars; skip failed-call error bodies (`signalling-ticket` `error`); report endpoints that returned data but have no map entry.
