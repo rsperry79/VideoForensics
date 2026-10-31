@@ -37,13 +37,16 @@ namespace VideoForensics.Client.Hosting
         TunnelState GetState();
     }
 
-    public sealed class CloudflaredTunnelService : ICloudflaredTunnelService
+    public sealed class CloudflaredTunnelService : ICloudflaredTunnelService, IAsyncDisposable
     {
+        private static readonly TimeSpan DisposeStopTimeout = TimeSpan.FromSeconds(5);
+
         private readonly ICloudflaredService _cloudflared;
         private readonly IOptionsMonitorCache<CloudflaredOptions> _optionsCache;
         private readonly ILogger<CloudflaredTunnelService> _logger;
         private readonly IChildProcessReaper _childProcessReaper;
         private readonly object _gate = new();
+        private volatile bool _disposing;
         private TunnelState _state = new(
             TunnelKind.None,
             TunnelStatus.Stopped,
@@ -134,6 +137,12 @@ namespace VideoForensics.Client.Hosting
 
         private void OnTunnelExitedUnexpectedly(int exitCode)
         {
+            // Shutdown stops the tunnel on purpose, so its exit is not a failure to report.
+            if (_disposing)
+            {
+                return;
+            }
+
             _logger.LogError("Cloudflare tunnel exited unexpectedly (exit code {ExitCode}); remote access through it is down", exitCode);
 
             // Only a tunnel that was up or starting can have died. Without this the page would keep saying it is running.
@@ -162,6 +171,37 @@ namespace VideoForensics.Client.Hosting
                     PublicUrl = null,
                     ErrorMessage = null
                 };
+            }
+        }
+
+        /// <summary>
+        /// Stops cloudflared when the service shuts down, so it closes its Cloudflare connections cleanly instead of being killed
+        /// with the process. The child process reaper still ends it if this stop fails or times out.
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposing)
+            {
+                return;
+            }
+
+            _disposing = true;
+            _cloudflared.TunnelExitedUnexpectedly -= OnTunnelExitedUnexpectedly;
+
+            if (GetState().Status is not (TunnelStatus.Starting or TunnelStatus.Running))
+            {
+                return;
+            }
+
+            using var cts = new CancellationTokenSource(DisposeStopTimeout);
+            try
+            {
+                await StopAsync(cts.Token);
+                _logger.LogInformation("Cloudflare tunnel stopped at shutdown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Cloudflare tunnel did not stop cleanly at shutdown ({ExceptionType}): {Message}", ex.GetType().Name, ex.Message);
             }
         }
 
