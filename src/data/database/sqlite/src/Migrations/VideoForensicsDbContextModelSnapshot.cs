@@ -573,6 +573,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("ChimeVolume")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("DeactivatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("DeviceFeaturesId")
                         .HasColumnType("TEXT");
 
@@ -634,6 +637,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("REAL");
+
+                    b.Property<int?>("LedSecondsRemaining")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("LedStatus")
                         .HasColumnType("TEXT");
@@ -752,6 +758,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SettingsMetadataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SharedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("SirenSecondsRemaining")
@@ -1550,6 +1559,140 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId");
 
                     b.ToTable("DeviceOfflineMotionSettings");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceReportedBattery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BatteryId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("BatteryNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Charging")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Family")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FwVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OtaStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Percentage")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PercentageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Present")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Temp")
+                        .HasColumnType("REAL");
+
+                    b.Property<decimal?>("Voltage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VoltageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("DeviceReportedBatteries");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceReportedHealth", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("Bandwidth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("BatteryError")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("BatteryTemp")
+                        .HasColumnType("REAL");
+
+                    b.Property<bool?>("Connected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("CurrentBandwidth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("CurrentBandwidthMb")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("FirmwareAvgBitrate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("FloodlightOn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("LastUpdateTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Rssi")
+                        .HasColumnType("REAL");
+
+                    b.Property<bool?>("SirenOn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("StatusTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("StreamResolution")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("UptimeSec")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("VideoPacketsTotal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("WhiteLedOn")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("DeviceReportedHealths");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceSettingChange", b =>
@@ -4231,6 +4374,184 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("RingAppLocationHistoryMessages");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceDetails", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccountGroupRevisionId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActiveScheduleUuid")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceResourceId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EncryptionGroupId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ExtPowerState")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FlickElimRecommendedMode")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsSidewalkGateway")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RingNetId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SchemaId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceDetails");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceHealthExtras", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("BandwidthLastTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BatteryPercentage")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BatteryPercentageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("BatteryPresent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("BatteryVoltage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BatteryVoltageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ExtPowerState")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ExternalConnection")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirmwareVersionStatus")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("HatchOpen")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NetworkConnectionValue")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("NightModeOn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OtaStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PackageWarningActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("PacketLoss")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("PacketLossCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PtzConnected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("RssConnected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RssiCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SecondBatteryPercentageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SecondBatteryVoltageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("SidewalkConnection")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TransformerScore")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("TransformerVoltage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TransformerVoltageCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("VodEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("WifiIsRingNetwork")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WifiName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceHealthExtras");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDoorbotHistoryEvent", b =>

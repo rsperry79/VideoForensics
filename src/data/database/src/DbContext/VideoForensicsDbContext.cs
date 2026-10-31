@@ -317,6 +317,18 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the reason list entries of device feature states.</summary>
         public DbSet<DeviceFeatureReason> DeviceFeatureReasons { get; set; }
 
+        /// <summary>Gets or sets the device-reported health rows (the health object of each ring_devices entry).</summary>
+        public DbSet<DeviceReportedHealth> DeviceReportedHealths { get; set; }
+
+        /// <summary>Gets or sets the Ring-only top-level device detail rows.</summary>
+        public DbSet<RingDeviceDetails> RingDeviceDetails { get; set; }
+
+        /// <summary>Gets or sets the Ring-only health reading rows.</summary>
+        public DbSet<RingDeviceHealthExtras> RingDeviceHealthExtras { get; set; }
+
+        /// <summary>Gets or sets the battery rows of device-reported health.</summary>
+        public DbSet<DeviceReportedBattery> DeviceReportedBatteries { get; set; }
+
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
 

@@ -7,6 +7,8 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>Maps the full ring_devices <c>features</c> object (sanitized fixture) onto DeviceFeatures scalars and DeviceFeatureState rows.</summary>

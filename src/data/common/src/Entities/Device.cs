@@ -166,6 +166,15 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Doorbot settings.chime_settings.duration.</summary>
         public int? SettingsChimeDuration { get; set; }
 
+        /// <summary>Ring deactivated_at, UTC. Null in every captured sample, so the type is a best guess.</summary>
+        public DateTime? DeactivatedAtUtc { get; set; }
+
+        /// <summary>Ring shared_at, UTC. Null in every captured sample, so the type is a best guess.</summary>
+        public DateTime? SharedAtUtc { get; set; }
+
+        /// <summary>Seconds remaining on led_status.</summary>
+        public int? LedSecondsRemaining { get; set; }
+
         /// <summary>
         /// Local kill switch for server-side snapshot capture (SnapshotCaptureService). Not a Ring setting: Ring syncs update an
         /// existing row in place and leave it alone. A device moved to another location gets a new row, and EnsureDeviceAsync copies this flag onto it.

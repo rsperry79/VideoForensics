@@ -7,6 +7,8 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
 namespace VideoForensics.Providers.Ring.Tests
 {
     public class RingDeviceDetailsMapperTests

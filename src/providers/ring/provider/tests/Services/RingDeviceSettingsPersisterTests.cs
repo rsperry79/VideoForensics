@@ -10,6 +10,8 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
 using Device = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Providers.Ring.Tests

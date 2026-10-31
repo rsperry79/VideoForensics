@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using VideoForensics.Core.Helpers.Json.Converters;
@@ -135,5 +136,12 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("supported_rpc_commands")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string> SupportedRpcCommands { get; set; }
+
+        /// <summary>
+        /// Health keys with no property above (e.g. bandwidth, uptime_sec, transformer_voltage) and the batteries array. Read by
+        /// RingDeviceHealthParser; unknown keys are logged, never stored as JSON.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement> AdditionalFields { get; set; }
     }
 }

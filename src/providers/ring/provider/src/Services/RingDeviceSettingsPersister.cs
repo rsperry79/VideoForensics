@@ -41,6 +41,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             Guid deviceId = device.Id;
+            RingUnstoredValueLog.Log(_logger, device.Name, details);
             await RecordUnknownKindAsync(device, details, ct);
             await _dataClient.RecordDeviceDetailsAsync(
                 deviceId,

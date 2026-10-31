@@ -1,0 +1,151 @@
+{
+  "doorbots": [
+    {
+      "id": 1001,
+      "kind": "doorbell_test",
+      "description": "Front Door",
+      "schema_id": "schema-fake-0001",
+      "is_sidewalk_gateway": false,
+      "created_at": "2021-08-29T23:07:38Z",
+      "deactivated_at": "2025-01-02T03:04:05Z",
+      "encryption_group": { "id": "group-fake-1", "account_group_revision_id": "rev-fake-9" },
+      "device_resource_id": "rduri:test:0:device.ring|1001",
+      "device_id": "aabbccddeeff",
+      "time_zone": "America/Los_Angeles",
+      "ring_id": "ring-fake-1",
+      "shared_at": "2025-02-03T04:05:06Z",
+      "ring_net_id": "net-fake-1",
+      "active_schedule_uuid": "00000000-0000-0000-0000-000000000abc",
+      "snooze_settings": "none",
+      "flick_elim_recommended_mode": "auto",
+      "ext_power_state": 2,
+      "alerts": { "connection": "online", "ota_status": "successful" },
+      "health": {
+        "battery_percentage_category": "unknown",
+        "battery_voltage_category": "unknown",
+        "connected": true,
+        "device_type": "doorbell_test",
+        "external_connection": false,
+        "firmware_version": "1.2.3",
+        "floodlight_on": false,
+        "last_update_time": 1700000000,
+        "network_connection_value": "wifi",
+        "night_mode_on": false,
+        "ota_status": "successful",
+        "rss_connected": true,
+        "rssi": -62.0,
+        "rssi_category": "okay",
+        "second_battery_percentage_category": "unknown",
+        "second_battery_voltage_category": "good",
+        "sidewalk_connection": false,
+        "transformer_voltage": 17.55,
+        "transformer_voltage_category": "good",
+        "white_led_on": false,
+        "firmware_version_status": "Up to Date",
+        "packet_loss": 0.0,
+        "packet_loss_category": "good",
+        "hatch_open": false,
+        "battery_temp": 2921.0,
+        "bandwidth": 5753,
+        "transformer_score": "best",
+        "siren_on": false,
+        "status_time": 58766634686231,
+        "vod_enabled": true,
+        "battery_error": false,
+        "bandwidth_last_time": 1650000000,
+        "firmware_avg_bitrate": "863",
+        "stream_resolution": 100,
+        "video_packets_total": "11627",
+        "wifi_is_ring_network": false,
+        "wifi_name": "TestNet",
+        "uptime_sec": 113674,
+        "current_bandwidth": 5753,
+        "current_bandwidth_mb": 5.8,
+        "package_warning_active": true,
+        "batteries": [
+          {
+            "battery_number": 1,
+            "battery_id": "bat-fake-1",
+            "battery_percentage": 88,
+            "battery_present": true,
+            "battery_charging": false,
+            "battery_voltage": 3.9,
+            "battery_percentage_category": "good",
+            "battery_voltage_category": "good",
+            "battery_temp": 2921.0,
+            "battery_auth_status": "authentic",
+            "battery_family": "family-a",
+            "battery_fw_version": "0.9",
+            "battery_ota_status": "none"
+          },
+          {
+            "battery_number": 2,
+            "battery_id": null,
+            "battery_percentage": null,
+            "battery_present": null,
+            "battery_charging": null,
+            "battery_voltage": null,
+            "battery_percentage_category": "unknown",
+            "battery_voltage_category": "unknown",
+            "battery_temp": null,
+            "battery_auth_status": null,
+            "battery_family": null,
+            "battery_fw_version": null,
+            "battery_ota_status": null
+          }
+        ]
+      }
+    }
+  ],
+  "authorized_doorbots": [
+    {
+      "id": 1002,
+      "kind": "doorbell_test",
+      "description": "Shared Door",
+      "device_id": "112233445566",
+      "encryption_group": null,
+      "health": null
+    }
+  ],
+  "stickup_cams": [
+    {
+      "id": 2001,
+      "kind": "stickup_cam_test",
+      "description": "Flood",
+      "schema_id": "schema-fake-0002",
+      "is_sidewalk_gateway": true,
+      "deactivated_at": null,
+      "encryption_group": { "id": null, "account_group_revision_id": null },
+      "device_resource_id": "rduri:test:0:device.ring|2001",
+      "device_id": "0102030405ff",
+      "ring_id": "ring-fake-2",
+      "health": {},
+      "snooze_settings": null,
+      "ext_power_state": null,
+      "led_status": { "seconds_remaining": 7 },
+      "siren_status": { "seconds_remaining": 3 },
+      "alerts": { "connection": "offline" }
+    }
+  ],
+  "chimes": [
+    {
+      "id": 3001,
+      "kind": "chime_test",
+      "description": "Upstairs",
+      "schema_id": "schema-fake-0003",
+      "encryption_group": null,
+      "device_id": "a1b2c3d4e5f6",
+      "ring_id": "ring-fake-3",
+      "health": {
+        "connected": true,
+        "rssi": -56.0,
+        "last_update_time": 1700000500,
+        "status_time": 58765751484416,
+        "wifi_name": "TestNet",
+        "battery_error": false
+      },
+      "alerts": { "connection": "online", "ota_status": "successful" },
+      "do_not_disturb": { "seconds_left": 12.0 }
+    }
+  ]
+}

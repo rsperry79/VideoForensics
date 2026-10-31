@@ -120,7 +120,10 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         IReadOnlyList<AdvancedObjectSettingDetail>? AdvancedObjectSettings = null,
         OfflineMotionDetail? OfflineMotion = null,
         IReadOnlyList<DetectionTypeDetail>? DetectionTypes = null,
-        IReadOnlyList<DetectionThresholdDetail>? DetectionThresholds = null
+        IReadOnlyList<DetectionThresholdDetail>? DetectionThresholds = null,
+        DateTime? DeactivatedAtUtc = null,
+        DateTime? SharedAtUtc = null,
+        int? LedSecondsRemaining = null
     );
 
     /// <summary>

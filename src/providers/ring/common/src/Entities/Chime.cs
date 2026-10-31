@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using VideoForensics.Providers.Ring.Converters;
@@ -63,5 +64,53 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("health")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DeviceHealth Health { get; set; }
+
+        [JsonPropertyName("schema_id")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string SchemaId { get; set; }
+
+        [JsonPropertyName("is_sidewalk_gateway")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? IsSidewalkGateway { get; set; }
+
+        [JsonPropertyName("deactivated_at")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? DeactivatedAt { get; set; }
+
+        [JsonPropertyName("device_resource_id")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string DeviceResourceId { get; set; }
+
+        [JsonPropertyName("shared_at")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? SharedAt { get; set; }
+
+        [JsonPropertyName("ring_net_id")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? RingNetId { get; set; }
+
+        [JsonPropertyName("active_schedule_uuid")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? ActiveScheduleUuid { get; set; }
+
+        [JsonPropertyName("ext_power_state")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? ExtPowerState { get; set; }
+
+        [JsonPropertyName("snooze_settings")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? SnoozeSettings { get; set; }
+
+        [JsonPropertyName("encryption_group")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public EncryptionGroup EncryptionGroup { get; set; }
+
+        [JsonPropertyName("flick_elim_recommended_mode")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? FlickElimRecommendedMode { get; set; }
+
+        [JsonPropertyName("ring_id")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string RingId { get; set; }
     }
 }

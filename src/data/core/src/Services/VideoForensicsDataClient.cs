@@ -711,6 +711,12 @@ namespace VideoForensics.Data.Core.Services
             device.SettingsChimeEnabled = details.SettingsChimeEnabled;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeDuration), device.SettingsChimeDuration, details.SettingsChimeDuration);
             device.SettingsChimeDuration = details.SettingsChimeDuration;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DeactivatedAtUtc), device.DeactivatedAtUtc, details.DeactivatedAtUtc);
+            device.DeactivatedAtUtc = details.DeactivatedAtUtc;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SharedAtUtc), device.SharedAtUtc, details.SharedAtUtc);
+            device.SharedAtUtc = details.SharedAtUtc;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LedSecondsRemaining), device.LedSecondsRemaining, details.LedSecondsRemaining);
+            device.LedSecondsRemaining = details.LedSecondsRemaining;
         }
 
         public async Task<Device> EnsureDeviceAsync(

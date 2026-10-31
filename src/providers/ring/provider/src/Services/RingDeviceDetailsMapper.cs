@@ -6,6 +6,8 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
 
+using RingDeviceDetailsRow = VideoForensics.Data.Common.Entities.RingDeviceDetails;
+
 namespace VideoForensics.Providers.Ring.Services
 {
     /// <summary>
@@ -28,7 +30,10 @@ namespace VideoForensics.Providers.Ring.Services
         DeviceDetailFields? DeviceFields = null,
         bool? ShowVodSettings = null,
         bool? RingtonesEnabled = null,
-        RingFeatureDetails? FeatureDetails = null);
+        RingFeatureDetails? FeatureDetails = null,
+        RingReportedHealth? ReportedHealth = null,
+        IReadOnlyList<string>? UnstoredNotes = null,
+        RingDeviceDetailsRow? RingRow = null);
 
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
@@ -82,7 +87,17 @@ namespace VideoForensics.Providers.Ring.Services
         /// Builds the scalar device fields stored on the Devices row. Chimes report no subscription, battery or
         /// external-connection values, so those stay null for them.
         /// </summary>
-        public static DeviceDetailFields ToDeviceFields(Doorbot d)
+        public static DeviceDetailFields ToDeviceFields(Doorbot d, List<string>? notes = null)
+        {
+            return ToDeviceFields(d, TopOf(d, notes), notes);
+        }
+
+        private static RingTopLevelFields TopOf(Doorbot d, List<string>? notes)
+        {
+            return RingDeviceTopLevelParser.Parse(d.SchemaId, d.IsSidewalkGateway, d.DeactivatedAt, d.DeviceResourceId, d.SharedAt, d.RingNetId, d.ActiveScheduleUuid, d.FlickElimRecommendedMode, d.ExtPowerState, d.SnoozeSettings, d.EncryptionGroup, notes);
+        }
+
+        private static DeviceDetailFields ToDeviceFields(Doorbot d, RingTopLevelFields top, List<string>? notes)
         {
             TypedSettingDetails typed = RingDeviceSettingGroupParser.Parse(d.Settings?.AdditionalFields);
             return new DeviceDetailFields(
@@ -115,14 +130,26 @@ namespace VideoForensics.Providers.Ring.Services
                 DetectionTypes: typed.DetectionTypes,
                 DetectionThresholds: typed.Thresholds,
                 Zones: ToZoneSettingsDetails(d.ZoneSettings),
-                AdvancedObjectSettings: ToObjectSettingDetails(d.Settings?.AdvancedObjectSettings));
+                AdvancedObjectSettings: ToObjectSettingDetails(d.Settings?.AdvancedObjectSettings),
+                RingRingId: d.RingId,
+                DeactivatedAtUtc: top.DeactivatedAtUtc, SharedAtUtc: top.SharedAtUtc);
         }
 
         /// <summary>
         /// Builds the scalar device fields stored on the Devices row for a stickup cam, including its settings
         /// scalars, light brightness and the preset and advanced-zone lists that become child rows.
         /// </summary>
-        public static DeviceDetailFields ToDeviceFields(StickupCam s)
+        public static DeviceDetailFields ToDeviceFields(StickupCam s, List<string>? notes = null)
+        {
+            return ToDeviceFields(s, TopOf(s, notes), notes);
+        }
+
+        private static RingTopLevelFields TopOf(StickupCam s, List<string>? notes)
+        {
+            return RingDeviceTopLevelParser.Parse(s.SchemaId, s.IsSidewalkGateway, s.DeactivatedAt, s.DeviceResourceId, s.SharedAt, s.RingNetId, s.ActiveScheduleUuid, s.FlickElimRecommendedMode, s.ExtPowerState, s.SnoozeSettings, s.EncryptionGroup, notes);
+        }
+
+        private static DeviceDetailFields ToDeviceFields(StickupCam s, RingTopLevelFields top, List<string>? notes)
         {
             StickupCamSettings? st = s.Settings;
             TypedSettingDetails typed = RingDeviceSettingGroupParser.Parse(st?.AdditionalFields);
@@ -178,11 +205,23 @@ namespace VideoForensics.Providers.Ring.Services
                 PirSettingsZoneEnable: ToInt(st?.PirSettings?.ZoneEnable),
                 PirSettingsZoneMask: ToInt(st?.PirSettings?.ZoneMask),
                 Zones: ToZoneSettingsDetails(s.ZoneSettings),
-                AdvancedObjectSettings: ToObjectSettingDetails(st?.AdvancedObjectSettings));
+                AdvancedObjectSettings: ToObjectSettingDetails(st?.AdvancedObjectSettings),
+                LedSecondsRemaining: LedSeconds(s.LedStatus, notes),
+                DeactivatedAtUtc: top.DeactivatedAtUtc, SharedAtUtc: top.SharedAtUtc);
         }
 
         /// <summary>Builds the scalar device fields stored on the Devices row for a chime.</summary>
-        public static DeviceDetailFields ToDeviceFields(Chime c)
+        public static DeviceDetailFields ToDeviceFields(Chime c, List<string>? notes = null)
+        {
+            return ToDeviceFields(c, TopOf(c, notes), notes);
+        }
+
+        private static RingTopLevelFields TopOf(Chime c, List<string>? notes)
+        {
+            return RingDeviceTopLevelParser.Parse(c.SchemaId, c.IsSidewalkGateway, c.DeactivatedAt, c.DeviceResourceId, c.SharedAt, c.RingNetId, c.ActiveScheduleUuid, c.FlickElimRecommendedMode, c.ExtPowerState, c.SnoozeSettings, c.EncryptionGroup, notes);
+        }
+
+        private static DeviceDetailFields ToDeviceFields(Chime c, RingTopLevelFields top, List<string>? notes)
         {
             return new DeviceDetailFields(
                 RingDeviceId: c.DeviceId,
@@ -202,7 +241,9 @@ namespace VideoForensics.Providers.Ring.Services
                 OwnerId: OwnerIdText(c.Owner),
                 OwnerFirstName: c.Owner?.FirstName,
                 OwnerLastName: c.Owner?.LastName,
-                OwnerEmail: c.Owner?.Email);
+                OwnerEmail: c.Owner?.Email,
+                RingRingId: c.RingId,
+                DeactivatedAtUtc: top.DeactivatedAtUtc, SharedAtUtc: top.SharedAtUtc);
         }
 
         /// <summary>
@@ -306,13 +347,44 @@ namespace VideoForensics.Providers.Ring.Services
         public static DeviceSettingsChildren? ToSettingsChildrenWithFeatures(RingDeviceDetails details, Guid deviceId)
         {
             DeviceSettingsChildren? children = ToSettingsChildren(details.DeviceFields, deviceId);
-            if (details.FeatureDetails == null)
+            if (details.FeatureDetails != null)
             {
-                return children;
+                var states = details.FeatureDetails.States.Select(s => CopyState(s, deviceId)).ToList();
+                children = (children ?? new DeviceSettingsChildren([], [], [])) with { FeatureStates = states };
             }
 
-            var states = details.FeatureDetails.States.Select(s => CopyState(s, deviceId)).ToList();
-            return (children ?? new DeviceSettingsChildren([], [], [])) with { FeatureStates = states };
+            children = (children ?? new DeviceSettingsChildren([], [], [])) with { RingDetails = details.RingRow == null ? null : CopyRow(details.RingRow, deviceId) };
+
+            // Health stays null (stored rows untouched) when Ring sent no health object; an empty object still yields a row of nulls.
+            if (details.ReportedHealth != null)
+            {
+                RingReportedHealth h = details.ReportedHealth;
+                children = (children ?? new DeviceSettingsChildren([], [], [])) with
+                {
+                    ReportedHealth = CopyRow(h.Health, deviceId),
+                    RingHealthExtras = CopyRow(h.Extras, deviceId),
+                    ReportedBatteries = h.Batteries.Select(b => CopyRow(b, deviceId)).ToList()
+                };
+            }
+
+            return children;
+        }
+
+        /// <summary>Copies a parsed template onto a fresh row with its own Id and the device id, so repeated builds never share an instance.</summary>
+        private static T CopyRow<T>(T template, Guid deviceId) where T : new()
+        {
+            var row = new T();
+            foreach (System.Reflection.PropertyInfo p in typeof(T).GetProperties())
+            {
+                if (p.CanRead && p.CanWrite)
+                {
+                    p.SetValue(row, p.GetValue(template));
+                }
+            }
+
+            typeof(T).GetProperty("Id")!.SetValue(row, Guid.NewGuid());
+            typeof(T).GetProperty("DeviceId")!.SetValue(row, deviceId);
+            return row;
         }
 
         private static DeviceFeatureState CopyState(DeviceFeatureState s, Guid deviceId)
@@ -403,6 +475,11 @@ namespace VideoForensics.Providers.Ring.Services
         {
             // Doorbot features have no audio flag, so HasAudio stays null.
             DoorbotFeatures? f = d.Features;
+            var notes = new List<string>();
+            RingTopLevelFields top = TopOf(d, notes);
+            DeviceDetailFields fields = ToDeviceFields(d, top, notes);
+            RingReportedHealth? health = RingDeviceHealthParser.Parse(d.Health);
+            notes.AddRange(health?.Unstored ?? []);
             return new RingDeviceDetails(
                 TimeZone: d.TimeZone,
                 FirmwareVersion: d.FirmwareVersion,
@@ -416,15 +493,23 @@ namespace VideoForensics.Providers.Ring.Services
                 ShadowCorrectionEnabled: f?.ShadowCorrectionEnabled,
                 MotionMessageEnabled: f?.MotionMessageEnabled,
                 AlertConnection: d.Alerts?.Connection,
-                DeviceFields: ToDeviceFields(d),
+                DeviceFields: fields,
                 ShowVodSettings: f?.ShowVodSettings,
-                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures));
+                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures),
+                ReportedHealth: health,
+                UnstoredNotes: notes,
+                RingRow: top.Row);
         }
 
         private static RingDeviceDetails FromStickupCam(StickupCam s)
         {
             // Audio lives in the settings object; stickup cam features have no night-vision flag.
             StickupCamFeatures? f = s.Features;
+            var notes = new List<string>();
+            RingTopLevelFields top = TopOf(s, notes);
+            DeviceDetailFields fields = ToDeviceFields(s, top, notes);
+            RingReportedHealth? health = RingDeviceHealthParser.Parse(s.Health);
+            notes.AddRange(health?.Unstored ?? []);
             return new RingDeviceDetails(
                 TimeZone: s.TimeZone,
                 FirmwareVersion: s.FirmwareVersion,
@@ -438,14 +523,22 @@ namespace VideoForensics.Providers.Ring.Services
                 ShadowCorrectionEnabled: null,
                 MotionMessageEnabled: f?.MotionMessageEnabled,
                 AlertConnection: s.Alerts?.Connection,
-                DeviceFields: ToDeviceFields(s),
+                DeviceFields: fields,
                 ShowVodSettings: f?.ShowVodSettings,
-                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures));
+                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures),
+                ReportedHealth: health,
+                UnstoredNotes: notes,
+                RingRow: top.Row);
         }
 
         private static RingDeviceDetails FromChime(Chime c)
         {
             // Chime features (ringtones_enabled) are stored on a feature row, so HasFeatures follows the features object.
+            var notes = new List<string>();
+            RingTopLevelFields top = TopOf(c, notes);
+            DeviceDetailFields fields = ToDeviceFields(c, top, notes);
+            RingReportedHealth? health = RingDeviceHealthParser.Parse(c.Health);
+            notes.AddRange(health?.Unstored ?? []);
             return new RingDeviceDetails(
                 TimeZone: c.TimeZone,
                 FirmwareVersion: c.FirmwareVersion,
@@ -459,9 +552,12 @@ namespace VideoForensics.Providers.Ring.Services
                 ShadowCorrectionEnabled: null,
                 MotionMessageEnabled: null,
                 AlertConnection: c.Alerts?.Connection,
-                DeviceFields: ToDeviceFields(c),
+                DeviceFields: fields,
                 RingtonesEnabled: c.Features?.RingtonesEnabled,
-                FeatureDetails: c.Features == null ? null : RingDeviceFeatureParser.Parse(c.Features.AdditionalFeatures));
+                FeatureDetails: c.Features == null ? null : RingDeviceFeatureParser.Parse(c.Features.AdditionalFeatures),
+                ReportedHealth: health,
+                UnstoredNotes: notes,
+                RingRow: top.Row);
         }
 
         private static IReadOnlyList<AdvancedMotionZoneDetail> ToZoneDetails(AdvancedMotionZones zones)
@@ -492,6 +588,24 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             result.Add(new AdvancedMotionZoneDetail(zoneKey, zone.Name, ToInt(zone.State), present));
+        }
+
+        /// <summary>Reads led_status.seconds_remaining. A non-object, or seconds that are not a whole number, are noted and not stored.</summary>
+        private static int? LedSeconds(JsonElement? led, List<string>? notes)
+        {
+            if (led is not { } e || e.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            if (e.ValueKind == JsonValueKind.Object && e.TryGetProperty("seconds_remaining", out JsonElement seconds)
+                && RingJsonValue.TryInt(seconds, out int? value))
+            {
+                return value;
+            }
+
+            notes?.Add($"led_status.seconds_remaining not stored: missing or unexpected shape ({e.ValueKind})");
+            return null;
         }
 
         private static string? OwnerIdText(Owner? owner)

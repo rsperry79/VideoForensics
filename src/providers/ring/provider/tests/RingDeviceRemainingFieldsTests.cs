@@ -8,6 +8,8 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>Maps the device fields the earlier audit left unstored: doorbot settings, zones, PIR and object settings, and the remaining device scalars.</summary>

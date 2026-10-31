@@ -6,6 +6,8 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>Maps the device settings, owner, chime and feature fields that the Ring device JSON carries.</summary>

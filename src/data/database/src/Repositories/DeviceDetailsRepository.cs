@@ -248,6 +248,61 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
+        /// <summary>
+        /// Replaces the device's reported-health row and battery rows. A null health leaves stored rows untouched; a health row
+        /// with a null battery list clears the batteries (Ring sent the object without a batteries array). Not change-logged.
+        /// </summary>
+        private static async Task ReplaceReportedHealthAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.ReportedHealth == null)
+            {
+                return;
+            }
+
+            db.DeviceReportedHealths.RemoveRange(await db.DeviceReportedHealths.Where(h => h.DeviceId == deviceId).ToListAsync(ct));
+            db.DeviceReportedBatteries.RemoveRange(await db.DeviceReportedBatteries.Where(b => b.DeviceId == deviceId).ToListAsync(ct));
+            db.RingDeviceHealthExtras.RemoveRange(await db.RingDeviceHealthExtras.Where(h => h.DeviceId == deviceId).ToListAsync(ct));
+            // EF orders the deletes ahead of the inserts, so the unique (DeviceId) and (DeviceId, Position) indexes are not hit.
+
+            DeviceReportedHealth health = settings.ReportedHealth;
+            health.Id = health.Id == Guid.Empty ? Guid.NewGuid() : health.Id;
+            health.DeviceId = deviceId;
+            health.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.DeviceReportedHealths.Add(health);
+
+            if (settings.RingHealthExtras != null)
+            {
+                RingDeviceHealthExtras extras = settings.RingHealthExtras;
+                extras.Id = extras.Id == Guid.Empty ? Guid.NewGuid() : extras.Id;
+                extras.DeviceId = deviceId;
+                extras.UpdatedAtUtc = health.UpdatedAtUtc;
+                _ = db.RingDeviceHealthExtras.Add(extras);
+            }
+
+            foreach (DeviceReportedBattery battery in settings.ReportedBatteries ?? [])
+            {
+                battery.Id = battery.Id == Guid.Empty ? Guid.NewGuid() : battery.Id;
+                battery.DeviceId = deviceId;
+                _ = db.DeviceReportedBatteries.Add(battery);
+            }
+        }
+
+        /// <summary>Replaces the device's Ring-only top-level detail row. A null row leaves the stored row untouched.</summary>
+        private static async Task ReplaceRingDetailsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.RingDetails == null)
+            {
+                return;
+            }
+
+            db.RingDeviceDetails.RemoveRange(await db.RingDeviceDetails.Where(r => r.DeviceId == deviceId).ToListAsync(ct));
+            RingDeviceDetails row = settings.RingDetails;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDeviceDetails.Add(row);
+        }
+
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
         private static string OfflineMotionText(DeviceOfflineMotionSettings s)
         {
@@ -312,6 +367,8 @@ namespace VideoForensics.Data.Database.Repositories
             db.DeviceSettingChanges.AddRange(changes);
             db.DeviceSettingChanges.AddRange(await ReplaceTypedSettingsAsync(db, deviceId, settings, changedAtUtc, ct));
             await ReplaceFeatureStatesAsync(db, deviceId, settings, ct);
+            await ReplaceReportedHealthAsync(db, deviceId, settings, ct);
+            await ReplaceRingDetailsAsync(db, deviceId, settings, ct);
 
             db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
             db.DeviceLiveViewPresets.RemoveRange(storedLive);
