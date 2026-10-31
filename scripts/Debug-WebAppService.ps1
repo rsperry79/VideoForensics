@@ -200,14 +200,8 @@ function Start-LogViewer {
         Where-Object { $_.CommandLine -and $_.CommandLine.Contains($ProjectPath) } |
         ForEach-Object { $_.ProcessId })
 
-    # An elevated script opens its own elevated window. A window of the other elevation cannot take the tab, so -w 0 is
-    # used only when the script is not elevated.
-    $elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-        [Security.Principal.WindowsBuiltInRole]::Administrator)
-    $window = if ($elevated) { 'new' } else { '0' }
-
     Write-Host 'Opening the logger console as a Windows Terminal tab'
-    Start-Process -FilePath $wt.Source -ArgumentList "-w $window new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
+    Start-Process -FilePath $wt.Source -ArgumentList "-w 0 new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
 
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         $match = Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
@@ -317,8 +311,17 @@ if ($useService) {
             }
         }
 
+        $shell = (Get-Process -Id $PID).Path
+        $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
         try {
-            $elevated = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $relaunchArguments -Verb RunAs -Wait -PassThru
+            if ($wt) {
+                # One elevated Windows Terminal window holds the script and the log viewer. Windows Terminal returns at once,
+                # so this shell exits without waiting and the script's own exit code is not passed back.
+                $tabCommand = "`"$shell`" " + ($relaunchArguments -join " ")
+                Start-Process -FilePath $wt.Source -ArgumentList "-w new new-tab --title `"VideoForensics debug`" $tabCommand" -Verb RunAs | Out-Null
+                exit 0
+            }
+            $elevated = Start-Process -FilePath $shell -ArgumentList $relaunchArguments -Verb RunAs -Wait -PassThru
         }
         catch {
             throw "Elevation was declined or failed, so nothing was staged or attached. $($_.Exception.Message)"
