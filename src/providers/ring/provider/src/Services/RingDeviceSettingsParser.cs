@@ -348,6 +348,19 @@ namespace VideoForensics.Providers.Ring.Services
             ["volume_settings", "voice_volume"],
             ["advanced_motion_zones_enabled"],
             ["advanced_motion_zones_type"],
+            // Keys the device mappers read into Devices columns straight from this object (RingDeviceDetailsMapper). A doorbot has no typed model
+            // for pir_settings, volume_settings or motion_settings; a stickup cam has none for chime_settings or the flat motion_detection_enabled.
+            ["motion_detection_enabled"],
+            ["motion_settings", "motion_detection_enabled"],
+            ["volume_settings", "doorbell_volume"],
+            ["pir_settings", "sensitivity_1"],
+            ["pir_settings", "sensitivity_2"],
+            ["pir_settings", "sensitivity_3"],
+            ["pir_settings", "zone_enable"],
+            ["pir_settings", "zone_mask"],
+            ["chime_settings", "type"],
+            ["chime_settings", "enable"],
+            ["chime_settings", "duration"],
         ];
 
         private static void ApplyRing(IReadOnlyDictionary<string, JsonElement> f, RingDeviceSettings r, List<string> notes)

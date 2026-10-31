@@ -43,6 +43,8 @@ namespace VideoForensics.Providers.Ring.Services
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
     {
+        private const string LightBrightnessKey = "brightness";
+
         /// <summary>Finds the device by provider id across doorbots, authorized doorbots, stickup cams and chimes.</summary>
         public static RingDeviceDetails? Find(Devices? devices, string providerDeviceId)
         {
@@ -227,7 +229,7 @@ namespace VideoForensics.Providers.Ring.Services
                 OfflineMotion: typed.OfflineMotion,
                 DetectionTypes: typed.DetectionTypes,
                 DetectionThresholds: typed.Thresholds,
-                LightSettingsMetadataJson: ExtraJson(st?.LightSettings?.AdditionalFields),
+                LightSettingsMetadataJson: LightRemainderJson(st?.LightSettings?.AdditionalFields),
                 PirSettingsSensitivity1: ToInt(st?.PirSettings?.Sensitivity1),
                 PirSettingsSensitivity2: ToInt(st?.PirSettings?.Sensitivity2),
                 PirSettingsSensitivity3: ToInt(st?.PirSettings?.Sensitivity3),
@@ -903,10 +905,19 @@ namespace VideoForensics.Providers.Ring.Services
             return value is { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined } element ? element.GetRawText() : null;
         }
 
-        /// <summary>Serializes the settings keys not modelled by a named column. Null when there are none.</summary>
-        private static string? ExtraJson(Dictionary<string, JsonElement>? extra)
+        /// <summary>
+        /// Serializes the light settings keys not stored in a column. brightness is a typed model property (Devices.LightBrightness), so it is not
+        /// in the extra keys; it is removed here too so the JSON never holds a key that has a column. Null when none are left.
+        /// </summary>
+        private static string? LightRemainderJson(Dictionary<string, JsonElement>? extra)
         {
-            return extra is { Count: > 0 } ? JsonSerializer.Serialize(extra) : null;
+            if (extra == null)
+            {
+                return null;
+            }
+
+            Dictionary<string, JsonElement> rest = extra.Where(p => p.Key != LightBrightnessKey).ToDictionary(p => p.Key, p => p.Value);
+            return rest.Count > 0 ? JsonSerializer.Serialize(rest) : null;
         }
 
         /// <summary>
