@@ -62,6 +62,9 @@ public sealed class ReviewPageState
     /// <summary>Location filter, or null for all locations.</summary>
     public Guid? LocationFilter { get; private set; }
 
+    /// <summary>Event type filter (an exact event type such as "motion"), or null for all types.</summary>
+    public string? EventTypeFilter { get; private set; }
+
     /// <summary>The event the user selected, or null.</summary>
     public Guid? SelectedEventId { get; private set; }
 
@@ -112,10 +115,10 @@ public sealed class ReviewPageState
         OnChange?.Invoke();
     }
 
-    /// <summary>Sets the provider, account and location filters. A blank provider is stored as null.</summary>
-    public void SetFilters(string? provider, Guid? account, Guid? location = null)
+    /// <summary>Sets the provider, account, location and event type filters. A blank provider or event type is stored as null.</summary>
+    public void SetFilters(string? provider, Guid? account, Guid? location = null, string? eventType = null)
     {
-        if (SetFiltersCore(provider, account, location))
+        if (SetFiltersCore(provider, account, location, eventType))
         {
             OnChange?.Invoke();
         }
@@ -217,10 +220,11 @@ public sealed class ReviewPageState
         return true;
     }
 
-    private bool SetFiltersCore(string? provider, Guid? account, Guid? location)
+    private bool SetFiltersCore(string? provider, Guid? account, Guid? location, string? eventType)
     {
         string? normalizedProvider = string.IsNullOrWhiteSpace(provider) ? null : provider;
-        if (normalizedProvider == ProviderFilter && account == AccountFilter && location == LocationFilter)
+        string? normalizedType = string.IsNullOrWhiteSpace(eventType) ? null : eventType;
+        if (normalizedProvider == ProviderFilter && account == AccountFilter && location == LocationFilter && normalizedType == EventTypeFilter)
         {
             return false;
         }
@@ -228,6 +232,7 @@ public sealed class ReviewPageState
         ProviderFilter = normalizedProvider;
         AccountFilter = account;
         LocationFilter = location;
+        EventTypeFilter = normalizedType;
         return true;
     }
 }

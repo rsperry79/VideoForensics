@@ -597,4 +597,34 @@ public class ReviewPageState_Tests
         // Assert
         Assert.Equal(0, raised);
     }
+
+    [Fact]
+    public void SetFilters_EventType_IsStoredAndRaisesOnChange()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        int changes = 0;
+        state.OnChange += () => changes++;
+
+        // Act
+        state.SetFilters(null, null, null, "motion");
+
+        // Assert
+        Assert.Equal("motion", state.EventTypeFilter);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
+    public void SetFilters_BlankEventType_IsStoredAsNull()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        state.SetFilters(null, null, null, "motion");
+
+        // Act
+        state.SetFilters(null, null, null, " ");
+
+        // Assert
+        Assert.Null(state.EventTypeFilter);
+    }
 }

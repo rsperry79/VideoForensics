@@ -145,12 +145,13 @@ namespace VideoForensics.Client.Hosting.Remote
 
         /// <inheritdoc />
         /// <remarks>Calls <c>/api/v1/events/page</c>; the server does the filtering, ordering and counting.</remarks>
-        public async Task<EventPage> ListPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes, int skip, int take, CancellationToken ct)
+        public async Task<EventPage> ListPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes, IReadOnlyCollection<string>? includeEventTypes, int skip, int take, CancellationToken ct)
         {
             var parameters = deviceIds.Select(id => $"deviceIds={id:D}").ToList();
             parameters.Add($"from={Uri.EscapeDataString(fromUtc.ToString("o"))}");
             parameters.Add($"to={Uri.EscapeDataString(toUtc.ToString("o"))}");
             parameters.AddRange((excludeEventTypes ?? []).Select(t => $"excludeTypes={Uri.EscapeDataString(t)}"));
+            parameters.AddRange((includeEventTypes ?? []).Select(t => $"includeTypes={Uri.EscapeDataString(t)}"));
             parameters.Add($"skip={skip}");
             parameters.Add($"take={take}");
 

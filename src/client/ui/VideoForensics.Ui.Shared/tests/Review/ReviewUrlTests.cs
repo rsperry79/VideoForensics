@@ -314,4 +314,28 @@ public class ReviewUrl_Tests
         // Assert
         Assert.Equal(state, parsed);
     }
+
+    [Fact]
+    public void Parse_EventTypeParameter_IsRead()
+    {
+        // Act
+        ReviewUrlState state = ReviewUrl.Parse("?eventtype=motion");
+
+        // Assert
+        Assert.Equal("motion", state.EventType);
+    }
+
+    [Fact]
+    public void Build_EventType_RoundTripsThroughParse()
+    {
+        // Arrange
+        ReviewUrlState state = DefaultState() with { EventType = "on_demand" };
+
+        // Act
+        string query = ReviewUrl.Build(state);
+
+        // Assert
+        Assert.Equal("eventtype=on_demand", query);
+        Assert.Equal(state, ReviewUrl.Parse(query));
+    }
 }

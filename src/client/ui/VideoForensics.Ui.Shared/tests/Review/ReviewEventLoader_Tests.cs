@@ -19,6 +19,7 @@ public class ReviewEventLoader_Tests
     {
         public List<Guid> Devices { get; set; } = [];
         public IReadOnlyCollection<string>? Excluded { get; set; }
+        public IReadOnlyCollection<string>? Included { get; set; }
         public int Skip { get; set; }
         public int Take { get; set; }
     }
@@ -29,12 +30,13 @@ public class ReviewEventLoader_Tests
         _ = repository
             .Setup(r => r.ListPageByDevicesAndDateRangeAsync(
                 It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
-                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Callback<IReadOnlyCollection<Guid>, DateTime, DateTime, IReadOnlyCollection<string>?, int, int, CancellationToken>(
-                (devices, _, _, excluded, skip, take, _) =>
+                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<IReadOnlyCollection<Guid>, DateTime, DateTime, IReadOnlyCollection<string>?, IReadOnlyCollection<string>?, int, int, CancellationToken>(
+                (devices, _, _, excluded, included, skip, take, _) =>
                 {
                     capture.Devices = devices.ToList();
                     capture.Excluded = excluded;
+                    capture.Included = included;
                     capture.Skip = skip;
                     capture.Take = take;
                 })
@@ -50,7 +52,7 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(capture).Object);
 
         // Act
-        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, 0, 100, CancellationToken.None);
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert: stills are written as "snapshot" events and must not show in the events list
         Assert.Equal(new[] { "snapshot" }, capture.Excluded);
@@ -64,7 +66,7 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(capture).Object);
 
         // Act
-        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, 200, 100, CancellationToken.None);
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, null, 200, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(200, capture.Skip);
@@ -79,7 +81,7 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(new Capture(), new EventPage([evt], 7)).Object);
 
         // Act
-        EventPage page = await loader.LoadAsync([evt.DeviceId], From, To, 0, 100, CancellationToken.None);
+        EventPage page = await loader.LoadAsync([evt.DeviceId], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(7, page.TotalCount);
@@ -95,7 +97,7 @@ public class ReviewEventLoader_Tests
         List<Guid> devices = Enumerable.Range(0, 70).Select(_ => Guid.NewGuid()).ToList();
 
         // Act
-        _ = await loader.LoadAsync(devices, From, To, 0, 100, CancellationToken.None);
+        _ = await loader.LoadAsync(devices, From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(64, capture.Devices.Count);
@@ -111,7 +113,7 @@ public class ReviewEventLoader_Tests
         Guid device = Guid.NewGuid();
 
         // Act
-        _ = await loader.LoadAsync([device, device], From, To, 0, 100, CancellationToken.None);
+        _ = await loader.LoadAsync([device, device], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(new[] { device }, capture.Devices);
@@ -139,7 +141,7 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
 
         // Act
-        EventPage page = await loader.LoadAsync([device], From, To, 1, 1, CancellationToken.None);
+        EventPage page = await loader.LoadAsync([device], From, To, null, 1, 1, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -159,7 +161,7 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
 
         // Act
-        EventPage page = await loader.LoadAsync([device], From, To, 0, 100, CancellationToken.None);
+        EventPage page = await loader.LoadAsync([device], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(1, page.TotalCount);
@@ -176,12 +178,12 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(repository.Object, caseMode);
 
         // Act
-        _ = await loader.LoadAsync([device], From, To, 0, 100, CancellationToken.None);
+        _ = await loader.LoadAsync([device], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         repository.Verify(r => r.ListPageByDevicesAndDateRangeAsync(
             It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
-            It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -192,9 +194,57 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(capture).Object, NoCase());
 
         // Act
-        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, 0, 100, CancellationToken.None);
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(new[] { "snapshot" }, capture.Excluded);
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_Load_EventTypeGiven_PassesItAsTheIncludeList()
+    {
+        // Arrange
+        var capture = new Capture();
+        var loader = new ReviewEventLoader(Repository(capture).Object);
+
+        // Act
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, "motion", 0, 100, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(new[] { "motion" }, capture.Included);
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_Load_NoEventType_PassesNoIncludeList()
+    {
+        // Arrange
+        var capture = new Capture();
+        var loader = new ReviewEventLoader(Repository(capture).Object);
+
+        // Act
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, null, 0, 100, CancellationToken.None);
+
+        // Assert
+        Assert.Null(capture.Included);
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_CaseMode_EventTypeGiven_ReturnsOnlyThatType()
+    {
+        // Arrange
+        Guid device = Guid.NewGuid();
+        Event motion = Evt(device, From.AddHours(1));
+        motion.EventType = "motion";
+        Event ding = Evt(device, From.AddHours(2));
+        ding.EventType = "ding";
+        ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [motion, ding]);
+        var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
+
+        // Act
+        EventPage page = await loader.LoadAsync([device], From, To, "motion", 0, 100, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, page.TotalCount);
+        Assert.Equal(motion.Id, Assert.Single(page.Items).Id);
     }
 }

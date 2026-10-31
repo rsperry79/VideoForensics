@@ -9,6 +9,9 @@ public static class ReviewEventFilters
     /// </summary>
     public static readonly IReadOnlyList<string> ExcludedEventTypes = ["snapshot"];
 
+    /// <summary>The event types the Event type filter offers, in display order. Each has an <c>EventType_&lt;type&gt;</c> label.</summary>
+    public static readonly IReadOnlyList<string> KnownEventTypes = ["motion", "ding", "doorbell", "on_demand", "alarm", "person"];
+
     /// <summary>Rows the events list asks for per page.</summary>
     public const int PageSize = 100;
 }

@@ -983,7 +983,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<EventPage> ListPageByDevicesAndDateRangeAsync(
             IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
-            int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<string>? includeEventTypes, int skip, int take, CancellationToken ct)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
             ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
@@ -993,9 +993,11 @@ namespace VideoForensics.Data.Database.Repositories
 
             Guid[] ids = deviceIds.ToArray();
             string[] excluded = excludeEventTypes?.ToArray() ?? [];
+            string[] included = includeEventTypes?.ToArray() ?? [];
             IQueryable<Event> matches = _db.Events
                 .AsNoTracking()
-                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType)
+                    && (included.Length == 0 || included.Contains(e.EventType)));
 
             int total = matches.Count();
             List<Event> items = matches

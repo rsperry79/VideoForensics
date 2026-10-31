@@ -553,7 +553,7 @@
 
         try
         {
-            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, skip, take, ct);
+            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, key.EventType, skip, take, ct);
             if (!IsCurrent(cts))
             {
                 return;
@@ -693,7 +693,7 @@
 
     private DetailKey CurrentKey()
     {
-        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc);
+        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc, State.EventTypeFilter);
     }
 
     private string CameraName(Guid deviceId)
@@ -778,11 +778,11 @@
     }
 
     /// <summary>The cameras and range one load asked for. A section is only shown while this still matches the state.</summary>
-    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc)
+    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc, string? EventType)
     {
         public bool Matches(ReviewPageState state)
         {
-            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc;
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc && EventType == state.EventTypeFilter;
         }
     }
 

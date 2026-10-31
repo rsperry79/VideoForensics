@@ -77,15 +77,15 @@ public sealed class FakeReviewEventLoader : IReviewEventLoader
     public Func<EventLoadCall, CancellationToken, Task<EventPage>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPage([], 0));
 
     /// <inheritdoc />
-    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, string? eventType, int skip, int take, CancellationToken ct)
     {
-        var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take);
+        var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take, eventType);
         _calls.Add(call);
         return Responder(call, ct);
     }
 
     /// <summary>One recorded page request.</summary>
-    public sealed record EventLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, int Skip, int Take);
+    public sealed record EventLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, int Skip, int Take, string? EventType = null);
 }
 
 /// <summary>Device health change feed double. Tests push changes through <see cref="Changes"/>.</summary>
