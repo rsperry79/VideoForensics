@@ -72,6 +72,19 @@ Layout:
 - Bit rate chart collapse markers link to the review page: add `MediaItemId` (and flag id) to `MeasuredBitrate`, `GetMeasuredBitrateByDeviceAsync`, its DTO, `RemoteBitrateAnalysisService` and the chart model (own small batch). Estimated-bit-rate clips have no marker (known).
 - Unreviewed counts on both pages; nav badge optional (SQL `COUNT` on the index, pushed through the changed source).
 
+## Syncfusion-only controls (user requirement, 2026-10-31)
+Every interactive control in the new tables, shell and subpages is a Syncfusion Blazor component; follow skill `ui-shared-theme` (colours, SfDropDownList binding gotchas). Mapping:
+- Flagged table: `SfGrid` (Grid, referenced). Row click via its row-select event.
+- Buttons (keep, dismiss, add to case, transport, previous/next): `SfButton` (Buttons, referenced). Checkbox "also place legal hold": `SfCheckBox`.
+- Case picker and flag-type/status filters: `SfDropDownList` / `SfMultiSelect` (DropDowns, referenced). Reason and note fields: `SfTextBox` (Inputs, referenced). Speed choice: `SfDropDownList` or `SfButtonGroup`-style `SfButton`s.
+- Confirm dialogs (dismiss reason, add-to-case summary with clip and snapshot counts): `SfDialog` (Popups, referenced). Result and error messages: `SfToast` / `SfMessage` (Notifications, referenced). Tooltips: `SfTooltip` (Popups).
+- Window toggle (unreviewed events / 1 week): `SfButtonGroup`-style toggle or `SfSwitch` (Buttons).
+- Breadcrumb: `SfBreadcrumb`, which lives in `Syncfusion.Blazor.Navigations` (NOT referenced today; add at 35.1.42, same version as the others, no license change; bootstrap5 theme already covers it). B0 confirms.
+- Layout of the middle window: `SfSplitter` (Layouts, referenced) where panes are resizable, per `ui-shared.md`.
+- Playback scrub bar and window: `SfSlider` (Inputs) as the scrubber (time-mapped value, ticks, tooltip); `SfTimeline` (Layouts) for the discrete unreviewed-events list with item click to switch flag. B0 spike must show whether these two can carry time-proportional flag markers.
+- Not available as Syncfusion Blazor components, so they stay plain elements: the HTML5 `<video>` (no Syncfusion video player) and non-interactive structure (grid containers, labels). The current custom `TimelineStrip` marker layer is NOT Syncfusion; use it only if the B0 spike proves `SfSlider`/`SfTimeline` cannot show time-proportional clickable markers, and get the user's OK first. Existing `TimelineStrip`/`ReviewPlayer` changes in D5 are therefore conditional on that result.
+- Tests: bUnit asserts the Syncfusion component types render (`FindComponent<SfGrid<...>>` etc.) so a plain `<button>` or `<select>` regression fails a test.
+
 ## Cross-cutting requirements (every batch)
 - Worktree from `wip`, failing test first, lite gate, hand off to `wip` (`code-workflow`).
 - Localization keys added in the same change as each component; tests assert by key.
@@ -82,7 +95,7 @@ Layout:
 - Per-batch acceptance includes a no-scroll fit check at three window sizes once the shell exists (do not leave one trailing browser pass: it slipped on the media rework).
 
 ## Batches
-- B0 Decisions and spikes (below) plus a throwaway spike: `TimelineStrip` marker layer and `ReviewPlayer` progress/rate on a branch, and `SfTimeline` item-click check.
+- B0 Decisions and spikes (below) plus a throwaway spike: can `SfSlider` + `SfTimeline` show time-proportional, clickable flag markers (else ask the user before using the custom `TimelineStrip` layer); `ReviewPlayer` progress/rate; `SfBreadcrumb` + Navigations package add; `SfGrid` row-select.
 - B1a Data: entity, config, migration, indexes, repository (compare-and-set, keyset neighbours, count), ActionLog in one commit. data.* projects only.
 - B1c Case snapshot kind: `CaseItemKind.Snapshot`, migration, DTOs, export, case details, tests (needed by B6).
 - B1b Wire: DTOs, endpoints, Remote twin, `IMediaFlagChangedSource`, DI on server/client/MAUI, notice-dismiss routes.
