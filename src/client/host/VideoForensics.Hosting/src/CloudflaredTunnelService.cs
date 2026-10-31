@@ -56,6 +56,10 @@ namespace VideoForensics.Client.Hosting
             _cloudflared = cloudflared;
             _optionsCache = optionsCache;
             _logger = logger ?? NullLogger<CloudflaredTunnelService>.Instance;
+
+            // CloudflaredKit reports its own process dying only as a warning. A dead tunnel cuts off remote access, so it is
+            // logged here at Error, with the exit code.
+            _cloudflared.TunnelExitedUnexpectedly += OnTunnelExitedUnexpectedly;
         }
 
         public async Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct, string? publicUrl = null)
@@ -117,6 +121,11 @@ namespace VideoForensics.Client.Hosting
 
                 throw;
             }
+        }
+
+        private void OnTunnelExitedUnexpectedly(int exitCode)
+        {
+            _logger.LogError("Cloudflare tunnel exited unexpectedly (exit code {ExitCode}); remote access through it is down", exitCode);
         }
 
         public async Task StopAsync(CancellationToken ct)

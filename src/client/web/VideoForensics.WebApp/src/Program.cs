@@ -86,6 +86,12 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("VideoForensics.Providers.Ring.Api", Serilog.Events.LogEventLevel.Debug)
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.Client.WebApp")
+    // CloudflaredKit logs its process dying as a warning; CloudflaredTunnelService logs the same event at Error with the exit code,
+    // so the package's warning is dropped to avoid a duplicate line.
+    .Filter.ByExcluding(e => e.Level == Serilog.Events.LogEventLevel.Warning
+        && e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source)
+        && source.ToString().Trim('"') == "CloudflaredKit.CloudflaredProcess"
+        && e.MessageTemplate.Text.Contains("exited unexpectedly", StringComparison.Ordinal))
     // Text format: human-readable with structured properties appended
     .WriteTo.File(
         path: Path.Combine(logsDir, "audit-.txt"),

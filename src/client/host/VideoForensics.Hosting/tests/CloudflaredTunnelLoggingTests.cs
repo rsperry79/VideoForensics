@@ -36,6 +36,21 @@ namespace VideoForensics.Client.Hosting.Tests
         }
 
         [Fact]
+        public void TunnelExitedUnexpectedly_AfterStart_LogsErrorWithExitCode()
+        {
+            // The package logs this only as a warning; a dead tunnel cuts off remote access, so we log it as an error.
+            var cloudflared = new Mock<ICloudflaredService>();
+            var logger = new Mock<ILogger<CloudflaredTunnelService>>();
+            _ = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, logger.Object);
+
+            cloudflared.Raise(c => c.TunnelExitedUnexpectedly += null, 1);
+
+            Assert.Equal(1, CountLogs(logger, LogLevel.Error));
+            Assert.Contains(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error)
+                && i.Arguments[2]!.ToString()!.Contains("exited unexpectedly") && i.Arguments[2]!.ToString()!.Contains("1"));
+        }
+
+        [Fact]
         public async Task StartPermanentTunnelAsync_Succeeds_LogsInformationAndReportsRunning()
         {
             var cloudflared = new Mock<ICloudflaredService>();
