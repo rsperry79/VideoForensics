@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -10,7 +11,7 @@ namespace VideoForensics.Providers.Ring.Services
     /// The two rows read from one device's settings: the Ring-only scalars (null when the device has no settings object) and the
     /// provider-agnostic general settings. Unstored holds a note for every value read but not stored, with the key and JSON type only, never the value.
     /// </summary>
-    public sealed record RingSettingsGroups(RingDeviceSettings? Ring, DeviceGeneralSettings? General, IReadOnlyList<string> Unstored);
+    public sealed record RingSettingsGroups(RingDeviceSettings? Ring, DeviceGeneralSettings? General, IReadOnlyList<string> Unstored, RingDeviceSettingGroupRows? Groups = null);
 
     /// <summary>
     /// Parses the scalar settings keys (and the small groups they sit in) into <see cref="RingDeviceSettings"/> and <see cref="DeviceGeneralSettings"/>
@@ -39,7 +40,7 @@ namespace VideoForensics.Providers.Ring.Services
             ApplyRing(f, ring, notes);
             var general = new DeviceGeneralSettings();
             ApplyGeneral(f, general, notes);
-            return new RingSettingsGroups(ring, general, notes);
+            return new RingSettingsGroups(ring, general, notes, RingDeviceSettingGroupRowsParser.Parse(f, notes));
         }
 
         /// <summary>
@@ -110,6 +111,240 @@ namespace VideoForensics.Providers.Ring.Services
             ["extended_live_view"],
             ["floodlight_settings", "brightness"],
             ["status_led_enable"],
+            ["advanced_motion_settings", "zone_1", "name"],
+            ["advanced_motion_settings", "zone_1", "state"],
+            ["advanced_motion_settings", "zone_1", "vertex1", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex1", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex2", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex2", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex3", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex3", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex4", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex4", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex5", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex5", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex6", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex6", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex7", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex7", "y"],
+            ["advanced_motion_settings", "zone_1", "vertex8", "x"],
+            ["advanced_motion_settings", "zone_1", "vertex8", "y"],
+            ["advanced_motion_settings", "zone_2", "name"],
+            ["advanced_motion_settings", "zone_2", "state"],
+            ["advanced_motion_settings", "zone_2", "vertex1", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex1", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex2", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex2", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex3", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex3", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex4", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex4", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex5", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex5", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex6", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex6", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex7", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex7", "y"],
+            ["advanced_motion_settings", "zone_2", "vertex8", "x"],
+            ["advanced_motion_settings", "zone_2", "vertex8", "y"],
+            ["advanced_motion_settings", "zone_3", "name"],
+            ["advanced_motion_settings", "zone_3", "state"],
+            ["advanced_motion_settings", "zone_3", "vertex1", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex1", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex2", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex2", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex3", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex3", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex4", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex4", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex5", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex5", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex6", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex6", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex7", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex7", "y"],
+            ["advanced_motion_settings", "zone_3", "vertex8", "x"],
+            ["advanced_motion_settings", "zone_3", "vertex8", "y"],
+            ["attestation_settings", "rda_enabled"],
+            ["auth_settings", "fallback_enabled"],
+            ["auth_settings", "protocol"],
+            ["auth_settings", "retry_interval"],
+            ["backend_settings", "enable_rich_notifications"],
+            ["backend_settings", "live_view_disabled"],
+            ["backend_settings", "live_view_preset_profile"],
+            ["backend_settings", "motion_snooze_preset_profile"],
+            ["backend_settings", "motion_warning_enabled"],
+            ["backend_settings", "paid_features", "ai_alexa_plus_greetings"],
+            ["backend_settings", "paid_features", "ai_automated_warnings"],
+            ["backend_settings", "paid_features", "ai_labs_daily_clips"],
+            ["backend_settings", "paid_features", "ai_labs_memorable_moments"],
+            ["backend_settings", "paid_features", "alarm_triggered_recording"],
+            ["backend_settings", "paid_features", "alexa_concierge"],
+            ["backend_settings", "paid_features", "animal"],
+            ["backend_settings", "paid_features", "appstore"],
+            ["backend_settings", "paid_features", "baby_cry"],
+            ["backend_settings", "paid_features", "car_alarm"],
+            ["backend_settings", "paid_features", "closed_caption"],
+            ["backend_settings", "paid_features", "co2_smoke_alarm"],
+            ["backend_settings", "paid_features", "critical_alerts"],
+            ["backend_settings", "paid_features", "cv_triggers"],
+            ["backend_settings", "paid_features", "daily_digest"],
+            ["backend_settings", "paid_features", "ding_call"],
+            ["backend_settings", "paid_features", "dog_bark"],
+            ["backend_settings", "paid_features", "extended_live_view"],
+            ["backend_settings", "paid_features", "general_sound"],
+            ["backend_settings", "paid_features", "glass_break"],
+            ["backend_settings", "paid_features", "human"],
+            ["backend_settings", "paid_features", "live_speak"],
+            ["backend_settings", "paid_features", "loitering"],
+            ["backend_settings", "paid_features", "motion"],
+            ["backend_settings", "paid_features", "motion_awareness"],
+            ["backend_settings", "paid_features", "motion_stop"],
+            ["backend_settings", "paid_features", "multicam_live_view"],
+            ["backend_settings", "paid_features", "natural_language_search"],
+            ["backend_settings", "paid_features", "other_motion"],
+            ["backend_settings", "paid_features", "package_delivery"],
+            ["backend_settings", "paid_features", "package_pickup"],
+            ["backend_settings", "paid_features", "package_protection"],
+            ["backend_settings", "paid_features", "person_identification"],
+            ["backend_settings", "paid_features", "recording_24x7"],
+            ["backend_settings", "paid_features", "retinal_tuning"],
+            ["backend_settings", "paid_features", "rogers_vqa"],
+            ["backend_settings", "paid_features", "sheila_cv"],
+            ["backend_settings", "paid_features", "sheila_recording"],
+            ["backend_settings", "paid_features", "smart_media_descriptions"],
+            ["backend_settings", "paid_features", "snapshot_capture_plus"],
+            ["backend_settings", "paid_features", "system_level_pip"],
+            ["backend_settings", "paid_features", "unverified_motion"],
+            ["backend_settings", "paid_features", "vehicle"],
+            ["backend_settings", "terms_of_service_accepted", "autoreply"],
+            ["backend_settings", "terms_of_service_accepted", "concierge"],
+            ["backend_settings", "user_specified_footage_hours_ttl"],
+            ["backend_settings", "user_specified_recording_ttl"],
+            ["client_device_settings", "advanced_motion_enabled"],
+            ["client_device_settings", "cfes_eligible"],
+            ["client_device_settings", "dynamic_network_switching_eligible"],
+            ["client_device_settings", "light_schedule_enabled"],
+            ["client_device_settings", "local_playback_enabled"],
+            ["client_device_settings", "motion_message_enabled"],
+            ["client_device_settings", "motion_zone_recommendation"],
+            ["client_device_settings", "night_vision_enabled"],
+            ["client_device_settings", "people_only_enabled"],
+            ["client_device_settings", "ptz_setup_complete"],
+            ["client_device_settings", "rich_notifications_eligible"],
+            ["client_device_settings", "ringtones_enabled"],
+            ["client_device_settings", "shadow_correction_enabled"],
+            ["client_device_settings", "sheila_camera_eligible"],
+            ["client_device_settings", "sheila_camera_processing_eligible"],
+            ["client_device_settings", "show_24x7_lite"],
+            ["client_device_settings", "show_offline_motion_events"],
+            ["client_device_settings", "show_radar_data"],
+            ["client_device_settings", "vehicle_detection_eligible"],
+            ["cv_settings", "detection_types", "vehicle", "action"],
+            ["cv_settings", "threshold_overrides", "package_delivery", "versions"],
+            ["event_settings", "on_demand", "max_duration_s"],
+            ["floodlight_settings", "always_on_duration"],
+            ["general_settings", "country_code"],
+            ["general_settings", "country_code_enabled"],
+            ["general_settings", "data_collection_enabled"],
+            ["general_settings", "enable_audio_recording"],
+            ["general_settings", "events_via_rss"],
+            ["general_settings", "firmwares_locked"],
+            ["general_settings", "lite_24x7_enabled"],
+            ["general_settings", "lite_24x7_subscribed"],
+            ["general_settings", "offline_motion_event_enabled"],
+            ["general_settings", "offline_motion_event_subscribed"],
+            ["general_settings", "theft_alarm_enable"],
+            ["general_settings", "use_wrapup_domain"],
+            ["general_settings", "utc_offset"],
+            ["general_settings", "wrapup_domain"],
+            ["keep_alive_settings", "keep_alive_auto"],
+            ["light_snooze_settings", "duration"],
+            ["lite_24x7", "mode"],
+            ["motion_settings", "advanced_motion_detection_enabled"],
+            ["motion_settings", "advanced_motion_detection_human_only_mode"],
+            ["motion_settings", "advanced_motion_detection_loitering_mode"],
+            ["motion_settings", "advanced_motion_detection_mode"],
+            ["motion_settings", "advanced_motion_glance_enabled"],
+            ["motion_settings", "advanced_motion_recording_human_mode"],
+            ["motion_settings", "advanced_motion_zones_enabled"],
+            ["motion_settings", "advanced_motion_zones_type"],
+            ["motion_settings", "advanced_pir_motion_zones", "zone1_sensitivity"],
+            ["motion_settings", "advanced_pir_motion_zones", "zone2_sensitivity"],
+            ["motion_settings", "advanced_pir_motion_zones", "zone3_sensitivity"],
+            ["motion_settings", "advanced_pir_motion_zones", "zone4_sensitivity"],
+            ["motion_settings", "advanced_pir_motion_zones", "zone5_sensitivity"],
+            ["motion_settings", "advanced_pir_motion_zones", "zone6_sensitivity"],
+            ["motion_settings", "enable_audio"],
+            ["motion_settings", "enable_ir"],
+            ["motion_settings", "enable_recording"],
+            ["motion_settings", "end_detection"],
+            ["motion_settings", "loitering_threshold"],
+            ["motion_settings", "motion_sensitivity_profile"],
+            ["motion_settings", "motion_snooze_device_enabled"],
+            ["motion_settings", "motion_snooze_profile"],
+            ["motion_settings", "motion_snooze_threshold_mins"],
+            ["motion_settings", "zone_settings_v2_enabled"],
+            ["sheila_settings", "session_registration_api"],
+            ["snapshot_settings", "close_container"],
+            ["snapshot_settings", "frequency_after_secs"],
+            ["snapshot_settings", "frequency_secs"],
+            ["snapshot_settings", "lite_24x7_resolution_p"],
+            ["snapshot_settings", "max_upload_kb"],
+            ["snapshot_settings", "ome_resolution_p"],
+            ["snapshot_settings", "period_after_secs"],
+            ["stream_settings", "active_streaming_profile"],
+            ["stream_settings", "profile"],
+            ["stream_settings", "streaming_profiles", "rms", "host"],
+            ["stream_settings", "streaming_profiles", "rms", "port"],
+            ["type"],
+            ["video_settings", "abc_enabled"],
+            ["video_settings", "ae_level"],
+            ["video_settings", "ae_mode"],
+            ["video_settings", "aspect_ratio"],
+            ["video_settings", "auto_clip_length_enabled"],
+            ["video_settings", "brightness"],
+            ["video_settings", "clip_length_max"],
+            ["video_settings", "clip_length_min"],
+            ["video_settings", "contrast"],
+            ["video_settings", "dynamic_resolution_enabled"],
+            ["video_settings", "exposure_control"],
+            ["video_settings", "hdr_enable"],
+            ["video_settings", "ignore_zones", "zone1", "name"],
+            ["video_settings", "ignore_zones", "zone1", "state"],
+            ["video_settings", "ignore_zones", "zone1", "vertex1", "x"],
+            ["video_settings", "ignore_zones", "zone1", "vertex1", "y"],
+            ["video_settings", "ignore_zones", "zone1", "vertex2", "x"],
+            ["video_settings", "ignore_zones", "zone1", "vertex2", "y"],
+            ["video_settings", "ignore_zones", "zone2", "name"],
+            ["video_settings", "ignore_zones", "zone2", "state"],
+            ["video_settings", "ignore_zones", "zone2", "vertex1", "x"],
+            ["video_settings", "ignore_zones", "zone2", "vertex1", "y"],
+            ["video_settings", "ignore_zones", "zone2", "vertex2", "x"],
+            ["video_settings", "ignore_zones", "zone2", "vertex2", "y"],
+            ["video_settings", "ignore_zones", "zone3", "name"],
+            ["video_settings", "ignore_zones", "zone3", "state"],
+            ["video_settings", "ignore_zones", "zone3", "vertex1", "x"],
+            ["video_settings", "ignore_zones", "zone3", "vertex1", "y"],
+            ["video_settings", "ignore_zones", "zone3", "vertex2", "x"],
+            ["video_settings", "ignore_zones", "zone3", "vertex2", "y"],
+            ["video_settings", "ignore_zones", "zone4", "name"],
+            ["video_settings", "ignore_zones", "zone4", "state"],
+            ["video_settings", "ignore_zones", "zone4", "vertex1", "x"],
+            ["video_settings", "ignore_zones", "zone4", "vertex1", "y"],
+            ["video_settings", "ignore_zones", "zone4", "vertex2", "x"],
+            ["video_settings", "ignore_zones", "zone4", "vertex2", "y"],
+            ["video_settings", "night_color_enable"],
+            ["video_settings", "retinal_tuning", "enabled"],
+            ["video_settings", "retinal_tuning", "user_specified_enabled"],
+            ["video_settings", "saturation"],
+            ["vod_settings", "cached_vod_domain"],
+            ["vod_settings", "enable"],
+            ["vod_settings", "forced_enable_vod"],
+            ["vod_settings", "toggled_at"],
+            ["vod_settings", "use_cached_vod_domain"],
+            ["volume_settings", "mic_volume"],
+            ["volume_settings", "voice_volume"],
         ];
 
         private static void ApplyRing(IReadOnlyDictionary<string, JsonElement> f, RingDeviceSettings r, List<string> notes)
@@ -190,7 +425,7 @@ namespace VideoForensics.Providers.Ring.Services
             return null;
         }
 
-        private static bool? Bool(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
+        internal static bool? Bool(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
         {
             JsonElement? v = Find(f, notes, path);
             if (v is not { } e)
@@ -202,7 +437,19 @@ namespace VideoForensics.Providers.Ring.Services
             return Stored(ok, r, path, e, notes);
         }
 
-        private static int? Int(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
+        internal static double? Dbl(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
+        {
+            JsonElement? v = Find(f, notes, path);
+            if (v is not { } e)
+            {
+                return null;
+            }
+
+            bool ok = RingJsonValue.TryDouble(e, out double? r);
+            return Stored(ok, r, path, e, notes);
+        }
+
+        internal static int? Int(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
         {
             JsonElement? v = Find(f, notes, path);
             if (v is not { } e)
@@ -214,7 +461,7 @@ namespace VideoForensics.Providers.Ring.Services
             return Stored(ok, r, path, e, notes);
         }
 
-        private static string? Text(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
+        internal static string? Text(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, params string[] path)
         {
             JsonElement? v = Find(f, notes, path);
             if (v is not { } e)
@@ -271,7 +518,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// Walks a key path through objects. Absent or null yields null with no note. A group on the way that is not an object is noted once (its
         /// name and JSON type only) and yields null.
         /// </summary>
-        private static JsonElement? Find(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, string[] path)
+        internal static JsonElement? Find(IReadOnlyDictionary<string, JsonElement> f, List<string> notes, string[] path)
         {
             if (!f.TryGetValue(path[0], out JsonElement node))
             {

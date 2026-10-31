@@ -392,11 +392,32 @@ namespace VideoForensics.Providers.Ring.Services
                 children = (children ?? new DeviceSettingsChildren([], [], [])) with
                 {
                     RingSettings = settingRows.Ring == null ? null : CopyRow(settingRows.Ring, deviceId),
-                    GeneralSettings = settingRows.General == null ? null : CopyRow(settingRows.General, deviceId)
+                    GeneralSettings = settingRows.General == null ? null : CopyRow(settingRows.General, deviceId),
+                    RingSettingGroups = settingRows.Groups == null ? null : CopyGroupRows(settingRows.Groups, deviceId)
                 };
             }
 
             return children;
+        }
+
+        /// <summary>Copies the endpoint setting group rows onto fresh rows with their own Ids and the device id; each child list is copied element by element.</summary>
+        private static RingDeviceSettingGroupRows CopyGroupRows(RingDeviceSettingGroupRows g, Guid deviceId)
+        {
+            return new RingDeviceSettingGroupRows(
+                g.AdvancedMotion == null ? null : CopyRow(g.AdvancedMotion, deviceId),
+                g.Backend == null ? null : CopyRow(g.Backend, deviceId),
+                g.ClientDevice == null ? null : CopyRow(g.ClientDevice, deviceId),
+                g.Cv == null ? null : CopyRow(g.Cv, deviceId),
+                g.General == null ? null : CopyRow(g.General, deviceId),
+                g.Misc == null ? null : CopyRow(g.Misc, deviceId),
+                g.Motion == null ? null : CopyRow(g.Motion, deviceId),
+                g.Snapshot == null ? null : CopyRow(g.Snapshot, deviceId),
+                g.Stream == null ? null : CopyRow(g.Stream, deviceId),
+                g.Video == null ? null : CopyRow(g.Video, deviceId),
+                g.Vod == null ? null : CopyRow(g.Vod, deviceId),
+                g.MotionSnoozeProfiles?.Select(r => CopyRow(r, deviceId)).ToList(),
+                g.CvThresholdVersions?.Select(r => CopyRow(r, deviceId)).ToList(),
+                g.CvThresholdValues?.Select(r => CopyRow(r, deviceId)).ToList());
         }
 
         /// <summary>Copies a parsed template onto a fresh row with its own Id and the device id, so repeated builds never share an instance.</summary>

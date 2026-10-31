@@ -383,6 +383,156 @@ namespace VideoForensics.Data.Database.Repositories
             _ = db.DeviceGeneralSettings.Add(row);
         }
 
+        /// <summary>Replaces the device's endpoint setting group rows. A null group or list leaves the stored rows untouched; a non-null group writes its row, nulls included, and a list replaces the stored rows.</summary>
+        private static async Task ReplaceSettingGroupRowsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            RingDeviceSettingGroupRows? g = settings.RingSettingGroups;
+            if (g == null)
+            {
+                return;
+            }
+
+            if (g.AdvancedMotion != null)
+            {
+                db.RingDeviceAdvancedMotionSettings.RemoveRange(await db.RingDeviceAdvancedMotionSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceAdvancedMotionSettings row = g.AdvancedMotion;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceAdvancedMotionSettings.Add(row);
+            }
+
+            if (g.Backend != null)
+            {
+                db.RingDeviceBackendSettings.RemoveRange(await db.RingDeviceBackendSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceBackendSettings row = g.Backend;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceBackendSettings.Add(row);
+            }
+
+            if (g.ClientDevice != null)
+            {
+                db.RingDeviceClientDeviceSettings.RemoveRange(await db.RingDeviceClientDeviceSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceClientDeviceSettings row = g.ClientDevice;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceClientDeviceSettings.Add(row);
+            }
+
+            if (g.Cv != null)
+            {
+                db.RingDeviceCvSettings.RemoveRange(await db.RingDeviceCvSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceCvSettings row = g.Cv;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceCvSettings.Add(row);
+            }
+
+            if (g.General != null)
+            {
+                db.RingDeviceGeneralSettings.RemoveRange(await db.RingDeviceGeneralSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceGeneralSettings row = g.General;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceGeneralSettings.Add(row);
+            }
+
+            if (g.Misc != null)
+            {
+                db.RingDeviceMiscSettings.RemoveRange(await db.RingDeviceMiscSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceMiscSettings row = g.Misc;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceMiscSettings.Add(row);
+            }
+
+            if (g.Motion != null)
+            {
+                db.RingDeviceMotionSettings.RemoveRange(await db.RingDeviceMotionSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceMotionSettings row = g.Motion;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceMotionSettings.Add(row);
+            }
+
+            if (g.Snapshot != null)
+            {
+                db.RingDeviceSnapshotSettings.RemoveRange(await db.RingDeviceSnapshotSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceSnapshotSettings row = g.Snapshot;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceSnapshotSettings.Add(row);
+            }
+
+            if (g.Stream != null)
+            {
+                db.RingDeviceStreamSettings.RemoveRange(await db.RingDeviceStreamSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceStreamSettings row = g.Stream;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceStreamSettings.Add(row);
+            }
+
+            if (g.Video != null)
+            {
+                db.RingDeviceVideoSettings.RemoveRange(await db.RingDeviceVideoSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceVideoSettings row = g.Video;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceVideoSettings.Add(row);
+            }
+
+            if (g.Vod != null)
+            {
+                db.RingDeviceVodSettings.RemoveRange(await db.RingDeviceVodSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceVodSettings row = g.Vod;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceVodSettings.Add(row);
+            }
+            if (g.MotionSnoozeProfiles != null)
+            {
+                db.RingDeviceMotionSnoozeProfiles.RemoveRange(await db.RingDeviceMotionSnoozeProfiles.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceMotionSnoozeProfile row in g.MotionSnoozeProfiles)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceMotionSnoozeProfiles.Add(row);
+                }
+            }
+            if (g.CvThresholdVersions != null)
+            {
+                db.RingDeviceCvThresholdOverrideVersions.RemoveRange(await db.RingDeviceCvThresholdOverrideVersions.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceCvThresholdOverrideVersion row in g.CvThresholdVersions)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceCvThresholdOverrideVersions.Add(row);
+                }
+            }
+            if (g.CvThresholdValues != null)
+            {
+                db.RingDeviceCvThresholdOverrideValues.RemoveRange(await db.RingDeviceCvThresholdOverrideValues.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceCvThresholdOverrideValue row in g.CvThresholdValues)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceCvThresholdOverrideValues.Add(row);
+                }
+            }
+        }
+
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
         private static string OfflineMotionText(DeviceOfflineMotionSettings s)
         {
@@ -454,6 +604,7 @@ namespace VideoForensics.Data.Database.Repositories
             await ReplaceNetworkDiagnosisAsync(db, deviceId, settings, ct);
             await ReplaceRingSettingsAsync(db, deviceId, settings, ct);
             await ReplaceGeneralSettingsAsync(db, deviceId, settings, ct);
+            await ReplaceSettingGroupRowsAsync(db, deviceId, settings, ct);
             // An Observed light event is written only on an off-to-on transition, in the same save as the rest of the sync.
             _ = await DeviceLightEventRepository.AddObservedIfTransitionAsync(db, deviceId, settings.LightSecondsRemaining, changedAtUtc, ct);
             if (settings.LightIsOn is { } lightOn)

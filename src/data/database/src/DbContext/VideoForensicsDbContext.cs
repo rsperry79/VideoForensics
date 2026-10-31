@@ -345,6 +345,20 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the provider-agnostic general settings of a device.</summary>
         public DbSet<DeviceGeneralSettings> DeviceGeneralSettings { get; set; }
+        public DbSet<RingDeviceAdvancedMotionSettings> RingDeviceAdvancedMotionSettings { get; set; }
+        public DbSet<RingDeviceBackendSettings> RingDeviceBackendSettings { get; set; }
+        public DbSet<RingDeviceClientDeviceSettings> RingDeviceClientDeviceSettings { get; set; }
+        public DbSet<RingDeviceCvSettings> RingDeviceCvSettings { get; set; }
+        public DbSet<RingDeviceGeneralSettings> RingDeviceGeneralSettings { get; set; }
+        public DbSet<RingDeviceMiscSettings> RingDeviceMiscSettings { get; set; }
+        public DbSet<RingDeviceMotionSettings> RingDeviceMotionSettings { get; set; }
+        public DbSet<RingDeviceSnapshotSettings> RingDeviceSnapshotSettings { get; set; }
+        public DbSet<RingDeviceStreamSettings> RingDeviceStreamSettings { get; set; }
+        public DbSet<RingDeviceVideoSettings> RingDeviceVideoSettings { get; set; }
+        public DbSet<RingDeviceVodSettings> RingDeviceVodSettings { get; set; }
+        public DbSet<RingDeviceMotionSnoozeProfile> RingDeviceMotionSnoozeProfiles { get; set; }
+        public DbSet<RingDeviceCvThresholdOverrideVersion> RingDeviceCvThresholdOverrideVersions { get; set; }
+        public DbSet<RingDeviceCvThresholdOverrideValue> RingDeviceCvThresholdOverrideValues { get; set; }
 
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }

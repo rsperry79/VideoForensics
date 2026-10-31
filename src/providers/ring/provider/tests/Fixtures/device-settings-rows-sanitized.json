@@ -24,8 +24,8 @@
         "lite_24x7": { "subscribed": true, "enabled": false, "frequency_secs": 15, "resolution_p": 360 },
         "server_settings": { "ring_media_server_enabled": true, "ring_media_server_host": "rms-fake.example.invalid" },
         "sheila_settings": { "cv_processing_enabled": false, "local_storage_enabled": true },
-        "video_settings": { "encryption_enabled": false, "encryption_method": 1, "encryption_eligibility_mode": "fake-mode", "recording_24x7_mode": 0 },
-        "cv_settings": { "search_types": { "natural_language_search": { "enabled": true, "mode": "cloud" } } },
+        "video_settings": { "encryption_enabled": false, "encryption_method": 1, "encryption_eligibility_mode": "fake-mode", "recording_24x7_mode": 0, "exposure_control": 3, "aspect_ratio": "fake-ratio" },
+        "cv_settings": { "search_types": { "natural_language_search": { "enabled": true, "mode": "cloud" } }, "threshold_overrides": { "package_delivery": { "versions": [ { "version": "fake-v1", "values": [ 0.5 ] } ] } } },
         "concierge_settings": { "mode": "disabled", "alexa_settings": { "delay_ms": 10000 }, "autoreply_settings": { "delay_ms": 5000 } },
         "advanced_pir_motion_zones": { "zone1_sensitivity": 5, "zone2_sensitivity": 4, "zone3_sensitivity": 3, "zone4_sensitivity": 2, "zone5_sensitivity": 1, "zone6_sensitivity": 0 },
         "audio_settings": { "enable_live_view_audio_override": true },
@@ -47,7 +47,7 @@
         "advanced_motion_detection_human_only_mode": false,
         "live_view_preset_profile": "middle",
         "motion_snooze_preset_profile": "low",
-        "motion_settings": { "motion_detection_enabled": true, "motion_snooze_preset_profile": "high" },
+        "motion_settings": { "motion_detection_enabled": true, "motion_snooze_preset_profile": "high", "motion_snooze_profile": [ 5, 15 ], "enable_ir": 1 },
         "unmodeled_fake_key": "keep-me"
       }
     }

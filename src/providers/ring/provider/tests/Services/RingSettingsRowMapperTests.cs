@@ -123,6 +123,35 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public void ToSettingsChildren_Doorbot_WritesEndpointGroupRowsWithDeviceId()
+        {
+            DeviceSettingsChildren children = RingDeviceDetailsMapper.ToSettingsChildrenWithFeatures(Load("7001"), DeviceId)!;
+
+            RingDeviceSettingGroupRows groups = children.RingSettingGroups!;
+            Assert.Equal(DeviceId, groups.Video!.DeviceId);
+            Assert.NotEqual(Guid.Empty, groups.Video.Id);
+            Assert.Equal(3, groups.Video.ExposureControl);
+            Assert.Equal("fake-ratio", groups.Video.AspectRatio);
+            Assert.Equal(1, groups.Motion!.EnableIr);
+            Assert.Equal(2, groups.MotionSnoozeProfiles!.Count);
+            Assert.All(groups.MotionSnoozeProfiles, p => Assert.Equal(DeviceId, p.DeviceId));
+            Assert.Equal("fake-v1", Assert.Single(groups.CvThresholdVersions!).Version);
+            Assert.Equal(0.5, Assert.Single(groups.CvThresholdValues!).Value);
+        }
+
+        [Fact]
+        public void ToSettingsChildren_Doorbot_EndpointGroupKeysLeaveTheRemainderJson()
+        {
+            string? remainder = Load("7001").DeviceFields!.SettingsMetadataJson;
+
+            Assert.NotNull(remainder);
+            Assert.Contains("unmodeled_fake_key", remainder);
+            Assert.DoesNotContain("motion_snooze_profile", remainder);
+            Assert.DoesNotContain("threshold_overrides", remainder);
+            Assert.DoesNotContain("aspect_ratio", remainder);
+        }
+
+        [Fact]
         public void ToAlerts_DoorbotWithOtaStatus_AddsOtaStatusRowBesideConnection()
         {
             IReadOnlyList<DeviceAlerts> alerts = RingDeviceDetailsMapper.ToAlerts(Load("7001"), DeviceId);
