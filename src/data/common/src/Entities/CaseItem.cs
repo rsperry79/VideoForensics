@@ -9,7 +9,7 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Gets or sets the ID of the case this item is pinned to (foreign key, cascade delete).</summary>
         public Guid CaseId { get; set; }
 
-        /// <summary>Gets or sets the kind of evidence (Event or Media), stored as string in database.</summary>
+        /// <summary>Gets or sets the kind of evidence (Event, Media or Snapshot), stored as string in database.</summary>
         public CaseItemKind Kind { get; set; }
 
         /// <summary>Gets or sets the ID of the event if Kind is Event; null if Kind is Media.</summary>
@@ -17,6 +17,9 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Gets or sets the ID of the media item if Kind is Media; null if Kind is Event.</summary>
         public Guid? MediaItemId { get; set; }
+
+        /// <summary>Gets or sets the ID of the snapshot capture if Kind is Snapshot; null otherwise.</summary>
+        public Guid? SnapshotCaptureId { get; set; }
 
         /// <summary>Gets or sets the reason this item was pinned to the case (required, max 1024 chars).</summary>
         public required string Reason { get; set; }

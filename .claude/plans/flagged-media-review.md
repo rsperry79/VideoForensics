@@ -104,11 +104,11 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
 
 ## Batches
 - B0 Decisions and spikes (below) plus a throwaway spike: `SfSlider` as a time-mapped scrubber (range, ticks, seeking a `<video>`) with the `SfTimeline` flag list and `SfButton` item content; `ReviewPlayer` progress/rate; `SfBreadcrumb` + Navigations package add and theme check; `SfGrid` row-select. If the slider-plus-list is not enough, ask the user about the marker exception.
-- B1a Data: entity, config, migration, indexes, repository (compare-and-set, keyset neighbours, count), ActionLog in one commit. data.* projects only.
-- B1c Case snapshot kind: `CaseItemKind.Snapshot`, migration, DTOs, export, case details, tests (needed by B6).
+- B1a Data: entity, config, migration, indexes, repository (compare-and-set, keyset neighbours, count), ActionLog in one commit. data.* projects only. **DONE (2026-10-31, on wip: MediaFlag entity/config/AddMediaFlags migration/IMediaFlagRepository; 33 tests. Migration only run on in-memory SQLite).**
+- B1c Case snapshot kind: `CaseItemKind.Snapshot`, migration, DTOs, export, case details, tests (needed by B6). **DONE (2026-10-31: CaseItemKind.Snapshot, CaseItem.SnapshotCaptureId, AddCaseItemSnapshot migration, repository pin/dup/list, DTO mapping, CaseState.HasActivePin, integrity NotApplicable, CaseDetails generic 'Snapshot' label. NOT done: case export does not include pinned snapshot files; case details shows a generic label, no device/time lookup).**
 - B1b Wire: DTOs, endpoints, Remote twin, `IMediaFlagChangedSource`, DI on server/client/MAUI, notice-dismiss routes.
 - B2 Writers and backfill (needs B1a): `MediaAnalysisService` reconcile, `SignalDeviationAlerts` flag + `NoticeId`, backfill pass.
-- B4a `MediaPlayer` (D8): build the control, JS module, tests, then migrate every existing `<video>` site onto it; add the source-scan test. No data dependency.
+- B4a `MediaPlayer` (D8): build the control, JS module, tests, then migrate every existing `<video>` site onto it; add the source-scan test. No data dependency. **DONE (2026-10-31, on wip: MediaPlayer + JS module + policy seam + source-scan test; five video sites migrated, LiveView via Live mode. Unit/bUnit only, never played in a browser).**
 - B4 Shell: `FlagReviewShell`, `MediaFit` (uses `MediaPlayer`), resize module, CSS (no data dependency; after B4a; parallel with B1b/B2).
 - B5 `PlaybackTimeline`: `SfSlider` scrub bar, `FlagMarkerLayer`, `SfTimeline` flag list, transport buttons driving `MediaPlayer` (needs B4a, B4 and a marker DTO shape).
 - B3a `MeasuredBitrate` + chart gains MediaItemId/flag id (needs B1b).

@@ -281,6 +281,10 @@ else
                     return media.FileName;
                 }
             }
+            else if (item.Kind == CaseItemKind.Snapshot && item.SnapshotCaptureId.HasValue)
+            {
+                return L["SnapshotItemLabel"];
+            }
         }
         catch
         {

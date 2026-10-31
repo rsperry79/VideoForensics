@@ -608,6 +608,8 @@ namespace VideoForensics.Data.Database.Repositories
                         ci => ci.CaseId == caseId && ci.EventId == targetId && ci.RemovedAtUtc == null, ct),
                     CaseItemKind.Media => await db.CaseItems.FirstOrDefaultAsync(
                         ci => ci.CaseId == caseId && ci.MediaItemId == targetId && ci.RemovedAtUtc == null, ct),
+                    CaseItemKind.Snapshot => await db.CaseItems.FirstOrDefaultAsync(
+                        ci => ci.CaseId == caseId && ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null, ct),
                     _ => null
                 };
 
@@ -636,6 +638,7 @@ namespace VideoForensics.Data.Database.Repositories
                     Kind = kind,
                     EventId = kind == CaseItemKind.Event ? targetId : null,
                     MediaItemId = kind == CaseItemKind.Media ? targetId : null,
+                    SnapshotCaptureId = kind == CaseItemKind.Snapshot ? targetId : null,
                     Reason = reason,
                     AddedBy = addedBy,
                     AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
@@ -731,6 +734,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 CaseItemKind.Event => db.CaseItems.Where(ci => ci.EventId == targetId && ci.RemovedAtUtc == null),
                 CaseItemKind.Media => db.CaseItems.Where(ci => ci.MediaItemId == targetId && ci.RemovedAtUtc == null),
+                CaseItemKind.Snapshot => db.CaseItems.Where(ci => ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null),
                 _ => db.CaseItems.Where(ci => false)
             };
 

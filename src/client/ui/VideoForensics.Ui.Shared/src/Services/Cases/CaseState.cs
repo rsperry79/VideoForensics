@@ -203,6 +203,17 @@ public class CaseState
         }
 
         IReadOnlyList<CaseItem> items = await _caseRepository.ListItemsAsync(ActiveCase.Id, false, ct);
-        return items.Any(i => i.Kind == kind && (kind == CaseItemKind.Event ? i.EventId : i.MediaItemId) == targetId);
+        return items.Any(i => i.Kind == kind && TargetOf(i) == targetId);
+    }
+
+    /// <summary>The id of the event, media item or snapshot an item points at.</summary>
+    private static Guid? TargetOf(CaseItem item)
+    {
+        return item.Kind switch
+        {
+            CaseItemKind.Event => item.EventId,
+            CaseItemKind.Snapshot => item.SnapshotCaptureId,
+            _ => item.MediaItemId,
+        };
     }
 }

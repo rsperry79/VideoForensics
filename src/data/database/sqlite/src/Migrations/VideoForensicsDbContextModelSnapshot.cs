@@ -412,11 +412,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("SnapshotCaptureId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("EventId");
 
                     b.HasIndex("MediaItemId");
+
+                    b.HasIndex("SnapshotCaptureId");
 
                     b.HasIndex("CaseId", "EventId")
                         .IsUnique()
@@ -428,9 +433,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasDatabaseName("IX_CaseItems_CaseId_MediaItemId_Active")
                         .HasFilter("\"MediaItemId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL");
 
+                    b.HasIndex("CaseId", "SnapshotCaptureId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CaseItems_CaseId_SnapshotCaptureId_Active")
+                        .HasFilter("\"SnapshotCaptureId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL");
+
                     b.ToTable("CaseItems", t =>
                         {
-                            t.HasCheckConstraint("CK_CaseItems_ExactlyOneTarget", "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL)");
+                            t.HasCheckConstraint("CK_CaseItems_ExactlyOneTarget", "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL AND \"SnapshotCaptureId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL AND \"SnapshotCaptureId\" IS NULL) OR (\"Kind\" = 'Snapshot' AND \"SnapshotCaptureId\" IS NOT NULL AND \"EventId\" IS NULL AND \"MediaItemId\" IS NULL)");
                         });
                 });
 
@@ -7862,6 +7872,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasOne("VideoForensics.Data.Common.Entities.MediaItem", null)
                         .WithMany()
                         .HasForeignKey("MediaItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("VideoForensics.Data.Common.Entities.SnapshotCapture", null)
+                        .WithMany()
+                        .HasForeignKey("SnapshotCaptureId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
