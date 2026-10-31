@@ -22,6 +22,9 @@ namespace VideoForensics.Client.WebApp.Hubs
         public const string EvidenceChanged = "EvidenceChanged";
         public const string DeviceHealthChanged = "DeviceHealthChanged";
 
+        /// <summary>Media-flag review push. Sent to every connection; the payload names the flag and its device.</summary>
+        public const string MediaFlagChanged = "MediaFlagChanged";
+
         /// <summary>Settings-saved push. Sent to every connection; the payload is the client-safe settings snapshot.</summary>
         public const string ClientConfigChanged = "ClientConfigChanged";
 

@@ -765,6 +765,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaFlagRepository, Remote.RemoteMediaFlagRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IAccountExportService, Remote.RemoteAccountExportService>(c => c.BaseAddress = serverAddress);
@@ -810,6 +811,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDeviceHealthChangedSource, Remote.RemoteDeviceHealthChangedSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMediaFlagChangedSource, Remote.RemoteMediaFlagChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IConfigChangedSource, Remote.RemoteConfigChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.INoticeFeed, Remote.RemoteNoticeFeed>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
