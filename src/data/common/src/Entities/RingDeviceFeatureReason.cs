@@ -1,7 +1,7 @@
 namespace VideoForensics.Data.Common.Entities
 {
     /// <summary>One entry of a feature's ineligibility_reasons, disallow_reasons or transformer_score.affected_features array.</summary>
-    public class DeviceFeatureReason
+    public class RingDeviceFeatureReason
     {
         public const string Ineligibility = "ineligibility";
         public const string Disallow = "disallow";

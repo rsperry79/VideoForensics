@@ -4,7 +4,7 @@ namespace VideoForensics.Data.Common.Entities
     /// One Ring feature object from a device's <c>features</c> (e.g. "smart_video_search"): one row per device per feature key,
     /// replaced on every sync. Every value is a typed column; null means Ring did not send that part of the object.
     /// </summary>
-    public class DeviceFeatureState
+    public class RingDeviceFeatureState
     {
         public Guid Id { get; set; }
         public Guid DeviceId { get; set; }
@@ -61,6 +61,6 @@ namespace VideoForensics.Data.Common.Entities
         public string? ContinuousUnavailabilityReason { get; set; }
 
         /// <summary>The ineligibility, disallow and affected-feature reason lists of this feature.</summary>
-        public List<DeviceFeatureReason> Reasons { get; set; } = [];
+        public List<RingDeviceFeatureReason> Reasons { get; set; } = [];
     }
 }

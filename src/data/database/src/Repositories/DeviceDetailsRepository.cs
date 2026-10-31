@@ -228,23 +228,23 @@ namespace VideoForensics.Data.Database.Repositories
                 return;
             }
 
-            List<DeviceFeatureState> stored = await db.DeviceFeatureStates.Where(s => s.DeviceId == deviceId).ToListAsync(ct);
+            List<RingDeviceFeatureState> stored = await db.RingDeviceFeatureStates.Where(s => s.DeviceId == deviceId).ToListAsync(ct);
             List<Guid> storedIds = stored.Select(s => s.Id).ToList();
-            db.DeviceFeatureReasons.RemoveRange(await db.DeviceFeatureReasons.Where(r => storedIds.Contains(r.FeatureStateId)).ToListAsync(ct));
-            db.DeviceFeatureStates.RemoveRange(stored);
+            db.RingDeviceFeatureReasons.RemoveRange(await db.RingDeviceFeatureReasons.Where(r => storedIds.Contains(r.FeatureStateId)).ToListAsync(ct));
+            db.RingDeviceFeatureStates.RemoveRange(stored);
             // EF orders the deletes ahead of the inserts, so re-adding a replaced (DeviceId, FeatureKey) does not hit the unique index.
 
-            foreach (DeviceFeatureState state in settings.FeatureStates)
+            foreach (RingDeviceFeatureState state in settings.FeatureStates)
             {
                 state.Id = state.Id == Guid.Empty ? Guid.NewGuid() : state.Id;
                 state.DeviceId = deviceId;
-                foreach (DeviceFeatureReason reason in state.Reasons)
+                foreach (RingDeviceFeatureReason reason in state.Reasons)
                 {
                     reason.Id = reason.Id == Guid.Empty ? Guid.NewGuid() : reason.Id;
                     reason.FeatureStateId = state.Id;
                 }
 
-                _ = db.DeviceFeatureStates.Add(state);
+                _ = db.RingDeviceFeatureStates.Add(state);
             }
         }
 

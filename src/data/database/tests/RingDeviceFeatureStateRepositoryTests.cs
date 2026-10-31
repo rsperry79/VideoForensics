@@ -12,7 +12,7 @@ using Xunit;
 namespace VideoForensics.Data.Database.Tests
 {
     /// <summary>Round-trips device feature scalars, feature states and their reason rows through SQLite.</summary>
-    public class DeviceFeatureStateRepositoryTests : IAsyncLifetime
+    public class RingDeviceFeatureStateRepositoryTests : IAsyncLifetime
     {
         private SqliteInMemoryFixture _fixture = null!;
         private DeviceDetailsRepository _repository = null!;
@@ -38,14 +38,14 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static DeviceSettingsChildren Children(params DeviceFeatureState[] states)
+        private static DeviceSettingsChildren Children(params RingDeviceFeatureState[] states)
         {
             return new DeviceSettingsChildren([], [], [], FeatureStates: states);
         }
 
-        private static DeviceFeatureState State(string key, bool enabled, params string[] disallow)
+        private static RingDeviceFeatureState State(string key, bool enabled, params string[] disallow)
         {
-            return new DeviceFeatureState
+            return new RingDeviceFeatureState
             {
                 FeatureKey = key,
                 Enabled = enabled,
@@ -54,7 +54,7 @@ namespace VideoForensics.Data.Database.Tests
                 Score = "best",
                 RecordingState = "active",
                 ContinuousSupported = false,
-                Reasons = disallow.Select((r, i) => new DeviceFeatureReason { Kind = DeviceFeatureReason.Disallow, Position = i, Reason = r }).ToList()
+                Reasons = disallow.Select((r, i) => new RingDeviceFeatureReason { Kind = RingDeviceFeatureReason.Disallow, Position = i, Reason = r }).ToList()
             };
         }
 
@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Tests
                 Children(State("smart_video_search", false, "not_subscribed", "ineligible")));
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
-            DeviceFeatureState stored = await db.DeviceFeatureStates.Include(s => s.Reasons).SingleAsync(s => s.DeviceId == _device.Id);
+            RingDeviceFeatureState stored = await db.RingDeviceFeatureStates.Include(s => s.Reasons).SingleAsync(s => s.DeviceId == _device.Id);
             Assert.Equal("smart_video_search", stored.FeatureKey);
             Assert.False(stored.Enabled);
             Assert.Equal(6.0, stored.MaxDigitalZoomLevel);
@@ -84,10 +84,10 @@ namespace VideoForensics.Data.Database.Tests
                 Children(State("smart_video_search", true, "b")));
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
-            DeviceFeatureState stored = await db.DeviceFeatureStates.Include(s => s.Reasons).SingleAsync(s => s.DeviceId == _device.Id);
+            RingDeviceFeatureState stored = await db.RingDeviceFeatureStates.Include(s => s.Reasons).SingleAsync(s => s.DeviceId == _device.Id);
             Assert.True(stored.Enabled);
             Assert.Equal(["b"], stored.Reasons.Select(r => r.Reason));
-            Assert.Equal(1, await db.DeviceFeatureReasons.CountAsync());
+            Assert.Equal(1, await db.RingDeviceFeatureReasons.CountAsync());
         }
 
         [Fact]
@@ -97,7 +97,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, new DeviceSettingsChildren([], [], []));
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
-            Assert.Equal(1, await db.DeviceFeatureStates.CountAsync());
+            Assert.Equal(1, await db.RingDeviceFeatureStates.CountAsync());
         }
 
         [Fact]
@@ -107,8 +107,8 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, Children());
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
-            Assert.Equal(0, await db.DeviceFeatureStates.CountAsync());
-            Assert.Equal(0, await db.DeviceFeatureReasons.CountAsync());
+            Assert.Equal(0, await db.RingDeviceFeatureStates.CountAsync());
+            Assert.Equal(0, await db.RingDeviceFeatureReasons.CountAsync());
         }
 
         [Fact]

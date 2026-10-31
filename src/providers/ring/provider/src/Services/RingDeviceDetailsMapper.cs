@@ -392,10 +392,10 @@ namespace VideoForensics.Providers.Ring.Services
             return row;
         }
 
-        private static DeviceFeatureState CopyState(DeviceFeatureState s, Guid deviceId)
+        private static RingDeviceFeatureState CopyState(RingDeviceFeatureState s, Guid deviceId)
         {
             Guid id = Guid.NewGuid();
-            return new DeviceFeatureState
+            return new RingDeviceFeatureState
             {
                 Id = id,
                 DeviceId = deviceId,
@@ -417,7 +417,7 @@ namespace VideoForensics.Providers.Ring.Services
                 ContinuousAvailable = s.ContinuousAvailable,
                 ContinuousUnavailabilityReason = s.ContinuousUnavailabilityReason,
                 Reasons = s.Reasons
-                    .Select(r => new DeviceFeatureReason { Id = Guid.NewGuid(), FeatureStateId = id, Kind = r.Kind, Position = r.Position, Reason = r.Reason })
+                    .Select(r => new RingDeviceFeatureReason { Id = Guid.NewGuid(), FeatureStateId = id, Kind = r.Kind, Position = r.Position, Reason = r.Reason })
                     .ToList()
             };
         }
@@ -476,6 +476,14 @@ namespace VideoForensics.Providers.Ring.Services
                 : [new DeviceAlerts { Id = Guid.NewGuid(), DeviceId = deviceId, AlertType = "connection", IsEnabled = null, AlertValue = details.AlertConnection }];
         }
 
+        /// <summary>Parses a features object and adds its unstored-value notes to the device's notes.</summary>
+        private static RingFeatureDetails ParseFeatures(IReadOnlyDictionary<string, JsonElement>? additional, List<string> notes)
+        {
+            RingFeatureDetails details = RingDeviceFeatureParser.Parse(additional);
+            notes.AddRange(details.Unstored ?? []);
+            return details;
+        }
+
         private static RingDeviceDetails FromDoorbot(Doorbot d)
         {
             // Doorbot features have no audio flag, so HasAudio stays null.
@@ -500,7 +508,7 @@ namespace VideoForensics.Providers.Ring.Services
                 AlertConnection: d.Alerts?.Connection,
                 DeviceFields: fields,
                 ShowVodSettings: f?.ShowVodSettings,
-                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures),
+                FeatureDetails: f == null ? null : ParseFeatures(f.AdditionalFeatures, notes),
                 ReportedHealth: health,
                 UnstoredNotes: notes,
                 RingRow: top.Row);
@@ -531,7 +539,7 @@ namespace VideoForensics.Providers.Ring.Services
                 AlertConnection: s.Alerts?.Connection,
                 DeviceFields: fields,
                 ShowVodSettings: f?.ShowVodSettings,
-                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures),
+                FeatureDetails: f == null ? null : ParseFeatures(f.AdditionalFeatures, notes),
                 ReportedHealth: health,
                 UnstoredNotes: notes,
                 RingRow: top.Row,
@@ -562,7 +570,7 @@ namespace VideoForensics.Providers.Ring.Services
                 AlertConnection: c.Alerts?.Connection,
                 DeviceFields: fields,
                 RingtonesEnabled: c.Features?.RingtonesEnabled,
-                FeatureDetails: c.Features == null ? null : RingDeviceFeatureParser.Parse(c.Features.AdditionalFeatures),
+                FeatureDetails: c.Features == null ? null : ParseFeatures(c.Features.AdditionalFeatures, notes),
                 ReportedHealth: health,
                 UnstoredNotes: notes,
                 RingRow: top.Row);

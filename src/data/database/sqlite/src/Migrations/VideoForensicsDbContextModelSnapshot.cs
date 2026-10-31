@@ -1078,110 +1078,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DeviceFeatureDefinitions");
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatureReason", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("FeatureStateId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FeatureStateId");
-
-                    b.ToTable("DeviceFeatureReasons");
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatureState", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool?>("Allowed")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("AllowsNoLocation")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("ContinuousAvailable")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("ContinuousSupported")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ContinuousUnavailabilityReason")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DeviceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool?>("Eligible")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("Enabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("FeatureKey")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool?>("IsEligible")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("IsEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Learning")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<double?>("MaxDigitalZoomLevel")
-                        .HasColumnType("REAL");
-
-                    b.Property<bool?>("RecordingEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("RecordingMode")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RecordingState")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<double?>("RtMaxDigitalZoomLevel")
-                        .HasColumnType("REAL");
-
-                    b.Property<string>("Score")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeviceId", "FeatureKey")
-                        .IsUnique();
-
-                    b.ToTable("DeviceFeatureStates");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatures", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4461,6 +4357,110 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingDeviceDetails");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceFeatureReason", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("FeatureStateId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeatureStateId");
+
+                    b.ToTable("RingDeviceFeatureReasons");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceFeatureState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Allowed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("AllowsNoLocation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ContinuousAvailable")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ContinuousSupported")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContinuousUnavailabilityReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Eligible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FeatureKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsEligible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Learning")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("MaxDigitalZoomLevel")
+                        .HasColumnType("REAL");
+
+                    b.Property<bool?>("RecordingEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RecordingMode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RecordingState")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("RtMaxDigitalZoomLevel")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Score")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "FeatureKey")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceFeatureStates");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceHealthExtras", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6053,15 +6053,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatureReason", b =>
-                {
-                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceFeatureState", null)
-                        .WithMany("Reasons")
-                        .HasForeignKey("FeatureStateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealthRpcCommand", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.DeviceHealth", null)
@@ -6264,6 +6255,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceFeatureReason", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.RingDeviceFeatureState", null)
+                        .WithMany("Reasons")
+                        .HasForeignKey("FeatureStateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingEventCvDetectionDetail", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.RingEventCvProperties", null)
@@ -6434,11 +6434,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Navigation("Vertices");
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatureState", b =>
-                {
-                    b.Navigation("Reasons");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealth", b =>
                 {
                     b.Navigation("SupportedRpcCommands");
@@ -6503,6 +6498,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAppLocationHistoryMessage", b =>
                 {
                     b.Navigation("Bodies");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceFeatureState", b =>
+                {
+                    b.Navigation("Reasons");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingEventCvDetectionDetail", b =>

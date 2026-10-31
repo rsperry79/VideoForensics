@@ -11,7 +11,7 @@ using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetai
 
 namespace VideoForensics.Providers.Ring.Tests
 {
-    /// <summary>Maps the full ring_devices <c>features</c> object (sanitized fixture) onto DeviceFeatures scalars and DeviceFeatureState rows.</summary>
+    /// <summary>Maps the full ring_devices <c>features</c> object (sanitized fixture) onto DeviceFeatures scalars and RingDeviceFeatureState rows.</summary>
     public class RingDeviceFeatureStateMapperTests
     {
         private static readonly Guid DeviceId = Guid.Parse("11111111-2222-3333-4444-555555555555");
@@ -23,7 +23,7 @@ namespace VideoForensics.Providers.Ring.Tests
             return RingDeviceDetailsMapper.Find(devices, providerId)!;
         }
 
-        private static IReadOnlyList<DeviceFeatureState> States(RingDeviceDetails details)
+        private static IReadOnlyList<RingDeviceFeatureState> States(RingDeviceDetails details)
         {
             return RingDeviceDetailsMapper.ToSettingsChildrenWithFeatures(details, DeviceId)!.FeatureStates!;
         }
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ToSettingsChildren_Doorbot_CreatesOneStatePerFeatureObject()
         {
-            IReadOnlyList<DeviceFeatureState> states = States(Load("1001"));
+            IReadOnlyList<RingDeviceFeatureState> states = States(Load("1001"));
 
             Assert.Equal(20, states.Count);
             Assert.Equal(states.Count, states.Select(s => s.FeatureKey).Distinct().Count());
@@ -85,48 +85,48 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ToSettingsChildren_SmartVideoSearch_MapsEligibilityEnablementAndReasons()
         {
-            DeviceFeatureState s = States(Load("1001")).Single(x => x.FeatureKey == "smart_video_search");
+            RingDeviceFeatureState s = States(Load("1001")).Single(x => x.FeatureKey == "smart_video_search");
 
             Assert.False(s.Eligible);
             Assert.False(s.Allowed);
             Assert.False(s.Enabled);
-            Assert.Equal(["unsupported_language"], Reasons(s, DeviceFeatureReason.Ineligibility));
-            Assert.Equal(["not_subscribed", "ineligible"], Reasons(s, DeviceFeatureReason.Disallow));
-            Assert.Equal([0, 1], s.Reasons.Where(r => r.Kind == DeviceFeatureReason.Disallow).Select(r => r.Position));
+            Assert.Equal(["unsupported_language"], Reasons(s, RingDeviceFeatureReason.Ineligibility));
+            Assert.Equal(["not_subscribed", "ineligible"], Reasons(s, RingDeviceFeatureReason.Disallow));
+            Assert.Equal([0, 1], s.Reasons.Where(r => r.Kind == RingDeviceFeatureReason.Disallow).Select(r => r.Position));
         }
 
         [Fact]
         public void ToSettingsChildren_NullObjectsAndEmptyArrays_CreateNoStateOrReasons()
         {
-            IReadOnlyList<DeviceFeatureState> states = States(Load("2001"));
+            IReadOnlyList<RingDeviceFeatureState> states = States(Load("2001"));
 
             Assert.DoesNotContain(states, s => s.FeatureKey == "property_view");
             Assert.DoesNotContain(states, s => s.FeatureKey == "transformer_score");
-            Assert.DoesNotContain(states.Single(s => s.FeatureKey == "smart_video_description").Reasons, r => r.Kind == DeviceFeatureReason.Ineligibility);
+            Assert.DoesNotContain(states.Single(s => s.FeatureKey == "smart_video_description").Reasons, r => r.Kind == RingDeviceFeatureReason.Ineligibility);
             Assert.Equal(18, states.Count);
         }
 
         [Fact]
         public void ToSettingsChildren_ScalarShapedFeatures_MapToTypedColumns()
         {
-            IReadOnlyList<DeviceFeatureState> states = States(Load("1001"));
+            IReadOnlyList<RingDeviceFeatureState> states = States(Load("1001"));
 
             Assert.Equal(6.0, states.Single(s => s.FeatureKey == "video_rendering").MaxDigitalZoomLevel);
             Assert.Equal(24.0, states.Single(s => s.FeatureKey == "retinal_tuning").RtMaxDigitalZoomLevel);
             Assert.False(states.Single(s => s.FeatureKey == "original_video_quality_download_offer").IsEnabled);
             Assert.False(states.Single(s => s.FeatureKey == "chime_settings").IsEligible);
             Assert.False(states.Single(s => s.FeatureKey == "property_view").Enabled);
-            DeviceFeatureState daily = states.Single(s => s.FeatureKey == "ai_labs_daily_clip");
+            RingDeviceFeatureState daily = states.Single(s => s.FeatureKey == "ai_labs_daily_clip");
             Assert.False(daily.AllowsNoLocation);
             Assert.False(daily.Enabled);
             Assert.Null(daily.Allowed);
-            Assert.Equal(3, Reasons(daily, DeviceFeatureReason.Ineligibility).Count);
+            Assert.Equal(3, Reasons(daily, RingDeviceFeatureReason.Ineligibility).Count);
         }
 
         [Fact]
         public void ToSettingsChildren_TransformerScore_MapsScoreAndAffectedFeatures()
         {
-            DeviceFeatureState s = States(Load("1001")).Single(x => x.FeatureKey == "transformer_score");
+            RingDeviceFeatureState s = States(Load("1001")).Single(x => x.FeatureKey == "transformer_score");
             Assert.Equal("best", s.Score);
             Assert.Empty(s.Reasons);
 
@@ -138,18 +138,18 @@ namespace VideoForensics.Providers.Ring.Tests
                     Features = Features("{\"transformer_score\":{\"score\":\"low\",\"affected_features\":[\"a\",\"b\"]},\"unusual_alert\":{\"learning\":\"in_progress\"}}")
                 }]
             };
-            IReadOnlyList<DeviceFeatureState> states = States(RingDeviceDetailsMapper.Find(devices, "1")!);
+            IReadOnlyList<RingDeviceFeatureState> states = States(RingDeviceDetailsMapper.Find(devices, "1")!);
 
-            DeviceFeatureState scored = states.Single(x => x.FeatureKey == "transformer_score");
+            RingDeviceFeatureState scored = states.Single(x => x.FeatureKey == "transformer_score");
             Assert.Equal("low", scored.Score);
-            Assert.Equal(["a", "b"], Reasons(scored, DeviceFeatureReason.AffectedFeature));
+            Assert.Equal(["a", "b"], Reasons(scored, RingDeviceFeatureReason.AffectedFeature));
             Assert.Equal("in_progress", states.Single(x => x.FeatureKey == "unusual_alert").Learning);
         }
 
         [Fact]
         public void ToSettingsChildren_VideoRecording_MapsRecordingAndContinuousAvailability()
         {
-            DeviceFeatureState s = States(Load("1001")).Single(x => x.FeatureKey == "video_recording");
+            RingDeviceFeatureState s = States(Load("1001")).Single(x => x.FeatureKey == "video_recording");
 
             Assert.Equal("motion_based", s.RecordingMode);
             Assert.True(s.RecordingEnabled);
@@ -162,7 +162,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ToSettingsChildren_Chime_MapsItsTwoFeatureObjects()
         {
-            IReadOnlyList<DeviceFeatureState> states = States(Load("3001"));
+            IReadOnlyList<RingDeviceFeatureState> states = States(Load("3001"));
 
             Assert.Equal(["auto_track", "video_rendering"], states.Select(s => s.FeatureKey).OrderBy(k => k));
         }
@@ -177,7 +177,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Null(children.FeatureStates);
         }
 
-        private static List<string> Reasons(DeviceFeatureState s, string kind)
+        private static List<string> Reasons(RingDeviceFeatureState s, string kind)
         {
             return s.Reasons.Where(r => r.Kind == kind).OrderBy(r => r.Position).Select(r => r.Reason).ToList();
         }

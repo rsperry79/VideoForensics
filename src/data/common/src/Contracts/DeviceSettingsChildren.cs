@@ -16,7 +16,7 @@ namespace VideoForensics.Data.Common.Contracts
         IReadOnlyList<DeviceOfflineMotionSettings>? OfflineMotion = null,
         IReadOnlyList<DeviceDetectionType>? DetectionTypes = null,
         IReadOnlyList<DeviceDetectionThreshold>? DetectionThresholds = null,
-        IReadOnlyList<DeviceFeatureState>? FeatureStates = null,
+        IReadOnlyList<RingDeviceFeatureState>? FeatureStates = null,
         DeviceReportedHealth? ReportedHealth = null,
         IReadOnlyList<DeviceReportedBattery>? ReportedBatteries = null,
         RingDeviceHealthExtras? RingHealthExtras = null,

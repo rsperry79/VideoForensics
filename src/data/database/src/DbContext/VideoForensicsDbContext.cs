@@ -314,10 +314,10 @@ namespace VideoForensics.Data.Database.DbContext
         public DbSet<DeviceDetectionThreshold> DeviceDetectionThresholds { get; set; }
 
         /// <summary>Gets or sets the per-feature state rows of a device's Ring features object.</summary>
-        public DbSet<DeviceFeatureState> DeviceFeatureStates { get; set; }
+        public DbSet<RingDeviceFeatureState> RingDeviceFeatureStates { get; set; }
 
         /// <summary>Gets or sets the reason list entries of device feature states.</summary>
-        public DbSet<DeviceFeatureReason> DeviceFeatureReasons { get; set; }
+        public DbSet<RingDeviceFeatureReason> RingDeviceFeatureReasons { get; set; }
 
         /// <summary>Gets or sets the device-reported health rows (the health object of each ring_devices entry).</summary>
         public DbSet<DeviceReportedHealth> DeviceReportedHealths { get; set; }

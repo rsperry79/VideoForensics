@@ -7,7 +7,7 @@ Reviewed by a Sonnet agent; its corrections are folded in below.
 ## Done (all merged to `wip`)
 - Selftester ignores `*Json` columns and reports unmapped response fields per endpoint (name matcher, see Batch 0).
 - `account-monitoring-status`: `RingAccountMonitoringStatus` + `RingAccountMonitoringPlan`.
-- Device `features`: `DeviceFeatureState`, `DeviceFeatureReason`, 20 `DeviceFeatures` columns.
+- Device `features`: `RingDeviceFeatureState`, `RingDeviceFeatureReason` (renamed with a data-preserving `RenameTable` migration, plus unstored-value logging in the features parser; null values are not logged), 20 `DeviceFeatures` columns.
 - Batch B: generic `DeviceReportedHealth` + `DeviceReportedBattery`, Ring-only `RingDeviceHealthExtras` and `RingDeviceDetails` (1:1, replaces the Ring-only columns first added to `Devices`), alerts connection row, `RingUnstoredValueLog` (Info, one line per device per sync: key + JSON type, never the value).
 - Health units: `StatusAtUtc` (`status_time` is a 32768 Hz tick count since the Unix epoch; verified against `last_update_time`) and `BatteryTempCelsius` (`battery_temp` assumed deci-Kelvin) beside the raw values; factors live in `RingHealthUnits`; out-of-range values store null and are logged.
 - Light events: `DeviceLightEvent` (`IsOn`, `Source` Observed|Command, `SecondsRemaining`); `led_status` object and plain `'on'`/`'off'` strings handled; `Devices.LedStatus` and `Devices.LedSecondsRemaining` dropped. Consumers listing light-on events filter `IsOn = true`.
@@ -31,7 +31,7 @@ Reviewed by a Sonnet agent; its corrections are folded in below.
 
 ## Order
 1. ~~Batch B~~, health units and light events: done.
-2. **Rename** `DeviceFeatureState`/`DeviceFeatureReason` to `RingDeviceFeatureState`/`RingDeviceFeatureReason` (EF may scaffold drop/create; hand-edit the migration to `RenameTable` + `RenameIndex`; this is the one allowed migration hand-edit, not the snapshot). Do it before C so later batches don't reference the old names. Extend `RingUnstoredValueLog` coverage to the features parser here (unknown scalar keys directly under `features`, nested shapes that are skipped, non-scalar reasons, and first non-null values for guessed-type columns).
+2. ~~**Rename**~~ done: `DeviceFeatureState`/`DeviceFeatureReason` to `RingDeviceFeatureState`/`RingDeviceFeatureReason` (EF may scaffold drop/create; hand-edit the migration to `RenameTable` + `RenameIndex`; this is the one allowed migration hand-edit, not the snapshot). Do it before C so later batches don't reference the old names. Extend `RingUnstoredValueLog` coverage to the features parser here (unknown scalar keys directly under `features`, nested shapes that are skipped, non-scalar reasons, and first non-null values for guessed-type columns).
 3. **Batch 0: replace the checker** (before C, so C-I are measured correctly).
    - Explicit `endpoint JSON path -> table.column` map, checked in as a fixture; match by path, not leaf name.
    - Include arrays of scalars; skip failed-call error bodies (`signalling-ticket` `error`); report endpoints that returned data but have no map entry.

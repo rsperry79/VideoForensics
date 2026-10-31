@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 HasFeatures = true,
                 FeatureDetails = new RingFeatureDetails(
                     new DeviceFeatures { CfesEligible = true },
-                    [new DeviceFeatureState { FeatureKey = "smart_video_search", Enabled = false }])
+                    [new RingDeviceFeatureState { FeatureKey = "smart_video_search", Enabled = false }])
             };
 
             // Act

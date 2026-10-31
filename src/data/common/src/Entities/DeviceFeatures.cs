@@ -22,7 +22,7 @@ namespace VideoForensics.Data.Common.Entities
         // Scalar leaves directly under features. All are bool?; the ones that were null in every observed sample (package_warning, auto_zoom_track,
         // automated_siren, alexa_plus_greetings, remote_access_control, auto_shutoff_device, short_on_long_off, tracklight, animal_detection_eligible,
         // recording_24x7_eligible, property_view) have an unconfirmed type, so bool? is a best guess. property_view arrives as an object in some
-        // samples; its enablement is stored as a DeviceFeatureState row and this column only holds a plain boolean value.
+        // samples; its enablement is stored as a RingDeviceFeatureState row and this column only holds a plain boolean value.
 
         /// <summary>Ring features.cfes_eligible.</summary>
         public bool? CfesEligible { get; set; }
