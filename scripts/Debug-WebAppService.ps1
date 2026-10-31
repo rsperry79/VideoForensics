@@ -155,6 +155,34 @@ public static extern void GetActiveObject(ref System.Guid rclsid, System.IntPtr 
     }
 }
 
+# Builds the solution in the running Visual Studio, the way F5 would. It runs only when the open solution is this
+# checkout and its active configuration is the one asked for, so Visual Studio's settings are never changed. Returns
+# $false when it did not apply, and the caller falls back to dotnet build.
+function Build-WithVisualStudio {
+    param([Parameter(Mandatory)][string]$Configuration)
+
+    $dte = Get-RunningVisualStudio
+    if (-not $dte) { return $false }
+
+    $solutionPath = $dte.Solution.FullName
+    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    if (-not $solutionPath -or (Split-Path -Parent $solutionPath) -ne $repoRoot) {
+        Write-Warning "The open Visual Studio solution is not this checkout ($solutionPath). Building with dotnet build."
+        return $false
+    }
+    $activeConfiguration = $dte.Solution.SolutionBuild.ActiveConfiguration.Name
+    if ($activeConfiguration -ne $Configuration) {
+        Write-Warning "Visual Studio's active configuration is $activeConfiguration, not $Configuration. Building with dotnet build."
+        return $false
+    }
+
+    Write-Host "Building the solution in Visual Studio ($Configuration)"
+    $dte.Solution.SolutionBuild.Build($true)
+    $failed = $dte.Solution.SolutionBuild.LastBuildInfo
+    if ($failed -ne 0) { throw "Visual Studio build failed in $failed project(s). See its Error List." }
+    return $true
+}
+
 # Attaches the debugger of a running Visual Studio instance. Without an open instance the PID is reported
 # so it can be attached by hand.
 function Attach-VisualStudioDebugger {
@@ -251,9 +279,12 @@ if (-not $useService) {
     }
     else {
         $sourceDirectory = $buildOutput
-        Write-Host "Building $project ($Configuration) into $buildOutput"
-        dotnet build $project -c $Configuration
-        if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+        $builtByVisualStudio = -not $WhatIfPreference -and (Build-WithVisualStudio -Configuration $Configuration)
+        if (-not $builtByVisualStudio) {
+            Write-Host "Building $project ($Configuration) into $buildOutput"
+            dotnet build $project -c $Configuration
+            if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+        }
     }
     if (-not (Test-Path (Join-Path $sourceDirectory $exeName))) { throw "The build output has no $exeName in $sourceDirectory." }
 
