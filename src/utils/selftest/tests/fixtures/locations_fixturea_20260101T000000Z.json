@@ -1,0 +1,16 @@
+{
+  "user_locations": [
+    {
+      "address": {
+        "address1": "x",
+        "city": "x",
+        "state": "x",
+        "timezone": "x",
+        "zip_code": "x"
+      },
+      "is_owner": true,
+      "location_id": "x",
+      "name": "x"
+    }
+  ]
+}

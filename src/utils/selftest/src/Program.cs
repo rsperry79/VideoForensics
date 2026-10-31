@@ -137,6 +137,11 @@ namespace VideoForensics.Utils.SelfTest
                 return 0;
             }
 
+            if (options.CheckDir != null)
+            {
+                return await RunOfflineFieldCheckAsync(options);
+            }
+
             if (options.InteractiveAuth)
             {
                 return await RunInteractiveAuthAsync(options);
@@ -323,29 +328,92 @@ namespace VideoForensics.Utils.SelfTest
 
             if (!options.Quiet)
             {
-                foreach (DbCompletenessRecord? missing in report.Devices.Where(d => !d.FoundInDb))
-                {
-                    Console.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
-                }
-
-                foreach (DbCompletenessRecord? missing in report.Locations.Where(l => !l.FoundInDb))
-                {
-                    Console.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
-                }
-
-                Console.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
-                    $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
-
-                // JSON columns do not count as stored: only fields with a structured column are "in the DB".
-                foreach (KeyValuePair<string, List<string>> gap in report.UnmappedFieldsByEndpoint.OrderBy(g => g.Key, StringComparer.Ordinal))
-                {
-                    Console.WriteLine($"   NO COLUMN: {gap.Key} ({gap.Value.Count}): {string.Join(", ", gap.Value)}");
-                }
-
-                Console.WriteLine($"Response fields with no structured column: {report.UnmappedFieldCount}.");
+                // JSON columns do not count as stored: only paths the field map ties to a typed column or child rows are "in the DB".
+                DbCompletenessChecker.WriteSummary(report, Console.Out);
             }
 
             Console.WriteLine(reportPath);
+        }
+
+        /// <summary>
+        /// Offline check (--check-dir): reads a saved run's responses, checks their paths against the field map and the
+        /// EF model, and cross-checks the saved devices/locations against the database. Makes no Ring calls and needs no
+        /// credentials. The report goes to --output-dir when given, else next to the responses.
+        /// </summary>
+        private static async Task<int> RunOfflineFieldCheckAsync(CliOptions options)
+        {
+            string checkDir = options.CheckDir!;
+            if (!Directory.Exists(checkDir))
+            {
+                Console.Error.WriteLine($"Error: --check-dir directory not found: {checkDir}");
+                return 2;
+            }
+
+            string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
+            if (!File.Exists(dbPath))
+            {
+                Console.Error.WriteLine($"Error: database file not found at {dbPath}. Pass --db-path.");
+                return 2;
+            }
+
+            (Devices? devices, List<VideoForensics.Providers.Ring.Entities.Location>? locations) = ReadSavedDevicesAndLocations(checkDir);
+
+            DbCompletenessReport report;
+            try
+            {
+                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath, checkDir);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error: could not query the database: {ex.GetType().Name}: {ex.Message}");
+                return 2;
+            }
+
+            string reportDir = options.OutputDir ?? checkDir;
+            _ = Directory.CreateDirectory(reportDir);
+            string reportPath = Path.Combine(reportDir, "db-completeness.json");
+            await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(report, IndexJsonOptions));
+
+            if (!options.Quiet)
+            {
+                DbCompletenessChecker.WriteSummary(report, Console.Out);
+            }
+
+            Console.WriteLine(reportPath);
+            return 0;
+        }
+
+        /// <summary>
+        /// The newest saved devices and locations responses of a run (skipping failed calls), so the presence check works
+        /// offline. A missing or unreadable file yields null, which the presence check treats as "nothing reported".
+        /// </summary>
+        private static (Devices? Devices, List<VideoForensics.Providers.Ring.Entities.Location>? Locations) ReadSavedDevicesAndLocations(string dir)
+        {
+            Dictionary<string, string> failed = FieldCoverageAnalyzer.ReadFailedFiles(dir);
+
+            T? Read<T>(string prefix)
+            {
+                string? file = Directory.EnumerateFiles(dir, prefix + "_*.json")
+                    .Where(f => !failed.ContainsKey(Path.GetFileName(f)))
+                    .OrderBy(f => f, StringComparer.Ordinal)
+                    .LastOrDefault();
+                if (file is null)
+                {
+                    return default;
+                }
+
+                try
+                {
+                    return JsonSerializer.Deserialize<T>(File.ReadAllText(file));
+                }
+                catch (JsonException ex)
+                {
+                    Console.Error.WriteLine($"Warning: could not read {Path.GetFileName(file)} for the presence check: {ex.GetType().Name}.");
+                    return default;
+                }
+            }
+
+            return (Read<Devices>("devices"), Read<UserLocationsResponse>("locations")?.UserLocations);
         }
 
         private static async Task<bool> AuthenticateWithCredentialsAsync(ResolvedCredentials credentials, IProviderAuthService authService)

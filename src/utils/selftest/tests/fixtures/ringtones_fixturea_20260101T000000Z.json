@@ -1,0 +1,26 @@
+{
+  "audios": [
+    {
+      "available": true,
+      "category": "x",
+      "checksum": 1,
+      "description": "x",
+      "id": "x",
+      "kind": "x",
+      "sample_rate_khz": 1,
+      "supported_device_kinds": [
+        "x"
+      ],
+      "url": "x",
+      "url_amz": "x",
+      "user_id": "x"
+    }
+  ],
+  "default_alarm_user_id": "x",
+  "default_appstore_user_id": "x",
+  "default_chirp_user_id": "x",
+  "default_ding_id": "x",
+  "default_ding_user_id": "x",
+  "default_motion_id": "x",
+  "default_motion_user_id": "x"
+}

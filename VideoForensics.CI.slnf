@@ -68,7 +68,8 @@
                                       "src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj",
                                       "src/utils/diagnostics/src/VideoForensics.Utils.Diagnostics.csproj",
                                       "src/utils/diagnostics/tests/VideoForensics.Utils.Diagnostics.Tests.csproj",
-                                      "src/utils/selftest/src/VideoForensics.Utils.SelfTest.csproj"
+                                      "src/utils/selftest/src/VideoForensics.Utils.SelfTest.csproj",
+                                      "src/utils/selftest/tests/VideoForensics.Utils.SelfTest.Tests.csproj"
                                   ]
                  }
 }

@@ -1,0 +1,61 @@
+{
+  "events": [
+    {
+      "source_id": "x",
+      "event_id": "x",
+      "event_type": "x",
+      "state": "x",
+      "favorite": false,
+      "recorded": true,
+      "recording_status": "x",
+      "is_e2ee": false,
+      "created_at": "x",
+      "cv_properties": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "x",
+        "detection_types": [
+          {
+            "detection_type": "x",
+            "verified_timestamps": [
+              1
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 1,
+        "description": "x",
+        "type": "x"
+      },
+      "device_placement": null,
+      "geolocation": null,
+      "last_location": null,
+      "siren": null,
+      "had_subscription": true,
+      "owner_id": "x",
+      "riid": "x",
+      "doorbot_id": 1,
+      "ding_id": 1,
+      "ding_id_str": "x",
+      "kind": "x"
+    }
+  ],
+  "meta": {
+    "pagination_key": "x"
+  }
+}

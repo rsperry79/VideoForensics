@@ -1,0 +1,110 @@
+{
+  "items": [
+    {
+      "schema": "x",
+      "source_id": "x",
+      "event_id": "x",
+      "start_time": "x",
+      "end_time": "x",
+      "event_type": "x",
+      "source_type": null,
+      "duration_ms": 1,
+      "session_duration": 1,
+      "state": "x",
+      "had_subscription": true,
+      "is_favorite": false,
+      "recording_status": "x",
+      "cv": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "x",
+        "detection_types": [
+          {
+            "detection_type": "x",
+            "verified_timestamps": [
+              1
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": [
+          {
+            "timestamp": 1,
+            "type": "x"
+          }
+        ],
+        "tags": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "origin": null,
+      "origin_display_name": null,
+      "error_message": null,
+      "updated_at": "x",
+      "visualizations": {
+        "cloud_media_visualization": {
+          "schema": "x",
+          "media": [
+            {
+              "schema": "x",
+              "url": "x",
+              "start_time": "x",
+              "end_time": "x",
+              "custom_metadata": {
+                "recording_24x7_enabled": false,
+                "ding_id": "x",
+                "tracks": [
+                  {
+                    "id": "x",
+                    "codec": "x",
+                    "type": "x"
+                  }
+                ],
+                "audio_encoding": "x",
+                "video_encoding": "x",
+                "tba_transcoding_enabled": true
+              },
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "x",
+              "file_family": "x",
+              "preroll_duration_ms": 1,
+              "playback_duration": 1,
+              "source": "x"
+            }
+          ]
+        },
+        "local_media_visualization": {
+          "schema": "x",
+          "media": []
+        }
+      },
+      "device": {
+        "id": 1,
+        "description": "x",
+        "type": "x"
+      },
+      "owner_id": "x",
+      "delete_in_progress": false,
+      "low_confidence": null,
+      "similarity": null,
+      "riid": "x",
+      "user_specified_recording_disabled": null,
+      "is_watched": false,
+      "is_property_view_enabled": null,
+      "is_active": false,
+      "user_action_disabled": false,
+      "mission": null
+    }
+  ],
+  "pagination_key": "x"
+}

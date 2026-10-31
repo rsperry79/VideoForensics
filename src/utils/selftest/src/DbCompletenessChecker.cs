@@ -30,13 +30,15 @@ namespace VideoForensics.Utils.SelfTest
         public int MissingDeviceCount => Devices.Count(d => !d.FoundInDb);
         public int MissingLocationCount => Locations.Count(l => !l.FoundInDb);
 
-        /// <summary>
-        /// Response fields per endpoint that have no structured column anywhere in the schema.
-        /// A field that only survives inside a *Json column does not count as stored.
-        /// </summary>
-        public Dictionary<string, List<string>> UnmappedFieldsByEndpoint { get; set; } = [];
+        /// <summary>Number of entries in the checked-in field map (field-map.json) the response paths were checked against.</summary>
+        public int FieldMapEntryCount { get; set; }
 
-        public int UnmappedFieldCount => UnmappedFieldsByEndpoint.Values.Sum(v => v.Count);
+        /// <summary>
+        /// Response paths checked against the explicit field map: unmapped paths, stale map entries, endpoints with no
+        /// entries and paths that were null in every sample. A value kept only in a *Json column does not count as stored.
+        /// Null when no saved responses were checked.
+        /// </summary>
+        public FieldCoverageReport? Fields { get; set; }
     }
 
     internal static class DbCompletenessChecker
@@ -123,105 +125,61 @@ namespace VideoForensics.Utils.SelfTest
 
             if (outputDir is not null)
             {
-                report.UnmappedFieldsByEndpoint = FindUnmappedFields(db, outputDir);
+                FieldMap map = FieldMap.LoadEmbedded();
+                report.FieldMapEntryCount = map.Entries.Count;
+                report.Fields = FieldCoverageAnalyzer.Analyze(outputDir, map, DbSchema.FromModel(db.Model));
+
+                // Extension point: a later step passes an IFieldValueVerifier here to compare each mapped value with its
+                // database row and fill FieldCoverageReport.ValueMismatches. Only the path map is checked today.
             }
 
             return report;
         }
 
-        /// <summary>Endpoints whose response keys are data (flag names), not columns; stored as rows.</summary>
-        private static readonly HashSet<string> KeyedMapEndpoints = new(StringComparer.Ordinal) { "profile" };
-
-        /// <summary>
-        /// Compares every scalar key in each saved endpoint response with the non-JSON columns of the
-        /// EF model. Names are compared ignoring case and punctuation (snake_case vs PascalCase).
-        /// </summary>
-        private static Dictionary<string, List<string>> FindUnmappedFields(VideoForensicsDbContext db, string outputDir)
+        /// <summary>Writes the console summary of a completeness report (presence counts, then the field-map counts).</summary>
+        internal static void WriteSummary(DbCompletenessReport report, TextWriter output)
         {
-            var columns = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var entity in db.Model.GetEntityTypes())
+            foreach (DbCompletenessRecord? missing in report.Devices.Where(d => !d.FoundInDb))
             {
-                foreach (var prop in entity.GetProperties().Where(p => !p.Name.EndsWith("Json", StringComparison.Ordinal)))
-                {
-                    _ = columns.Add(Normalize(prop.Name));
-                }
+                output.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
             }
 
-            var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            foreach (string file in Directory.EnumerateFiles(outputDir, "*.json"))
+            foreach (DbCompletenessRecord? missing in report.Locations.Where(l => !l.FoundInDb))
             {
-                string name = Path.GetFileName(file);
-                if (name is "index.json" or "db-completeness.json")
-                {
-                    continue;
-                }
-
-                string endpoint = name[..name.IndexOf('_', StringComparison.Ordinal)];
-                if (KeyedMapEndpoints.Contains(endpoint))
-                {
-                    continue;
-                }
-
-                var keys = new HashSet<string>(StringComparer.Ordinal);
-                try
-                {
-                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
-                    CollectLeafKeys(doc.RootElement, keys);
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    continue;
-                }
-
-                var missing = keys.Where(k => !columns.Contains(Normalize(k))).ToList();
-                if (missing.Count == 0)
-                {
-                    continue;
-                }
-
-                if (!result.TryGetValue(endpoint, out List<string>? existing))
-                {
-                    result[endpoint] = existing = [];
-                }
-
-                existing.AddRange(missing.Where(m => !existing.Contains(m)));
-                existing.Sort(StringComparer.Ordinal);
+                output.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
             }
 
-            return result;
-        }
+            output.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
+                $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
 
-        private static void CollectLeafKeys(System.Text.Json.JsonElement element, HashSet<string> keys)
-        {
-            switch (element.ValueKind)
+            FieldCoverageReport? fields = report.Fields;
+            if (fields is null)
             {
-                case System.Text.Json.JsonValueKind.Object:
-                    foreach (System.Text.Json.JsonProperty p in element.EnumerateObject())
-                    {
-                        if (p.Value.ValueKind is System.Text.Json.JsonValueKind.Object or System.Text.Json.JsonValueKind.Array)
-                        {
-                            CollectLeafKeys(p.Value, keys);
-                        }
-                        else
-                        {
-                            _ = keys.Add(p.Name);
-                        }
-                    }
-
-                    break;
-                case System.Text.Json.JsonValueKind.Array:
-                    foreach (System.Text.Json.JsonElement item in element.EnumerateArray())
-                    {
-                        CollectLeafKeys(item, keys);
-                    }
-
-                    break;
+                return;
             }
-        }
 
-        private static string Normalize(string name)
-        {
-            return new string(name.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+            foreach (KeyValuePair<string, List<string>> gap in fields.UnmappedByEndpoint.OrderBy(g => g.Key, StringComparer.Ordinal))
+            {
+                output.WriteLine($"   UNMAPPED: {gap.Key} ({gap.Value.Count})");
+            }
+
+            foreach (StaleMapEntry stale in fields.StaleEntries)
+            {
+                output.WriteLine($"   STALE MAP ENTRY: {stale.Key} -> {stale.Target} ({stale.Reason})");
+            }
+
+            foreach (string endpoint in fields.EndpointsWithoutMapEntries)
+            {
+                output.WriteLine($"   NO MAP ENTRIES: {endpoint} returned data but the field map stores nothing for it");
+            }
+
+            foreach (SkippedResponseFile skipped in fields.SkippedFiles)
+            {
+                output.WriteLine($"   SKIPPED: {skipped.File} ({skipped.Reason})");
+            }
+
+            output.WriteLine($"Field map ({report.FieldMapEntryCount} entries): {fields.UnmappedPathCount} unmapped paths, " +
+                $"{fields.StaleEntryCount} stale map entries, {fields.NullInSamplePathCount} null-in-sample paths (type unverified).");
         }
     }
 }

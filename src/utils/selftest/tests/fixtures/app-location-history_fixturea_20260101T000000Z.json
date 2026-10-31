@@ -1,0 +1,91 @@
+[
+  {
+    "msg": "x",
+    "datatype": "x",
+    "src": "x",
+    "seq": 1,
+    "context": {
+      "eventId": "x",
+      "eventPublishedTsMs": 1,
+      "requestSeq": 1,
+      "affectedEntityId": "x",
+      "deviceFamily": "x",
+      "initiatingEntityType": "x",
+      "affectedEntityType": "x",
+      "forwarderTopic": "x",
+      "accountId": "x",
+      "requestSessionId": 1,
+      "eventLevel": 1,
+      "initiatingEntityId": "x",
+      "eventOccurredTsMs": 1,
+      "affectedEntityName": "x",
+      "programId": "x"
+    },
+    "body": [
+      {
+        "general": {
+          "v2": {
+            "deviceType": "x",
+            "catalogId": "x",
+            "zid": "x",
+            "lastUpdate": 1,
+            "adapterType": "x"
+          }
+        },
+        "context": {
+          "v1": {
+            "batteryStatus": "x",
+            "subCategoryId": 1,
+            "deviceName": "x",
+            "categoryId": 1,
+            "roomName": "x",
+            "device": {
+              "v1": {
+                "mode": "x",
+                "siren": {
+                  "state": "x"
+                },
+                "modes": {
+                  "all": {
+                    "transitionDelay": 1,
+                    "editable": true,
+                    "removable": true,
+                    "chirpsEnabled": true,
+                    "entryDelay": 1
+                  },
+                  "some": {
+                    "transitionDelay": 1,
+                    "editable": true,
+                    "removable": true,
+                    "chirpsEnabled": true,
+                    "entryDelay": 1
+                  },
+                  "none": {
+                    "transitionDelay": 1,
+                    "editable": true,
+                    "removable": true,
+                    "chirpsEnabled": true,
+                    "entryDelay": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "impulse": {
+          "v1": [
+            {
+              "impulseType": "x",
+              "data": {
+                "commandType": "x",
+                "data": {
+                  "mode": "x"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

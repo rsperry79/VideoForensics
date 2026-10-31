@@ -42,6 +42,7 @@ namespace VideoForensics.Utils.SelfTest
         public bool Quiet;
         public bool VerifyDb;
         public string? DbPath;
+        public string? CheckDir;
         public Uri? ClientsApiBaseUrl;
         public Uri? AppApiBaseUrl;
         public Uri? ModeApiBaseUrl;
@@ -393,6 +394,15 @@ namespace VideoForensics.Utils.SelfTest
                         options.VerifyDb = true;
                         break;
 
+                    case "--check-dir":
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --check-dir");
+                        }
+
+                        options.CheckDir = args[++i];
+                        break;
+
                     case "--db-path":
                         if (i + 1 >= args.Length)
                         {
@@ -662,10 +672,24 @@ namespace VideoForensics.Utils.SelfTest
                                      from the Ring API and cross-check each one against the
                                      VideoForensics app's own SQLite database (matched by provider
                                      device/location id) - flags anything Ring reports that never
-                                     got persisted locally. Writes db-completeness.json alongside
+                                     got persisted locally. Also checks every leaf path of the run's
+                                     saved responses against the explicit path map
+                                     src/utils/selftest/src/field-map.json (endpoint:json.path ->
+                                     Table.Column, Rows:Table or NotData:reason; array indexes are
+                                     written []). Failed calls are skipped. Reports (a) unmapped paths
+                                     per endpoint, (b) stale map entries whose Table.Column is not in
+                                     the EF model (or is a *Json column), (c) endpoints that returned
+                                     data but have no map entry and (d) paths that were null in every
+                                     sample (type unverified). Writes db-completeness.json alongside
                                      index.json; does not affect the exit code (a device/location
                                      that simply hasn't been downloaded yet is expected, not a
                                      failure - this is a completeness report, not a pass/fail gate).
+          --check-dir <path>        Run only that check, offline, on a saved run directory: no Ring
+                                     calls, no credentials. Reads the saved devices/locations files
+                                     for the presence check and every response file for the path
+                                     check. Uses --db-path (or the default database). Writes
+                                     db-completeness.json into --output-dir if given, else into
+                                     <path>. Exit code 0 unless the directory or database is missing.
           --db-path <path>          SQLite database file to use. Default:
                                      %ProgramData%\VideoForensics\Database\videoforensics.db (same file the
                                      main VideoForensics app uses). Applies to credential storage and
