@@ -220,6 +220,7 @@ namespace VideoForensics.Data.Database.Repositories
         public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
         public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
         public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
+        public IMediaFlagRepository MediaFlags => new UnitOfWorkMediaFlagRepository(_db, _logger);
 
         public async Task SaveChangesAsync(CancellationToken ct)
         {
@@ -1384,6 +1385,39 @@ namespace VideoForensics.Data.Database.Repositories
                     .ToDictionary(g => g.Key, g => g.Count())
             };
             return Task.FromResult(statistics);
+        }
+    }
+
+    /// <summary>Media flag repository on the unit of work's context: nothing commits until the unit does.</summary>
+    internal class UnitOfWorkMediaFlagRepository : IMediaFlagRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public UnitOfWorkMediaFlagRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
+
+        public Task<MediaFlag> UpsertRaisedAsync(MediaFlag raised, CancellationToken ct) => MediaFlagOperations.StageUpsertAsync(_db, raised, ct);
+
+        public Task<int> ReconcileForMediaAsync(Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct) => MediaFlagOperations.ReconcileAsync(_db, mediaItemId, raised, ct);
+
+        public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct) => _db.MediaFlags.AsNoTracking().FirstOrDefaultAsync(f => f.Id == flagId, ct);
+
+        public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct) => MediaFlagOperations.ListPageAsync(_db, filter, skip, take, ct);
+
+        public Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct) => MediaFlagOperations.CountAsync(_db, filter, ct);
+
+        public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct) => MediaFlagOperations.GetNeighbourAsync(_db, flagId, filter, direction, ct);
+
+        public Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
+        {
+            MediaFlagOperations.ValidateReview(expectedStatus, newStatus, reason, operatorName);
+            return MediaFlagOperations.StageReviewAsync(_db, new UnitOfWorkActionLogRepository(_db, _logger), flagId, expectedStatus, newStatus, reason, operatorName, MediaFlagOperations.ActionFor(newStatus), ct);
+        }
+
+        public Task<MediaFlag> ReopenAsync(Guid flagId, string operatorName, string reason, CancellationToken ct)
+        {
+            MediaFlagOperations.ValidateReopen(operatorName, reason);
+            return MediaFlagOperations.StageReviewAsync(_db, new UnitOfWorkActionLogRepository(_db, _logger), flagId, MediaFlagStatus.Dismissed, MediaFlagStatus.Unreviewed, reason, operatorName, MediaFlagOperations.ActionFor(MediaFlagStatus.Unreviewed), ct);
         }
     }
 

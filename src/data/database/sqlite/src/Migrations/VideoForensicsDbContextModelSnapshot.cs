@@ -2760,6 +2760,79 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("LockoutPolicySettings");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FlagType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("MediaItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("NoticeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RaisedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("WindowEndUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("WindowStartUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaItemId", "FlagType")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MediaFlags_MediaItemId_FlagType");
+
+                    b.HasIndex("DeviceId", "FlagType", "WindowStartUtc")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MediaFlags_DeviceId_FlagType_WindowStartUtc");
+
+                    b.HasIndex("Status", "DeviceId", "RaisedAtUtc")
+                        .HasDatabaseName("IX_MediaFlags_Status_DeviceId_RaisedAtUtc");
+
+                    b.ToTable("MediaFlags", t =>
+                        {
+                            t.HasCheckConstraint("CK_MediaFlags_Window", "\"WindowEndUtc\" >= \"WindowStartUtc\"");
+                        });
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7895,6 +7968,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasForeignKey("LightGroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaFlag", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.MediaItem", null)
+                        .WithMany()
+                        .HasForeignKey("MediaItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaStillCapture", b =>
