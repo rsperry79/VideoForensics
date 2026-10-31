@@ -134,15 +134,34 @@ function Wait-ForStagedBuild {
     return $false
 }
 
+# Returns the running Visual Studio instance, or null. Marshal.GetActiveObject exists only in Windows PowerShell 5.1,
+# so PowerShell 7 calls oleaut32 directly.
+function Get-RunningVisualStudio {
+    if (-not ('VideoForensics.Ole' -as [type])) {
+        Add-Type -Namespace VideoForensics -Name Ole -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("oleaut32.dll", PreserveSig = false)]
+public static extern void GetActiveObject(ref System.Guid rclsid, System.IntPtr pvReserved, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Interface)] out object ppunk);
+'@
+    }
+
+    try {
+        $clsid = [Type]::GetTypeFromProgID('VisualStudio.DTE').GUID
+        $instance = $null
+        [VideoForensics.Ole]::GetActiveObject([ref]$clsid, [IntPtr]::Zero, [ref]$instance)
+        return $instance
+    }
+    catch {
+        return $null
+    }
+}
+
 # Attaches the debugger of a running Visual Studio instance. Without an open instance the PID is reported
 # so it can be attached by hand.
 function Attach-VisualStudioDebugger {
     param([Parameter(Mandatory)][int]$ProcessId)
 
-    try {
-        $dte = [System.Runtime.InteropServices.Marshal]::GetActiveObject('VisualStudio.DTE')
-    }
-    catch {
+    $dte = Get-RunningVisualStudio
+    if (-not $dte) {
         Write-Warning "No running Visual Studio instance found. Attach to PID $ProcessId manually."
         return
     }
