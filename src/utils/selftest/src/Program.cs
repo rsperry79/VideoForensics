@@ -142,6 +142,11 @@ namespace VideoForensics.Utils.SelfTest
                 return await RunOfflineFieldCheckAsync(options);
             }
 
+            if (options.ListUnknown)
+            {
+                return await RunListUnknownAsync(options);
+            }
+
             if (options.InteractiveAuth)
             {
                 return await RunInteractiveAuthAsync(options);
@@ -380,6 +385,42 @@ namespace VideoForensics.Utils.SelfTest
             }
 
             Console.WriteLine(reportPath);
+            return 0;
+        }
+
+        /// <summary>
+        /// Read-only, offline (--list-unknown): lists the leaf JSON paths of the Ring-data JSON columns with their row counts and
+        /// value kinds, and writes unknown-keys.json and unknown-keys.md. No Ring calls and no credentials; no values are printed or written.
+        /// </summary>
+        private static async Task<int> RunListUnknownAsync(CliOptions options)
+        {
+            string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
+            if (!File.Exists(dbPath))
+            {
+                Console.Error.WriteLine($"Error: database file not found at {dbPath}. Pass --db-path.");
+                return 2;
+            }
+
+            UnknownKeyReport report;
+            try
+            {
+                report = await UnknownKeyCollator.RunAsync(dbPath, FieldMap.LoadEmbedded());
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error: could not read the database: {ex.GetType().Name}: {ex.Message}");
+                return 2;
+            }
+
+            string outputDir = options.OutputDir ?? Path.Combine(
+                new StorageLocationProvider().GetDataRoot(),
+                "SelfTesterResults",
+                DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
+            UnknownKeyCollator.WriteFiles(report, outputDir);
+
+            UnknownKeyCollator.WriteSummary(report, Console.Out);
+            Console.WriteLine(Path.Combine(outputDir, UnknownKeyCollator.JsonFileName));
+            Console.WriteLine(Path.Combine(outputDir, UnknownKeyCollator.MarkdownFileName));
             return 0;
         }
 

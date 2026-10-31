@@ -43,6 +43,7 @@ namespace VideoForensics.Utils.SelfTest
         public bool VerifyDb;
         public string? DbPath;
         public string? CheckDir;
+        public bool ListUnknown;
         public Uri? ClientsApiBaseUrl;
         public Uri? AppApiBaseUrl;
         public Uri? ModeApiBaseUrl;
@@ -403,6 +404,10 @@ namespace VideoForensics.Utils.SelfTest
                         options.CheckDir = args[++i];
                         break;
 
+                    case "--list-unknown":
+                        options.ListUnknown = true;
+                        break;
+
                     case "--db-path":
                         if (i + 1 >= args.Length)
                         {
@@ -602,6 +607,7 @@ namespace VideoForensics.Utils.SelfTest
 
         USAGE:
           Ring.Api.SelfTester --auth
+          Ring.Api.SelfTester --list-unknown [--db-path <path>] [--output-dir <path>]
           Ring.Api.SelfTester [--list | --list-endpoints-json] [--endpoints <csv>] [--output-dir <path>]
                      [--location-id <guid>] [--doorbot-id <id>] [--chime-id <id>]
                      [--history-limit <n>] [--destructive [--no-physical] [destructive-endpoint options]]
@@ -694,6 +700,18 @@ namespace VideoForensics.Utils.SelfTest
                                      %ProgramData%\VideoForensics\Database\videoforensics.db (same file the
                                      main VideoForensics app uses). Applies to credential storage and
                                      --verify-db alike.
+
+        UNKNOWN KEY LIST:
+          --list-unknown            Read-only and offline: no Ring calls, no credentials. Lists every leaf
+                                     JSON path held in the Ring-data JSON columns (Devices, DeviceCapabilities,
+                                     Events, MediaItems, LocationMetadata, RingAccounts, DeviceConfigSnapshots,
+                                     RingLocationModeNotYetParticipating) with its row count and value kinds.
+                                     Values are never printed or written. ActionLogEntries.DetailsJson is
+                                     skipped by design. Events and MediaItems paths are marked covered when
+                                     field-map.json has the same path under any endpoint. Writes
+                                     unknown-keys.json and unknown-keys.md into --output-dir (default: a
+                                     UTC-timestamped folder under SelfTesterResults). Uses --db-path (or the
+                                     default database), opened read-only. Exit 2 if the database is missing.
 
         HOST OVERRIDES (probe a different Ring host without a code change; each takes an absolute
         http/https URL, unset flags keep the production defaults):
