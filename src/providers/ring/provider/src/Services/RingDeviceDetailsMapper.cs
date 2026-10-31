@@ -125,6 +125,11 @@ namespace VideoForensics.Providers.Ring.Services
                 RingType: d.Type,
                 MotionSnoozeJson: RawJson(d.MotionSnooze),
                 DoorbellVolume: ToInt(NestedLong(d.Settings?.AdditionalFields, "volume_settings", "doorbell_volume") ?? d.Settings?.DoorbellVolume),
+                PirSettingsSensitivity1: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_1")),
+                PirSettingsSensitivity2: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_2")),
+                PirSettingsSensitivity3: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "sensitivity_3")),
+                PirSettingsZoneEnable: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "zone_enable")),
+                PirSettingsZoneMask: ToInt(NestedLong(d.Settings?.AdditionalFields, "pir_settings", "zone_mask")),
                 NightModeOn: d.Settings?.NightModeOn,
                 MotionDetectionEnabled: NestedBool(d.Settings?.AdditionalFields, "motion_settings", "motion_detection_enabled") ?? d.Settings?.MotionDetectionEnabled,
                 EnableVod: d.Settings?.EnableVod,
@@ -194,6 +199,11 @@ namespace VideoForensics.Providers.Ring.Services
                 VodSuspended: ToFlag(st?.VodSuspended),
                 DoorbellVolume: ToInt(NestedLong(st?.AdditionalFields, "volume_settings", "doorbell_volume") ?? st?.DoorbellVolume),
                 VodStatus: st?.VodStatus,
+                // A stickup cam's motion switch and chime settings arrive as nested groups in the settings body and as a flat key in the device list.
+                MotionDetectionEnabled: NestedBool(st?.AdditionalFields, "motion_settings", "motion_detection_enabled") ?? FlatBool(st?.AdditionalFields, "motion_detection_enabled"),
+                SettingsChimeType: ToInt(NestedLong(st?.AdditionalFields, "chime_settings", "type")),
+                SettingsChimeEnabled: NestedBool(st?.AdditionalFields, "chime_settings", "enable"),
+                SettingsChimeDuration: ToInt(NestedLong(st?.AdditionalFields, "chime_settings", "duration")),
                 AdvancedMotionDetectionEnabled: st?.AdvancedMotionDetectionEnabled,
                 AdvancedMotionDetectionHumanOnlyMode: st?.AdvancedMotionDetectionHumanOnlyMode,
                 EnableAudioRecording: st?.EnableAudioRecording,
@@ -908,6 +918,14 @@ namespace VideoForensics.Providers.Ring.Services
             return fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object
                 ? null
                 : obj.TryGetProperty(valueKey, out JsonElement value) && value.TryGetInt64(out long number) ? number : null;
+        }
+
+        /// <summary>Reads a boolean stored directly under <paramref name="key"/> in AdditionalFields. Null when absent or not a boolean.</summary>
+        private static bool? FlatBool(Dictionary<string, JsonElement>? fields, string key)
+        {
+            return fields != null && fields.TryGetValue(key, out JsonElement value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? value.GetBoolean()
+                : null;
         }
 
         /// <summary>Reads a boolean from a nested settings object kept in AdditionalFields. Null when absent or not a boolean.</summary>
