@@ -27,6 +27,7 @@ public class LiveViewPageTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddLogging();
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
@@ -70,8 +71,8 @@ public class LiveViewPageTests : BunitContext
                 .Select(i => i.Arguments.FirstOrDefault() as string)
                 .ToList();
 
-            _ = Assert.Single(importCalls);
-            Assert.Equal(ExpectedModulePath, importCalls[0]);
+            // The page's MediaPlayer imports its own module too, so only the live view module is counted.
+            Assert.Equal(ExpectedModulePath, Assert.Single(importCalls, c => c == ExpectedModulePath));
         });
     }
 

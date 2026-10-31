@@ -420,7 +420,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         Assert.Single(ClipLoader.Calls);
     }
 
-    private const string MediaViewerModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js";
+    private const string MediaPlayerModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js";
 
     /// <summary>A still the capture service returns on success, with a hash whose first twelve characters are known.</summary>
     private static MediaStillInfo StillInfo(Guid id) => new()
@@ -448,14 +448,14 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     /// <summary>Makes the player's position read return <paramref name="ms"/> milliseconds.</summary>
     private void SetupPlayerPosition(double ms)
     {
-        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaViewerModule);
+        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaPlayerModule);
         _ = module.Setup<double>("getCurrentTimeMs", _ => true).SetResult(ms);
     }
 
     /// <summary>Makes the player's position read fail, the way a detached or failed video element does.</summary>
     private void SetupPlayerPositionFailure()
     {
-        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaViewerModule);
+        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaPlayerModule);
         _ = module.Setup<double>("getCurrentTimeMs", _ => true).SetException(new JSException("boom"));
     }
 

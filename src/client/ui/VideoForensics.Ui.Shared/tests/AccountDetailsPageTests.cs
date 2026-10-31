@@ -109,6 +109,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         _ = Services.AddSingleton<IDeviceHealthChangedSource>(new DeviceHealthChangedSourceDouble(DeviceHealthChanges));
         _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();

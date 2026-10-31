@@ -14,8 +14,6 @@ interface Window {
         attach(handleId: string, panelId: string, options: { min?: number; max?: number } | null, dotNetRef: DotNetObjectReference | null): void;
         detach(handleId: string): void;
     };
-    vfSetVideoTime: (element: HTMLVideoElement | null, seconds: number) => void;
-    vfGetVideoTime: (element: HTMLVideoElement | null) => number;
     vfTheme: {
         getPrefersDark(): boolean;
         getStoredMode(): string | null;
