@@ -484,8 +484,7 @@ else if (OperatingSystem.IsWindows())
 }
 
 // One maintenance gate for the process. Scheduled sync, the update drain and the Database coordinator all share it.
-builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Maintenance.MaintenanceGate>();
-builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Maintenance.IMaintenanceGate>(sp => sp.GetRequiredService<VideoForensics.Client.Hosting.Maintenance.MaintenanceGate>());
+_ = builder.Services.AddServerMaintenance();
 
 if (updatesActiveAsService)
 {
