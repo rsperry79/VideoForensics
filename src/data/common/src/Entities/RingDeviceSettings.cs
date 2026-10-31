@@ -133,38 +133,6 @@ namespace VideoForensics.Data.Common.Entities
         public string? FlickElimRecommendedMode { get; set; }
 
         /// <summary>
-        /// settings.enable_vod (Ring sends 0 or 1). Also stored on Devices for stickup cams; doorbots have no Devices value, so this column carries it for them.
-        /// </summary>
-        public bool? EnableVod { get; set; }
-
-        /// <summary>settings.exposure_control. Also stored on Devices for stickup cams.</summary>
-        public int? ExposureControl { get; set; }
-
-        /// <summary>settings.vod_suspended (Ring sends 0 or 1). Also stored on Devices for stickup cams.</summary>
-        public bool? VodSuspended { get; set; }
-
-        /// <summary>settings.pir_sensitivity_1. Also stored on Devices for stickup cams.</summary>
-        public int? PirSensitivity1 { get; set; }
-
-        /// <summary>settings.enable_audio_recording. Also stored on Devices for stickup cams.</summary>
-        public bool? EnableAudioRecording { get; set; }
-
-        /// <summary>settings.advanced_motion_detection_enabled. Also stored on Devices for stickup cams.</summary>
-        public bool? AdvancedMotionDetectionEnabled { get; set; }
-
-        /// <summary>settings.advanced_motion_detection_human_only_mode. Also stored on Devices for stickup cams.</summary>
-        public bool? AdvancedMotionDetectionHumanOnlyMode { get; set; }
-
-        /// <summary>settings.live_view_preset_profile. Also stored on Devices for stickup cams.</summary>
-        public string? LiveViewPresetProfile { get; set; }
-
-        /// <summary>
-        /// settings.motion_snooze_preset_profile, or settings.motion_settings.motion_snooze_preset_profile when the top-level key is absent. Also stored on
-        /// Devices for stickup cams.
-        /// </summary>
-        public string? MotionSnoozePresetProfile { get; set; }
-
-        /// <summary>
         /// Top-level created_at (UTC). Null when Ring did not send it or the text was not an ISO-8601 date-time (the value is not stored, only noted).
         /// </summary>
         public DateTime? RingCreatedAt { get; set; }

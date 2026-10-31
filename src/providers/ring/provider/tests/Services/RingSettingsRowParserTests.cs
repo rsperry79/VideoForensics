@@ -85,33 +85,27 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void RingDeviceSettingsParser_StoredDeviceKeys_MapOnlyWhenAdditionalFieldsCarryThem()
+        public void RingDeviceSettingsParser_DeviceKeysAlsoTypedOnDevices_NotStoredOnRingRowOrRemainder()
         {
-            RingSettingsGroups groups = RingDeviceSettingsParser.Parse(true, Fields("""
+            // The nine keys are stored on Devices, so the Ring row does not carry them and the remainder JSON does not repeat them.
+            const string json = """
                 {"enable_vod": 1, "exposure_control": 2, "vod_suspended": 0, "pir_sensitivity_1": 10,
                  "enable_audio_recording": true, "advanced_motion_detection_enabled": true,
                  "advanced_motion_detection_human_only_mode": false, "live_view_preset_profile": "middle",
-                 "motion_snooze_preset_profile": "low", "motion_settings": {"motion_snooze_preset_profile": "high"}}
-                """), null);
+                 "motion_snooze_preset_profile": "low", "motion_settings": {"motion_snooze_preset_profile": "high"},
+                 "stark_enabled": true}
+                """;
+            Dictionary<string, JsonElement> fields = Fields(json);
+
+            RingSettingsGroups groups = RingDeviceSettingsParser.Parse(true, fields, null);
 
             RingDeviceSettings r = Assert.IsType<RingDeviceSettings>(groups.Ring);
-            Assert.True(r.EnableVod);
-            Assert.Equal(2, r.ExposureControl);
-            Assert.False(r.VodSuspended);
-            Assert.Equal(10, r.PirSensitivity1);
-            Assert.True(r.EnableAudioRecording);
-            Assert.True(r.AdvancedMotionDetectionEnabled);
-            Assert.False(r.AdvancedMotionDetectionHumanOnlyMode);
-            Assert.Equal("middle", r.LiveViewPresetProfile);
-            Assert.Equal("low", r.MotionSnoozePresetProfile);
-        }
-
-        [Fact]
-        public void RingDeviceSettingsParser_MotionSnoozeNestedOnly_FallsBackToNestedValue()
-        {
-            RingSettingsGroups groups = RingDeviceSettingsParser.Parse(true, Fields("""{"motion_settings": {"motion_snooze_preset_profile": "high"}}"""), null);
-
-            Assert.Equal("high", groups.Ring!.MotionSnoozePresetProfile);
+            Assert.True(r.StarkEnabled);
+            Assert.Empty(groups.Unstored);
+            string? remainder = RingDeviceSettingGroupParser.RemainderJson(fields);
+            Assert.DoesNotContain("enable_vod", remainder ?? string.Empty);
+            Assert.DoesNotContain("motion_snooze_preset_profile", remainder ?? string.Empty);
+            Assert.DoesNotContain("live_view_preset_profile", remainder ?? string.Empty);
         }
 
         [Fact]

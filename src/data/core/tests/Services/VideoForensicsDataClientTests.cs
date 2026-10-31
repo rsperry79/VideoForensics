@@ -1112,6 +1112,38 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceAsync_DoorbotNineSettingsScalars_StoresOnDevicesOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            // The nine settings scalars a doorbot maps (values as the mapper produces them from sample_doorbots.json).
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                EnableVod: true, ExposureControl: 2, VodSuspended: false, PirSensitivity1: 5, EnableAudioRecording: true,
+                AdvancedMotionDetectionEnabled: true, AdvancedMotionDetectionHumanOnlyMode: true,
+                LiveViewPresetProfile: "middle", MotionSnoozePresetProfile: "low");
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "doorbot-settings", "Front Door", "doorbell", true, details: details, ct: CancellationToken.None);
+
+            Assert.True(result.EnableVod);
+            Assert.Equal(2, result.ExposureControl);
+            Assert.False(result.VodSuspended);
+            Assert.Equal(5, result.PirSensitivity1);
+            Assert.True(result.EnableAudioRecording);
+            Assert.True(result.AdvancedMotionDetectionEnabled);
+            Assert.True(result.AdvancedMotionDetectionHumanOnlyMode);
+            Assert.Equal("middle", result.LiveViewPresetProfile);
+            Assert.Equal("low", result.MotionSnoozePresetProfile);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_WithRemainingScalars_StoresOnCreate()
         {
             var locationId = Guid.NewGuid();

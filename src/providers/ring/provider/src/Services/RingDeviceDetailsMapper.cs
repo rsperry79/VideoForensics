@@ -127,6 +127,15 @@ namespace VideoForensics.Providers.Ring.Services
                 DoorbellVolume: ToInt(NestedLong(d.Settings?.AdditionalFields, "volume_settings", "doorbell_volume") ?? d.Settings?.DoorbellVolume),
                 NightModeOn: d.Settings?.NightModeOn,
                 MotionDetectionEnabled: NestedBool(d.Settings?.AdditionalFields, "motion_settings", "motion_detection_enabled") ?? d.Settings?.MotionDetectionEnabled,
+                EnableVod: d.Settings?.EnableVod,
+                ExposureControl: ToInt(d.Settings?.ExposureControl),
+                MotionSnoozePresetProfile: d.Settings?.MotionSnoozePresetProfile ?? NestedText(d.Settings?.AdditionalFields, "motion_settings", "motion_snooze_preset_profile"),
+                LiveViewPresetProfile: d.Settings?.LiveViewPresetProfile,
+                PirSensitivity1: ToInt(d.Settings?.PirSensitivity1),
+                VodSuspended: ToFlag(d.Settings?.VodSuspended),
+                AdvancedMotionDetectionEnabled: d.Settings?.AdvancedMotionDetectionEnabled,
+                AdvancedMotionDetectionHumanOnlyMode: d.Settings?.AdvancedMotionDetectionHumanOnlyMode,
+                EnableAudioRecording: d.Settings?.EnableAudioRecording,
                 SettingsChimeType: ToInt(d.Settings?.ChimeSettings?.Type),
                 SettingsChimeEnabled: d.Settings?.ChimeSettings?.Enable,
                 SettingsChimeDuration: ToInt(d.Settings?.ChimeSettings?.Duration),
@@ -531,28 +540,6 @@ namespace VideoForensics.Providers.Ring.Services
             return rows;
         }
 
-        /// <summary>
-        /// Stickup cam settings keys that StickupCamSettings types are absent from AdditionalFields, so their typed values are copied onto the
-        /// settings row here. The row keeps the parser value for the snooze profile when the typed key is absent.
-        /// </summary>
-        private static void ApplyStickupTyped(RingDeviceSettings? ring, StickupCamSettings? st)
-        {
-            if (ring == null || st == null)
-            {
-                return;
-            }
-
-            ring.EnableVod = st.EnableVod;
-            ring.ExposureControl = ToInt(st.ExposureControl);
-            ring.VodSuspended = ToFlag(st.VodSuspended);
-            ring.PirSensitivity1 = ToInt(st.PirSensitivity1);
-            ring.EnableAudioRecording = st.EnableAudioRecording;
-            ring.AdvancedMotionDetectionEnabled = st.AdvancedMotionDetectionEnabled;
-            ring.AdvancedMotionDetectionHumanOnlyMode = st.AdvancedMotionDetectionHumanOnlyMode;
-            ring.LiveViewPresetProfile = st.LiveViewPresetProfile;
-            ring.MotionSnoozePresetProfile = st.MotionSnoozePresetProfile ?? ring.MotionSnoozePresetProfile;
-        }
-
         /// <summary>A string value from a nested object of additional fields; null when absent or not a string.</summary>
         private static string? NestedText(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
         {
@@ -618,7 +605,6 @@ namespace VideoForensics.Providers.Ring.Services
             RingNetworkGroups groups = RingDeviceNetworkParser.Parse(s.Settings?.AdditionalFields);
             notes.AddRange(groups.Unstored);
             RingSettingsGroups settings = RingDeviceSettingsParser.Parse(s.Settings != null, s.Settings?.AdditionalFields, s.CreatedAt);
-            ApplyStickupTyped(settings.Ring, s.Settings);
             notes.AddRange(settings.Unstored);
             return new RingDeviceDetails(
                 TimeZone: s.TimeZone,
