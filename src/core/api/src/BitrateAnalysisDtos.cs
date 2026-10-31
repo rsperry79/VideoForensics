@@ -4,7 +4,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// Wire DTO for one measured clip bit rate. <paramref name="Kbps"/> is the stream-reported video bit rate in kbps;
     /// <paramref name="Collapsed"/> is true when the clip carries the bit-rate-collapse red flag.
     /// </summary>
-    public sealed record BitrateSampleDto(DateTime CapturedAtUtc, int Kbps, string? LightingMode, bool Collapsed);
+    public sealed record BitrateSampleDto(DateTime CapturedAtUtc, int Kbps, string? LightingMode, bool Collapsed, Guid? MediaItemId = null, Guid? FlagId = null);
 
     /// <summary>
     /// Wire DTO for one camera's bit rate figures over a window. Reuses the signal stats, bucket and deviation DTOs, so

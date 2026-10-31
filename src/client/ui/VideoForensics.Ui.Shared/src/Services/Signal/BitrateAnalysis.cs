@@ -14,7 +14,9 @@ public sealed record BitrateAnalysis(IReadOnlyList<BitrateDeviceAnalysis> Device
 /// <param name="Kbps">The stream-reported video bit rate in kbps (bits per second / 1000, rounded).</param>
 /// <param name="LightingMode">Lighting class of the clip ("Ir", "ColorNight" or "Day"); null if not analysed.</param>
 /// <param name="Collapsed">True when the clip carries the bit-rate-collapse red flag.</param>
-public sealed record BitrateSample(DateTime CapturedAtUtc, int Kbps, string? LightingMode, bool Collapsed)
+/// <param name="MediaItemId">The clip, so a chart point can link to it.</param>
+/// <param name="FlagId">The review flag raised for the clip's bit rate collapse; null when none has been recorded.</param>
+public sealed record BitrateSample(DateTime CapturedAtUtc, int Kbps, string? LightingMode, bool Collapsed, Guid? MediaItemId = null, Guid? FlagId = null)
 {
     /// <summary>The reading as a signal sample so the shared stats, bucket, calendar and deviation maths apply; kbps stands in for dBm.</summary>
     public SignalSample ToSignalSample()
