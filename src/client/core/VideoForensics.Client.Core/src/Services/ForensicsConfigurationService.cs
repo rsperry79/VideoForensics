@@ -175,7 +175,10 @@ namespace VideoForensics.Client.Core.Services
                 config.MinCalibrationSamplesPerBucket = await GetIntSetting("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket, cancellationToken);
                 config.CalibrationStalenessDays = await GetIntSetting("CalibrationStalenessDays", config.CalibrationStalenessDays, cancellationToken);
 
-                _logger.LogInformation("Configuration loaded from database");
+                // Why: names what was read, not just that a read happened; mail and credential settings are left out.
+                _logger.LogInformation(
+                    "Configuration loaded from database: NetworkTier={NetworkTier}, LogLevel={LogLevel}, HttpPort={HttpPort}, HttpsPort={HttpsPort}, ReleaseChannel={ReleaseChannel}, DownloadLocation={DownloadLocation}, FfmpegBinDirectory={FfmpegBinDirectory}",
+                    config.ConfiguredNetworkTier, config.LogLevel, config.ServerHttpPort, config.ServerHttpsPort, config.ReleaseChannel, config.DownloadLocation, config.FfmpegBinDirectory);
             }
             catch (Exception ex)
             {
