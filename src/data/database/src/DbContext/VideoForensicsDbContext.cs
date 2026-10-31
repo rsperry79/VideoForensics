@@ -331,6 +331,15 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the battery rows of device-reported health.</summary>
         public DbSet<DeviceReportedBattery> DeviceReportedBatteries { get; set; }
 
+        /// <summary>Gets or sets the Ring-only paid feature flags of a device (cv_paid_features and other_paid_features).</summary>
+        public DbSet<RingDevicePaidFeatures> RingDevicePaidFeatures { get; set; }
+
+        /// <summary>Gets or sets the provider-agnostic network settings of a device.</summary>
+        public DbSet<DeviceNetworkSettings> DeviceNetworkSettings { get; set; }
+
+        /// <summary>Gets or sets the Ring-only network diagnosis of a device.</summary>
+        public DbSet<RingDeviceNetworkDiagnosis> RingDeviceNetworkDiagnosis { get; set; }
+
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
 

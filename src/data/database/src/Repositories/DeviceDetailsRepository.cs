@@ -303,6 +303,54 @@ namespace VideoForensics.Data.Database.Repositories
             _ = db.RingDeviceDetails.Add(row);
         }
 
+        /// <summary>Replaces the device's Ring paid-feature row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplacePaidFeaturesAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.PaidFeatures == null)
+            {
+                return;
+            }
+
+            db.RingDevicePaidFeatures.RemoveRange(await db.RingDevicePaidFeatures.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+            RingDevicePaidFeatures row = settings.PaidFeatures;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDevicePaidFeatures.Add(row);
+        }
+
+        /// <summary>Replaces the device's network-settings row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplaceNetworkSettingsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.NetworkSettings == null)
+            {
+                return;
+            }
+
+            db.DeviceNetworkSettings.RemoveRange(await db.DeviceNetworkSettings.Where(n => n.DeviceId == deviceId).ToListAsync(ct));
+            DeviceNetworkSettings row = settings.NetworkSettings;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.DeviceNetworkSettings.Add(row);
+        }
+
+        /// <summary>Replaces the device's Ring network-diagnosis row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplaceNetworkDiagnosisAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.NetworkDiagnosis == null)
+            {
+                return;
+            }
+
+            db.RingDeviceNetworkDiagnosis.RemoveRange(await db.RingDeviceNetworkDiagnosis.Where(d => d.DeviceId == deviceId).ToListAsync(ct));
+            RingDeviceNetworkDiagnosis row = settings.NetworkDiagnosis;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDeviceNetworkDiagnosis.Add(row);
+        }
+
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
         private static string OfflineMotionText(DeviceOfflineMotionSettings s)
         {
@@ -369,6 +417,9 @@ namespace VideoForensics.Data.Database.Repositories
             await ReplaceFeatureStatesAsync(db, deviceId, settings, ct);
             await ReplaceReportedHealthAsync(db, deviceId, settings, ct);
             await ReplaceRingDetailsAsync(db, deviceId, settings, ct);
+            await ReplacePaidFeaturesAsync(db, deviceId, settings, ct);
+            await ReplaceNetworkSettingsAsync(db, deviceId, settings, ct);
+            await ReplaceNetworkDiagnosisAsync(db, deviceId, settings, ct);
             // An Observed light event is written only on an off-to-on transition, in the same save as the rest of the sync.
             _ = await DeviceLightEventRepository.AddObservedIfTransitionAsync(db, deviceId, settings.LightSecondsRemaining, changedAtUtc, ct);
             if (settings.LightIsOn is { } lightOn)

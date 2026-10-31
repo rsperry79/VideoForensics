@@ -107,5 +107,26 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Empty(groups.DetectionTypes);
             Assert.Null(RingDeviceSettingGroupParser.RemainderJson(null));
         }
+
+        [Fact]
+        public void RingDeviceSettingGroupParser_RemainderJson_ExcludesPaidFeatureAndNetworkGroups()
+        {
+            Dictionary<string, JsonElement> fields = Fields("""
+                {"motion_snooze_preset_profile": "low",
+                 "cv_paid_features": {"baby_cry": true},
+                 "other_paid_features": {"ding_call": false},
+                 "network_settings": {"multi_net_pref": 1, "network_diagnosis": {"tcp_port": 5201}}}
+                """);
+
+            string? remainder = RingDeviceSettingGroupParser.RemainderJson(fields);
+
+            Assert.NotNull(remainder);
+            JsonObject root = JsonNode.Parse(remainder!)!.AsObject();
+            Assert.True(root.ContainsKey("motion_snooze_preset_profile"));
+            Assert.False(root.ContainsKey("cv_paid_features"));
+            Assert.False(root.ContainsKey("other_paid_features"));
+            Assert.False(root.ContainsKey("network_settings"));
+            Assert.Null(RingDeviceSettingGroupParser.RemainderJson(Fields("""{"network_settings": {"multi_net_pref": 1}}""")));
+        }
     }
 }

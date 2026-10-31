@@ -21,6 +21,9 @@ namespace VideoForensics.Providers.Ring.Services
         private const string CvSettingsKey = "cv_settings";
         private const string DetectionTypesKey = "detection_types";
         private const string ThresholdKey = "threshold";
+        private const string CvPaidKey = "cv_paid_features";
+        private const string OtherPaidKey = "other_paid_features";
+        private const string NetworkKey = "network_settings";
 
         /// <summary>Builds the typed rows for one device. Null fields (no settings sent) yield empty groups.</summary>
         public static TypedSettingDetails Parse(Dictionary<string, JsonElement>? fields)
@@ -67,7 +70,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// The settings JSON left after the typed keys are removed: the offline object, cv_settings.detection_types,
+        /// The settings JSON left after the typed keys are removed: the offline object, the paid-feature and network groups, cv_settings.detection_types,
         /// and the numeric cv_settings.threshold entries. Null when nothing is left.
         /// </summary>
         public static string? RemainderJson(Dictionary<string, JsonElement>? fields)
@@ -84,6 +87,10 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             _ = root.Remove(OfflineMotionKey);
+            // These groups have typed rows (RingDevicePaidFeatures, DeviceNetworkSettings, RingDeviceNetworkDiagnosis), so they are not stored twice.
+            _ = root.Remove(CvPaidKey);
+            _ = root.Remove(OtherPaidKey);
+            _ = root.Remove(NetworkKey);
             if (root[CvSettingsKey] is JsonObject cv)
             {
                 _ = cv.Remove(DetectionTypesKey);

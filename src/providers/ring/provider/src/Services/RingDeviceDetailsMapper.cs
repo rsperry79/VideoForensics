@@ -35,7 +35,8 @@ namespace VideoForensics.Providers.Ring.Services
         IReadOnlyList<string>? UnstoredNotes = null,
         RingDeviceDetailsRow? RingRow = null,
         int? LedSecondsRemaining = null,
-        bool? LedOn = null);
+        bool? LedOn = null,
+        RingNetworkGroups? NetworkGroups = null);
 
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
@@ -372,6 +373,17 @@ namespace VideoForensics.Providers.Ring.Services
                 };
             }
 
+            // The paid flags and the network groups each have their own row. A group Ring did not send is null, which leaves its stored row untouched.
+            if (details.NetworkGroups is { } groups)
+            {
+                children = (children ?? new DeviceSettingsChildren([], [], [])) with
+                {
+                    PaidFeatures = groups.PaidFeatures == null ? null : CopyRow(groups.PaidFeatures, deviceId),
+                    NetworkSettings = groups.NetworkSettings == null ? null : CopyRow(groups.NetworkSettings, deviceId),
+                    NetworkDiagnosis = groups.NetworkDiagnosis == null ? null : CopyRow(groups.NetworkDiagnosis, deviceId)
+                };
+            }
+
             return children;
         }
 
@@ -493,6 +505,8 @@ namespace VideoForensics.Providers.Ring.Services
             DeviceDetailFields fields = ToDeviceFields(d, top, notes);
             RingReportedHealth? health = RingDeviceHealthParser.Parse(d.Health);
             notes.AddRange(health?.Unstored ?? []);
+            RingNetworkGroups groups = RingDeviceNetworkParser.Parse(d.Settings?.AdditionalFields);
+            notes.AddRange(groups.Unstored);
             return new RingDeviceDetails(
                 TimeZone: d.TimeZone,
                 FirmwareVersion: d.FirmwareVersion,
@@ -511,7 +525,8 @@ namespace VideoForensics.Providers.Ring.Services
                 FeatureDetails: f == null ? null : ParseFeatures(f.AdditionalFeatures, notes),
                 ReportedHealth: health,
                 UnstoredNotes: notes,
-                RingRow: top.Row);
+                RingRow: top.Row,
+                NetworkGroups: groups);
         }
 
         private static RingDeviceDetails FromStickupCam(StickupCam s)
@@ -524,6 +539,8 @@ namespace VideoForensics.Providers.Ring.Services
             (int? ledSeconds, bool? ledOn) = LedState(s.LedStatus, notes);
             RingReportedHealth? health = RingDeviceHealthParser.Parse(s.Health);
             notes.AddRange(health?.Unstored ?? []);
+            RingNetworkGroups groups = RingDeviceNetworkParser.Parse(s.Settings?.AdditionalFields);
+            notes.AddRange(groups.Unstored);
             return new RingDeviceDetails(
                 TimeZone: s.TimeZone,
                 FirmwareVersion: s.FirmwareVersion,
@@ -544,7 +561,8 @@ namespace VideoForensics.Providers.Ring.Services
                 UnstoredNotes: notes,
                 RingRow: top.Row,
                 LedSecondsRemaining: ledSeconds,
-                LedOn: ledOn);
+                LedOn: ledOn,
+                NetworkGroups: groups);
         }
 
         private static RingDeviceDetails FromChime(Chime c)
