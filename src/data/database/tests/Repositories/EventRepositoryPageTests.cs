@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -211,6 +212,29 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
                     tooMany, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None));
+        }
+
+        /// <summary>Verifies that a detection type in the include list matches the event whose detection has it, whatever the event type.</summary>
+        [Fact]
+        public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_IncludeDetectionType_MatchesTheEventsDetection()
+        {
+            var device = Guid.NewGuid();
+            Event vehicleEvent = Ev(device, 1, "motion");
+            Event plainEvent = Ev(device, 2, "motion");
+            _ = await _repository.CreateAsync(vehicleEvent, CancellationToken.None);
+            _ = await _repository.CreateAsync(plainEvent, CancellationToken.None);
+            await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
+            {
+                _ = db.EventDetections.Add(new EventDetection { Id = Guid.NewGuid(), EventId = vehicleEvent.Id, DetectionType = "vehicle" });
+                _ = db.EventDetections.Add(new EventDetection { Id = Guid.NewGuid(), EventId = plainEvent.Id, DetectionType = "human" });
+                _ = await db.SaveChangesAsync();
+            }
+
+            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+                new[] { device }, Start, Start.AddHours(1), null, new[] { "vehicle" }, skip: 0, take: 10, CancellationToken.None);
+
+            Assert.Equal(1, page.TotalCount);
+            Assert.Equal(vehicleEvent.Id, Assert.Single(page.Items).Id);
         }
     }
 }

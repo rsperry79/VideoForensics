@@ -42,4 +42,17 @@ public class ReviewEventFilters_Tests
             [.. ReviewEventFilters.KnownEventTypes, ReviewEventFilters.SignalAnomaly, ReviewEventFilters.Jamming],
             ReviewEventFilters.SelectableEventTypes);
     }
+
+    [Fact]
+    public void ProviderTypes_VehicleSelected_KeepsIt()
+    {
+        Assert.Equal(["vehicle"], ReviewEventFilters.ProviderTypes(["vehicle", "jamming"]));
+    }
+
+    [Fact]
+    public void KnownEventTypes_IncludesVehicleAndAnimal()
+    {
+        Assert.Contains("vehicle", ReviewEventFilters.KnownEventTypes);
+        Assert.Contains("animal", ReviewEventFilters.KnownEventTypes);
+    }
 }

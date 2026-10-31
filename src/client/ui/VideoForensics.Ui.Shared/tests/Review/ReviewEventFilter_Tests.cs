@@ -100,4 +100,18 @@ public class ReviewEventFilter_Tests : ReviewTestContext
         Assert.Equal(L["EventType_jamming"].Value, one);
         cut.WaitForAssertion(() => Assert.Equal(L["EventTypesSelected", 2].Value, cut.Find("[data-testid='review-event-button']").TextContent.Trim()));
     }
+
+    [Fact]
+    public void ReviewEventFilter_Opened_OffersVehicleAndAnimal()
+    {
+        // Arrange
+        IRenderedComponent<ReviewEventFilter> cut = RenderFilter();
+
+        // Act
+        cut.Find("[data-testid='review-event-button']").Click();
+
+        // Assert
+        Assert.NotEmpty(cut.FindAll(Toggle("vehicle")));
+        Assert.NotEmpty(cut.FindAll(Toggle("animal")));
+    }
 }
