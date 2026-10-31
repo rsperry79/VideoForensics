@@ -8,7 +8,7 @@
 
 <div class="review-event-filter p-2" data-testid="review-event-filter">
     <ReviewSidebarSection Title="@L["EventFilterTitle"]">
-        <div class="review-camera-selector position-relative w-100 mb-2 @(Popups.IsOpen(ReviewPopupState.EventTypes) ? "review-camera-selector-open" : null)" @onkeydown="OnKeyDown">
+        <div class="review-event-selector position-relative w-100 mb-2 @(Popups.IsOpen(ReviewPopupState.EventTypes) ? "review-event-selector-open" : null)" @onkeydown="OnKeyDown">
             <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-event-button" aria-expanded="@Popups.IsOpen(ReviewPopupState.EventTypes).ToString().ToLowerInvariant()" @onclick="OnToggle">@ButtonLabel</button>
 
             @if (Popups.IsOpen(ReviewPopupState.EventTypes))
