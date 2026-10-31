@@ -251,6 +251,14 @@ try
         }
     }
 
+    // Why: the service holds the database open and caches what it read; stop it for the deletes and start it again after.
+    using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+    if (serviceGuard is null)
+    {
+        Console.Error.WriteLine(stopError);
+        return 1;
+    }
+
     // Execute repairs in a transaction
     await using VideoForensicsDbContext context = await factory.CreateDbContextAsync(ct);
     await using IDbContextTransaction transaction = await context.Database.BeginTransactionAsync(ct);
@@ -431,6 +439,14 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
 {
     try
     {
+        // Why: the service caches operator and session state; stop it for the reset and start it again after.
+        using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+        if (serviceGuard is null)
+        {
+            Console.Error.WriteLine(stopError);
+            return 1;
+        }
+
         using IServiceScope scope = provider.CreateScope();
         IOperatorRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
         IAppSettingRepository appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
@@ -495,7 +511,8 @@ static void PrintUsage()
           Other findings (detection redundancy, device feature overlap) are reported informally only - no automated fix.
 
           All deletions are wrapped in a single database transaction. A confirmation prompt is required before execution
-          unless --yes is also passed. Each deleted row is logged individually.
+          unless --yes is also passed. Each deleted row is logged individually. The VideoForensics service is stopped
+          for the deletes and started again afterwards.
 
         Recovery mode (--reset-superadmin-password):
           Recovers SuperAdmin access when the passkey is lost.
@@ -503,6 +520,6 @@ static void PrintUsage()
           Resets the password, unlocks the account, re-activates it, and invalidates existing sessions.
           Requires a confirmation prompt unless --yes is passed.
           Must be run on the server machine with administrator privileges (database is under ProgramData).
-          Stop the Windows service before running, or be aware of SQLite WAL implications if concurrent writes occur.
+          The VideoForensics service is stopped for the reset and started again afterwards (needs administrator privileges).
         """);
 }

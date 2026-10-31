@@ -70,6 +70,14 @@ if (resolvedDbPath is null && dataRootArg is not null)
     resolvedDbPath = Path.Combine(dataRootArg, "videoforensics.db");
 }
 
+// Why: the service caches settings and holds the database open; stop it for the write and start it again after.
+using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+if (serviceGuard is null)
+{
+    Console.Error.WriteLine(stopError);
+    return 1;
+}
+
 var services = new ServiceCollection();
 _ = services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
 _ = services.AddVideoForensicsDataLayer(resolvedDbPath);

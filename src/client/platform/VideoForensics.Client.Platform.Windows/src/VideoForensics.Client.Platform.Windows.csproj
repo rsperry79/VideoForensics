@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <PackageReference Include="CliWrap" Version="3.10.5" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.14" />
         <PackageReference Include="Microsoft.Extensions.Logging.EventLog" Version="10.0.14" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
     </ItemGroup>
