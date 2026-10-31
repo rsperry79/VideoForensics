@@ -36,8 +36,11 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Ring battery entry battery_voltage_category.</summary>
         public string? VoltageCategory { get; set; }
 
-        /// <summary>Ring battery entry battery_temp. Temperature as Ring sends it (unit not documented).</summary>
+        /// <summary>Ring battery entry battery_temp. Temperature as Ring sends it. Unit is an ASSUMPTION (deci-kelvin: tenths of a kelvin) pending a check on 2026-11-01.</summary>
         public double? Temp { get; set; }
+
+        /// <summary>Temp converted to Celsius (raw / 10 - 273.15, 2 dp) under the deci-kelvin assumption. Null when absent or the raw value is out of range.</summary>
+        public decimal? BatteryTempCelsius { get; set; }
 
         /// <summary>Ring battery entry battery_auth_status.</summary>
         public string? AuthStatus { get; set; }

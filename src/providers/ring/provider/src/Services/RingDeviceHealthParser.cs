@@ -69,6 +69,14 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     ParseBatteries(entry.Value, batteries, notes);
                 }
+                else if (entry.Key == "status_time" && Apply(entry.Key, entry.Value, g, x))
+                {
+                    ConvertStatusTime(g, notes);
+                }
+                else if (entry.Key == "battery_temp" && Apply(entry.Key, entry.Value, g, x))
+                {
+                    g.BatteryTempCelsius = ConvertTemp(g.BatteryTemp, "health.battery_temp", notes);
+                }
                 else if (!Apply(entry.Key, entry.Value, g, x))
                 {
                     notes.Add($"health.{entry.Key} not stored: unknown key or unexpected shape ({entry.Value.ValueKind})");
@@ -76,6 +84,36 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             return new RingReportedHealth(g, x, batteries, notes);
+        }
+
+        private static void ConvertStatusTime(DeviceReportedHealth g, List<string> notes)
+        {
+            if (g.StatusTime is not long ticks)
+            {
+                return;
+            }
+
+            g.StatusAtUtc = RingHealthUnits.StatusTimeToUtc(ticks);
+            if (g.StatusAtUtc == null)
+            {
+                notes.Add("health.status_time not converted to a date: outside 2000-01-01..2100-01-01");
+            }
+        }
+
+        private static decimal? ConvertTemp(double? raw, string key, List<string> notes)
+        {
+            if (raw is not double value)
+            {
+                return null;
+            }
+
+            decimal? celsius = RingHealthUnits.BatteryTempToCelsius(value);
+            if (celsius == null)
+            {
+                notes.Add($"{key} not converted to Celsius: outside the accepted deci-kelvin range {RingHealthUnits.BatteryTempRawMin}..{RingHealthUnits.BatteryTempRawMax}");
+            }
+
+            return celsius;
         }
 
         private static void NoteIfPresent(List<string> notes, string key, bool present)
@@ -146,7 +184,11 @@ namespace VideoForensics.Providers.Ring.Services
                 var b = new DeviceReportedBattery { Position = position };
                 foreach (JsonProperty p in item.EnumerateObject())
                 {
-                    if (!ApplyBattery(p.Name, p.Value, b))
+                    if (p.Name == "battery_temp" && ApplyBattery(p.Name, p.Value, b))
+                    {
+                        b.BatteryTempCelsius = ConvertTemp(b.Temp, $"health.batteries[{position}].battery_temp", notes);
+                    }
+                    else if (!ApplyBattery(p.Name, p.Value, b))
                     {
                         notes.Add($"health.batteries.{p.Name} not stored: unknown key or unexpected shape ({p.Value.ValueKind})");
                     }

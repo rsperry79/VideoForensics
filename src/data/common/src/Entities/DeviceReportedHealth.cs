@@ -25,8 +25,14 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Ring health.white_led_on.</summary>
         public bool? WhiteLedOn { get; set; }
 
-        /// <summary>Battery temperature as Ring sends it (unit not documented; seen as 2921.0, probably deci-kelvin).</summary>
+        /// <summary>
+        /// Battery temperature as Ring sends it (seen as 2921.0). Unit is an ASSUMPTION (deci-kelvin: tenths of a kelvin) pending a check on
+        /// 2026-11-01; see <see cref="BatteryTempCelsius"/>.
+        /// </summary>
         public double? BatteryTemp { get; set; }
+
+        /// <summary>BatteryTemp converted to Celsius (raw / 10 - 273.15, 2 dp) under the deci-kelvin assumption. Null when absent or the raw value is out of range.</summary>
+        public decimal? BatteryTempCelsius { get; set; }
 
         /// <summary>Ring bandwidth reading as sent (unit not documented by Ring).</summary>
         public long? Bandwidth { get; set; }
@@ -34,8 +40,11 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Ring health.siren_on.</summary>
         public bool? SirenOn { get; set; }
 
-        /// <summary>Ring status_time as sent (an integer of unverified unit, seen as 5.8e13; not converted to a date).</summary>
+        /// <summary>Ring status_time as sent: ticks of a 32768 Hz clock since the Unix epoch (seen as 5.8e13). See <see cref="StatusAtUtc"/>.</summary>
         public long? StatusTime { get; set; }
+
+        /// <summary>StatusTime converted to UTC (ticks / 32768 seconds after the Unix epoch). Null when absent or outside 2000..2100.</summary>
+        public DateTime? StatusAtUtc { get; set; }
 
         /// <summary>Ring health.battery_error.</summary>
         public bool? BatteryError { get; set; }
