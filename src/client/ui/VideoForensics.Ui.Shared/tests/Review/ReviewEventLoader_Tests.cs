@@ -201,14 +201,14 @@ public class ReviewEventLoader_Tests
     }
 
     [Fact]
-    public async Task ReviewEventLoader_Load_EventTypeGiven_PassesItAsTheIncludeList()
+    public async Task ReviewEventLoader_Load_EventTypesGiven_PassesThemAsTheIncludeList()
     {
         // Arrange
         var capture = new Capture();
         var loader = new ReviewEventLoader(Repository(capture).Object);
 
         // Act
-        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, "motion", 0, 100, CancellationToken.None);
+        _ = await loader.LoadAsync([Guid.NewGuid()], From, To, ["motion"], 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(new[] { "motion" }, capture.Included);
@@ -241,10 +241,28 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
 
         // Act
-        EventPage page = await loader.LoadAsync([device], From, To, "motion", 0, 100, CancellationToken.None);
+        EventPage page = await loader.LoadAsync([device], From, To, ["motion"], 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(1, page.TotalCount);
         Assert.Equal(motion.Id, Assert.Single(page.Items).Id);
+    }
+
+    [Fact]
+    public async Task ReviewEventLoader_Load_EmptyEventTypes_ReturnsAnEmptyPageWithoutQuerying()
+    {
+        // Arrange
+        var repository = Repository(new Capture());
+        var loader = new ReviewEventLoader(repository.Object);
+
+        // Act
+        EventPage page = await loader.LoadAsync([Guid.NewGuid()], From, To, [], 0, 100, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+        repository.Verify(r => r.ListPageByDevicesAndDateRangeAsync(
+            It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+            It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

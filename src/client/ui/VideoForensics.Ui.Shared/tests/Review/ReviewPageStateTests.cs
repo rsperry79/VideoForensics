@@ -599,7 +599,7 @@ public class ReviewPageState_Tests
     }
 
     [Fact]
-    public void SetFilters_EventType_IsStoredAndRaisesOnChange()
+    public void SetEventTypes_NewSelection_IsStoredAndRaisesOnChange()
     {
         // Arrange
         ReviewPageState state = NewState();
@@ -607,24 +607,53 @@ public class ReviewPageState_Tests
         state.OnChange += () => changes++;
 
         // Act
-        state.SetFilters(null, null, null, "motion");
+        state.SetEventTypes(["person", "motion"]);
 
-        // Assert
-        Assert.Equal("motion", state.EventTypeFilter);
+        // Assert: kept in the filter's display order, not the order given
+        Assert.Equal(["motion", "person"], state.EventTypes);
         Assert.Equal(1, changes);
     }
 
     [Fact]
-    public void SetFilters_BlankEventType_IsStoredAsNull()
+    public void SetEventTypes_SameSelection_RaisesNothing()
     {
         // Arrange
         ReviewPageState state = NewState();
-        state.SetFilters(null, null, null, "motion");
+        state.SetEventTypes(["motion"]);
+        int changes = 0;
+        state.OnChange += () => changes++;
 
         // Act
-        state.SetFilters(null, null, null, " ");
+        state.SetEventTypes(["motion", "motion"]);
 
         // Assert
-        Assert.Null(state.EventTypeFilter);
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
+    public void SetEventTypes_UnknownTypes_AreDropped()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+
+        // Act
+        state.SetEventTypes(["motion", "bogus", "jamming"]);
+
+        // Assert
+        Assert.Equal(["motion", "jamming"], state.EventTypes);
+    }
+
+    [Fact]
+    public void SetEventTypes_Empty_MeansAllTypes()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        state.SetEventTypes(["motion"]);
+
+        // Act
+        state.SetEventTypes([]);
+
+        // Assert
+        Assert.Empty(state.EventTypes);
     }
 }

@@ -316,26 +316,32 @@ public class ReviewUrl_Tests
     }
 
     [Fact]
-    public void Parse_EventTypeParameter_IsRead()
+    public void Parse_EventTypesParameter_IsReadInDisplayOrderIgnoringUnknownTypes()
     {
         // Act
-        ReviewUrlState state = ReviewUrl.Parse("?eventtype=motion");
+        ReviewUrlState state = ReviewUrl.Parse("?eventtypes=person,bogus,motion,jamming");
 
         // Assert
-        Assert.Equal("motion", state.EventType);
+        Assert.Equal(["motion", "person", "jamming"], state.EventTypes);
     }
 
     [Fact]
-    public void Build_EventType_RoundTripsThroughParse()
+    public void Build_EventTypes_RoundTripsThroughParse()
     {
         // Arrange
-        ReviewUrlState state = DefaultState() with { EventType = "on_demand" };
+        ReviewUrlState state = DefaultState() with { EventTypes = ["on_demand", "signal_anomaly"] };
 
         // Act
         string query = ReviewUrl.Build(state);
 
         // Assert
-        Assert.Equal("eventtype=on_demand", query);
+        Assert.Equal("eventtypes=on_demand%2csignal_anomaly", query);
         Assert.Equal(state, ReviewUrl.Parse(query));
+    }
+
+    [Fact]
+    public void Build_NoEventTypes_OmitsTheParameter()
+    {
+        Assert.DoesNotContain("eventtypes", ReviewUrl.Build(DefaultState()));
     }
 }

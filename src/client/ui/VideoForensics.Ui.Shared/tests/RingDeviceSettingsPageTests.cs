@@ -46,9 +46,9 @@ public class RingDeviceSettingsPage_Tests : BunitContext
         };
     }
 
-    private IRenderedComponent<RingDeviceSettings> RenderPage(Guid id)
+    private IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> RenderPage(Guid id)
     {
-        return Render<RingDeviceSettings>(parameters => parameters.Add(p => p.DeviceId, id));
+        return Render<Client.Ui.Shared.Pages.RingDeviceSettings>(parameters => parameters.Add(p => p.DeviceId, id));
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class RingDeviceSettingsPage_Tests : BunitContext
             [new DeviceDetectionType { DeviceId = RingDeviceId, DetectionType = "human", Enabled = true, Mode = "cloud", Record = false, Notification = true }],
             [new DeviceDetectionThreshold { DeviceId = RingDeviceId, DetectionType = "loitering", Threshold = 10.0 }]));
 
-        IRenderedComponent<RingDeviceSettings> cut = RenderPage(RingDeviceId);
+        IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(RingDeviceId);
 
         cut.WaitForAssertion(() => Assert.Contains("Front Door", cut.Markup));
         Assert.Contains("5000", cut.Find("[data-testid=ring-offline-motion]").TextContent);
@@ -76,7 +76,7 @@ public class RingDeviceSettingsPage_Tests : BunitContext
         _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([RingDevice(RingDeviceId)]);
         _ = _typed.Setup(t => t.GetAsync(RingDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeviceTypedSettings(null, [], []));
 
-        IRenderedComponent<RingDeviceSettings> cut = RenderPage(RingDeviceId);
+        IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(RingDeviceId);
 
         cut.WaitForAssertion(() => Assert.Contains("No typed settings are stored for this device.", cut.Markup));
         Assert.Empty(cut.FindAll("[data-testid=ring-offline-motion]"));
@@ -89,7 +89,7 @@ public class RingDeviceSettingsPage_Tests : BunitContext
         wyze.ProviderName = "Wyze";
         _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([wyze]);
 
-        IRenderedComponent<RingDeviceSettings> cut = RenderPage(RingDeviceId);
+        IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(RingDeviceId);
 
         cut.WaitForAssertion(() => Assert.Contains("This device is not linked to a Ring account", cut.Markup));
         _typed.Verify(t => t.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -100,7 +100,7 @@ public class RingDeviceSettingsPage_Tests : BunitContext
     {
         _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        IRenderedComponent<RingDeviceSettings> cut = RenderPage(Guid.NewGuid());
+        IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(Guid.NewGuid());
 
         cut.WaitForAssertion(() => Assert.Contains("This device was not found.", cut.Markup));
     }

@@ -62,8 +62,12 @@ public sealed class ReviewPageState
     /// <summary>Location filter, or null for all locations.</summary>
     public Guid? LocationFilter { get; private set; }
 
-    /// <summary>Event type filter (an exact event type such as "motion"), or null for all types.</summary>
-    public string? EventTypeFilter { get; private set; }
+    private IReadOnlyList<string> _eventTypes = [];
+
+    /// <summary>
+    /// The Event Filter selection: provider types and system types, in display order. Empty means everything.
+    /// </summary>
+    public IReadOnlyList<string> EventTypes => _eventTypes;
 
     /// <summary>The event the user selected, or null.</summary>
     public Guid? SelectedEventId { get; private set; }
@@ -115,13 +119,29 @@ public sealed class ReviewPageState
         OnChange?.Invoke();
     }
 
-    /// <summary>Sets the provider, account, location and event type filters. A blank provider or event type is stored as null.</summary>
-    public void SetFilters(string? provider, Guid? account, Guid? location = null, string? eventType = null)
+    /// <summary>Sets the provider, account and location filters. A blank provider is stored as null.</summary>
+    public void SetFilters(string? provider, Guid? account, Guid? location = null)
     {
-        if (SetFiltersCore(provider, account, location, eventType))
+        if (SetFiltersCore(provider, account, location))
         {
             OnChange?.Invoke();
         }
+    }
+
+    /// <summary>
+    /// Sets the Event Filter selection. Unknown types are dropped and the rest are kept once each, in display order.
+    /// An empty selection shows every type.
+    /// </summary>
+    public void SetEventTypes(IEnumerable<string> types)
+    {
+        IReadOnlyList<string> next = ReviewEventFilters.Normalize(types);
+        if (_eventTypes.SequenceEqual(next))
+        {
+            return;
+        }
+
+        _eventTypes = next;
+        OnChange?.Invoke();
     }
 
     /// <summary>Selects an event. Selecting never moves the cursor; the caller seeks when it wants to.</summary>
@@ -220,11 +240,10 @@ public sealed class ReviewPageState
         return true;
     }
 
-    private bool SetFiltersCore(string? provider, Guid? account, Guid? location, string? eventType)
+    private bool SetFiltersCore(string? provider, Guid? account, Guid? location)
     {
         string? normalizedProvider = string.IsNullOrWhiteSpace(provider) ? null : provider;
-        string? normalizedType = string.IsNullOrWhiteSpace(eventType) ? null : eventType;
-        if (normalizedProvider == ProviderFilter && account == AccountFilter && location == LocationFilter && normalizedType == EventTypeFilter)
+        if (normalizedProvider == ProviderFilter && account == AccountFilter && location == LocationFilter)
         {
             return false;
         }
@@ -232,7 +251,6 @@ public sealed class ReviewPageState
         ProviderFilter = normalizedProvider;
         AccountFilter = account;
         LocationFilter = location;
-        EventTypeFilter = normalizedType;
         return true;
     }
 }

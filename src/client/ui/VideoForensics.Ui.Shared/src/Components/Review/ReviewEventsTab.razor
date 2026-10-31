@@ -155,7 +155,7 @@
         _loadCts = cts;
         CancellationToken ct = cts.Token;
 
-        var key = new LoadKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc, State.EventTypeFilter);
+        var key = new LoadKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc, ReviewEventFilters.ProviderTypes(State.EventTypes));
         _requested = key;
         _error = false;
 
@@ -194,7 +194,7 @@
 
         try
         {
-            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, key.EventType, skip, take, ct);
+            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, key.EventTypes, skip, take, ct);
             if (!IsCurrent(cts))
             {
                 return;
@@ -292,11 +292,11 @@
     }
 
     /// <summary>The cameras and range one query asked for. The list is only shown while this still matches the state.</summary>
-    private sealed record LoadKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc, string? EventType)
+    private sealed record LoadKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc, IReadOnlyList<string>? EventTypes)
     {
         public bool Matches(ReviewPageState state)
         {
-            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc && EventType == state.EventTypeFilter;
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc && (EventTypes ?? []).SequenceEqual(ReviewEventFilters.ProviderTypes(state.EventTypes) ?? []);
         }
     }
 

@@ -603,4 +603,43 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         // Assert
         cut.WaitForAssertion(() => Assert.Contains("mystery-kind", cut.Find(EventBody).TextContent));
     }
+
+    [Fact]
+    public void ReviewDetailTab_OnlyMotionSelected_HidesTheSystemSectionsAndDoesNotLoadThem()
+    {
+        // Arrange
+        AddDevices(1);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ReviewState.SetEventTypes(["motion"]);
+
+        // Act
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.NotEmpty(EventLoader.Calls));
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-jamming']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-anomalies']"));
+        Assert.Empty(DetailLoader.JammingCalls);
+        Assert.Empty(DetailLoader.AnomalyCalls);
+        Assert.Equal(["motion"], EventLoader.Calls[0].EventTypes);
+    }
+
+    [Fact]
+    public void ReviewDetailTab_OnlyJammingSelected_ShowsJammingOnlyAndListsNoProviderEvents()
+    {
+        // Arrange
+        AddDevices(1);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ReviewState.SetEventTypes(["jamming"]);
+
+        // Act
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(JammingRow)));
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-anomalies']"));
+        Assert.Empty(cut.FindAll(EventRow));
+        Assert.Empty(DetailLoader.AnomalyCalls);
+    }
 }
