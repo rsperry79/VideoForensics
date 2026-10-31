@@ -52,9 +52,9 @@ Layout:
 +---------------------------------------------------------------+
 ```
 - Fit: CSS grid/flex with `min-height:0` and `object-fit:contain`, sized to the layout content box, not `100dvh` (the pages live inside `MainLayout`). The review subpages hide the left nav like `/media`. Use the existing right panel host via `PageRightPanelContent` for the side column, or its own pinned column: decide in B0 (using the host is cheaper but that panel is a user-resizable `SfSplitter`). JS measurement only where needed (the timeline's pixel length); a new small resize-observer module, not a copy of `signal-chart.js`.
-- `FlagActionsPanel`: built on `ReviewSidebarSection` and `ReviewCaseSection` (not `ReviewActionsPanel`, which is bound to `ReviewPageState`). *Add to case*: choose an open case or start a new one via the existing hand-off; show "already in case X" from `ListCasesContainingAsync`; catch and show duplicate, closed-case and missing-target errors. *Keep flagged*: Status Kept; optional "also place legal hold" for Admin only. *Dismiss*: reason required. Roles mirror the Actions menu (`OperatorRole.Review`), enforced on the server, not UI-only.
+- `FlagActionsPanel`: built on `ReviewSidebarSection` and `ReviewCaseSection` (not `ReviewActionsPanel`, which is bound to `ReviewPageState`). *Add to case*: choose an open case or start a new one via the existing hand-off; for an RSSI flag it pins every clip and every snapshot in the flag's window (decided, Q7), listing the count first; show "already in case X" from `ListCasesContainingAsync` and skip items already pinned; catch and show duplicate, closed-case and missing-target errors. *Keep flagged*: Status Kept; optional "also place legal hold" for Admin only. *Dismiss*: reason required. Roles mirror the Actions menu (`OperatorRole.Review`), enforced on the server, not UI-only.
 - `ClipNavigator`: takes a flag-list source (the table's filter and sort), not the table. "3 of 17" via keyset neighbours (`GetNeighbourAsync(flagId, filter, direction)` + count), so it stays correct as other operators change the list. Auto-advance after Keep/Dismiss; at the end go back to the table. Left/right arrows only when the shell, not the `<video>`, has focus; `aria-live` for position and status changes.
-- `MediaFit`: wraps `ReviewPlayer` for one clip; states for purged, missing file, deleted device, flag id not found (deep link from a Notice), and no clip in the hour (`ReviewPlayerGap`). RSSI flags resolve to playable media with `GetPageByDevicesAndDateRangeAsync` (paged, SQL-side, non-purged) over window +/- a defined pad (the Notice scope uses +/- 1 h); the user picks which clip(s) when several match.
+- `MediaFit`: wraps `ReviewPlayer` for one clip; states for purged, missing file, deleted device, flag id not found (deep link from a Notice), and no clip in the hour (`ReviewPlayerGap`). RSSI flags resolve to playable media with `GetPageByDevicesAndDateRangeAsync` (paged, SQL-side, non-purged) over window +/- a defined pad (the Notice scope uses +/- 1 h); the add-to-case action pins ALL of them (see Q7).
 - Mobile (<600 px): the shell hands off to `MobileLayout`/`ResponsiveLayout` (drawer for the side column); no mobile logic in `MainLayout`.
 
 ### D5. Playback timeline (`PlaybackTimeline`)
@@ -84,6 +84,7 @@ Layout:
 ## Batches
 - B0 Decisions and spikes (below) plus a throwaway spike: `TimelineStrip` marker layer and `ReviewPlayer` progress/rate on a branch, and `SfTimeline` item-click check.
 - B1a Data: entity, config, migration, indexes, repository (compare-and-set, keyset neighbours, count), ActionLog in one commit. data.* projects only.
+- B1c Case snapshot kind: `CaseItemKind.Snapshot`, migration, DTOs, export, case details, tests (needed by B6).
 - B1b Wire: DTOs, endpoints, Remote twin, `IMediaFlagChangedSource`, DI on server/client/MAUI, notice-dismiss routes.
 - B2 Writers and backfill (needs B1a): `MediaAnalysisService` reconcile, `SignalDeviationAlerts` flag + `NoticeId`, backfill pass.
 - B4 Shell: `FlagReviewShell`, `MediaFit`, resize module, CSS, nav-hide, `ReviewPlayer` transport/progress API (no data dependency; parallel with B1b/B2).
@@ -102,7 +103,7 @@ Parallel-safe sets: after B1a: B2 and B4. After B1b: B3a, B6. Do not run in para
 4. Dismissal is global, records who/when/why, dismisses the linked Notice for everyone, re-open is Admin + audited. (Recommended.)
 5. Flags per report: Signal = `RssiDeviation` (2-sigma only); Bit rate = `BitrateCollapse`; `UnusualLighting` and audio flags wait for their own report; Jamming links to `JammingIncident`. (Recommended.)
 6. Purged or missing media: keep the flag, show "media unavailable"; no FK cascade. (Agreed.)
-7. NEW: which clip(s) does an RSSI flag pin to a case (user picks from the resolved clips), or add a Flag kind to `CaseItemKind` (breaking: DTO, migration, export)?
+7. DECIDED (user, 2026-10-31): an RSSI flag adds all clips and all snapshots in its window to the case, no manual pick. Consequence: `CaseItemKind` is only Event and Media today and snapshots are `SnapshotCapture` rows, so a `Snapshot` kind must be added (enum, migration, DTOs, case export, case details page, Remote twin) before B6. Window = flag window +/- the pad from D4; snapshots via `ISnapshotCaptureRepository.GetCurrentForDeviceAsync`. Add as its own batch B1c (needs B1a), and confirm the pad with the user. Bit rate and other clip flags keep pinning their one clip.
 8. NEW: initial status of backfilled historic flags: Unreviewed or a "Legacy" dismissed state?
 9. NEW: do review subpages hide the app nav and use the existing right panel, or have their own pinned column?
 
