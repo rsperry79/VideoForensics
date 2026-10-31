@@ -183,6 +183,64 @@ function Build-WithVisualStudio {
     return $true
 }
 
+# Opens the log viewer as a tab in Windows Terminal when wt.exe is installed, otherwise in its own window. Windows
+# Terminal returns at once, so the viewer's dotnet run process is found by its command line. Returns that process ID,
+# or $null when it cannot be found.
+function Start-LogViewer {
+    param([Parameter(Mandatory)][string]$ProjectPath)
+
+    $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if (-not $wt) {
+        Write-Host 'Windows Terminal is not installed. Opening the logger console in its own window.'
+        return (Start-Process -FilePath 'dotnet' -ArgumentList @('run', '--project', $ProjectPath) -WindowStyle Normal -PassThru).Id
+    }
+
+    # Runs that were already open are excluded, so the new tab's process is the one matched.
+    $existing = @(Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
+        Where-Object { $_.CommandLine -and $_.CommandLine.Contains($ProjectPath) } |
+        ForEach-Object { $_.ProcessId })
+
+    Write-Host 'Opening the logger console as a Windows Terminal tab'
+    Start-Process -FilePath $wt.Source -ArgumentList "-w 0 new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
+
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        $match = Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
+            Where-Object { $_.CommandLine -and $_.CommandLine.Contains($ProjectPath) -and $_.ProcessId -notin $existing } |
+            Select-Object -First 1
+        if ($match) { return [int]$match.ProcessId }
+        Start-Sleep -Seconds 1
+    }
+    Write-Warning 'The logger console did not start in Windows Terminal within 30 s. Closing it will not stop the debugger.'
+    return $null
+}
+
+# Runs until the log viewer or the debugger ends, then ends the other one. Closing the viewer detaches Visual Studio
+# from the process. Detaching Visual Studio closes the viewer's whole process tree.
+function Wait-ForDebugSessionEnd {
+    param(
+        [Parameter(Mandatory)][int]$ProcessId,
+        [Parameter(Mandatory)][int]$ViewerId,
+        [Parameter(Mandatory)]$Dte
+    )
+
+    while ($true) {
+        Start-Sleep -Seconds 2
+        $debugged = $Dte.Debugger.DebuggedProcesses | Where-Object { $_.ProcessID -eq $ProcessId } | Select-Object -First 1
+        if (-not (Get-Process -Id $ViewerId -ErrorAction SilentlyContinue)) {
+            if ($debugged) {
+                $debugged.Detach()
+                Write-Host 'Log viewer closed: detached the debugger.'
+            }
+            return
+        }
+        if (-not $debugged) {
+            & taskkill.exe /PID $ViewerId /T /F | Out-Null
+            Write-Host 'Debugger detached: closed the log viewer.'
+            return
+        }
+    }
+}
+
 # Attaches the debugger of a running Visual Studio instance. Without an open instance the PID is reported
 # so it can be attached by hand.
 function Attach-VisualStudioDebugger {
@@ -201,6 +259,7 @@ function Attach-VisualStudioDebugger {
 
     $target.Attach()
     Write-Host "Visual Studio attached to $($target.Name) (PID $ProcessId)."
+    return $dte
 }
 
 # The debug build is framework-dependent, so the x64 .NET 10 runtime must be installed. The service finds its runtime
@@ -296,11 +355,11 @@ if (-not $useService) {
 }
 
 try {
-    # Show the WebApp logger output in its own window. The console retries until the logger's pipe appears, so it
-    # can open before the WebApp starts.
+    # Show the WebApp logger output in a log viewer. The console retries until the logger's pipe appears, so it can
+    # open before the WebApp starts.
+    $viewerId = $null
     if (-not $NoLogConsole -and $PSCmdlet.ShouldProcess($logConsoleProject, 'Open logger console')) {
-        Write-Host 'Opening the logger console window'
-        Start-Process -FilePath 'dotnet' -ArgumentList @('run', '--project', $logConsoleProject) -WindowStyle Normal
+        $viewerId = Start-LogViewer -ProjectPath $logConsoleProject
     }
 
     $processId = $null
@@ -350,7 +409,11 @@ try {
     }
 
     if (-not $SkipAttach -and $processId) {
-        Attach-VisualStudioDebugger -ProcessId $processId
+        $dte = Attach-VisualStudioDebugger -ProcessId $processId
+        if ($dte -and $viewerId) {
+            Write-Host 'Closing the log viewer detaches the debugger, and detaching the debugger closes the log viewer.'
+            Wait-ForDebugSessionEnd -ProcessId $processId -ViewerId $viewerId -Dte $dte
+        }
     }
 }
 finally {
