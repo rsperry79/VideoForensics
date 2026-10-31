@@ -42,6 +42,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private const string BackDoorSettingsUrl = "https://api.ring.com/devices/v1/devices/1002/settings";
         private const string GarageCamSettingsUrl = "https://api.ring.com/devices/v1/devices/2002/settings";
         private const string ChimeSettingsUrl = "https://api.ring.com/devices/v1/devices/3003/settings";
+        private const string SnapshotUrl = "https://api.ring.com/clients_api/snapshots/timestamps";
 
         private const string BackDoorSettingsJson =
             "{\"doorbell_volume\":3,\"zone_settings\":{\"motion\":[{\"id\":\"z1\",\"name\":\"Porch\",\"state\":1," +
@@ -165,8 +166,8 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.DoesNotContain(writes, w => w.DeviceId == BackDoorGuid);
             Assert.Equal(2, writes.Count);
             Assert.Equal(1, handler.CountRequests(BackDoorSettingsUrl));
-            // Account config areas (profile, ringtones) plus the two stored devices.
-            Assert.Equal(4, tally.Snapshot().ConfigAreasSynced);
+            // Account config areas (profile, ringtones), the two stored devices, and the account's snapshot timestamps.
+            Assert.Equal(5, tally.Snapshot().ConfigAreasSynced);
         }
 
         [Fact]
@@ -179,10 +180,10 @@ namespace VideoForensics.Providers.Ring.Tests
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger(), tally);
 
-            // Profile and ringtones (2 account areas) plus the three stored devices.
+            // Profile and ringtones (2 account areas), the three stored devices, and the account's snapshot timestamps.
             SyncRunTotals totals = tally.Snapshot();
             Assert.True(totals.ConfigRan);
-            Assert.Equal(5, totals.ConfigAreasSynced);
+            Assert.Equal(6, totals.ConfigAreasSynced);
         }
 
         [Fact]
@@ -432,6 +433,8 @@ namespace VideoForensics.Providers.Ring.Tests
             handler.Routes[FrontDoorSettingsUrl] = (HttpStatusCode.OK, ReadFixture("doorbot-settings-sanitized.json"));
             handler.Routes[BackDoorSettingsUrl] = (HttpStatusCode.OK, BackDoorSettingsJson);
             handler.Routes[GarageCamSettingsUrl] = (HttpStatusCode.OK, GarageCamSettingsJson);
+            // Snapshot timestamps are a sibling small endpoint of the same config step; an empty answer keeps these tests about settings.
+            handler.Routes[SnapshotUrl] = (HttpStatusCode.OK, "{\"timestamps\":[]}");
             return handler;
         }
 
