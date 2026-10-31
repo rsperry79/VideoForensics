@@ -214,33 +214,6 @@ function Start-LogViewer {
     return $null
 }
 
-# Runs until the log viewer or the debugger ends, then ends the other one. Closing the viewer detaches Visual Studio
-# from the process. Detaching Visual Studio closes the viewer's whole process tree.
-function Wait-ForDebugSessionEnd {
-    param(
-        [Parameter(Mandatory)][int]$ProcessId,
-        [Parameter(Mandatory)][int]$ViewerId,
-        [Parameter(Mandatory)]$Dte
-    )
-
-    while ($true) {
-        Start-Sleep -Seconds 2
-        $debugged = $Dte.Debugger.DebuggedProcesses | Where-Object { $_.ProcessID -eq $ProcessId } | Select-Object -First 1
-        if (-not (Get-Process -Id $ViewerId -ErrorAction SilentlyContinue)) {
-            if ($debugged) {
-                $debugged.Detach()
-                Write-Host 'Log viewer closed: detached the debugger.'
-            }
-            return
-        }
-        if (-not $debugged) {
-            & taskkill.exe /PID $ViewerId /T /F | Out-Null
-            Write-Host 'Debugger detached: closed the log viewer.'
-            return
-        }
-    }
-}
-
 # Attaches the debugger of a running Visual Studio instance. Without an open instance the PID is reported
 # so it can be attached by hand.
 function Attach-VisualStudioDebugger {
@@ -418,12 +391,12 @@ try {
     }
 
     if (-not $SkipAttach -and $processId) {
-        $dte = Attach-VisualStudioDebugger -ProcessId $processId
-        if ($dte -and $viewerId) {
-            Write-Host 'Closing the log viewer detaches the debugger, and detaching the debugger closes the log viewer.'
-            Wait-ForDebugSessionEnd -ProcessId $processId -ViewerId $viewerId -Dte $dte
-        }
+        Attach-VisualStudioDebugger -ProcessId $processId | Out-Null
     }
+}
+catch {
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
 }
 finally {
     if ($stage) {
