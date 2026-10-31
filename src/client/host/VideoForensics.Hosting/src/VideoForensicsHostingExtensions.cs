@@ -493,12 +493,14 @@ namespace VideoForensics.Client.Hosting
                 )
             );
 
+            _ = services.AddSingleton<ConfigurationCache>();
             _ = services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
                     serviceProvider.GetRequiredService<IAppSettingRepository>(),
                     serviceProvider.GetRequiredService<IFfmpegToolLocation>(),
-                    changeNotifier: serviceProvider.GetService<IConfigurationChangeNotifier>()
+                    changeNotifier: serviceProvider.GetService<IConfigurationChangeNotifier>(),
+                    cache: serviceProvider.GetRequiredService<ConfigurationCache>()
                 )
             );
 

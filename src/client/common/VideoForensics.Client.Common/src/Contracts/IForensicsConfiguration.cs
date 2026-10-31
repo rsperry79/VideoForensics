@@ -160,6 +160,12 @@ namespace VideoForensics.Client.Common.Contracts
 
     public class ForensicsConfiguration : IForensicsConfiguration
     {
+        /// <summary>Shallow copy; every property is a value type or string, so the copy is fully independent.</summary>
+        public ForensicsConfiguration Clone()
+        {
+            return (ForensicsConfiguration)MemberwiseClone();
+        }
+
         public bool EnableForensicAnalysisReports { get; set; } = true;
         public bool EnableSignalAnomalyReports { get; set; } = true;
         public bool EnableChainOfCustodyReports { get; set; } = true;

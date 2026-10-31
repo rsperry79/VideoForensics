@@ -14,31 +14,44 @@ namespace VideoForensics.Client.Core.Services
         private readonly IFfmpegToolLocation? _ffmpegToolLocation;
         private readonly Func<string?> _discoverBinDirectory;
         private readonly IConfigurationChangeNotifier? _changeNotifier;
+        private readonly ConfigurationCache? _cache;
 
         /// <param name="ffmpegToolLocation">Optional holder that consumers read the ffmpeg bin directory from; kept in sync on load and save.</param>
         /// <param name="discoverBinDirectory">Optional discovery used on first run when FfmpegBinDirectory is empty. Defaults to <see cref="FfmpegBinDirectoryLocator.DiscoverDefault"/>.</param>
         /// <param name="changeNotifier">Optional announcer told about each successful save, so live clients refresh their settings.</param>
+        /// <param name="cache">Optional process-wide cache, so background services do not re-read every setting on each tick; cleared on save.</param>
         public ForensicsConfigurationService(
             ILogger<ForensicsConfigurationService> logger,
             IAppSettingRepository settingRepository,
             IFfmpegToolLocation? ffmpegToolLocation = null,
             Func<string?>? discoverBinDirectory = null,
-            IConfigurationChangeNotifier? changeNotifier = null)
+            IConfigurationChangeNotifier? changeNotifier = null,
+            ConfigurationCache? cache = null)
         {
             _logger = logger;
             _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
             _ffmpegToolLocation = ffmpegToolLocation;
             _discoverBinDirectory = discoverBinDirectory ?? FfmpegBinDirectoryLocator.DiscoverDefault;
             _changeNotifier = changeNotifier;
+            _cache = cache;
         }
 
         public async Task<IForensicsConfiguration> LoadConfigurationAsync(string configPath, CancellationToken cancellationToken = default)
         {
+            // Why: callers mutate what they get (settings pages edit then save), so hand out copies, never the cached instance.
+            ForensicsConfiguration? cached = _cache?.Get();
+            if (cached is not null)
+            {
+                return cached.Clone();
+            }
+
             var config = new ForensicsConfiguration();
+            bool loaded = false;
 
             try
             {
                 await LoadFromDatabaseAsync(config, cancellationToken);
+                loaded = true;
             }
             catch (Exception ex)
             {
@@ -49,12 +62,19 @@ namespace VideoForensics.Client.Core.Services
 
             _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
 
+            // Why: a failed load returned defaults; caching those would hide the real settings until the next save.
+            if (loaded)
+            {
+                _cache?.Set(config.Clone());
+            }
+
             return config;
         }
 
         public async Task SaveConfigurationAsync(IForensicsConfiguration config, CancellationToken cancellationToken = default)
         {
             await SaveToDatabaseAsync(config, cancellationToken);
+            _cache?.Clear();
 
             _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
 

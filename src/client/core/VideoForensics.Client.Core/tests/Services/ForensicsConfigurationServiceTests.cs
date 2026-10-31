@@ -471,6 +471,50 @@ namespace VideoForensics.Client.Core.Tests.Services
         }
 
         [Fact]
+        public async Task LoadConfigurationAsync_WithCache_ReadsDatabaseOnce()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, cache: new ConfigurationCache());
+
+            _ = await service.LoadConfigurationAsync("test-path");
+            _ = await service.LoadConfigurationAsync("test-path");
+
+            _settingRepositoryMock.Verify(r => r.GetAsync("LogLevel", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_WithCache_ReturnsIndependentCopies()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, cache: new ConfigurationCache());
+
+            IForensicsConfiguration first = await service.LoadConfigurationAsync("test-path");
+            first.MaxConcurrentDownloads = 99;
+            IForensicsConfiguration second = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal(2, second.MaxConcurrentDownloads);
+        }
+
+        [Fact]
+        public async Task SaveConfigurationAsync_WithCache_ForcesNextLoadToReadDatabase()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, cache: new ConfigurationCache());
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+            await service.SaveConfigurationAsync(config);
+            _ = await service.LoadConfigurationAsync("test-path");
+
+            _settingRepositoryMock.Verify(r => r.GetAsync("LogLevel", It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
+        [Fact]
         public async Task LoadConfigurationAsync_FfmpegBinDirectoryEmptyAndDiscoveryFinds_PersistsKeyAndSetsConfig()
         {
             _ = _settingRepositoryMock
