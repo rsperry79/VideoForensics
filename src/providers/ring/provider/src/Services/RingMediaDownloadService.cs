@@ -1897,7 +1897,7 @@ namespace VideoForensics.Providers.Ring.Services
                     RingDeviceDetailsMapper.ToFeatures(details, deviceGuid),
                     RingDeviceDetailsMapper.ToAlerts(details, deviceGuid),
                     ct,
-                    RingDeviceDetailsMapper.ToSettingsChildren(details.DeviceFields, deviceGuid));
+                    RingDeviceDetailsMapper.ToSettingsChildrenWithFeatures(details, deviceGuid));
             }
             catch (Exception ex)
             {

@@ -4,7 +4,7 @@ namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>
     /// Settings child rows for one device, replaced as a set on each write. Each list is the complete current
-    /// value from Ring, so an empty list clears the rows already stored for that device. Zones, advanced object settings, offline motion, detection types and thresholds may be null, which leaves their stored rows untouched (the caller did not supply them).
+    /// value from Ring, so an empty list clears the rows already stored for that device. Zones, advanced object settings, offline motion, detection types, thresholds and feature states may be null, which leaves their stored rows untouched (the caller did not supply them).
     /// </summary>
     public sealed record DeviceSettingsChildren(
         IReadOnlyList<DeviceMotionSnoozePreset> MotionSnoozePresets,
@@ -14,5 +14,6 @@ namespace VideoForensics.Data.Common.Contracts
         IReadOnlyList<DeviceAdvancedObjectSetting>? AdvancedObjectSettings = null,
         IReadOnlyList<DeviceOfflineMotionSettings>? OfflineMotion = null,
         IReadOnlyList<DeviceDetectionType>? DetectionTypes = null,
-        IReadOnlyList<DeviceDetectionThreshold>? DetectionThresholds = null);
+        IReadOnlyList<DeviceDetectionThreshold>? DetectionThresholds = null,
+        IReadOnlyList<DeviceFeatureState>? FeatureStates = null);
 }

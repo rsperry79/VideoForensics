@@ -27,7 +27,8 @@ namespace VideoForensics.Providers.Ring.Services
         string? AlertConnection,
         DeviceDetailFields? DeviceFields = null,
         bool? ShowVodSettings = null,
-        bool? RingtonesEnabled = null);
+        bool? RingtonesEnabled = null,
+        RingFeatureDetails? FeatureDetails = null);
 
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
@@ -297,9 +298,57 @@ namespace VideoForensics.Providers.Ring.Services
             return new DeviceSettingsChildren(snooze, live, zones, zoneRows, objectRows, offlineRows, detectionRows, thresholdRows);
         }
 
+        /// <summary>
+        /// Builds the settings child rows plus the device's feature-state rows. Feature states are replaced as a set on each sync;
+        /// they stay null (stored rows untouched) when Ring sent no features object. With no scalar detail fields but feature states
+        /// present, the children carry only the feature states.
+        /// </summary>
+        public static DeviceSettingsChildren? ToSettingsChildrenWithFeatures(RingDeviceDetails details, Guid deviceId)
+        {
+            DeviceSettingsChildren? children = ToSettingsChildren(details.DeviceFields, deviceId);
+            if (details.FeatureDetails == null)
+            {
+                return children;
+            }
+
+            var states = details.FeatureDetails.States.Select(s => CopyState(s, deviceId)).ToList();
+            return (children ?? new DeviceSettingsChildren([], [], [])) with { FeatureStates = states };
+        }
+
+        private static DeviceFeatureState CopyState(DeviceFeatureState s, Guid deviceId)
+        {
+            Guid id = Guid.NewGuid();
+            return new DeviceFeatureState
+            {
+                Id = id,
+                DeviceId = deviceId,
+                FeatureKey = s.FeatureKey,
+                Eligible = s.Eligible,
+                Allowed = s.Allowed,
+                Enabled = s.Enabled,
+                IsEnabled = s.IsEnabled,
+                IsEligible = s.IsEligible,
+                AllowsNoLocation = s.AllowsNoLocation,
+                MaxDigitalZoomLevel = s.MaxDigitalZoomLevel,
+                RtMaxDigitalZoomLevel = s.RtMaxDigitalZoomLevel,
+                Score = s.Score,
+                Learning = s.Learning,
+                RecordingMode = s.RecordingMode,
+                RecordingEnabled = s.RecordingEnabled,
+                RecordingState = s.RecordingState,
+                ContinuousSupported = s.ContinuousSupported,
+                ContinuousAvailable = s.ContinuousAvailable,
+                ContinuousUnavailabilityReason = s.ContinuousUnavailabilityReason,
+                Reasons = s.Reasons
+                    .Select(r => new DeviceFeatureReason { Id = Guid.NewGuid(), FeatureStateId = id, Kind = r.Kind, Position = r.Position, Reason = r.Reason })
+                    .ToList()
+            };
+        }
+
         /// <summary>Builds the feature row, or null when the device has no features object.</summary>
         public static DeviceFeatures? ToFeatures(RingDeviceDetails details, Guid deviceId)
         {
+            DeviceFeatures? scalars = details.FeatureDetails?.Scalars;
             return !details.HasFeatures
                 ? null
                 : new DeviceFeatures
@@ -314,7 +363,27 @@ namespace VideoForensics.Providers.Ring.Services
                     MotionMessageEnabled = details.MotionMessageEnabled,
                     NightVisionEnabled = details.NightVisionEnabled,
                     ShowVodSettings = details.ShowVodSettings,
-                    RingtonesEnabled = details.RingtonesEnabled
+                    RingtonesEnabled = details.RingtonesEnabled,
+                    CfesEligible = scalars?.CfesEligible,
+                    PackageWarning = scalars?.PackageWarning,
+                    AutoZoomTrack = scalars?.AutoZoomTrack,
+                    AutomatedSiren = scalars?.AutomatedSiren,
+                    AlexaPlusGreetings = scalars?.AlexaPlusGreetings,
+                    RemoteAccessControl = scalars?.RemoteAccessControl,
+                    AutoShutoffDevice = scalars?.AutoShutoffDevice,
+                    ShortOnLongOff = scalars?.ShortOnLongOff,
+                    Tracklight = scalars?.Tracklight,
+                    MotionZoneRecommendation = scalars?.MotionZoneRecommendation,
+                    RichNotificationsEligible = scalars?.RichNotificationsEligible,
+                    ShowOfflineMotionEvents = scalars?.ShowOfflineMotionEvents,
+                    SheilaCameraEligible = scalars?.SheilaCameraEligible,
+                    SheilaCameraProcessingEligible = scalars?.SheilaCameraProcessingEligible,
+                    DynamicNetworkSwitchingEligible = scalars?.DynamicNetworkSwitchingEligible,
+                    VehicleDetectionEligible = scalars?.VehicleDetectionEligible,
+                    AnimalDetectionEligible = scalars?.AnimalDetectionEligible,
+                    Show24x7Lite = scalars?.Show24x7Lite,
+                    Recording24x7Eligible = scalars?.Recording24x7Eligible,
+                    PropertyView = scalars?.PropertyView
                 };
         }
 
@@ -347,7 +416,9 @@ namespace VideoForensics.Providers.Ring.Services
                 ShadowCorrectionEnabled: f?.ShadowCorrectionEnabled,
                 MotionMessageEnabled: f?.MotionMessageEnabled,
                 AlertConnection: d.Alerts?.Connection,
-                DeviceFields: ToDeviceFields(d));
+                DeviceFields: ToDeviceFields(d),
+                ShowVodSettings: f?.ShowVodSettings,
+                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures));
         }
 
         private static RingDeviceDetails FromStickupCam(StickupCam s)
@@ -365,10 +436,11 @@ namespace VideoForensics.Providers.Ring.Services
                 AdvancedMotionEnabled: null,
                 PeopleOnlyEnabled: null,
                 ShadowCorrectionEnabled: null,
-                MotionMessageEnabled: null,
+                MotionMessageEnabled: f?.MotionMessageEnabled,
                 AlertConnection: s.Alerts?.Connection,
                 DeviceFields: ToDeviceFields(s),
-                ShowVodSettings: f?.ShowVodSettings);
+                ShowVodSettings: f?.ShowVodSettings,
+                FeatureDetails: f == null ? null : RingDeviceFeatureParser.Parse(f.AdditionalFeatures));
         }
 
         private static RingDeviceDetails FromChime(Chime c)
@@ -388,7 +460,8 @@ namespace VideoForensics.Providers.Ring.Services
                 MotionMessageEnabled: null,
                 AlertConnection: c.Alerts?.Connection,
                 DeviceFields: ToDeviceFields(c),
-                RingtonesEnabled: c.Features?.RingtonesEnabled);
+                RingtonesEnabled: c.Features?.RingtonesEnabled,
+                FeatureDetails: c.Features == null ? null : RingDeviceFeatureParser.Parse(c.Features.AdditionalFeatures));
         }
 
         private static IReadOnlyList<AdvancedMotionZoneDetail> ToZoneDetails(AdvancedMotionZones zones)

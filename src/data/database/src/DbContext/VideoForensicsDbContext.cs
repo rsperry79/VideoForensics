@@ -311,6 +311,12 @@ namespace VideoForensics.Data.Database.DbContext
         public DbSet<DeviceDetectionType> DeviceDetectionTypes { get; set; }
         public DbSet<DeviceDetectionThreshold> DeviceDetectionThresholds { get; set; }
 
+        /// <summary>Gets or sets the per-feature state rows of a device's Ring features object.</summary>
+        public DbSet<DeviceFeatureState> DeviceFeatureStates { get; set; }
+
+        /// <summary>Gets or sets the reason list entries of device feature states.</summary>
+        public DbSet<DeviceFeatureReason> DeviceFeatureReasons { get; set; }
+
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
 

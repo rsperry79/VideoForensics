@@ -1,0 +1,531 @@
+{
+  "doorbots": [
+    {
+      "id": 1001,
+      "features": {
+        "cfes_eligible": true,
+        "package_warning": null,
+        "smart_video_search": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed",
+              "ineligible"
+            ]
+          }
+        },
+        "smart_video_description": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          }
+        },
+        "auto_zoom_track": null,
+        "auto_track": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          }
+        },
+        "live_view_audio_privacy_controls": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "not_supported",
+              "audio_recording_enabled"
+            ]
+          }
+        },
+        "video_rendering": {
+          "max_digital_zoom_level": 6.0
+        },
+        "person_identification": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed",
+              "ineligible"
+            ]
+          }
+        },
+        "retinal_tuning": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          },
+          "rt_max_digital_zoom_level": 24.0
+        },
+        "original_video_quality_download_offer": {
+          "is_enabled": false
+        },
+        "single_alert": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          }
+        },
+        "chime_settings": {
+          "is_eligible": false
+        },
+        "unusual_alert": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          },
+          "learning": null
+        },
+        "transformer_score": {
+          "score": "best",
+          "affected_features": null
+        },
+        "video_donation": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          }
+        },
+        "ai_automated_warnings": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed",
+              "opted_out"
+            ]
+          }
+        },
+        "automated_siren": null,
+        "alexa_plus_greetings": null,
+        "remote_access_control": null,
+        "ai_labs_daily_clip": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language",
+              "not_subscribed",
+              "svd_not_eligible"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "ai_labs_memorable_moments": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language",
+              "not_subscribed",
+              "svd_not_eligible",
+              "svs_not_eligible"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "network_backup": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          }
+        },
+        "network_backup_host": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          }
+        },
+        "property_view": {
+          "enablement": {
+            "enabled": false
+          }
+        },
+        "auto_shutoff_device": null,
+        "short_on_long_off": null,
+        "tracklight": null,
+        "motion_zone_recommendation": false,
+        "motion_message_enabled": true,
+        "motions_enabled": true,
+        "show_recordings": true,
+        "show_vod_settings": true,
+        "rich_notifications_eligible": true,
+        "show_offline_motion_events": false,
+        "sheila_camera_eligible": true,
+        "sheila_camera_processing_eligible": true,
+        "dynamic_network_switching_eligible": false,
+        "video_recording": {
+          "recording_mode": "motion_based",
+          "recording_enabled": true,
+          "recording_state": "active",
+          "recording_mode_availability": {
+            "continuous": {
+              "supported": false,
+              "available": null,
+              "unavailability_reason": null
+            }
+          }
+        },
+        "vehicle_detection_eligible": true,
+        "animal_detection_eligible": null,
+        "show_24x7_lite": true,
+        "recording_24x7_eligible": null
+      }
+    }
+  ],
+  "stickup_cams": [
+    {
+      "id": 2001,
+      "features": {
+        "cfes_eligible": true,
+        "package_warning": null,
+        "smart_video_search": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed",
+              "ineligible"
+            ]
+          }
+        },
+        "smart_video_description": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          }
+        },
+        "auto_zoom_track": null,
+        "auto_track": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          }
+        },
+        "live_view_audio_privacy_controls": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "audio_recording_enabled"
+            ]
+          }
+        },
+        "video_rendering": {
+          "max_digital_zoom_level": 6.0
+        },
+        "person_identification": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed",
+              "ineligible"
+            ]
+          }
+        },
+        "retinal_tuning": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language",
+              "firmware_not_enabled"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          },
+          "rt_max_digital_zoom_level": 24.0
+        },
+        "original_video_quality_download_offer": {
+          "is_enabled": false
+        },
+        "single_alert": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          }
+        },
+        "chime_settings": {
+          "is_eligible": false
+        },
+        "unusual_alert": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          },
+          "learning": null
+        },
+        "transformer_score": null,
+        "video_donation": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          }
+        },
+        "ai_automated_warnings": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed",
+              "opted_out"
+            ]
+          }
+        },
+        "automated_siren": null,
+        "alexa_plus_greetings": null,
+        "remote_access_control": null,
+        "ai_labs_daily_clip": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language",
+              "not_subscribed",
+              "svd_not_eligible"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "ai_labs_memorable_moments": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_language",
+              "not_subscribed",
+              "svd_not_eligible",
+              "svs_not_eligible"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "network_backup": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "not_subscribed"
+            ]
+          }
+        },
+        "network_backup_host": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          }
+        },
+        "property_view": null,
+        "auto_shutoff_device": null,
+        "short_on_long_off": null,
+        "tracklight": null,
+        "motion_zone_recommendation": false,
+        "motion_message_enabled": true,
+        "motions_enabled": true,
+        "show_recordings": true,
+        "show_vod_settings": true,
+        "rich_notifications_eligible": true,
+        "show_offline_motion_events": false,
+        "sheila_camera_eligible": true,
+        "sheila_camera_processing_eligible": true,
+        "dynamic_network_switching_eligible": false,
+        "video_recording": {
+          "recording_mode": "motion_based",
+          "recording_enabled": true,
+          "recording_state": "active",
+          "recording_mode_availability": {
+            "continuous": {
+              "supported": false,
+              "available": null,
+              "unavailability_reason": null
+            }
+          }
+        },
+        "show_24x7_lite": true,
+        "recording_24x7_eligible": null
+      }
+    }
+  ],
+  "chimes": [
+    {
+      "id": 3001,
+      "features": {
+        "cfes_eligible": false,
+        "package_warning": null,
+        "smart_video_search": null,
+        "smart_video_description": null,
+        "auto_zoom_track": null,
+        "auto_track": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "unsupported_device"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          }
+        },
+        "live_view_audio_privacy_controls": null,
+        "video_rendering": {
+          "max_digital_zoom_level": 6.0
+        },
+        "person_identification": null,
+        "retinal_tuning": null,
+        "original_video_quality_download_offer": null,
+        "single_alert": null,
+        "chime_settings": null,
+        "unusual_alert": null,
+        "transformer_score": null,
+        "video_donation": null,
+        "ai_automated_warnings": null,
+        "automated_siren": null,
+        "alexa_plus_greetings": null,
+        "remote_access_control": null,
+        "ai_labs_daily_clip": null,
+        "ai_labs_memorable_moments": null,
+        "network_backup": null,
+        "network_backup_host": null,
+        "property_view": null,
+        "auto_shutoff_device": null,
+        "short_on_long_off": null,
+        "tracklight": null,
+        "ringtones_enabled": true
+      }
+    }
+  ]
+}

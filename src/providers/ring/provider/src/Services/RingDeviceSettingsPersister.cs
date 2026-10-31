@@ -49,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Services
                 RingDeviceDetailsMapper.ToFeatures(details, deviceId),
                 RingDeviceDetailsMapper.ToAlerts(details, deviceId),
                 ct,
-                RingDeviceDetailsMapper.ToSettingsChildren(details.DeviceFields, deviceId));
+                RingDeviceDetailsMapper.ToSettingsChildrenWithFeatures(details, deviceId));
             // The scalar columns come from the same details the child rows were built from; a null field set writes nothing.
             if (details.DeviceFields != null)
             {

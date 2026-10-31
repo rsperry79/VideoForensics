@@ -128,6 +128,34 @@ namespace VideoForensics.Providers.Ring.Tests
             data.Verify(d => d.EnsureDeviceModelAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
+        [Fact]
+        public async Task RingDeviceSettingsPersister_PersistAsync_FeatureDetails_PassesScalarsAndFeatureStatesToWriter()
+        {
+            // Arrange: the details carry a features graph; both the scalar row and the state rows must reach the writer in the same call.
+            Mock<IVideoForensicsDataClient> data = CreateDataClient();
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
+            var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
+            RingDeviceDetails details = CreateDetails(new DeviceDetailFields(ChimeVolume: 2)) with
+            {
+                HasFeatures = true,
+                FeatureDetails = new RingFeatureDetails(
+                    new DeviceFeatures { CfesEligible = true },
+                    [new DeviceFeatureState { FeatureKey = "smart_video_search", Enabled = false }])
+            };
+
+            // Act
+            _ = await persister.PersistAsync(ProviderDeviceId, details, CancellationToken.None);
+
+            // Assert
+            data.Verify(d => d.RecordDeviceDetailsAsync(
+                DeviceGuid, null, null,
+                It.Is<DeviceFeatures?>(f => f != null && f.CfesEligible == true),
+                It.IsAny<IReadOnlyList<DeviceAlerts>?>(),
+                It.IsAny<CancellationToken>(),
+                It.Is<DeviceSettingsChildren?>(c => c != null && c.FeatureStates != null && c.FeatureStates.Count == 1
+                    && c.FeatureStates[0].FeatureKey == "smart_video_search" && c.FeatureStates[0].DeviceId == DeviceGuid)), Times.Once);
+        }
+
         private static Mock<IVideoForensicsDataClient> CreateDataClient()
         {
             var data = new Mock<IVideoForensicsDataClient>();

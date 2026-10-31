@@ -96,6 +96,26 @@ namespace VideoForensics.Data.Database.Repositories
                         existingFeatures.NightVisionEnabled = features.NightVisionEnabled;
                         existingFeatures.ShowVodSettings = features.ShowVodSettings;
                         existingFeatures.RingtonesEnabled = features.RingtonesEnabled;
+                        existingFeatures.CfesEligible = features.CfesEligible;
+                        existingFeatures.PackageWarning = features.PackageWarning;
+                        existingFeatures.AutoZoomTrack = features.AutoZoomTrack;
+                        existingFeatures.AutomatedSiren = features.AutomatedSiren;
+                        existingFeatures.AlexaPlusGreetings = features.AlexaPlusGreetings;
+                        existingFeatures.RemoteAccessControl = features.RemoteAccessControl;
+                        existingFeatures.AutoShutoffDevice = features.AutoShutoffDevice;
+                        existingFeatures.ShortOnLongOff = features.ShortOnLongOff;
+                        existingFeatures.Tracklight = features.Tracklight;
+                        existingFeatures.MotionZoneRecommendation = features.MotionZoneRecommendation;
+                        existingFeatures.RichNotificationsEligible = features.RichNotificationsEligible;
+                        existingFeatures.ShowOfflineMotionEvents = features.ShowOfflineMotionEvents;
+                        existingFeatures.SheilaCameraEligible = features.SheilaCameraEligible;
+                        existingFeatures.SheilaCameraProcessingEligible = features.SheilaCameraProcessingEligible;
+                        existingFeatures.DynamicNetworkSwitchingEligible = features.DynamicNetworkSwitchingEligible;
+                        existingFeatures.VehicleDetectionEligible = features.VehicleDetectionEligible;
+                        existingFeatures.AnimalDetectionEligible = features.AnimalDetectionEligible;
+                        existingFeatures.Show24x7Lite = features.Show24x7Lite;
+                        existingFeatures.Recording24x7Eligible = features.Recording24x7Eligible;
+                        existingFeatures.PropertyView = features.PropertyView;
                     }
 
                     device.DeviceFeaturesId = existingFeatures.Id;
@@ -197,6 +217,37 @@ namespace VideoForensics.Data.Database.Repositories
             return changes;
         }
 
+        /// <summary>
+        /// Replaces the device's feature-state rows (and their reason rows) with the given complete list. A null list leaves
+        /// stored rows untouched; an empty list clears them. Feature states are not change-logged.
+        /// </summary>
+        private static async Task ReplaceFeatureStatesAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.FeatureStates == null)
+            {
+                return;
+            }
+
+            List<DeviceFeatureState> stored = await db.DeviceFeatureStates.Where(s => s.DeviceId == deviceId).ToListAsync(ct);
+            List<Guid> storedIds = stored.Select(s => s.Id).ToList();
+            db.DeviceFeatureReasons.RemoveRange(await db.DeviceFeatureReasons.Where(r => storedIds.Contains(r.FeatureStateId)).ToListAsync(ct));
+            db.DeviceFeatureStates.RemoveRange(stored);
+            // EF orders the deletes ahead of the inserts, so re-adding a replaced (DeviceId, FeatureKey) does not hit the unique index.
+
+            foreach (DeviceFeatureState state in settings.FeatureStates)
+            {
+                state.Id = state.Id == Guid.Empty ? Guid.NewGuid() : state.Id;
+                state.DeviceId = deviceId;
+                foreach (DeviceFeatureReason reason in state.Reasons)
+                {
+                    reason.Id = reason.Id == Guid.Empty ? Guid.NewGuid() : reason.Id;
+                    reason.FeatureStateId = state.Id;
+                }
+
+                _ = db.DeviceFeatureStates.Add(state);
+            }
+        }
+
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
         private static string OfflineMotionText(DeviceOfflineMotionSettings s)
         {
@@ -260,6 +311,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             db.DeviceSettingChanges.AddRange(changes);
             db.DeviceSettingChanges.AddRange(await ReplaceTypedSettingsAsync(db, deviceId, settings, changedAtUtc, ct));
+            await ReplaceFeatureStatesAsync(db, deviceId, settings, ct);
 
             db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
             db.DeviceLiveViewPresets.RemoveRange(storedLive);
