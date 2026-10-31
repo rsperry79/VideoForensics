@@ -574,6 +574,15 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MeasuredBitrate>)_db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags))
+                .ToList());
+        }
+
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));

@@ -32,6 +32,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// </summary>
         Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>
+        /// A device's whole history of stream-reported video bitrates, oldest first. Estimated bitrates and clips with no
+        /// bitrate are left out. Filtering, ordering and the projection run in SQL.
+        /// </summary>
+        Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct);
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct);
 

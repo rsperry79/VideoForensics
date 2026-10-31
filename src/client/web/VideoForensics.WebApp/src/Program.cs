@@ -712,6 +712,7 @@ builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.Revie
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
 builder.Services.AddScoped<DeviceOwnershipService>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, VideoForensics.Client.Hosting.Signal.BitrateAnalysisService>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
