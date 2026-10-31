@@ -203,8 +203,8 @@
   <data name="EventType_alarm" xml:space="preserve">
     <value>Alarm</value>
   </data>
-  <data name="EventType_person" xml:space="preserve">
-    <value>Person</value>
+  <data name="EventType_human" xml:space="preserve">
+    <value>Human</value>
   </data>
   <data name="EventType_vehicle" xml:space="preserve">
     <value>Vehicle</value>
