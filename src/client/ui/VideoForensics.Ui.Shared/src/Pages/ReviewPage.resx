@@ -210,7 +210,19 @@
     <value>Event type</value>
   </data>
   <data name="EventTypeAll" xml:space="preserve">
-    <value>All event types</value>
+    <value>All events</value>
+  </data>
+  <data name="EventFilterTitle" xml:space="preserve">
+    <value>Event Filter</value>
+  </data>
+  <data name="EventTypesSelected" xml:space="preserve">
+    <value>{0} event types</value>
+  </data>
+  <data name="EventType_signal_anomaly" xml:space="preserve">
+    <value>Signal anomalies</value>
+  </data>
+  <data name="EventType_jamming" xml:space="preserve">
+    <value>Jamming</value>
   </data>
   <data name="FilterTitle" xml:space="preserve">
     <value>Filter cameras</value>

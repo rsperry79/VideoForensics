@@ -1,0 +1,119 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@implements IDisposable
+@inject ReviewPopupState Popups
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="review-event-filter p-2" data-testid="review-event-filter">
+    <ReviewSidebarSection Title="@L["EventFilterTitle"]">
+        <div class="review-camera-selector position-relative w-100 mb-2 @(Popups.IsOpen(ReviewPopupState.EventTypes) ? "review-camera-selector-open" : null)" @onkeydown="OnKeyDown">
+            <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start" data-testid="review-event-button" aria-expanded="@Popups.IsOpen(ReviewPopupState.EventTypes).ToString().ToLowerInvariant()" @onclick="OnToggle">@ButtonLabel</button>
+
+            @if (Popups.IsOpen(ReviewPopupState.EventTypes))
+            {
+                <div class="card shadow-sm p-2 review-popup" role="dialog" aria-label="@L["EventFilterTitle"]" data-testid="review-event-popup">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="review-event-all" data-testid="review-event-all" checked="@(_pending.Count == 0)" @onchange="OnAllChanged" />
+                        <label class="form-check-label" for="review-event-all">@L["EventTypeAll"]</label>
+                    </div>
+
+                    @foreach (string type in ReviewEventFilters.SelectableEventTypes)
+                    {
+                        string id = "review-event-input-" + type;
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="@id" data-testid="@("review-event-toggle-" + type)" checked="@_pending.Contains(type)" @onchange="args => OnTypeChanged(type, args)" />
+                            <label class="form-check-label" for="@id">@L["EventType_" + type]</label>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </ReviewSidebarSection>
+</div>
+
+@code {
+    /// <summary>The review state the filter writes to once the debounce fires.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>The selection being edited in the popup. It reaches the review state after the debounce.</summary>
+    private HashSet<string> _pending = [];
+
+    private DebouncedAction _debounce = default!;
+
+    private string ButtonLabel
+    {
+        get
+        {
+            // One selected type is named; two or more are counted.
+            return State.EventTypes.Count switch
+            {
+                0 => L["EventTypeAll"].Value,
+                1 => L["EventType_" + State.EventTypes[0]].Value,
+                _ => L["EventTypesSelected", State.EventTypes.Count].Value,
+            };
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _debounce = new DebouncedAction(State.DebounceDelay, () => InvokeAsync(ApplyPending));
+        State.OnChange += OnStateChanged;
+        Popups.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnToggle()
+    {
+        if (!Popups.IsOpen(ReviewPopupState.EventTypes))
+        {
+            _pending = State.EventTypes.ToHashSet();
+        }
+
+        Popups.Toggle(ReviewPopupState.EventTypes);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Popups.Close(ReviewPopupState.EventTypes);
+        }
+    }
+
+    private void OnTypeChanged(string type, Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        _ = on ? _pending.Add(type) : _pending.Remove(type);
+        _debounce.Schedule();
+    }
+
+    // "All events" is the empty selection, so switching it on clears every choice.
+    private void OnAllChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        if (on)
+        {
+            _pending = [];
+            _debounce.Schedule();
+        }
+    }
+
+    private void ApplyPending()
+    {
+        State.SetEventTypes(_pending);
+    }
+
+    public void Dispose()
+    {
+        _debounce?.Dispose();
+        State.OnChange -= OnStateChanged;
+        Popups.OnChange -= OnStateChanged;
+    }
+}

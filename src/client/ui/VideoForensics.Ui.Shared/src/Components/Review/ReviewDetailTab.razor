@@ -17,76 +17,82 @@
 @inject ILogger<ReviewDetailTab> Logger
 
 <section class="review-tab-panel review-detail-tab" data-testid="review-tab-detail">
-    <div class="review-detail-section" data-testid="review-detail-jamming">
-        <h6>@L["DetailJammingTitle"]</h6>
-        @if (State.CameraIds.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
-        }
-        else if (_jammingError)
-        {
-            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-jamming-error">@L["DetailJammingLoadFailed"]</p>
-        }
-        else if (_jamming is null || !_jamming.Key.Matches(State))
-        {
-            <p class="review-events-message" role="status" data-testid="review-detail-jamming-loading">@L["DetailJammingLoading"]</p>
-        }
-        else if (_jamming.Items.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-jamming-empty">@L["DetailJammingEmpty"]</p>
-        }
-        else
-        {
-            <div class="list-group">
-                @foreach (JammingIncidentRecord incident in _jamming.Items)
-                {
-                    <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
-                            data-testid="review-detail-jamming-row" @onclick="() => NavigateTo(incident.DeviceId, incident.StartUtc)">
-                        <span class="review-event-camera">@CameraName(incident.DeviceId)</span>
-                        <span class="review-detail-range"><LocalTimeText Value="incident.StartUtc" Format="g" /></span>
-                        <span class="review-detail-range"><LocalTimeText Value="incident.EndUtc" Format="g" /></span>
-                        <span class="text-body-secondary">@L["DetailFieldConfidence"] @ConfidenceLabel(incident.Confidence)</span>
-                        <span class="text-body-secondary">@string.Format(L["DetailJammingAffected"].Value, incident.AffectedEventCount)</span>
-                    </button>
-                }
-            </div>
-        }
-    </div>
+    @if (ShowJamming)
+    {
+        <div class="review-detail-section" data-testid="review-detail-jamming">
+            <h6>@L["DetailJammingTitle"]</h6>
+            @if (State.CameraIds.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+            }
+            else if (_jammingError)
+            {
+                <p class="review-events-message text-danger" role="alert" data-testid="review-detail-jamming-error">@L["DetailJammingLoadFailed"]</p>
+            }
+            else if (_jamming is null || !_jamming.Key.Matches(State))
+            {
+                <p class="review-events-message" role="status" data-testid="review-detail-jamming-loading">@L["DetailJammingLoading"]</p>
+            }
+            else if (_jamming.Items.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-jamming-empty">@L["DetailJammingEmpty"]</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (JammingIncidentRecord incident in _jamming.Items)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                                data-testid="review-detail-jamming-row" @onclick="() => NavigateTo(incident.DeviceId, incident.StartUtc)">
+                            <span class="review-event-camera">@CameraName(incident.DeviceId)</span>
+                            <span class="review-detail-range"><LocalTimeText Value="incident.StartUtc" Format="g" /></span>
+                            <span class="review-detail-range"><LocalTimeText Value="incident.EndUtc" Format="g" /></span>
+                            <span class="text-body-secondary">@L["DetailFieldConfidence"] @ConfidenceLabel(incident.Confidence)</span>
+                            <span class="text-body-secondary">@string.Format(L["DetailJammingAffected"].Value, incident.AffectedEventCount)</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
 
-    <div class="review-detail-section mt-3" data-testid="review-detail-anomalies">
-        <h6>@L["DetailAnomaliesTitle"]</h6>
-        @if (State.CameraIds.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
-        }
-        else if (_anomaliesError)
-        {
-            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-anomalies-error">@L["DetailAnomaliesLoadFailed"]</p>
-        }
-        else if (_anomalies is null || !_anomalies.Key.Matches(State))
-        {
-            <p class="review-events-message" role="status" data-testid="review-detail-anomalies-loading">@L["DetailAnomaliesLoading"]</p>
-        }
-        else if (_anomalies.Items.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-anomalies-empty">@L["DetailAnomaliesEmpty"]</p>
-        }
-        else
-        {
-            <div class="list-group">
-                @foreach (ReviewAnomaly anomaly in _anomalies.Items)
-                {
-                    <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
-                            data-testid="review-detail-anomaly-row" @onclick="() => NavigateTo(anomaly.DeviceId, anomaly.StartUtc)">
-                        <span class="review-event-camera">@CameraName(anomaly.DeviceId)</span>
-                        <span class="review-detail-range"><LocalTimeText Value="anomaly.StartUtc" Format="g" /></span>
-                        <span class="review-detail-range"><LocalTimeText Value="anomaly.EndUtc" Format="g" /></span>
-                        <span class="text-body-secondary">@LevelLabel(anomaly.Level)</span>
-                    </button>
-                }
-            </div>
-        }
-    </div>
+    @if (ShowAnomalies)
+    {
+        <div class="review-detail-section mt-3" data-testid="review-detail-anomalies">
+            <h6>@L["DetailAnomaliesTitle"]</h6>
+            @if (State.CameraIds.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+            }
+            else if (_anomaliesError)
+            {
+                <p class="review-events-message text-danger" role="alert" data-testid="review-detail-anomalies-error">@L["DetailAnomaliesLoadFailed"]</p>
+            }
+            else if (_anomalies is null || !_anomalies.Key.Matches(State))
+            {
+                <p class="review-events-message" role="status" data-testid="review-detail-anomalies-loading">@L["DetailAnomaliesLoading"]</p>
+            }
+            else if (_anomalies.Items.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-anomalies-empty">@L["DetailAnomaliesEmpty"]</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (ReviewAnomaly anomaly in _anomalies.Items)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                                data-testid="review-detail-anomaly-row" @onclick="() => NavigateTo(anomaly.DeviceId, anomaly.StartUtc)">
+                            <span class="review-event-camera">@CameraName(anomaly.DeviceId)</span>
+                            <span class="review-detail-range"><LocalTimeText Value="anomaly.StartUtc" Format="g" /></span>
+                            <span class="review-detail-range"><LocalTimeText Value="anomaly.EndUtc" Format="g" /></span>
+                            <span class="text-body-secondary">@LevelLabel(anomaly.Level)</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
 
     <div class="review-detail-section mt-3" data-testid="review-detail-events">
         <h6>@L["DetailEventsTitle"]</h6>
@@ -387,7 +393,7 @@
 
         DetailKey key = CurrentKey();
         _jammingError = false;
-        if (key.Cameras.Count == 0)
+        if (key.Cameras.Count == 0 || !ShowJamming)
         {
             _jamming = null;
             StateHasChanged();
@@ -448,7 +454,7 @@
 
         DetailKey key = CurrentKey();
         _anomaliesError = false;
-        if (key.Cameras.Count == 0)
+        if (key.Cameras.Count == 0 || !ShowAnomalies)
         {
             _anomalies = null;
             StateHasChanged();
@@ -553,7 +559,7 @@
 
         try
         {
-            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, key.EventType, skip, take, ct);
+            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, ReviewEventFilters.ProviderTypes(key.EventTypes), skip, take, ct);
             if (!IsCurrent(cts))
             {
                 return;
@@ -691,9 +697,13 @@
         return !_disposed && !cts.IsCancellationRequested;
     }
 
+    private bool ShowJamming => ReviewEventFilters.Shows(State.EventTypes, ReviewEventFilters.Jamming);
+
+    private bool ShowAnomalies => ReviewEventFilters.Shows(State.EventTypes, ReviewEventFilters.SignalAnomaly);
+
     private DetailKey CurrentKey()
     {
-        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc, State.EventTypeFilter);
+        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc, State.EventTypes.ToList());
     }
 
     private string CameraName(Guid deviceId)
@@ -778,11 +788,11 @@
     }
 
     /// <summary>The cameras and range one load asked for. A section is only shown while this still matches the state.</summary>
-    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc, string? EventType)
+    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc, IReadOnlyList<string> EventTypes)
     {
         public bool Matches(ReviewPageState state)
         {
-            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc && EventType == state.EventTypeFilter;
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc && EventTypes.SequenceEqual(state.EventTypes);
         }
     }
 

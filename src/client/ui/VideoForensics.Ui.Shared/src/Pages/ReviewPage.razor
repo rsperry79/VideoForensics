@@ -38,6 +38,7 @@ else
 
     <PageRightPanelContent>
         <ReviewTimeRange State="State" />
+        <ReviewEventFilter State="State" />
         <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
         <ReviewCaseSection State="State" Devices="_visibleIds" />
         <ReviewActionsPanel State="State" />
@@ -243,7 +244,8 @@ else
     /// </summary>
     private void ReadUrlOnce(ReviewUrlState url)
     {
-        State.SetFilters(url.Provider, url.Account, url.Location, url.EventType);
+        State.SetFilters(url.Provider, url.Account, url.Location);
+        State.SetEventTypes(url.EventTypes ?? []);
         ComputeVisibleCameras();
         HashSet<Guid> visible = _visibleIds.ToHashSet();
 
@@ -315,7 +317,7 @@ else
             State.AccountFilter,
             CaseMode.Active ? CaseMode.CaseId : null,
             State.LocationFilter,
-            State.EventTypeFilter);
+            State.EventTypes);
 
         string target = ReviewUrl.Build(current);
         _ = SettingsStore.SaveAsync(new SavedReviewSettings(target, State.SelectedEventId));

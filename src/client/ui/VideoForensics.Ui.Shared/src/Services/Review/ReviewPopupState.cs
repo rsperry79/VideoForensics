@@ -13,6 +13,9 @@ public sealed class ReviewPopupState
     /// <summary>The camera selector popup id.</summary>
     public const string Camera = "camera";
 
+    /// <summary>The Event Filter popup id.</summary>
+    public const string EventTypes = "eventtypes";
+
     /// <summary>The Filter panel popup id.</summary>
     public const string Filter = "filter";
 

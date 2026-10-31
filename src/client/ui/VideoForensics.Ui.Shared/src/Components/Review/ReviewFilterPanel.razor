@@ -21,14 +21,6 @@
                               TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
 
         <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
-
-        <select class="form-select form-select-sm mb-2" data-testid="review-filter-eventtype" aria-label="@L["EventTypeFilterLabel"]" @onchange="OnEventTypeChanged">
-            <option value="" selected="@(_eventType is null)">@L["EventTypeAll"]</option>
-            @foreach (string type in ReviewEventFilters.KnownEventTypes)
-            {
-                <option value="@type" selected="@(_eventType == type)">@L["EventType_" + type]</option>
-            }
-        </select>
     </ReviewSidebarSection>
 </div>
 
@@ -58,7 +50,6 @@
     private string? _provider;
     private Guid? _account;
     private Guid? _location;
-    private string? _eventType;
 
     private IReadOnlyList<string> ProviderNames => Ownership?.ProviderNames ?? Array.Empty<string>();
 
@@ -73,7 +64,7 @@
 
     // The state filters the edit fields were last seeded from. A different value on a state change means something
     // else (the URL, a restore) set the filters, so the edit fields follow it.
-    private (string? Provider, Guid? Account, Guid? Location, string? EventType) _seenFilters;
+    private (string? Provider, Guid? Account, Guid? Location) _seenFilters;
 
     protected override void OnInitialized()
     {
@@ -87,13 +78,12 @@
         _provider = State.ProviderFilter;
         _account = State.AccountFilter;
         _location = State.LocationFilter;
-        _eventType = State.EventTypeFilter;
-        _seenFilters = (_provider, _account, _location, _eventType);
+        _seenFilters = (_provider, _account, _location);
     }
 
     private void OnStateChanged()
     {
-        if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter, State.EventTypeFilter) == _seenFilters)
+        if ((State.ProviderFilter, State.AccountFilter, State.LocationFilter) == _seenFilters)
         {
             return;
         }
@@ -129,17 +119,10 @@
         _debounce.Schedule();
     }
 
-    private void OnEventTypeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
-    {
-        string? value = e.Value?.ToString();
-        _eventType = string.IsNullOrEmpty(value) ? null : value;
-        _debounce.Schedule();
-    }
-
     private void ApplyEdits()
     {
         // Mark these values as seen first, so this change is not mistaken for an external one that discards a newer edit.
-        _seenFilters = (_provider, _account, _location, _eventType);
-        State.SetFilters(_provider, _account, _location, _eventType);
+        _seenFilters = (_provider, _account, _location);
+        State.SetFilters(_provider, _account, _location);
     }
 }
