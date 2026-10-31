@@ -243,7 +243,7 @@ else
     /// </summary>
     private void ReadUrlOnce(ReviewUrlState url)
     {
-        State.SetFilters(url.Provider, url.Account, url.Location);
+        State.SetFilters(url.Provider, url.Account, url.Location, url.EventType);
         ComputeVisibleCameras();
         HashSet<Guid> visible = _visibleIds.ToHashSet();
 
@@ -314,7 +314,8 @@ else
             State.ProviderFilter,
             State.AccountFilter,
             CaseMode.Active ? CaseMode.CaseId : null,
-            State.LocationFilter);
+            State.LocationFilter,
+            State.EventTypeFilter);
 
         string target = ReviewUrl.Build(current);
         _ = SettingsStore.SaveAsync(new SavedReviewSettings(target, State.SelectedEventId));

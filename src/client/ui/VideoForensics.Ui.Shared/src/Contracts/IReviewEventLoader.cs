@@ -12,8 +12,9 @@ public interface IReviewEventLoader
     /// <param name="deviceIds">Cameras to query. Duplicates are ignored; only the first 64 are used.</param>
     /// <param name="fromUtc">Start of the range (UTC).</param>
     /// <param name="toUtc">End of the range (UTC).</param>
+    /// <param name="eventType">When set, only events of exactly this type; null for every type.</param>
     /// <param name="skip">Rows to skip from the newest.</param>
     /// <param name="take">Rows to return (1 to 500).</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct);
+    Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, string? eventType, int skip, int take, CancellationToken ct);
 }

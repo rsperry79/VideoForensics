@@ -22,7 +22,8 @@ public sealed record ReviewUrlState(
     string? Provider,
     Guid? Account,
     Guid? CaseId = null,
-    Guid? Location = null)
+    Guid? Location = null,
+    string? EventType = null)
 {
     /// <summary>Compares every field, with <see cref="Devices"/> compared by sequence.</summary>
     public bool Equals(ReviewUrlState? other)
@@ -36,7 +37,8 @@ public sealed record ReviewUrlState(
             && Provider == other.Provider
             && Account == other.Account
             && CaseId == other.CaseId
-            && Location == other.Location;
+            && Location == other.Location
+            && EventType == other.EventType;
     }
 
     /// <summary>Hash code that agrees with <see cref="Equals(ReviewUrlState)"/>.</summary>
@@ -56,6 +58,7 @@ public sealed record ReviewUrlState(
         hash.Add(Account);
         hash.Add(CaseId);
         hash.Add(Location);
+        hash.Add(EventType);
         return hash.ToHashCode();
     }
 }
@@ -85,6 +88,7 @@ public static class ReviewUrl
         Guid? account = null;
         Guid? caseId = null;
         Guid? location = null;
+        string? eventType = null;
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -126,6 +130,9 @@ public static class ReviewUrl
                     case "location":
                         location = Guid.TryParse(value.Trim(), out Guid locationValue) ? locationValue : location;
                         break;
+                    case "eventtype":
+                        eventType = string.IsNullOrWhiteSpace(value) ? eventType : value;
+                        break;
                     case "reviewcase":
                         caseId = Guid.TryParse(value.Trim(), out Guid caseValue) ? caseValue : caseId;
                         break;
@@ -142,7 +149,8 @@ public static class ReviewUrl
             provider,
             account,
             caseId,
-            location);
+            location,
+            eventType);
     }
 
     /// <summary>
@@ -211,6 +219,11 @@ public static class ReviewUrl
         if (state.Location is Guid location)
         {
             parts.Add("location=" + location.ToString("D"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(state.EventType))
+        {
+            parts.Add("eventtype=" + HttpUtility.UrlEncode(state.EventType));
         }
 
         if (state.CaseId is Guid caseGuid)

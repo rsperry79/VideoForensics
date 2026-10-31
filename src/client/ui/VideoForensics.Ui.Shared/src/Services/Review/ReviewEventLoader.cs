@@ -26,28 +26,29 @@ public sealed class ReviewEventLoader : IReviewEventLoader
     }
 
     /// <inheritdoc />
-    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, string? eventType, int skip, int take, CancellationToken ct)
     {
         if (_caseMode is { Active: true })
         {
-            return Task.FromResult(CaseEventPage(_caseMode, deviceIds, fromUtc, toUtc, skip, take));
+            return Task.FromResult(CaseEventPage(_caseMode, deviceIds, fromUtc, toUtc, eventType, skip, take));
         }
 
         // Cameras are capped at the state's limit, so this cut is defensive only.
         List<Guid> devices = deviceIds.Distinct().Take(MaxDevices).ToList();
         return _events.ListPageByDevicesAndDateRangeAsync(
-            devices, fromUtc, toUtc, ReviewEventFilters.ExcludedEventTypes, skip, take, ct);
+            devices, fromUtc, toUtc, ReviewEventFilters.ExcludedEventTypes,
+            eventType is null ? null : [eventType], skip, take, ct);
     }
 
     /// <summary>
     /// Filters the case's events to the requested devices and window, newest first, then cuts the page. The total is the
     /// full matching count, so the events tab's paging works the same as against the repository.
     /// </summary>
-    private static EventPage CaseEventPage(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take)
+    private static EventPage CaseEventPage(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, string? eventType, int skip, int take)
     {
         HashSet<Guid> devices = deviceIds.ToHashSet();
         List<Event> matching = caseMode.Events
-            .Where(evt => devices.Contains(evt.DeviceId) && evt.OccurredAtUtc >= fromUtc && evt.OccurredAtUtc <= toUtc)
+            .Where(evt => devices.Contains(evt.DeviceId) && evt.OccurredAtUtc >= fromUtc && evt.OccurredAtUtc <= toUtc && (eventType is null || evt.EventType == eventType))
             .OrderByDescending(evt => evt.OccurredAtUtc)
             .ToList();
         return new EventPage(matching.Skip(skip).Take(take).ToList(), matching.Count);

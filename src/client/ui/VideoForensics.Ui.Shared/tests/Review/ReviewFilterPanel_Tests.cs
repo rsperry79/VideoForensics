@@ -393,4 +393,32 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     {
         return select.QuerySelectorAll("option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray();
     }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_EventTypeSelectListsAllTypesFirst()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert
+        IElement select = cut.Find("[data-testid='review-filter-eventtype']");
+        Assert.Equal(["", .. ReviewEventFilters.KnownEventTypes], OptionValues(select));
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_EventTypeChosen_SetsTheStateEventTypeFilterAfterTheDebounce()
+    {
+        // Arrange
+        SetUpTwoProviders();
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Act
+        cut.Find("[data-testid='review-filter-eventtype']").Change("motion");
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Equal("motion", ReviewState.EventTypeFilter));
+    }
 }

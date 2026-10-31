@@ -206,6 +206,12 @@
   <data name="EventType_person" xml:space="preserve">
     <value>Person</value>
   </data>
+  <data name="EventTypeFilterLabel" xml:space="preserve">
+    <value>Event type</value>
+  </data>
+  <data name="EventTypeAll" xml:space="preserve">
+    <value>All event types</value>
+  </data>
   <data name="FilterTitle" xml:space="preserve">
     <value>Filter cameras</value>
   </data>

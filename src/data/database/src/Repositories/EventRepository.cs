@@ -269,7 +269,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<EventPage> ListPageByDevicesAndDateRangeAsync(
             IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
-            int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<string>? includeEventTypes, int skip, int take, CancellationToken ct)
         {
             // Bounds are checked here as well as at the endpoint: an unbounded take would turn the page back into a full scan.
             ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
@@ -280,11 +280,13 @@ namespace VideoForensics.Data.Database.Repositories
 
             Guid[] ids = deviceIds.ToArray();
             string[] excluded = excludeEventTypes?.ToArray() ?? [];
+            string[] included = includeEventTypes?.ToArray() ?? [];
 
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             IQueryable<Event> matches = db.Events
                 .AsNoTracking()
-                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType)
+                    && (included.Length == 0 || included.Contains(e.EventType)));
 
             int total = await matches.CountAsync(ct);
             List<Event> items = await matches

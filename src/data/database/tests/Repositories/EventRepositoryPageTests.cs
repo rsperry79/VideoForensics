@@ -58,7 +58,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(other, 2, "evt-2"), CancellationToken.None);
 
             var page = await _repository.ListPageByDevicesAndDateRangeAsync(
-                new[] { cameraA, cameraB }, Start, Start.AddHours(1), null, skip: 0, take: 10, CancellationToken.None);
+                new[] { cameraA, cameraB }, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
             Assert.Equal(new[] { "evt-5", "evt-1" }, page.Items.Select(e => e.EventType).ToArray());
@@ -75,7 +75,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, -1, "before"), CancellationToken.None);
 
             var page = await _repository.ListPageByDevicesAndDateRangeAsync(
-                new[] { device }, Start, Start.AddMinutes(60), null, skip: 0, take: 10, CancellationToken.None);
+                new[] { device }, Start, Start.AddMinutes(60), null, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
             Assert.Equal(new[] { "end", "start" }, page.Items.Select(e => e.EventType).ToArray());
@@ -91,10 +91,57 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
 
             var page = await _repository.ListPageByDevicesAndDateRangeAsync(
-                new[] { device }, Start, Start.AddHours(1), new[] { "person" }, skip: 0, take: 10, CancellationToken.None);
+                new[] { device }, Start, Start.AddHours(1), new[] { "person" }, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
             Assert.DoesNotContain(page.Items, e => e.EventType == "person");
+        }
+
+        /// <summary>Verifies that only event types in the include list are returned, and that the total counts only those.</summary>
+        [Fact]
+        public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_IncludeEventTypes_ReturnsOnlyListedTypesAndTotal()
+        {
+            var device = Guid.NewGuid();
+            _ = await _repository.CreateAsync(Ev(device, 1, "motion"), CancellationToken.None);
+            _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
+            _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
+
+            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+                new[] { device }, Start, Start.AddHours(1), null, new[] { "person", "ring" }, skip: 0, take: 1, CancellationToken.None);
+
+            Assert.Equal(2, page.TotalCount);
+            Assert.Equal(new[] { "ring" }, page.Items.Select(e => e.EventType).ToArray());
+        }
+
+        /// <summary>Verifies that the include and exclude lists both apply, and that the total reflects both.</summary>
+        [Fact]
+        public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_IncludeAndExcludeEventTypes_AppliesBoth()
+        {
+            var device = Guid.NewGuid();
+            _ = await _repository.CreateAsync(Ev(device, 1, "motion"), CancellationToken.None);
+            _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
+            _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
+
+            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+                new[] { device }, Start, Start.AddHours(1), new[] { "ring" }, new[] { "person", "ring" }, skip: 0, take: 10, CancellationToken.None);
+
+            Assert.Equal(1, page.TotalCount);
+            Assert.Equal(new[] { "person" }, page.Items.Select(e => e.EventType).ToArray());
+        }
+
+        /// <summary>Verifies that an empty include list places no restriction on event type.</summary>
+        [Fact]
+        public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_EmptyIncludeEventTypes_ReturnsAllTypes()
+        {
+            var device = Guid.NewGuid();
+            _ = await _repository.CreateAsync(Ev(device, 1, "motion"), CancellationToken.None);
+            _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
+            _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
+
+            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+                new[] { device }, Start, Start.AddHours(1), null, Array.Empty<string>(), skip: 0, take: 10, CancellationToken.None);
+
+            Assert.Equal(3, page.TotalCount);
         }
 
         /// <summary>Verifies that events sharing a timestamp come back in the same order on every call, so paging never skips or repeats a row.</summary>
@@ -107,9 +154,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 9, "newest"), CancellationToken.None);
 
             var first = await _repository.ListPageByDevicesAndDateRangeAsync(
-                new[] { device }, Start, Start.AddHours(1), null, skip: 0, take: 10, CancellationToken.None);
+                new[] { device }, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None);
             var second = await _repository.ListPageByDevicesAndDateRangeAsync(
-                new[] { device }, Start, Start.AddHours(1), null, skip: 0, take: 10, CancellationToken.None);
+                new[] { device }, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal("newest", first.Items[0].EventType);
             Assert.Equal(first.Items.Select(e => e.Id).ToArray(), second.Items.Select(e => e.Id).ToArray());
@@ -126,7 +173,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             }
 
             var page = await _repository.ListPageByDevicesAndDateRangeAsync(
-                new[] { device }, Start, Start.AddHours(1), null, skip: 5, take: 3, CancellationToken.None);
+                new[] { device }, Start, Start.AddHours(1), null, null, skip: 5, take: 3, CancellationToken.None);
 
             Assert.Equal(7, page.TotalCount);
             Assert.Equal(new[] { "evt-1", "evt-0" }, page.Items.Select(e => e.EventType).ToArray());
@@ -140,7 +187,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
-                    new[] { Guid.NewGuid() }, Start, Start.AddHours(1), null, skip: 0, take: take, CancellationToken.None));
+                    new[] { Guid.NewGuid() }, Start, Start.AddHours(1), null, null, skip: 0, take: take, CancellationToken.None));
         }
 
         /// <summary>Verifies that a negative skip is rejected.</summary>
@@ -149,7 +196,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
-                    new[] { Guid.NewGuid() }, Start, Start.AddHours(1), null, skip: -1, take: 10, CancellationToken.None));
+                    new[] { Guid.NewGuid() }, Start, Start.AddHours(1), null, null, skip: -1, take: 10, CancellationToken.None));
         }
 
         /// <summary>Verifies that the device list must hold 1..64 ids, keeping the SQL IN list bounded.</summary>
@@ -158,12 +205,12 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
-                    Array.Empty<Guid>(), Start, Start.AddHours(1), null, skip: 0, take: 10, CancellationToken.None));
+                    Array.Empty<Guid>(), Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None));
 
             Guid[] tooMany = Enumerable.Range(0, 65).Select(_ => Guid.NewGuid()).ToArray();
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
-                    tooMany, Start, Start.AddHours(1), null, skip: 0, take: 10, CancellationToken.None));
+                    tooMany, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None));
         }
     }
 }
