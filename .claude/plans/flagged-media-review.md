@@ -106,7 +106,7 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
 - B0 Decisions and spikes (below) plus a throwaway spike: `SfSlider` as a time-mapped scrubber (range, ticks, seeking a `<video>`) with the `SfTimeline` flag list and `SfButton` item content; `ReviewPlayer` progress/rate; `SfBreadcrumb` + Navigations package add and theme check; `SfGrid` row-select. If the slider-plus-list is not enough, ask the user about the marker exception.
 - B1a Data: entity, config, migration, indexes, repository (compare-and-set, keyset neighbours, count), ActionLog in one commit. data.* projects only.
 - B1c Case snapshot kind: `CaseItemKind.Snapshot`, migration, DTOs, export, case details, tests (needed by B6).
-- B1b Wire: DTOs, endpoints, Remote twin, `IMediaFlagChangedSource`, DI on server/client/MAUI, notice-dismiss routes.
+- B1b Wire: DTOs, endpoints, Remote twin, `IMediaFlagChangedSource`, DI on server/client/MAUI, notice-dismiss routes. **DONE (2026-10-31, feature/flag-wire 1b3ed13d, not yet on wip): DTOs, endpoints, RemoteMediaFlagRepository, IMediaFlagChangedSource, DI server/client/MAUI. DECIDED: review records store the operator's GUID (`ReviewedBy`); the UI resolves the display name from the GUID when showing or reporting. Do not store names on flags.**
 - B2 Writers and backfill (needs B1a): `MediaAnalysisService` reconcile, `SignalDeviationAlerts` flag + `NoticeId`, backfill pass.
 - B4a `MediaPlayer` (D8): build the control, JS module, tests, then migrate every existing `<video>` site onto it; add the source-scan test. No data dependency.
 - B4 Shell: `FlagReviewShell`, `MediaFit` (uses `MediaPlayer`), resize module, CSS (no data dependency; after B4a; parallel with B1b/B2).
