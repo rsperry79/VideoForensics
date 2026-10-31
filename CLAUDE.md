@@ -1,5 +1,13 @@
 # VideoForensics
 
+## STOP: NEVER SPAWN A SONNET (OR ANY NON-HAIKU) SUBAGENT WITHOUT ASKING THE USER FIRST
+- Every subagent is `model: "haiku"`. No exceptions, no "the criteria say sonnet", no self-approval.
+- To use sonnet (or opus or any other model): ask the user in chat, name the one escalation criterion from `~/.claude/docs/subagent-model-selection.md`, and WAIT for a clear yes. Approval covers that one spawn only.
+- This overrides the escalation text in `~/.claude/CLAUDE.md`, the `code-workflow` skill and the subagent model doc. They say when sonnet is *eligible*, never that you may spawn it unasked.
+- Read `~/.claude/docs/subagent-model-selection.md` before the first spawn of any task.
+- Breaking this is a defect: say so at once and log it in `.claude/task_failure_log.md`.
+
+
 ## MANDATORY: read and follow before any work
 Before the first tool call of every task, read these in full and follow them. They override your own judgment. Never skip, reinterpret, or "improve on" them.
 1. This file.
