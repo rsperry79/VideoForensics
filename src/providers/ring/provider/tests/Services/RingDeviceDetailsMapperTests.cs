@@ -44,6 +44,54 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public void ToDeviceFields_StickupCamNestedMotionAndChimeGroups_FillTheDeviceColumns()
+        {
+            var cam = new StickupCam
+            {
+                Id = 456L,
+                Settings = JsonSerializer.Deserialize<StickupCamSettings>(
+                    "{\"motion_settings\":{\"motion_detection_enabled\":true},\"chime_settings\":{\"type\":2,\"enable\":true,\"duration\":5},\"pir_settings\":{\"sensitivity_1\":4}}")
+            };
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(cam);
+
+            Assert.True(fields.MotionDetectionEnabled);
+            Assert.Equal(2, fields.SettingsChimeType);
+            Assert.True(fields.SettingsChimeEnabled);
+            Assert.Equal(5, fields.SettingsChimeDuration);
+            Assert.Equal(4, fields.PirSettingsSensitivity1);
+        }
+
+        [Fact]
+        public void ToDeviceFields_StickupCamFlatMotionDetectionKey_FillsTheDeviceColumn()
+        {
+            var cam = new StickupCam { Id = 456L, Settings = JsonSerializer.Deserialize<StickupCamSettings>("{\"motion_detection_enabled\":false}") };
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(cam);
+
+            Assert.False(fields.MotionDetectionEnabled);
+        }
+
+        [Fact]
+        public void ToDeviceFields_DoorbotPirSettingsGroup_FillsThePirColumns()
+        {
+            var doorbot = new Doorbot
+            {
+                Id = 123,
+                Settings = JsonSerializer.Deserialize<DoorbotSettings>(
+                    "{\"pir_settings\":{\"sensitivity_1\":1,\"sensitivity_2\":2,\"sensitivity_3\":3,\"zone_enable\":1,\"zone_mask\":15}}")
+            };
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.Equal(1, fields.PirSettingsSensitivity1);
+            Assert.Equal(2, fields.PirSettingsSensitivity2);
+            Assert.Equal(3, fields.PirSettingsSensitivity3);
+            Assert.Equal(1, fields.PirSettingsZoneEnable);
+            Assert.Equal(15, fields.PirSettingsZoneMask);
+        }
+
+        [Fact]
         public void Find_StickupCam_ReturnsAudioFromSettings()
         {
             var devices = new Devices

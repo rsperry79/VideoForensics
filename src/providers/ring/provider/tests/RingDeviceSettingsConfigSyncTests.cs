@@ -32,6 +32,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private static readonly Guid FrontDoorGuid = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
         private static readonly Guid BackDoorGuid = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
         private static readonly Guid GarageCamGuid = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000003");
+        private static readonly Guid HallChimeGuid = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000004");
 
         private const string ProfileUrl = "https://api.ring.com/clients_api/profile";
         private const string RingtonesUrl = "https://api.ring.com/clients_api/ringtones";
@@ -252,6 +253,72 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.All(writes.Where(w => w.DeviceId == FrontDoorGuid), w => Assert.Equal("z-9", Assert.Single(w.Settings!.Zones!).ZoneId));
         }
 
+        /// <summary>
+        /// The device-settings body is overlaid on the list entry's settings key by key. Keys the body lacks (an unmodelled object, a nested
+        /// flag inside a group the body does send, a scalar) must survive in the device columns and rows.
+        /// </summary>
+        [Fact]
+        public async Task RingDeviceSettingsConfigSync_BodyLacksKeysOfTheListEntry_KeepsThemInsideGroupsAndAtTheTop()
+        {
+            var writes = new ConcurrentBag<DeviceWrite>();
+            var fieldWrites = new ConcurrentBag<(Guid DeviceId, DeviceDetailFields Fields)>();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes, fieldWrites);
+            StubSessionHandler handler = CreateHandler();
+            handler.Routes[RingDevicesUrl] = (HttpStatusCode.OK,
+                "{\"doorbots\":[{\"id\":1001,\"description\":\"Front Door\",\"location_id\":\"" + LocationId + "\",\"device_id\":\"front\",\"settings\":" +
+                "{\"enable_vod\":true,\"offline_motion_event_settings\":{\"enabled\":true,\"max_upload_kb\":300}," +
+                "\"cv_settings\":{\"detection_types\":{\"human\":{\"enabled\":true,\"record\":true}}}}}]," +
+                "\"authorized_doorbots\":[],\"base_stations\":[],\"chimes\":[],\"stickup_cams\":[]}");
+            handler.Routes[FrontDoorSettingsUrl] = (HttpStatusCode.OK,
+                "{\"doorbell_volume\":3,\"cv_settings\":{\"detection_types\":{\"human\":{\"enabled\":false,\"mode\":\"always\"}}}}");
+
+            _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger());
+
+            DeviceDetailFields fields = Assert.Single(fieldWrites, w => w.DeviceId == FrontDoorGuid).Fields;
+            DetectionTypeDetail human = Assert.Single(fields.DetectionTypes!, d => d.DetectionType == "human");
+            Assert.False(human.Enabled);
+            Assert.Equal("always", human.Mode);
+            Assert.True(human.Record);
+            Assert.Equal(300, fields.OfflineMotion!.MaxUploadKb);
+            Assert.True(fields.EnableVod);
+            Assert.Equal(3, fields.DoorbellVolume);
+        }
+
+        /// <summary>A chime has no settings endpoint, but its list entry (firmware, volume) is stored once its row exists.</summary>
+        [Fact]
+        public async Task RingDeviceSettingsConfigSync_ChimeRowExists_StoresTheListEntryDetails()
+        {
+            var writes = new ConcurrentBag<DeviceWrite>();
+            var fieldWrites = new ConcurrentBag<(Guid DeviceId, DeviceDetailFields Fields)>();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes, fieldWrites);
+            StubSessionHandler handler = CreateHandler();
+            handler.Routes[RingDevicesUrl] = (HttpStatusCode.OK,
+                "{\"doorbots\":[],\"authorized_doorbots\":[],\"base_stations\":[],\"stickup_cams\":[]," +
+                "\"chimes\":[{\"id\":3003,\"description\":\"Hall Chime\",\"location_id\":\"" + LocationId + "\",\"device_id\":\"hall\",\"firmware_version\":\"1.2.3\",\"settings\":{\"volume\":7}}]}");
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(includeBackDoor: false, includeChime: true);
+
+            _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger(), devices: devices);
+
+            DeviceDetailFields fields = Assert.Single(fieldWrites, w => w.DeviceId == HallChimeGuid).Fields;
+            Assert.Equal("1.2.3", fields.FirmwareVersion);
+            Assert.Equal(7, fields.ChimeVolume);
+            Assert.Equal(0, handler.CountRequests(ChimeSettingsUrl));
+        }
+
+        /// <summary>A chime that is not stored yet is skipped without failing the sync or holding the config gate open.</summary>
+        [Fact]
+        public async Task RingDeviceSettingsConfigSync_ChimeRowMissing_DoesNotKeepTheConfigGateOpen()
+        {
+            var writes = new ConcurrentBag<DeviceWrite>();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
+            var state = new InMemorySyncState();
+
+            _ = await SyncAsync(handler, data, state, new ManualTimeProvider(StartUtc), new RecordingLogger());
+
+            Assert.Equal(1, state.MarkCount);
+        }
+
         private const string ListSettingsJson =
             "{\"live_view_presets\":[\"low\",\"high\"],\"motion_snooze_presets\":[\"none\",\"medium\"]," +
             "\"advanced_motion_zones\":{\"zone1\":{\"name\":\"Zone A\",\"state\":2,\"vertex1\":{\"x\":0,\"y\":0.25},\"vertex2\":{\"x\":0.5,\"y\":0.75}}}," +
@@ -300,9 +367,12 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>Records every device-details write so tests can check which device got which settings.</summary>
-        private static Mock<IVideoForensicsDataClient> CreateDataClient(ConcurrentBag<DeviceWrite> writes)
+        private static Mock<IVideoForensicsDataClient> CreateDataClient(ConcurrentBag<DeviceWrite> writes, ConcurrentBag<(Guid DeviceId, DeviceDetailFields Fields)>? fieldWrites = null)
         {
             var data = new Mock<IVideoForensicsDataClient>();
+            _ = data.Setup(d => d.UpdateDeviceDetailFieldsAsync(It.IsAny<Guid>(), It.IsAny<DeviceDetailFields>(), It.IsAny<CancellationToken>()))
+                .Callback<Guid, DeviceDetailFields, CancellationToken>((deviceId, fields, _) => fieldWrites?.Add((deviceId, fields)))
+                .Returns(Task.CompletedTask);
             _ = data.Setup(d => d.RecordDeviceDetailsAsync(
                     It.IsAny<Guid>(),
                     It.IsAny<Guid?>(),
@@ -318,7 +388,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>Lists the three stored devices by their provider ids. The back door is left out when <paramref name="includeBackDoor"/> is false.</summary>
-        private static Mock<IDeviceRepository> CreateDeviceRepository(bool includeBackDoor)
+        private static Mock<IDeviceRepository> CreateDeviceRepository(bool includeBackDoor, bool includeChime = false)
         {
             var rows = new List<Device>
             {
@@ -328,6 +398,11 @@ namespace VideoForensics.Providers.Ring.Tests
             if (includeBackDoor)
             {
                 rows.Add(new Device { Id = BackDoorGuid, ProviderDeviceId = "1002", Name = "Back Door", Type = "doorbot", LocationId = Guid.NewGuid() });
+            }
+
+            if (includeChime)
+            {
+                rows.Add(new Device { Id = HallChimeGuid, ProviderDeviceId = "3003", Name = "Hall Chime", Type = "chime", LocationId = Guid.NewGuid() });
             }
 
             var repository = new Mock<IDeviceRepository>();

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -667,7 +668,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 bool stored = await PersistOneDeviceSettingsAsync(persister, session, devices, doorbot.Id, doorbot.Description, ct, root =>
                 {
-                    doorbot.Settings = KeepListOnlySettings(root.Deserialize<Entities.DoorbotSettings>() ?? new Entities.DoorbotSettings(), doorbot.Settings);
+                    doorbot.Settings = MergeOverListSettings(root, doorbot.Settings);
                     doorbot.ZoneSettings = ReadZoneSettings(root);
                 });
                 allStored = allStored && stored;
@@ -682,10 +683,32 @@ namespace VideoForensics.Providers.Ring.Services
 
                 bool stored = await PersistOneDeviceSettingsAsync(persister, session, devices, cam.Id.Value, cam.Description, ct, root =>
                 {
-                    cam.Settings = KeepListOnlySettings(root.Deserialize<Entities.StickupCamSettings>() ?? new Entities.StickupCamSettings(), cam.Settings);
+                    cam.Settings = MergeOverListSettings(root, cam.Settings);
                     cam.ZoneSettings = ReadZoneSettings(root);
                 });
                 allStored = allStored && stored;
+            }
+
+            // Chimes have no settings endpoint, but their list entry carries the owner, firmware, volume, features, alerts and health that
+            // nothing else stores (the download path never visits a chime). A chime row that does not exist yet is not retried by the gate.
+            foreach (Entities.Chime chime in devices.Chimes ?? [])
+            {
+                try
+                {
+                    RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, chime.Id.ToString());
+                    if (details != null && await persister.PersistAsync(chime.Id.ToString(), details, ct))
+                    {
+                        _syncRunTally?.AddConfigArea();
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("Ring chime details failed for {DeviceName} ({ErrorType}); sync continues", chime.Description ?? "Unknown Device", ex.GetType().Name);
+                }
             }
 
             return allStored;
@@ -748,70 +771,38 @@ namespace VideoForensics.Providers.Ring.Services
                 : null;
         }
 
-        /// <summary>Scalar settings keys that the device-settings body does not carry and that the device list's settings object does.</summary>
-        private static readonly string[] ListOnlyScalarKeys = ["advanced_motion_zones_enabled", "advanced_motion_zones_type"];
-
         /// <summary>
-        /// The device-settings body does not carry the keys the device list's settings object carries: presets, advanced and ignore zones, motion
-        /// arrays, detection-type names, the advanced-motion scalars and, when the body omits it, zone_settings. Replacing the list's settings with
-        /// the body wholesale cleared those rows on every config sync. Each such key the body lacks is taken from the list entry; a key the body
-        /// sends wins. The mapper reads zone_settings from the top level and then from settings, so keeping it on settings covers both shapes.
+        /// The device-settings body does not carry everything the device list's settings object carries (presets, zones, the offline-motion
+        /// object, per-type <c>record</c> flags, the advanced-motion scalars, stickup scalars such as <c>enable_vod</c>, and more). Replacing the
+        /// list's settings with the body wholesale cleared those rows and columns on every config sync. The body is overlaid on the list's
+        /// settings key by key, objects merged recursively: a key the body sends wins (arrays and scalars replace), a key it lacks is kept.
+        /// The mapper reads <c>zone_settings</c> from the top level and then from settings, so keeping it on settings covers both shapes.
         /// </summary>
-        private static Entities.DoorbotSettings KeepListOnlySettings(Entities.DoorbotSettings body, Entities.DoorbotSettings? listEntry)
+        private static T MergeOverListSettings<T>(JsonElement body, T? listEntry) where T : class, new()
         {
-            if (listEntry == null)
+            if (listEntry == null || JsonNode.Parse(body.GetRawText()) is not JsonObject bodyObject)
             {
-                return body;
+                return body.Deserialize<T>() ?? new T();
             }
 
-            body.AdvancedMotionZones ??= listEntry.AdvancedMotionZones;
-            body.IgnoreZones ??= listEntry.IgnoreZones;
-            body.LiveViewPresets ??= listEntry.LiveViewPresets;
-            body.MotionSnoozePresets ??= listEntry.MotionSnoozePresets;
-            body.MotionZones ??= listEntry.MotionZones;
-            body.AdvancedMotionDetectionTypes ??= listEntry.AdvancedMotionDetectionTypes;
-            body.ZoneSettings ??= listEntry.ZoneSettings;
-            body.AdditionalFields = KeepMissingScalars(body.AdditionalFields, listEntry.AdditionalFields);
-            return body;
+            JsonObject merged = JsonSerializer.SerializeToNode(listEntry) as JsonObject ?? [];
+            Overlay(merged, bodyObject);
+            return merged.Deserialize<T>() ?? new T();
         }
 
-        /// <summary>Stickup cam overload of <see cref="KeepListOnlySettings(Entities.DoorbotSettings, Entities.DoorbotSettings?)"/>; the same keys.</summary>
-        private static Entities.StickupCamSettings KeepListOnlySettings(Entities.StickupCamSettings body, Entities.StickupCamSettings? listEntry)
+        private static void Overlay(JsonObject target, JsonObject source)
         {
-            if (listEntry == null)
+            foreach ((string key, JsonNode? value) in source.ToList())
             {
-                return body;
-            }
-
-            body.AdvancedMotionZones ??= listEntry.AdvancedMotionZones;
-            body.IgnoreZones ??= listEntry.IgnoreZones;
-            body.LiveViewPresets ??= listEntry.LiveViewPresets;
-            body.MotionSnoozePresets ??= listEntry.MotionSnoozePresets;
-            body.MotionZones ??= listEntry.MotionZones;
-            body.AdvancedMotionDetectionTypes ??= listEntry.AdvancedMotionDetectionTypes;
-            body.ZoneSettings ??= listEntry.ZoneSettings;
-            body.AdditionalFields = KeepMissingScalars(body.AdditionalFields, listEntry.AdditionalFields);
-            return body;
-        }
-
-        /// <summary>Copies the list-only scalar keys the body lacks from the list entry's unmodelled fields.</summary>
-        private static Dictionary<string, JsonElement>? KeepMissingScalars(Dictionary<string, JsonElement>? body, Dictionary<string, JsonElement>? listEntry)
-        {
-            if (listEntry == null)
-            {
-                return body;
-            }
-
-            body ??= [];
-            foreach (string key in ListOnlyScalarKeys)
-            {
-                if (!body.ContainsKey(key) && listEntry.TryGetValue(key, out JsonElement value))
+                if (value is JsonObject sourceChild && target[key] is JsonObject targetChild)
                 {
-                    body[key] = value;
+                    Overlay(targetChild, sourceChild);
+                }
+                else
+                {
+                    target[key] = value?.DeepClone();
                 }
             }
-
-            return body;
         }
 
         /// <summary>
