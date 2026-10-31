@@ -2657,6 +2657,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CrossStreet")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("IsOwner")
                         .HasColumnType("INTEGER");
 
@@ -2684,6 +2688,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("StreetAddress")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StreetAddress2")
                         .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
@@ -4389,6 +4397,46 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingAppLocationHistoryMessages");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingChimeLinkedDoorbot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("CallAlerts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("ChimeDeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("LinkedDoorbotId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MotionAlerts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChimeDeviceId", "LinkedDoorbotId")
+                        .IsUnique();
+
+                    b.ToTable("RingChimeLinkedDoorbots");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceAdvancedMotionSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5123,8 +5171,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<long?>("BandwidthLastTime")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("BatteryHatchOpen")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("BatteryPercentage")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("BatteryPercentage2")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("BatteryPercentageCategory")
                         .HasMaxLength(64)
@@ -5134,6 +5188,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal?>("BatteryVoltage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BatteryVoltage2")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("BatteryVoltageCategory")
@@ -6018,6 +6075,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("ModelVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ObjectsPerLens")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Position")
                         .HasColumnType("INTEGER");
 
@@ -6131,6 +6191,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FullDescription")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("KeyMoments")
                         .HasColumnType("TEXT");
 
                     b.Property<bool?>("PersonDetected")
@@ -6499,6 +6562,65 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingEventSubscriptionReceipts");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationDetails", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("BusinessCommandCenter")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GeoServiceVerified")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("GuardPatrol")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("IsJobsite")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LocationResourceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LocationType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("OwnerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("PrivateGuardResponse")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("UserVerified")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("VmVideoVerification")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("VmVirtualSecurityGuard")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId")
+                        .IsUnique();
+
+                    b.ToTable("RingLocationDetails");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6598,6 +6720,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CekTransferRecipientResponse")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("DeleteInProgress")
                         .HasColumnType("INTEGER");
 
@@ -6631,6 +6756,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("LowConfidence")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("MapVisualization")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Mission")
                         .HasColumnType("TEXT");
 
@@ -6643,11 +6771,17 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("OwnerId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PotentialGapVisualization")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ProviderEventId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderLocationId")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RadarVisualization")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("RecordingStatus")
@@ -6809,6 +6943,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CekTransferRecipientResponse")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PaginationKey")
                         .HasColumnType("TEXT");
 
@@ -6871,6 +7008,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<bool?>("ReadOnly")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SecurityStatusInitiatingEntityId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("SecurityStatusLastUpdateMs")
                         .HasColumnType("INTEGER");
@@ -7048,6 +7189,132 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("RingLocationModeSettingsId");
 
                     b.ToTable("RingLocationModeSupportedActionGroups");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ObjectType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ProviderUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Verified")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId", "ProviderUserId")
+                        .IsUnique();
+
+                    b.ToTable("RingLocationSharedUsers");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUserDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ProviderDeviceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RingLocationSharedUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RingLocationSharedUserId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("RingLocationSharedUserDevices");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUserDevicePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RingLocationSharedUserDeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RingLocationSharedUserDeviceId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("RingLocationSharedUserDevicePermissions");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingSnapshotTimestamp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("DoorbotId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RingAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("TimestampEpoch")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RingAccountId", "DoorbotId")
+                        .IsUnique();
+
+                    b.ToTable("RingSnapshotTimestamps");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingVideoSearchEvent", b =>
@@ -7647,6 +7914,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingChimeLinkedDoorbot", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithMany()
+                        .HasForeignKey("ChimeDeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceAdvancedMotionSettings", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
@@ -7881,6 +8157,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationDetails", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationHistoryMedia", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.RingLocationHistoryVisualization", null)
@@ -7949,6 +8234,42 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasOne("VideoForensics.Data.Common.Entities.RingLocationModeSettings", null)
                         .WithMany("SupportedActionGroups")
                         .HasForeignKey("RingLocationModeSettingsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUser", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUserDevice", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.RingLocationSharedUser", null)
+                        .WithMany("Devices")
+                        .HasForeignKey("RingLocationSharedUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUserDevicePermission", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.RingLocationSharedUserDevice", null)
+                        .WithMany("Permissions")
+                        .HasForeignKey("RingLocationSharedUserDeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingSnapshotTimestamp", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.RingAccount", null)
+                        .WithMany()
+                        .HasForeignKey("RingAccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -8113,6 +8434,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationModeSettingsEntry", b =>
                 {
                     b.Navigation("Actions");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUser", b =>
+                {
+                    b.Navigation("Devices");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingLocationSharedUserDevice", b =>
+                {
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SyncSchedule", b =>

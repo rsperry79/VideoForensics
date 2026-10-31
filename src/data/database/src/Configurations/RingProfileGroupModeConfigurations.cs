@@ -157,6 +157,7 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(m => m.ProviderLocationId).IsRequired().HasMaxLength(128);
             _ = builder.Property(m => m.Mode).HasMaxLength(32);
             _ = builder.Property(m => m.SecurityStatusMode).HasMaxLength(32);
+            _ = builder.Property(m => m.SecurityStatusInitiatingEntityId).HasMaxLength(128);
             _ = builder.Property(m => m.ModePanelType).HasMaxLength(64);
             _ = builder.HasIndex(m => m.ProviderLocationId).IsUnique();
             _ = builder.HasMany(m => m.NotYetParticipating).WithOne().HasForeignKey(n => n.RingLocationModeId).OnDelete(DeleteBehavior.Cascade);

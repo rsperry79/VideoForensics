@@ -68,3 +68,8 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-31 | db-endpoint: fixture edit | JSON.stringify rewrite of sanitized rows fixture gave a 122-line diff | whole-file reformat | reverted with git checkout; made minimal text edits
 2026-10-31 | db-endpoint: update_plan | update_plan refused by hook because the run is a subagent | task-list tool used from a subagent | none needed; report via SubagentHandback only
 2026-10-31 | baseline | Ui.Shared tests fail to compile on wip 118c4fda: RingDeviceSettingsPageTests.cs(49) CS0104 'RingDeviceSettings' ambiguous (Data.Common.Entities vs Ui.Shared.Pages) | commit 118c4fda added the entity next to the page of the same name; tests not built before commit | qualify the type in the test; build the touched test project before committing (not covered)
+2026-10-31 | db-small-endpoints: health parser test | battery_hatch_open wrong-type test failed: RingJsonValue.TryText stores numbers as text | TryText is lenient by design | new keys use a string-only reader; existing TryText keys unchanged
+2026-10-31 | db-small-endpoints: edit script | bash heredoc holding triple-quoted Python failed (unexpected EOF); file not written | multi-line Python inside a heredoc | write scripts with the Write tool
+2026-10-31 | db-small-endpoints: anchored edit | LocationHistory.cs anchor matched two 'type' properties; the batch aborted before writing | anchor not unique | anchored on the class header; reran only unapplied edits
+2026-10-31 | db-small-endpoints: field-map write | json.dumps wrote LF into CRLF field-map.json (2024 bare LF) | 
+ line endings in script output | converted to CRLF, verified per file

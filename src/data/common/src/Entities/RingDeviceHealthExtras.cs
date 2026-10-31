@@ -99,6 +99,15 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Ring health.ptz_connected.</summary>
         public bool? PtzConnected { get; set; }
 
+        /// <summary>Ring doorbot-health device_health.battery_hatch_open. Null in every sample: a string is a guess, other JSON types are noted and not stored.</summary>
+        public string? BatteryHatchOpen { get; set; }
+
+        /// <summary>Ring doorbot-health device_health.battery_percentage_2 (second battery). Null in every sample: string is a guess.</summary>
+        public string? BatteryPercentage2 { get; set; }
+
+        /// <summary>Ring doorbot-health device_health.battery_voltage_2 (second battery). Null in every sample: string is a guess.</summary>
+        public string? BatteryVoltage2 { get; set; }
+
         /// <summary>UTC time this row was written by a sync (not a Ring value).</summary>
         public DateTime UpdatedAtUtc { get; set; }
     }

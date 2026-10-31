@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
@@ -7,7 +8,7 @@ namespace VideoForensics.Providers.Ring.Services
 {
     /// <summary>An event row together with the nested objects that belong to it.</summary>
     /// <typeparam name="TEvent">The event row type.</typeparam>
-    public sealed record MappedRingEvent<TEvent>(TEvent Event, RingEventDetails Details);
+    public sealed record MappedRingEvent<TEvent>(TEvent Event, RingEventDetails Details, System.Collections.Generic.IReadOnlyList<string>? Unstored = null);
 
     /// <summary>
     /// Maps the video search, location event, location history, doorbot history and app location history payloads
@@ -20,6 +21,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             ArgumentNullException.ThrowIfNull(item);
 
+            var notes = new List<string>();
             var evt = new RingVideoSearchEvent
             {
                 Id = Guid.NewGuid(),
@@ -55,9 +57,9 @@ namespace VideoForensics.Providers.Ring.Services
                 DevicePlacement = MapPlacement(item.DevicePlacement),
                 Geolocation = MapGeolocation(item.Geolocation),
                 SubscriptionReceipt = MapReceipt(item.SubscriptionReceipt),
-                CvProperties = MapCv(item.CvProperties),
+                CvProperties = MapCv(item.CvProperties, notes),
             };
-            return new MappedRingEvent<RingVideoSearchEvent>(evt, details);
+            return new MappedRingEvent<RingVideoSearchEvent>(evt, details, notes);
         }
 
         public static RingLocationEventPage MapLocationEventsPage(string providerLocationId, LocationEventsMeta? meta)
@@ -74,6 +76,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             ArgumentNullException.ThrowIfNull(source);
 
+            var notes = new List<string>();
             var evt = new RingLocationEvent
             {
                 Id = Guid.NewGuid(),
@@ -107,18 +110,23 @@ namespace VideoForensics.Providers.Ring.Services
                 SubscriptionReceipt = MapReceipt(source.SubscriptionReceipt),
                 LastLocation = MapLastLocation(source.LastLocation),
                 Siren = MapSiren(source.Siren),
-                CvProperties = MapCv(source.CvProperties),
+                CvProperties = MapCv(source.CvProperties, notes),
             };
-            return new MappedRingEvent<RingLocationEvent>(evt, details);
+            return new MappedRingEvent<RingLocationEvent>(evt, details, notes);
         }
 
-        public static RingLocationHistoryPage MapLocationHistoryPage(string providerLocationId, string? paginationKey)
+        public static RingLocationHistoryPage MapLocationHistoryPage(
+            string providerLocationId,
+            string? paginationKey,
+            JsonElement? cekTransferRecipientResponse = null,
+            List<string>? notes = null)
         {
             return new RingLocationHistoryPage
             {
                 Id = Guid.NewGuid(),
                 ProviderLocationId = providerLocationId,
                 PaginationKey = paginationKey,
+                CekTransferRecipientResponse = KeyText(cekTransferRecipientResponse, "cek_transfer_recipient_response", notes ?? new List<string>()),
             };
         }
 
@@ -126,6 +134,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             ArgumentNullException.ThrowIfNull(source);
 
+            var notes = new List<string>();
             var evt = new RingLocationHistoryEvent
             {
                 Id = Guid.NewGuid(),
@@ -164,21 +173,27 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 AddVisualization(evt, visualizations.CloudMediaVisualization, "cloud");
                 AddVisualization(evt, visualizations.LocalMediaVisualization, "local");
+                evt.MapVisualization = KeyText(visualizations.MapVisualization, "visualizations.map_visualization", notes);
+                evt.RadarVisualization = KeyText(visualizations.RadarVisualization, "visualizations.radar_visualization", notes);
+                evt.PotentialGapVisualization = KeyText(visualizations.PotentialGapVisualization, "visualizations.potential_gap_visualization", notes);
             }
+
+            evt.CekTransferRecipientResponse = KeyText(source.CekTransferRecipientResponse, "cek_transfer_recipient_response", notes);
 
             var details = new RingEventDetails
             {
                 Doorbot = MapDoorbot(source.Device),
                 Properties = MapProperties(source.Properties),
-                CvProperties = MapLocationHistoryCv(source.Cv),
+                CvProperties = MapLocationHistoryCv(source.Cv, notes),
             };
-            return new MappedRingEvent<RingLocationHistoryEvent>(evt, details);
+            return new MappedRingEvent<RingLocationHistoryEvent>(evt, details, notes);
         }
 
         public static MappedRingEvent<RingDoorbotHistoryEvent> MapDoorbotHistoryEvent(DoorbotHistoryEvent source)
         {
             ArgumentNullException.ThrowIfNull(source);
 
+            var notes = new List<string>();
             var evt = new RingDoorbotHistoryEvent
             {
                 Id = Guid.NewGuid(),
@@ -205,9 +220,9 @@ namespace VideoForensics.Providers.Ring.Services
                 Geolocation = MapGeolocation(source.Geolocation),
                 LastLocation = MapLastLocation(source.LastLocation),
                 Siren = MapSiren(source.Siren),
-                CvProperties = MapCv(source.CvProperties),
+                CvProperties = MapCv(source.CvProperties, notes),
             };
-            return new MappedRingEvent<RingDoorbotHistoryEvent>(evt, details);
+            return new MappedRingEvent<RingDoorbotHistoryEvent>(evt, details, notes);
         }
 
         public static RingAppLocationHistoryMessage MapAppLocationHistory(AppLocationHistoryMessage source)
@@ -519,7 +534,24 @@ namespace VideoForensics.Providers.Ring.Services
             };
         }
 
-        private static RingEventCvProperties? MapCv(CvProperties? source)
+        // Stores a Ring text value. Any other JSON type is left out and noted by key and JSON type, never by value.
+        private static string? KeyText(JsonElement? value, string key, List<string> notes)
+        {
+            if (value is not { } v || v.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            if (v.ValueKind == JsonValueKind.String)
+            {
+                return v.GetString();
+            }
+
+            notes.Add($"{key} not stored: expected a string ({v.ValueKind})");
+            return null;
+        }
+
+        private static RingEventCvProperties? MapCv(CvProperties? source, List<string> notes)
         {
             if (source is null)
             {
@@ -527,6 +559,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             RingEventCvProperties root = CreateCvRoot(source.PersonDetected, source.StreamBroken, source.DetectionType, source.FullDescription, source.ShortDescription, source.Similarity, source.Anomaly, source.DetectionTypes, source.SecurityAlerts, source.Profiles, source.Tags);
+            root.KeyMoments = KeyText(source.KeyMoments, "cv_properties.key_moments", notes);
             if (source.DetectionDetails is { } details)
             {
                 var detailRow = new RingEventCvDetectionDetail
@@ -556,7 +589,7 @@ namespace VideoForensics.Providers.Ring.Services
             return root;
         }
 
-        private static RingEventCvProperties? MapLocationHistoryCv(LocationHistoryCv? source)
+        private static RingEventCvProperties? MapLocationHistoryCv(LocationHistoryCv? source, List<string> notes)
         {
             if (source is null)
             {
@@ -564,6 +597,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             RingEventCvProperties root = CreateCvRoot(source.PersonDetected, source.StreamBroken, source.DetectionType, source.FullDescription, source.ShortDescription, source.Similarity, source.Anomaly, source.DetectionTypes, source.SecurityAlerts, source.Profiles, source.Tags);
+            root.KeyMoments = KeyText(source.KeyMoments, "cv.key_moments", notes);
             foreach (LocationHistoryDetectionDetail detail in source.DetectionDetails ?? [])
             {
                 root.DetectionDetails.Add(new RingEventCvDetectionDetail
@@ -573,6 +607,7 @@ namespace VideoForensics.Providers.Ring.Services
                     Position = root.DetectionDetails.Count,
                     TimestampMs = detail.Timestamp,
                     Type = detail.Type,
+                    ObjectsPerLens = KeyText(detail.ObjectsPerLens, "cv.detection_details[].objects_per_lens", notes),
                 });
             }
 

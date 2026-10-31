@@ -236,6 +236,7 @@ namespace VideoForensics.Providers.Ring.Services
             AddIfPresent(metadata, "state", l.Address?.State);
             AddIfPresent(metadata, "zip_code", l.Address?.ZipCode);
             AddIfPresent(metadata, "timezone", l.Address?.TimeZone);
+            RingLocationDetailsMapper.AddLocationValues(metadata, l);
             if (l.IsOwner.HasValue)
             {
                 metadata["is_owner"] = l.IsOwner.Value ? "true" : "false";
@@ -890,6 +891,7 @@ namespace VideoForensics.Providers.Ring.Services
                     foreach (Entities.VideoSearchItem item in items)
                     {
                         MappedRingEvent<Data.Common.Entities.RingVideoSearchEvent> mapped = RingEventHistoryMapper.MapVideoSearch(item, providerAccountId);
+                        LogEventNotes(mapped.Unstored);
                         await eventWriter.ReplaceVideoSearchEventAsync(providerAccountId, mapped.Event, mapped.Details, ct);
                     }
                 }, ct);
@@ -915,6 +917,7 @@ namespace VideoForensics.Providers.Ring.Services
                     foreach (Entities.LocationEvent evt in page.Events ?? [])
                     {
                         MappedRingEvent<Data.Common.Entities.RingLocationEvent> mapped = RingEventHistoryMapper.MapLocationEvent(evt, location.Id);
+                        LogEventNotes(mapped.Unstored);
                         await eventWriter.ReplaceLocationEventAsync(mapped.Event, mapped.Details, ct);
                     }
                 }, ct);
@@ -928,10 +931,13 @@ namespace VideoForensics.Providers.Ring.Services
                         return;
                     }
 
-                    await eventWriter.ReplaceLocationHistoryPageAsync(RingEventHistoryMapper.MapLocationHistoryPage(location.Id, response.PaginationKey), ct);
+                    var pageNotes = new List<string>();
+                    await eventWriter.ReplaceLocationHistoryPageAsync(RingEventHistoryMapper.MapLocationHistoryPage(location.Id, response.PaginationKey, response.CekTransferRecipientResponse, pageNotes), ct);
+                    LogEventNotes(pageNotes);
                     foreach (Entities.LocationHistoryItem item in response.Items ?? [])
                     {
                         MappedRingEvent<Data.Common.Entities.RingLocationHistoryEvent> mapped = RingEventHistoryMapper.MapLocationHistoryItem(item, location.Id);
+                        LogEventNotes(mapped.Unstored);
                         await eventWriter.ReplaceLocationHistoryEventAsync(mapped.Event, mapped.Details, ct);
                     }
                 }, ct);
@@ -998,6 +1004,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
 
                     MappedRingEvent<Data.Common.Entities.RingDoorbotHistoryEvent> mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
+                    LogEventNotes(mapped.Unstored);
                     await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
                 }
 
@@ -1309,6 +1316,7 @@ namespace VideoForensics.Providers.Ring.Services
                     metadata.PostalCode = MetadataValue(location, "zip_code");
                     metadata.TimeZoneId = MetadataValue(location, "timezone");
                     metadata.IsOwner = bool.TryParse(MetadataValue(location, "is_owner"), out bool isOwner) ? isOwner : null;
+                    RingLocationDetailsMapper.ApplyGenericFields(metadata, location.Metadata ?? new Dictionary<string, string>());
                     metadata.LastSyncedUtc = DateTime.UtcNow;
                     metadata.SyncStatus = SyncStatus.Pending;
 
@@ -1321,6 +1329,12 @@ namespace VideoForensics.Providers.Ring.Services
                         await _metadataRepository.UpdateAsync(metadata, ct);
                     }
 
+                    if (_settingsPersister != null)
+                    {
+                        await _settingsPersister.PersistLocationDetailsAsync(
+                            RingLocationDetailsMapper.Map(locationGuid, location.Metadata ?? new Dictionary<string, string>()), ct);
+                    }
+
                     _logger.LogDebug("Captured metadata for location {LocationName}", location.Name);
                 }
 
@@ -1329,6 +1343,15 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Skipping location metadata capture (non-critical operation failed)");
+            }
+        }
+
+        // Event values the mapper read but could not store (key and JSON type only). Logged at Info, one line per event.
+        private void LogEventNotes(IReadOnlyList<string>? notes)
+        {
+            if (notes is { Count: > 0 })
+            {
+                _logger.LogInformation("Ring event values not stored: {Notes}", string.Join("; ", notes));
             }
         }
 

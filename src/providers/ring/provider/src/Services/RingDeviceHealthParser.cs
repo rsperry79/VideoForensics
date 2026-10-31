@@ -155,6 +155,11 @@ namespace VideoForensics.Providers.Ring.Services
                 case "night_mode_on": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.NightModeOn = r; return ok; }
                 case "vod_enabled": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.VodEnabled = r; return ok; }
                 case "external_connection": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.ExternalConnection = r; return ok; }
+                case "battery_hatch_open": { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryHatchOpen = ok ? v.GetString() : null; return ok; }
+                case "battery_percentage_2": { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryPercentage2 = ok ? v.GetString() : null; return ok; }
+                case "battery_voltage_2": { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryVoltage2 = ok ? v.GetString() : null; return ok; }
+                case "battery_percentage_category_2": { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryPercentageCategory = r; return ok; }
+                case "battery_voltage_category_2": { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryVoltageCategory = r; return ok; }
                 default: return false;
             }
         }

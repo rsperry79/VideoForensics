@@ -131,6 +131,71 @@ namespace VideoForensics.Data.Database.Repositories
             }, ct);
         }
 
+        public Task ReplaceLocationDetailsAsync(RingLocationDetails details, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(details);
+
+            return ReplaceAsync(async (db, token) =>
+            {
+                List<RingLocationDetails> existing = await db.RingLocationDetails
+                    .Where(d => d.LocationId == details.LocationId)
+                    .ToListAsync(token);
+                await SwapAsync(db, db.RingLocationDetails, existing, details, token);
+            }, ct);
+        }
+
+        public Task ReplaceLocationSharedUsersAsync(Guid locationId, IReadOnlyList<RingLocationSharedUser> users, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(users);
+
+            return ReplaceAsync(async (db, token) =>
+            {
+                List<RingLocationSharedUser> existing = await db.RingLocationSharedUsers
+                    .Include(u => u.Devices).ThenInclude(d => d.Permissions)
+                    .Where(u => u.LocationId == locationId)
+                    .ToListAsync(token);
+                db.RingLocationSharedUsers.RemoveRange(existing);
+                _ = await db.SaveChangesAsync(token);
+
+                db.RingLocationSharedUsers.AddRange(users);
+                _ = await db.SaveChangesAsync(token);
+            }, ct);
+        }
+
+        public Task ReplaceChimeLinkedDoorbotsAsync(Guid chimeDeviceId, IReadOnlyList<RingChimeLinkedDoorbot> links, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(links);
+
+            return ReplaceAsync(async (db, token) =>
+            {
+                List<RingChimeLinkedDoorbot> existing = await db.RingChimeLinkedDoorbots
+                    .Where(l => l.ChimeDeviceId == chimeDeviceId)
+                    .ToListAsync(token);
+                db.RingChimeLinkedDoorbots.RemoveRange(existing);
+                _ = await db.SaveChangesAsync(token);
+
+                db.RingChimeLinkedDoorbots.AddRange(links);
+                _ = await db.SaveChangesAsync(token);
+            }, ct);
+        }
+
+        public Task ReplaceSnapshotTimestampsAsync(Guid ringAccountId, IReadOnlyList<RingSnapshotTimestamp> timestamps, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(timestamps);
+
+            return ReplaceAsync(async (db, token) =>
+            {
+                List<RingSnapshotTimestamp> existing = await db.RingSnapshotTimestamps
+                    .Where(t => t.RingAccountId == ringAccountId)
+                    .ToListAsync(token);
+                db.RingSnapshotTimestamps.RemoveRange(existing);
+                _ = await db.SaveChangesAsync(token);
+
+                db.RingSnapshotTimestamps.AddRange(timestamps);
+                _ = await db.SaveChangesAsync(token);
+            }, ct);
+        }
+
         private async Task ReplaceAsync(Func<VideoForensicsDbContext, CancellationToken, Task> replace, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

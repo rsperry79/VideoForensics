@@ -3,8 +3,10 @@
   "lastUpdateTimeMS": 1,
   "securityStatus": {
     "lu": 1,
-    "md": "x"
+    "md": "x",
+    "initiatingEntityId": "x"
   },
   "readOnly": false,
-  "modePanelType": "x"
+  "modePanelType": "x",
+  "notYetParticipatingInMode": []
 }

@@ -187,6 +187,7 @@ namespace VideoForensics.Providers.Ring.Services
                 LastUpdateTimeMs = mode.LastUpdateTimeMs,
                 SecurityStatusMode = mode.SecurityStatus?.Mode,
                 SecurityStatusLastUpdateMs = mode.SecurityStatus?.LastUpdateTimeMs,
+                SecurityStatusInitiatingEntityId = mode.SecurityStatus?.InitiatingEntityId,
                 ReadOnly = mode.ReadOnly,
                 ModePanelType = mode.ModePanelType,
             };

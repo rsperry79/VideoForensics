@@ -1,0 +1,27 @@
+{
+  "device_health": {
+    "id": 1,
+    "battery_percentage_category": "x",
+    "battery_voltage": null,
+    "battery_voltage_category": null,
+    "latest_signal_strength": 1.5,
+    "latest_signal_category": "x",
+    "average_signal_strength": 1.5,
+    "average_signal_category": "x",
+    "firmware": "x",
+    "updated_at": "x",
+    "packet_loss_strength": 1,
+    "packet_loss_category": "x",
+    "wifi_name": "x",
+    "wifi_is_ring_network": false,
+    "battery_percentage": null,
+    "ext_power_state": null,
+    "transformer_voltage": 1.5,
+    "transformer_voltage_category": "x",
+    "battery_hatch_open": null,
+    "battery_percentage_2": null,
+    "battery_percentage_category_2": "x",
+    "battery_voltage_2": null,
+    "battery_voltage_category_2": "x"
+  }
+}

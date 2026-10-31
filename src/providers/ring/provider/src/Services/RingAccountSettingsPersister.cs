@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -66,6 +67,12 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>Persists the alarm account monitoring status for a location.</summary>
+        /// <summary>Replaces the Ring-only location details (devices/v1/locations) for one location.</summary>
+        public Task PersistLocationDetailsAsync(RingLocationDetails details, CancellationToken ct = default)
+        {
+            return TryWriteAsync("location details", () => _writer.ReplaceLocationDetailsAsync(details, ct), ct);
+        }
+
         public Task PersistAccountMonitoringStatusAsync(AccountMonitoringStatusResponse response, string providerLocationId, CancellationToken ct = default)
         {
             return TryWriteAsync("account monitoring status", () => _writer.ReplaceAccountMonitoringStatusAsync(

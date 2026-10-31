@@ -154,6 +154,24 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the current location modes.</summary>
         public DbSet<RingLocationMode> RingLocationModes { get; set; }
 
+        /// <summary>Ring-only location fields (devices/v1/locations), one row per location.</summary>
+        public DbSet<RingLocationDetails> RingLocationDetails { get; set; }
+
+        /// <summary>Users shared onto a Ring location.</summary>
+        public DbSet<RingLocationSharedUser> RingLocationSharedUsers { get; set; }
+
+        /// <summary>Device grants of a shared Ring user.</summary>
+        public DbSet<RingLocationSharedUserDevice> RingLocationSharedUserDevices { get; set; }
+
+        /// <summary>Permissions of a shared Ring user's device grant.</summary>
+        public DbSet<RingLocationSharedUserDevicePermission> RingLocationSharedUserDevicePermissions { get; set; }
+
+        /// <summary>Doorbots linked to a chime.</summary>
+        public DbSet<RingChimeLinkedDoorbot> RingChimeLinkedDoorbots { get; set; }
+
+        /// <summary>Latest snapshot timestamp per doorbot.</summary>
+        public DbSet<RingSnapshotTimestamp> RingSnapshotTimestamps { get; set; }
+
         /// <summary>Gets or sets the raw notYetParticipatingInMode elements of location modes.</summary>
         public DbSet<RingLocationModeNotYetParticipating> RingLocationModeNotYetParticipating { get; set; }
 

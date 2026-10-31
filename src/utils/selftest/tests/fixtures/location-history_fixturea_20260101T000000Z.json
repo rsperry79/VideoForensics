@@ -35,10 +35,12 @@
         "detection_details": [
           {
             "timestamp": 1,
-            "type": "x"
+            "type": "x",
+            "objects_per_lens": null
           }
         ],
-        "tags": null
+        "tags": null,
+        "key_moments": null
       },
       "properties": {
         "is_alexa": false,
@@ -86,7 +88,10 @@
         "local_media_visualization": {
           "schema": "x",
           "media": []
-        }
+        },
+        "radar_visualization": null,
+        "map_visualization": null,
+        "potential_gap_visualization": null
       },
       "device": {
         "id": 1,
@@ -103,8 +108,10 @@
       "is_property_view_enabled": null,
       "is_active": false,
       "user_action_disabled": false,
-      "mission": null
+      "mission": null,
+      "cek_transfer_recipient_response": null
     }
   ],
-  "pagination_key": "x"
+  "pagination_key": "x",
+  "cek_transfer_recipient_response": null
 }

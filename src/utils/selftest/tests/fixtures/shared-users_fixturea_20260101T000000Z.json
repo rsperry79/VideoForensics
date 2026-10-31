@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "verified": false,
+    "first_name": "x",
+    "last_name": "x",
+    "email": "x",
+    "object_type": "x",
+    "devices": [
+      {
+        "id": 1,
+        "role": "x",
+        "device_type": "x",
+        "permissions": null
+      }
+    ]
+  }
+]

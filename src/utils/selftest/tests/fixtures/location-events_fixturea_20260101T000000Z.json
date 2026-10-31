@@ -29,7 +29,8 @@
         "similarity": null,
         "anomaly": null,
         "detection_details": null,
-        "tags": null
+        "tags": null,
+        "key_moments": null
       },
       "properties": {
         "is_alexa": false,
