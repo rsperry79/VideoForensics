@@ -53,6 +53,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Exposes DbSets for detection-related entities to enable direct persistence in transactions.</summary>
         IDetectionEntityProvider DetectionEntities { get; }
 
+        /// <summary>Gets the media flag repository, bound to the unit of work's transaction. Writes commit with the unit.</summary>
+        IMediaFlagRepository MediaFlags { get; }
+
         /// <summary>Flushes pending changes to the database within the shared transaction. The transaction still commits or rolls back as a whole.</summary>
         Task SaveChangesAsync(CancellationToken ct);
     }
