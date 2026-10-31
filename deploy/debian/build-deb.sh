@@ -36,8 +36,8 @@ PUBLISHED_PATH="$(cd "$PUBLISHED_PATH" 2>/dev/null && pwd)" || {
 }
 
 # Verify the published executable exists
-if [ ! -f "$PUBLISHED_PATH/VideoForensics.WebApp" ]; then
-    echo "ERROR: VideoForensics.WebApp executable not found in $PUBLISHED_PATH" >&2
+if [ ! -f "$PUBLISHED_PATH/VideoForensics.Client.WebApp" ]; then
+    echo "ERROR: VideoForensics.Client.WebApp executable not found in $PUBLISHED_PATH" >&2
     exit 1
 fi
 
@@ -94,7 +94,7 @@ echo "  Copying application binaries..."
 cp -r "$PUBLISHED_PATH"/* "$APP_DIR/"
 
 # Make the main executable executable
-chmod 0755 "$APP_DIR/VideoForensics.WebApp"
+chmod 0755 "$APP_DIR/VideoForensics.Client.WebApp"
 
 # Build the .deb file
 # --root-owner-group: use root:root for all files (standard for .deb packages)
