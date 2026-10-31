@@ -170,6 +170,12 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the location mode sharing state, one per location.</summary>
         public DbSet<RingLocationModeSharing> RingLocationModeSharings { get; set; }
 
+        /// <summary>Gets or sets the alarm account monitoring status, one per location.</summary>
+        public DbSet<RingAccountMonitoringStatus> RingAccountMonitoringStatuses { get; set; }
+
+        /// <summary>Gets or sets the compatible monitoring plans of account monitoring statuses.</summary>
+        public DbSet<RingAccountMonitoringPlan> RingAccountMonitoringPlans { get; set; }
+
         /// <summary>Gets or sets the video search results (one row per search result).</summary>
         public DbSet<RingVideoSearchEvent> RingVideoSearchEvents { get; set; }
 

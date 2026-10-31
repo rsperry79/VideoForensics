@@ -3350,6 +3350,121 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingAccountFeatures");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountMonitoringPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RingAccountMonitoringStatusId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RingAccountMonitoringStatusId");
+
+                    b.ToTable("RingAccountMonitoringPlans");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountMonitoringStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccountState")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccountStateReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccountUuid")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("AddressComplete")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("AlarmSignalSent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CmsMonitoringType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("CodewordComplete")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ContactsComplete")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("DeliverSignals")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("DispatchSetupComplete")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EligibleForDispatch")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ExternalServiceConfigType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("InstallationDate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PlanProvider")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("ProfessionallyMonitored")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProviderLocationId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("SosOnly")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SosOnlyFlagOrFalse")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SuspectedBusiness")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("UserAcceptDispatch")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("UserChangedAddress")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("VrRequired")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("VrUserOptIn")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderLocationId")
+                        .IsUnique();
+
+                    b.ToTable("RingAccountMonitoringStatuses");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5534,6 +5649,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Navigation("ProviderAccount");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountMonitoringPlan", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.RingAccountMonitoringStatus", null)
+                        .WithMany("CompatibleMonitoringPlans")
+                        .HasForeignKey("RingAccountMonitoringStatusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountProfileFlag", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.RingAccountProfile", null)
@@ -5801,6 +5925,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Operator", b =>
                 {
                     b.Navigation("OperatorCredentials");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountMonitoringStatus", b =>
+                {
+                    b.Navigation("CompatibleMonitoringPlans");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountProfile", b =>

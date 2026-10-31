@@ -1345,19 +1345,20 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         // --- Phase 12: alarm monitoring status / trigger / location history ---
 
         [Fact]
-        public async Task MockSession_GetAccountMonitoringStatus_ReturnsRawJson()
+        public async Task MockSession_GetAccountMonitoringStatus_ReturnsTypedStatus()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId:D}",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""active"": true }");
+                @"{ ""professionallyMonitored"": true, ""compatibleMonitoringPlans"": [""ring_protect_pro""] }");
             _ = await _mockSession!.Authenticate();
 
-            JsonElement status = await _mockSession!.GetAccountMonitoringStatus(locationId);
+            VideoForensics.Providers.Ring.Entities.AccountMonitoringStatusResponse status = await _mockSession!.GetAccountMonitoringStatus(locationId);
 
-            Assert.True(status.GetProperty("active").GetBoolean());
+            Assert.True(status.ProfessionallyMonitored);
+            Assert.Equal("ring_protect_pro", Assert.Single(status.CompatibleMonitoringPlans!));
         }
 
         [Fact]

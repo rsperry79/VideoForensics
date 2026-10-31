@@ -139,6 +139,24 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task RingAccountSettingsPersister_PersistAccountMonitoringStatusAsync_CapturedStatus_WritesStatusWithPlans()
+        {
+            AccountMonitoringStatusResponse response = JsonSerializer.Deserialize<AccountMonitoringStatusResponse>(ReadFixture("account-monitoring-status-sanitized.json"))!;
+            var writer = new Mock<IRingAccountSettingsWriter>();
+            RingAccountMonitoringStatus? written = null;
+            _ = writer.Setup(w => w.ReplaceAccountMonitoringStatusAsync(It.IsAny<RingAccountMonitoringStatus>(), It.IsAny<CancellationToken>()))
+                .Callback<RingAccountMonitoringStatus, CancellationToken>((s, _) => written = s)
+                .Returns(Task.CompletedTask);
+
+            await CreatePersister(writer).PersistAccountMonitoringStatusAsync(response, LocationId);
+
+            Assert.NotNull(written);
+            Assert.Equal(LocationId, written!.ProviderLocationId);
+            Assert.Equal(response.AccountState, written.AccountState);
+            Assert.Equal(response.CompatibleMonitoringPlans!.Count, written.CompatibleMonitoringPlans.Count);
+        }
+
+        [Fact]
         public async Task RingAccountSettingsPersister_PersistLocationModeAsync_WriterThrows_LogsErrorAndDoesNotThrow()
         {
             LocationMode mode = JsonSerializer.Deserialize<LocationMode>(ReadFixture("location-mode-sanitized.json"))!;

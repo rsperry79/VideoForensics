@@ -65,6 +65,13 @@ namespace VideoForensics.Providers.Ring.Services
                 RingAccountSettingsMapper.MapLocationModeSharing(response, providerLocationId), ct), ct);
         }
 
+        /// <summary>Persists the alarm account monitoring status for a location.</summary>
+        public Task PersistAccountMonitoringStatusAsync(AccountMonitoringStatusResponse response, string providerLocationId, CancellationToken ct = default)
+        {
+            return TryWriteAsync("account monitoring status", () => _writer.ReplaceAccountMonitoringStatusAsync(
+                RingAccountSettingsMapper.MapAccountMonitoringStatus(response, providerLocationId), ct), ct);
+        }
+
         // Mapping runs inside the guarded call, so a malformed response is logged the same way as a failed write.
         private async Task TryWriteAsync(string area, Func<Task> write, CancellationToken ct)
         {

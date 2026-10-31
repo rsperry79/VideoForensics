@@ -814,6 +814,14 @@ namespace VideoForensics.Providers.Ring.Services
                     await _settingsPersister.PersistLocationModeSharingAsync(sharing, location.Id, ct);
                     _syncRunTally?.AddConfigArea();
                 }
+
+                // A 404 means the location has no alarm monitoring account; that is expected, not a fault.
+                Entities.AccountMonitoringStatusResponse? monitoring = await FetchForSyncAsync("account monitoring status", () => session.GetAccountMonitoringStatus(locationGuid, ct), ct, notFoundIsExpected: true);
+                if (monitoring != null)
+                {
+                    await _settingsPersister.PersistAccountMonitoringStatusAsync(monitoring, location.Id, ct);
+                    _syncRunTally?.AddConfigArea();
+                }
             }
 
             return accountLevelSucceeded;

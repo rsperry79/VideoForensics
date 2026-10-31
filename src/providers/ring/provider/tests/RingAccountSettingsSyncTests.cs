@@ -32,6 +32,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private const string LocationsUrl = "https://api.ring.com/devices/v1/locations";
         private const string RingDevicesUrl = "https://api.ring.com/clients_api/ring_devices";
         private const string GroupsUrl = $"https://api.ring.com/groups/v1/locations/{LocationId}/groups";
+        private const string MonitoringUrl = $"https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{LocationId}";
         private const string ModeUrl = $"https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{LocationId}";
 
         [Fact]
@@ -90,6 +91,9 @@ namespace VideoForensics.Providers.Ring.Tests
                 It.IsAny<CancellationToken>()), Times.Once);
             writer.Verify(w => w.ReplaceLocationModeSharingAsync(
                 It.Is<RingLocationModeSharing>(s => s.ProviderLocationId == LocationId && s.SharedUsersEnabled == sharing.SharedUsersEnabled),
+                It.IsAny<CancellationToken>()), Times.Once);
+            writer.Verify(w => w.ReplaceAccountMonitoringStatusAsync(
+                It.Is<RingAccountMonitoringStatus>(s => s.ProviderLocationId == LocationId && s.CompatibleMonitoringPlans.Count == 2),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -182,6 +186,7 @@ namespace VideoForensics.Providers.Ring.Tests
             handler.Routes[ModeUrl] = (HttpStatusCode.OK, ReadFixture("location-mode-sanitized.json"));
             handler.Routes[$"{ModeUrl}/settings"] = (HttpStatusCode.OK, ReadFixture("location-mode-settings-sanitized.json"));
             handler.Routes[$"{ModeUrl}/sharing"] = (HttpStatusCode.OK, ReadFixture("location-mode-sharing-sanitized.json"));
+            handler.Routes[MonitoringUrl] = (HttpStatusCode.OK, ReadFixture("account-monitoring-status-sanitized.json"));
             return handler;
         }
 
@@ -194,6 +199,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = writer.Setup(w => w.ReplaceLocationModeAsync(It.IsAny<RingLocationMode>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = writer.Setup(w => w.ReplaceLocationModeSettingsAsync(It.IsAny<RingLocationModeSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = writer.Setup(w => w.ReplaceLocationModeSharingAsync(It.IsAny<RingLocationModeSharing>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _ = writer.Setup(w => w.ReplaceAccountMonitoringStatusAsync(It.IsAny<RingAccountMonitoringStatus>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             return writer;
         }
 

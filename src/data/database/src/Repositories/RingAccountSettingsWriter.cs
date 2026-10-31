@@ -117,6 +117,20 @@ namespace VideoForensics.Data.Database.Repositories
             }, ct);
         }
 
+        public Task ReplaceAccountMonitoringStatusAsync(RingAccountMonitoringStatus status, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(status);
+
+            return ReplaceAsync(async (db, token) =>
+            {
+                List<RingAccountMonitoringStatus> existing = await db.RingAccountMonitoringStatuses
+                    .Include(s => s.CompatibleMonitoringPlans)
+                    .Where(s => s.ProviderLocationId == status.ProviderLocationId)
+                    .ToListAsync(token);
+                await SwapAsync(db, db.RingAccountMonitoringStatuses, existing, status, token);
+            }, ct);
+        }
+
         private async Task ReplaceAsync(Func<VideoForensicsDbContext, CancellationToken, Task> replace, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

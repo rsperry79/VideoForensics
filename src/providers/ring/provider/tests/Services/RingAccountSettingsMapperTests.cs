@@ -329,5 +329,51 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(root.GetProperty("sharedUsersEnabled").GetBoolean(), result.SharedUsersEnabled);
             Assert.Equal(root.GetProperty("lastUpdateTimeMS").GetInt64(), result.LastUpdateTimeMs);
         }
+
+        [Fact]
+        public void RingAccountSettingsMapper_CapturedMonitoringStatus_StoresEveryFieldAndPlans()
+        {
+            JsonElement root = FixtureRoot("account-monitoring-status-sanitized.json");
+            AccountMonitoringStatusResponse response = JsonSerializer.Deserialize<AccountMonitoringStatusResponse>(ReadFixture("account-monitoring-status-sanitized.json"))!;
+
+            RingAccountMonitoringStatus result = RingAccountSettingsMapper.MapAccountMonitoringStatus(response, LocationId);
+
+            Assert.Equal(LocationId, result.ProviderLocationId);
+            Assert.Equal(root.GetProperty("addressComplete").GetBoolean(), result.AddressComplete);
+            Assert.Equal(root.GetProperty("contactsComplete").GetBoolean(), result.ContactsComplete);
+            Assert.Equal(root.GetProperty("codewordComplete").GetBoolean(), result.CodewordComplete);
+            Assert.Equal(root.GetProperty("dispatchSetupComplete").GetBoolean(), result.DispatchSetupComplete);
+            Assert.Equal(root.GetProperty("userChangedAddress").GetBoolean(), result.UserChangedAddress);
+            Assert.Equal(root.GetProperty("alarmSignalSent").GetBoolean(), result.AlarmSignalSent);
+            Assert.Equal(root.GetProperty("professionallyMonitored").GetBoolean(), result.ProfessionallyMonitored);
+            Assert.Equal(root.GetProperty("userAcceptDispatch").GetBoolean(), result.UserAcceptDispatch);
+            Assert.Equal(root.GetProperty("vrRequired").GetBoolean(), result.VrRequired);
+            Assert.Equal(root.GetProperty("vrUserOptIn").GetBoolean(), result.VrUserOptIn);
+            Assert.Equal(root.GetProperty("cmsMonitoringType").GetString(), result.CmsMonitoringType);
+            Assert.Equal(root.GetProperty("suspectedBusiness").GetBoolean(), result.SuspectedBusiness);
+            Assert.Equal(root.GetProperty("accountStateReason").GetString(), result.AccountStateReason);
+            Assert.Equal(root.GetProperty("accountUuid").GetString(), result.AccountUuid);
+            Assert.Equal(root.GetProperty("accountState").GetString(), result.AccountState);
+            Assert.Equal(root.GetProperty("externalServiceConfigType").GetString(), result.ExternalServiceConfigType);
+            Assert.Equal(root.GetProperty("eligibleForDispatch").GetBoolean(), result.EligibleForDispatch);
+            Assert.Equal(root.GetProperty("sosOnly").GetBoolean(), result.SosOnly);
+            Assert.Equal(root.GetProperty("installationDate").GetInt64(), result.InstallationDate);
+            Assert.Equal(root.GetProperty("deliverSignals").GetBoolean(), result.DeliverSignals);
+            Assert.Equal(root.GetProperty("planProvider").GetString(), result.PlanProvider);
+            Assert.Equal(root.GetProperty("sosOnlyFlagOrFalse").GetBoolean(), result.SosOnlyFlagOrFalse);
+
+            string[] expectedPlans = root.GetProperty("compatibleMonitoringPlans").EnumerateArray().Select(p => p.GetString()!).ToArray();
+            Assert.Equal(expectedPlans, result.CompatibleMonitoringPlans.OrderBy(p => p.Position).Select(p => p.Plan));
+            Assert.All(result.CompatibleMonitoringPlans, p => Assert.Equal(result.Id, p.RingAccountMonitoringStatusId));
+        }
+
+        [Fact]
+        public void RingAccountSettingsMapper_MonitoringStatusWithoutPlans_MapsEmptyPlanList()
+        {
+            RingAccountMonitoringStatus result = RingAccountSettingsMapper.MapAccountMonitoringStatus(new AccountMonitoringStatusResponse(), LocationId);
+
+            Assert.Empty(result.CompatibleMonitoringPlans);
+            Assert.Null(result.InstallationDate);
+        }
     }
 }

@@ -251,6 +251,54 @@ namespace VideoForensics.Providers.Ring.Services
             };
         }
 
+        /// <summary>Maps the alarm account monitoring status and its compatible plans.</summary>
+        public static RingAccountMonitoringStatus MapAccountMonitoringStatus(AccountMonitoringStatusResponse response, string providerLocationId)
+        {
+            ArgumentNullException.ThrowIfNull(response);
+
+            var result = new RingAccountMonitoringStatus
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = providerLocationId,
+                AddressComplete = response.AddressComplete,
+                ContactsComplete = response.ContactsComplete,
+                CodewordComplete = response.CodewordComplete,
+                DispatchSetupComplete = response.DispatchSetupComplete,
+                UserChangedAddress = response.UserChangedAddress,
+                AlarmSignalSent = response.AlarmSignalSent,
+                ProfessionallyMonitored = response.ProfessionallyMonitored,
+                UserAcceptDispatch = response.UserAcceptDispatch,
+                VrRequired = response.VrRequired,
+                VrUserOptIn = response.VrUserOptIn,
+                CmsMonitoringType = response.CmsMonitoringType,
+                SuspectedBusiness = response.SuspectedBusiness,
+                AccountStateReason = response.AccountStateReason,
+                AccountUuid = response.AccountUuid,
+                AccountState = response.AccountState,
+                ExternalServiceConfigType = response.ExternalServiceConfigType,
+                EligibleForDispatch = response.EligibleForDispatch,
+                SosOnly = response.SosOnly,
+                InstallationDate = response.InstallationDate,
+                DeliverSignals = response.DeliverSignals,
+                PlanProvider = response.PlanProvider,
+                SosOnlyFlagOrFalse = response.SosOnlyFlagOrFalse,
+            };
+
+            int position = 0;
+            foreach (string plan in response.CompatibleMonitoringPlans ?? [])
+            {
+                result.CompatibleMonitoringPlans.Add(new RingAccountMonitoringPlan
+                {
+                    Id = Guid.NewGuid(),
+                    RingAccountMonitoringStatusId = result.Id,
+                    Position = position++,
+                    Plan = plan,
+                });
+            }
+
+            return result;
+        }
+
         private static RingAccountSessionFeatures MapSessionFeatures(SessionFeatures f, Guid profileId)
         {
             return new()

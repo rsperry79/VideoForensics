@@ -26,5 +26,8 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Replaces the location mode sharing state for a location (keyed by <see cref="RingLocationModeSharing.ProviderLocationId"/>).</summary>
         Task ReplaceLocationModeSharingAsync(RingLocationModeSharing sharing, CancellationToken ct);
+
+        /// <summary>Replaces the alarm account monitoring status and its plans for a location (keyed by <see cref="RingAccountMonitoringStatus.ProviderLocationId"/>).</summary>
+        Task ReplaceAccountMonitoringStatusAsync(RingAccountMonitoringStatus status, CancellationToken ct);
     }
 }
