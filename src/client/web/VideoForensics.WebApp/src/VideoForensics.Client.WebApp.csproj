@@ -48,7 +48,7 @@
   <!-- Visual Studio Debug builds stage themselves for the installed service, which applies the package and restarts.
        Command-line builds, including the test projects, do not stage. -->
   <Target Name="StageDebugBuildForService" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' == 'true'">
-    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.ps1&quot; -ProjectPath &quot;$(MSBuildProjectFullPath)&quot; -Configuration $(Configuration)" />
+    <Exec Command="wscript.exe //B //Nologo &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.vbs&quot; &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.ps1&quot; &quot;$(MSBuildProjectFullPath)&quot; $(Configuration) &quot;$(ProjectDir)$(IntermediateOutputPath)stage-debug-build.log&quot;" />
   </Target>
 
   <!-- Ui.Shared's src\ts\tsconfig.json is a TypeScript build input, not a runtime file. It reaches the publish
