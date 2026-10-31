@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -326,8 +327,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var transport = new FakeWebSocketTransport();
             RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport, bitrateTimerIntervalMs: 100);
 
-            var bitrateSamples = new List<long>();
-            liveView.OnBitrateSampleBps += bitrateSamples.Add;
+            // The timer raises samples on a background thread, so collect them in a thread-safe queue
+            // and assert on a snapshot. Enumerating a List while the timer adds to it throws.
+            var bitrateSamples = new ConcurrentQueue<long>();
+            liveView.OnBitrateSampleBps += bitrateSamples.Enqueue;
 
             // Simulate receiving RTP packets with ~1000 bytes each
             for (int i = 0; i < 10; i++)
@@ -338,9 +341,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Wait for timer to fire a couple of times
             await Task.Delay(250);
 
+            long[] samples = bitrateSamples.ToArray();
+
             // Should have received bitrate samples
-            Assert.NotEmpty(bitrateSamples);
-            Assert.All(bitrateSamples, bitrate => Assert.True(bitrate >= 0, "Bitrate should be non-negative"));
+            Assert.NotEmpty(samples);
+            Assert.All(samples, bitrate => Assert.True(bitrate >= 0, "Bitrate should be non-negative"));
 
             await liveView.CloseAsync();
         }
