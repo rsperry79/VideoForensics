@@ -167,7 +167,7 @@
                                             @if (!string.IsNullOrWhiteSpace(det.DetectionType))
                                             {
                                                 <dt>@L["DetailFieldDetectionType"]</dt>
-                                                <dd>@DetectionLabel(det.DetectionType)</dd>
+                                                <dd>@DetectionLabel(det.DetectionType, evt.EventType)</dd>
                                             }
                                             @if (Percent(det.Confidence) is { } confidence)
                                             {
@@ -204,7 +204,7 @@
                                             {
                                                 <button type="button" class="list-group-item list-group-item-action py-1 small"
                                                         data-testid="review-detail-occurrence" @onclick="() => NavigateTo(evt.DeviceId, occurrence.DetectedAtUtc)">
-                                                    <span>@DetectionLabel(occurrence.DetectionType)</span>
+                                                    <span>@DetectionLabel(occurrence.DetectionType, evt.EventType)</span>
                                                     <span class="review-detail-range"><LocalTimeText Value="occurrence.DetectedAtUtc" Format="g" /></span>
                                                 </button>
                                             }
@@ -723,9 +723,17 @@
         return label.ResourceNotFound ? eventType : label.Value;
     }
 
-    /// <summary>The localized label for a Ring detection type. A type with no label shows its raw string.</summary>
-    private string DetectionLabel(string detectionType)
+    /// <summary>
+    /// The localized label for a Ring detection type. A type with no label shows its raw string. "motion" and
+    /// "other_motion" say nothing the event does not, so they show the event's own type (also localized) instead.
+    /// </summary>
+    private string DetectionLabel(string detectionType, string eventType)
     {
+        if (detectionType.Equals("motion", StringComparison.OrdinalIgnoreCase) || detectionType.Equals("other_motion", StringComparison.OrdinalIgnoreCase))
+        {
+            return TypeLabel(eventType);
+        }
+
         LocalizedString label = L["DetectionType_" + detectionType.ToLowerInvariant()];
         return label.ResourceNotFound ? detectionType : label.Value;
     }

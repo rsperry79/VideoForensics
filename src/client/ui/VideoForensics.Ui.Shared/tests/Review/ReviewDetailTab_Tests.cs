@@ -642,4 +642,34 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         Assert.Empty(cut.FindAll(EventRow));
         Assert.Empty(DetailLoader.AnomalyCalls);
     }
+
+    [Fact]
+    public void ReviewDetailTab_MotionDetectionType_ShowsTheEventTypeInstead()
+    {
+        // Arrange
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base, "on_demand");
+        ServeFrom([evt]);
+        DetailLoader.DetailResponder = (_, _) =>
+        {
+            var detection = new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "motion" };
+            var occurrence = new EventDetectionTypeOccurrence { Id = Guid.NewGuid(), EventDetectionId = detection.Id, DetectionType = "other_motion", DetectedAtUtc = Base.AddMinutes(1) };
+            EventDetail detail = new(evt.Id, detection, [occurrence], [], [], []);
+            return Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail> { [evt.Id] = detail });
+        };
+        ReviewState.SetCameras([Devices[0].Id]);
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+
+        // Act
+        cut.Find(Toggle(evt)).Click();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
+        string body = cut.Find(EventBody).TextContent;
+        string onDemand = L["EventType_on_demand"].Value;
+        Assert.Equal(2, body.Split(onDemand).Length - 1);
+        Assert.DoesNotContain(L["DetectionType_motion"].Value, body);
+        Assert.DoesNotContain(L["DetectionType_other_motion"].Value, body);
+    }
 }
