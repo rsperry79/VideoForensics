@@ -533,6 +533,54 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
+        /// <summary>
+        /// Replaces the device's Ring-only ignore zones (with their vertices), motion-zone values and advanced detection-type names as sets. Each list
+        /// is the complete value Ring sent, so an empty list clears the stored rows; a null list leaves them untouched (chimes send none). Not change-logged.
+        /// </summary>
+        private static async Task ReplaceRingZoneRowsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.RingIgnoreZones != null)
+            {
+                List<RingDeviceIgnoreZone> storedZones = await db.RingDeviceIgnoreZones.Include(z => z.Vertices).Where(z => z.DeviceId == deviceId).ToListAsync(ct);
+                db.RingDeviceIgnoreZoneVertices.RemoveRange(storedZones.SelectMany(z => z.Vertices));
+                db.RingDeviceIgnoreZones.RemoveRange(storedZones);
+                foreach (RingDeviceIgnoreZone zone in settings.RingIgnoreZones)
+                {
+                    zone.Id = zone.Id == Guid.Empty ? Guid.NewGuid() : zone.Id;
+                    zone.DeviceId = deviceId;
+                    foreach (RingDeviceIgnoreZoneVertex vertex in zone.Vertices)
+                    {
+                        vertex.Id = vertex.Id == Guid.Empty ? Guid.NewGuid() : vertex.Id;
+                        vertex.RingDeviceIgnoreZoneId = zone.Id;
+                    }
+
+                    _ = db.RingDeviceIgnoreZones.Add(zone);
+                }
+            }
+
+            if (settings.RingMotionZones != null)
+            {
+                db.RingDeviceMotionZones.RemoveRange(await db.RingDeviceMotionZones.Where(z => z.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceMotionZone row in settings.RingMotionZones)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceMotionZones.Add(row);
+                }
+            }
+
+            if (settings.RingAdvancedMotionDetectionTypes != null)
+            {
+                db.RingDeviceAdvancedMotionDetectionTypes.RemoveRange(await db.RingDeviceAdvancedMotionDetectionTypes.Where(t => t.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceAdvancedMotionDetectionType row in settings.RingAdvancedMotionDetectionTypes)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceAdvancedMotionDetectionTypes.Add(row);
+                }
+            }
+        }
+
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
         private static string OfflineMotionText(DeviceOfflineMotionSettings s)
         {
@@ -605,6 +653,7 @@ namespace VideoForensics.Data.Database.Repositories
             await ReplaceRingSettingsAsync(db, deviceId, settings, ct);
             await ReplaceGeneralSettingsAsync(db, deviceId, settings, ct);
             await ReplaceSettingGroupRowsAsync(db, deviceId, settings, ct);
+            await ReplaceRingZoneRowsAsync(db, deviceId, settings, ct);
             // An Observed light event is written only on an off-to-on transition, in the same save as the rest of the sync.
             _ = await DeviceLightEventRepository.AddObservedIfTransitionAsync(db, deviceId, settings.LightSecondsRemaining, changedAtUtc, ct);
             if (settings.LightIsOn is { } lightOn)

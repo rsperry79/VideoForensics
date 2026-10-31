@@ -73,3 +73,6 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-31 | db-small-endpoints: anchored edit | LocationHistory.cs anchor matched two 'type' properties; the batch aborted before writing | anchor not unique | anchored on the class header; reran only unapplied edits
 2026-10-31 | db-small-endpoints: field-map write | json.dumps wrote LF into CRLF field-map.json (2024 bare LF) | 
  line endings in script output | converted to CRLF, verified per file
+2026-10-31 | ring-zones: red test | RingDoorbotZoneSettingsTests did not compile (DeviceDetailFields, AdvancedMotionZoneDetail not found) | missing using VideoForensics.Core.Providers.Common.Contracts | added the using; rerun gave 3 runtime failures (red record kept outside the repo)
+2026-10-31 | ring-zones: repository edit | replacement text renamed ReplaceSettingGroupRowsAsync call to ReplaceSSettingGroupRowsAsync | typo in the edit's new_string | fixed in the next edit, before any build
+2026-10-31 | ring-zones: full Ring provider run | UnstoredNotes_SnoozeSettings_LoggedWithJsonTypeAndNotStored failed after snooze_settings note was changed to non-null only | changed a behaviour an existing test pins (null note) without reading that test first | reverted to the existing note; motion_snooze gets its own non-null note

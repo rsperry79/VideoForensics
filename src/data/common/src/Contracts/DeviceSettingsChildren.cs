@@ -28,5 +28,8 @@ namespace VideoForensics.Data.Common.Contracts
         RingDeviceNetworkDiagnosis? NetworkDiagnosis = null,
         RingDeviceSettings? RingSettings = null,
         DeviceGeneralSettings? GeneralSettings = null,
-        RingDeviceSettingGroupRows? RingSettingGroups = null);
+        RingDeviceSettingGroupRows? RingSettingGroups = null,
+        IReadOnlyList<RingDeviceIgnoreZone>? RingIgnoreZones = null,
+        IReadOnlyList<RingDeviceMotionZone>? RingMotionZones = null,
+        IReadOnlyList<RingDeviceAdvancedMotionDetectionType>? RingAdvancedMotionDetectionTypes = null);
 }

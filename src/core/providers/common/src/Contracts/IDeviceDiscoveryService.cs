@@ -120,6 +120,9 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         OfflineMotionDetail? OfflineMotion = null,
         IReadOnlyList<DetectionTypeDetail>? DetectionTypes = null,
         IReadOnlyList<DetectionThresholdDetail>? DetectionThresholds = null,
+        IReadOnlyList<IgnoreZoneDetail>? IgnoreZones = null,
+        IReadOnlyList<long?>? MotionZones = null,
+        IReadOnlyList<string>? AdvancedMotionDetectionTypes = null,
         DateTime? DeactivatedAtUtc = null,
         DateTime? SharedAtUtc = null
     );
@@ -154,4 +157,7 @@ namespace VideoForensics.Core.Providers.Common.Contracts
 
     /// <summary>One zone vertex. Position is Ring's 1-based vertex number (vertex1..vertex8).</summary>
     public sealed record AdvancedMotionZoneVertexDetail(int Position, double? X, double? Y);
+
+    /// <summary>An ignore zone (ignore_zones.zoneN) of a doorbot or stickup cam. ZoneNumber is N; vertices keep Ring's 1-based numbering.</summary>
+    public sealed record IgnoreZoneDetail(int ZoneNumber, string? Name, int? State, IReadOnlyList<AdvancedMotionZoneVertexDetail> Vertices);
 }

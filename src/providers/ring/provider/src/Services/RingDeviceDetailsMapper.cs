@@ -143,8 +143,14 @@ namespace VideoForensics.Providers.Ring.Services
                 OfflineMotion: typed.OfflineMotion,
                 DetectionTypes: typed.DetectionTypes,
                 DetectionThresholds: typed.Thresholds,
-                Zones: ToZoneSettingsDetails(d.ZoneSettings),
+                Zones: ToZoneSettingsDetails(d.ZoneSettings ?? d.Settings?.ZoneSettings),
                 AdvancedObjectSettings: ToObjectSettingDetails(d.Settings?.AdvancedObjectSettings),
+                MotionSnoozePresets: d.Settings?.MotionSnoozePresets?.ToList(),
+                LiveViewPresets: d.Settings?.LiveViewPresets?.ToList(),
+                AdvancedMotionZones: d.Settings?.AdvancedMotionZones == null ? null : ToZoneDetails(d.Settings.AdvancedMotionZones),
+                IgnoreZones: ToIgnoreZoneDetails(d.Settings?.IgnoreZones),
+                MotionZones: d.Settings?.MotionZones?.ToList(),
+                AdvancedMotionDetectionTypes: d.Settings?.AdvancedMotionDetectionTypes?.ToList(),
                 RingRingId: d.RingId,
                 DeactivatedAtUtc: top.DeactivatedAtUtc, SharedAtUtc: top.SharedAtUtc);
         }
@@ -217,8 +223,11 @@ namespace VideoForensics.Providers.Ring.Services
                 PirSettingsSensitivity3: ToInt(st?.PirSettings?.Sensitivity3),
                 PirSettingsZoneEnable: ToInt(st?.PirSettings?.ZoneEnable),
                 PirSettingsZoneMask: ToInt(st?.PirSettings?.ZoneMask),
-                Zones: ToZoneSettingsDetails(s.ZoneSettings),
+                Zones: ToZoneSettingsDetails(s.ZoneSettings ?? st?.ZoneSettings),
                 AdvancedObjectSettings: ToObjectSettingDetails(st?.AdvancedObjectSettings),
+                IgnoreZones: ToIgnoreZoneDetails(st?.IgnoreZones),
+                MotionZones: st?.MotionZones?.ToList(),
+                AdvancedMotionDetectionTypes: st?.AdvancedMotionDetectionTypes?.ToList(),
                 DeactivatedAtUtc: top.DeactivatedAtUtc, SharedAtUtc: top.SharedAtUtc);
         }
 
@@ -348,7 +357,29 @@ namespace VideoForensics.Providers.Ring.Services
                     .ToList();
             }
 
-            return new DeviceSettingsChildren(snooze, live, zones, zoneRows, objectRows, offlineRows, detectionRows, thresholdRows);
+            // Ring-only ignore zones, motion zones and detection-type names: null when the fields are absent (chimes), so their stored rows stay untouched.
+            var ignoreRows = fields.IgnoreZones?
+                .Select(z => new RingDeviceIgnoreZone
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    ZoneNumber = z.ZoneNumber,
+                    Name = z.Name,
+                    State = z.State,
+                    Vertices = z.Vertices
+                        .Select(v => new RingDeviceIgnoreZoneVertex { Id = Guid.NewGuid(), Position = v.Position, X = v.X, Y = v.Y })
+                        .ToList()
+                })
+                .ToList();
+            var motionZoneRows = fields.MotionZones?
+                .Select((value, i) => new RingDeviceMotionZone { Id = Guid.NewGuid(), DeviceId = deviceId, Position = i, Value = value })
+                .ToList();
+            var detectionTypeRows = fields.AdvancedMotionDetectionTypes?
+                .Select((type, i) => new RingDeviceAdvancedMotionDetectionType { Id = Guid.NewGuid(), DeviceId = deviceId, Position = i, DetectionType = type })
+                .ToList();
+
+            return new DeviceSettingsChildren(snooze, live, zones, zoneRows, objectRows, offlineRows, detectionRows, thresholdRows,
+                RingIgnoreZones: ignoreRows, RingMotionZones: motionZoneRows, RingAdvancedMotionDetectionTypes: detectionTypeRows);
         }
 
         /// <summary>
@@ -568,6 +599,7 @@ namespace VideoForensics.Providers.Ring.Services
             notes.AddRange(groups.Unstored);
             RingSettingsGroups settings = RingDeviceSettingsParser.Parse(d.Settings != null, d.Settings?.AdditionalFields, d.CreatedAt);
             notes.AddRange(settings.Unstored);
+            NoteMotionSnooze(d.MotionSnooze, notes);
             return new RingDeviceDetails(
                 TimeZone: d.TimeZone,
                 FirmwareVersion: d.FirmwareVersion,
@@ -606,6 +638,7 @@ namespace VideoForensics.Providers.Ring.Services
             notes.AddRange(groups.Unstored);
             RingSettingsGroups settings = RingDeviceSettingsParser.Parse(s.Settings != null, s.Settings?.AdditionalFields, s.CreatedAt);
             notes.AddRange(settings.Unstored);
+            NoteMotionSnooze(s.MotionSnooze, notes);
             return new RingDeviceDetails(
                 TimeZone: s.TimeZone,
                 FirmwareVersion: s.FirmwareVersion,
@@ -682,6 +715,36 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
+            result.Add(new AdvancedMotionZoneDetail(zoneKey, zone.Name, ToInt(zone.State), PresentVertices(zone)));
+        }
+
+        /// <summary>Maps ignore_zones (zone1..zone4) with the same present-vertex rule as advanced zones. Null when Ring sent no ignore_zones object.</summary>
+        private static IReadOnlyList<IgnoreZoneDetail>? ToIgnoreZoneDetails(IgnoreZones? zones)
+        {
+            if (zones == null)
+            {
+                return null;
+            }
+
+            var result = new List<IgnoreZoneDetail>();
+            AddIgnoreZone(result, 1, zones.Zone1);
+            AddIgnoreZone(result, 2, zones.Zone2);
+            AddIgnoreZone(result, 3, zones.Zone3);
+            AddIgnoreZone(result, 4, zones.Zone4);
+            return result;
+        }
+
+        private static void AddIgnoreZone(List<IgnoreZoneDetail> result, int zoneNumber, Zone? zone)
+        {
+            if (zone != null)
+            {
+                result.Add(new IgnoreZoneDetail(zoneNumber, zone.Name, ToInt(zone.State), PresentVertices(zone)));
+            }
+        }
+
+        /// <summary>The vertices a zone sends, numbered as Ring names them (vertex1..vertex8). An absent vertex is skipped, not stored as 0,0.</summary>
+        private static List<AdvancedMotionZoneVertexDetail> PresentVertices(Zone zone)
+        {
             Vertex?[] vertices = [zone.Vertex1, zone.Vertex2, zone.Vertex3, zone.Vertex4, zone.Vertex5, zone.Vertex6, zone.Vertex7, zone.Vertex8];
             List<AdvancedMotionZoneVertexDetail> present = [];
             for (int i = 0; i < vertices.Length; i++)
@@ -692,7 +755,18 @@ namespace VideoForensics.Providers.Ring.Services
                 }
             }
 
-            result.Add(new AdvancedMotionZoneDetail(zoneKey, zone.Name, ToInt(zone.State), present));
+            return present;
+        }
+
+        /// <summary>
+        /// motion_snooze keeps its raw JSON in MotionSnoozeJson, but has no typed column. A non-null value is noted by key and JSON type only, never the value.
+        /// </summary>
+        private static void NoteMotionSnooze(JsonElement? motionSnooze, List<string> notes)
+        {
+            if (motionSnooze is { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined } e)
+            {
+                notes.Add($"motion_snooze not stored as columns: shape unknown ({e.ValueKind})");
+            }
         }
 
         /// <summary>
@@ -747,7 +821,11 @@ namespace VideoForensics.Providers.Ring.Services
             };
         }
 
-        /// <summary>Maps zone_settings to zone rows: motion zones first, then package zones. Null when Ring sent no zone_settings.</summary>
+        /// <summary>
+        /// Maps zone_settings to zone rows: motion zones first, then package zones. Null when Ring sent no zone_settings. Callers pass the top-level
+        /// zone_settings or, failing that, settings.zone_settings: the real device response carries it under settings, and the top level is filled
+        /// from the device-settings body. Both shapes are the same object, so one mapping serves them.
+        /// </summary>
         private static IReadOnlyList<DeviceZoneDetail>? ToZoneSettingsDetails(ZoneSettings? zoneSettings)
         {
             if (zoneSettings == null)

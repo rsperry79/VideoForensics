@@ -361,6 +361,18 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the Ring-only scalar settings of a device (settings keys and created_at).</summary>
         public DbSet<RingDeviceSettings> RingDeviceSettings { get; set; }
 
+        /// <summary>Gets or sets the Ring ignore zones (ignore_zones.zoneN) of a device; vertices are child rows.</summary>
+        public DbSet<RingDeviceIgnoreZone> RingDeviceIgnoreZones { get; set; }
+
+        /// <summary>Gets or sets the vertices of the Ring ignore zones.</summary>
+        public DbSet<RingDeviceIgnoreZoneVertex> RingDeviceIgnoreZoneVertices { get; set; }
+
+        /// <summary>Gets or sets the entries of a device's Ring motion_zones array.</summary>
+        public DbSet<RingDeviceMotionZone> RingDeviceMotionZones { get; set; }
+
+        /// <summary>Gets or sets the entries of a device's Ring advanced_motion_detection_types array.</summary>
+        public DbSet<RingDeviceAdvancedMotionDetectionType> RingDeviceAdvancedMotionDetectionTypes { get; set; }
+
         /// <summary>Gets or sets the provider-agnostic general settings of a device.</summary>
         public DbSet<DeviceGeneralSettings> DeviceGeneralSettings { get; set; }
         public DbSet<RingDeviceAdvancedMotionSettings> RingDeviceAdvancedMotionSettings { get; set; }

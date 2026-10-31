@@ -218,6 +218,62 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(StartUtc, state.LastConfigSyncUtc);
         }
 
+        /// <summary>
+        /// The device list's settings object carries the keys the device-settings body does not (presets, advanced zones, ignore zones, motion
+        /// arrays, detection-type names, the advanced-motion scalars and zone_settings). Two config syncs must keep them in every write.
+        /// </summary>
+        [Fact]
+        public async Task RingDeviceSettingsConfigSync_ListEntryKeysAbsentFromSettingsBody_KeptInEveryConfigSync()
+        {
+            var writes = new ConcurrentBag<DeviceWrite>();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
+            handler.Routes[RingDevicesUrl] = (HttpStatusCode.OK,
+                "{\"doorbots\":[{\"id\":1001,\"description\":\"Front Door\",\"location_id\":\"" + LocationId + "\",\"device_id\":\"front\",\"settings\":" + ListSettingsJson + "}]," +
+                "\"authorized_doorbots\":[],\"base_stations\":[],\"chimes\":[]," +
+                "\"stickup_cams\":[{\"id\":2002,\"description\":\"Garage Cam\",\"location_id\":\"" + LocationId + "\",\"device_id\":\"garage\",\"settings\":" + ListSettingsJson + "}]}");
+            handler.Routes[FrontDoorSettingsUrl] = (HttpStatusCode.OK, "{\"doorbell_volume\":3}");
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+
+            _ = await SyncAsync(handler, data, state, clock, new RecordingLogger());
+            clock.Advance(TimeSpan.FromHours(25));
+            _ = await SyncAsync(handler, data, state, clock, new RecordingLogger());
+
+            Assert.Equal(2, state.MarkCount);
+            Assert.Equal(2, writes.Count(w => w.DeviceId == FrontDoorGuid));
+            Assert.Equal(2, writes.Count(w => w.DeviceId == GarageCamGuid));
+            foreach (DeviceWrite write in writes)
+            {
+                AssertListOnlyRowsKept(write.Settings!);
+            }
+
+            // The front door body has no zone_settings, so its zone rows come from the list entry.
+            Assert.All(writes.Where(w => w.DeviceId == FrontDoorGuid), w => Assert.Equal("z-9", Assert.Single(w.Settings!.Zones!).ZoneId));
+        }
+
+        private const string ListSettingsJson =
+            "{\"live_view_presets\":[\"low\",\"high\"],\"motion_snooze_presets\":[\"none\",\"medium\"]," +
+            "\"advanced_motion_zones\":{\"zone1\":{\"name\":\"Zone A\",\"state\":2,\"vertex1\":{\"x\":0,\"y\":0.25},\"vertex2\":{\"x\":0.5,\"y\":0.75}}}," +
+            "\"ignore_zones\":{\"zone1\":{\"name\":\"Ign\",\"state\":1,\"vertex1\":{\"x\":0.1,\"y\":0.2}}}," +
+            "\"motion_zones\":[1,0],\"advanced_motion_detection_types\":[\"human\"]," +
+            "\"advanced_motion_zones_enabled\":true,\"advanced_motion_zones_type\":\"8vertices\"," +
+            "\"zone_settings\":{\"motion\":[{\"id\":\"z-9\",\"name\":\"Zone M\",\"state\":\"enabled\",\"properties\":{\"detection_types\":[\"motion\"]},\"vertices\":[{\"x\":0,\"y\":0.1}]}]}}";
+
+        private static void AssertListOnlyRowsKept(DeviceSettingsChildren children)
+        {
+            Assert.Equal(new[] { "low", "high" }, children.LiveViewPresets.Select(p => p.Preset));
+            Assert.Equal(new[] { "none", "medium" }, children.MotionSnoozePresets.Select(p => p.Preset));
+            DeviceAdvancedMotionZone zone = Assert.Single(children.AdvancedMotionZones);
+            Assert.Equal("zone1", zone.ZoneKey);
+            Assert.Equal(2, zone.Vertices.Count);
+            _ = Assert.Single(children.RingIgnoreZones!);
+            Assert.Equal(new long?[] { 1, 0 }, children.RingMotionZones!.OrderBy(m => m.Position).Select(m => m.Value).ToArray());
+            Assert.Equal("human", Assert.Single(children.RingAdvancedMotionDetectionTypes!).DetectionType);
+            Assert.True(children.RingSettings!.AdvancedMotionZonesEnabled);
+            Assert.Equal("8vertices", children.RingSettings.AdvancedMotionZonesType);
+        }
+
         private static async Task<IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>> SyncAsync(
             StubSessionHandler handler,
             Mock<IVideoForensicsDataClient> data,

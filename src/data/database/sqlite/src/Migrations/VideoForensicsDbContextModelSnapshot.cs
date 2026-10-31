@@ -4437,6 +4437,31 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingChimeLinkedDoorbots");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceAdvancedMotionDetectionType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceAdvancedMotionDetectionTypes");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceAdvancedMotionSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5295,6 +5320,59 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("RingDeviceHealthExtras");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceIgnoreZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("State")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ZoneNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "ZoneNumber")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceIgnoreZones");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceIgnoreZoneVertex", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RingDeviceIgnoreZoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RingDeviceIgnoreZoneId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceIgnoreZoneVertices");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceMiscSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5463,6 +5541,29 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId");
 
                     b.ToTable("RingDeviceMotionSnoozeProfiles");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceMotionZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("Value")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("RingDeviceMotionZones");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceNetworkDiagnosis", b =>
@@ -5638,6 +5739,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<bool?>("ActiveStreamingEventLedEnabled")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("AdvancedMotionZonesEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AdvancedMotionZonesType")
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("ConciergeAlexaDelayMs")
                         .HasColumnType("INTEGER");
@@ -7923,6 +8030,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceAdvancedMotionDetectionType", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceAdvancedMotionSettings", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
@@ -7995,6 +8111,24 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceIgnoreZone", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceIgnoreZoneVertex", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.RingDeviceIgnoreZone", null)
+                        .WithMany("Vertices")
+                        .HasForeignKey("RingDeviceIgnoreZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceMiscSettings", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
@@ -8014,6 +8148,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceMotionSnoozeProfile", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceMotionZone", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
                         .WithMany()
@@ -8369,6 +8512,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceFeatureState", b =>
                 {
                     b.Navigation("Reasons");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDeviceIgnoreZone", b =>
+                {
+                    b.Navigation("Vertices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingEventCvDetectionDetail", b =>

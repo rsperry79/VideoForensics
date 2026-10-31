@@ -137,6 +137,15 @@ namespace VideoForensics.Data.Common.Entities
         /// </summary>
         public DateTime? RingCreatedAt { get; set; }
 
+        /// <summary>settings.advanced_motion_zones_enabled. Null when Ring did not send it.</summary>
+        public bool? AdvancedMotionZonesEnabled { get; set; }
+
+        /// <summary>
+        /// settings.advanced_motion_zones_type (sample value "8vertices"). Only one captured value, so the text type is a GUESS. Confirm against a real capture
+        /// before relying on the column type.
+        /// </summary>
+        public string? AdvancedMotionZonesType { get; set; }
+
         /// <summary>UTC time this row was written by a sync (not a Ring value).</summary>
         public DateTime UpdatedAtUtc { get; set; }
     }

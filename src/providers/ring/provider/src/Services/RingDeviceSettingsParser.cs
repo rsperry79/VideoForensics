@@ -346,10 +346,14 @@ namespace VideoForensics.Providers.Ring.Services
             ["vod_settings", "use_cached_vod_domain"],
             ["volume_settings", "mic_volume"],
             ["volume_settings", "voice_volume"],
+            ["advanced_motion_zones_enabled"],
+            ["advanced_motion_zones_type"],
         ];
 
         private static void ApplyRing(IReadOnlyDictionary<string, JsonElement> f, RingDeviceSettings r, List<string> notes)
         {
+            r.AdvancedMotionZonesEnabled = Bool(f, notes, "advanced_motion_zones_enabled");
+            r.AdvancedMotionZonesType = Text(f, notes, "advanced_motion_zones_type");
             r.StarkEnabled = Bool(f, notes, "stark_enabled");
             r.StarkEnrolled = Bool(f, notes, "stark_enrolled");
             r.EnableRichNotifications = Bool(f, notes, "enable_rich_notifications");

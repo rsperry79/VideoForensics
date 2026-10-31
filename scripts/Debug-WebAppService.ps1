@@ -26,7 +26,7 @@ Folder the build runs from when the service is not installed.
 Build configuration. Debug keeps the PDBs the debugger needs.
 
 .PARAMETER Publish
-Without an installed service, publish a self-contained build to a temporary folder instead of copying the Visual Studio
+Without an installed service, publish a framework-dependent build to a temporary folder instead of copying the Visual Studio
 build output. Ignored when the service is installed, because staging always publishes.
 
 .PARAMETER SkipAttach
@@ -53,7 +53,7 @@ Dry run: nothing is staged, copied, stopped, started, or attached.
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$ServiceName = 'VideoForensics',
-    [string]$DebugDirectory = (Join-Path $PSScriptRoot '..\artifacts\webapp-debug'),
+    [string]$DebugDirectory,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
     [switch]$Publish,
@@ -64,6 +64,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Windows PowerShell 5.1 leaves $PSScriptRoot empty in parameter defaults under -File, so the default is set here.
+if (-not $DebugDirectory) { $DebugDirectory = Join-Path $PSScriptRoot '..\artifacts\webapp-debug' }
 
 $project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
@@ -131,15 +134,62 @@ function Wait-ForStagedBuild {
     return $false
 }
 
+# Returns the running Visual Studio instance, or null. Marshal.GetActiveObject exists only in Windows PowerShell 5.1,
+# so PowerShell 7 calls oleaut32 directly.
+function Get-RunningVisualStudio {
+    if (-not ('VideoForensics.Ole' -as [type])) {
+        Add-Type -Namespace VideoForensics -Name Ole -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("oleaut32.dll", PreserveSig = false)]
+public static extern void GetActiveObject(ref System.Guid rclsid, System.IntPtr pvReserved, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Interface)] out object ppunk);
+'@
+    }
+
+    try {
+        $clsid = [Type]::GetTypeFromProgID('VisualStudio.DTE').GUID
+        $instance = $null
+        [VideoForensics.Ole]::GetActiveObject([ref]$clsid, [IntPtr]::Zero, [ref]$instance)
+        return $instance
+    }
+    catch {
+        return $null
+    }
+}
+
+# Builds the solution in the running Visual Studio, the way F5 would. It runs only when the open solution is this
+# checkout and its active configuration is the one asked for, so Visual Studio's settings are never changed. Returns
+# $false when it did not apply, and the caller falls back to dotnet build.
+function Build-WithVisualStudio {
+    param([Parameter(Mandatory)][string]$Configuration)
+
+    $dte = Get-RunningVisualStudio
+    if (-not $dte) { return $false }
+
+    $solutionPath = $dte.Solution.FullName
+    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    if (-not $solutionPath -or (Split-Path -Parent $solutionPath) -ne $repoRoot) {
+        Write-Warning "The open Visual Studio solution is not this checkout ($solutionPath). Building with dotnet build."
+        return $false
+    }
+    $activeConfiguration = $dte.Solution.SolutionBuild.ActiveConfiguration.Name
+    if ($activeConfiguration -ne $Configuration) {
+        Write-Warning "Visual Studio's active configuration is $activeConfiguration, not $Configuration. Building with dotnet build."
+        return $false
+    }
+
+    Write-Host "Building the solution in Visual Studio ($Configuration)"
+    $dte.Solution.SolutionBuild.Build($true)
+    $failed = $dte.Solution.SolutionBuild.LastBuildInfo
+    if ($failed -ne 0) { throw "Visual Studio build failed in $failed project(s). See its Error List." }
+    return $true
+}
+
 # Attaches the debugger of a running Visual Studio instance. Without an open instance the PID is reported
 # so it can be attached by hand.
 function Attach-VisualStudioDebugger {
     param([Parameter(Mandatory)][int]$ProcessId)
 
-    try {
-        $dte = [System.Runtime.InteropServices.Marshal]::GetActiveObject('VisualStudio.DTE')
-    }
-    catch {
+    $dte = Get-RunningVisualStudio
+    if (-not $dte) {
         Write-Warning "No running Visual Studio instance found. Attach to PID $ProcessId manually."
         return
     }
@@ -152,6 +202,21 @@ function Attach-VisualStudioDebugger {
     $target.Attach()
     Write-Host "Visual Studio attached to $($target.Name) (PID $ProcessId)."
 }
+
+# The debug build is framework-dependent, so the x64 .NET 10 runtime must be installed. The service finds its runtime
+# through the x64 InstalledVersions registry key rather than PATH, so that key is what gets checked.
+function Test-DotNet10Runtime {
+    foreach ($framework in 'Microsoft.NETCore.App', 'Microsoft.AspNetCore.App') {
+        $key = "HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\$framework"
+        $versions = if (Test-Path $key) { @((Get-Item $key).GetValueNames()) } else { @() }
+        if (-not ($versions | Where-Object { $_ -like '10.*' })) {
+            throw "$framework 10.x (x64) is not installed. Install the .NET 10 ASP.NET Core Runtime (x64) from https://dot.net, then rerun this script."
+        }
+    }
+    Write-Host '.NET 10 runtime (x64) is installed.'
+}
+
+Test-DotNet10Runtime
 
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 $serviceInfo = Get-CimInstance Win32_Service -Filter "Name='$ServiceName'" -ErrorAction SilentlyContinue
@@ -168,6 +233,33 @@ if ($useService) {
         Write-Host 'Dry run only. Nothing was staged, stopped, started, or attached.'
         exit 0
     }
+
+    # Attaching to the LocalSystem service needs an elevated debugger, and DTE only lists Visual Studio at the same
+    # integrity level. Staging alone does not need elevation, so only an attach triggers the UAC prompt. It runs before
+    # anything is staged, so a declined prompt changes nothing.
+    $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+    if (-not $SkipAttach -and -not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-Host 'Attaching to the LocalSystem service needs elevation. Relaunching this script elevated (UAC prompt).'
+        $relaunchArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
+        foreach ($name in $PSBoundParameters.Keys) {
+            if ($name -in 'WhatIf', 'Confirm') { continue }
+            $value = $PSBoundParameters[$name]
+            if ($value -is [switch]) {
+                if ($value.IsPresent) { $relaunchArguments += "-$name" }
+            }
+            else {
+                $relaunchArguments += "-$name", "`"$value`""
+            }
+        }
+
+        try {
+            $elevated = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $relaunchArguments -Verb RunAs -Wait -PassThru
+        }
+        catch {
+            throw "Elevation was declined or failed, so nothing was staged or attached. $($_.Exception.Message)"
+        }
+        exit $elevated.ExitCode
+    }
 }
 else {
     Write-Warning "Service '$ServiceName' is not installed. The build will run from $DebugDirectory instead."
@@ -181,15 +273,18 @@ if (-not $useService) {
         $stage = Join-Path $env:TEMP ('vf-debug-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
         $sourceDirectory = $stage
         Write-Host "Publishing $project ($Configuration) to $stage"
-        # Self-contained, matching deploy\Deploy-WebAppToProd.ps1, so the copy has the same runtime layout.
-        dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
+        # Framework-dependent: the machine's .NET 10 runtime runs it, the same build the service path stages.
+        dotnet publish $project -c $Configuration -r win-x64 --self-contained false -o $stage
         if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
     }
     else {
         $sourceDirectory = $buildOutput
-        Write-Host "Building $project ($Configuration) into $buildOutput"
-        dotnet build $project -c $Configuration
-        if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+        $builtByVisualStudio = -not $WhatIfPreference -and (Build-WithVisualStudio -Configuration $Configuration)
+        if (-not $builtByVisualStudio) {
+            Write-Host "Building $project ($Configuration) into $buildOutput"
+            dotnet build $project -c $Configuration
+            if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+        }
     }
     if (-not (Test-Path (Join-Path $sourceDirectory $exeName))) { throw "The build output has no $exeName in $sourceDirectory." }
 
@@ -210,15 +305,10 @@ try {
 
     $processId = $null
     if ($useService) {
-        $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-        if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-            # Attaching to the LocalSystem service needs elevation anyway; say so before staging rather than after.
-            Write-Warning 'Not elevated: staging works, but attaching the debugger to the LocalSystem service needs an elevated Visual Studio.'
-        }
 
         if ($PSCmdlet.ShouldProcess("service $ServiceName", "Stage the $Configuration build")) {
             Write-Host "Staging the $Configuration build with stage-update.ps1"
-            & $stageScript -Build -Configuration $Configuration
+            & $stageScript -Build -Configuration $Configuration -FrameworkDependent
             if ($LASTEXITCODE -ne 0) {
                 throw "stage-update.ps1 failed with exit code $LASTEXITCODE. If access was denied, run deploy\windows\enable-dev-updates.ps1 once as administrator."
             }
