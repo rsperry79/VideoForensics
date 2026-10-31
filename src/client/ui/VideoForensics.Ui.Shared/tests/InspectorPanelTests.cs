@@ -224,6 +224,54 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     }
 
     [Fact]
+    public void RawTab_WhenRawJsonIsRemainder_ShowsTheNotStoredNote()
+    {
+        var state = new InspectorState();
+        state.Show(new InspectorModel(Title: "TestTitle", Fields: new { }, RawJson: "{\"extra\":\"v\"}", RawJsonIsRemainder: true));
+        _ = Services.AddScoped(_ => state);
+
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+        component.Find("[data-testid='inspector-tab-raw']").Click();
+
+        string note = Services.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<Client.Ui.Shared.Resources.SharedResources>>()["InspectorRawNotStored"].Value;
+        Assert.NotEqual("InspectorRawNotStored", note);
+        Assert.Contains(note, System.Net.WebUtility.HtmlDecode(component.Markup));
+        Assert.Contains("extra", component.Markup);
+    }
+
+    [Fact]
+    public void RawTab_WhenRemainderIsEmpty_ShowsTheNoUnmappedDataMessageAndTheNote()
+    {
+        var state = new InspectorState();
+        state.Show(new InspectorModel(Title: "TestTitle", Fields: new { }, RawJson: null, RawJsonIsRemainder: true));
+        _ = Services.AddScoped(_ => state);
+
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+        component.Find("[data-testid='inspector-tab-raw']").Click();
+
+        Microsoft.Extensions.Localization.IStringLocalizer<Client.Ui.Shared.Resources.SharedResources> l =
+            Services.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<Client.Ui.Shared.Resources.SharedResources>>();
+        string markup = System.Net.WebUtility.HtmlDecode(component.Markup);
+        Assert.Contains(l["InspectorRawNotStored"].Value, markup);
+        Assert.Contains(l["InspectorNoUnmappedData"].Value, markup);
+        Assert.DoesNotContain(l["InspectorNoRawData"].Value, markup);
+    }
+
+    [Fact]
+    public void RawTab_WhenRawJsonIsNotRemainder_ShowsNoNote()
+    {
+        var state = new InspectorState();
+        state.Show(new InspectorModel(Title: "TestTitle", Fields: new { }, RawJson: "{\"a\":1}"));
+        _ = Services.AddScoped(_ => state);
+
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+        component.Find("[data-testid='inspector-tab-raw']").Click();
+
+        string note = Services.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<Client.Ui.Shared.Resources.SharedResources>>()["InspectorRawNotStored"].Value;
+        Assert.DoesNotContain(note, System.Net.WebUtility.HtmlDecode(component.Markup));
+    }
+
+    [Fact]
     public void RelatedTab_RendersLinks()
     {
         // Arrange

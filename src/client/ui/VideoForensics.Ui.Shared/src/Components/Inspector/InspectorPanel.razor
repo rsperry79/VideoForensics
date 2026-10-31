@@ -55,13 +55,18 @@
             }
             else if (_activeTab == "raw")
             {
+                @if (InspectorState.Current.RawJsonIsRemainder)
+                {
+                    <div class="muted-text" data-testid="inspector-raw-not-stored">@L["InspectorRawNotStored"]</div>
+                }
+
                 @if (!string.IsNullOrEmpty(InspectorState.Current.RawJson))
                 {
                     <DumpView Json="@InspectorState.Current.RawJson" />
                 }
                 else
                 {
-                    <div class="muted-text">@L["InspectorNoRawData"]</div>
+                    <div class="muted-text">@(InspectorState.Current.RawJsonIsRemainder ? L["InspectorNoUnmappedData"] : L["InspectorNoRawData"])</div>
                 }
             }
             else if (_activeTab == "related")

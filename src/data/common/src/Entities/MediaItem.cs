@@ -32,7 +32,20 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Path to the short 1 fps preview MP4 for the strip, or null until generated.</summary>
         public string? PreviewPath { get; set; }
+
+        /// <summary>
+        /// Only what has no structured home: keys the provider mapper does not store, or an app marker such as
+        /// <c>{"type":"snapshot"}</c> or the snapshot roll-up marker (found by text lookups, so keep them byte-for-byte).
+        /// The raw provider payload is NOT stored here (it is in the typed provider tables), so <see cref="ApiSourceHash"/>
+        /// can no longer be re-verified from the database alone. Null when nothing is left. Rows written before this change
+        /// may still hold the whole raw payload.
+        /// </summary>
         public string? MetadataJson { get; set; }
+
+        /// <summary>
+        /// SHA-256 (upper-case hex) of the full raw provider payload as serialized at sync time. The payload itself is no
+        /// longer stored (see <see cref="MetadataJson"/>), so this hash cannot be re-verified from the database alone.
+        /// </summary>
         public string? ApiSourceHash { get; set; }
 
         /// <summary>Video bitrate in bits per second, from ffprobe at download time; null if never analyzed.</summary>

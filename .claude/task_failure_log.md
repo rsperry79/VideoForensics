@@ -77,3 +77,7 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-31 | ring-zones: repository edit | replacement text renamed ReplaceSettingGroupRowsAsync call to ReplaceSSettingGroupRowsAsync | typo in the edit's new_string | fixed in the next edit, before any build
 2026-10-31 | ring-zones: full Ring provider run | UnstoredNotes_SnoozeSettings_LoggedWithJsonTypeAndNotStored failed after snooze_settings note was changed to non-null only | changed a behaviour an existing test pins (null note) without reading that test first | reverted to the existing note; motion_snooze gets its own non-null note
 2026-10-31 | unknown-keys: test | UnknownKeyAggregator_KindsAggregate_UnionsAcrossRows failed (7 expected, 5 actual) | test expectation counted empty-array and empty-object rows toward 'k' | corrected test to assert k[] and k{} as their own leaves; rerun 53/53 passed
+2026-10-31 | db-raw-payload: write test files | bash heredoc holding C# raw strings failed (unexpected EOF); nothing written | multi-line source inside a heredoc | used the Write tool
+2026-10-31 | db-raw-payload: line endings | Edit tool rewrote CRLF files as LF; my first normalize script read the index (LF) and left 12 files LF; InspectorPanelTests.cs has one `
+` line that the normalize removed, giving a 1566-line diff | worktree is core.autocrlf=true so every text file is CRLF on disk; the index EOL says nothing about it | normalize all changed files to CRLF, restore the lone `
+` line, checked `git diff --stat` is only the real lines

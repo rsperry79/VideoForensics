@@ -147,6 +147,11 @@ namespace VideoForensics.Utils.SelfTest
                 return await RunListUnknownAsync(options);
             }
 
+            if (options.StripRawPayload)
+            {
+                return RunStripRawPayload(options);
+            }
+
             if (options.InteractiveAuth)
             {
                 return await RunInteractiveAuthAsync(options);
@@ -386,6 +391,23 @@ namespace VideoForensics.Utils.SelfTest
 
             Console.WriteLine(reportPath);
             return 0;
+        }
+
+        /// <summary>
+        /// Opt-in maintenance (--strip-raw-payload): see <see cref="RawPayloadStripper"/>. Offline; prints counts only.
+        /// Exit 0 on success, 2 when it refused or stopped (nothing is changed in that case).
+        /// </summary>
+        private static int RunStripRawPayload(CliOptions options)
+        {
+            StripRawPayloadResult result = RawPayloadStripper.Run(options.DbPath, options.DumpFile, options.Yes);
+            if (result.Success)
+            {
+                RawPayloadStripper.WriteSummary(result, Console.Out);
+                return 0;
+            }
+
+            Console.Error.WriteLine($"Error: {result.Refusal}");
+            return 2;
         }
 
         /// <summary>
