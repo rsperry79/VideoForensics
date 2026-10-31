@@ -854,4 +854,13 @@
   <data name="MaintenanceWorkPaused" xml:space="preserve">
     <value>New work is paused until it finishes.</value>
   </data>
+  <data name="FlagReviewMediaLabel" xml:space="preserve">
+    <value>Flagged media</value>
+  </data>
+  <data name="FlagReviewSideLabel" xml:space="preserve">
+    <value>Flag actions and clip navigation</value>
+  </data>
+  <data name="FlagReviewTimelineLabel" xml:space="preserve">
+    <value>Playback timeline</value>
+  </data>
 </root>
