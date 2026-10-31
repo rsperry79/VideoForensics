@@ -341,6 +341,28 @@ public class CaseState_Tests
     }
 
     [Fact]
+    public async Task HasActivePinAsync_WithPinnedSnapshot_ReturnsTrue()
+    {
+        var caseId = Guid.NewGuid();
+        var snapshotId = Guid.NewGuid();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        _ = mockRepo
+            .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CaseItem>
+            {
+                new() { Id = Guid.NewGuid(), Kind = CaseItemKind.Snapshot, SnapshotCaptureId = snapshotId, Reason = "r", AddedBy = "a" },
+            });
+        var caseState = new CaseState(mockRepo.Object, CreateScopeState());
+        caseState._setActiveCaseForTest(CreateTestCase(id: caseId, status: CaseStatus.Open));
+
+        bool pinned = await caseState.HasActivePinAsync(CaseItemKind.Snapshot, snapshotId, CancellationToken.None);
+        bool otherPinned = await caseState.HasActivePinAsync(CaseItemKind.Snapshot, Guid.NewGuid(), CancellationToken.None);
+
+        Assert.True(pinned);
+        Assert.False(otherPinned);
+    }
+
+    [Fact]
     public async Task PinAsync_WithoutActiveCase_ThrowsInvalidOperationException()
     {
         // Arrange

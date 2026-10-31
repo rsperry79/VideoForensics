@@ -27,14 +27,14 @@ public static class CaseItemIntegrity
 {
     /// <summary>
     /// Compares a case item against its current media state and returns the integrity status.
-    /// Event items always return NotApplicable.
+    /// Event and snapshot items always return NotApplicable.
     /// Media items with null current media return MediaMissing.
     /// Media items with matching SHA256 (case-insensitive) return Match; otherwise Mismatch.
     /// </summary>
     public static PinIntegrity Compare(CaseItem item, MediaItem? currentMedia)
     {
-        // Event items have no hash to compare
-        if (item.Kind == CaseItemKind.Event)
+        // Event and snapshot items have no hash to compare
+        if (item.Kind is CaseItemKind.Event or CaseItemKind.Snapshot)
         {
             return PinIntegrity.NotApplicable;
         }

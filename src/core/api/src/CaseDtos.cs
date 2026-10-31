@@ -237,9 +237,12 @@ namespace VideoForensics.Core.Api.Contracts
         /// </summary>
         public static CaseItemDto ToDto(this VideoForensics.Data.Common.Entities.CaseItem entity)
         {
-            Guid targetId = entity.Kind == VideoForensics.Data.Common.Entities.CaseItemKind.Event
-                ? entity.EventId ?? Guid.Empty
-                : entity.MediaItemId ?? Guid.Empty;
+            Guid targetId = entity.Kind switch
+            {
+                VideoForensics.Data.Common.Entities.CaseItemKind.Event => entity.EventId ?? Guid.Empty,
+                VideoForensics.Data.Common.Entities.CaseItemKind.Snapshot => entity.SnapshotCaptureId ?? Guid.Empty,
+                _ => entity.MediaItemId ?? Guid.Empty,
+            };
 
             return new CaseItemDto(
                 Id: entity.Id,
@@ -269,6 +272,7 @@ namespace VideoForensics.Core.Api.Contracts
                 Kind = kind,
                 EventId = kind == VideoForensics.Data.Common.Entities.CaseItemKind.Event ? dto.TargetId : null,
                 MediaItemId = kind == VideoForensics.Data.Common.Entities.CaseItemKind.Media ? dto.TargetId : null,
+                SnapshotCaptureId = kind == VideoForensics.Data.Common.Entities.CaseItemKind.Snapshot ? dto.TargetId : null,
                 Reason = dto.Reason,
                 AddedBy = dto.AddedBy,
                 AddedAtUtc = dto.AddedAtUtc,
