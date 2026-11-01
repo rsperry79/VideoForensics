@@ -1,0 +1,54 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
+
+@* Fills the flag review media region. Playable clips play through MediaPlayer; every other state shows its message in the same box. *@
+<div class="media-fit" data-testid="media-fit">
+    @if (State == MediaFitState.Playable)
+    {
+        <MediaPlayer Source="@Source"
+                     Cursor="@Cursor"
+                     SourceStartUtc="@SourceStartUtc"
+                     SourceDurationSeconds="@SourceDurationSeconds"
+                     OnEnded="OnEnded"
+                     OnError="OnError" />
+    }
+    else
+    {
+        <div class="media-fit-state" role="status" aria-live="polite">@L[MessageKey]</div>
+    }
+</div>
+
+@code {
+    /// <summary>What the region shows. Playable plays <see cref="Source"/>; the other states show their message instead.</summary>
+    [Parameter] public MediaFitState State { get; set; } = MediaFitState.Playable;
+
+    /// <summary>The playable URL of the clip, passed to the media player.</summary>
+    [Parameter] public string? Source { get; set; }
+
+    /// <summary>The shared playback time (UTC), passed to the media player.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>The UTC time of the start of <see cref="Source"/>, passed to the media player.</summary>
+    [Parameter] public DateTime? SourceStartUtc { get; set; }
+
+    /// <summary>Length of <see cref="Source"/> in seconds, passed to the media player.</summary>
+    [Parameter] public double? SourceDurationSeconds { get; set; }
+
+    /// <summary>The source reached its end. Passed to the media player.</summary>
+    [Parameter] public EventCallback OnEnded { get; set; }
+
+    /// <summary>The browser could not load or play the source. Passed to the media player.</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private string MessageKey => State switch
+    {
+        MediaFitState.Purged => "MediaFitPurged",
+        MediaFitState.FileMissing => "MediaFitFileMissing",
+        MediaFitState.DeviceDeleted => "MediaFitDeviceDeleted",
+        MediaFitState.FlagNotFound => "MediaFitFlagNotFound",
+        MediaFitState.NoClipInHour => "MediaFitNoClipInHour",
+        _ => throw new ArgumentOutOfRangeException(nameof(State), State, "No message for a playable clip."),
+    };
+}

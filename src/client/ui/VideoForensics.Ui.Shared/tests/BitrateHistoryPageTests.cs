@@ -5,9 +5,12 @@ using Microsoft.Extensions.Localization;
 
 using Moq;
 
+using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -52,6 +55,11 @@ public class BitrateHistory_Tests : ScopeRailTestContext
             .ReturnsAsync(new BitrateAnalysis(devices));
         _ = Services.AddScoped(_ => service.Object);
         _ = Services.AddScoped<SignalDrillTrail>();
+        var flags = new Mock<IMediaFlagRepository>();
+        _ = flags
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+        _ = Services.AddScoped(_ => flags.Object);
         return Render<BitrateHistory>();
     }
 
@@ -146,5 +154,16 @@ public class BitrateHistory_Tests : ScopeRailTestContext
         IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(10)));
 
         Assert.Empty(page.FindAll("[data-testid='bitrate-alert']"));
+    }
+
+    [Fact]
+    public void BitrateHistory_Renders_TheFlaggedMediaTable()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(6)));
+
+        FlaggedMediaTable table = page.FindComponent<FlaggedMediaTable>().Instance;
+
+        Assert.NotNull(table);
+        Assert.Equal(new[] { MediaFlagType.BitrateCollapse }, table.Types);
     }
 }
