@@ -34,6 +34,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 ("DeviceCapabilities", "MetadataJson"),
                 ("LocationMetadata", "MetadataJson"),
                 ("RingAccounts", "MetadataJson"),
+                ("ProviderAccounts", "LastCollectCompleteUtc"),
             ];
 
             foreach ((string table, string column) in removed)
