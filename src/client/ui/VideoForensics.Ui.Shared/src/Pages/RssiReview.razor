@@ -149,7 +149,7 @@
             MediaItem clip = playable.FirstOrDefault(c => Covers(c, flag.WindowStartUtc)) ?? playable[0];
             IReadOnlyDictionary<Guid, string> urls = await MediaContentUrls.GetContentUrlsAsync([clip.Id], ct);
             _source = urls.TryGetValue(clip.Id, out string? url) ? url : null;
-            _state = MediaFitState.Playable;
+            _state = MediaStill.IsStill(clip) ? MediaFitState.Still : MediaFitState.Playable;
             _clipStartUtc = clip.RecordedAtUtc;
             _clipDurationSeconds = clip.DurationSeconds;
             if (clip.DurationSeconds is { } seconds)

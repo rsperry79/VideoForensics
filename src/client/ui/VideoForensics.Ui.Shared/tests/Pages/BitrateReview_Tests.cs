@@ -181,4 +181,23 @@ public class BitrateReview_Tests : BunitContext
         Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
         Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
     }
+
+    [Fact]
+    public void BitrateReview_StillClip_ShowsStillAndNoTimeline()
+    {
+        MediaFlag flag = Flag(MediaFlagType.BitrateCollapse, Guid.NewGuid());
+        MediaItem clip = Clip(flag.DeviceId, purged: false);
+        clip.FileName = "x.jpg";
+        clip.FilePath = "/x.jpg";
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/x.jpg?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=media-fit-still]")));
+        Assert.Empty(cut.FindComponents<MediaPlayer>());
+        Assert.Empty(cut.FindAll("[data-testid=playback-timeline]"));
+    }
 }

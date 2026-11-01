@@ -6,6 +6,9 @@ public enum MediaFitState
     /// <summary>The clip is available and plays in the media player.</summary>
     Playable,
 
+    /// <summary>The clip is a still image; the region shows it, not a player.</summary>
+    Still,
+
     /// <summary>The clip was deleted by the retention policy.</summary>
     Purged,
 

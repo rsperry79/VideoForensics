@@ -3,9 +3,13 @@
 @using VideoForensics.Client.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 
-@* Fills the flag review media region. Playable clips play through MediaPlayer; every other state shows its message in the same box. *@
+@* Fills the flag review media region. Playable clips play through MediaPlayer; a still shows its image; every other state shows its message in the same box. *@
 <div class="media-fit" data-testid="media-fit">
-    @if (State == MediaFitState.Playable)
+    @if (State == MediaFitState.Still)
+    {
+        <img src="@Source" alt="@L["MediaFitStillAlt"].Value" class="media-fit-still" data-testid="media-fit-still" />
+    }
+    else if (State == MediaFitState.Playable)
     {
         <MediaPlayer @ref="_player"
                      Source="@Source"

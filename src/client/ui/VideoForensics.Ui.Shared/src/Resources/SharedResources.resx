@@ -1037,6 +1037,9 @@
   <data name="MediaFitNoClipInHour" xml:space="preserve">
     <value>No clip was recorded in this window.</value>
   </data>
+  <data name="MediaFitStillAlt" xml:space="preserve">
+    <value>Flagged still image</value>
+  </data>
   <data name="PlaybackTimelineLabel" xml:space="preserve">
     <value>Playback timeline</value>
   </data>

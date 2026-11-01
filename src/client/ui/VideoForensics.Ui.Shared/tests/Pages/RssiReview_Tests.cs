@@ -146,6 +146,26 @@ public class RssiReview_Tests : BunitContext
     }
 
     [Fact]
+    public void RssiReview_StillClip_ShowsStillAndNoTimeline()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        MediaItem clip = Clip(flag.DeviceId, FlagStartUtc, 60, purged: false);
+        clip.FileName = "x.jpg";
+        clip.FilePath = "/x.jpg";
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/x.jpg?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { clip });
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=media-fit-still]")));
+        Assert.Empty(cut.FindComponents<MediaPlayer>());
+        Assert.Empty(cut.FindAll("[data-testid=playback-timeline]"));
+    }
+
+    [Fact]
     public void RssiReview_CoveringClip_IsChosen()
     {
         MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
