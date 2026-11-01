@@ -983,9 +983,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime>("CapturedAtUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CustomSettingsJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
@@ -1008,6 +1005,32 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId");
 
                     b.ToTable("DeviceConfigSnapshots");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceConfigSnapshotSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SnapshotId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SnapshotId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("DeviceConfigSnapshotSettings");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceDetectionThreshold", b =>
@@ -7877,6 +7900,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceConfigSnapshotSetting", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceConfigSnapshot", null)
+                        .WithMany("CustomSettings")
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceGeneralSettings", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
@@ -8525,6 +8557,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZone", b =>
                 {
                     b.Navigation("Vertices");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceConfigSnapshot", b =>
+                {
+                    b.Navigation("CustomSettings");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealth", b =>

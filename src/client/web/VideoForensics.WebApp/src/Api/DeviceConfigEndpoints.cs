@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
@@ -73,7 +75,7 @@ namespace VideoForensics.Client.WebApp.Api
                     MotionDetectionEnabled = request.MotionDetectionEnabled,
                     MotionSensitivity = request.MotionSensitivity,
                     RecordingMode = request.RecordingMode,
-                    CustomSettingsJson = request.CustomSettingsJson,
+                    CustomSettings = DeviceConfigSnapshotDtoMapping.ToCustomSettingRows(request.CustomSettings),
                     CapturedAtUtc = request.CapturedAtUtc ?? DateTime.UtcNow,
                     Source = (DeviceConfigSource)Enum.Parse(typeof(DeviceConfigSource), request.Source)
                 };
@@ -92,7 +94,7 @@ namespace VideoForensics.Client.WebApp.Api
     /// <param name="MotionDetectionEnabled">Whether motion detection is enabled.</param>
     /// <param name="MotionSensitivity">Motion detection sensitivity level.</param>
     /// <param name="RecordingMode">Recording mode setting.</param>
-    /// <param name="CustomSettingsJson">Additional vendor-specific settings in JSON format.</param>
+    /// <param name="CustomSettings">Additional vendor-specific settings, one JSON value per setting key.</param>
     /// <param name="CapturedAtUtc">When this configuration was captured (optional; defaults to current UTC time).</param>
     /// <param name="Source">Source of this configuration: "Fetched" (from device/provider) or "Applied" (settings applied to device).</param>
     public record CreateDeviceConfigSnapshotRequest(
@@ -100,7 +102,7 @@ namespace VideoForensics.Client.WebApp.Api
         bool? MotionDetectionEnabled,
         string? MotionSensitivity,
         string? RecordingMode,
-        string? CustomSettingsJson,
+        Dictionary<string, JsonElement>? CustomSettings,
         DateTime? CapturedAtUtc,
         string Source
     );

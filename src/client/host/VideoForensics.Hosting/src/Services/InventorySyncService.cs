@@ -184,14 +184,14 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             string sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
-            string? customSettingsJson = CanonicalJson(config.CustomSettings);
+            Dictionary<string, string> customSettings = CanonicalSettings(config.CustomSettings);
 
             DeviceConfigSnapshot? latest = await _deviceConfigRepository.GetLatestAsync(deviceId, cancellationToken);
             if (latest is not null &&
                 latest.MotionDetectionEnabled == config.MotionDetectionEnabled &&
                 latest.MotionSensitivity == sensitivity &&
                 latest.RecordingMode == config.RecordingMode &&
-                latest.CustomSettingsJson == customSettingsJson)
+                SameSettings(latest.CustomSettings, customSettings))
             {
                 return;
             }
@@ -203,10 +203,36 @@ namespace VideoForensics.Client.Hosting.Services
                 MotionDetectionEnabled = config.MotionDetectionEnabled,
                 MotionSensitivity = sensitivity,
                 RecordingMode = config.RecordingMode,
-                CustomSettingsJson = customSettingsJson,
+                CustomSettings = customSettings
+                    .Select(kv => new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = kv.Key, ValueJson = kv.Value })
+                    .ToList(),
                 CapturedAtUtc = DateTime.UtcNow,
                 Source = DeviceConfigSource.Fetched
             }, cancellationToken);
+        }
+
+        /// <summary>Maps each setting key to its canonical JSON value. Null settings give no keys.</summary>
+        internal static Dictionary<string, string> CanonicalSettings(Dictionary<string, object>? settings)
+        {
+            var result = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (settings is null)
+            {
+                return result;
+            }
+
+            foreach (KeyValuePair<string, object> setting in settings)
+            {
+                result[setting.Key] = CanonicalJson(setting.Value) ?? "null";
+            }
+
+            return result;
+        }
+
+        private static bool SameSettings(IEnumerable<DeviceConfigSnapshotSetting> stored, Dictionary<string, string> current)
+        {
+            Dictionary<string, string> storedByKey = stored.ToDictionary(s => s.Key, s => s.ValueJson, StringComparer.Ordinal);
+            return storedByKey.Count == current.Count &&
+                current.All(kv => storedByKey.TryGetValue(kv.Key, out string? value) && value == kv.Value);
         }
 
         /// <summary>

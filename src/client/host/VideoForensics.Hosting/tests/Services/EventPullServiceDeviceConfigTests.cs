@@ -161,7 +161,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         public async Task SyncAsync_CustomSettingsReorderedOnly_DoesNotAppend()
         {
             CancellationToken cancellationToken = CancellationToken.None;
-            var stored = new Dictionary<string, object> { ["alpha"] = 1, ["beta"] = "b" };
             var reordered = new Dictionary<string, object> { ["beta"] = "b", ["alpha"] = 1 };
             SetUpAccountAndDevice(new DeviceConfig(DeviceId: "device-123", MotionDetectionEnabled: true, MotionSensitivity: 80, RecordingMode: "always", CustomSettings: reordered));
             _ = _configs.Setup(r => r.GetLatestAsync(_deviceId, cancellationToken)).ReturnsAsync(new DeviceConfigEntity
@@ -171,7 +170,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 MotionDetectionEnabled = true,
                 MotionSensitivity = "80",
                 RecordingMode = "always",
-                CustomSettingsJson = InventorySyncService.CanonicalJson(stored),
+                CustomSettings =
+                [
+                    new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = "alpha", ValueJson = "1" },
+                    new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = "beta", ValueJson = "\"b\"" }
+                ],
                 CapturedAtUtc = DateTime.UtcNow.AddHours(-1),
                 Source = DeviceConfigSource.Fetched
             });

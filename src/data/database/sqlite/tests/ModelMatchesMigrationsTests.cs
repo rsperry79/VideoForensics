@@ -54,7 +54,6 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 ("Devices", "SettingsMetadataJson"),
                 ("Devices", "LightSettingsMetadataJson"),
                 ("Devices", "MotionSnoozeJson"),
-                ("DeviceConfigSnapshots", "CustomSettingsJson"),
                 ("RingLocationModeNotYetParticipating", "ValueJson"),
             ];
 

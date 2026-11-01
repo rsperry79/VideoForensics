@@ -42,6 +42,24 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task DeviceConfigRepository_AppendSnapshotAsync_StoresOneRowPerCustomSetting()
+        {
+            DeviceConfigSnapshot snapshot = TestDataBuilder.BuildDeviceConfigSnapshot(Guid.NewGuid());
+            snapshot.CustomSettings =
+            [
+                new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = "alpha", ValueJson = "1" },
+                new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = "beta", ValueJson = "\"b\"" }
+            ];
+
+            _ = await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
+            DeviceConfigSnapshot? retrieved = await _repository.GetAsync(snapshot.Id, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            var rows = retrieved.CustomSettings.OrderBy(r => r.Key, StringComparer.Ordinal).Select(r => (r.Key, r.ValueJson)).ToList();
+            Assert.Equal(new List<(string, string)> { ("alpha", "1"), ("beta", "\"b\"") }, rows);
+        }
+
+        [Fact]
         public async Task DeviceConfigRepository_GetLatestAsync_ReturnsNewest()
         {
             var deviceId = Guid.NewGuid();
