@@ -441,4 +441,75 @@ public class FlagActionsPanel_Tests : BunitContext
         Assert.Equal(TestLocalizer.Create()["FlagActionsWindowPartial", 2, 3].Value, alert.TextContent.Trim());
         _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Snapshot, snap.Id, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task FlagActionsPanel_CreateCaseOption_ShowsForm()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(ClipFlag(), new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+
+        // Act
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change("create");
+
+        // Assert
+        Assert.NotEmpty(cut.FindAll("#flag-new-case-number"));
+        Assert.NotEmpty(cut.FindAll("#flag-new-case-title"));
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_CreateCase_CreatesThenAddsTheClip()
+    {
+        // Arrange
+        Guid operatorId = await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        ForensicCase created = new() { Id = Guid.NewGuid(), CaseNumber = "CASE-9", Title = "Bravo", Status = CaseStatus.Open, CreatedBy = operatorId.ToString() };
+        var order = new List<string>();
+        _ = _cases
+            .Setup(c => c.CreateAsync("CASE-9", "Bravo", null, (Guid?)operatorId, null, null, It.IsAny<IReadOnlyCollection<Guid>>(), operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .Callback(() => order.Add("create"))
+            .ReturnsAsync(created);
+        _ = _cases
+            .Setup(c => c.AddItemAsync(created.Id, CaseItemKind.Media, clip.MediaItemId!.Value, TestLocalizer.Create()["FlagActionsPinReason"].Value, operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .Callback(() => order.Add("add"))
+            .ReturnsAsync((CaseItem)null!);
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change("create");
+        cut.Find("#flag-new-case-number").Change("CASE-9");
+        cut.Find("#flag-new-case-title").Change("Bravo");
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-to-case']");
+
+        // Assert: the case is created first, then the clip is added to it, once each
+        cut.WaitForAssertion(() => Assert.Equal(new[] { "create", "add" }, order));
+        _cases.Verify(c => c.CreateAsync("CASE-9", "Bravo", null, (Guid?)operatorId, null, null, It.IsAny<IReadOnlyCollection<Guid>>(), operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _cases.Verify(c => c.AddItemAsync(created.Id, CaseItemKind.Media, clip.MediaItemId!.Value, TestLocalizer.Create()["FlagActionsPinReason"].Value, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_CreateCase_Duplicate_ShowsMessageAndAddsNothing()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        _ = _cases
+            .Setup(c => c.CreateAsync("CASE-9", "Bravo", null, It.IsAny<Guid?>(), null, null, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Case number CASE-9 already exists."));
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change("create");
+        cut.Find("#flag-new-case-number").Change("CASE-9");
+        cut.Find("#flag-new-case-title").Change("Bravo");
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-to-case']");
+
+        // Assert: the message shows and the clip is not added to any case
+        IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
+        Assert.Equal(TestLocalizer.Create()["FlagActionsCaseNumberTaken"].Value, alert.TextContent.Trim());
+        _cases.Verify(c => c.AddItemAsync(It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

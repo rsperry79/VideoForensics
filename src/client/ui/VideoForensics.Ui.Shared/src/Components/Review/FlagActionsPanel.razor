@@ -57,7 +57,8 @@
 
             <div class="d-flex gap-2 align-items-center">
                 <select class="form-select form-select-sm" id="flag-add-case" data-testid="flag-add-to-case-picker" aria-label="@L["FlagActionsAddToCase"].Value" @onchange="OnCasePicked">
-                    <option value="" selected="@(_pickedCaseId is null)">@L["FlagActionsPickCase"]</option>
+                    <option value="" selected="@(_pickedCaseId is null && !_creatingCase)">@L["FlagActionsPickCase"]</option>
+                    <option value="@CreateCaseOption" selected="@_creatingCase">@L["FlagActionsCreateCase"]</option>
                     @foreach (ForensicCase openCase in _openCases)
                     {
                         <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
@@ -81,7 +82,8 @@
 
                 <div class="d-flex gap-2 align-items-center">
                     <select class="form-select form-select-sm" id="flag-window-case" data-testid="flag-window-case-picker" aria-label="@L["FlagActionsPickCase"].Value" @onchange="OnCasePicked">
-                        <option value="" selected="@(_pickedCaseId is null)">@L["FlagActionsPickCase"]</option>
+                        <option value="" selected="@(_pickedCaseId is null && !_creatingCase)">@L["FlagActionsPickCase"]</option>
+                        <option value="@CreateCaseOption" selected="@_creatingCase">@L["FlagActionsCreateCase"]</option>
                         @foreach (ForensicCase openCase in _openCases)
                         {
                             <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
@@ -95,6 +97,18 @@
             {
                 <div class="small mt-2" data-testid="flag-window-done">@windowNotice</div>
             }
+        </div>
+    }
+
+    @if (_creatingCase)
+    {
+        <div class="flag-new-case mt-2" data-testid="flag-new-case-section">
+            <div class="mb-2">
+                <SfTextBox ID="flag-new-case-number" Placeholder="@L["FlagActionsCaseNumber"].Value" @bind-Value="_newCaseNumber" />
+            </div>
+            <div class="mb-2">
+                <SfTextBox ID="flag-new-case-title" Placeholder="@L["FlagActionsCaseTitle"].Value" @bind-Value="_newCaseTitle" />
+            </div>
         </div>
     }
 
@@ -119,6 +133,9 @@
 
     private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
 
+    /// <summary>The case picker value that opens the new-case form. A case id is never this text, so the two cannot clash.</summary>
+    private const string CreateCaseOption = "create";
+
     private readonly CancellationTokenSource _disposeCts = new();
     private string _note = string.Empty;
     private string _reason = string.Empty;
@@ -137,16 +154,26 @@
     /// <summary>True when the operator may act on this flag: the role is held and the flag is still Unreviewed.</summary>
     private bool CanAct => RoleReason is null && Flag.Status == MediaFlagStatus.Unreviewed;
 
-    /// <summary>True when the operator may add the clip: the Review role is held, a case is picked and it does not already hold the clip.</summary>
+    /// <summary>True when the new-case form has both a case number and a title.</summary>
+    private bool NewCaseReady => !string.IsNullOrWhiteSpace(_newCaseNumber) && !string.IsNullOrWhiteSpace(_newCaseTitle);
+
+    /// <summary>
+    /// True when the operator may add the clip: the Review role is held, and either the new-case form is complete or a case is picked
+    /// that does not already hold the clip.
+    /// </summary>
     private bool CanAddToCase =>
         RoleReason is null
-        && _pickedCaseId is { } picked
-        && !_containing.Any(existing => existing.Id == picked);
+        && (_creatingCase
+            ? NewCaseReady
+            : _pickedCaseId is { } picked && !_containing.Any(existing => existing.Id == picked));
 
-    /// <summary>True when the operator may add the RSSI window: the Review role is held, a case is picked and the window holds at least one item.</summary>
+    /// <summary>
+    /// True when the operator may add the RSSI window: the Review role is held, either the new-case form is complete or a case is picked,
+    /// and the window holds at least one item.
+    /// </summary>
     private bool CanAddWindow =>
         RoleReason is null
-        && _pickedCaseId is not null
+        && (_creatingCase ? NewCaseReady : _pickedCaseId is not null)
         && _window is { } window
         && window.Clips.Count + window.Snapshots.Count > 0;
 
@@ -159,6 +186,9 @@
     private IReadOnlyList<ForensicCase> _openCases = [];
     private IReadOnlyList<ForensicCase> _containing = [];
     private Guid? _pickedCaseId;
+    private bool _creatingCase;
+    private string _newCaseNumber = string.Empty;
+    private string _newCaseTitle = string.Empty;
     private Guid? _loadedFlagId;
     private string? _notice;
     private RssiWindow? _window;
@@ -180,6 +210,9 @@
 
         _loadedFlagId = Flag.Id;
         _pickedCaseId = null;
+        _creatingCase = false;
+        _newCaseNumber = string.Empty;
+        _newCaseTitle = string.Empty;
         _notice = null;
         _windowNotice = null;
         _containing = [];
@@ -223,20 +256,63 @@
         return new RssiWindow(clips, snapshots);
     }
 
+    /// <summary>Picks a case from the dropdown, or opens the new-case form when the create option is chosen.</summary>
     private void OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
-        _pickedCaseId = Guid.TryParse(args.Value?.ToString(), out Guid caseId) ? caseId : null;
+        string? value = args.Value?.ToString();
+        _creatingCase = value == CreateCaseOption;
+        _pickedCaseId = !_creatingCase && Guid.TryParse(value, out Guid caseId) ? caseId : null;
         _notice = null;
         _windowNotice = null;
     }
 
     /// <summary>
-    /// Pins the flagged clip to the picked case as a Media item. The repository reports a duplicate pin, a closed case
-    /// and a missing case with the same exception type, so the failure is told apart by reading the case and its pins again.
+    /// Creates a case from the new-case form the way CaseNew does: the signed-in operator leads it and created it. On success the case
+    /// is listed and picked, and the form is cleared. A duplicate number or any other failure sets the message and returns null, so
+    /// nothing is added to a case.
+    /// </summary>
+    private async Task<ForensicCase?> CreateCaseAsync(string operatorId)
+    {
+        try
+        {
+            ForensicCase created = await CaseRepository.CreateAsync(
+                _newCaseNumber.Trim(),
+                _newCaseTitle.Trim(),
+                null,
+                SessionState.OperatorId,
+                null,
+                null,
+                [],
+                operatorId,
+                _disposeCts.Token);
+            _openCases = [.. _openCases, created];
+            _pickedCaseId = created.Id;
+            _creatingCase = false;
+            _newCaseNumber = string.Empty;
+            _newCaseTitle = string.Empty;
+            return created;
+        }
+        catch (InvalidOperationException)
+        {
+            _error = L["FlagActionsCaseNumberTaken"];
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError("Creating a case from the flag panel failed: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+            _error = L["FlagActionsCreateFailed"];
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Pins the flagged clip to the picked case as a Media item. A new case is created first when the create option is chosen, and
+    /// the clip is not added if that fails. The repository reports a duplicate pin, a closed case and a missing case with the same
+    /// exception type, so the failure is told apart by reading the case and its pins again.
     /// </summary>
     private async Task OnAddToCaseAsync()
     {
-        if (_busy || !CanAddToCase || _pickedCaseId is not { } caseId || Flag.MediaItemId is not { } mediaId)
+        if (_busy || !CanAddToCase || Flag.MediaItemId is not { } mediaId)
         {
             return;
         }
@@ -251,6 +327,33 @@
         _busy = true;
         _error = null;
         _notice = null;
+        try
+        {
+            if (_creatingCase && await CreateCaseAsync(operatorId) is null)
+            {
+                return;
+            }
+
+            await AddClipToPickedCaseAsync(mediaId, operatorId);
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Adds the clip to the picked case and reports the result. The caller holds the busy flag.</summary>
+    private async Task AddClipToPickedCaseAsync(Guid mediaId, string operatorId)
+    {
+        if (_pickedCaseId is not { } caseId)
+        {
+            return;
+        }
+
         try
         {
             _ = await CaseRepository.AddItemAsync(caseId, CaseItemKind.Media, mediaId, L["FlagActionsPinReason"].Value, operatorId, _disposeCts.Token);
@@ -273,10 +376,6 @@
         {
             Logger.LogError("Adding flagged clip {MediaItemId} to case {CaseId} failed: {ExceptionType}: {Message}", mediaId, caseId, ex.GetType().Name, ex.Message);
             _error = L["FlagActionsFailed"];
-        }
-        finally
-        {
-            _busy = false;
         }
     }
 
@@ -302,12 +401,12 @@
     }
 
     /// <summary>
-    /// Pins every clip and snapshot of the RSSI window to the picked case. An item already pinned to the case is skipped, not an
-    /// error. Any other failure stops the batch and reports how many items were not added.
+    /// Pins every clip and snapshot of the RSSI window to the picked case. A new case is created first when the create option is chosen.
+    /// An item already pinned to the case is skipped, not an error. Any other failure stops the batch and reports how many items were not added.
     /// </summary>
     private async Task OnAddWindowAsync()
     {
-        if (_busy || !CanAddWindow || _pickedCaseId is not { } caseId || _window is not { } window)
+        if (_busy || !CanAddWindow || _window is not { } window)
         {
             return;
         }
@@ -324,6 +423,16 @@
         _windowNotice = null;
         try
         {
+            if (_creatingCase && await CreateCaseAsync(operatorId) is null)
+            {
+                return;
+            }
+
+            if (_pickedCaseId is not { } caseId)
+            {
+                return;
+            }
+
             ForensicCase? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
             if (target is null)
             {
@@ -376,7 +485,7 @@
                 (CaseItemKind kind, Guid targetId) = pending[index];
                 try
                 {
-                    _ = await CaseRepository.AddItemAsync(caseId, kind, targetId, reason, operatorId.ToString(), _disposeCts.Token);
+                    _ = await CaseRepository.AddItemAsync(caseId, kind, targetId, reason, operatorId, _disposeCts.Token);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

@@ -1,0 +1,23 @@
+/* The flag panel fits the narrow right sidebar: rows wrap, every control takes the full row width, and long text breaks instead of clipping. */
+.flag-actions-panel {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.flag-actions-panel ::deep .d-flex {
+    flex-wrap: wrap;
+}
+
+.flag-actions-panel ::deep .d-flex > * {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+}
+
+.flag-actions-panel ::deep .e-btn {
+    white-space: normal;
+}
+
+.flag-actions-panel ::deep .e-input-group {
+    width: 100%;
+}
