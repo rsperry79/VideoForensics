@@ -88,4 +88,46 @@ public class FlaggedMediaTable_Tests : BunitContext
         IElement count = cut.WaitForElement("[data-testid=flagged-media-count]");
         Assert.Equal(TestLocalizer.Create()["FlaggedMediaShowingCount", 200, 250].Value, count.TextContent.Trim());
     }
+
+    [Fact]
+    public void FlaggedMediaTable_BitrateFlag_LinksToBitrateReview()
+    {
+        MediaFlag flag = Flag(MediaFlagType.BitrateCollapse);
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([flag], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.BitrateCollapse }));
+
+        cut.WaitForAssertion(() => Assert.Equal($"/bitrate-review/{flag.Id}", cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
+    }
+
+    [Fact]
+    public void FlaggedMediaTable_RssiFlag_LinksToRssiReview()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([flag], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
+
+        cut.WaitForAssertion(() => Assert.Equal($"/rssi-review/{flag.Id}", cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
+    }
+
+    [Fact]
+    public void FlaggedMediaTable_OtherType_HasNoLink()
+    {
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([Flag(MediaFlagType.Jamming)], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.Jamming }));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")));
+        Assert.Empty(cut.FindAll("[data-testid=flagged-media-table] tbody tr a"));
+    }
 }

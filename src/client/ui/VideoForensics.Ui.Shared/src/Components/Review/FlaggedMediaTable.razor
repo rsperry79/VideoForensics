@@ -54,6 +54,17 @@
                         <span>@StatusName(((MediaFlag)context).Status)</span>
                     </Template>
                 </GridColumn>
+                <GridColumn HeaderText="@L["FlaggedMediaColReview"].Value" Width="110">
+                    <Template>
+                        @{
+                            string? reviewPath = ReviewPath((MediaFlag)context);
+                        }
+                        @if (reviewPath is not null)
+                        {
+                            <a href="@reviewPath">@L["FlaggedMediaReviewLink"].Value</a>
+                        }
+                    </Template>
+                </GridColumn>
             </GridColumns>
         </SfGrid>
     }
@@ -62,6 +73,28 @@
 @code {
     /// <summary>The number of flags loaded at once. The repository lists newest first, so these are the newest flags.</summary>
     private const int PageSize = 200;
+
+    /// <summary>Route prefix of the bit rate review page (<c>@page "/bitrate-review/{FlagId:guid}"</c>). The flag id follows it.</summary>
+    private const string BitrateReviewPathPrefix = "/bitrate-review/";
+
+    /// <summary>Route prefix of the RSSI review page (<c>@page "/rssi-review/{FlagId:guid}"</c>). The flag id follows it.</summary>
+    private const string RssiReviewPathPrefix = "/rssi-review/";
+
+    /// <summary>
+    /// The review page for a flag. <see cref="MediaFlagType.BitrateCollapse"/> maps to the bit rate review page and
+    /// <see cref="MediaFlagType.RssiDeviation"/> to the RSSI review page. Other flag types have no review page and return null.
+    /// </summary>
+    /// <param name="flag">The flag to open.</param>
+    /// <returns>The relative review path for the flag, or null when its type has no review page.</returns>
+    public static string? ReviewPath(MediaFlag flag)
+    {
+        return flag.FlagType switch
+        {
+            MediaFlagType.BitrateCollapse => BitrateReviewPathPrefix + flag.Id,
+            MediaFlagType.RssiDeviation => RssiReviewPathPrefix + flag.Id,
+            _ => null,
+        };
+    }
 
     /// <summary>The flag types to list. Each report page passes only its own type.</summary>
     [Parameter, EditorRequired]
