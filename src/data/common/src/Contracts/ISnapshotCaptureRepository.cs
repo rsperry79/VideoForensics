@@ -8,6 +8,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Records one snapshot attempt (current or not).</summary>
         Task<SnapshotCapture> AddAsync(SnapshotCapture capture, CancellationToken ct);
 
+        /// <summary>Gets one capture attempt by its id, or null when no such capture exists.</summary>
+        Task<SnapshotCapture?> GetAsync(Guid id, CancellationToken ct);
+
         /// <summary>
         /// Gets a device's current captures (IsCurrent == true) captured within a date range
         /// (inclusive of both ends), oldest first.
