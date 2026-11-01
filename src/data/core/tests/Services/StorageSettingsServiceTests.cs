@@ -35,6 +35,11 @@ namespace VideoForensics.Data.Core.Tests
                         ? Path.Combine(Path.GetTempPath(), cat.ToString())
                         : overridePath);
 
+            // Keep bootstrap pointer writes out of the real ProgramData folder
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetDataRoot())
+                .Returns(Path.Combine(Path.GetTempPath(), "vf-data-" + Guid.NewGuid().ToString("N")));
+
             // Default mock for configuration loads empty config (no overrides)
             _ = _mockConfigurationService
                 .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -259,6 +264,40 @@ namespace VideoForensics.Data.Core.Tests
                 try
                 { Directory.Delete(tempDir, recursive: true); }
                 catch { }
+            }
+        }
+
+        [Fact]
+        public async Task RelocateAsync_DatabaseMove_WritesBootstrapPointer()
+        {
+            // Arrange
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetDataRoot())
+                    .Returns(dataRoot);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Database, NewRootPath: tempDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.Equal(tempDir, DatabaseLocationPointer.Read(dataRoot));
+            }
+            finally
+            {
+                foreach (string dir in new[] { tempDir, dataRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
             }
         }
 

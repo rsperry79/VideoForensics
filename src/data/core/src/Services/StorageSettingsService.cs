@@ -106,6 +106,21 @@ namespace VideoForensics.Data.Core.Services
                     }
                 }
 
+                // The saved override lives inside the database, which startup cannot open to read it. Record a
+                // Database move in the bootstrap pointer that every startup path reads before opening the database.
+                if (request.Category == StorageCategory.Database)
+                {
+                    try
+                    {
+                        DatabaseLocationPointer.Write(_storageLocationProvider.GetDataRoot(), request.NewRootPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Failed to write Database location pointer to {NewPath}: {ExceptionType} {ErrorMessage}", request.NewRootPath, ex.GetType().Name, ex.Message);
+                        return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to record new database location: {ex.Message}", RestartRequired: false);
+                    }
+                }
+
                 // Persist the new override in configuration
                 SetConfigurationOverride(config, request.Category, request.NewRootPath);
 
