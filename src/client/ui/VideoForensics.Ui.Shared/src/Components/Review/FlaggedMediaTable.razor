@@ -1,0 +1,179 @@
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.Grids
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services.Time
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@inject IStringLocalizer<SharedResources> L
+@inject IMediaFlagRepository MediaFlagRepository
+
+<div class="flagged-media-table" data-testid="flagged-media-table" aria-label="@L["FlaggedMediaTableLabel"].Value">
+    @if (_loaded && _rows.Count == 0)
+    {
+        <p class="text-muted small" data-testid="flagged-media-empty">@L["FlaggedMediaEmpty"].Value</p>
+    }
+    else
+    {
+        @if (_total > PageSize)
+        {
+            <p class="small mb-2" data-testid="flagged-media-count">@L["FlaggedMediaShowingCount", PageSize, _total].Value</p>
+        }
+
+        <SfGrid TValue="MediaFlag" DataSource="@_rows" AllowPaging="true" AllowResizing="true">
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn HeaderText="@L["FlaggedMediaColRaised"].Value" Width="170">
+                    <Template>
+                        @{
+                            MediaFlag flag = (MediaFlag)context;
+                        }
+                        <span>@Zone.Format(flag.RaisedAtUtc, "yyyy-MM-dd HH:mm")</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["FlaggedMediaColType"].Value" Width="180">
+                    <Template>
+                        <span>@TypeName(((MediaFlag)context).FlagType)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["FlaggedMediaColCamera"].Value" Width="180">
+                    <Template>
+                        <span>@CameraName(((MediaFlag)context).DeviceId)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["FlaggedMediaColWindow"].Value" Width="260">
+                    <Template>
+                        @{
+                            MediaFlag windowFlag = (MediaFlag)context;
+                        }
+                        <span>@L["FlaggedMediaWindowRange", Zone.Format(windowFlag.WindowStartUtc, "yyyy-MM-dd HH:mm"), Zone.Format(windowFlag.WindowEndUtc, "yyyy-MM-dd HH:mm")].Value</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["FlaggedMediaColStatus"].Value" Width="130">
+                    <Template>
+                        <span>@StatusName(((MediaFlag)context).Status)</span>
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+</div>
+
+@code {
+    /// <summary>The number of flags loaded at once. The repository lists newest first, so these are the newest flags.</summary>
+    private const int PageSize = 200;
+
+    /// <summary>The flag types to list. Each report page passes only its own type.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyCollection<MediaFlagType> Types { get; set; } = [];
+
+    /// <summary>The cameras to list. Null means every camera.</summary>
+    [Parameter]
+    public IReadOnlyCollection<Guid>? DeviceIds { get; set; }
+
+    /// <summary>Inclusive lower bound on the flag window start.</summary>
+    [Parameter]
+    public DateTime? FromUtc { get; set; }
+
+    /// <summary>Inclusive upper bound on the flag window start.</summary>
+    [Parameter]
+    public DateTime? ToUtc { get; set; }
+
+    /// <summary>Camera names by device id. A device without a name shows the "Unknown camera" text.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string>? DeviceNames { get; set; }
+
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
+    private List<MediaFlag> _rows = [];
+    private int _total;
+    private bool _loaded;
+    private bool _loadedOnce;
+    private HashSet<MediaFlagType> _loadedTypes = [];
+    private HashSet<Guid>? _loadedDeviceIds;
+    private DateTime? _loadedFromUtc;
+    private DateTime? _loadedToUtc;
+    private CancellationTokenSource? _loadCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        HashSet<MediaFlagType> types = [.. Types];
+        HashSet<Guid>? deviceIds = DeviceIds is null ? null : [.. DeviceIds];
+        if (_loadedOnce && types.SetEquals(_loadedTypes) && SameDevices(deviceIds) && FromUtc == _loadedFromUtc && ToUtc == _loadedToUtc)
+        {
+            return;
+        }
+
+        _loadedOnce = true;
+        _loadedTypes = types;
+        _loadedDeviceIds = deviceIds;
+        _loadedFromUtc = FromUtc;
+        _loadedToUtc = ToUtc;
+
+        _loadCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _loadCts = cts;
+
+        var filter = new MediaFlagFilter
+        {
+            Types = Types,
+            DeviceIds = DeviceIds,
+            FromUtc = FromUtc,
+            ToUtc = ToUtc,
+        };
+
+        MediaFlagPage page;
+        try
+        {
+            page = await MediaFlagRepository.ListPageAsync(filter, 0, PageSize, cts.Token);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // A newer filter replaced this load before it finished.
+            return;
+        }
+
+        _rows = [.. page.Items];
+        _total = page.TotalCount;
+        _loaded = true;
+    }
+
+    private bool SameDevices(HashSet<Guid>? deviceIds)
+    {
+        if (deviceIds is null || _loadedDeviceIds is null)
+        {
+            return deviceIds is null && _loadedDeviceIds is null;
+        }
+
+        return deviceIds.SetEquals(_loadedDeviceIds);
+    }
+
+    private string TypeName(MediaFlagType type)
+    {
+        LocalizedString text = L[$"FlaggedMediaType_{type}"];
+        return text.ResourceNotFound ? type.ToString() : text.Value;
+    }
+
+    private string StatusName(MediaFlagStatus status)
+    {
+        LocalizedString text = L[$"FlaggedMediaStatus_{status}"];
+        return text.ResourceNotFound ? status.ToString() : text.Value;
+    }
+
+    private string CameraName(Guid deviceId)
+    {
+        return DeviceNames is not null && DeviceNames.TryGetValue(deviceId, out string? name)
+            ? name
+            : L["FlaggedMediaUnknownCamera"].Value;
+    }
+
+    public void Dispose()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+    }
+}
