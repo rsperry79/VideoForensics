@@ -853,6 +853,7 @@ app.MapSystemVersionEndpoints();
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
 app.MapMediaFlagEndpoints();
+app.MapSnapshotCaptureEndpoints();
 app.MapReportEndpoints();
 app.MapLiveViewEndpoints();
 app.MapAuthEndpoints();

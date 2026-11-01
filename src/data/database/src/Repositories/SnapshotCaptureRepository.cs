@@ -39,6 +39,15 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
+        /// <summary>Gets one capture attempt by its id, or null when no such capture exists.</summary>
+        public async Task<SnapshotCapture?> GetAsync(Guid id, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.SnapshotCaptures
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == id, ct);
+        }
+
         /// <summary>Gets a device's current captures (IsCurrent == true) within a date range, oldest first.</summary>
         public async Task<IReadOnlyList<SnapshotCapture>> GetCurrentForDeviceAsync(Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
         {

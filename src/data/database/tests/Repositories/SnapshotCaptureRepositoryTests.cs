@@ -46,6 +46,21 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task SnapshotCapture_GetById_ReturnsMatchingCaptureOrNull()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            var capture = SnapshotCapture.Create(deviceId, T0, "fresh", 200, "Devices/x/by-id.jpg", null);
+            _ = await _repository.AddAsync(capture, CancellationToken.None);
+
+            SnapshotCapture? found = await _repository.GetAsync(capture.Id, CancellationToken.None);
+            SnapshotCapture? missing = await _repository.GetAsync(Guid.NewGuid(), CancellationToken.None);
+
+            Assert.NotNull(found);
+            Assert.Equal("Devices/x/by-id.jpg", found!.MediaFilePath);
+            Assert.Null(missing);
+        }
+
+        [Fact]
         public async Task SnapshotCapture_Persist_RoundTripsAllColumns()
         {
             Guid deviceId = await SeedDeviceAsync();

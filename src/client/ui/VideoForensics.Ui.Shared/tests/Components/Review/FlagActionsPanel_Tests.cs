@@ -29,6 +29,8 @@ public class FlagActionsPanel_Tests : BunitContext
 
     private readonly Mock<IMediaFlagRepository> _repository = new();
     private readonly Mock<ICaseRepository> _cases = new();
+    private readonly Mock<IMediaItemRepository> _media = new();
+    private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
     private readonly Mock<ILogger<FlagActionsPanel>> _logger = new();
 
     public FlagActionsPanel_Tests()
@@ -40,11 +42,49 @@ public class FlagActionsPanel_Tests : BunitContext
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_repository.Object);
         _ = Services.AddSingleton(_cases.Object);
+        _ = Services.AddSingleton(_media.Object);
+        _ = Services.AddSingleton(_snapshots.Object);
         _ = Services.AddSingleton(_logger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
         _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
+        _ = _cases.Setup(c => c.ListItemsAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<CaseItem>());
+        _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<MediaItem>());
+        _ = _snapshots.Setup(s => s.GetCurrentForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<SnapshotCapture>());
+    }
+
+    /// <summary>A clip of the device recorded at the given UTC time.</summary>
+    private static MediaItem Clip(Guid deviceId, DateTime recordedAtUtc)
+    {
+        return new MediaItem
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "/clip.mp4",
+            MediaFormat = "video/mp4",
+            Sha256Hash = "hash",
+            RecordedAtUtc = recordedAtUtc,
+            DownloadedAtUtc = recordedAtUtc,
+        };
+    }
+
+    /// <summary>A current snapshot capture of the device at the given UTC time.</summary>
+    private static SnapshotCapture Snapshot(Guid deviceId, DateTime capturedAtUtc)
+    {
+        return SnapshotCapture.Rehydrate(Guid.NewGuid(), deviceId, new DateTimeOffset(capturedAtUtc), "fresh", 200, true, "snap.jpg", null);
+    }
+
+    /// <summary>Sets the window reads for an RSSI flag: the clips and snapshots the device holds in the padded window.</summary>
+    private void SetupWindow(MediaFlag flag, IReadOnlyList<MediaItem> clips, IReadOnlyList<SnapshotCapture> snapshots)
+    {
+        _ = _media
+            .Setup(m => m.GetByDeviceAndDateRangeAsync(flag.DeviceId, flag.WindowStartUtc.AddHours(-1), flag.WindowEndUtc.AddHours(1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(clips);
+        _ = _snapshots
+            .Setup(s => s.GetCurrentForDeviceAsync(flag.DeviceId, new DateTimeOffset(flag.WindowStartUtc.AddHours(-1), TimeSpan.Zero), new DateTimeOffset(flag.WindowEndUtc.AddHours(1), TimeSpan.Zero), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(snapshots);
     }
 
     private static ForensicCase OpenCase(string title)
@@ -282,5 +322,123 @@ public class FlagActionsPanel_Tests : BunitContext
         // Assert
         IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
         Assert.Equal(TestLocalizer.Create()["FlagActionsDuplicate"].Value, alert.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_RssiFlag_ShowsWindowCounts()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag flag = Flag();
+        SetupWindow(
+            flag,
+            [Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30)), Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20))],
+            [Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25))]);
+
+        // Act
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, new List<MediaFlag>());
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Contains(TestLocalizer.Create()["FlagActionsWindowCounts", 2, 1].Value, cut.Markup));
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_RssiConfirm_PinsEveryClipAndSnapshot()
+    {
+        // Arrange
+        Guid operatorId = await SignInAsync("Review");
+        MediaFlag flag = Flag();
+        ForensicCase alpha = OpenCase("Alpha");
+        MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
+        MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
+        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
+        var changes = new List<MediaFlag>();
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
+        _ = _cases.Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipA.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync((CaseItem)null!);
+        _ = _cases.Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipB.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync((CaseItem)null!);
+        _ = _cases.Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Snapshot, snap.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync((CaseItem)null!);
+        SetupWindow(flag, [clipA, clipB], [snap]);
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-window-case-picker']")));
+        cut.Find("[data-testid='flag-window-case-picker']").Change(alpha.Id.ToString());
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-window']");
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Equal(TestLocalizer.Create()["FlagActionsWindowDone", 2, 1].Value, cut.Find("[data-testid='flag-window-done']").TextContent.Trim()));
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipA.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipB.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Snapshot, snap.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _media.Verify(m => m.GetByDeviceAndDateRangeAsync(flag.DeviceId, flag.WindowStartUtc.AddHours(-1), flag.WindowEndUtc.AddHours(1), It.IsAny<CancellationToken>()), Times.Once);
+        _snapshots.Verify(s => s.GetCurrentForDeviceAsync(flag.DeviceId, new DateTimeOffset(flag.WindowStartUtc.AddHours(-1), TimeSpan.Zero), new DateTimeOffset(flag.WindowEndUtc.AddHours(1), TimeSpan.Zero), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Empty(changes);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_RssiAlreadyPinned_IsSkipped()
+    {
+        // Arrange
+        Guid operatorId = await SignInAsync("Review");
+        MediaFlag flag = Flag();
+        ForensicCase alpha = OpenCase("Alpha");
+        MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
+        MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
+        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
+        _ = _cases.Setup(c => c.ListItemsAsync(alpha.Id, false, It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new CaseItem { Id = Guid.NewGuid(), CaseId = alpha.Id, Kind = CaseItemKind.Media, MediaItemId = clipA.Id, Reason = reason, AddedBy = operatorId.ToString(), AddedAtUtc = FixedNowUtc },
+        ]);
+        _ = _cases.Setup(c => c.AddItemAsync(alpha.Id, It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), reason, operatorId.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync((CaseItem)null!);
+        SetupWindow(flag, [clipA, clipB], [snap]);
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-window-case-picker']")));
+        cut.Find("[data-testid='flag-window-case-picker']").Change(alpha.Id.ToString());
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-window']");
+
+        // Assert: the pinned clip is skipped with no error; the other clip and the snapshot are added
+        cut.WaitForAssertion(() => Assert.Equal(TestLocalizer.Create()["FlagActionsWindowDone", 1, 1].Value, cut.Find("[data-testid='flag-window-done']").TextContent.Trim()));
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipA.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Never);
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipB.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Snapshot, snap.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Empty(cut.FindAll("[data-testid='flag-actions-error']"));
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_RssiItemFails_ShowsPartialMessage()
+    {
+        // Arrange
+        Guid operatorId = await SignInAsync("Review");
+        MediaFlag flag = Flag();
+        ForensicCase alpha = OpenCase("Alpha");
+        MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
+        MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
+        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
+        _ = _cases.Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipA.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync((CaseItem)null!);
+        _ = _cases
+            .Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipB.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Target Media is missing."));
+        SetupWindow(flag, [clipA, clipB], [snap]);
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-window-case-picker']")));
+        cut.Find("[data-testid='flag-window-case-picker']").Change(alpha.Id.ToString());
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-window']");
+
+        // Assert: the batch stops at the failed clip, so the snapshot is never attempted; 2 of 3 were not added
+        IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
+        Assert.Equal(TestLocalizer.Create()["FlagActionsWindowPartial", 2, 3].Value, alert.TextContent.Trim());
+        _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Snapshot, snap.Id, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
