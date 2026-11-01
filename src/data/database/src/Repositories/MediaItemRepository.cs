@@ -122,6 +122,20 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.MediaItems.FirstOrDefaultAsync(m => m.Sha256Hash == sha256Hash, ct);
         }
 
+        /// <summary>
+        /// Clips recorded since <paramref name="sinceUtc"/> whose RedFlags name BitrateCollapse, oldest first. The time and
+        /// flag filters run in SQL, so only the matching rows are read.
+        /// </summary>
+        public async Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .AsNoTracking()
+                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public async Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
