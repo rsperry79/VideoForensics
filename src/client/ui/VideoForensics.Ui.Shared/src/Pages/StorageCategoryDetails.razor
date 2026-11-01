@@ -42,7 +42,21 @@ else
 
     @if (_status.IsRelocatable)
     {
-        <SfButton Content="@L["ChangePathButton"]" OnClick="BeginRelocate" CssClass="e-primary" />
+        <div class="d-flex flex-row gap-2">
+            <SfButton Content="@L["ChangePathButton"]" OnClick="BeginRelocate" CssClass="e-primary" />
+            <SfButton Content="@L["ResetToDefaultButton"]" OnClick="BeginReset" Disabled="@_status.IsDefault" CssClass="e-flat" />
+        </div>
+
+        @if (_resetPending)
+        {
+            <div class="mt-3 d-flex flex-column gap-2">
+                <span class="text-muted">@L["ResetPendingMessage"]</span>
+                <div class="d-flex flex-row gap-2">
+                    <SfButton Content="@L["ConfirmButton"]" OnClick="AskConfirmRelocate" CssClass="e-primary" />
+                    <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
+                </div>
+            </div>
+        }
 
         @if (_newPath is not null)
         {
@@ -96,6 +110,7 @@ else
     private bool _actionSuccess;
     private bool _restartRequired;
     private string? _newPath;
+    private bool _resetPending;
     private bool _folderDialogVisible;
     private bool _confirmMoveVisible;
 
@@ -141,7 +156,15 @@ else
 
     private void BeginRelocate()
     {
+        _resetPending = false;
         _folderDialogVisible = true;
+        _actionMessage = null;
+    }
+
+    private void BeginReset()
+    {
+        _newPath = null;
+        _resetPending = true;
         _actionMessage = null;
     }
 
@@ -150,13 +173,18 @@ else
         _folderDialogVisible = false;
         if (path is not null)
         {
+            _resetPending = false;
             _newPath = path;
         }
 
         return Task.CompletedTask;
     }
 
-    private void CancelPending() => _newPath = null;
+    private void CancelPending()
+    {
+        _newPath = null;
+        _resetPending = false;
+    }
 
     private void AskConfirmRelocate() => _confirmMoveVisible = true;
 
@@ -165,7 +193,8 @@ else
     private async Task ConfirmRelocateAsync()
     {
         _confirmMoveVisible = false;
-        if (_status is null || string.IsNullOrWhiteSpace(_newPath))
+        // A pending reset sends a null path, which the server resolves to the platform default.
+        if (_status is null || (!_resetPending && string.IsNullOrWhiteSpace(_newPath)))
         {
             _actionMessage = L["PathRequired"];
             _actionSuccess = false;
@@ -176,11 +205,13 @@ else
         _actionMessage = null;
         try
         {
-            var result = await StorageService.RelocateAsync(new RelocateStorageCategoryRequest(category, _newPath), CancellationToken.None);
+            var target = _resetPending ? null : _newPath;
+            var result = await StorageService.RelocateAsync(new RelocateStorageCategoryRequest(category, target), CancellationToken.None);
 
             if (result.Succeeded)
             {
                 _newPath = null;
+                _resetPending = false;
                 await LoadAsync();
                 _actionSuccess = true;
                 _restartRequired = result.RestartRequired;

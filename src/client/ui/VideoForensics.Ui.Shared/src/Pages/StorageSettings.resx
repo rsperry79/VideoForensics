@@ -56,6 +56,12 @@
   <data name="DefaultLocationPrefix" xml:space="preserve">
     <value>Default</value>
   </data>
+  <data name="ResetToDefaultButton" xml:space="preserve">
+    <value>Reset to default</value>
+  </data>
+  <data name="ResetPendingMessage" xml:space="preserve">
+    <value>Existing files will be moved to the platform default location.</value>
+  </data>
   <data name="ColUsedSpace" xml:space="preserve">
     <value>Used Space</value>
   </data>

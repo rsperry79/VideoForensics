@@ -1,7 +1,9 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -38,12 +40,30 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> RelocateStorageCategory(
             RelocateStorageCategoryRequestDto requestDto,
             IStorageSettingsService storageSettings,
+            MaintenanceCoordinator coordinator,
             CancellationToken cancellationToken)
         {
             RelocateStorageCategoryRequest request = requestDto.ToDomain();
-            RelocateStorageCategoryResult result = await storageSettings.RelocateAsync(request, cancellationToken);
-            RelocateStorageCategoryResultDto resultDto = result.ToDto();
-            return Results.Ok(resultDto);
+            if (request.Category != StorageCategory.Database)
+            {
+                RelocateStorageCategoryResult plain = await storageSettings.RelocateAsync(request, cancellationToken);
+                return Results.Ok(plain.ToDto());
+            }
+
+            // The database must be closed before its file moves. The coordinator blocks new work, waits for in-flight work,
+            // and releases pooled connections before the relocation runs.
+            try
+            {
+                RelocateStorageCategoryResult result = await coordinator.RunAsync(
+                    "Moving the database",
+                    (sp, token) => sp.GetRequiredService<IStorageSettingsService>().RelocateAsync(request, token),
+                    cancellationToken);
+                return Results.Ok(result.ToDto());
+            }
+            catch (MaintenanceInProgressException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
         }
     }
 }

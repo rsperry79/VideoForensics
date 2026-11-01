@@ -4,6 +4,7 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Services;
 
 using Xunit;
@@ -15,6 +16,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IStorageLocationProvider> _mockStorageLocationProvider;
         private readonly Mock<IForensicsConfigurationService> _mockConfigurationService;
         private readonly Mock<ILogger<StorageSettingsService>> _mockLogger;
+        private readonly Mock<IDatabaseMaintenanceService> _mockMaintenance;
         private readonly StorageSettingsService _service;
 
         public StorageSettingsServiceTests()
@@ -45,10 +47,82 @@ namespace VideoForensics.Data.Core.Tests
                 .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration());
 
+            _mockMaintenance = new Mock<IDatabaseMaintenanceService>();
+
             _service = new StorageSettingsService(
                 _mockStorageLocationProvider.Object,
                 _mockConfigurationService.Object,
+                _mockMaintenance.Object,
                 _mockLogger.Object);
+        }
+
+        [Fact]
+        public async Task RelocateAsync_NullPath_ResetsToPlatformDefaultAndClearsOverride()
+        {
+            // Arrange: Media is on a custom folder that does not exist on disk, so nothing needs to move
+            const string customPath = @"D:\Custom\Media";
+            string platformDefault = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ForensicsConfiguration { DownloadLocation = customPath };
+
+            _ = _mockConfigurationService
+                .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(config);
+
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetPlatformDefaultRoot(StorageCategory.Media))
+                .Returns(platformDefault);
+
+            var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Media, NewRootPath: null);
+
+            // Act
+            RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+            // Assert: the override is cleared, so the category reads as Default again
+            Assert.True(result.Succeeded);
+            Assert.Null(config.DownloadLocation);
+            _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RelocateAsync_DatabaseMove_ReleasesConnectionsThenMovesFile()
+        {
+            // Arrange: a real source folder holding a database file, so the move has something to do
+            string sourceDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "videoforensics.db"), "db");
+
+            try
+            {
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetEffectiveRoot(StorageCategory.Database, It.IsAny<string?>()))
+                    .Returns(sourceDir);
+
+                _mockMaintenance
+                    .Setup(x => x.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()))
+                    .Callback(() => Assert.True(File.Exists(Path.Combine(sourceDir, "videoforensics.db")), "file must still be in place when connections are released"))
+                    .Returns(Task.CompletedTask);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Database, NewRootPath: destDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                _mockMaintenance.Verify(x => x.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()), Times.Once);
+                Assert.True(File.Exists(Path.Combine(destDir, "videoforensics.db")));
+                Assert.False(File.Exists(Path.Combine(sourceDir, "videoforensics.db")));
+            }
+            finally
+            {
+                foreach (string dir in new[] { sourceDir, destDir })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
         }
 
         [Fact]

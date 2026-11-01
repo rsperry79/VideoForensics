@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -13,15 +14,18 @@ namespace VideoForensics.Data.Core.Services
     {
         private readonly IStorageLocationProvider _storageLocationProvider;
         private readonly IForensicsConfigurationService _configurationService;
+        private readonly IDatabaseMaintenanceService _maintenance;
         private readonly ILogger<StorageSettingsService> _logger;
 
         public StorageSettingsService(
             IStorageLocationProvider storageLocationProvider,
             IForensicsConfigurationService configurationService,
+            IDatabaseMaintenanceService maintenance,
             ILogger<StorageSettingsService> logger)
         {
             _storageLocationProvider = storageLocationProvider ?? throw new ArgumentNullException(nameof(storageLocationProvider));
             _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+            _maintenance = maintenance ?? throw new ArgumentNullException(nameof(maintenance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -63,7 +67,7 @@ namespace VideoForensics.Data.Core.Services
 
         public async Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Relocating storage category {Category} to {NewPath}", request.Category, request.NewRootPath);
+            _logger.LogInformation("Relocating storage category {Category} to {NewPath}", request.Category, request.NewRootPath ?? "platform default");
 
             // Keys cannot be relocated
             if (request.Category == StorageCategory.Keys)
@@ -73,66 +77,92 @@ namespace VideoForensics.Data.Core.Services
                 return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
             }
 
-            // Validate the new path
-            if (string.IsNullOrWhiteSpace(request.NewRootPath))
+            // A null path resets the category to its platform default. An empty path is rejected.
+            bool reset = request.NewRootPath is null;
+            if (!reset && string.IsNullOrWhiteSpace(request.NewRootPath))
             {
                 const string errorMessage = "New root path cannot be empty";
                 _logger.LogError(errorMessage);
                 return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
             }
 
+            string newRootPath = reset ? _storageLocationProvider.GetPlatformDefaultRoot(request.Category) : request.NewRootPath!;
+
             try
             {
                 // Ensure the destination directory exists
-                _ = Directory.CreateDirectory(request.NewRootPath);
+                _ = Directory.CreateDirectory(newRootPath);
 
                 // Load current configuration to get the current path and override
                 IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync("", cancellationToken);
                 string? currentOverride = GetConfigurationOverride(config, request.Category);
                 string currentPath = _storageLocationProvider.GetEffectiveRoot(request.Category, currentOverride);
 
+                bool isDatabase = request.Category == StorageCategory.Database;
+                bool moveNeeded = Directory.Exists(currentPath) && currentPath != newRootPath;
+
+                if (isDatabase)
+                {
+                    // Saved while the database is still at its current path, so the file that moves carries the new override.
+                    SetConfigurationOverride(config, request.Category, reset ? null : newRootPath);
+                    RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                    if (saveFailure is not null)
+                    {
+                        return saveFailure;
+                    }
+
+                    if (moveNeeded)
+                    {
+                        // Pooled connections keep the file handle open, so release them before the file moves.
+                        await _maintenance.ReleaseAllConnectionsAsync(cancellationToken);
+                    }
+                }
+
                 // Move files from current path to new path if current path exists
-                if (Directory.Exists(currentPath) && currentPath != request.NewRootPath)
+                if (moveNeeded)
                 {
                     try
                     {
-                        await MoveDirectoryContentsAsync(currentPath, request.NewRootPath, cancellationToken);
-                        _logger.LogDebug("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, request.NewRootPath);
+                        await MoveDirectoryContentsAsync(currentPath, newRootPath, cancellationToken);
+                        _logger.LogDebug("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, newRootPath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to move {Category} contents from {OldPath} to {NewPath}", request.Category, currentPath, request.NewRootPath);
+                        _logger.LogError("Failed to move {Category} contents from {OldPath} to {NewPath}: {ExceptionType} {ErrorMessage}", request.Category, currentPath, newRootPath, ex.GetType().Name, ex.Message);
+                        if (isDatabase)
+                        {
+                            // The file did not move, so the saved override must point back at it.
+                            SetConfigurationOverride(config, request.Category, currentOverride);
+                            _ = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                        }
+
                         return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to move storage files: {ex.Message}", RestartRequired: false);
                     }
                 }
 
-                // The saved override lives inside the database, which startup cannot open to read it. Record a
-                // Database move in the bootstrap pointer that every startup path reads before opening the database.
-                if (request.Category == StorageCategory.Database)
+                if (isDatabase)
                 {
+                    // The saved override lives inside the database, which startup cannot open to read it. Record a
+                    // Database move in the bootstrap pointer that every startup path reads before opening the database.
                     try
                     {
-                        DatabaseLocationPointer.Write(_storageLocationProvider.GetDataRoot(), request.NewRootPath);
+                        DatabaseLocationPointer.Write(_storageLocationProvider.GetDataRoot(), newRootPath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to write Database location pointer to {NewPath}: {ExceptionType} {ErrorMessage}", request.NewRootPath, ex.GetType().Name, ex.Message);
+                        _logger.LogError("Failed to write Database location pointer to {NewPath}: {ExceptionType} {ErrorMessage}", newRootPath, ex.GetType().Name, ex.Message);
                         return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to record new database location: {ex.Message}", RestartRequired: false);
                     }
                 }
-
-                // Persist the new override in configuration
-                SetConfigurationOverride(config, request.Category, request.NewRootPath);
-
-                try
+                else
                 {
-                    await _configurationService.SaveConfigurationAsync(config, cancellationToken);
-                    _logger.LogDebug("Storage category {Category} configuration persisted to {NewPath}", request.Category, request.NewRootPath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to persist storage configuration for {Category}", request.Category);
-                    return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to save configuration: {ex.Message}", RestartRequired: false);
+                    // Persist the new override in configuration
+                    SetConfigurationOverride(config, request.Category, reset ? null : newRootPath);
+                    RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                    if (saveFailure is not null)
+                    {
+                        return saveFailure;
+                    }
                 }
 
                 bool requiresRestart = request.Category is StorageCategory.Database or StorageCategory.Logs;
@@ -162,7 +192,22 @@ namespace VideoForensics.Data.Core.Services
             };
         }
 
-        private void SetConfigurationOverride(IForensicsConfiguration config, StorageCategory category, string newPath)
+        private async Task<RelocateStorageCategoryResult?> TrySaveConfigurationAsync(IForensicsConfiguration config, StorageCategory category, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _configurationService.SaveConfigurationAsync(config, cancellationToken);
+                _logger.LogDebug("Storage category {Category} configuration persisted", category);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to persist storage configuration for {Category}: {ExceptionType} {ErrorMessage}", category, ex.GetType().Name, ex.Message);
+                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to save configuration: {ex.Message}", RestartRequired: false);
+            }
+        }
+
+        private void SetConfigurationOverride(IForensicsConfiguration config, StorageCategory category, string? newPath)
         {
             switch (category)
             {

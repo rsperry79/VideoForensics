@@ -42,6 +42,11 @@ public class StorageLocationProvider : IStorageLocationProvider
             }
         }
 
+        return GetPlatformDefaultRoot(category);
+    }
+
+    public string GetPlatformDefaultRoot(StorageCategory category)
+    {
         if (OperatingSystem.IsWindows())
         {
             // Keys has no registry value by design, so it is never relocated, whatever the source says.

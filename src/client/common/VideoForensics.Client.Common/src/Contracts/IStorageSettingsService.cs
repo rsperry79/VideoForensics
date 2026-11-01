@@ -24,10 +24,11 @@ namespace VideoForensics.Client.Common.Contracts
 
     /// <summary>
     /// Domain type for a request to relocate a storage category to a new root path.
+    /// A null path resets the category to its platform default and clears its override.
     /// </summary>
     public record RelocateStorageCategoryRequest(
         StorageCategory Category,
-        string NewRootPath
+        string? NewRootPath
     );
 
     /// <summary>
