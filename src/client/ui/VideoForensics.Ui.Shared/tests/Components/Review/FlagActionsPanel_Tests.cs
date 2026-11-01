@@ -21,12 +21,14 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Components.Review;
 /// <summary>
 /// The flag actions panel: Keep and Dismiss go through the status path for the signed-in operator, Dismiss needs a reason,
 /// a compare-and-set miss shows the conflict message and raises no change, and the Review role gates both actions.
+/// A clip flag also offers Add to case, which pins the clip to the picked open case.
 /// </summary>
 public class FlagActionsPanel_Tests : BunitContext
 {
     private static readonly DateTime FixedNowUtc = new(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
 
     private readonly Mock<IMediaFlagRepository> _repository = new();
+    private readonly Mock<ICaseRepository> _cases = new();
     private readonly Mock<ILogger<FlagActionsPanel>> _logger = new();
 
     public FlagActionsPanel_Tests()
@@ -37,8 +39,40 @@ public class FlagActionsPanel_Tests : BunitContext
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_repository.Object);
+        _ = Services.AddSingleton(_cases.Object);
         _ = Services.AddSingleton(_logger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
+        _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
+    }
+
+    private static ForensicCase OpenCase(string title)
+    {
+        return new ForensicCase
+        {
+            Id = Guid.NewGuid(),
+            CaseNumber = "CASE-" + title,
+            Title = title,
+            Status = CaseStatus.Open,
+            CreatedBy = "test",
+        };
+    }
+
+    private static MediaFlag ClipFlag()
+    {
+        return new MediaFlag
+        {
+            Id = Guid.NewGuid(),
+            FlagType = MediaFlagType.BitrateCollapse,
+            DeviceId = Guid.NewGuid(),
+            MediaItemId = Guid.NewGuid(),
+            WindowStartUtc = FixedNowUtc.AddMinutes(-5),
+            WindowEndUtc = FixedNowUtc,
+            RaisedAtUtc = FixedNowUtc,
+            Status = MediaFlagStatus.Unreviewed,
+            RowVersion = 1,
+        };
     }
 
     /// <summary>Signs in a paired operator with the given role and returns the operator's id.</summary>
@@ -159,5 +193,94 @@ public class FlagActionsPanel_Tests : BunitContext
         Assert.True(cut.Find("[data-testid='flag-keep']").HasAttribute("disabled"));
         Assert.True(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
         Assert.Empty(changes);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_ClipFlag_ShowsAddToCase()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([OpenCase("Alpha")]);
+
+        // Act
+        IRenderedComponent<FlagActionsPanel> clip = RenderPanel(ClipFlag(), new List<MediaFlag>());
+        IRenderedComponent<FlagActionsPanel> rssi = RenderPanel(Flag(), new List<MediaFlag>());
+
+        // Assert: the clip flag offers Add to case; the RSSI flag has no clip, so the section is absent with no text
+        Assert.NotEmpty(clip.FindAll("[data-testid='flag-add-to-case']"));
+        Assert.Empty(rssi.FindAll("[data-testid='flag-add-to-case']"));
+        Assert.Empty(rssi.FindAll("[data-testid='flag-add-to-case-section']"));
+        Assert.DoesNotContain(TestLocalizer.Create()["FlagActionsAddToCase"].Value, rssi.Markup);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_AddToCase_PinsTheClip()
+    {
+        // Arrange
+        Guid operatorId = await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        ForensicCase alpha = OpenCase("Alpha");
+        var changes = new List<MediaFlag>();
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases
+            .Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clip.MediaItemId!.Value, TestLocalizer.Create()["FlagActionsPinReason"].Value, operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CaseItem)null!);
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, changes);
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='flag-add-to-case-picker']")));
+
+        // Act
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change(alpha.Id.ToString());
+        await ClickAsync(cut, "[data-testid='flag-add-to-case']");
+
+        // Assert
+        cut.WaitForAssertion(() => _cases.Verify(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clip.MediaItemId!.Value, TestLocalizer.Create()["FlagActionsPinReason"].Value, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once));
+        Assert.Empty(changes);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_AlreadyInCase_DisablesAdd()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        ForensicCase alpha = OpenCase("Alpha");
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, new List<MediaFlag>());
+
+        // Act
+        cut.WaitForAssertion(() => Assert.Contains(TestLocalizer.Create()["FlagActionsAlreadyIn", alpha.Title].Value, cut.Markup));
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change(alpha.Id.ToString());
+
+        // Assert
+        Assert.True(cut.Find("[data-testid='flag-add-to-case']").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_AddDuplicate_ShowsDuplicateMessage()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        ForensicCase alpha = OpenCase("Alpha");
+        bool pinned = false;
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases
+            .Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromResult<IReadOnlyList<ForensicCase>>(pinned ? [alpha] : []));
+        _ = _cases
+            .Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback(() => pinned = true)
+            .ThrowsAsync(new InvalidOperationException($"Target Media {clip.MediaItemId} is already actively pinned to case {alpha.Id}."));
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change(alpha.Id.ToString());
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-to-case']");
+
+        // Assert
+        IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
+        Assert.Equal(TestLocalizer.Create()["FlagActionsDuplicate"].Value, alert.TextContent.Trim());
     }
 }
