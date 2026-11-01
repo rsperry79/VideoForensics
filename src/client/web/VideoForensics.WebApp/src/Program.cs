@@ -277,7 +277,8 @@ builder.Logging.SetMinimumLevel(LogLevel.Trace);
 builder.Services.AddSingleton(new LogFileDirectory(logsDir));
 builder.Services.AddSingleton(serverLogLevel);
 // Startup init runs in the background after the host starts; the gate tells the request pipeline when it has finished.
-builder.Services.AddSingleton<StartupInitializationGate>();
+StartupInitializationGate startupInitGate = new();
+builder.Services.AddSingleton(startupInitGate);
 builder.Services.AddHostedService<StartupInitializationService>();
 builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
@@ -778,6 +779,32 @@ builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
 // they wrap, so each decorator wraps the final registration.
 builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
+
+// Holds every background service back until the startup init has finished, so none touches an unmigrated database.
+// Wrapped after all registrations so every AddHostedService above is covered. Kestrel's host service and the init
+// service are not gated: the first is not a BackgroundService and the second is excluded by type.
+for (int i = 0; i < builder.Services.Count; i++)
+{
+    ServiceDescriptor descriptor = builder.Services[i];
+    if (descriptor.ServiceType != typeof(IHostedService) || descriptor.Lifetime != ServiceLifetime.Singleton
+        || descriptor.ImplementationInstance is not null
+        || (descriptor.ImplementationType is not null && !typeof(BackgroundService).IsAssignableFrom(descriptor.ImplementationType))
+        || descriptor.ImplementationType == typeof(StartupInitializationService))
+    {
+        continue;
+    }
+
+    ServiceDescriptor original = descriptor;
+    builder.Services[i] = ServiceDescriptor.Singleton<IHostedService>(sp =>
+    {
+        IHostedService service = original.ImplementationFactory is { } factory
+            ? (IHostedService)factory(sp)
+            : (IHostedService)ActivatorUtilities.CreateInstance(sp, original.ImplementationType!);
+        return service is BackgroundService and not StartupInitializationService
+            ? new GatedHostedService(service, startupInitGate)
+            : service;
+    });
+}
 
 WebApplication app = builder.Build();
 
