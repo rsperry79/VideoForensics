@@ -135,7 +135,7 @@ describe("liveview", () => {
                 withAutomaticReconnect: vi.fn(() => builder),
                 build: vi.fn(() => connection),
             };
-            return { connection, builder, lib: { HubConnectionBuilder: vi.fn(() => builder) } };
+            return { connection, builder, lib: { HubConnectionBuilder: vi.fn(function () { return builder; }) } };
         }
 
         afterEach(() => {
