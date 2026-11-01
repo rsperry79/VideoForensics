@@ -7,7 +7,9 @@
 <div class="media-fit" data-testid="media-fit">
     @if (State == MediaFitState.Playable)
     {
-        <MediaPlayer Source="@Source"
+        <MediaPlayer @ref="_player"
+                     Source="@Source"
+                     PlaybackRate="@PlaybackRate"
                      Cursor="@Cursor"
                      SourceStartUtc="@SourceStartUtc"
                      SourceDurationSeconds="@SourceDurationSeconds"
@@ -27,6 +29,15 @@
     /// <summary>The playable URL of the clip, passed to the media player.</summary>
     [Parameter] public string? Source { get; set; }
 
+    /// <summary>The playback rate, passed to the media player. The host owns it, since the timeline only reports changes.</summary>
+    [Parameter] public double PlaybackRate { get; set; } = 1.0;
+
+    /// <summary>
+    /// Raised after the media player is shown, with the player. Raised with null when the box stops showing the player,
+    /// so a host never keeps a reference to a player that is no longer rendered.
+    /// </summary>
+    [Parameter] public EventCallback<MediaPlayer?> PlayerChanged { get; set; }
+
     /// <summary>The shared playback time (UTC), passed to the media player.</summary>
     [Parameter] public DateTime? Cursor { get; set; }
 
@@ -41,6 +52,21 @@
 
     /// <summary>The browser could not load or play the source. Passed to the media player.</summary>
     [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private MediaPlayer? _player;
+    private MediaPlayer? _announcedPlayer;
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ReferenceEquals(_player, _announcedPlayer))
+        {
+            return;
+        }
+
+        _announcedPlayer = _player;
+        await PlayerChanged.InvokeAsync(_player);
+    }
 
     private string MessageKey => State switch
     {

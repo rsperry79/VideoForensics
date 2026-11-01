@@ -1049,4 +1049,13 @@
   <data name="PlaybackNow" xml:space="preserve">
     <value>Now {0}</value>
   </data>
+  <data name="BitrateReviewBreadcrumbRoot" xml:space="preserve">
+    <value>Bit rate</value>
+  </data>
+  <data name="BitrateReviewTitle" xml:space="preserve">
+    <value>Bit rate flag review</value>
+  </data>
+  <data name="BitrateReviewNotFound" xml:space="preserve">
+    <value>This flag could not be found.</value>
+  </data>
 </root>
