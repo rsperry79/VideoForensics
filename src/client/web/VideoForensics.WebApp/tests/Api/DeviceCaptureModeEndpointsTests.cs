@@ -14,9 +14,9 @@ public class DeviceCaptureModeEndpointsTests
 {
     private static readonly Guid AccountId = Guid.NewGuid();
 
-    private static Device Dev(string providerId, string name, DeviceCaptureMode mode)
+    private static Device Dev(string providerId, string name, DeviceCaptureMode mode, string type = "doorbell")
     {
-        var device = new Device { ProviderDeviceId = providerId, Name = name, Type = "doorbell" };
+        var device = new Device { ProviderDeviceId = providerId, Name = name, Type = type };
         device.CaptureMode = mode;
         return device;
     }
@@ -38,6 +38,39 @@ public class DeviceCaptureModeEndpointsTests
 
         Assert.Equal(new[] { "Driveway", "Porch" }, rows.Select(r => r.Name).ToArray());
         Assert.Equal(new[] { "Capture", "HealthOnly" }, rows.Select(r => r.Mode).ToArray());
+    }
+
+    [Fact]
+    public async Task List_FlagsNonCameraDevices()
+    {
+        var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
+        var locations = new Mock<ILocationRepository>();
+        _ = locations.Setup(l => l.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
+        var devices = new Mock<IDeviceRepository>();
+        _ = devices.Setup(d => d.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            Dev("1", "Driveway", DeviceCaptureMode.Capture, "stickup_cam"),
+            Dev("2", "Upstairs", DeviceCaptureMode.HealthOnly, "chime"),
+        ]);
+
+        IReadOnlyList<DeviceCaptureModeDto> rows = await DeviceCaptureModeEndpoints.ListForAccountAsync(AccountId, locations.Object, devices.Object, CancellationToken.None);
+
+        Assert.Equal(new[] { true, false }, rows.Select(r => r.IsCamera).ToArray());
+    }
+
+    [Fact]
+    public async Task Set_CaptureOnNonCamera_IsRejectedAndNothingIsSaved()
+    {
+        Device device = Dev("2", "Upstairs", DeviceCaptureMode.HealthOnly, "chime");
+        var devices = new Mock<IDeviceRepository>();
+        _ = devices.Setup(d => d.GetAsync(device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+
+        IResult result = await DeviceCaptureModeEndpoints.SetModeAsync(device.Id, new SetDeviceCaptureModeRequest("Capture"), devices.Object, CancellationToken.None);
+
+        // The body is an anonymous type, so the generic BadRequest type cannot be named; match on its name.
+        Assert.StartsWith("BadRequest", result.GetType().Name, StringComparison.Ordinal);
+        Assert.Equal(DeviceCaptureMode.HealthOnly, device.CaptureMode);
+        devices.Verify(d => d.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

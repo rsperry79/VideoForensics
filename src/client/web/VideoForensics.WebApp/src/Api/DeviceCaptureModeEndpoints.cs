@@ -1,13 +1,14 @@
+using VideoForensics.Client.Ui.Shared.Services.Devices;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Api
 {
-    /// <summary>One device on an account's schedule page, with its capture choice.</summary>
-    public sealed record DeviceCaptureModeDto(Guid DeviceId, string Name, string ProviderDeviceId, string Mode);
+    /// <summary>One device on an account's schedule page, with its capture choice. Non-cameras only offer HealthOnly and Off.</summary>
+    public sealed record DeviceCaptureModeDto(Guid DeviceId, string Name, string ProviderDeviceId, string Mode, bool IsCamera);
 
-    /// <summary>Sets a device's capture choice. Mode is "Off", "HealthOnly", or "Capture" (case-insensitive).</summary>
+    /// <summary>Sets a device's capture choice. Mode is "Off", "HealthOnly", or "Capture" (case-insensitive). Capture needs a camera.</summary>
     public sealed record SetDeviceCaptureModeRequest(string Mode);
 
     /// <summary>
@@ -42,7 +43,7 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 foreach (Device device in await devices.GetByLocationIdAsync(location.Id, ct))
                 {
-                    rows.Add(new DeviceCaptureModeDto(device.Id, device.Name, device.ProviderDeviceId, device.CaptureMode.ToString()));
+                    rows.Add(new DeviceCaptureModeDto(device.Id, device.Name, device.ProviderDeviceId, device.CaptureMode.ToString(), DeviceTypeNames.IsCamera(device.Type)));
                 }
             }
 
@@ -62,9 +63,16 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.NotFound();
             }
 
+            // Snapshots need a camera; a chime or bridge can only keep health.
+            bool isCamera = DeviceTypeNames.IsCamera(device.Type);
+            if (mode == DeviceCaptureMode.Capture && !isCamera)
+            {
+                return Results.BadRequest(new { error = "Only cameras can capture. Choose HealthOnly or Off." });
+            }
+
             device.CaptureMode = mode;
             await devices.UpdateAsync(device, ct);
-            return Results.Ok(new DeviceCaptureModeDto(device.Id, device.Name, device.ProviderDeviceId, device.CaptureMode.ToString()));
+            return Results.Ok(new DeviceCaptureModeDto(device.Id, device.Name, device.ProviderDeviceId, device.CaptureMode.ToString(), isCamera));
         }
     }
 }
