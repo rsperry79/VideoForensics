@@ -4,7 +4,7 @@
     "debug-webapp-service": {
       "commandName": "Executable",
       "executablePath": "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\wt.exe",
-      "commandLineArgs": "-w vf-debug new-tab --title \"VideoForensics debug\" pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ..\\..\\..\\..\\..\\scripts\\Debug-WebAppService.ps1",
+      "commandLineArgs": "-w vf-debug new-tab -d . --title \"VideoForensics debug\" pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ..\\..\\..\\..\\..\\scripts\\Debug-WebAppService.ps1",
       "workingDirectory": ".",
       "launchBrowser": false
     },
