@@ -149,6 +149,29 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task PositionAsync_FlagInFilter_ReturnsOkWithPosition()
+        {
+            var flags = new Mock<IMediaFlagRepository>();
+            _ = flags.Setup(f => f.GetPositionAsync(FlagId, It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>())).ReturnsAsync(3);
+
+            IResult result = await MediaFlagEndpoints.PositionAsync(FlagId, NoFilter(), flags.Object, CancellationToken.None);
+
+            Ok<int> ok = Assert.IsType<Ok<int>>(result);
+            Assert.Equal(3, ok.Value);
+        }
+
+        [Fact]
+        public async Task PositionAsync_FlagNotInFilter_ReturnsNotFound()
+        {
+            var flags = new Mock<IMediaFlagRepository>();
+            _ = flags.Setup(f => f.GetPositionAsync(FlagId, It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>())).ReturnsAsync((int?)null);
+
+            IResult result = await MediaFlagEndpoints.PositionAsync(FlagId, NoFilter(), flags.Object, CancellationToken.None);
+
+            Assert.Equal(404, StatusOf(result));
+        }
+
+        [Fact]
         public async Task NeighbourAsync_AtEndOfList_ReturnsNoContent()
         {
             var flags = new Mock<IMediaFlagRepository>();

@@ -184,6 +184,25 @@ namespace VideoForensics.Data.Database.Repositories
                 .FirstOrDefaultAsync(ct);
         }
 
+        /// <summary>
+        /// Counts the matching flags listed before this one, then adds one. The "before" test is the reverse of the list's
+        /// sort (RaisedAtUtc then Id, both descending), so it must stay in step with <see cref="ListPageAsync"/>.
+        /// </summary>
+        public static async Task<int?> GetPositionAsync(VideoForensicsDbContext db, Guid flagId, MediaFlagFilter filter, CancellationToken ct)
+        {
+            IQueryable<MediaFlag> query = ApplyFilter(db.MediaFlags.AsNoTracking(), filter);
+            MediaFlag? anchor = await query.FirstOrDefaultAsync(f => f.Id == flagId, ct);
+            if (anchor is null)
+            {
+                return null;
+            }
+
+            DateTime at = anchor.RaisedAtUtc;
+            Guid id = anchor.Id;
+            int before = await query.CountAsync(f => f.RaisedAtUtc > at || (f.RaisedAtUtc == at && f.Id.CompareTo(id) > 0), ct);
+            return before + 1;
+        }
+
         public static void ValidateReview(MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName)
         {
             if (string.IsNullOrWhiteSpace(operatorName))

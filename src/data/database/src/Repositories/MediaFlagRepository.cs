@@ -100,6 +100,13 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await MediaFlagOperations.GetPositionAsync(db, flagId, filter, ct);
+        }
+
+        /// <inheritdoc />
         public async Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
         {
             MediaFlagOperations.ValidateReview(expectedStatus, newStatus, reason, operatorName);

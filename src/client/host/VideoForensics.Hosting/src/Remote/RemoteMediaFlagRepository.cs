@@ -93,6 +93,22 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>The server answers 404 when the flag is missing or not in the filtered list; both mean "no position".</remarks>
+        public async Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(filter);
+            HttpResponseMessage response = await _httpClient.GetAsync(
+                $"/api/v1/media-flags/{flagId:D}/position?" + Query(filter), ct);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            _ = response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<int>(JsonOptions, ct);
+        }
+
+        /// <inheritdoc />
         /// <remarks><paramref name="operatorName"/> is not sent; the server reads the operator from the token.</remarks>
         public async Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
         {

@@ -1416,6 +1416,8 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct) => MediaFlagOperations.GetNeighbourAsync(_db, flagId, filter, direction, ct);
 
+        public Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct) => MediaFlagOperations.GetPositionAsync(_db, flagId, filter, ct);
+
         public Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
         {
             MediaFlagOperations.ValidateReview(expectedStatus, newStatus, reason, operatorName);

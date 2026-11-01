@@ -51,6 +51,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("{id:guid}/position", PositionAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapPost("{id:guid}/status", SetStatusAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Review)
                 .RequireRateLimiting("media");
@@ -134,6 +138,26 @@ namespace VideoForensics.Client.WebApp.Api
 
             MediaFlag? neighbour = await flags.GetNeighbourAsync(id, filter, direction, ct);
             return neighbour == null ? Results.NoContent() : Results.Ok(neighbour.ToDto());
+        }
+
+        /// <summary>
+        /// Gets the flag's 1-based position in the filtered list. 404 when the flag is missing or not in the filtered list,
+        /// 400 for a bad filter.
+        /// </summary>
+        public static async Task<IResult> PositionAsync(
+            Guid id,
+            [AsParameters] MediaFlagQueryParameters query,
+            IMediaFlagRepository flags,
+            CancellationToken ct)
+        {
+            MediaFlagFilter? filter = TryBuildFilter(query);
+            if (filter == null)
+            {
+                return Results.BadRequest();
+            }
+
+            int? position = await flags.GetPositionAsync(id, filter, ct);
+            return position is { } value ? Results.Ok(value) : Results.NotFound();
         }
 
         /// <summary>

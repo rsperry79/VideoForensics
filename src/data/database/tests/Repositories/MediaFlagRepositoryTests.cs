@@ -351,6 +351,43 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task MediaFlagRepository_GetPosition_ReturnsOneBasedPositionInListOrder()
+        {
+            var cam = Guid.NewGuid();
+            MediaFlag oldest = await RaiseAsync(cam, 0);
+            MediaFlag middle = await RaiseAsync(cam, 1);
+            MediaFlag newest = await RaiseAsync(cam, 2);
+            MediaFlag excluded = await _repository.UpsertRaisedAsync(Raised(cam, null, MediaFlagType.AudioDropout, 3), Ct);
+            var filter = new MediaFlagFilter { Types = new[] { MediaFlagType.RssiDeviation } };
+
+            // List order is newest first, so the newest flag is position 1 and the oldest is position 3.
+            Assert.Equal(1, await _repository.GetPositionAsync(newest.Id, filter, Ct));
+            Assert.Equal(2, await _repository.GetPositionAsync(middle.Id, filter, Ct));
+            Assert.Equal(3, await _repository.GetPositionAsync(oldest.Id, filter, Ct));
+            Assert.Null(await _repository.GetPositionAsync(excluded.Id, filter, Ct));
+            Assert.Null(await _repository.GetPositionAsync(Guid.NewGuid(), filter, Ct));
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_GetPosition_TieOnRaisedAt_UsesIdTieBreak()
+        {
+            var cam = Guid.NewGuid();
+            for (int i = 0; i < 3; i++)
+            {
+                MediaFlag f = Raised(cam, null, MediaFlagType.RssiDeviation, i);
+                f.RaisedAtUtc = T0;
+                _ = await _repository.UpsertRaisedAsync(f, Ct);
+            }
+
+            // The position must agree with the list's own order, whatever the tie-break on Id is.
+            MediaFlagPage page = await _repository.ListPageAsync(new MediaFlagFilter(), 0, 10, Ct);
+            for (int i = 0; i < page.Items.Count; i++)
+            {
+                Assert.Equal(i + 1, await _repository.GetPositionAsync(page.Items[i].Id, new MediaFlagFilter(), Ct));
+            }
+        }
+
+        [Fact]
         public async Task MediaFlagRepository_UpdateStatusAsync_Keep_SetsReviewFieldsAndAudits()
         {
             MediaItem item = await AddMediaAsync();

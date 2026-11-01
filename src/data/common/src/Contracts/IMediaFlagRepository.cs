@@ -28,6 +28,12 @@ namespace VideoForensics.Data.Common.Contracts
         Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct);
 
         /// <summary>
+        /// Gets the 1-based position of the flag in list order among those matching the filter, or null when the flag is
+        /// missing or filtered out. Position 1 is the newest flag, so the position counts the matching flags listed before it.
+        /// </summary>
+        Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct);
+
+        /// <summary>
         /// Compare-and-set review. Moves the flag to Kept or Dismissed only if it is still <paramref name="expectedStatus"/> and
         /// unchanged since it was read; otherwise throws <see cref="FlagStatusConflictException"/>. Dismissed needs a non-empty
         /// reason; Kept takes an optional note. Writes the change and its chain-of-custody ActionLog entry in one save.

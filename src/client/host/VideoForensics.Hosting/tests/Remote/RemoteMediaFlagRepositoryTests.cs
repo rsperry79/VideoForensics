@@ -155,6 +155,23 @@ public class RemoteMediaFlagRepositoryTests
     }
 
     [Fact]
+    public async Task RemoteMediaFlagRepository_GetPosition_MapsOkAndNotFound()
+    {
+        (RemoteMediaFlagRepository repo, FakeHandler handler) = Create(_ => Json(2));
+
+        int? position = await repo.GetPositionAsync(FlagId, Filter(), CancellationToken.None);
+
+        HttpRequestMessage req = Assert.Single(handler.Seen);
+        Assert.Equal("/api/v1/media-flags/" + FlagId.ToString("D") + "/position", req.RequestUri!.AbsolutePath);
+        Assert.Contains("statuses=Unreviewed", req.RequestUri.Query);
+        Assert.Equal(2, position);
+
+        (RemoteMediaFlagRepository missingRepo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        Assert.Null(await missingRepo.GetPositionAsync(FlagId, Filter(), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task UpdateStatusAsync_PostsStatusesAndReasonWithoutOperatorName()
     {
         (RemoteMediaFlagRepository repo, FakeHandler handler) = Create(_ => Json(SampleDto()));
