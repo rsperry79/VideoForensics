@@ -1058,4 +1058,10 @@
   <data name="BitrateReviewNotFound" xml:space="preserve">
     <value>This flag could not be found.</value>
   </data>
+  <data name="RssiReviewBreadcrumbRoot" xml:space="preserve">
+    <value>Signal</value>
+  </data>
+  <data name="RssiReviewTitle" xml:space="preserve">
+    <value>Signal flag review</value>
+  </data>
 </root>
