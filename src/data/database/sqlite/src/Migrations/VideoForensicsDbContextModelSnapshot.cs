@@ -444,6 +444,35 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AddedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaseId", "AddedAtUtc");
+
+                    b.ToTable("CaseNotes", (string)null);
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Credential", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7775,6 +7804,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("SnapshotCaptureId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseNote", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.ForensicCase", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZoneVertex", b =>

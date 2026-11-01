@@ -61,6 +61,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
             services.TryAddScoped<IMediaFlagRepository, MediaFlagRepository>();
             services.TryAddScoped<ICaseRepository, CaseRepository>();
+            services.TryAddScoped<ICaseNoteRepository, CaseNoteRepository>();
             services.TryAddScoped<IMediaStillRepository, MediaStillRepository>();
             services.TryAddScoped<IOperatorRepository, OperatorRepository>();
             services.TryAddScoped<IPairedDeviceRepository, PairedDeviceRepository>();
