@@ -182,13 +182,24 @@ function Build-WithVisualStudio {
     return $true
 }
 
+# Returns the full path of wt.exe, or $null when Windows Terminal is not installed. The WindowsApps folder is checked
+# directly, because PATH in a process that Visual Studio starts does not always list it.
+function Get-WindowsTerminalPath {
+    $command = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
+    $alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\wt.exe'
+    if (Test-Path -LiteralPath $alias) { return $alias }
+    return $null
+}
+
 # Opens the log viewer as a tab in Windows Terminal when wt.exe is installed, otherwise in its own window. Windows
 # Terminal returns at once, so the viewer's dotnet run process is found by its command line. Returns that process ID,
 # or $null when it cannot be found.
 function Start-LogViewer {
     param([Parameter(Mandatory)][string]$ProjectPath)
 
-    $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+    $wt = Get-WindowsTerminalPath
     if (-not $wt) {
         Write-Host 'Windows Terminal is not installed. Opening the logger console in its own window.'
         return (Start-Process -FilePath 'dotnet' -ArgumentList @('run', '--project', $ProjectPath) -WindowStyle Normal -PassThru).Id
@@ -200,7 +211,7 @@ function Start-LogViewer {
         ForEach-Object { $_.ProcessId })
 
     Write-Host 'Opening the logger console as a Windows Terminal tab'
-    Start-Process -FilePath $wt.Source -ArgumentList "-w vf-debug new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
+    Start-Process -FilePath $wt -ArgumentList "-w vf-debug new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
 
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         $match = Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
@@ -284,13 +295,13 @@ if ($useService) {
         }
 
         $shell = (Get-Process -Id $PID).Path
-        $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+        $wt = Get-WindowsTerminalPath
         try {
             if ($wt) {
                 # One elevated Windows Terminal window holds the script and the log viewer. Windows Terminal returns at once,
                 # so this shell exits without waiting and the script's own exit code is not passed back.
                 $tabCommand = "`"$shell`" " + ($relaunchArguments -join " ")
-                Start-Process -FilePath $wt.Source -ArgumentList "-w vf-debug new-tab --title `"VideoForensics debug`" $tabCommand" -Verb RunAs | Out-Null
+                Start-Process -FilePath $wt -ArgumentList "-w vf-debug new-tab --title `"VideoForensics debug`" $tabCommand" -Verb RunAs | Out-Null
                 exit 0
             }
             $elevated = Start-Process -FilePath $shell -ArgumentList $relaunchArguments -Verb RunAs -Wait -PassThru
