@@ -44,13 +44,13 @@ public class StorageLocationProvider : IStorageLocationProvider
             return category switch
             {
                 StorageCategory.Database => Path.Combine(root, "Database"),
-                StorageCategory.Media => Path.Combine(root, "media"),
-                StorageCategory.TempDownload => Path.Combine(root, "temp"),
+                StorageCategory.Media => Path.Combine(root, "Media"),
+                StorageCategory.TempDownload => Path.Combine(root, "Temp"),
                 StorageCategory.Logs => Path.Combine(root, "Logs"),
                 StorageCategory.Reports => Path.Combine(root, "Reports"),
-                StorageCategory.Backup => Path.Combine(root, "backup"),
-                StorageCategory.Keys => Path.Combine(root, "keys"),
-                StorageCategory.Exports => Path.Combine(root, "exports"),
+                StorageCategory.Backup => Path.Combine(root, "Backup"),
+                StorageCategory.Keys => Path.Combine(root, "Keys"),
+                StorageCategory.Exports => Path.Combine(root, "Exports"),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
         }
@@ -61,13 +61,13 @@ public class StorageLocationProvider : IStorageLocationProvider
             : category switch
             {
                 StorageCategory.Database => "/var/lib/videoforensics/Database",
-                StorageCategory.Media => "/var/lib/videoforensics/media",
-                StorageCategory.TempDownload => "/var/lib/videoforensics/tmp",
+                StorageCategory.Media => "/var/lib/videoforensics/Media",
+                StorageCategory.TempDownload => "/var/lib/videoforensics/Tmp",
                 StorageCategory.Logs => "/var/log/videoforensics",
-                StorageCategory.Reports => "/var/lib/videoforensics/reports",
-                StorageCategory.Backup => "/var/lib/videoforensics/backup",
-                StorageCategory.Keys => "/var/lib/videoforensics/keys",
-                StorageCategory.Exports => "/var/lib/videoforensics/exports",
+                StorageCategory.Reports => "/var/lib/videoforensics/Reports",
+                StorageCategory.Backup => "/var/lib/videoforensics/Backup",
+                StorageCategory.Keys => "/var/lib/videoforensics/Keys",
+                StorageCategory.Exports => "/var/lib/videoforensics/Exports",
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
     }

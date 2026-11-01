@@ -118,6 +118,22 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         }
 
         [Fact]
+        public void GetDefaultRoot_WindowsCategoryFolders_StartWithCapitalLetter()
+        {
+            // Linux roots keep the lowercase /var/lib/videoforensics product directory, so only Windows is checked.
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            foreach (StorageCategory category in Enum.GetValues<StorageCategory>())
+            {
+                string folder = System.IO.Path.GetFileName(_provider.GetDefaultRoot(category));
+                Assert.True(char.IsUpper(folder[0]), $"{category} default folder '{folder}' must start with a capital letter");
+            }
+        }
+
+        [Fact]
         public void GetDefaultRoot_Exports_UsesExportsFolder()
         {
             if (OperatingSystem.IsWindows())
@@ -129,12 +145,12 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
                 }
 
                 string windowsResult = _provider.GetDefaultRoot(StorageCategory.Exports);
-                Assert.Equal("exports", System.IO.Path.GetFileName(windowsResult));
+                Assert.Equal("Exports", System.IO.Path.GetFileName(windowsResult));
                 Assert.Contains("VideoForensics", windowsResult);
                 return;
             }
 
-            Assert.Equal("/var/lib/videoforensics/exports", _provider.GetDefaultRoot(StorageCategory.Exports));
+            Assert.Equal("/var/lib/videoforensics/Exports", _provider.GetDefaultRoot(StorageCategory.Exports));
         }
 
         [Fact]
@@ -187,7 +203,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
 
             string result = _provider.GetDefaultRoot(StorageCategory.Media);
             Assert.Contains("VideoForensics", result);
-            Assert.Contains("media", result);
+            Assert.Contains("Media", result);
         }
 
         [Fact]

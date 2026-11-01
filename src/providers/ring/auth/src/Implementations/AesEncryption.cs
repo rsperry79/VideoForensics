@@ -134,7 +134,7 @@ namespace VideoForensics.Providers.Ring.Implementations
         private byte[] GetOrCreateSalt()
         {
             string saltPath = Path.Combine(
-                new StorageLocationProvider().GetDataRoot(),
+                new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys),
                 "ring-credential-salt.bin");
 
             // If the salt file exists, read and return it
