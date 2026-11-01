@@ -1055,9 +1055,6 @@
   <data name="BitrateReviewTitle" xml:space="preserve">
     <value>Bit rate flag review</value>
   </data>
-  <data name="BitrateReviewNotFound" xml:space="preserve">
-    <value>This flag could not be found.</value>
-  </data>
   <data name="RssiReviewBreadcrumbRoot" xml:space="preserve">
     <value>Signal</value>
   </data>

@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using Bunit;
 
 using Microsoft.AspNetCore.Components;
@@ -94,6 +96,20 @@ public class BitrateReview_Tests : BunitContext
         };
     }
 
+    [Fact]
+    public void BitrateReview_MissingFlag_ShowsOneMessage()
+    {
+        Guid flagId = Guid.NewGuid();
+        _ = _flags.Setup(r => r.GetAsync(flagId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaFlag?)null);
+
+        IRenderedComponent<BitrateReview> cut = RenderFor(flagId);
+
+        string message = Localizer["MediaFitFlagNotFound"].Value;
+        cut.WaitForAssertion(() => Assert.Equal(1, Regex.Matches(cut.Markup, Regex.Escape(message)).Count));
+        Assert.Empty(cut.FindAll("[data-testid=bitrate-review-not-found]"));
+        Assert.Empty(cut.FindComponents<MediaPlayer>());
+    }
+
     private IRenderedComponent<BitrateReview> RenderFor(Guid flagId)
     {
         return Render<BitrateReview>(p => p.Add(c => c.FlagId, flagId));
@@ -107,7 +123,7 @@ public class BitrateReview_Tests : BunitContext
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flagId);
 
-        cut.WaitForAssertion(() => Assert.Contains(Localizer["BitrateReviewNotFound"].Value, cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["MediaFitFlagNotFound"].Value, cut.Markup));
         Assert.Empty(cut.FindComponents<MediaPlayer>());
     }
 
@@ -119,7 +135,7 @@ public class BitrateReview_Tests : BunitContext
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
 
-        cut.WaitForAssertion(() => Assert.Contains(Localizer["BitrateReviewNotFound"].Value, cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["MediaFitFlagNotFound"].Value, cut.Markup));
         Assert.Empty(cut.FindComponents<MediaPlayer>());
     }
 
