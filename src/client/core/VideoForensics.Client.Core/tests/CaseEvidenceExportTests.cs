@@ -27,6 +27,8 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IReportGenerationService> _reports = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();
+        private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
+        private readonly Mock<ILogger<EvidenceExportOrchestrator>> _logger = new();
         private readonly string _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private readonly string _defaultExportsRoot;
         private readonly EvidenceExportOrchestrator _orchestrator;
@@ -36,7 +38,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = Directory.CreateDirectory(_tempDir);
             _defaultExportsRoot = Path.Combine(_tempDir, "default-exports");
             _orchestrator = new EvidenceExportOrchestrator(
-                new Mock<ILogger<EvidenceExportOrchestrator>>().Object,
+                _logger.Object,
                 _media.Object,
                 _integrity.Object,
                 _actionLog.Object,
@@ -44,7 +46,8 @@ namespace VideoForensics.Client.Core.Tests
                 _cases.Object,
                 _reports.Object,
                 _configuration.Object,
-                _storage.Object);
+                _storage.Object,
+                snapshotCaptures: _snapshots.Object);
 
             // The exports folder comes from the database setting; the default root stands in when none is stored.
             _ = _configuration.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -281,6 +284,64 @@ namespace VideoForensics.Client.Core.Tests
             Assert.False(result.Success);
             Assert.NotNull(result.ErrorMessage);
             _media.Verify(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        private SnapshotCapture AddSnapshot(Guid deviceId, bool fileExists = true)
+        {
+            string path = Path.Combine(_tempDir, $"snap-{Guid.NewGuid():N}.jpg");
+            if (fileExists)
+            {
+                File.WriteAllText(path, "jpeg-bytes");
+            }
+
+            SnapshotCapture capture = SnapshotCapture.Create(deviceId, new DateTimeOffset(2026, 1, 10, 9, 30, 15, TimeSpan.Zero), "fresh", 200, path, null);
+            _ = _snapshots.Setup(s => s.GetAsync(capture.Id, It.IsAny<CancellationToken>())).ReturnsAsync(capture);
+            return capture;
+        }
+
+        private static CaseItem PinSnapshot(Guid caseId, SnapshotCapture capture)
+        {
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                Kind = CaseItemKind.Snapshot,
+                SnapshotCaptureId = capture.Id,
+                Reason = "r",
+                AddedBy = "u"
+            };
+        }
+
+        [Fact]
+        public async Task Export_SnapshotItem_IncludesTheSnapshotImage()
+        {
+            var deviceId = Guid.NewGuid();
+            SnapshotCapture capture = AddSnapshot(deviceId);
+            Guid caseId = SetUpCase([PinSnapshot(Guid.Empty, capture)]);
+
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
+
+            // No devices or media are pinned, so the snapshot alone must keep the export from reporting "no media".
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Contains($"{deviceId}_20260110-093015.jpg", ZipEntries(result.ArchivePath!));
+        }
+
+        [Fact]
+        public async Task Export_SnapshotItemWithMissingFile_RecordsItAsMissing()
+        {
+            SnapshotCapture capture = AddSnapshot(Guid.NewGuid(), fileExists: false);
+            Guid caseId = SetUpCase([PinSnapshot(Guid.Empty, capture)]);
+
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.DoesNotContain(ZipEntries(result.ArchivePath!), n => n.EndsWith(".jpg", StringComparison.Ordinal));
+            _logger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Snapshot file not found", StringComparison.Ordinal)),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
     }
 }
