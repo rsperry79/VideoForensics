@@ -23,7 +23,7 @@ export default tseslint.config(
         },
     },
     {
-        files: ["tests/**/*.ts", "vitest.config.ts", "scripts/**/*.mjs"],
+        files: ["tests/**/*.ts", "src/client/web/VideoForensics.WebApp/tests/**/*.ts", "vitest.config.ts", "scripts/**/*.mjs"],
         languageOptions: {
             globals: globals.node,
         },

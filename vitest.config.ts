@@ -5,6 +5,6 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
     test: {
         environment: "jsdom",
-        include: ["tests/js/**/*.test.ts"],
+        include: ["tests/js/**/*.test.ts", "src/client/web/VideoForensics.WebApp/tests/js/**/*.test.ts"],
     },
 });
