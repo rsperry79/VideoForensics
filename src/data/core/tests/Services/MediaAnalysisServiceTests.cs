@@ -21,6 +21,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IAudioClipAnalyzer> _audio = new();
         private readonly Mock<IDeviceRepository> _devices = new();
         private readonly Mock<IMediaThumbnailService> _thumbnails = new();
+        private readonly Mock<IMediaFlagRepository> _flags = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 
         private MediaAnalysisService CreateSut()
@@ -33,7 +34,8 @@ namespace VideoForensics.Data.Core.Tests
             _audio.Object,
             _thumbnails.Object,
             Options.Create(new MediaAnalysisOptions()),
-            NullLogger<MediaAnalysisService>.Instance);
+            NullLogger<MediaAnalysisService>.Instance,
+            _flags.Object);
         }
 
         private static MediaItem Clip(Guid deviceId, string mode, long bitrate, bool flagged = false)
@@ -232,6 +234,57 @@ namespace VideoForensics.Data.Core.Tests
             _devices.Verify(r => r.UpdateAsync(
                 It.Is<Device>(d => d.BaselineDriftDetected == true && d.BaselineDriftChangeFraction > 0.15),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_BitrateCollapse_WritesClipFlag()
+        {
+            // Same arrangement as the collapse case above: a Day clip whose bitrate collapses against Ir history.
+            MediaItem clip = Clip(_deviceId, "Day", 0);
+            var earlier = Enumerable.Range(0, 12).Select(_ => Clip(_deviceId, "Ir", 1_000_000)).ToList();
+            SetUpClip(clip, earlier, new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), new AudioClipStats(50, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            _flags.Verify(f => f.UpsertRaisedAsync(
+                It.Is<MediaFlag>(m => m.FlagType == MediaFlagType.BitrateCollapse && m.MediaItemId == clip.Id),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_NoBitrateCollapse_ReconcilesWithEmptySet()
+        {
+            // Same arrangement as the no-collapse case above: an IR clip judged against Day history raises no collapse.
+            MediaItem clip = Clip(_deviceId, "Day", 0);
+            var earlier = Enumerable.Range(0, 12).Select(_ => Clip(_deviceId, "Day", 4_000_000)).ToList();
+            SetUpClip(clip, earlier, new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), new AudioClipStats(0, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            _flags.Verify(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()), Times.Never);
+            _flags.Verify(f => f.ReconcileForMediaAsync(
+                clip.Id,
+                It.Is<IReadOnlySet<MediaFlagType>>(s => s.Count == 0),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_IncompleteAnalysis_TouchesNoFlags()
+        {
+            // Unknown is not clean: an incomplete analysis must leave the review flags exactly as they are.
+            MediaItem clip = Clip(_deviceId, "Day", 300_000);
+            _ = _items.Setup(r => r.GetAsync(clip.Id, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+            _ = _items.Setup(r => r.GetRecentByDeviceAsync(clip.DeviceId, MediaAnalysisService.HistoryWindowClips, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Array.Empty<MediaItem>());
+            _ = _bitrate.Setup(a => a.AnalyzeAsync(clip.FilePath, clip.FileSizeBytes, It.IsAny<CancellationToken>())).ReturnsAsync((MediaBitrateAnalysis?)null);
+            _ = _color.Setup(a => a.AnalyzeAsync(clip.FilePath, It.IsAny<CancellationToken>())).ReturnsAsync((ClipColorStats?)null);
+            _ = _audio.Setup(a => a.AnalyzeAsync(clip.FilePath, It.IsAny<double?>(), It.IsAny<CancellationToken>())).ReturnsAsync((AudioClipStats?)null);
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            _flags.VerifyNoOtherCalls();
         }
     }
 }

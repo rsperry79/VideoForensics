@@ -9,6 +9,11 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Core.Services
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// After a complete analysis, writes a review flag (<see cref="MediaFlag"/>) for each clip flag that applies and removes
+    /// the clip's unreviewed flags that no longer apply. Only BitrateCollapse is written so far. An incomplete analysis
+    /// touches no flags.
+    /// </remarks>
     public sealed class MediaAnalysisService : IMediaAnalysisService
     {
         /// <summary>
@@ -35,6 +40,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaAnalysisService> _logger;
         private readonly IMediaPathResolver _paths;
+        private readonly IMediaFlagRepository _flags;
 
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
@@ -46,6 +52,7 @@ namespace VideoForensics.Data.Core.Services
             IMediaThumbnailService thumbnails,
             IOptions<MediaAnalysisOptions> options,
             ILogger<MediaAnalysisService> logger,
+            IMediaFlagRepository flags,
             IMediaPathResolver? paths = null)
         {
             _items = items;
@@ -56,6 +63,7 @@ namespace VideoForensics.Data.Core.Services
             _audio = audio;
             _thumbnails = thumbnails;
             _logger = logger;
+            _flags = flags;
             _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
         /// <summary>
@@ -184,6 +192,32 @@ namespace VideoForensics.Data.Core.Services
             media.BaselineVersion = snapshot.Version;
 
             await _items.UpdateAsync(media, ct);
+
+            // Only BitrateCollapse has a review flag so far. Reconcile runs even when nothing is raised, so an unreviewed
+            // flag that no longer applies is removed; reviewed rows are kept by the repository.
+            var raisedTypes = new HashSet<MediaFlagType>();
+            if (report.Flags.Contains(RedFlag.BitrateCollapse))
+            {
+                // A window that ends before it starts is rejected by the repository, so a missing or non-positive duration
+                // collapses the window to the recording instant.
+                DateTime windowEnd = media.DurationSeconds is { } seconds && seconds > 0
+                    ? media.RecordedAtUtc.AddSeconds(seconds)
+                    : media.RecordedAtUtc;
+                _ = await _flags.UpsertRaisedAsync(new MediaFlag
+                {
+                    Id = Guid.NewGuid(),
+                    FlagType = MediaFlagType.BitrateCollapse,
+                    DeviceId = media.DeviceId,
+                    MediaItemId = media.Id,
+                    WindowStartUtc = media.RecordedAtUtc,
+                    WindowEndUtc = windowEnd,
+                    RaisedAtUtc = DateTime.UtcNow,
+                    Severity = MediaFlagSeverity.Warn
+                }, ct);
+                raisedTypes.Add(MediaFlagType.BitrateCollapse);
+            }
+
+            _ = await _flags.ReconcileForMediaAsync(media.Id, raisedTypes, ct);
             _logger.LogDebug("Analysed media {MediaItemId}: {FlagCount} red flag(s), jamming suspected: {Jamming}",
                 media.Id, report.Flags.Count, report.JammingSuspected);
         }
