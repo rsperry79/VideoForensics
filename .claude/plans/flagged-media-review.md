@@ -127,7 +127,7 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
   - B7a `BitrateReview` page at `/bitrate-review/{FlagId}`. **DONE (2026-11-01, on wip 1b2c699a via 2468bd2e: shared shell, breadcrumb, MediaFit, actions, navigator, timeline; 35/35 scoped pass). NOT done: not linked from the table; not checked in a browser; route registration in WebApp and MAUI hosts not verified; `PlayerChanged` is nullable.**
   - B7b `RssiReview` page at `/rssi-review/{FlagId}`. **DONE (2026-11-01, on wip 226b1397 via 3f918aea and 56be8bc6: clip in the ±1 h window that covers the flag start, else the first non-purged clip; not-found shown once; 40/40 scoped pass). NOT done: not linked from the table; not checked in a browser; a clip with no duration is treated as not covering the start.**
   - B7c Table links: rows open the review page for their flag type. **DONE (2026-11-01, on wip 0dedf814: Review column links Bit Rate and Signal flags; other types get no link; 17/17 scoped pass). NOT done: browser check of the table and review pages; route prefixes duplicated as literals (pages use `@page`).**
-  - B6a2 `ClipNavigator` position readout ("3 of 17"): needs a position query on the repository, its Remote twin and an endpoint. Not started.
+  - B6a2 `ClipNavigator` position readout ("3 of 17"). **DONE (2026-11-01, on wip 580d6d3a via 5c8bb9c7 (position query: repository, database, Remote, endpoint; 35/35 database, 17/17 Remote, 39/39 WebApp) and 62b99d88 (readout; 23/23 scoped)). NOT done: not checked in a browser.**
 - B8 Final acceptance: window-size matrix, keyboard/a11y, MAUI check, docs/CHANGELOG, full gate.
 Parallel-safe sets: after B1a: B2 and B4. After B1b: B3a, B6. Do not run in parallel: B1b with B2 (DI files), B3 with B7.
 
