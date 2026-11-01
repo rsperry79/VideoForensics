@@ -111,3 +111,4 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-31 | B6b1: FlagActionsPanel | MissingEventHandlerException 'oninput' on SfTextBox in Dismiss and role tests | SfTextBox binds on the change event; test used bUnit Input() | FIXED: test uses Change()
 2026-10-31 | B6b1: resx insert | Git Bash command hung 120s, moved to background; resx unchanged | a stray python3 heredoc line waited on stdin (python3 not usable here) | FIXED: re-ran awk insert without python3
 2026-10-31 | B6b1: cleanup | rm of F:/flagactions-green.log denied by safety check; file left outside repo | removal flagged as dangerous; no approval | open: user to delete F:\flagactions-green.log
+2026-11-01 | debug-profile: edit | node one-liner mangled the JSON escapes and aborted before writing | shell quoting of backslashes | RESOLVED: single-line Edit calls, JSON parse check
