@@ -31,6 +31,22 @@ public class StorageLocationProvider : IStorageLocationProvider
 
     public string GetDefaultRoot(StorageCategory category)
     {
+        // A relocated Database wins over install-time and environment defaults. Every bootstrap reader
+        // (server, service, utilities) resolves the Database through here, so they all open the moved file.
+        if (category == StorageCategory.Database)
+        {
+            string? relocated = DatabaseLocationPointer.Read(GetDataRoot());
+            if (relocated is not null)
+            {
+                return relocated;
+            }
+        }
+
+        return GetPlatformDefaultRoot(category);
+    }
+
+    public string GetPlatformDefaultRoot(StorageCategory category)
+    {
         if (OperatingSystem.IsWindows())
         {
             // Keys has no registry value by design, so it is never relocated, whatever the source says.

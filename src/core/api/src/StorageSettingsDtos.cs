@@ -35,10 +35,10 @@ namespace VideoForensics.Core.Api.Contracts
     /// Data transfer object for a request to relocate a storage category to a new root path.
     /// </summary>
     /// <param name="Category">The storage category to relocate.</param>
-    /// <param name="NewRootPath">The new root path where files for this category will be stored.</param>
+    /// <param name="NewRootPath">The new root path where files for this category will be stored. Null resets the category to its platform default.</param>
     public record RelocateStorageCategoryRequestDto(
         StorageCategory Category,
-        string NewRootPath
+        string? NewRootPath
     );
 
     /// <summary>
