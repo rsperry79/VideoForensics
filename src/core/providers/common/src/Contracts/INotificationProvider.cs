@@ -20,7 +20,8 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         string? Details,
         NotificationAudience Audience = NotificationAudience.All,
         NoticeSeverity Severity = NoticeSeverity.Info,
-        string? ActionPath = null);
+        string? ActionPath = null,
+        Guid? NoticeId = null);
 
     /// <summary>
     /// A pluggable urgent-notification channel (plan §5.6) - email, Web Push, MAUI toast, or an

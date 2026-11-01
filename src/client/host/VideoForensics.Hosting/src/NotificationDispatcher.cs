@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Hosting
             {
                 var notice = new Notice
                 {
-                    Id = Guid.NewGuid(),
+                    Id = notificationEvent.NoticeId ?? Guid.NewGuid(),
                     EventType = notificationEvent.EventType,
                     Severity = notificationEvent.Severity,
                     Details = notificationEvent.Details,
