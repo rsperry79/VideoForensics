@@ -906,6 +906,18 @@ namespace VideoForensics.Data.Database.Repositories
             existing.SnapshotUrl = @event.SnapshotUrl;
             existing.MetadataJson = @event.MetadataJson;
             existing.DiscoveredAtUtc = @event.DiscoveredAtUtc;
+
+            // Download fields are written by the download path after discovery. Keep the stored value when the
+            // incoming upsert has none, so a discovery re-upsert cannot erase a recorded download (same rule as EventRepository).
+            existing.DownloadedAtUtc = @event.DownloadedAtUtc ?? existing.DownloadedAtUtc;
+            existing.DownloadFailedAtUtc = @event.DownloadFailedAtUtc ?? existing.DownloadFailedAtUtc;
+            existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
+            existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
+            if (existing.DownloadedAtUtc.HasValue)
+            {
+                existing.DownloadStatus = EventDownloadStatus.Downloaded;
+            }
+
             _ = _db.Events.Update(existing);
             return Task.FromResult(existing);
         }

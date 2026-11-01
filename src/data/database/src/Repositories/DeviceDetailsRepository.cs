@@ -598,10 +598,16 @@ namespace VideoForensics.Data.Database.Repositories
             // Stored rows are read before anything is removed, so the change rows compare the old state with the incoming one.
             List<DeviceMotionSnoozePreset> storedSnooze = await db.DeviceMotionSnoozePresets.Where(p => p.DeviceId == deviceId).ToListAsync(ct);
             List<DeviceLiveViewPreset> storedLive = await db.DeviceLiveViewPresets.Where(p => p.DeviceId == deviceId).ToListAsync(ct);
-            List<DeviceAdvancedMotionZone> existingZones = await db.DeviceAdvancedMotionZones
-                .Include(z => z.Vertices)
-                .Where(z => z.DeviceId == deviceId)
-                .ToListAsync(ct);
+            // Advanced motion zones are only read, compared and replaced when the caller supplied them. The download path
+            // rebuilds from the partial device list, which carries none, so a null list must leave the stored zones alone.
+            List<DeviceAdvancedMotionZone> existingZones = [];
+            if (settings.AdvancedMotionZones != null)
+            {
+                existingZones = await db.DeviceAdvancedMotionZones
+                    .Include(z => z.Vertices)
+                    .Where(z => z.DeviceId == deviceId)
+                    .ToListAsync(ct);
+            }
 
             // Zones and object settings are only read, compared and replaced when the caller supplied them (null leaves stored rows as they are).
             List<DeviceZone> existingZoneRows = [];
@@ -627,9 +633,13 @@ namespace VideoForensics.Data.Database.Repositories
             AddWholeItemChanges(changes, deviceId, changedAtUtc, "LiveViewPreset",
                 ToMap(storedLive, p => PositionKey(p.Position), p => p.Preset),
                 ToMap(settings.LiveViewPresets, p => PositionKey(p.Position), p => p.Preset));
-            AddWholeItemChanges(changes, deviceId, changedAtUtc, "AdvancedMotionZone",
-                ToMap(existingZones, z => z.ZoneKey, MotionZoneText),
-                ToMap(settings.AdvancedMotionZones, z => z.ZoneKey, MotionZoneText));
+            if (settings.AdvancedMotionZones != null)
+            {
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "AdvancedMotionZone",
+                    ToMap(existingZones, z => z.ZoneKey, MotionZoneText),
+                    ToMap(settings.AdvancedMotionZones, z => z.ZoneKey, MotionZoneText));
+            }
+
             if (settings.Zones != null)
             {
                 AddZoneChanges(changes, deviceId, changedAtUtc, existingZoneRows, settings.Zones);
@@ -680,7 +690,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = db.DeviceLiveViewPresets.Add(preset);
             }
 
-            foreach (DeviceAdvancedMotionZone zone in settings.AdvancedMotionZones)
+            foreach (DeviceAdvancedMotionZone zone in settings.AdvancedMotionZones ?? Enumerable.Empty<DeviceAdvancedMotionZone>())
             {
                 zone.Id = zone.Id == Guid.Empty ? Guid.NewGuid() : zone.Id;
                 zone.DeviceId = deviceId;
