@@ -863,4 +863,70 @@
   <data name="FlagReviewTimelineLabel" xml:space="preserve">
     <value>Playback timeline</value>
   </data>
+  <data name="FlaggedMediaTableLabel" xml:space="preserve">
+    <value>Flagged media list</value>
+  </data>
+  <data name="FlaggedMediaEmpty" xml:space="preserve">
+    <value>No flags of this type in the selected scope.</value>
+  </data>
+  <data name="FlaggedMediaShowingCount" xml:space="preserve">
+    <value>Showing {0} of {1}</value>
+  </data>
+  <data name="FlaggedMediaColRaised" xml:space="preserve">
+    <value>Raised</value>
+  </data>
+  <data name="FlaggedMediaColType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="FlaggedMediaColCamera" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="FlaggedMediaColWindow" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="FlaggedMediaColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="FlaggedMediaWindowRange" xml:space="preserve">
+    <value>{0} to {1}</value>
+  </data>
+  <data name="FlaggedMediaUnknownCamera" xml:space="preserve">
+    <value>Unknown camera</value>
+  </data>
+  <data name="FlaggedMediaType_BitrateCollapse" xml:space="preserve">
+    <value>Bit rate collapse</value>
+  </data>
+  <data name="FlaggedMediaType_ClippedAudio" xml:space="preserve">
+    <value>Clipped audio</value>
+  </data>
+  <data name="FlaggedMediaType_ElevatedNoiseFloor" xml:space="preserve">
+    <value>Elevated noise floor</value>
+  </data>
+  <data name="FlaggedMediaType_UnusualLighting" xml:space="preserve">
+    <value>Unusual lighting</value>
+  </data>
+  <data name="FlaggedMediaType_AudioDropout" xml:space="preserve">
+    <value>Audio dropout</value>
+  </data>
+  <data name="FlaggedMediaType_RssiDeviation" xml:space="preserve">
+    <value>Signal deviation</value>
+  </data>
+  <data name="FlaggedMediaType_Jamming" xml:space="preserve">
+    <value>Jamming</value>
+  </data>
+  <data name="FlaggedMediaStatus_Unreviewed" xml:space="preserve">
+    <value>Unreviewed</value>
+  </data>
+  <data name="FlaggedMediaStatus_Kept" xml:space="preserve">
+    <value>Kept</value>
+  </data>
+  <data name="FlaggedMediaStatus_Dismissed" xml:space="preserve">
+    <value>Dismissed</value>
+  </data>
+  <data name="SignalFlagsHeading" xml:space="preserve">
+    <value>Signal deviation flags</value>
+  </data>
+  <data name="BitrateFlagsHeading" xml:space="preserve">
+    <value>Bit rate collapse flags</value>
+  </data>
 </root>
