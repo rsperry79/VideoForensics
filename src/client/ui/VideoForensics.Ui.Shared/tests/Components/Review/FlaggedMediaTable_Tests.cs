@@ -100,7 +100,7 @@ public class FlaggedMediaTable_Tests : BunitContext
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.BitrateCollapse }));
 
-        cut.WaitForAssertion(() => Assert.Equal($"/bitrate-review/{flag.Id}", cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
+        cut.WaitForAssertion(() => Assert.Equal($"/bitrate-history/review/{flag.Id}",cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class FlaggedMediaTable_Tests : BunitContext
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
 
-        cut.WaitForAssertion(() => Assert.Equal($"/rssi-review/{flag.Id}", cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
+        cut.WaitForAssertion(() => Assert.Equal($"/signal-history/review/{flag.Id}",cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
     }
 
     [Fact]

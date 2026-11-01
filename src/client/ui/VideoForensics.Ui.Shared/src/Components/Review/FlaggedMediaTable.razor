@@ -74,11 +74,11 @@
     /// <summary>The number of flags loaded at once. The repository lists newest first, so these are the newest flags.</summary>
     private const int PageSize = 200;
 
-    /// <summary>Route prefix of the bit rate review page (<c>@page "/bitrate-review/{FlagId:guid}"</c>). The flag id follows it.</summary>
-    private const string BitrateReviewPathPrefix = "/bitrate-review/";
+    /// <summary>Route prefix of the bit rate review page (<c>@page "/bitrate-history/review/{FlagId:guid}"</c>). The flag id follows it.</summary>
+    private const string BitrateReviewPathPrefix = "/bitrate-history/review/";
 
-    /// <summary>Route prefix of the RSSI review page (<c>@page "/rssi-review/{FlagId:guid}"</c>). The flag id follows it.</summary>
-    private const string RssiReviewPathPrefix = "/rssi-review/";
+    /// <summary>Route prefix of the RSSI review page (<c>@page "/signal-history/review/{FlagId:guid}"</c>). The flag id follows it.</summary>
+    private const string RssiReviewPathPrefix = "/signal-history/review/";
 
     /// <summary>
     /// The review page for a flag. <see cref="MediaFlagType.BitrateCollapse"/> maps to the bit rate review page and
