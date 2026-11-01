@@ -11,6 +11,8 @@
 @inject PairedSessionState SessionState
 @inject IMediaFlagRepository MediaFlagRepository
 @inject ICaseRepository CaseRepository
+@inject IMediaItemRepository MediaItemRepository
+@inject ISnapshotCaptureRepository SnapshotCaptureRepository
 @inject IStringLocalizer<SharedResources> L
 @inject IStringLocalizer<ReviewPage> ReviewL
 @inject ILogger<FlagActionsPanel> Logger
@@ -70,6 +72,31 @@
             }
         </div>
     }
+    else
+    {
+        <div class="flag-window mt-3" data-testid="flag-window-section">
+            @if (_window is { } window)
+            {
+                <div class="small fw-semibold mb-1" data-testid="flag-window-counts">@L["FlagActionsWindowCounts", window.Clips.Count, window.Snapshots.Count].Value</div>
+
+                <div class="d-flex gap-2 align-items-center">
+                    <select class="form-select form-select-sm" id="flag-window-case" data-testid="flag-window-case-picker" aria-label="@L["FlagActionsPickCase"].Value" @onchange="OnCasePicked">
+                        <option value="" selected="@(_pickedCaseId is null)">@L["FlagActionsPickCase"]</option>
+                        @foreach (ForensicCase openCase in _openCases)
+                        {
+                            <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
+                        }
+                    </select>
+                    <SfButton CssClass="e-outline" Content="@L["FlagActionsWindowConfirm"].Value" data-testid="flag-add-window" Disabled="@(!CanAddWindow || _busy)" OnClick="OnAddWindowAsync" />
+                </div>
+            }
+
+            @if (_windowNotice is { } windowNotice)
+            {
+                <div class="small mt-2" data-testid="flag-window-done">@windowNotice</div>
+            }
+        </div>
+    }
 
     @if (_error is { } error)
     {
@@ -116,11 +143,26 @@
         && _pickedCaseId is { } picked
         && !_containing.Any(existing => existing.Id == picked);
 
+    /// <summary>True when the operator may add the RSSI window: the Review role is held, a case is picked and the window holds at least one item.</summary>
+    private bool CanAddWindow =>
+        RoleReason is null
+        && _pickedCaseId is not null
+        && _window is { } window
+        && window.Clips.Count + window.Snapshots.Count > 0;
+
+    /// <summary>How far an RSSI flag's window is widened on each side when its clips and snapshots are added to a case.</summary>
+    private static readonly TimeSpan RssiPinPad = TimeSpan.FromHours(1);
+
+    /// <summary>The clips and current snapshots of an RSSI flag's padded window, oldest first.</summary>
+    private sealed record RssiWindow(IReadOnlyList<MediaItem> Clips, IReadOnlyList<SnapshotCapture> Snapshots);
+
     private IReadOnlyList<ForensicCase> _openCases = [];
     private IReadOnlyList<ForensicCase> _containing = [];
     private Guid? _pickedCaseId;
-    private Guid? _loadedMediaId;
+    private Guid? _loadedFlagId;
     private string? _notice;
+    private RssiWindow? _window;
+    private string? _windowNotice;
 
     protected override async Task OnInitializedAsync()
     {
@@ -130,25 +172,29 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Only a clip flag has a case to add to. Reload the open cases and the cases that already hold the clip when the clip changes.
-        if (Flag.MediaItemId == _loadedMediaId)
+        // A clip flag loads the cases that already hold its clip; an RSSI flag loads its padded window. Both load the open cases for the picker.
+        if (Flag.Id == _loadedFlagId)
         {
             return;
         }
 
-        _loadedMediaId = Flag.MediaItemId;
+        _loadedFlagId = Flag.Id;
         _pickedCaseId = null;
         _notice = null;
+        _windowNotice = null;
         _containing = [];
-        if (Flag.MediaItemId is not { } mediaId)
-        {
-            return;
-        }
-
+        _window = null;
         try
         {
             _openCases = await CaseRepository.ListAsync(CaseStatus.Open, _disposeCts.Token);
-            _containing = await CaseRepository.ListCasesContainingAsync(CaseItemKind.Media, mediaId, _disposeCts.Token);
+            if (Flag.MediaItemId is { } mediaId)
+            {
+                _containing = await CaseRepository.ListCasesContainingAsync(CaseItemKind.Media, mediaId, _disposeCts.Token);
+            }
+            else
+            {
+                _window = await LoadWindowAsync(_disposeCts.Token);
+            }
         }
         catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
         {
@@ -159,13 +205,29 @@
             Logger.LogError("Could not load cases for the flag add-to-case section: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
             _openCases = [];
             _containing = [];
+            _window = null;
         }
+    }
+
+    /// <summary>Reads the device's clips and current snapshots in the flag window widened by <see cref="RssiPinPad"/> on each side.</summary>
+    private async Task<RssiWindow> LoadWindowAsync(CancellationToken ct)
+    {
+        DateTime fromUtc = Flag.WindowStartUtc - RssiPinPad;
+        DateTime toUtc = Flag.WindowEndUtc + RssiPinPad;
+        IReadOnlyList<MediaItem> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(Flag.DeviceId, fromUtc, toUtc, ct);
+        IReadOnlyList<SnapshotCapture> snapshots = await SnapshotCaptureRepository.GetCurrentForDeviceAsync(
+            Flag.DeviceId,
+            new DateTimeOffset(DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc)),
+            new DateTimeOffset(DateTime.SpecifyKind(toUtc, DateTimeKind.Utc)),
+            ct);
+        return new RssiWindow(clips, snapshots);
     }
 
     private void OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
         _pickedCaseId = Guid.TryParse(args.Value?.ToString(), out Guid caseId) ? caseId : null;
         _notice = null;
+        _windowNotice = null;
     }
 
     /// <summary>
@@ -236,6 +298,118 @@
         {
             Logger.LogError("Could not read the case after a failed add-to-case: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
             return L["FlagActionsFailed"];
+        }
+    }
+
+    /// <summary>
+    /// Pins every clip and snapshot of the RSSI window to the picked case. An item already pinned to the case is skipped, not an
+    /// error. Any other failure stops the batch and reports how many items were not added.
+    /// </summary>
+    private async Task OnAddWindowAsync()
+    {
+        if (_busy || !CanAddWindow || _pickedCaseId is not { } caseId || _window is not { } window)
+        {
+            return;
+        }
+
+        // Same rule as the clip add: never fall back to a machine identity, refuse instead.
+        if (EvidenceActions.ResolveOperatorActor(SessionState.OperatorId) is not { } operatorId)
+        {
+            _error = ReviewL["ReasonSignInRequired"];
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _windowNotice = null;
+        try
+        {
+            ForensicCase? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
+            if (target is null)
+            {
+                _error = L["FlagActionsMissingTarget"];
+                return;
+            }
+
+            if (target.Status == CaseStatus.Closed)
+            {
+                _error = L["FlagActionsClosedCase"];
+                return;
+            }
+
+            // One read of the case's active pins covers every window item, instead of one read per item.
+            var pinned = new HashSet<(CaseItemKind Kind, Guid TargetId)>();
+            foreach (CaseItem pin in await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token))
+            {
+                if (pin.Kind == CaseItemKind.Media && pin.MediaItemId is { } mediaId)
+                {
+                    _ = pinned.Add((pin.Kind, mediaId));
+                }
+                else if (pin.Kind == CaseItemKind.Snapshot && pin.SnapshotCaptureId is { } snapshotId)
+                {
+                    _ = pinned.Add((pin.Kind, snapshotId));
+                }
+            }
+
+            var pending = new List<(CaseItemKind Kind, Guid TargetId)>();
+            foreach (MediaItem clip in window.Clips)
+            {
+                if (!pinned.Contains((CaseItemKind.Media, clip.Id)))
+                {
+                    pending.Add((CaseItemKind.Media, clip.Id));
+                }
+            }
+
+            foreach (SnapshotCapture snapshot in window.Snapshots)
+            {
+                if (!pinned.Contains((CaseItemKind.Snapshot, snapshot.Id)))
+                {
+                    pending.Add((CaseItemKind.Snapshot, snapshot.Id));
+                }
+            }
+
+            string reason = L["FlagActionsPinReasonRssi"].Value;
+            int clipsAdded = 0;
+            int snapshotsAdded = 0;
+            for (int index = 0; index < pending.Count; index++)
+            {
+                (CaseItemKind kind, Guid targetId) = pending[index];
+                try
+                {
+                    _ = await CaseRepository.AddItemAsync(caseId, kind, targetId, reason, operatorId.ToString(), _disposeCts.Token);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Logger.LogError("Adding an RSSI window {ItemKind} to a case failed: {ExceptionType}: {Message}", kind, ex.GetType().Name, ex.Message);
+                    // The failed item and every item after it were not added.
+                    _error = L["FlagActionsWindowPartial", pending.Count - index, pending.Count];
+                    return;
+                }
+
+                if (kind == CaseItemKind.Media)
+                {
+                    clipsAdded++;
+                }
+                else
+                {
+                    snapshotsAdded++;
+                }
+            }
+
+            _windowNotice = L["FlagActionsWindowDone", clipsAdded, snapshotsAdded].Value;
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Adding the RSSI window to a case failed: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+            _error = L["FlagActionsFailed"];
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 
