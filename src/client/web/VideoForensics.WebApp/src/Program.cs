@@ -212,6 +212,8 @@ VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 // dotnet run/debugging unchanged (UseWindowsService is a no-op on non-Windows platforms and when
 // not running under the SCM, so no conditional is needed).
 builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics");
+// Stopping from services.msc runs the shutdown path; a stop past the default 30 seconds crashes the process (see HostShutdownOptions).
+HostShutdownOptions.Apply(builder.Services);
 
 // systemd integration on Linux - enables running under systemd while keeping dotnet run/debugging
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
