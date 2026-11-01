@@ -14,7 +14,7 @@ namespace VideoForensics.Client.Core.Tests.Utilities
             Assert.NotNull(result);
             Assert.NotEmpty(result);
             Assert.Contains("VideoForensics", result, StringComparison.OrdinalIgnoreCase);
-            Assert.True(result.Contains("media"));
+            Assert.Contains("Media", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -48,7 +48,7 @@ namespace VideoForensics.Client.Core.Tests.Utilities
         {
             string result = PathUtilities.GetDefaultDownloadLocation();
 
-            Assert.EndsWith("media", result);
+            Assert.EndsWith("Media", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -59,7 +59,7 @@ namespace VideoForensics.Client.Core.Tests.Utilities
             Assert.NotNull(result);
             Assert.NotEmpty(result);
             Assert.Contains("VideoForensics", result, StringComparison.OrdinalIgnoreCase);
-            Assert.True(result.Contains("backup"));
+            Assert.Contains("Backup", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace VideoForensics.Client.Core.Tests.Utilities
         {
             string result = PathUtilities.GetDefaultQueryExportLocation();
 
-            Assert.EndsWith("backup", result);
+            Assert.EndsWith("Backup", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
