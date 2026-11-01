@@ -149,7 +149,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
         private static string ExpectedFileName(DateTimeOffset at)
         {
-            return at.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
+            return "Front_Door_12345_" + at.UtcDateTime.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + "_snapshot.jpg";
         }
 
         [Fact]

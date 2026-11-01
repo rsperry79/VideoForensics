@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Providers.Core;
+using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -133,7 +134,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 string? mediaFilePath = null;
                 if (result.Status == HttpStatusCode.OK && result.Bytes.Length > 0)
                 {
-                    mediaFilePath = Path.Combine(folder, attemptedAt.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg");
+                    mediaFilePath = Path.Combine(folder, MediaFileNamer.FormatMediaFileName(doorbot.Description, attemptedAt.UtcDateTime, "snapshot", "jpg"));
                     await File.WriteAllBytesAsync(mediaFilePath, result.Bytes, ct);
                     writtenFiles.Add(mediaFilePath);
                     images++;

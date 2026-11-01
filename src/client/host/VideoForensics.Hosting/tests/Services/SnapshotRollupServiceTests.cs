@@ -164,7 +164,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
-            string expected = Path.Combine(configuredRoot, "ring", "home", "porch", $"{To:yyyyMMddHHmmss}.mp4");
+            string expected = Path.Combine(configuredRoot, "ring", "home", "porch", $"Porch_{To:yyyyMMdd_HHmmss}_snapshot-loop.mp4");
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
@@ -180,7 +180,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
-            string expected = Path.Combine(MediaRoot, "ring", "home", "porch", $"{To:yyyyMMddHHmmss}.mp4");
+            string expected = Path.Combine(MediaRoot, "ring", "home", "porch", $"Porch_{To:yyyyMMdd_HHmmss}_snapshot-loop.mp4");
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 

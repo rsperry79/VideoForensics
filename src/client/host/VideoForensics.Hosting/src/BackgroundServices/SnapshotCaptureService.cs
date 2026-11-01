@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     ///
     /// Each attempt runs through <see cref="IProviderSnapshotCapture"/>, which takes the account's pacer turns and handles rate limits
     /// (pause, alert, spacing penalty). A 429 is recorded as a gap and the account is held back for the pause the provider reported.
-    /// Rows hold only the attempt record. A 200 also writes the JPEG under the media root's &lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\yyyyMMddTHHmmssfffZ.jpg.
+    /// Rows hold only the attempt record. A 200 also writes the JPEG under the media root's &lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\ folder as &lt;device&gt;_yyyyMMdd_HHmmss_snapshot.jpg (MediaFileNamer).
     ///
     /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsSnapshotCapture). Logs use the provider name
     /// ("Ring account") and the device name, never account or device GUIDs.
@@ -492,7 +492,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             string folder = MediaFolderLayout.GetDeviceFolder(mediaRoot, providerName, locationName, deviceName);
-            string fileName = capturedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
+            string fileName = MediaFileNamer.FormatMediaFileName(deviceName, capturedAtUtc.UtcDateTime, "snapshot", "jpg");
             string fullPath = Path.Combine(folder, fileName);
 
             _ = Directory.CreateDirectory(folder);
