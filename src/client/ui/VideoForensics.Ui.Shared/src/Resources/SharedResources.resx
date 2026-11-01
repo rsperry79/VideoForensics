@@ -950,6 +950,30 @@
   <data name="FlagActionsFailed" xml:space="preserve">
     <value>The review could not be saved. Try again.</value>
   </data>
+  <data name="FlagActionsAddToCase" xml:space="preserve">
+    <value>Add to case</value>
+  </data>
+  <data name="FlagActionsPickCase" xml:space="preserve">
+    <value>Choose a case</value>
+  </data>
+  <data name="FlagActionsAlreadyIn" xml:space="preserve">
+    <value>Already in case {0}</value>
+  </data>
+  <data name="FlagActionsAddDone" xml:space="preserve">
+    <value>Added to case {0}</value>
+  </data>
+  <data name="FlagActionsDuplicate" xml:space="preserve">
+    <value>This clip is already in that case.</value>
+  </data>
+  <data name="FlagActionsClosedCase" xml:space="preserve">
+    <value>That case is closed.</value>
+  </data>
+  <data name="FlagActionsMissingTarget" xml:space="preserve">
+    <value>The clip is no longer available.</value>
+  </data>
+  <data name="FlagActionsPinReason" xml:space="preserve">
+    <value>Flagged clip</value>
+  </data>
   <data name="ClipNavigatorLabel" xml:space="preserve">
     <value>Flag navigation</value>
   </data>

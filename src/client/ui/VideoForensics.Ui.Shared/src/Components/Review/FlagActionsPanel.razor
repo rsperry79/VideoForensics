@@ -10,6 +10,7 @@
 @implements IDisposable
 @inject PairedSessionState SessionState
 @inject IMediaFlagRepository MediaFlagRepository
+@inject ICaseRepository CaseRepository
 @inject IStringLocalizer<SharedResources> L
 @inject IStringLocalizer<ReviewPage> ReviewL
 @inject ILogger<FlagActionsPanel> Logger
@@ -41,6 +42,34 @@
         <SfButton CssClass="e-outline" Content="@L["FlagActionsKeep"].Value" data-testid="flag-keep" Disabled="@(!CanAct || _busy)" OnClick="OnKeepAsync" />
         <SfButton CssClass="e-danger" Content="@L["FlagActionsDismiss"].Value" data-testid="flag-dismiss" Disabled="@(!CanAct || _busy || string.IsNullOrWhiteSpace(_reason))" OnClick="OnDismissAsync" />
     </div>
+
+    @if (Flag.MediaItemId is not null)
+    {
+        <div class="flag-add-to-case mt-3" data-testid="flag-add-to-case-section">
+            <div class="small fw-semibold mb-1">@L["FlagActionsAddToCase"]</div>
+
+            @foreach (ForensicCase existing in _containing)
+            {
+                <div class="small text-muted mb-1" data-testid="flag-already-in-case">@L["FlagActionsAlreadyIn", existing.Title].Value</div>
+            }
+
+            <div class="d-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm" id="flag-add-case" data-testid="flag-add-to-case-picker" aria-label="@L["FlagActionsAddToCase"].Value" @onchange="OnCasePicked">
+                    <option value="" selected="@(_pickedCaseId is null)">@L["FlagActionsPickCase"]</option>
+                    @foreach (ForensicCase openCase in _openCases)
+                    {
+                        <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
+                    }
+                </select>
+                <SfButton CssClass="e-outline" Content="@L["FlagActionsAddToCase"].Value" data-testid="flag-add-to-case" Disabled="@(!CanAddToCase || _busy)" OnClick="OnAddToCaseAsync" />
+            </div>
+
+            @if (_notice is { } notice)
+            {
+                <div class="small mt-2" data-testid="flag-add-to-case-done">@notice</div>
+            }
+        </div>
+    }
 
     @if (_error is { } error)
     {
@@ -81,10 +110,133 @@
     /// <summary>True when the operator may act on this flag: the role is held and the flag is still Unreviewed.</summary>
     private bool CanAct => RoleReason is null && Flag.Status == MediaFlagStatus.Unreviewed;
 
+    /// <summary>True when the operator may add the clip: the Review role is held, a case is picked and it does not already hold the clip.</summary>
+    private bool CanAddToCase =>
+        RoleReason is null
+        && _pickedCaseId is { } picked
+        && !_containing.Any(existing => existing.Id == picked);
+
+    private IReadOnlyList<ForensicCase> _openCases = [];
+    private IReadOnlyList<ForensicCase> _containing = [];
+    private Guid? _pickedCaseId;
+    private Guid? _loadedMediaId;
+    private string? _notice;
+
     protected override async Task OnInitializedAsync()
     {
         // The role and operator come from the paired session, which loads on first use; the Actions menu does the same.
         await SessionState.EnsureLoadedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only a clip flag has a case to add to. Reload the open cases and the cases that already hold the clip when the clip changes.
+        if (Flag.MediaItemId == _loadedMediaId)
+        {
+            return;
+        }
+
+        _loadedMediaId = Flag.MediaItemId;
+        _pickedCaseId = null;
+        _notice = null;
+        _containing = [];
+        if (Flag.MediaItemId is not { } mediaId)
+        {
+            return;
+        }
+
+        try
+        {
+            _openCases = await CaseRepository.ListAsync(CaseStatus.Open, _disposeCts.Token);
+            _containing = await CaseRepository.ListCasesContainingAsync(CaseItemKind.Media, mediaId, _disposeCts.Token);
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not load cases for the flag add-to-case section: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+            _openCases = [];
+            _containing = [];
+        }
+    }
+
+    private void OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        _pickedCaseId = Guid.TryParse(args.Value?.ToString(), out Guid caseId) ? caseId : null;
+        _notice = null;
+    }
+
+    /// <summary>
+    /// Pins the flagged clip to the picked case as a Media item. The repository reports a duplicate pin, a closed case
+    /// and a missing case with the same exception type, so the failure is told apart by reading the case and its pins again.
+    /// </summary>
+    private async Task OnAddToCaseAsync()
+    {
+        if (_busy || !CanAddToCase || _pickedCaseId is not { } caseId || Flag.MediaItemId is not { } mediaId)
+        {
+            return;
+        }
+
+        // Same rule as Keep and Dismiss: never fall back to a machine identity, refuse instead.
+        if (EvidenceActions.ResolveOperatorActor(SessionState.OperatorId) is not { } operatorId)
+        {
+            _error = ReviewL["ReasonSignInRequired"];
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _notice = null;
+        try
+        {
+            _ = await CaseRepository.AddItemAsync(caseId, CaseItemKind.Media, mediaId, L["FlagActionsPinReason"].Value, operatorId, _disposeCts.Token);
+            ForensicCase? added = _openCases.FirstOrDefault(c => c.Id == caseId);
+            if (added is not null)
+            {
+                _containing = [.. _containing, added];
+                _notice = L["FlagActionsAddDone", added.Title].Value;
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (InvalidOperationException)
+        {
+            _error = await DescribeAddFailureAsync(caseId, mediaId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Adding flagged clip {MediaItemId} to case {CaseId} failed: {ExceptionType}: {Message}", mediaId, caseId, ex.GetType().Name, ex.Message);
+            _error = L["FlagActionsFailed"];
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Reads the case and its pins again to tell a closed case and a duplicate pin apart from any other failure.</summary>
+    private async Task<LocalizedString> DescribeAddFailureAsync(Guid caseId, Guid mediaId)
+    {
+        try
+        {
+            ForensicCase? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
+            if (target?.Status == CaseStatus.Closed)
+            {
+                return L["FlagActionsClosedCase"];
+            }
+
+            IReadOnlyList<ForensicCase> containing = await CaseRepository.ListCasesContainingAsync(CaseItemKind.Media, mediaId, _disposeCts.Token);
+            return containing.Any(existing => existing.Id == caseId) ? L["FlagActionsDuplicate"] : L["FlagActionsFailed"];
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError("Could not read the case after a failed add-to-case: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+            return L["FlagActionsFailed"];
+        }
     }
 
     /// <summary>Runs a Keep: the expected status is Unreviewed and the optional note is sent when present.</summary>
