@@ -929,4 +929,19 @@
   <data name="BitrateFlagsHeading" xml:space="preserve">
     <value>Bit rate collapse flags</value>
   </data>
+  <data name="MediaFitPurged" xml:space="preserve">
+    <value>This clip was removed by the retention policy.</value>
+  </data>
+  <data name="MediaFitFileMissing" xml:space="preserve">
+    <value>The media file is missing from storage.</value>
+  </data>
+  <data name="MediaFitDeviceDeleted" xml:space="preserve">
+    <value>The camera for this clip has been deleted.</value>
+  </data>
+  <data name="MediaFitFlagNotFound" xml:space="preserve">
+    <value>This flag no longer exists.</value>
+  </data>
+  <data name="MediaFitNoClipInHour" xml:space="preserve">
+    <value>No clip was recorded in this window.</value>
+  </data>
 </root>
