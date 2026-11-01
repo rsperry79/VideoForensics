@@ -12,7 +12,8 @@ Reviewed by a Sonnet agent; its corrections are folded in below.
 - Health units: `StatusAtUtc` (`status_time` is a 32768 Hz tick count since the Unix epoch; verified against `last_update_time`) and `BatteryTempCelsius` (`battery_temp` assumed deci-Kelvin) beside the raw values; factors live in `RingHealthUnits`; out-of-range values store null and are logged.
 - Light events: `DeviceLightEvent` (`IsOn`, `Source` Observed|Command, `SecondsRemaining`); `led_status` object and plain `'on'`/`'off'` strings handled; `Devices.LedStatus` and `Devices.LedSecondsRemaining` dropped. Consumers listing light-on events filter `IsOn = true`.
 
-## Status (2026-10-31, `wip` 19053c37)
+## Status (2026-10-31, `wip` 15611e12)
+Latest merges to `wip`: `feature/db-dropjson` (migration `DropDeadJsonColumns`: four `MetadataJson` columns dropped on `Devices`, `DeviceCapabilities`, `LocationMetadata`, `RingAccounts`; `DeviceConfigSnapshots.CustomSettingsJson` and `RingLocationModeNotYetParticipating.ValueJson` kept because code still writes them), `fix/db-download-bugs` (Events download fields kept on update; the download path passes null for the settings-object rows, so only config sync writes them), `fix/db-download-presets` (motion snooze and live view presets kept on list-only download). Gates green: Data.Common, Data.Database, Ring provider, SelfTest, Hosting, Ui.Shared, WebApp build.
 Checker on the saved 2026-10-31 run: 0 unmapped paths (from 665). That is a path-map result. The value-level round-trip check (`FieldMapRoundTripTests`, real sync code, real migrated SQLite, sanitized fixtures) found and fixed three real bugs and passes. Merged to `wip` this round: zones/presets/ignore zones for doorbots, config-sync list-key merge, shared-users / linked-chime / snapshot-timestamp sync calls, raw event payload removed from `Event`/`MediaItem` MetadataJson (markers and unknown keys only), settings remainder audit (12 typed paths removed from the JSON). Gates green on the merged tree: Ring provider 720, Ring common 102, Data.Database 914, Data.Core 214, sqlite 39, SelfTest 92, Ui.Shared 2141.
 
 ## Open decisions and follow-ups
@@ -53,9 +54,13 @@ Checker on the saved 2026-10-31 run: 0 unmapped paths (from 665). That is a path
 1. DONE (user decision, `feature/db-decisions`): `RemainderJson` removes only the keys the four parsers store from `network_settings`, `cv_paid_features`, `other_paid_features` and `offline_motion_event_settings`; unknown keys inside them stay in the JSON. A group that is not an object stays whole.
 2. DONE (user decision, `feature/db-decisions`): a wrong-typed value for a typed settings path (PIR, chime, motion detection, volume) is noted as key and JSON type only through the Unstored notes; the doorbot and stickup helpers no longer throw on a non-number value.
 3. DONE (user decision, `feature/db-decisions`): `DoorbotHistoryEvent` keeps unknown Ring keys via `[JsonExtensionData]` (`UnknownFields`), so they reach the remainder as unknown leaves. Event hashes change only for payloads that carry such keys; the pinned hash literal is unchanged.
-4. Run `--strip-raw-payload --db-path <file> --dump-file <ndjson> --yes` on the real DB. Expected: 5,236 raw rows become NULL. Not run yet. It makes a backup first.
+4. DONE: `--strip-raw-payload` run on the real DB (Events 2,654 rows NULL; MediaItems 2,582 rewritten, 5,775 markers kept). Backup `videoforensics.pre-strip-20261031T231620Z.db`.
 5. Apply the migrations to the live DB (app start), run a real sync, then rerun `--check-dir` and `--list-unknown`.
 6. `zone_settings` is unproven: `DeviceZones` has 0 rows in the live DB.
+9. DECIDED (user, download path): settings-object rows (advanced-motion zones, RingSettings, GeneralSettings, setting groups, PaidFeatures, NetworkSettings, NetworkDiagnosis) and motion snooze / live view presets are written only by config sync; download passes null (untouched). Trade-off: they can go stale until the next sync. Alternative (download fetches and merges the body) rejected for now.
+10. OPEN (user): convert `DeviceConfigSnapshots.CustomSettingsJson` and `RingLocationModeNotYetParticipating.ValueJson` to typed rows, or keep.
+11. OPEN (user): drop-columns migration rebuilds four tables (EF SQLite). Keep, or switch to hand-written `ALTER TABLE ... DROP COLUMN`.
+12. OPEN: zones-to-child-rows migration and paid/health table dedupe (source of truth not yet confirmed); chime/stickup detail-field writes; MediaItems codec/resolution; ApiResponseHash; dead Events/ProviderAccounts columns.
 7. Nov 1: confirm the `battery_temp` unit (`plans/todo.md`).
 8. Remove the old `F:\VF-*` worktrees once confirmed merged.
 
