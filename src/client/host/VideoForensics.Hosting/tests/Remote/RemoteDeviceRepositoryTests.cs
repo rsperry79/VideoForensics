@@ -20,7 +20,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 Name: "Front Door Camera",
                 Type: "camera",
                 IsOnline: true,
-                MetadataJson: null,
                 LastSuccessfulPullAtUtc: DateTime.UtcNow.AddHours(-1),
                 LastPullAttemptAtUtc: DateTime.UtcNow,
                 TimeZoneId: "America/New_York",
@@ -323,7 +322,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 Name: "Backyard Camera",
                 Type: "camera",
                 IsOnline: false,
-                MetadataJson: "{\"key\":\"value\"}",
                 LastSuccessfulPullAtUtc: new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc),
                 LastPullAttemptAtUtc: new DateTime(2024, 1, 2, 12, 0, 0, DateTimeKind.Utc),
                 TimeZoneId: "America/Los_Angeles",
@@ -355,7 +353,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal(deviceDto.Name, device.Name);
             Assert.Equal(deviceDto.Type, device.Type);
             Assert.Equal(deviceDto.IsOnline, device.IsOnline);
-            Assert.Equal(deviceDto.MetadataJson, device.MetadataJson);
             Assert.Equal(deviceDto.LastSuccessfulPullAtUtc, device.LastSuccessfulPullAtUtc);
             Assert.Equal(deviceDto.LastPullAttemptAtUtc, device.LastPullAttemptAtUtc);
             Assert.Equal(deviceDto.TimeZoneId, device.TimeZoneId);

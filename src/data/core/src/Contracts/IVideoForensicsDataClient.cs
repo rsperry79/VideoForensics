@@ -79,7 +79,6 @@ namespace VideoForensics.Data.Core.Contracts
             string name,
             string type,
             bool? isOnline,
-            string? metadataJson = null,
             string? apiResponseHash = null,
             CancellationToken ct = default,
             string? timeZoneId = null,

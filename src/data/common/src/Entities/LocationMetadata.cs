@@ -19,6 +19,5 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime? LastSyncedUtc { get; set; }
         public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
         public string? ApiResponseHash { get; set; }
-        public string? MetadataJson { get; set; }
     }
 }

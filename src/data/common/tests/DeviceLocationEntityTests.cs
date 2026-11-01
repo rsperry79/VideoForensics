@@ -57,7 +57,6 @@ public class DeviceLocationEntityTests
         string name = "Front Doorbell";
         string type = "Doorbell";
         bool isOnline = true;
-        string metadataJson = "{\"model\": \"Ring Doorbell 3\"}";
         DateTime lastSuccessfulPullAtUtc = DateTime.UtcNow.AddHours(-2);
         DateTime lastPullAttemptAtUtc = DateTime.UtcNow.AddHours(-1);
         string timeZoneId = "America/New_York";
@@ -71,7 +70,6 @@ public class DeviceLocationEntityTests
             Name = name,
             Type = type,
             IsOnline = isOnline,
-            MetadataJson = metadataJson,
             LastSuccessfulPullAtUtc = lastSuccessfulPullAtUtc,
             LastPullAttemptAtUtc = lastPullAttemptAtUtc,
             TimeZoneId = timeZoneId
@@ -84,7 +82,6 @@ public class DeviceLocationEntityTests
         Assert.Equal(name, device.Name);
         Assert.Equal(type, device.Type);
         Assert.True(device.IsOnline);
-        Assert.Equal(metadataJson, device.MetadataJson);
         Assert.Equal(lastSuccessfulPullAtUtc, device.LastSuccessfulPullAtUtc);
         Assert.Equal(lastPullAttemptAtUtc, device.LastPullAttemptAtUtc);
         Assert.Equal(timeZoneId, device.TimeZoneId);
@@ -102,14 +99,12 @@ public class DeviceLocationEntityTests
             Name = "Front Doorbell",
             Type = "Doorbell",
             IsOnline = false,
-            MetadataJson = null,
             LastSuccessfulPullAtUtc = null,
             LastPullAttemptAtUtc = null,
             TimeZoneId = null
         };
 
         // Assert
-        Assert.Null(device.MetadataJson);
         Assert.Null(device.LastSuccessfulPullAtUtc);
         Assert.Null(device.LastPullAttemptAtUtc);
         Assert.Null(device.TimeZoneId);
@@ -131,7 +126,6 @@ public class DeviceLocationEntityTests
             Name = "Front Doorbell",
             Type = "Doorbell",
             IsOnline = true,
-            MetadataJson = null,
             LastSuccessfulPullAtUtc = lastSuccessfulPullAtUtc,
             LastPullAttemptAtUtc = null,
             TimeZoneId = null

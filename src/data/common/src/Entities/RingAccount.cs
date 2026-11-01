@@ -15,7 +15,6 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime? LastSyncedUtc { get; set; }
         public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
         public string? ApiResponseHash { get; set; }
-        public string? MetadataJson { get; set; }
 
         /// <summary>Hours between config syncs (profile, ringtones, light groups, location mode, device settings). Minimum 1.</summary>
         public int ConfigSyncIntervalHours { get; set; } = 24;

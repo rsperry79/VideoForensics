@@ -135,7 +135,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
             var agg = new UnknownKeyAggregator();
             agg.AddRow("""{"x":1}""");
 
-            UnknownKeyPath path = Assert.Single(UnknownKeyCollator.ToUnknownPaths("Devices.MetadataJson", agg.Paths, covered: null));
+            UnknownKeyPath path = Assert.Single(UnknownKeyCollator.ToUnknownPaths("Devices.SettingsMetadataJson", agg.Paths, covered: null));
             Assert.Null(path.CoveredByFieldMap);
         }
 
@@ -189,7 +189,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
             Assert.Equal("scanned", devices.Status);
             Assert.Equal(1, devices.NonNullRows);
 
-            UnknownKeyColumnResult missing = report.Columns.Single(c => c.Column == "DeviceCapabilities.MetadataJson");
+            UnknownKeyColumnResult missing = report.Columns.Single(c => c.Column == "DeviceConfigSnapshots.CustomSettingsJson");
             Assert.Equal("column missing", missing.Status);
             Assert.Empty(missing.Paths);
 

@@ -664,9 +664,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("REAL");
 
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("MotionAudioId")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -957,9 +954,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<int?>("MaxStorageDays")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Resolution")
                         .HasMaxLength(256)
@@ -2686,9 +2680,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("REAL");
 
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("PostalCode")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -3664,9 +3655,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastSyncedUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ProviderAccountId")
