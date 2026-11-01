@@ -80,10 +80,8 @@ ServerLogLevel serverLogLevel = new();
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.ControlledBy(serverLogLevel.Switch)
-    // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
-    // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
-    .MinimumLevel.Override("VideoForensics.Providers.Ring.Api", Serilog.Events.LogEventLevel.Debug)
+    // No per-category overrides: an override bypasses the level switch, so EF SQL and Ring API Debug lines would be
+    // written to the audit files at any saved level. The saved level alone decides what the files hold.
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.Client.WebApp")
     // CloudflaredKit logs its process dying as a warning; CloudflaredTunnelService logs the same event at Error with the exit code,
