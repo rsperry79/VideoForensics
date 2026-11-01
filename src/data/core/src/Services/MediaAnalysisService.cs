@@ -104,6 +104,10 @@ namespace VideoForensics.Data.Core.Services
                 media.DurationSeconds = bitrate.DurationSeconds;
                 media.BitrateEstimated = bitrate.BitrateEstimated;
                 media.BitrateAnalyzedAtUtc = DateTime.UtcNow;
+                media.VideoCodec = bitrate.VideoCodec;
+                media.AudioCodec = bitrate.AudioCodec;
+                media.Resolution = bitrate.Resolution;
+                media.FrameRate = bitrate.FrameRate;
             }
 
             if (color is not null)
