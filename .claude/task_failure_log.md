@@ -119,3 +119,4 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-11-01 | rssi-review: test setup | 3 RssiReview tests threw NullReferenceException in FlagActionsPanel: GetCurrentForDeviceAsync was not mocked | test fixture missing the snapshot read the panel now calls | FIXED in test; RESOLVED
 2026-11-01 | clip-readout: build | compile error SetParametersAndRender not in this bUnit version | used an API that does not exist in the referenced bUnit | fixed to cut.Render(...); RESOLVED
 2026-11-01 | clip-readout: commit | commit message passed through a heredoc to git -F - (stdin) against the brief | used a shell pattern the brief forbids | commit content correct; use Write to a file then git commit -F <file> instead; RESOLVED
+2026-11-01 | B8a: build | CS0266 in new ReviewAccessibility_Tests.cs: FindAll returns IReadOnlyList, not IHtmlCollection | wrong collection type in my own test code | FIXED: typed IReadOnlyList<IElement>; RESOLVED
