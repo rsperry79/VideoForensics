@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Logging.Providers;
+using VideoForensics.Core.Logging.Services;
 
 using Xunit;
 
@@ -27,6 +28,28 @@ namespace VideoForensics.Core.Logging.Tests.Providers
         {
             _provider?.Dispose();
             await ValueTask.CompletedTask;
+        }
+
+        [Fact]
+        public void NamedPipeLogger_BelowMinimumLevel_DoesNotWrite()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            // The saved Recording level must also gate the live pipe, not only the console and audit files.
+            var gate = new NamedPipeLogGate { Level = new LogLevelSource { Minimum = LogLevel.Warning } };
+            gate.SetOpen(true);
+            using var provider = new NamedPipeLoggerProvider(gate);
+            ILogger logger = provider.CreateLogger("TestCategory");
+
+            logger.LogInformation("Below minimum");
+            logger.LogWarning("At minimum");
+
+            string[] buffered = provider.GetBufferedEntries();
+            _ = Assert.Single(buffered);
+            Assert.Contains("At minimum", buffered[0]);
         }
 
         [Fact]
