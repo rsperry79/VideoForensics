@@ -271,6 +271,27 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task AnalyzeAsync_StillClipWithBitrateCollapse_WritesNoFlagAndReconcilesEmpty()
+        {
+            // A still has no bit rate worth judging, so a collapse against video history is never raised for it.
+            MediaItem still = Clip(_deviceId, "Day", 0);
+            still.FileName = "snap.jpg";
+            still.MediaFormat = "jpg";
+            still.FilePath = "snap.jpg";
+            var earlier = Enumerable.Range(0, 12).Select(_ => Clip(_deviceId, "Ir", 1_000_000)).ToList();
+            SetUpClip(still, earlier, new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), null!);
+
+            await CreateSut().AnalyzeAsync(still.Id, CancellationToken.None);
+
+            _flags.Verify(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()), Times.Never);
+            _flags.Verify(f => f.ReconcileForMediaAsync(
+                still.Id,
+                It.Is<IReadOnlySet<MediaFlagType>>(s => s.Count == 0),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task AnalyzeAsync_IncompleteAnalysis_TouchesNoFlags()
         {
             // Unknown is not clean: an incomplete analysis must leave the review flags exactly as they are.

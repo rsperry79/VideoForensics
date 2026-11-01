@@ -200,7 +200,8 @@ namespace VideoForensics.Data.Core.Services
             // Only BitrateCollapse has a review flag so far. Reconcile runs even when nothing is raised, so an unreviewed
             // flag that no longer applies is removed; reviewed rows are kept by the repository.
             var raisedTypes = new HashSet<MediaFlagType>();
-            if (report.Flags.Contains(RedFlag.BitrateCollapse))
+            // Bit rate says nothing about a still, so a still never raises the flag; the stored RedFlags text is unchanged.
+            if (report.Flags.Contains(RedFlag.BitrateCollapse) && !MediaStillRules.IsStill(media.FileName))
             {
                 // A window that ends before it starts is rejected by the repository, so a missing or non-positive duration
                 // collapses the window to the recording instant.

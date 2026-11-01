@@ -88,6 +88,23 @@ namespace VideoForensics.Data.Core.Tests
             _flags.Verify(f => f.UpsertRaisedAsync(It.Is<MediaFlag>(m => m.MediaItemId == good.Id), It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [Fact]
+        public async Task BackfillAsync_StillClip_IsNotUpsertedButIsReconciled()
+        {
+            MediaItem still = Clip("snap.jpg", Now.AddDays(-2));
+            _ = _items.Setup(r => r.ListFlaggedSinceAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([still]);
+
+            int upserted = await Sut().BackfillAsync(CancellationToken.None);
+
+            Assert.Equal(0, upserted);
+            _flags.Verify(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()), Times.Never);
+            _flags.Verify(f => f.ReconcileForMediaAsync(
+                still.Id,
+                It.Is<IReadOnlySet<MediaFlagType>>(s => s.Count == 0),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         /// <summary>A clock frozen at one instant, so the since boundary is exact.</summary>
         private sealed class FixedClock(DateTime utcNow) : TimeProvider
         {
