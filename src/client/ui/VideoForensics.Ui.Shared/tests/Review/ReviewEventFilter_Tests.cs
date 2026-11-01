@@ -56,15 +56,15 @@ public class ReviewEventFilter_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewEventFilter_TypesToggledOn_WritesTheStateAfterTheDebounce()
+    public async Task ReviewEventFilter_TypesToggledOn_WritesTheStateAfterTheDebounce()
     {
         // Arrange
         IRenderedComponent<ReviewEventFilter> cut = RenderFilter();
         cut.Find("[data-testid='review-event-button']").Click();
 
         // Act
-        cut.Find(Toggle("motion")).Change(true);
-        cut.Find(Toggle("signal_anomaly")).Change(true);
+        await cut.InvokeAsync(() => cut.Find(Toggle("motion")).Change(true));
+        await cut.InvokeAsync(() => cut.Find(Toggle("signal_anomaly")).Change(true));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Equal(["motion", "signal_anomaly"], ReviewState.EventTypes));
