@@ -923,6 +923,24 @@
   <data name="FlaggedMediaStatus_Dismissed" xml:space="preserve">
     <value>Dismissed</value>
   </data>
+  <data name="ClipNavigatorLabel" xml:space="preserve">
+    <value>Flag navigation</value>
+  </data>
+  <data name="ClipNavigatorPrevious" xml:space="preserve">
+    <value>Previous flag</value>
+  </data>
+  <data name="ClipNavigatorNext" xml:space="preserve">
+    <value>Next flag</value>
+  </data>
+  <data name="ClipNavigatorTotal" xml:space="preserve">
+    <value>{0} flags</value>
+  </data>
+  <data name="ClipNavigatorMoved" xml:space="preserve">
+    <value>Moved to another flag</value>
+  </data>
+  <data name="ClipNavigatorEnd" xml:space="preserve">
+    <value>No more flags in this direction</value>
+  </data>
   <data name="SignalFlagsHeading" xml:space="preserve">
     <value>Signal deviation flags</value>
   </data>
