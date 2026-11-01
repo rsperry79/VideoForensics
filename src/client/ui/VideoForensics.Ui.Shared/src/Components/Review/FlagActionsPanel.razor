@@ -1,0 +1,163 @@
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
+@using VideoForensics.Client.Ui.Shared.Services.Time
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@inject PairedSessionState SessionState
+@inject IMediaFlagRepository MediaFlagRepository
+@inject IStringLocalizer<SharedResources> L
+@inject IStringLocalizer<ReviewPage> ReviewL
+@inject ILogger<FlagActionsPanel> Logger
+
+<div class="flag-actions-panel" role="group" aria-label="@L["FlagActionsLabel"].Value" data-testid="flag-actions-panel">
+    <div class="small fw-semibold mb-2">@L["FlagActionsLabel"]</div>
+
+    <div class="small mb-1" data-testid="flag-actions-status">@L["FlagActionsStatus", StatusName()].Value</div>
+
+    @if (Flag.ReviewedAtUtc is { } reviewedAt)
+    {
+        <div class="small text-muted mb-2" data-testid="flag-actions-reviewed-at">@L["FlagActionsReviewedAt", Zone.Format(reviewedAt, "yyyy-MM-dd HH:mm")].Value</div>
+    }
+
+    @if (RoleReason is { } roleReason)
+    {
+        <div class="small text-muted mb-2" data-testid="flag-actions-role-reason">@roleReason</div>
+    }
+
+    <div class="mb-2">
+        <SfTextBox ID="flag-note" Placeholder="@L["FlagActionsNote"].Value" @bind-Value="_note" />
+    </div>
+
+    <div class="mb-2">
+        <SfTextBox ID="flag-reason" Placeholder="@L["FlagActionsReason"].Value" @bind-Value="_reason" />
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <SfButton CssClass="e-outline" Content="@L["FlagActionsKeep"].Value" data-testid="flag-keep" Disabled="@(!CanAct || _busy)" OnClick="OnKeepAsync" />
+        <SfButton CssClass="e-danger" Content="@L["FlagActionsDismiss"].Value" data-testid="flag-dismiss" Disabled="@(!CanAct || _busy || string.IsNullOrWhiteSpace(_reason))" OnClick="OnDismissAsync" />
+    </div>
+
+    @if (_error is { } error)
+    {
+        <div class="small text-danger mt-2" role="alert" data-testid="flag-actions-error">@error</div>
+    }
+</div>
+
+@code {
+    /// <summary>The flag being reviewed. Its status decides whether the actions apply.</summary>
+    [Parameter, EditorRequired]
+    public MediaFlag Flag { get; set; } = default!;
+
+    /// <summary>Raised with the updated flag after a Keep or Dismiss is saved. Not raised when the save fails.</summary>
+    [Parameter]
+    public EventCallback<MediaFlag> OnChanged { get; set; }
+
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private string _note = string.Empty;
+    private string _reason = string.Empty;
+    private bool _busy;
+    private LocalizedString? _error;
+
+    /// <summary>The operator role parsed from the paired session, or null when no role is known.</summary>
+    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+
+    /// <summary>Why the operator cannot review, or null when the operator holds the Review role.</summary>
+    private LocalizedString? RoleReason =>
+        Role is null
+            ? ReviewL["ReasonSignInRequired"]
+            : Role.Value >= OperatorRole.Review ? null : ReviewL["ReasonRequiresReview"];
+
+    /// <summary>True when the operator may act on this flag: the role is held and the flag is still Unreviewed.</summary>
+    private bool CanAct => RoleReason is null && Flag.Status == MediaFlagStatus.Unreviewed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The role and operator come from the paired session, which loads on first use; the Actions menu does the same.
+        await SessionState.EnsureLoadedAsync();
+    }
+
+    /// <summary>Runs a Keep: the expected status is Unreviewed and the optional note is sent when present.</summary>
+    private Task OnKeepAsync()
+    {
+        string? note = string.IsNullOrWhiteSpace(_note) ? null : _note.Trim();
+        return ReviewAsync(MediaFlagStatus.Kept, note);
+    }
+
+    /// <summary>Runs a Dismiss: the reason is required and is sent with the new status.</summary>
+    private Task OnDismissAsync()
+    {
+        return ReviewAsync(MediaFlagStatus.Dismissed, _reason.Trim());
+    }
+
+    /// <summary>
+    /// Saves one review through the compare-and-set status path. A conflict or failure becomes a message and no change is
+    /// raised; success raises <see cref="OnChanged"/> with the updated flag.
+    /// </summary>
+    private async Task ReviewAsync(MediaFlagStatus newStatus, string? reason)
+    {
+        if (_busy || !CanAct)
+        {
+            return;
+        }
+
+        // Same rule as the Evidence page and the Actions menu: never fall back to a machine identity, refuse instead.
+        if (EvidenceActions.ResolveOperatorActor(SessionState.OperatorId) is not { } operatorId)
+        {
+            _error = ReviewL["ReasonSignInRequired"];
+            return;
+        }
+
+        MediaFlag? updated = null;
+        _busy = true;
+        _error = null;
+        try
+        {
+            updated = await MediaFlagRepository.UpdateStatusAsync(Flag.Id, MediaFlagStatus.Unreviewed, newStatus, reason, operatorId, _disposeCts.Token);
+        }
+        catch (FlagStatusConflictException)
+        {
+            _error = L["FlagActionsConflict"];
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Flag review {FlagId} to {Status} failed: {ExceptionType}: {Message}", Flag.Id, newStatus, ex.GetType().Name, ex.Message);
+            _error = L["FlagActionsFailed"];
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        if (updated is not null)
+        {
+            await OnChanged.InvokeAsync(updated);
+        }
+    }
+
+    private string StatusName()
+    {
+        LocalizedString text = L[$"FlaggedMediaStatus_{Flag.Status}"];
+        return text.ResourceNotFound ? Flag.Status.ToString() : text.Value;
+    }
+
+    public void Dispose()
+    {
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+}

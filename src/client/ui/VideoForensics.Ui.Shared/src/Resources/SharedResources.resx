@@ -923,6 +923,33 @@
   <data name="FlaggedMediaStatus_Dismissed" xml:space="preserve">
     <value>Dismissed</value>
   </data>
+  <data name="FlagActionsLabel" xml:space="preserve">
+    <value>Flag review</value>
+  </data>
+  <data name="FlagActionsStatus" xml:space="preserve">
+    <value>Status: {0}</value>
+  </data>
+  <data name="FlagActionsReviewedAt" xml:space="preserve">
+    <value>Reviewed {0}</value>
+  </data>
+  <data name="FlagActionsNote" xml:space="preserve">
+    <value>Note (optional)</value>
+  </data>
+  <data name="FlagActionsReason" xml:space="preserve">
+    <value>Reason (required to dismiss)</value>
+  </data>
+  <data name="FlagActionsKeep" xml:space="preserve">
+    <value>Keep</value>
+  </data>
+  <data name="FlagActionsDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="FlagActionsConflict" xml:space="preserve">
+    <value>This flag was already reviewed by someone else. Reload to see the current state.</value>
+  </data>
+  <data name="FlagActionsFailed" xml:space="preserve">
+    <value>The review could not be saved. Try again.</value>
+  </data>
   <data name="ClipNavigatorLabel" xml:space="preserve">
     <value>Flag navigation</value>
   </data>
