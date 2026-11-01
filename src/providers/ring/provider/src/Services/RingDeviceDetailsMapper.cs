@@ -452,6 +452,33 @@ namespace VideoForensics.Providers.Ring.Services
             return children;
         }
 
+        /// <summary>
+        /// Builds the settings children for the download path, which rebuilds from the device list rather than the full device settings body.
+        /// The list's settings object is partial: it carries no advanced-motion zones and no advanced-motion group, and its key set varies. Every row
+        /// derived from that object is therefore null here, which leaves the stored rows untouched. A full config sync (which merges the body over
+        /// the list entry) owns those rows. Features, health, the Ring detail row and the light state come from the list's own fields and are kept.
+        /// </summary>
+        /// <remarks>Why not an empty or all-null row: an absent key would otherwise overwrite a stored zone or setting with nothing.</remarks>
+        public static DeviceSettingsChildren? ToDeviceListSettingsChildren(RingDeviceDetails details, Guid deviceId)
+        {
+            DeviceSettingsChildren? children = ToSettingsChildrenWithFeatures(details, deviceId);
+            if (children == null)
+            {
+                return null;
+            }
+
+            return children with
+            {
+                AdvancedMotionZones = null,
+                RingSettings = null,
+                GeneralSettings = null,
+                RingSettingGroups = null,
+                PaidFeatures = null,
+                NetworkSettings = null,
+                NetworkDiagnosis = null
+            };
+        }
+
         /// <summary>Copies the endpoint setting group rows onto fresh rows with their own Ids and the device id; each child list is copied element by element.</summary>
         private static RingDeviceSettingGroupRows CopyGroupRows(RingDeviceSettingGroupRows g, Guid deviceId)
         {
