@@ -200,7 +200,7 @@ function Start-LogViewer {
         ForEach-Object { $_.ProcessId })
 
     Write-Host 'Opening the logger console as a Windows Terminal tab'
-    Start-Process -FilePath $wt.Source -ArgumentList "-w 0 new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
+    Start-Process -FilePath $wt.Source -ArgumentList "-w vf-debug new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
 
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         $match = Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
@@ -290,7 +290,7 @@ if ($useService) {
                 # One elevated Windows Terminal window holds the script and the log viewer. Windows Terminal returns at once,
                 # so this shell exits without waiting and the script's own exit code is not passed back.
                 $tabCommand = "`"$shell`" " + ($relaunchArguments -join " ")
-                Start-Process -FilePath $wt.Source -ArgumentList "-w new new-tab --title `"VideoForensics debug`" $tabCommand" -Verb RunAs | Out-Null
+                Start-Process -FilePath $wt.Source -ArgumentList "-w vf-debug new-tab --title `"VideoForensics debug`" $tabCommand" -Verb RunAs | Out-Null
                 exit 0
             }
             $elevated = Start-Process -FilePath $shell -ArgumentList $relaunchArguments -Verb RunAs -Wait -PassThru
