@@ -6,14 +6,15 @@
       "executablePath": "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\wt.exe",
       "commandLineArgs": "-w vf-debug new-tab -d . --title \"VideoForensics debug\" pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ..\\..\\..\\..\\..\\scripts\\Debug-WebAppService.ps1",
       "workingDirectory": ".",
-      "launchBrowser": false
+      "launchBrowser": false,
+      "hideConsole": true
     },
     "http": {
       "applicationUrl": "http://localhost:5162",
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-            "environmentVariables": {
+      "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
