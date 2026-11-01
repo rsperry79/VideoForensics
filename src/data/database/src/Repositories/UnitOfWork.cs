@@ -428,12 +428,6 @@ namespace VideoForensics.Data.Database.Repositories
             return GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
-        /// <summary>Gets a location by API response hash for deduplication.</summary>
-        public Task<Location?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.ApiResponseHash == apiResponseHash));
-        }
-
         public Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<Location>)_db.Locations.AsNoTracking().ToList());
@@ -473,12 +467,6 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
         {
             return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId));
-        }
-
-        /// <summary>Gets a device by API response hash for deduplication.</summary>
-        public Task<Device?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.ApiResponseHash == apiResponseHash));
         }
 
         public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)

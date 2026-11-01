@@ -58,20 +58,6 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task LocationMetadataRepository_GetByApiHash_FindsMetadata()
-        {
-            string apiHash = "hash_abc123";
-            LocationMetadata metadata = BuildLocationMetadata(apiResponseHash: apiHash);
-
-            await _repository.AddAsync(metadata, CancellationToken.None);
-            LocationMetadata? retrieved = await _repository.GetByApiHashAsync(apiHash, CancellationToken.None);
-
-            Assert.NotNull(retrieved);
-            Assert.Equal(metadata.Id, retrieved.Id);
-            Assert.Equal(apiHash, retrieved.ApiResponseHash);
-        }
-
-        [Fact]
         public async Task LocationMetadataRepository_GetAsync_ReturnsNullForMissing()
         {
             var nonexistentId = Guid.NewGuid();
@@ -87,16 +73,6 @@ namespace VideoForensics.Data.Database.Tests
             var nonexistentLocationId = Guid.NewGuid();
 
             LocationMetadata? retrieved = await _repository.GetByLocationIdAsync(nonexistentLocationId, CancellationToken.None);
-
-            Assert.Null(retrieved);
-        }
-
-        [Fact]
-        public async Task LocationMetadataRepository_GetByApiHashAsync_ReturnsNullForMissing()
-        {
-            string nonexistentHash = "nonexistent_hash";
-
-            LocationMetadata? retrieved = await _repository.GetByApiHashAsync(nonexistentHash, CancellationToken.None);
 
             Assert.Null(retrieved);
         }
@@ -158,8 +134,7 @@ namespace VideoForensics.Data.Database.Tests
                 TimeZoneId = "America/New_York",
                 IsOwner = true,
                 LastSyncedUtc = now,
-                SyncStatus = SyncStatus.Synced,
-                ApiResponseHash = "hash_complex_xyz"
+                SyncStatus = SyncStatus.Synced
             };
 
             await _repository.AddAsync(metadata, CancellationToken.None);
@@ -177,7 +152,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.True(retrieved.IsOwner);
             Assert.Equal(now, retrieved.LastSyncedUtc);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
-            Assert.Equal("hash_complex_xyz", retrieved.ApiResponseHash);
         }
 
         [Fact]
@@ -197,8 +171,7 @@ namespace VideoForensics.Data.Database.Tests
                 TimeZoneId = null,
                 IsOwner = null,
                 LastSyncedUtc = null,
-                SyncStatus = SyncStatus.Pending,
-                ApiResponseHash = null
+                SyncStatus = SyncStatus.Pending
             };
 
             await _repository.AddAsync(metadata, CancellationToken.None);
@@ -230,52 +203,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("New City", retrieved.City);
             Assert.Equal("OC", retrieved.State);  // Should remain unchanged
             Assert.Equal("11111", retrieved.PostalCode);  // Should remain unchanged
-        }
-
-        [Fact]
-        public async Task LocationMetadataRepository_MultipleMetadataPerLocation_LatestOverwrites()
-        {
-            var locationId = Guid.NewGuid();
-            string apiHash1 = "hash_v1";
-            string apiHash2 = "hash_v2";
-
-            LocationMetadata metadata1 = BuildLocationMetadata(
-                locationId: locationId,
-                city: "City V1",
-                apiResponseHash: apiHash1
-            );
-
-            await _repository.AddAsync(metadata1, CancellationToken.None);
-
-            // Update with new data (latest overwrites)
-            metadata1.City = "City V2";
-            metadata1.StreetAddress = "New Address";
-            metadata1.State = "ST";
-            metadata1.PostalCode = "22222";
-            metadata1.Country = "USA";
-            metadata1.Latitude = 35.0;
-            metadata1.Longitude = -100.0;
-            metadata1.TimeZoneId = "America/Chicago";
-            metadata1.IsOwner = false;
-            metadata1.LastSyncedUtc = DateTime.UtcNow;
-            metadata1.SyncStatus = SyncStatus.Synced;
-            metadata1.ApiResponseHash = apiHash2;
-
-            await _repository.UpdateAsync(metadata1, CancellationToken.None);
-
-            // GetByLocationId should return the updated location metadata
-            LocationMetadata? retrieved = await _repository.GetByLocationIdAsync(locationId, CancellationToken.None);
-            Assert.NotNull(retrieved);
-            Assert.Equal("City V2", retrieved.City);
-            Assert.Equal(apiHash2, retrieved.ApiResponseHash);
-
-            // Old hash should not be found (since it was updated)
-            LocationMetadata? oldHash = await _repository.GetByApiHashAsync(apiHash1, CancellationToken.None);
-            Assert.Null(oldHash);
-
-            // New hash should be found
-            LocationMetadata? newHash = await _repository.GetByApiHashAsync(apiHash2, CancellationToken.None);
-            Assert.NotNull(newHash);
         }
 
         [Fact]
@@ -324,7 +251,6 @@ namespace VideoForensics.Data.Database.Tests
                 IsOwner = isOwner ?? true,
                 LastSyncedUtc = lastSyncedUtc,
                 SyncStatus = syncStatus,
-                ApiResponseHash = apiResponseHash ?? $"hash_{Guid.NewGuid():N}"
             };
         }
     }

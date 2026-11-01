@@ -555,9 +555,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("AdvancedMotionDetectionHumanOnlyMode")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ApiResponseHash")
-                        .HasColumnType("TEXT");
-
                     b.Property<double?>("BaselineDriftChangeFraction")
                         .HasColumnType("REAL");
 
@@ -920,10 +917,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApiResponseHash")
-                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("DeviceId")
@@ -2639,9 +2632,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ApiResponseHash")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime?>("LastSyncedUtc")
                         .HasColumnType("TEXT");
 
@@ -2670,10 +2660,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApiResponseHash")
-                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("City")
@@ -3652,10 +3638,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("AccountEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApiResponseHash")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 

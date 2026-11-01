@@ -35,6 +35,11 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 ("LocationMetadata", "MetadataJson"),
                 ("RingAccounts", "MetadataJson"),
                 ("ProviderAccounts", "LastCollectCompleteUtc"),
+                ("Devices", "ApiResponseHash"),
+                ("DeviceCapabilities", "ApiResponseHash"),
+                ("Locations", "ApiResponseHash"),
+                ("LocationMetadata", "ApiResponseHash"),
+                ("RingAccounts", "ApiResponseHash"),
                 ("RingDeviceBackendSettings", "PaidFeaturesAnimal"),
                 ("RingDeviceBackendSettings", "PaidFeaturesHuman"),
             ];

@@ -38,8 +38,6 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.Property(lm => lm.IsOwner);
 
-            _ = builder.Property(lm => lm.ApiResponseHash)
-                .HasMaxLength(256);
 
             _ = builder.HasIndex(lm => lm.LocationId)
                 .IsUnique();

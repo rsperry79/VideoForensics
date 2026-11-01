@@ -31,12 +31,6 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.DeviceId == deviceId, ct);
         }
 
-        public async Task<DeviceCapabilities?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.ApiResponseHash == apiResponseHash, ct);
-        }
-
         public async Task AddAsync(DeviceCapabilities capabilities, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

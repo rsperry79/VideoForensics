@@ -296,7 +296,6 @@ namespace VideoForensics.Data.Database.Tests
                 HardwareModel = "TestModel",
                 LastSyncedUtc = DateTime.UtcNow,
                 SyncStatus = SyncStatus.Synced,
-                ApiResponseHash = apiHash ?? $"{Guid.NewGuid():N}{Guid.NewGuid():N}"
             };
         }
 

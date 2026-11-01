@@ -24,8 +24,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 LastPullAttemptAtUtc: DateTime.UtcNow,
                 TimeZoneId: "America/New_York",
                 LastSyncedUtc: DateTime.UtcNow.AddHours(-1),
-                SyncStatus: SyncStatusDto.Synced,
-                ApiResponseHash: null
+                SyncStatus: SyncStatusDto.Synced
             );
         }
 
@@ -219,24 +218,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
-        public async Task GetByApiHashAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteDeviceRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByApiHashAsync("hash123", CancellationToken.None));
-
-            Assert.Contains("Remote API doesn't yet support", ex.Message);
-        }
-
-        [Fact]
         public async Task AddAsync_Throws_NotSupportedException()
         {
             var handler = new FakeHttpMessageHandler(async _ =>
@@ -326,8 +307,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 LastPullAttemptAtUtc: new DateTime(2024, 1, 2, 12, 0, 0, DateTimeKind.Utc),
                 TimeZoneId: "America/Los_Angeles",
                 LastSyncedUtc: new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc),
-                SyncStatus: SyncStatusDto.Stale,
-                ApiResponseHash: "hash-123"
+                SyncStatus: SyncStatusDto.Stale
             );
 
             string json = JsonSerializer.Serialize(new List<DeviceDto> { deviceDto }, JsonOptions);
@@ -357,7 +337,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal(deviceDto.LastPullAttemptAtUtc, device.LastPullAttemptAtUtc);
             Assert.Equal(deviceDto.TimeZoneId, device.TimeZoneId);
             Assert.Equal(deviceDto.LastSyncedUtc, device.LastSyncedUtc);
-            Assert.Equal(deviceDto.ApiResponseHash, device.ApiResponseHash);
         }
     }
 }

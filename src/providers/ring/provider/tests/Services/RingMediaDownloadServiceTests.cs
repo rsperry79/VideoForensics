@@ -348,9 +348,9 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
-            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
-            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
@@ -443,9 +443,9 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
-            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
-            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
             configureDataClient?.Invoke(dataClientMock);
             var tagger = new Mock<IMediaMetadataTagger>();
@@ -907,7 +907,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
                 {
                     Id = Guid.NewGuid(),
@@ -916,7 +916,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
@@ -933,7 +933,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", null,
-                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -942,11 +942,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(),
                     It.IsAny<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {
@@ -964,7 +964,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", null,
-                It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>(), It.IsAny<string?>(),
                 It.Is<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>(f => f != null && f.RingDeviceId == "aabbcc")), Times.Once);
         }
 
@@ -974,11 +974,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
@@ -995,7 +995,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", true,
-                It.IsAny<string?>(), It.IsAny<CancellationToken>(), timeZoneId: "America/Chicago"), Times.Once);
+                It.IsAny<CancellationToken>(), timeZoneId: "America/Chicago"), Times.Once);
         }
 
         [Fact]
@@ -1084,7 +1084,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
                 {
                     Id = Guid.NewGuid(),
@@ -1093,7 +1093,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
@@ -1110,7 +1110,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", false,
-                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -1222,11 +1222,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "default", Name = "default" });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(),
                     It.IsAny<DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {

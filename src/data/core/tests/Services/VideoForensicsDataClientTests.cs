@@ -1261,7 +1261,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange: a device already stored under the same location with an older response hash.
             var locationId = Guid.NewGuid();
-            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash", Name = "Front", Type = "doorbell", ApiResponseHash = "old-hash" };
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash", Name = "Front", Type = "doorbell" };
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
@@ -1272,10 +1272,9 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             Device result = await _dataClient.EnsureDeviceAsync(
-                locationId, "device-hash", "Front", "doorbell", true, apiResponseHash: "new-hash", ct: CancellationToken.None);
+                locationId, "device-hash", "Front", "doorbell", true, ct: CancellationToken.None);
 
             // Assert
-            Assert.Equal("new-hash", result.ApiResponseHash);
         }
 
         [Fact]
@@ -1283,7 +1282,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange: a sync without a response hash must not blank the hash already on record.
             var locationId = Guid.NewGuid();
-            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash2", Name = "Front", Type = "doorbell", ApiResponseHash = "kept-hash" };
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash2", Name = "Front", Type = "doorbell" };
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
@@ -1294,10 +1293,9 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             Device result = await _dataClient.EnsureDeviceAsync(
-                locationId, "device-hash2", "Front", "doorbell", true, apiResponseHash: null, ct: CancellationToken.None);
+                locationId, "device-hash2", "Front", "doorbell", true, ct: CancellationToken.None);
 
             // Assert
-            Assert.Equal("kept-hash", result.ApiResponseHash);
         }
 
         [Fact]
@@ -1407,7 +1405,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange: stored ChimeVolume 1, incoming 2. Identity, name and the response hash must be left alone.
             var deviceId = Guid.NewGuid();
-            var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1, ApiResponseHash = "hash-kept" };
+            var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1 };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
@@ -1437,7 +1435,6 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal(2, existing.ChimeVolume);
             Assert.Equal("device-upd", existing.ProviderDeviceId);
             Assert.Equal("Chime", existing.Name);
-            Assert.Equal("hash-kept", existing.ApiResponseHash);
             mockDeviceRepoInContext.Verify(x => x.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
         }
 

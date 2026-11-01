@@ -509,7 +509,6 @@ namespace VideoForensics.Data.Core.Services
             string name,
             string? address,
             string? metadataJson = null,
-            string? apiResponseHash = null,
             CancellationToken ct = default)
         {
             try
@@ -527,7 +526,6 @@ namespace VideoForensics.Data.Core.Services
                             ProviderLocationId = providerLocationId,
                             Name = name,
                             Address = address,
-                            ApiResponseHash = apiResponseHash,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
                         };
@@ -721,7 +719,6 @@ namespace VideoForensics.Data.Core.Services
             string name,
             string type,
             bool? isOnline,
-            string? apiResponseHash = null,
             CancellationToken ct = default,
             string? timeZoneId = null,
             VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null)
@@ -755,7 +752,6 @@ namespace VideoForensics.Data.Core.Services
                             Name = name,
                             Type = type,
                             IsOnline = isOnline,
-                            ApiResponseHash = apiResponseHash,
                             TimeZoneId = timeZoneId,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
@@ -791,7 +787,6 @@ namespace VideoForensics.Data.Core.Services
                                 Name = name,
                                 Type = type,
                                 IsOnline = isOnline,
-                                ApiResponseHash = apiResponseHash,
                                 TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced,
@@ -832,10 +827,6 @@ namespace VideoForensics.Data.Core.Services
                         }
 
                         // Same guard as TimeZoneId: a sync that carries no response hash keeps the stored one.
-                        if (!string.IsNullOrWhiteSpace(apiResponseHash))
-                        {
-                            existingDevice.ApiResponseHash = apiResponseHash;
-                        }
 
                         var changes = new List<DeviceSettingChange>();
                         ApplyDetailFields(existingDevice, details, changes);

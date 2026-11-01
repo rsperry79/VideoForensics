@@ -66,7 +66,6 @@ namespace VideoForensics.Data.Core.Contracts
             string name,
             string? address,
             string? metadataJson = null,
-            string? apiResponseHash = null,
             CancellationToken ct = default);
 
         /// <summary>
@@ -79,7 +78,6 @@ namespace VideoForensics.Data.Core.Contracts
             string name,
             string type,
             bool? isOnline,
-            string? apiResponseHash = null,
             CancellationToken ct = default,
             string? timeZoneId = null,
             VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null);
