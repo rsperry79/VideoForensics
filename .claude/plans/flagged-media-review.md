@@ -118,7 +118,10 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
 - B3 `FlaggedMediaTable` + wire into both reports (needs B1b, B3a). Touches `SignalHistory.razor` and `BitrateHistory.razor` and their resx: never parallel with B7. **DONE (2026-10-31, on wip 22db9774 via a79a826d: `FlaggedMediaTable` (SfGrid, newest 200, own type per page) on Signal and Bit Rate pages; 16/16 UI tests pass. NOT done: not checked in a running app; table hidden when the scope has no devices (subagent choice, confirm); no per-row click (B6/B7).**
 - B6 `FlagActionsPanel` + `ClipNavigator` (needs B1b, B4), split:
   - B6a `ClipNavigator`: Previous/Next via `GetNeighbourAsync`, total via `CountAsync`, arrow keys. **DONE (2026-11-01, on wip 9a3ec56e: 9/9 filtered pass, clean build). NOT done: position "3 of 17" (needs a new repository position query, plus a Remote endpoint); buttons say "Previous flag"/"Next flag" (confirm labels); page wiring is B7.**
-  - B6b `FlagActionsPanel` (add to case, keep, dismiss). Not started.
+  - B6b `FlagActionsPanel` (add to case, keep, dismiss). Split:
+    - B6b1 Keep and Dismiss. **DONE (2026-11-01, on wip 5873b099 via b8b2c050: role-gated, reason required to dismiss, conflict message; 13/13 filtered pass). NOT done: test for the reviewed-state disable and the reviewed-at line; the panel does not refresh its own status (parent passes the flag back).**
+    - B6c1 Add to case for clip flags (BitrateCollapse: pin the one clip). Not started. Uses existing case hand-off.
+    - B6c2 RSSI add to case: pins every clip and snapshot in the window. Blocked on the pad decision (D4) and on B1c snapshot export. Not started.
 - B7 `RssiReview`, `BitrateReview`, context panels, breadcrumb, nav (needs all above).
 - B8 Final acceptance: window-size matrix, keyboard/a11y, MAUI check, docs/CHANGELOG, full gate.
 Parallel-safe sets: after B1a: B2 and B4. After B1b: B3a, B6. Do not run in parallel: B1b with B2 (DI files), B3 with B7.
