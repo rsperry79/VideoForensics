@@ -77,6 +77,13 @@ Directory.CreateDirectory(logsDir);
 
 // The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
 ServerLogLevel serverLogLevel = new();
+// Framework noise logged at Debug, shown only at Trace and only in live outputs (console, named pipe). Never stored.
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore.Database.Command");
+
+static string SourceOf(Serilog.Events.LogEvent e) =>
+    e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.ControlledBy(serverLogLevel.Switch)
@@ -84,32 +91,36 @@ Log.Logger = new LoggerConfiguration()
     // written to the audit files at any saved level. The saved level alone decides what the files hold.
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.Client.WebApp")
+    .Filter.ByExcluding(e => !serverLogLevel.BufferLevel.AdmitsLive(SourceOf(e)))
     // CloudflaredKit logs its process dying as a warning; CloudflaredTunnelService logs the same event at Error with the exit code,
     // so the package's warning is dropped to avoid a duplicate line.
     .Filter.ByExcluding(e => e.Level == Serilog.Events.LogEventLevel.Warning
         && e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source)
         && source.ToString().Trim('"') == "CloudflaredKit.CloudflaredProcess"
         && e.MessageTemplate.Text.Contains("exited unexpectedly", StringComparison.Ordinal))
-    // Text format: human-readable with structured properties appended
-    .WriteTo.File(
-        path: Path.Combine(logsDir, "audit-.txt"),
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
-        rollingInterval: RollingInterval.Day,
-        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
-        rollOnFileSizeLimit: true,
-        fileSizeLimitBytes: 256L * 1024 * 1024,
-        retainedFileCountLimit: 30,
-        shared: true)
-    // JSON format: structured output with all properties
-    .WriteTo.File(
-        path: Path.Combine(logsDir, "audit-.json"),
-        outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
-        rollingInterval: RollingInterval.Day,
-        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
-        rollOnFileSizeLimit: true,
-        fileSizeLimitBytes: 256L * 1024 * 1024,
-        retainedFileCountLimit: 30,
-        shared: true)
+    // Audit files hold stored entries only: Trace-only framework noise never reaches them.
+    .WriteTo.Logger(files => files
+        .Filter.ByExcluding(e => !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e)))
+        // Text format: human-readable with structured properties appended
+        .WriteTo.File(
+            path: Path.Combine(logsDir, "audit-.txt"),
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
+            rollingInterval: RollingInterval.Day,
+            // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+            rollOnFileSizeLimit: true,
+            fileSizeLimitBytes: 256L * 1024 * 1024,
+            retainedFileCountLimit: 30,
+            shared: true)
+        // JSON format: structured output with all properties
+        .WriteTo.File(
+            path: Path.Combine(logsDir, "audit-.json"),
+            outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
+            rollingInterval: RollingInterval.Day,
+            // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+            rollOnFileSizeLimit: true,
+            fileSizeLimitBytes: 256L * 1024 * 1024,
+            retainedFileCountLimit: 30,
+            shared: true))
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
@@ -261,7 +272,7 @@ builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
 // The named pipe feeds VideoForensics.Utils.LogViewer. The gate starts closed; the saved Infrastructure setting opens it after build.
-var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate();
+var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate { Level = serverLogLevel.BufferLevel };
 builder.Services.AddSingleton(namedPipeGate);
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
     enableNamedPipeLogger: true,

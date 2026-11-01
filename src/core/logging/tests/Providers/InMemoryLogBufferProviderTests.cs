@@ -268,5 +268,30 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
             Assert.Equal(["shown", "now shown"], snapshot.ConvertAll(r => r.Message));
         }
+
+        [Fact]
+        public void TraceOnlyCategory_IsNeverStoredInBuffer()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Trace };
+            source.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
+            using var provider = new InMemoryLogBufferProvider(_buffer, source);
+            ILogger logger = provider.CreateLogger("Microsoft.AspNetCore.Components.RenderTree.Renderer");
+
+            logger.LogDebug("trace-only");
+
+            Assert.Empty(_buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10));
+        }
+
+        [Fact]
+        public void TraceOnlyCategory_IsLiveOnlyAtTrace()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Debug };
+            source.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
+
+            Assert.False(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer"));
+            source.Minimum = LogLevel.Trace;
+            Assert.True(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer"));
+            Assert.True(source.AdmitsLive("VideoForensics.Something"));
+        }
     }
 }

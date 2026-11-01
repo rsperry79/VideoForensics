@@ -98,6 +98,12 @@ namespace VideoForensics.Core.Logging.Providers
                     return;
                 }
 
+                // Trace-only framework noise is shown live but never stored in the buffer.
+                if (_provider._level is { } levelSource && !levelSource.AdmitsStored(_categoryName))
+                {
+                    return;
+                }
+
                 // Format the message
                 string message = formatter(state, exception);
 

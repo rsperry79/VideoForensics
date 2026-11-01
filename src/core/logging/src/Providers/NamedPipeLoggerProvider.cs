@@ -38,6 +38,9 @@ namespace VideoForensics.Core.Logging.Providers
         private readonly NamedPipeLogGate? _gate;
         private bool _disposed;
 
+        /// <summary>Whether the live pipe shows the entry, per the gate's level source.</summary>
+        internal bool AdmitsLive(string category) => _gate?.Level?.AdmitsLive(category) ?? true;
+
         /// <param name="gate">Optional runtime switch. Null leaves the pipe always open, as before.</param>
         public NamedPipeLoggerProvider(NamedPipeLogGate? gate = null)
         {
@@ -356,7 +359,7 @@ namespace VideoForensics.Core.Logging.Providers
                 Exception? exception,
                 Func<TState, Exception?, string> formatter)
             {
-                if (!IsEnabled(logLevel))
+                if (!IsEnabled(logLevel) || !_provider.AdmitsLive(_categoryName))
                 {
                     return;
                 }
