@@ -31,6 +31,9 @@ public class ClipNavigator_Tests : BunitContext
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_repository.Object);
+        _ = _repository
+            .Setup(r => r.GetPositionAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)null);
     }
 
     private static MediaFlag Flag()
@@ -127,5 +130,80 @@ public class ClipNavigator_Tests : BunitContext
         cut.WaitForAssertion(() => _repository.Verify(
             r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()),
             Times.Once));
+    }
+
+    [Fact]
+    public void ClipNavigator_Renders_PositionOfTotal()
+    {
+        _ = _repository
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(17);
+        _ = _repository
+            .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)3);
+
+        IRenderedComponent<ClipNavigator> cut = Render();
+
+        _ = cut.WaitForElement("[data-testid=clip-nav-total]");
+        cut.WaitForAssertion(() => Assert.Equal(
+            TestLocalizer.Create()["ClipNavigatorPosition", 3, 17].Value,
+            cut.Find("[data-testid=clip-nav-total]").TextContent.Trim()));
+    }
+
+    [Fact]
+    public void ClipNavigator_PositionUnknown_ShowsTotalOnly()
+    {
+        _ = _repository
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(17);
+        _ = _repository
+            .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)null);
+
+        IRenderedComponent<ClipNavigator> cut = Render();
+
+        _ = cut.WaitForElement("[data-testid=clip-nav-total]");
+        cut.WaitForAssertion(() => Assert.Equal(
+            TestLocalizer.Create()["ClipNavigatorTotal", 17].Value,
+            cut.Find("[data-testid=clip-nav-total]").TextContent.Trim()));
+    }
+
+    [Fact]
+    public void ClipNavigator_AfterMove_RefreshesPosition()
+    {
+        _ = _repository
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(17);
+        MediaFlag target = Flag();
+        _ = _repository
+            .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)3);
+        _ = _repository
+            .Setup(r => r.GetPositionAsync(target.Id, _filter, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)4);
+        _ = _repository
+            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(target);
+        MediaFlag? navigated = null;
+
+        IRenderedComponent<ClipNavigator> cut = Render(p => p
+            .Add(c => c.OnNavigate, flag => navigated = flag));
+
+        _ = cut.WaitForElement("[data-testid=clip-nav-total]");
+        cut.WaitForAssertion(() => Assert.Equal(
+            TestLocalizer.Create()["ClipNavigatorPosition", 3, 17].Value,
+            cut.Find("[data-testid=clip-nav-total]").TextContent.Trim()));
+
+        cut.Find("[data-testid=clip-nav-next]").Click();
+        cut.WaitForAssertion(() => Assert.Same(target, navigated));
+
+        cut.Render(p => p
+            .Add(c => c.Filter, _filter)
+            .Add(c => c.CurrentFlagId, target.Id));
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            TestLocalizer.Create()["ClipNavigatorPosition", 4, 17].Value,
+            cut.Find("[data-testid=clip-nav-total]").TextContent.Trim()));
+        _repository.Verify(r => r.GetPositionAsync(target.Id, _filter, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

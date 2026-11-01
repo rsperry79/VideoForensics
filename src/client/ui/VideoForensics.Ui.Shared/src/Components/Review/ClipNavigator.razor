@@ -8,7 +8,7 @@
 
 <div class="clip-navigator d-flex align-items-center gap-2" data-testid="clip-navigator" tabindex="0" role="group" aria-label="@L["ClipNavigatorLabel"].Value" @onkeydown="OnKeyDown">
     <SfButton CssClass="e-outline" Content="@L["ClipNavigatorPrevious"].Value" Disabled="@_previousDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Previous))" data-testid="clip-nav-prev" />
-    <span class="small" data-testid="clip-nav-total">@L["ClipNavigatorTotal", _total].Value</span>
+    <span class="small" data-testid="clip-nav-total">@Readout</span>
     <SfButton CssClass="e-outline" Content="@L["ClipNavigatorNext"].Value" Disabled="@_nextDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Next))" data-testid="clip-nav-next" />
     <div class="visually-hidden" aria-live="polite" data-testid="clip-nav-status">@_status</div>
 </div>
@@ -27,23 +27,31 @@
     public EventCallback<MediaFlag> OnNavigate { get; set; }
 
     private int _total;
+    private int? _position;
     private bool _loadedOnce;
     private MediaFlagFilter? _loadedFilter;
+    private Guid _loadedFlagId;
     private bool _previousDisabled;
     private bool _nextDisabled;
     private string _status = string.Empty;
     private CancellationTokenSource? _loadCts;
     private CancellationTokenSource? _moveCts;
 
+    /// <summary>The readout: the flag's position among the matching flags, or the total when the flag is not in the list.</summary>
+    private string Readout => _position is int position
+        ? L["ClipNavigatorPosition", position, _total].Value
+        : L["ClipNavigatorTotal", _total].Value;
+
     protected override async Task OnParametersSetAsync()
     {
-        if (_loadedOnce && SameFilter(Filter, _loadedFilter))
+        if (_loadedOnce && SameFilter(Filter, _loadedFilter) && CurrentFlagId == _loadedFlagId)
         {
             return;
         }
 
         _loadedOnce = true;
         _loadedFilter = Snapshot(Filter);
+        _loadedFlagId = CurrentFlagId;
         _previousDisabled = false;
         _nextDisabled = false;
 
@@ -53,11 +61,14 @@
 
         try
         {
-            _total = await MediaFlagRepository.CountAsync(Filter, cts.Token);
+            var total = await MediaFlagRepository.CountAsync(Filter, cts.Token);
+            var position = await MediaFlagRepository.GetPositionAsync(CurrentFlagId, Filter, cts.Token);
+            _total = total;
+            _position = position;
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
-            // A newer filter replaced this load before it finished.
+            // A newer filter or flag replaced this load before it finished.
         }
     }
 

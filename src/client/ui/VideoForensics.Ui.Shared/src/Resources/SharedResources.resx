@@ -1007,6 +1007,9 @@
   <data name="ClipNavigatorTotal" xml:space="preserve">
     <value>{0} flags</value>
   </data>
+  <data name="ClipNavigatorPosition" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
   <data name="ClipNavigatorMoved" xml:space="preserve">
     <value>Moved to another flag</value>
   </data>
