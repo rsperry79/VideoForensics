@@ -116,7 +116,9 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
 - B5 `PlaybackTimeline`: `SfSlider` scrub bar, `FlagMarkerLayer`, `SfTimeline` flag list, transport buttons driving `MediaPlayer` (needs B4a, B4 and a marker DTO shape).
 - B3a `MeasuredBitrate` + chart gains MediaItemId/flag id (needs B1b). **DONE (2026-10-31): `MeasuredBitrate.MediaItemId`, `BitrateSample`/DTO `MediaItemId` + `FlagId` (flag looked up per camera via `IMediaFlagRepository`); FlagId stays null until B2 writes flags. Estimated-bit-rate clips still have no marker.**
 - B3 `FlaggedMediaTable` + wire into both reports (needs B1b, B3a). Touches `SignalHistory.razor` and `BitrateHistory.razor` and their resx: never parallel with B7. **DONE (2026-10-31, on wip 22db9774 via a79a826d: `FlaggedMediaTable` (SfGrid, newest 200, own type per page) on Signal and Bit Rate pages; 16/16 UI tests pass. NOT done: not checked in a running app; table hidden when the scope has no devices (subagent choice, confirm); no per-row click (B6/B7).**
-- B6 `FlagActionsPanel` + `ClipNavigator` (needs B1b, B4).
+- B6 `FlagActionsPanel` + `ClipNavigator` (needs B1b, B4), split:
+  - B6a `ClipNavigator`: Previous/Next via `GetNeighbourAsync`, total via `CountAsync`, arrow keys. **DONE (2026-11-01, on wip 9a3ec56e: 9/9 filtered pass, clean build). NOT done: position "3 of 17" (needs a new repository position query, plus a Remote endpoint); buttons say "Previous flag"/"Next flag" (confirm labels); page wiring is B7.**
+  - B6b `FlagActionsPanel` (add to case, keep, dismiss). Not started.
 - B7 `RssiReview`, `BitrateReview`, context panels, breadcrumb, nav (needs all above).
 - B8 Final acceptance: window-size matrix, keyboard/a11y, MAUI check, docs/CHANGELOG, full gate.
 Parallel-safe sets: after B1a: B2 and B4. After B1b: B3a, B6. Do not run in parallel: B1b with B2 (DI files), B3 with B7.
