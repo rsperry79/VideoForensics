@@ -11,7 +11,8 @@
 - [ ] **Battery temp unit: read the sampler output.** The 12-hour sampler writes `scratchpad/battery_temp_samples.csv` (ends about 19:00 UTC on 2026-11-01). Fit the raw-to-ambient slope; close the item in `db-field-coverage.md` item 7 when settled.
 - [ ] **Remove `F:\VF-strip`.** Empty leftover worktree folder; the safety check blocked the removal, so you delete it.
 - [ ] **Paid-feature equivalence.** 31 backend `paid_features` values were dropped in favour of `RingDevicePaidFeatures` (`CvPaid*`/`OtherPaid*`). Confirm they agree on a device that reports both (none in the live DB yet).
-- [ ] **Backfill MediaItems codec, resolution and frame rate.** About 9,170 existing rows have no values; only new analysis fills them.
+- [x] **Backfill MediaItems codec, resolution and frame rate.** Built: `MediaCodecBackfillService` probes 50 rows per 15-minute pass (about 46 hours for the 9,170 rows). Merged to `wip` at `ef3fdca2`.
+- [ ] **Deploy the backfill build.** The running service does not have it yet. Run `scripts/Deploy-WebAppToProd.ps1` from an elevated PowerShell, then check `MediaItems.VideoCodec` fills over time.
 - [ ] **Chime and stickup detail fields.** `Devices.ChimeVolume`, `BatteryLife2`, `SirenSecondsRemaining` are mapped but null on this account. Verify once a chime or stickup camera is present.
 - [ ] **Test flakes.** `FolderPicker_Cancel_InvokesOnClosedWithNull` (timing); `PlaybackTimeline_MarkerClick_RaisesOnMarkerClick` (pasted failure, not reproduced); `CaseRepositoryNumberingTests` concurrent create (failed once, passes on `wip`).
 - [ ] **`RingLocationModeNotYetParticipating.ValueJson`.** Kept as raw JSON until the element shape is known (0 rows live).
