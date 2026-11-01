@@ -11,6 +11,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Providers.Ring.Services;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
@@ -141,7 +142,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             // The loop file is named by its window end, so a retried window gets a fresh path.
-            string outputPath = Path.Combine(deviceFolder, $"{toUtc:yyyyMMddHHmmss}.mp4");
+            string outputPath = Path.Combine(deviceFolder, MediaFileNamer.FormatMediaFileName(device.Name, toUtc, "snapshot-loop", "mp4"));
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
             TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);
