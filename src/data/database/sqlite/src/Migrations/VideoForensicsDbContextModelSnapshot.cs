@@ -4771,64 +4771,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("PaidFeaturesAiLabsMemorableMoments")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool?>("PaidFeaturesAlarmTriggeredRecording")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesAlexaConcierge")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesAnimal")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool?>("PaidFeaturesAppstore")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesBabyCry")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesCarAlarm")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesClosedCaption")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesCo2SmokeAlarm")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesCriticalAlerts")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesCvTriggers")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesDailyDigest")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesDingCall")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesDogBark")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesExtendedLiveView")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesGeneralSound")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesGlassBreak")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesHuman")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesLiveSpeak")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesLoitering")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesMotion")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool?>("PaidFeaturesMotionAwareness")
@@ -4837,28 +4780,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("PaidFeaturesMotionStop")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool?>("PaidFeaturesMulticamLiveView")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesNaturalLanguageSearch")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesOtherMotion")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesPackageDelivery")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesPackagePickup")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesPackageProtection")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool?>("PaidFeaturesPersonIdentification")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesRecording24x7")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool?>("PaidFeaturesRetinalTuning")
@@ -4867,25 +4789,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("PaidFeaturesRogersVqa")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool?>("PaidFeaturesSheilaCv")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesSheilaRecording")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool?>("PaidFeaturesSmartMediaDescriptions")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool?>("PaidFeaturesSnapshotCapturePlus")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesSystemLevelPip")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool?>("PaidFeaturesUnverifiedMotion")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("PaidFeaturesVehicle")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool?>("TermsOfServiceAcceptedAutoreply")
