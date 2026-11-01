@@ -38,11 +38,20 @@ namespace VideoForensics.Data.Core.Services
             DateTime now = _time.GetUtcNow().UtcDateTime;
             IReadOnlyList<MediaItem> clips = await _items.ListFlaggedSinceAsync(now.AddDays(-WindowDays), ct);
             int upserted = 0;
+            int removed = 0;
             foreach (MediaItem clip in clips)
             {
                 ct.ThrowIfCancellationRequested();
                 try
                 {
+                    // A still has no bit-rate flag to raise. Reconciling with an empty set removes any unreviewed one left
+                    // from before; reviewed rows are kept by the repository.
+                    if (MediaStillRules.IsStill(clip.FileName))
+                    {
+                        removed += await _flags.ReconcileForMediaAsync(clip.Id, new HashSet<MediaFlagType>(), ct);
+                        continue;
+                    }
+
                     _ = await _flags.UpsertRaisedAsync(new MediaFlag
                     {
                         Id = Guid.NewGuid(),
@@ -76,6 +85,11 @@ namespace VideoForensics.Data.Core.Services
             {
                 _logger.LogInformation("Flag backfill raised {Upserted} BitrateCollapse flag(s) for clips recorded in the last {WindowDays} day(s)",
                     upserted, WindowDays);
+            }
+
+            if (removed > 0)
+            {
+                _logger.LogInformation("Flag backfill removed {Removed} unreviewed BitrateCollapse flag(s) from still images", removed);
             }
 
             return upserted;
