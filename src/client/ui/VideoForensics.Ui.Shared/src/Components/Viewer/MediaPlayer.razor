@@ -230,6 +230,12 @@
                 var bridge = new MediaPlayerJsBridge(HandleProgressAsync, HandleReadyAsync, HandleEndedAsync, HandleErrorAsync);
                 _bridgeRef = DotNetObjectReference.Create(bridge);
                 _module = await JS.InvokeAsync<IJSObjectReference>("import", Script);
+                if (_disposed)
+                {
+                    // Disposed while the module loaded: DisposeAsync missed the module and the bridge is already gone.
+                    await _module.DisposeAsync();
+                    return;
+                }
             }
 
             if (_module is null)
