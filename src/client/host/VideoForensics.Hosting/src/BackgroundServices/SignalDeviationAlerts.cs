@@ -85,6 +85,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     $"&to={window.HourStartUtc.AddHours(2):yyyy-MM-dd'T'HH:mm:ss'Z'}";
                 // The notice id is fixed here so the review flag can point at the notice the dispatcher writes.
                 Guid noticeId = Guid.NewGuid();
+
+                // The flag is written before the dispatch. If the dispatch throws, the marker is not in the notice table,
+                // so the next poll retries this hour, and the flag upsert just refreshes the same row. Writing the flag
+                // after the dispatch would lose the hour on a dispatch failure. The hour is the flag window, and the flag
+                // has no clip, so MediaItemId stays null.
+                _ = await _flags.UpsertRaisedAsync(new MediaFlag
+                {
+                    Id = Guid.NewGuid(),
+                    FlagType = MediaFlagType.RssiDeviation,
+                    DeviceId = device.Id,
+                    MediaItemId = null,
+                    WindowStartUtc = window.HourStartUtc,
+                    WindowEndUtc = window.HourStartUtc.AddHours(1),
+                    RaisedAtUtc = now,
+                    Severity = MediaFlagSeverity.Alert,
+                    NoticeId = noticeId
+                }, ct);
+
                 await _dispatcher.DispatchAsync(new NotificationEvent(
                     EventType: "SignalDeviation",
                     TimestampUtc: now,
@@ -98,21 +116,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Severity: NoticeSeverity.Alert,
                     ActionPath: $"/signal-history?{scope}",
                     NoticeId: noticeId), ct);
-
-                // The flag is written only after the notice check above, so a repeat check of this hour writes nothing.
-                // The hour is the flag window, and the flag has no clip, so MediaItemId stays null.
-                _ = await _flags.UpsertRaisedAsync(new MediaFlag
-                {
-                    Id = Guid.NewGuid(),
-                    FlagType = MediaFlagType.RssiDeviation,
-                    DeviceId = device.Id,
-                    MediaItemId = null,
-                    WindowStartUtc = window.HourStartUtc,
-                    WindowEndUtc = window.HourStartUtc.AddHours(1),
-                    RaisedAtUtc = now,
-                    Severity = MediaFlagSeverity.Alert,
-                    NoticeId = noticeId
-                }, ct);
 
                 _logger.LogInformation("Raised signal deviation alert for {DeviceName} at {HourUtc} UTC", device.Name, window.HourStartUtc);
                 raised++;

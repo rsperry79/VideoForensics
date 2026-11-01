@@ -137,6 +137,36 @@ public class SignalDeviationAlertsTests
         flags.Verify(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task Check_DispatchFails_StillWritesRssiFlag()
+    {
+        var notices = new Mock<INoticeRepository>();
+        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var dispatcher = new Mock<INotificationDispatcher>();
+        NotificationEvent? sent = null;
+        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
+            .ThrowsAsync(new InvalidOperationException("boom"));
+        var flags = new Mock<IMediaFlagRepository>();
+        var written = new List<MediaFlag>();
+        flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
+            .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
+            .ReturnsAsync((MediaFlag f, CancellationToken _) => f);
+
+        // The dispatch failure propagates, but the flag was already written, so the next poll does not lose this hour.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CheckAsync(notices.Object, dispatcher.Object, flags.Object));
+
+        DateTime alertedHourUtc = DateTime.UtcNow.AddHours(-1);
+        alertedHourUtc = new DateTime(alertedHourUtc.Year, alertedHourUtc.Month, alertedHourUtc.Day, alertedHourUtc.Hour, 0, 0, DateTimeKind.Utc);
+        Assert.NotNull(sent);
+        MediaFlag flag = Assert.Single(written);
+        Assert.Equal(MediaFlagType.RssiDeviation, flag.FlagType);
+        Assert.Equal(_device.Id, flag.DeviceId);
+        Assert.Equal(alertedHourUtc, flag.WindowStartUtc);
+        Assert.Equal(alertedHourUtc.AddHours(1), flag.WindowEndUtc);
+        Assert.Equal(sent!.NoticeId, flag.NoticeId);
+    }
+
     /// <summary>
     /// Ten readings alternating -50 and -70 (mean about -60), then one at -95 an hour ago. The -95 sits about 2.2 sample
     /// std devs below the mean, so it is an alert; the others are inside one std dev.
