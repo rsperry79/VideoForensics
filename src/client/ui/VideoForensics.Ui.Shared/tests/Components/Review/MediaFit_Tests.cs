@@ -46,6 +46,19 @@ public class MediaFit_Tests : BunitContext
         Assert.Equal(Localizer["MediaFitPurged"].Value, cut.Find(".media-fit-state").TextContent.Trim());
     }
 
+    [Fact]
+    public void MediaFit_Still_RendersImageAndNoPlayer()
+    {
+        const string source = "/clips/snap.jpg?ticket=test";
+
+        IRenderedComponent<MediaFit> cut = Render<MediaFit>(p => p
+            .Add(c => c.State, MediaFitState.Still)
+            .Add(c => c.Source, source));
+
+        Assert.Equal(source, cut.Find("[data-testid=media-fit-still]").GetAttribute("src"));
+        Assert.Empty(cut.FindComponents<MediaPlayer>());
+    }
+
     [Theory]
     [InlineData("Purged")]
     [InlineData("FileMissing")]
