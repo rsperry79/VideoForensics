@@ -553,6 +553,15 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.VideoCodec == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToList());
+        }
+
         public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()

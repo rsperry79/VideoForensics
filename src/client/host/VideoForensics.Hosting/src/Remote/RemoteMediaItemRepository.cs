@@ -124,6 +124,12 @@ namespace VideoForensics.Client.Hosting.Remote
             throw new NotSupportedException("Analysis backfill runs on the server only.");
         }
 
+        /// <inheritdoc />
+        public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
+        {
+            throw new NotSupportedException("Codec backfill runs on the server only.");
+        }
+
         /// <remarks>
         /// No server endpoint returns only snapshots yet, so this filters the device's range on the client. The roll-up runs
         /// on the server, where the database does the filtering; a snapshot endpoint would move this into SQL too.
