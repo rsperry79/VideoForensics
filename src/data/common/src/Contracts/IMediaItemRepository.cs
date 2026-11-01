@@ -27,6 +27,12 @@ namespace VideoForensics.Data.Common.Contracts
         Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct);
 
         /// <summary>
+        /// Clips recorded at or after <paramref name="sinceUtc"/> whose stored RedFlags contain BitrateCollapse, oldest first.
+        /// Only the stored RedFlags string is read; analysis is not run again.
+        /// </summary>
+        Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct);
+
+        /// <summary>
         /// Snapshot JPEGs of a device in [fromUtc, toUtc], oldest first. The format and snapshot marker are filtered in the
         /// database. Files on disk are not checked here.
         /// </summary>

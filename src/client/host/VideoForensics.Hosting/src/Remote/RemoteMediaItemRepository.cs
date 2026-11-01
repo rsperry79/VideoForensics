@@ -111,6 +111,13 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>Flag backfill runs on the server only, so a client never lists flagged clips for it.</remarks>
+        public Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
+        {
+            throw new NotSupportedException("Flag backfill runs on the server only.");
+        }
+
+        /// <inheritdoc />
         /// <remarks>Analysis runs on the server only, so a client never lists unanalysed media.</remarks>
         public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
