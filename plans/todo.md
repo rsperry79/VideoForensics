@@ -8,6 +8,13 @@
 
 ## Open
 - [ ] **Nov 1: confirm the `health.battery_temp` unit.** Stored as deci-Kelvin (`2921` = 18.95 °C = 66 °F) because a wired Front Door doorbell reading 24 °F above a 42 °F evening (98223, 2026-10-30 02:56 UTC, ambient 5.6 °C) is plausible; hundredths of °C (29.21 °C) would be 42 °F above ambient. Pull the stored readings for Oct 31 and Nov 1 and compare with the hourly ambient temperature (Open-Meteo, lat 48.20, lon -122.13). Deci-Kelvin moves about 10 raw units per °C, hundredths of °C about 100. If the slope says hundredths of °C, change the conversion. `status_time` is settled: ticks of a 32768 Hz clock since the Unix epoch.
+- [ ] **Battery temp unit: read the sampler output.** The 12-hour sampler writes `scratchpad/battery_temp_samples.csv` (ends about 19:00 UTC on 2026-11-01). Fit the raw-to-ambient slope; close the item in `db-field-coverage.md` item 7 when settled.
+- [ ] **Remove `F:\VF-strip`.** Empty leftover worktree folder; the safety check blocked the removal, so you delete it.
+- [ ] **Paid-feature equivalence.** 31 backend `paid_features` values were dropped in favour of `RingDevicePaidFeatures` (`CvPaid*`/`OtherPaid*`). Confirm they agree on a device that reports both (none in the live DB yet).
+- [ ] **Backfill MediaItems codec, resolution and frame rate.** About 9,170 existing rows have no values; only new analysis fills them.
+- [ ] **Chime and stickup detail fields.** `Devices.ChimeVolume`, `BatteryLife2`, `SirenSecondsRemaining` are mapped but null on this account. Verify once a chime or stickup camera is present.
+- [ ] **Test flakes.** `FolderPicker_Cancel_InvokesOnClosedWithNull` (timing); `PlaybackTimeline_MarkerClick_RaisesOnMarkerClick` (pasted failure, not reproduced); `CaseRepositoryNumberingTests` concurrent create (failed once, passes on `wip`).
+- [ ] **`RingLocationModeNotYetParticipating.ValueJson`.** Kept as raw JSON until the element shape is known (0 rows live).
 - [ ] Step-up checks for account removal and two-factor override: needs an operator with a passkey to test end to end.
 - [ ] Ring event retention: undefined. The integration has no retention setting, so decide what to record.
 - [ ] Light and night modes: check whether Ring reports the current day or night state; the integration only exposes night-mode and floodlight controls.
