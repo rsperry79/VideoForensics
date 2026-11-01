@@ -20,7 +20,7 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         [Fact]
         public void DeviceDto_ToDomain_CopiesProviderName()
         {
-            var dto = new DeviceDto(Guid.NewGuid(), Guid.NewGuid(), "1", "Front", "doorbot", null, null, null, null, null, null, SyncStatusDto.Pending, null, ProviderName: "Wyze");
+            var dto = new DeviceDto(Guid.NewGuid(), Guid.NewGuid(), "1", "Front", "doorbot", null, null, null, null, null, SyncStatusDto.Pending, null, ProviderName: "Wyze");
 
             Device device = dto.ToDomain();
 

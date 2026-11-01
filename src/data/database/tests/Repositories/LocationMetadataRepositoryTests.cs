@@ -159,8 +159,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsOwner = true,
                 LastSyncedUtc = now,
                 SyncStatus = SyncStatus.Synced,
-                ApiResponseHash = "hash_complex_xyz",
-                MetadataJson = "{\"custom\": \"data\"}"
+                ApiResponseHash = "hash_complex_xyz"
             };
 
             await _repository.AddAsync(metadata, CancellationToken.None);
@@ -179,7 +178,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(now, retrieved.LastSyncedUtc);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
             Assert.Equal("hash_complex_xyz", retrieved.ApiResponseHash);
-            Assert.Equal("{\"custom\": \"data\"}", retrieved.MetadataJson);
         }
 
         [Fact]
@@ -200,8 +198,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsOwner = null,
                 LastSyncedUtc = null,
                 SyncStatus = SyncStatus.Pending,
-                ApiResponseHash = null,
-                MetadataJson = null
+                ApiResponseHash = null
             };
 
             await _repository.AddAsync(metadata, CancellationToken.None);
@@ -310,8 +307,7 @@ namespace VideoForensics.Data.Database.Tests
             bool? isOwner = null,
             DateTime? lastSyncedUtc = null,
             SyncStatus syncStatus = SyncStatus.Pending,
-            string? apiResponseHash = null,
-            string? metadataJson = null)
+            string? apiResponseHash = null)
         {
             return new LocationMetadata
             {
@@ -328,8 +324,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsOwner = isOwner ?? true,
                 LastSyncedUtc = lastSyncedUtc,
                 SyncStatus = syncStatus,
-                ApiResponseHash = apiResponseHash ?? $"hash_{Guid.NewGuid():N}",
-                MetadataJson = metadataJson
+                ApiResponseHash = apiResponseHash ?? $"hash_{Guid.NewGuid():N}"
             };
         }
     }

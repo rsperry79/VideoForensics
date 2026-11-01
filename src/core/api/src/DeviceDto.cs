@@ -9,7 +9,6 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Name">User-friendly name of the device (e.g., "Front Door Camera").</param>
     /// <param name="Type">Device type (e.g., "camera", "doorbell", "alarm_hub").</param>
     /// <param name="IsOnline">True if online, False if offline, Null if the provider gave no state.</param>
-    /// <param name="MetadataJson">Additional device metadata in JSON format, provider-specific.</param>
     /// <param name="LastSuccessfulPullAtUtc">Timestamp of the last successful data pull from the provider, in UTC. Null if never synced.</param>
     /// <param name="LastPullAttemptAtUtc">Timestamp of the last attempted data pull from the provider, in UTC. Null if never attempted.</param>
     /// <param name="TimeZoneId">IANA time zone identifier (e.g., "America/New_York") for the device's location.</param>
@@ -37,7 +36,6 @@ namespace VideoForensics.Core.Api.Contracts
         string Name,
         string Type,
         bool? IsOnline,
-        string? MetadataJson,
         DateTime? LastSuccessfulPullAtUtc,
         DateTime? LastPullAttemptAtUtc,
         string? TimeZoneId,
@@ -88,7 +86,6 @@ namespace VideoForensics.Core.Api.Contracts
                 Name: entity.Name,
                 Type: entity.Type,
                 IsOnline: entity.IsOnline,
-                MetadataJson: entity.MetadataJson,
                 LastSuccessfulPullAtUtc: entity.LastSuccessfulPullAtUtc,
                 LastPullAttemptAtUtc: entity.LastPullAttemptAtUtc,
                 TimeZoneId: entity.TimeZoneId,
@@ -125,7 +122,6 @@ namespace VideoForensics.Core.Api.Contracts
                 Name = dto.Name,
                 Type = dto.Type,
                 IsOnline = dto.IsOnline,
-                MetadataJson = dto.MetadataJson,
                 LastSuccessfulPullAtUtc = dto.LastSuccessfulPullAtUtc,
                 LastPullAttemptAtUtc = dto.LastPullAttemptAtUtc,
                 TimeZoneId = dto.TimeZoneId,

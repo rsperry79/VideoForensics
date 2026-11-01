@@ -182,8 +182,7 @@ namespace VideoForensics.Data.Database.Tests
                 HardwareModel = "ProModel",
                 LastSyncedUtc = syncedAt,
                 SyncStatus = SyncStatus.Synced,
-                ApiResponseHash = "hash123456",
-                MetadataJson = "{\"extra\": \"data\"}"
+                ApiResponseHash = "hash123456"
             };
 
             await _repository.AddAsync(capabilities, CancellationToken.None);
@@ -203,7 +202,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(syncedAt, retrieved.LastSyncedUtc);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
             Assert.Equal("hash123456", retrieved.ApiResponseHash);
-            Assert.Equal("{\"extra\": \"data\"}", retrieved.MetadataJson);
         }
 
         [Fact]
@@ -226,8 +224,7 @@ namespace VideoForensics.Data.Database.Tests
                 HardwareModel = null,
                 LastSyncedUtc = null,
                 SyncStatus = SyncStatus.Pending,
-                ApiResponseHash = null,
-                MetadataJson = null
+                ApiResponseHash = null
             };
 
             await _repository.AddAsync(capabilities, CancellationToken.None);

@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", false,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -40,7 +40,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "456", "Hall Chime", "chime", true,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -54,7 +54,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "789", "Unknown Thing", "Unknown", true,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -68,7 +68,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "789", "Unknown Thing", "chime", null,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         private static Mock<IVideoForensicsDataClient> CreateDataClient()
@@ -85,7 +85,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
