@@ -37,7 +37,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$licenseClientProject = Join-Path $PSScriptRoot '..\src\client\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj'
+$licenseClientProject = Join-Path $PSScriptRoot '..\..\..\..\..\src\client\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj'
 
 <#
 .SYNOPSIS
@@ -85,7 +85,7 @@ function Sync-SyncfusionLicenseKey {
     Write-Host "Wrote the Syncfusion license key to $targetFile"
 }
 
-$project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
+$project = Join-Path $PSScriptRoot '..\..\..\..\..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
 $stage = Join-Path $env:TEMP ('vf-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $exeName = 'VideoForensics.Client.WebApp.exe'

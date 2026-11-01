@@ -66,13 +66,13 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Windows PowerShell 5.1 leaves $PSScriptRoot empty in parameter defaults under -File, so the default is set here.
-if (-not $DebugDirectory) { $DebugDirectory = Join-Path $PSScriptRoot '..\artifacts\webapp-debug' }
+if (-not $DebugDirectory) { $DebugDirectory = Join-Path $PSScriptRoot '..\..\..\..\..\artifacts\webapp-debug' }
 
-$project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
+$project = Join-Path $PSScriptRoot '..\..\..\..\..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
 $updatesRoot = Join-Path $env:ProgramData 'VideoForensics\updates'
 $healthUrl = 'http://localhost:5162/healthz'
-$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj')).Path
+$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj')).Path
 # The build output folder is the project's bin\<Configuration>\net10.0, the folder Visual Studio builds into.
 $buildOutput = Join-Path (Split-Path -Parent $project) "bin\$Configuration\net10.0"
 # The published executable is named after the project's AssemblyName, not the file name.
@@ -164,7 +164,7 @@ function Build-WithVisualStudio {
     if (-not $dte) { return $false }
 
     $solutionPath = $dte.Solution.FullName
-    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..')).Path
     if (-not $solutionPath -or (Split-Path -Parent $solutionPath) -ne $repoRoot) {
         Write-Warning "The open Visual Studio solution is not this checkout ($solutionPath). Building with dotnet build."
         return $false
