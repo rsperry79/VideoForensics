@@ -21,8 +21,14 @@ namespace VideoForensics.Client.WebApp.Services
         /// Runs <paramref name="operation"/> under maintenance and returns its result. Throws <see cref="InvalidOperationException"/>
         /// when another maintenance run is already in progress, so two runs never overlap.
         /// </summary>
-        public async Task<T> RunAsync<T>(string description, Func<IServiceProvider, CancellationToken, Task<T>> operation, CancellationToken ct)
+        /// <param name="holdOnSuccess">
+        /// Leave maintenance running after a successful operation, so paused work stays blocked. Use when the operation
+        /// leaves the running process unsafe to continue, such as a database file that has moved. The caller must then
+        /// stop the process. A failed operation always ends maintenance.
+        /// </param>
+        public async Task<T> RunAsync<T>(string description, Func<IServiceProvider, CancellationToken, Task<T>> operation, CancellationToken ct, bool holdOnSuccess = false)
         {
+            bool succeeded = false;
             // The gate throws before it changes state when a run is already active, so this run never ends the other one.
             Task drained;
             try
@@ -43,6 +49,7 @@ namespace VideoForensics.Client.WebApp.Services
                 using IServiceScope scope = scopes.CreateScope();
                 T result = await operation(scope.ServiceProvider, ct);
                 logger.LogInformation("Server maintenance finished: {Description}", description);
+                succeeded = true;
                 return result;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -52,7 +59,10 @@ namespace VideoForensics.Client.WebApp.Services
             }
             finally
             {
-                gate.End();
+                if (!(holdOnSuccess && succeeded))
+                {
+                    gate.End();
+                }
             }
         }
     }

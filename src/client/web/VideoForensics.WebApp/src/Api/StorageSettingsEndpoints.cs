@@ -41,6 +41,7 @@ namespace VideoForensics.Client.WebApp.Api
             RelocateStorageCategoryRequestDto requestDto,
             IStorageSettingsService storageSettings,
             MaintenanceCoordinator coordinator,
+            IHostApplicationLifetime lifetime,
             CancellationToken cancellationToken)
         {
             RelocateStorageCategoryRequest request = requestDto.ToDomain();
@@ -54,10 +55,21 @@ namespace VideoForensics.Client.WebApp.Api
             // and releases pooled connections before the relocation runs.
             try
             {
+                // Maintenance stays held after a successful move: this process still points at the old file, so nothing
+                // may write to it. The process then stops with a failure code, which the service recovery action turns into
+                // a restart on the new location (the same restart path a staged update uses).
                 RelocateStorageCategoryResult result = await coordinator.RunAsync(
                     "Moving the database",
                     (sp, token) => sp.GetRequiredService<IStorageSettingsService>().RelocateAsync(request, token),
-                    cancellationToken);
+                    cancellationToken,
+                    holdOnSuccess: true);
+
+                if (result.Succeeded)
+                {
+                    Environment.ExitCode = 1;
+                    lifetime.StopApplication();
+                }
+
                 return Results.Ok(result.ToDto());
             }
             catch (MaintenanceInProgressException ex)
