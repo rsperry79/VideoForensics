@@ -462,6 +462,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the evidence items pinned to cases (events and media).</summary>
         public DbSet<CaseItem> CaseItems { get; set; }
 
+        /// <summary>Gets or sets the append-only case notes (multi-line text with author and write time).</summary>
+        public DbSet<CaseNote> CaseNotes { get; set; }
+
         /// <summary>Gets or sets the derived-still capture provenance rows (Evidence "grab still with hash").</summary>
         public DbSet<MediaStillCapture> MediaStillCaptures { get; set; }
 
