@@ -5,7 +5,7 @@ Developer setup for building and running from source. Run every command from the
 ## Prerequisites
 
 - .NET SDK 10.0 (the repo pins the SDK in `global.json`).
-- Node.js for the JavaScript gate (`npm ci`, `npm run check`). Use the version the repo's `package.json` expects.
+- Node.js for the JavaScript gate (`npm ci`, `npm run check`, run from `src/client/web/VideoForensics.WebApp`). Use the version that package's `package.json` expects.
 - Windows 11 for the MAUI and Windows Service targets. Debian/Ubuntu for the Linux package.
 
 ## Syncfusion license key

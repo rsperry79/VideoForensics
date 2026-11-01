@@ -2,6 +2,7 @@
 // A Node script rather than an npm "&&" chain, so the build runs the same from PowerShell and cmd.
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import "./repo.mjs";
 
 const require = createRequire(import.meta.url);
 const tscEntry = require.resolve("typescript/bin/tsc");

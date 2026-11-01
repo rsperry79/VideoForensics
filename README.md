@@ -52,6 +52,7 @@ dotnet build VideoForensics.sln
 dotnet test VideoForensics.sln
 
 # JavaScript: TypeScript compile, lint and Vitest
+cd src/client/web/VideoForensics.WebApp
 npm ci
 npm run check
 ```

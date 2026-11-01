@@ -221,7 +221,7 @@ plans/archive/
 
 .cr/
 
-# Debug launch output (scripts/Debug-WebAppService.ps1)
+# Debug launch output (src/client/web/VideoForensics.WebApp/scripts/Debug-WebAppService.ps1)
 artifacts/webapp-debug/
 
 # Syncfusion key written by CI from the SYNCFUSION_LICENSE_KEY secret; never commit

@@ -12,7 +12,7 @@
 - [ ] **Remove `F:\VF-strip`.** Empty leftover worktree folder; the safety check blocked the removal, so you delete it.
 - [ ] **Paid-feature equivalence.** 31 backend `paid_features` values were dropped in favour of `RingDevicePaidFeatures` (`CvPaid*`/`OtherPaid*`). Confirm they agree on a device that reports both (none in the live DB yet).
 - [x] **Backfill MediaItems codec, resolution and frame rate.** Built: `MediaCodecBackfillService` probes 50 rows per 15-minute pass (about 46 hours for the 9,170 rows). Merged to `wip` at `ef3fdca2`.
-- [ ] **Deploy the backfill build.** The running service does not have it yet. Run `scripts/Deploy-WebAppToProd.ps1` from an elevated PowerShell, then check `MediaItems.VideoCodec` fills over time.
+- [ ] **Deploy the backfill build.** The running service does not have it yet. Run `src/client/web/VideoForensics.WebApp/scripts/Deploy-WebAppToProd.ps1` from an elevated PowerShell, then check `MediaItems.VideoCodec` fills over time.
 - [ ] **Chime and stickup detail fields.** `Devices.ChimeVolume`, `BatteryLife2`, `SirenSecondsRemaining` are mapped but null on this account. Verify once a chime or stickup camera is present.
 - [ ] **Test flakes.** `FolderPicker_Cancel_InvokesOnClosedWithNull` (timing); `PlaybackTimeline_MarkerClick_RaisesOnMarkerClick` (pasted failure, not reproduced); `CaseRepositoryNumberingTests` concurrent create (failed once, passes on `wip`).
 - [ ] **`RingLocationModeNotYetParticipating.ValueJson`.** Kept as raw JSON until the element shape is known (0 rows live).
