@@ -1,0 +1,186 @@
+@page "/bitrate-review/{FlagId:guid}"
+@implements IDisposable
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.Navigations
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Client.Ui.Shared.Components.Review
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject IMediaFlagRepository MediaFlagRepository
+@inject IMediaItemRepository MediaItemRepository
+@inject IMediaContentUrlProvider MediaContentUrls
+@inject IDeviceRepository DeviceRepository
+@inject IStringLocalizer<SharedResources> L
+
+<FlagReviewShell>
+    <Breadcrumb>
+        <SfBreadcrumb>
+            <BreadcrumbItems>
+                <BreadcrumbItem Text="@L["BitrateReviewBreadcrumbRoot"].Value" Url="/bitrate-history" />
+                @if (_flag is not null)
+                {
+                    <BreadcrumbItem Text="@_cameraName" />
+                }
+            </BreadcrumbItems>
+        </SfBreadcrumb>
+        <h5 class="mb-0" data-testid="bitrate-review-title">@L["BitrateReviewTitle"]</h5>
+        @if (_loaded && _flag is null)
+        {
+            <p class="text-muted small mb-0" role="status" data-testid="bitrate-review-not-found">@L["BitrateReviewNotFound"]</p>
+        }
+    </Breadcrumb>
+
+    <Media>
+        @if (_loaded)
+        {
+            <MediaFit State="_state"
+                      Source="@_source"
+                      PlaybackRate="@_rate"
+                      SourceStartUtc="@_clipStartUtc"
+                      SourceDurationSeconds="@_clipDurationSeconds"
+                      PlayerChanged="OnPlayerChanged" />
+        }
+    </Media>
+
+    <Actions>
+        @if (_flag is { } flag)
+        {
+            <FlagActionsPanel Flag="@flag" OnChanged="OnFlagChanged" />
+        }
+    </Actions>
+
+    <Navigator>
+        @if (_flag is not null)
+        {
+            <ClipNavigator Filter="@BitrateFilter" CurrentFlagId="@FlagId" />
+        }
+    </Navigator>
+
+    <Timeline>
+        @if (_player is { } player && _flag is not null)
+        {
+            <PlaybackTimeline Player="@player"
+                              WindowStartUtc="@_windowStart"
+                              WindowEndUtc="@_windowEnd"
+                              Markers="@_markers"
+                              OnRateChange="@(r => _rate = r)" />
+        }
+    </Timeline>
+</FlagReviewShell>
+
+@code {
+    /// <summary>The BitrateCollapse flag to review.</summary>
+    [Parameter]
+    public Guid FlagId { get; set; }
+
+    private static readonly MediaFlagFilter BitrateFilter = new() { Types = [MediaFlagType.BitrateCollapse] };
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private Guid? _loadedFlagId;
+    private bool _loaded;
+    private MediaFlag? _flag;
+    private MediaFitState _state = MediaFitState.FlagNotFound;
+    private string? _source;
+    private DateTime? _clipStartUtc;
+    private double? _clipDurationSeconds;
+    private string _cameraName = string.Empty;
+    private double _rate = 1.0;
+    private MediaPlayer? _player;
+    private DateTime _windowStart;
+    private DateTime _windowEnd;
+    private IReadOnlyCollection<MediaFlag> _markers = [];
+
+    /// <summary>How far the timeline window extends beyond the flag window when the clip has no known duration.</summary>
+    private static readonly TimeSpan FlagWindowPad = TimeSpan.FromMinutes(5);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedFlagId == FlagId)
+        {
+            return;
+        }
+
+        _loadedFlagId = FlagId;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        CancellationToken ct = _disposeCts.Token;
+        _loaded = false;
+        _flag = null;
+        _player = null;
+        _source = null;
+        _markers = [];
+        _state = MediaFitState.FlagNotFound;
+        try
+        {
+            MediaFlag? flag = await MediaFlagRepository.GetAsync(FlagId, ct);
+            if (flag is null || flag.FlagType != MediaFlagType.BitrateCollapse)
+            {
+                return;
+            }
+
+            _flag = flag;
+            _markers = [flag];
+            _windowStart = flag.WindowStartUtc - FlagWindowPad;
+            _windowEnd = flag.WindowEndUtc + FlagWindowPad;
+
+            var device = await DeviceRepository.GetAsync(flag.DeviceId, ct);
+            _cameraName = device?.Name ?? L["FlaggedMediaUnknownCamera"].Value;
+
+            MediaItem? clip = flag.MediaItemId is { } mediaItemId
+                ? await MediaItemRepository.GetAsync(mediaItemId, ct)
+                : null;
+            if (clip is null)
+            {
+                _state = MediaFitState.FileMissing;
+                return;
+            }
+
+            if (clip.IsPurged)
+            {
+                _state = MediaFitState.Purged;
+                return;
+            }
+
+            IReadOnlyDictionary<Guid, string> urls = await MediaContentUrls.GetContentUrlsAsync([clip.Id], ct);
+            _source = urls.TryGetValue(clip.Id, out string? url) ? url : null;
+            _state = MediaFitState.Playable;
+            _clipStartUtc = clip.RecordedAtUtc;
+            _clipDurationSeconds = clip.DurationSeconds;
+            if (clip.DurationSeconds is { } seconds)
+            {
+                _windowStart = clip.RecordedAtUtc;
+                _windowEnd = clip.RecordedAtUtc.AddSeconds(seconds);
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            // The page is leaving; the load is dropped.
+        }
+        finally
+        {
+            _loaded = !_disposeCts.IsCancellationRequested;
+        }
+    }
+
+    private void OnPlayerChanged(MediaPlayer? player)
+    {
+        _player = player;
+    }
+
+    private void OnFlagChanged(MediaFlag updated)
+    {
+        _flag = updated;
+        _markers = [updated];
+    }
+
+    public void Dispose()
+    {
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+}
