@@ -123,7 +123,10 @@ Every interactive control in the new tables, shell and subpages is a Syncfusion 
     - B6c1 Add to case for clip flags (BitrateCollapse: pin the one clip). **DONE (2026-11-01, on wip ead2f400 via 753b44a1: 17/17 filtered pass). NOT done: missing-clip detection (case repository does not check the media exists); "Missing target" message unused.**
     - B6c2 RSSI add to case: pins every clip and snapshot in the window, ±1 hour (pad decided by user, 2026-11-01). **DONE (2026-11-01, on wip d5786ddd via 3a1c0dba + prerequisite 00e86580 (client snapshot read, `RemoteSnapshotCaptureRepository`): 21/21 filtered pass). NOT done: counts include already-pinned items and can overstate; the done message shows the real count.**
   - B1c export **DONE (2026-11-01, on wip 109a9d98 via 6df9021b: `ISnapshotCaptureRepository.GetAsync`; snapshot files at archive root named by device id and capture time; separate `snapshots` manifest array; missing file logs a warning and is skipped, as Media does). NOT done: file name uses the device GUID, not the name; same-second snapshots of one device would collide; snapshot devices and times do not widen the case's report scope.**
-- B7 `RssiReview`, `BitrateReview`, context panels, breadcrumb, nav (needs all above).
+- B7 `RssiReview`, `BitrateReview`, context panels, breadcrumb, nav (needs all above). Split:
+  - B7a `BitrateReview` page at `/bitrate-review/{FlagId}`. **DONE (2026-11-01, on wip 1b2c699a via 2468bd2e: shared shell, breadcrumb, MediaFit, actions, navigator, timeline; 35/35 scoped pass). NOT done: not linked from the table; not checked in a browser; route registration in WebApp and MAUI hosts not verified; `PlayerChanged` is nullable.**
+  - B7b `RssiReview` page at `/rssi-review/{FlagId}`. **DONE (2026-11-01, on wip 226b1397 via 3f918aea and 56be8bc6: clip in the ±1 h window that covers the flag start, else the first non-purged clip; not-found shown once; 40/40 scoped pass). NOT done: not linked from the table; not checked in a browser; a clip with no duration is treated as not covering the start.**
+  - B7c Table links: rows open the review page for their flag type. Not started.
 - B8 Final acceptance: window-size matrix, keyboard/a11y, MAUI check, docs/CHANGELOG, full gate.
 Parallel-safe sets: after B1a: B2 and B4. After B1b: B3a, B6. Do not run in parallel: B1b with B2 (DI files), B3 with B7.
 
