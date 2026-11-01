@@ -26,6 +26,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Oldest media items that analysis has never run on (no baseline version yet), up to <paramref name="limit"/>.</summary>
         Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct);
 
+        /// <summary>Oldest non-purged media items with no video codec recorded yet, up to <paramref name="limit"/>.</summary>
+        Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct);
+
         /// <summary>
         /// Clips recorded at or after <paramref name="sinceUtc"/> whose stored RedFlags contain BitrateCollapse, oldest first.
         /// Only the stored RedFlags string is read; analysis is not run again.

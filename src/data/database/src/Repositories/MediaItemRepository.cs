@@ -74,6 +74,17 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Oldest non-purged media with no video codec recorded. Rows the codec backfill has already tried and failed on are skipped by the caller.</summary>
+        public async Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .Where(m => !m.IsPurged && m.VideoCodec == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Oldest media that analysis has never run on. Analysis sets BaselineVersion on every result, so null means not yet analysed.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
