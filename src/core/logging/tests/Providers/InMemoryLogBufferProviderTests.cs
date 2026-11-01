@@ -252,5 +252,21 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             _ = Assert.Single(snapshot);
             Assert.Equal("Before dispose", snapshot[0].Message);
         }
+
+        [Fact]
+        public void BelowMinimumLevel_IsNotCaptured_AndFollowsChanges()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Warning };
+            using var provider = new InMemoryLogBufferProvider(_buffer, source);
+            ILogger logger = provider.CreateLogger("LevelCategory");
+
+            logger.LogInformation("hidden");
+            logger.LogWarning("shown");
+            source.Minimum = LogLevel.Debug;
+            logger.LogDebug("now shown");
+
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            Assert.Equal(["shown", "now shown"], snapshot.ConvertAll(r => r.Message));
+        }
     }
 }

@@ -257,6 +257,7 @@ builder.Logging.SetMinimumLevel(LogLevel.Trace);
 // The Server Logs history reads the daily audit files in logsDir, which hold the levels the saved setting allows.
 builder.Services.AddSingleton(new LogFileDirectory(logsDir));
 builder.Services.AddSingleton(serverLogLevel);
+builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.

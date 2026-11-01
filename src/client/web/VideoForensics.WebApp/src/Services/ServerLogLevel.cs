@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using Serilog.Core;
 using Serilog.Events;
 
+using VideoForensics.Core.Logging.Services;
+
 namespace VideoForensics.Client.WebApp.Services;
 
 /// <summary>
@@ -14,23 +16,27 @@ public sealed class ServerLogLevel
 {
     public LoggingLevelSwitch Switch { get; } = new(LogEventLevel.Information);
 
+    /// <summary>The same level for the live log buffer, which is not a Serilog sink.</summary>
+    public LogLevelSource BufferLevel { get; } = new() { Minimum = LogLevel.Information };
+
     /// <summary>Applies a configured level name such as "Warning". An unknown name keeps the current level.</summary>
     public void Apply(string? level)
     {
-        LogEventLevel? mapped = level switch
+        (LogEventLevel, LogLevel)? mapped = level switch
         {
-            "Trace" => LogEventLevel.Verbose,
-            "Debug" => LogEventLevel.Debug,
-            "Information" => LogEventLevel.Information,
-            "Warning" => LogEventLevel.Warning,
-            "Error" => LogEventLevel.Error,
-            "Critical" => LogEventLevel.Fatal,
+            "Trace" => (LogEventLevel.Verbose, LogLevel.Trace),
+            "Debug" => (LogEventLevel.Debug, LogLevel.Debug),
+            "Information" => (LogEventLevel.Information, LogLevel.Information),
+            "Warning" => (LogEventLevel.Warning, LogLevel.Warning),
+            "Error" => (LogEventLevel.Error, LogLevel.Error),
+            "Critical" => (LogEventLevel.Fatal, LogLevel.Critical),
             _ => null,
         };
 
         if (mapped is { } value)
         {
-            Switch.MinimumLevel = value;
+            Switch.MinimumLevel = value.Item1;
+            BufferLevel.Minimum = value.Item2;
         }
     }
 }
