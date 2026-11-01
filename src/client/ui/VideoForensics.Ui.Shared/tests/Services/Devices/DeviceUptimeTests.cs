@@ -66,10 +66,23 @@ public class DeviceUptimeTests
     }
 
     [Fact]
-    public void StaleHeartbeat_WithFreshCapture_IsOffline()
+    public void StaleHeartbeat_WithFreshConnectedCapture_IsOnline()
     {
-        // Ring re-sends its last known state on every sync, so a fresh capture of a year-old heartbeat is not evidence the device was seen.
-        Assert.Equal(DeviceUptimeStatus.Offline, DeviceUptime.Evaluate(true, Now.AddDays(-365), Now, Now, 300));
+        // Ring re-sends its last heartbeat on every sync, so a year-old heartbeat beside a fresh health.connected=true poll is online.
+        Assert.Equal(DeviceUptimeStatus.Online, DeviceUptime.Evaluate(true, Now.AddDays(-365), Now.AddSeconds(-10), Now, 300, requiresConnectionFlag: true));
+    }
+
+    [Fact]
+    public void ConnectedCaptureOlderThanThreshold_IsOffline_EvenWithFreshHeartbeat()
+    {
+        // A connected reading only counts while the poll that produced it is recent.
+        Assert.Equal(DeviceUptimeStatus.Offline, DeviceUptime.Evaluate(true, Now.AddSeconds(-10), Now.AddSeconds(-301), Now, 300, requiresConnectionFlag: true));
+    }
+
+    [Fact]
+    public void ConnectionFlagFalse_IsOfflineEvenWithFreshCapture_WhenProviderRequiresIt()
+    {
+        Assert.Equal(DeviceUptimeStatus.Offline, DeviceUptime.Evaluate(false, Now.AddSeconds(-10), Now.AddSeconds(-10), Now, 300, requiresConnectionFlag: true));
     }
 
     [Fact]
