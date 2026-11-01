@@ -17,7 +17,7 @@ function run(label, commandLine) {
 }
 
 run("Compile TypeScript", `"${process.execPath}" "${require.resolve("./build-ts.mjs")}"`);
-run("Lint", "npx eslint src/client/ui/VideoForensics.Ui.Shared/src/ts src/client/web/VideoForensics.WebApp/src/ts tests scripts vitest.config.ts eslint.config.mjs");
+run("Lint", "npx eslint src/client/ui/VideoForensics.Ui.Shared/src/ts src/client/web/VideoForensics.WebApp/src/ts tests src/client/web/VideoForensics.WebApp/tests scripts vitest.config.ts eslint.config.mjs");
 run("Test", "npx vitest run");
 
 // Compiled output is committed, so a source edit without a rebuild would ship stale JavaScript.

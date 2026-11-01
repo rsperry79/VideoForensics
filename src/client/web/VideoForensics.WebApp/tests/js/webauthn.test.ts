@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadClassicScript, scriptsRoot } from "./load-script";
+import { loadClassicScript, scriptsRoot } from "../../../../../../tests/js/load-script";
 
 // Ceremony glue between Fido2NetLib's base64url JSON and the browser's ArrayBuffer API. The
 // conversions are the part that fails silently ("looks right and isn't"), so they are pinned here.

@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadClassicScript, scriptsRoot } from "./load-script";
+import { loadClassicScript, scriptsRoot } from "../../../../../../tests/js/load-script";
 
 // VAPID key decoding is the easy-to-break part: base64url needs '-'/'_' mapping and padding restored
 // before atob, and pushManager.subscribe rejects a key of the wrong shape.
