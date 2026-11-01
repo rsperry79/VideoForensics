@@ -78,7 +78,7 @@
         <div class="flag-window mt-3" data-testid="flag-window-section">
             @if (_window is { } window)
             {
-                <div class="small fw-semibold mb-1" data-testid="flag-window-counts">@L["FlagActionsWindowCounts", window.Clips.Count, window.Snapshots.Count].Value</div>
+                <div class="small fw-semibold mb-1" data-testid="flag-window-counts">@L["FlagActionsWindowCounts", PendingClipCount, PendingSnapshotCount].Value</div>
 
                 <div class="d-flex gap-2 align-items-center">
                     <select class="form-select form-select-sm" id="flag-window-case" data-testid="flag-window-case-picker" aria-label="@L["FlagActionsPickCase"].Value" @onchange="OnCasePicked">
@@ -190,6 +190,15 @@
     private RssiWindow? _window;
     private string? _windowNotice;
 
+    /// <summary>The active pins of the picked case as (kind, target id) keys. Empty when no case is picked.</summary>
+    private HashSet<(CaseItemKind Kind, Guid TargetId)> _pinnedToPicked = new();
+
+    /// <summary>The window clips the picked case does not already hold. Every window clip when no case is picked.</summary>
+    private int PendingClipCount => _window?.Clips.Count(clip => !_pinnedToPicked.Contains((CaseItemKind.Media, clip.Id))) ?? 0;
+
+    /// <summary>The window snapshots the picked case does not already hold. Every window snapshot when no case is picked.</summary>
+    private int PendingSnapshotCount => _window?.Snapshots.Count(snapshot => !_pinnedToPicked.Contains((CaseItemKind.Snapshot, snapshot.Id))) ?? 0;
+
     protected override async Task OnInitializedAsync()
     {
         // The role and operator come from the paired session, which loads on first use; the Actions menu does the same.
@@ -212,6 +221,7 @@
         _windowNotice = null;
         _containing = [];
         _window = null;
+        _pinnedToPicked = new();
         try
         {
             _openCases = await CaseRepository.ListAsync(CaseStatus.Open, _disposeCts.Token);
@@ -252,13 +262,58 @@
     }
 
     /// <summary>Picks a case from the dropdown, or opens the new-case form when the create option is chosen.</summary>
-    private void OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    private async Task OnCasePicked(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
         string? value = args.Value?.ToString();
         _creatingCase = value == CreateCaseOption;
         _pickedCaseId = !_creatingCase && Guid.TryParse(value, out Guid caseId) ? caseId : null;
         _notice = null;
         _windowNotice = null;
+        _pinnedToPicked = new();
+        if (_pickedCaseId is { } picked)
+        {
+            await LoadPinnedToPickedAsync(picked);
+        }
+    }
+
+    /// <summary>Reads the picked case's active pins so the RSSI window counts leave out items it already holds. A stale read is dropped.</summary>
+    private async Task LoadPinnedToPickedAsync(Guid caseId)
+    {
+        try
+        {
+            IReadOnlyList<CaseItem> pins = await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token);
+            if (_pickedCaseId == caseId)
+            {
+                _pinnedToPicked = PinnedKeys(pins);
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not read the pins of case {CaseId} for the RSSI window counts: {ExceptionType}: {Message}", caseId, ex.GetType().Name, ex.Message);
+        }
+    }
+
+    /// <summary>The active pins as (kind, target id) keys: a Media pin keys its clip and a Snapshot pin keys its snapshot.</summary>
+    private static HashSet<(CaseItemKind Kind, Guid TargetId)> PinnedKeys(IEnumerable<CaseItem> pins)
+    {
+        var keys = new HashSet<(CaseItemKind Kind, Guid TargetId)>();
+        foreach (CaseItem pin in pins)
+        {
+            if (pin.Kind == CaseItemKind.Media && pin.MediaItemId is { } mediaId)
+            {
+                _ = keys.Add((pin.Kind, mediaId));
+            }
+            else if (pin.Kind == CaseItemKind.Snapshot && pin.SnapshotCaptureId is { } snapshotId)
+            {
+                _ = keys.Add((pin.Kind, snapshotId));
+            }
+        }
+
+        return keys;
     }
 
     /// <summary>
@@ -277,11 +332,12 @@
                 SessionState.OperatorId,
                 null,
                 null,
-                [],
+                [Flag.DeviceId],
                 operatorId,
                 _disposeCts.Token);
             _openCases = [.. _openCases, created];
             _pickedCaseId = created.Id;
+            _pinnedToPicked = new();
             _creatingCase = false;
             _newCaseTitle = string.Empty;
             return created;
@@ -436,18 +492,7 @@
             }
 
             // One read of the case's active pins covers every window item, instead of one read per item.
-            var pinned = new HashSet<(CaseItemKind Kind, Guid TargetId)>();
-            foreach (CaseItem pin in await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token))
-            {
-                if (pin.Kind == CaseItemKind.Media && pin.MediaItemId is { } mediaId)
-                {
-                    _ = pinned.Add((pin.Kind, mediaId));
-                }
-                else if (pin.Kind == CaseItemKind.Snapshot && pin.SnapshotCaptureId is { } snapshotId)
-                {
-                    _ = pinned.Add((pin.Kind, snapshotId));
-                }
-            }
+            HashSet<(CaseItemKind Kind, Guid TargetId)> pinned = PinnedKeys(await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token));
 
             var pending = new List<(CaseItemKind Kind, Guid TargetId)>();
             foreach (MediaItem clip in window.Clips)
