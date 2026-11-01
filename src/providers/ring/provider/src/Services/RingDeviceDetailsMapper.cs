@@ -469,6 +469,8 @@ namespace VideoForensics.Providers.Ring.Services
 
             return children with
             {
+                MotionSnoozePresets = null,
+                LiveViewPresets = null,
                 AdvancedMotionZones = null,
                 RingSettings = null,
                 GeneralSettings = null,

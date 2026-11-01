@@ -627,12 +627,19 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             var changes = new List<DeviceSettingChange>();
-            AddWholeItemChanges(changes, deviceId, changedAtUtc, "MotionSnoozePreset",
-                ToMap(storedSnooze, p => PositionKey(p.Position), p => p.Preset),
-                ToMap(settings.MotionSnoozePresets, p => PositionKey(p.Position), p => p.Preset));
-            AddWholeItemChanges(changes, deviceId, changedAtUtc, "LiveViewPreset",
-                ToMap(storedLive, p => PositionKey(p.Position), p => p.Preset),
-                ToMap(settings.LiveViewPresets, p => PositionKey(p.Position), p => p.Preset));
+            if (settings.MotionSnoozePresets != null)
+            {
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "MotionSnoozePreset",
+                    ToMap(storedSnooze, p => PositionKey(p.Position), p => p.Preset),
+                    ToMap(settings.MotionSnoozePresets, p => PositionKey(p.Position), p => p.Preset));
+            }
+
+            if (settings.LiveViewPresets != null)
+            {
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "LiveViewPreset",
+                    ToMap(storedLive, p => PositionKey(p.Position), p => p.Preset),
+                    ToMap(settings.LiveViewPresets, p => PositionKey(p.Position), p => p.Preset));
+            }
             if (settings.AdvancedMotionZones != null)
             {
                 AddWholeItemChanges(changes, deviceId, changedAtUtc, "AdvancedMotionZone",
@@ -671,24 +678,30 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = await DeviceLightEventRepository.AddObservedStateIfChangedAsync(db, deviceId, lightOn, changedAtUtc, ct);
             }
 
-            db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
-            db.DeviceLiveViewPresets.RemoveRange(storedLive);
+            if (settings.MotionSnoozePresets != null)
+            {
+                db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
+                foreach (DeviceMotionSnoozePreset preset in settings.MotionSnoozePresets)
+                {
+                    preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
+                    preset.DeviceId = deviceId;
+                    _ = db.DeviceMotionSnoozePresets.Add(preset);
+                }
+            }
+
+            if (settings.LiveViewPresets != null)
+            {
+                db.DeviceLiveViewPresets.RemoveRange(storedLive);
+                foreach (DeviceLiveViewPreset preset in settings.LiveViewPresets)
+                {
+                    preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
+                    preset.DeviceId = deviceId;
+                    _ = db.DeviceLiveViewPresets.Add(preset);
+                }
+            }
+
             db.DeviceAdvancedMotionZoneVertices.RemoveRange(existingZones.SelectMany(z => z.Vertices));
             db.DeviceAdvancedMotionZones.RemoveRange(existingZones);
-
-            foreach (DeviceMotionSnoozePreset preset in settings.MotionSnoozePresets)
-            {
-                preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
-                preset.DeviceId = deviceId;
-                _ = db.DeviceMotionSnoozePresets.Add(preset);
-            }
-
-            foreach (DeviceLiveViewPreset preset in settings.LiveViewPresets)
-            {
-                preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
-                preset.DeviceId = deviceId;
-                _ = db.DeviceLiveViewPresets.Add(preset);
-            }
 
             foreach (DeviceAdvancedMotionZone zone in settings.AdvancedMotionZones ?? Enumerable.Empty<DeviceAdvancedMotionZone>())
             {

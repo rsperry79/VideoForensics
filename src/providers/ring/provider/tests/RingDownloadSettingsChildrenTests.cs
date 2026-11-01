@@ -28,5 +28,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Null(children.RingSettingGroups);
             Assert.Null(children.RingSettings);
             Assert.Null(children.GeneralSettings);
+            Assert.Null(children.MotionSnoozePresets);
+            Assert.Null(children.LiveViewPresets);
         }    }
 }
