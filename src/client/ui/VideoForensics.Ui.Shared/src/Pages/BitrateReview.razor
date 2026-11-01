@@ -5,6 +5,7 @@
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -13,6 +14,17 @@
 @inject IMediaContentUrlProvider MediaContentUrls
 @inject IDeviceRepository DeviceRepository
 @inject IStringLocalizer<SharedResources> L
+
+<PageRightPanelContent>
+    @if (_flag is { } flag)
+    {
+        <FlagActionsPanel Flag="@flag" OnChanged="OnFlagChanged" />
+    }
+    @if (_flag is not null)
+    {
+        <ClipNavigator Filter="@BitrateFilter" CurrentFlagId="@FlagId" />
+    }
+</PageRightPanelContent>
 
 <FlagReviewShell>
     <Breadcrumb>
@@ -39,20 +51,6 @@
                       PlayerChanged="OnPlayerChanged" />
         }
     </Media>
-
-    <Actions>
-        @if (_flag is { } flag)
-        {
-            <FlagActionsPanel Flag="@flag" OnChanged="OnFlagChanged" />
-        }
-    </Actions>
-
-    <Navigator>
-        @if (_flag is not null)
-        {
-            <ClipNavigator Filter="@BitrateFilter" CurrentFlagId="@FlagId" />
-        }
-    </Navigator>
 
     <Timeline>
         @if (_player is { } player && _flag is not null)

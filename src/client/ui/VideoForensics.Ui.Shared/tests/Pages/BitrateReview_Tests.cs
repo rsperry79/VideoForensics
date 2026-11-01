@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 
 using Bunit;
+using Bunit.Rendering;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,6 +58,7 @@ public class BitrateReview_Tests : BunitContext
         _ = Services.AddSingleton(_snapshots.Object);
         _ = Services.AddSingleton(_logger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped<RightPanelContentService>();
 
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
         _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
@@ -167,8 +169,16 @@ public class BitrateReview_Tests : BunitContext
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<MediaPlayer>()));
         Assert.NotNull(cut.Find("[data-testid=flag-review-media]"));
-        Assert.NotNull(cut.Find("[data-testid=flag-review-actions]"));
-        Assert.NotNull(cut.Find("[data-testid=flag-review-navigator]"));
         Assert.NotNull(cut.Find("[data-testid=flag-review-timeline]"));
+        Assert.Empty(cut.FindAll("[data-testid=flag-review-side]"));
+        Assert.Empty(cut.FindAll("[data-testid=flag-actions-panel]"));
+        Assert.Empty(cut.FindAll("[data-testid=clip-navigator]"));
+
+        // The flag actions and the clip navigator go to the right panel, which the page hands to RightPanelContentService.
+        RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
+        Assert.NotNull(panelContent);
+        IRenderedComponent<ContainerFragment> panel = Render(panelContent);
+        Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
+        Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
     }
 }

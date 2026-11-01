@@ -11,21 +11,6 @@
         @Media
     </section>
 
-    <aside class="flag-review-side" data-testid="flag-review-side" aria-label="@L["FlagReviewSideLabel"]">
-        @if (Actions is not null)
-        {
-            <div class="flag-review-actions" data-testid="flag-review-actions">
-                @Actions
-            </div>
-        }
-        @if (Navigator is not null)
-        {
-            <div class="flag-review-navigator" data-testid="flag-review-navigator">
-                @Navigator
-            </div>
-        }
-    </aside>
-
     <section class="flag-review-timeline" data-testid="flag-review-timeline" aria-label="@L["FlagReviewTimelineLabel"]">
         @Timeline
     </section>
@@ -36,17 +21,9 @@
     [Parameter]
     public RenderFragment? Breadcrumb { get; set; }
 
-    /// <summary>The clip, or the media fit that shows it. Fills the middle window.</summary>
+    /// <summary>The clip, or the media fit that shows it. Fills the middle window at full width and height.</summary>
     [Parameter]
     public RenderFragment? Media { get; set; }
-
-    /// <summary>The flag actions (add to case, keep, dismiss). Omitted when null.</summary>
-    [Parameter]
-    public RenderFragment? Actions { get; set; }
-
-    /// <summary>The previous and next flag controls, stacked under the actions. Omitted when null.</summary>
-    [Parameter]
-    public RenderFragment? Navigator { get; set; }
 
     /// <summary>The playback timeline pinned to the bottom of the shell.</summary>
     [Parameter]

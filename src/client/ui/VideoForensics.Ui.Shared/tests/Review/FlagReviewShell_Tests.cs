@@ -25,8 +25,6 @@ public class FlagReviewShell_Tests : BunitContext
             {
                 _ = p.Add(c => c.Breadcrumb, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"crumb\">crumb</span>")))
                     .Add(c => c.Media, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"media\">media</span>")))
-                    .Add(c => c.Actions, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"actions\">actions</span>")))
-                    .Add(c => c.Navigator, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"nav\">nav</span>")))
                     .Add(c => c.Timeline, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"timeline\">timeline</span>")));
             }
         });
@@ -39,8 +37,6 @@ public class FlagReviewShell_Tests : BunitContext
 
         Assert.Equal("crumb", cut.Find("[data-testid=flag-review-breadcrumb] #crumb").TextContent);
         Assert.Equal("media", cut.Find("[data-testid=flag-review-media] #media").TextContent);
-        Assert.Equal("actions", cut.Find("[data-testid=flag-review-actions] #actions").TextContent);
-        Assert.Equal("nav", cut.Find("[data-testid=flag-review-navigator] #nav").TextContent);
         Assert.Equal("timeline", cut.Find("[data-testid=flag-review-timeline] #timeline").TextContent);
     }
 
@@ -49,10 +45,10 @@ public class FlagReviewShell_Tests : BunitContext
     {
         IRenderedComponent<FlagReviewShell> cut = RenderShell();
 
-        var side = cut.Find("[data-testid=flag-review-side]");
-        string[] order = [.. side.Children.Select(c => c.GetAttribute("data-testid") ?? string.Empty)];
-
-        Assert.Equal(["flag-review-actions", "flag-review-navigator"], order);
+        // The flag controls live in the app right panel, so the shell renders no side region of its own.
+        Assert.Empty(cut.FindAll("[data-testid=flag-review-side]"));
+        Assert.Empty(cut.FindAll("[data-testid=flag-review-actions]"));
+        Assert.Empty(cut.FindAll("[data-testid=flag-review-navigator]"));
     }
 
     [Fact]
@@ -61,7 +57,7 @@ public class FlagReviewShell_Tests : BunitContext
         IRenderedComponent<FlagReviewShell> cut = RenderShell();
 
         // Each landmark has a non-empty accessible name that comes from a resource key, not an English literal in markup.
-        foreach (string testId in new[] { "flag-review-media", "flag-review-side", "flag-review-timeline" })
+        foreach (string testId in new[] { "flag-review-media", "flag-review-timeline" })
         {
             string? label = cut.Find($"[data-testid={testId}]").GetAttribute("aria-label");
             Assert.False(string.IsNullOrWhiteSpace(label));

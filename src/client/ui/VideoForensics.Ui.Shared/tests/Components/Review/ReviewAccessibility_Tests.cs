@@ -112,8 +112,8 @@ public class ReviewAccessibility_Tests : BunitContext
             .Add(c => c.Media, (RenderFragment)(b => b.AddMarkupContent(0, "<span>media</span>")))
             .Add(c => c.Timeline, (RenderFragment)(b => b.AddMarkupContent(0, "<span>timeline</span>"))));
 
-        // The shell labels media, side and timeline. The breadcrumb region is not labelled, so it is not asserted here.
-        foreach (string testId in new[] { "flag-review-media", "flag-review-side", "flag-review-timeline" })
+        // The shell labels media and timeline. The breadcrumb region is not labelled, so it is not asserted here.
+        foreach (string testId in new[] { "flag-review-media", "flag-review-timeline" })
         {
             Assert.False(string.IsNullOrWhiteSpace(cut.Find($"[data-testid={testId}]").GetAttribute("aria-label")));
         }
