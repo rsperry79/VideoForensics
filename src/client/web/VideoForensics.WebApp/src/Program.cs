@@ -115,6 +115,12 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
+// A fatal exception off the request path (async void, timer, thread pool) only reaches stderr, which a service or container
+// discards. These lines are the last record of why the process ended; a missing "Process exiting" line means it was killed from outside.
+_ = new ProcessCrashLogger(
+    new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("VideoForensics.Process"),
+    Log.CloseAndFlush).Attach();
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // In-place updates are off by default (Updates:Enabled). Apply a staged package before the host starts. Only as a real
