@@ -287,6 +287,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 string saltPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
+                    "Keys",
                     "ring-credential-salt.bin");
 
                 // Assert
@@ -314,6 +315,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 string saltPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
+                    "Keys",
                     "ring-credential-salt.bin");
 
                 // Ensure clean state

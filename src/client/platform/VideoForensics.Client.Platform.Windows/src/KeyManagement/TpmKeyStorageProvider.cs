@@ -30,7 +30,7 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
         private readonly string _manifestPath;
 
         public TpmKeyStorageProvider()
-            : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys", "tpm-keys.txt"))
+            : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "Keys", "tpm-keys.txt"))
         {
         }
 

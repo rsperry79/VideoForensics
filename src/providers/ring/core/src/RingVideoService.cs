@@ -410,14 +410,14 @@ namespace VideoForensics.Providers.Ring
                 }
 
                 // Initialize reports directory
-                reportsDirectory = Path.Combine(expandedPath, "reports");
+                reportsDirectory = Path.Combine(expandedPath, "Reports");
                 if (!Directory.Exists(reportsDirectory))
                 {
                     _ = Directory.CreateDirectory(reportsDirectory);
                 }
 
                 // Initialize logs directory
-                logsDirectory = Path.Combine(expandedPath, "logs");
+                logsDirectory = Path.Combine(expandedPath, "Logs");
                 if (!Directory.Exists(logsDirectory))
                 {
                     _ = Directory.CreateDirectory(logsDirectory);

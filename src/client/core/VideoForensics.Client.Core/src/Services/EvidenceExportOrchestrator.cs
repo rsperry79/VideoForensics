@@ -482,7 +482,7 @@ namespace VideoForensics.Client.Core.Services
                 throw new InvalidOperationException("Output directory contains invalid parent directory traversal.");
             }
 
-            string baseExportRoot = Path.Combine(AppContext.BaseDirectory, "exports");
+            string baseExportRoot = Path.Combine(AppContext.BaseDirectory, "Exports");
             _ = Directory.CreateDirectory(baseExportRoot);
             string combined = Path.Combine(baseExportRoot, requestedOutputDirectory);
             string safeOutputDirectory = EnsureWithinRoot(baseExportRoot, combined);

@@ -137,7 +137,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // In-place updates are off by default (Updates:Enabled). Apply a staged package before the host starts. Only as a real
 // Windows service: a debug run from Visual Studio must never rewrite its own build output.
 bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuration.GetValue<bool>("Updates:Enabled");
-string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "Updates");
 bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
 bool updatesActiveAsService = inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
 if (OperatingSystem.IsWindows() && updatesActiveAsService)

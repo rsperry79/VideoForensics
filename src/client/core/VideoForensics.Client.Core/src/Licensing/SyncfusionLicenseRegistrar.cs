@@ -4,7 +4,6 @@ using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
-using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.Core.Licensing
 {
@@ -16,20 +15,21 @@ namespace VideoForensics.Client.Core.Licensing
     {
         private const string LicenseKeyName = "SYNCFUSION_LICENSE_KEY";
 
-        private readonly ILicenseKeySource _fileKeySource;
+        private readonly ILicenseKeySource _embeddedKeySource;
 
-        /// <param name="fileKeySource">
-        /// Source for the external key file. Defaults to the file under the platform data root; tests and platform heads can pass their own.
+        /// <param name="embeddedKeySource">
+        /// Source for the key embedded in the host. Defaults to the entry assembly's embedded resource; tests and platform heads can pass their own.
         /// </param>
-        public SyncfusionLicenseRegistrar(ILicenseKeySource? fileKeySource = null)
+        public SyncfusionLicenseRegistrar(ILicenseKeySource? embeddedKeySource = null)
         {
-            _fileKeySource = fileKeySource ?? new FileLicenseKeySource(new StorageLocationProvider().GetDataRoot());
+            _embeddedKeySource = embeddedKeySource
+                ?? new EmbeddedLicenseKeySource(Assembly.GetEntryAssembly() ?? typeof(SyncfusionLicenseRegistrar).Assembly);
         }
 
         /// <summary>
         /// Registers the Syncfusion Blazor license key if present. Priority order:
-        /// 1. External license key file in the data root, syncfusion-license.key (if present, overrides all)
-        /// 2. SYNCFUSION_LICENSE_KEY from Client.Core user secrets (developer machines: dotnet user-secrets set)
+        /// 1. Embedded syncfusion-license.key resource in the host (CI writes it from the secret; absent in local builds)
+        /// 2. SYNCFUSION_LICENSE_KEY from Client.Core user secrets (local builds: dotnet user-secrets set)
         /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
         /// Falls back to unlicensed/dev-mode behavior if no source provides a key.
         /// </summary>
@@ -44,7 +44,7 @@ namespace VideoForensics.Client.Core.Licensing
         private void RegisterLicense(string? configuredKey)
         {
             string? key = ResolveSyncfusionLicenseKey(
-                NormalizeLicenseKey(_fileKeySource.ReadKey()),
+                NormalizeLicenseKey(_embeddedKeySource.ReadKey()),
                 configuredKey,
                 GetBakedInSyncfusionLicenseKey());
             if (key != null)
@@ -54,15 +54,15 @@ namespace VideoForensics.Client.Core.Licensing
         }
 
         /// <summary>
-        /// Picks the Syncfusion license key from the candidate sources, in priority order: the external key file
-        /// (admin/IT override, always wins), then the configured key (user secrets), then the
+        /// Picks the Syncfusion license key from the candidate sources, in priority order: the embedded key
+        /// (CI builds), then the configured key (user secrets), then the
         /// key baked into the assembly at CI build time. Blank or whitespace candidates count as absent so the next
         /// source is tried. Every returned key is trimmed. Returns null when no source has a key (unlicensed dev mode).
         /// Pure function so the priority rules can be unit tested without touching the process-wide license provider.
         /// </summary>
         /// <remarks>
-        /// The file is first so an IT admin can override a baked-in key without rebuilding; the configured key sits
-        /// above the baked-in key so a deployment or developer can supply its own key without a rebuild.
+        /// The embedded key is first because CI writes it from the release secret; the configured key sits above the
+        /// baked-in key so a developer can supply its own key without a rebuild.
         /// </remarks>
         internal static string? ResolveSyncfusionLicenseKey(string? fileKey, string? configuredKey, string? bakedInKey)
         {

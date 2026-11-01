@@ -24,8 +24,7 @@ namespace VideoForensics.Providers.Ring
 
         private static string GetOrCreateHardwareId()
         {
-            var directoryService = new PlatformDirectoryService();
-            string folder = directoryService.GetApplicationDataDirectory();
+            string folder = new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys);
             string filePath = Path.Combine(folder, "hardware_id.txt");
             try
             {

@@ -71,7 +71,7 @@ namespace VideoForensics.Client.MauiApp
             // (src/client/VideoForensics/Program.cs).
             string configDir = new StorageLocationProvider().GetDataRoot();
             Directory.CreateDirectory(configDir);
-            string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
+            string logFilePath = Path.Combine(configDir, "Logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);
             builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information);
 
@@ -93,7 +93,7 @@ namespace VideoForensics.Client.MauiApp
             // is safe.
             builder.Services.AddSingleton<IHostEnvironment>(new FixedHostEnvironment(configDir));
 
-            string dataProtectionKeyPath = Path.Combine(configDir, "keys");
+            string dataProtectionKeyPath = Path.Combine(configDir, "Keys");
             Directory.CreateDirectory(dataProtectionKeyPath);
             IDataProtectionBuilder mauiDataProtectionBuilder = builder.Services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
@@ -359,7 +359,7 @@ namespace VideoForensics.Client.MauiApp
 
                 // The script returns once the package is staged; the service then notices it, restarts and applies it.
                 // Sixty seconds covers the watcher's poll, the restart, and the first health answer.
-                string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+                string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "Updates");
                 var launcher = new DevWebAppLauncher(
                     new WebAppHealthProbe(),
                     new StageScriptRunner(),
