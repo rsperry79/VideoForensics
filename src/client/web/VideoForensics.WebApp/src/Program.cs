@@ -276,6 +276,10 @@ builder.Logging.SetMinimumLevel(LogLevel.Trace);
 // The Server Logs history reads the daily audit files in logsDir, which hold the levels the saved setting allows.
 builder.Services.AddSingleton(new LogFileDirectory(logsDir));
 builder.Services.AddSingleton(serverLogLevel);
+// Startup init runs in the background after the host starts; the gate tells the request pipeline when it has finished.
+StartupInitializationGate startupInitGate = new();
+builder.Services.AddSingleton(startupInitGate);
+builder.Services.AddHostedService<StartupInitializationService>();
 builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
@@ -776,6 +780,32 @@ builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
 builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
+// Holds every background service back until the startup init has finished, so none touches an unmigrated database.
+// Wrapped after all registrations so every AddHostedService above is covered. Kestrel's host service and the init
+// service are not gated: the first is not a BackgroundService and the second is excluded by type.
+for (int i = 0; i < builder.Services.Count; i++)
+{
+    ServiceDescriptor descriptor = builder.Services[i];
+    if (descriptor.ServiceType != typeof(IHostedService) || descriptor.Lifetime != ServiceLifetime.Singleton
+        || descriptor.ImplementationInstance is not null
+        || (descriptor.ImplementationType is not null && !typeof(BackgroundService).IsAssignableFrom(descriptor.ImplementationType))
+        || descriptor.ImplementationType == typeof(StartupInitializationService))
+    {
+        continue;
+    }
+
+    ServiceDescriptor original = descriptor;
+    builder.Services[i] = ServiceDescriptor.Singleton<IHostedService>(sp =>
+    {
+        IHostedService service = original.ImplementationFactory is { } factory
+            ? (IHostedService)factory(sp)
+            : (IHostedService)ActivatorUtilities.CreateInstance(sp, original.ImplementationType!);
+        return service is BackgroundService and not StartupInitializationService
+            ? new GatedHostedService(service, startupInitGate)
+            : service;
+    });
+}
+
 WebApplication app = builder.Build();
 
 // Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
@@ -833,21 +863,22 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// DB init + Events backfill + persisted-config load, in that order - see
-// VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync. Unlike the MCP server, a Web
-// app has no "must respond immediately" constraint, so this is awaited directly before app.Run().
-// A transient DB issue is logged critically but does not crash the whole web server - matching this
-// project's existing philosophy of graceful degradation over hard crashes where reasonable.
-ILogger<Program> initLogger = app.Services.GetRequiredService<ILogger<Program>>();
-try
+// DB init + Events backfill + persisted-config load run in StartupInitializationService, not before app.Run():
+// awaiting them here kept the Windows service from reporting Running until they finished (about a minute), so
+// services.msc reported a failed start. Until the gate opens, requests get a 503 with Retry-After.
+StartupInitializationGate startupGate = app.Services.GetRequiredService<StartupInitializationGate>();
+app.Use(async (context, next) =>
 {
-    await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(app.Services, initLogger, CancellationToken.None);
-    initLogger.LogInformation("Database initialization (DB, Events backfill, config) completed.");
-}
-catch (Exception ex)
-{
-    initLogger.LogCritical(ex, "Database initialization failed. Continuing startup in a degraded state.");
-}
+    if (startupGate.IsReady || context.Request.Path.StartsWithSegments("/_framework") || context.Request.Path.StartsWithSegments("/favicon.ico"))
+    {
+        await next();
+        return;
+    }
+
+    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+    context.Response.Headers.RetryAfter = "5";
+    await context.Response.WriteAsync("Starting up. Try again in a moment.");
+});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
