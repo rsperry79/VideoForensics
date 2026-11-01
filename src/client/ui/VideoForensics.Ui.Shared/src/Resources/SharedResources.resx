@@ -974,6 +974,21 @@
   <data name="FlagActionsPinReason" xml:space="preserve">
     <value>Flagged clip</value>
   </data>
+  <data name="FlagActionsPinReasonRssi" xml:space="preserve">
+    <value>Flagged RSSI window</value>
+  </data>
+  <data name="FlagActionsWindowCounts" xml:space="preserve">
+    <value>{0} clips and {1} snapshots will be added</value>
+  </data>
+  <data name="FlagActionsWindowConfirm" xml:space="preserve">
+    <value>Add window to case</value>
+  </data>
+  <data name="FlagActionsWindowPartial" xml:space="preserve">
+    <value>Some items were not added: {0} of {1}</value>
+  </data>
+  <data name="FlagActionsWindowDone" xml:space="preserve">
+    <value>Added {0} clips and {1} snapshots</value>
+  </data>
   <data name="ClipNavigatorLabel" xml:space="preserve">
     <value>Flag navigation</value>
   </data>
