@@ -17,6 +17,7 @@ Resolved entries were removed. Rules they produced are listed below.
 
 2026-10-31 | bash | sed used to strip a Windows path in a grep pipeline failed (unterminated s command) | backslash path inside sed | RESOLVED: wrote test output to a scratchpad log and grepped it
 2026-10-31 | bash | find with an unset shell variable returned no path, and the call errored | variable not set in that call | RESOLVED: used grep -rln for the path
+2026-11-01 | build (missing-clip alert, RED) | CS0104 'Device' ambiguous in MediaMissingClip_Tests.cs after adding a Core.Providers.Common.Contracts using | that namespace also defines a Device type | RESOLVED: fully qualified the entity type in the test; endpoint uses var
 2026-10-31 | Edit | Edit refused on RingDeviceDetailsMapper.cs after a sed line-ending conversion | file changed outside Edit after the last Read | RESOLVED: Read the ranges, then edited
 
 ## Rules (covered)

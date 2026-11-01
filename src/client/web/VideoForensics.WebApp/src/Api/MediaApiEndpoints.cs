@@ -5,6 +5,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
@@ -168,6 +169,10 @@ namespace VideoForensics.Client.WebApp.Api
             IAccessAuditLogRepository auditLog,
             INetworkTierResolver tierResolver,
             ILogger<Program> logger,
+            INotificationDispatcher dispatcher,
+            INoticeRepository notices,
+            IDeviceRepository devices,
+            IEvidenceValidationJobs validationJobs,
             HttpContext context,
             CancellationToken ct)
         {
@@ -189,6 +194,7 @@ namespace VideoForensics.Client.WebApp.Api
             if (!await storage.ExistsAsync(item.FilePath, ct))
             {
                 logger.LogWarning("Media item {MediaItemId} has no file on disk at {FilePath}", id, item.FilePath);
+                await RaiseMissingClipAlertAsync(item, dispatcher, notices, devices, validationJobs, logger, ct);
                 return Results.NotFound();
             }
 
@@ -234,6 +240,62 @@ namespace VideoForensics.Client.WebApp.Api
             };
 
             return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Raises a media-missing alert for a clip whose file is gone from storage, then queues an integrity check for its
+        /// device. The notice marker is the dedupe key: when it already exists, this raises nothing and queues nothing.
+        /// Failures are logged and never change the 404 the caller returns.
+        /// </summary>
+        private static async Task RaiseMissingClipAlertAsync(
+            MediaItem item,
+            INotificationDispatcher dispatcher,
+            INoticeRepository notices,
+            IDeviceRepository devices,
+            IEvidenceValidationJobs validationJobs,
+            ILogger<Program> logger,
+            CancellationToken ct)
+        {
+            // The marker is written into the details, so a repeat request for the same clip finds it and stays quiet.
+            string marker = $"media-missing:{item.Id:D}";
+            try
+            {
+                if (await notices.ExistsWithDetailsAsync(marker, ct))
+                {
+                    return;
+                }
+
+                // The device name is read for display only; a clip with no device still gets an alert.
+                var device = await devices.GetAsync(item.DeviceId, ct);
+                string camera = string.IsNullOrWhiteSpace(device?.Name) ? "an unknown camera" : device.Name;
+
+                await dispatcher.DispatchAsync(new NotificationEvent(
+                    EventType: "MediaMissing",
+                    TimestampUtc: DateTime.UtcNow,
+                    OperatorId: null,
+                    PairedDeviceId: null,
+                    SourceIp: null,
+                    Details: $"Clip {item.FileName} from {camera} is missing from storage. [{marker}]",
+                    Audience: NotificationAudience.All,
+                    Severity: NoticeSeverity.Alert,
+                    ActionPath: "/media"), ct);
+            }
+            catch (Exception ex)
+            {
+                // Message and type only: no stack trace in the log.
+                logger.LogError("Could not raise missing clip alert for {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+                return;
+            }
+
+            // The validation run is queued only after a new alert, so a repeat request never queues a second run.
+            try
+            {
+                _ = await validationJobs.StartIntegrityForDevicesAsync(new[] { item.DeviceId }, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Could not queue integrity check for missing clip {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+            }
         }
 
         /// <summary>

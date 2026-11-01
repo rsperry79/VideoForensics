@@ -11,6 +11,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
@@ -168,7 +169,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             return await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
         }
 
         private static async Task<byte[]> ExecuteResultAsync(IResult result, DefaultHttpContext context)
