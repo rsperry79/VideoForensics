@@ -998,14 +998,8 @@
   <data name="FlagActionsCreateCase" xml:space="preserve">
     <value>Create a new case</value>
   </data>
-  <data name="FlagActionsCaseNumber" xml:space="preserve">
-    <value>Case number (required)</value>
-  </data>
   <data name="FlagActionsCaseTitle" xml:space="preserve">
     <value>Case title (required)</value>
-  </data>
-  <data name="FlagActionsCaseNumberTaken" xml:space="preserve">
-    <value>A case with that number already exists. Choose another number.</value>
   </data>
   <data name="FlagActionsCreateFailed" xml:space="preserve">
     <value>The case could not be created. Try again.</value>
