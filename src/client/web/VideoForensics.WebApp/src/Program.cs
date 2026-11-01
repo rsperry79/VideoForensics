@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -80,7 +81,8 @@ ServerLogLevel serverLogLevel = new();
 // Framework noise logged at Debug, shown only at Trace and only in live outputs (console, named pipe). Never stored.
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
-serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore.Database.Command");
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Command.Name);
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.ChangeTracking.Name);
 
 static string SourceOf(Serilog.Events.LogEvent e) =>
     e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
