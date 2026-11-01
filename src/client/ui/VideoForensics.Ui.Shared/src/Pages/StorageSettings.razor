@@ -46,7 +46,14 @@ else
         <GridEvents TValue="StorageCategoryStatus" RowSelected="OnRowSelected"></GridEvents>
         <GridColumns>
             <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" MinWidth="100" />
-            <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" MinWidth="400" />
+            <GridColumn HeaderText="@L["ColPath"]" MinWidth="400">
+                <Template>
+                    @{
+                        var status = (StorageCategoryStatus)context;
+                        @StoragePathDisplay.Format(status, L["DefaultLocationPrefix"])
+                    }
+                </Template>
+            </GridColumn>
             <GridColumn HeaderText="@L["ColUsedSpace"]" MinWidth="100">
                 <Template>
                     @{

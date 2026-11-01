@@ -53,6 +53,9 @@
   <data name="ColPath" xml:space="preserve">
     <value>Current Path</value>
   </data>
+  <data name="DefaultLocationPrefix" xml:space="preserve">
+    <value>Default</value>
+  </data>
   <data name="ColUsedSpace" xml:space="preserve">
     <value>Used Space</value>
   </data>
