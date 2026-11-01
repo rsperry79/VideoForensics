@@ -1,5 +1,7 @@
 using System;
 
+using VideoForensics.Core.Logging.Services;
+
 namespace VideoForensics.Core.Logging.Providers
 {
     /// <summary>
@@ -9,6 +11,9 @@ namespace VideoForensics.Core.Logging.Providers
     public sealed class NamedPipeLogGate
     {
         private volatile bool _isOpen;
+
+        /// <summary>The level source the pipe applies its Trace-only rule from; null admits every entry.</summary>
+        public LogLevelSource? Level { get; set; }
 
         /// <summary>True while the provider may create the pipe and write entries to it.</summary>
         public bool IsOpen => _isOpen;
