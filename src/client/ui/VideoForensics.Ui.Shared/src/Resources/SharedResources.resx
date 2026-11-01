@@ -1013,4 +1013,25 @@
   <data name="MediaFitNoClipInHour" xml:space="preserve">
     <value>No clip was recorded in this window.</value>
   </data>
+  <data name="PlaybackTimelineLabel" xml:space="preserve">
+    <value>Playback timeline</value>
+  </data>
+  <data name="PlaybackPlay" xml:space="preserve">
+    <value>Play</value>
+  </data>
+  <data name="PlaybackPause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="PlaybackStepBack" xml:space="preserve">
+    <value>Back 10 seconds</value>
+  </data>
+  <data name="PlaybackRate" xml:space="preserve">
+    <value>Speed {0}x</value>
+  </data>
+  <data name="PlaybackMarker" xml:space="preserve">
+    <value>{0} flag at {1}</value>
+  </data>
+  <data name="PlaybackNow" xml:space="preserve">
+    <value>Now {0}</value>
+  </data>
 </root>
