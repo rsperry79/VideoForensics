@@ -1456,6 +1456,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Resolution")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .ValueGeneratedOnAdd()

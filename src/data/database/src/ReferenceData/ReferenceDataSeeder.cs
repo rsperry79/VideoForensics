@@ -44,6 +44,7 @@ namespace VideoForensics.Data.Database.ReferenceData
                         current.Family = model.Family;
                         current.ModelName = model.ModelName;
                         current.Generation = model.Generation;
+                        current.Resolution = model.Resolution;
                         current.Source = DeviceModelSources.Catalog;
                     }
                     else

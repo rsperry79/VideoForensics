@@ -18,6 +18,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Generation label as the provider names it, null when unknown.</summary>
         public string? Generation { get; set; }
 
+        /// <summary>Live video resolution in pixels ("1920x1080") from the official spec, null when no official spec is known.</summary>
+        public string? Resolution { get; set; }
+
         /// <summary>
         /// Where the row came from: <see cref="DeviceModelSources.Catalog"/> (seeded from a reference source) or
         /// <see cref="DeviceModelSources.Discovered"/> (a kind the catalog did not list, recorded when a device reported it).

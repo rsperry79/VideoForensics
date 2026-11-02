@@ -49,6 +49,7 @@ namespace VideoForensics.Providers.Ring.Services
                     Family = info.Family.ToString(),
                     ModelName = info.ModelName,
                     Generation = info.Generation,
+                    Resolution = info.Resolution,
                 });
 
                 // A model can have several features (the Chime Pro is both a chime and a Wi-Fi bridge), so each feature is its own link row.

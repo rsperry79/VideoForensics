@@ -16,12 +16,14 @@ public enum RingDeviceFamily
 /// <param name="ModelName">Marketing model name, when known.</param>
 /// <param name="Generation">Generation label as Ring names it, for example "2nd Gen", when known.</param>
 /// <param name="IsWifiBridge">True when the device extends the Wi-Fi network for other Ring devices (the Chime Pro).</param>
+/// <param name="Resolution">Live video resolution in pixels ("1920x1080") from Ring's official spec page, when known.</param>
 public sealed record RingModelInfo(
     string Kind,
     RingDeviceFamily Family,
     string? ModelName,
     string? Generation,
-    bool IsWifiBridge)
+    bool IsWifiBridge,
+    string? Resolution = null)
 {
     /// <summary>True for families that carry a camera. Chimes have none.</summary>
     public bool HasCamera => Family is RingDeviceFamily.Doorbell or RingDeviceFamily.Camera;
