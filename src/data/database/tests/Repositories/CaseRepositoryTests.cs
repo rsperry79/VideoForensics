@@ -514,6 +514,47 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task CaseRepository_UpdateDetails_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.UpdateDetailsAsync(Guid.NewGuid(), "Title", null, null, "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_SetScope_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.SetScopeAsync(Guid.NewGuid(), null, null, [], "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_Close_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.CloseAsync(Guid.NewGuid(), "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_Reopen_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.ReopenAsync(Guid.NewGuid(), "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_AddItem_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.AddItemAsync(
+                    Guid.NewGuid(), CaseItemKind.Event, Guid.NewGuid(), "Reason", "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
         public async Task CaseRepository_AddMediaItem_MissingItem_Throws()
         {
             // Arrange

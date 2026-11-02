@@ -590,6 +590,10 @@
         {
             _saveScopeError = ex.Message;
         }
+        catch (KeyNotFoundException)
+        {
+            _saveScopeError = L["CaseNotFound"].Value;
+        }
     }
 
     private void OnCaseStateChanged()
