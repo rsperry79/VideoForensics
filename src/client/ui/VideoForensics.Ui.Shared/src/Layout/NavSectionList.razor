@@ -107,9 +107,14 @@
     /// The single item that owns the current page. Several items can match by prefix (e.g. "/settings" matches
     /// "/settings/operators"), so the most specific match wins; otherwise General would highlight on every admin page.
     /// </summary>
-    private NavItem? ActiveItem => Sections
-        .SelectMany(s => s.Items)
-        .Where(i => NavPathMatcher.Matches(CurrentPath, CurrentQuery, i.Path))
-        .OrderByDescending(i => NavPathMatcher.Specificity(i.Path))
-        .FirstOrDefault();
+    private NavItem? ActiveItem
+    {
+        get
+        {
+            // The owner comes from the whole catalog. When the page's own item is hidden for this operator, nothing is
+            // highlighted, rather than a parent item (e.g. General for /settings/logs) claiming the page.
+            string? owner = NavPathMatcher.BestMatch(NavGroups.All.SelectMany(g => g.Items).SelectMany(i => new[] { i }.Concat(i.Children ?? [])).Select(i => i.Path), CurrentPath, CurrentQuery);
+            return owner is null ? null : Sections.SelectMany(s => s.Items).FirstOrDefault(i => i.Path == owner);
+        }
+    }
 }

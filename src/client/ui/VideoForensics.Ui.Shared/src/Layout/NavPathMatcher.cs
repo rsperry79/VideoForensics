@@ -55,6 +55,22 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         }
 
         /// <summary>
+        /// The most specific item path that matches the current location, or null when none does. The owner is chosen
+        /// from the whole catalog, so a page whose own item is hidden is not claimed by a parent item.
+        /// </summary>
+        /// <param name="itemPaths">Every nav item path in the catalog.</param>
+        /// <param name="currentPath">The current URI's path only.</param>
+        /// <param name="currentQuery">The current URI's query string. May be null/empty.</param>
+        public static string? BestMatch(IEnumerable<string> itemPaths, string currentPath, string? currentQuery)
+        {
+            return itemPaths
+                .Where(path => Matches(currentPath, currentQuery, path))
+                .OrderByDescending(Specificity)
+                .Select(path => (string?)path)
+                .FirstOrDefault();
+        }
+
+        /// <summary>
         /// Ranks an item for the active-item choice when several items match the same page. An item that carries a query
         /// string (e.g. <c>/media?tab=Events</c>) outranks a plain item on the same path (<c>/media</c>), so the plain item
         /// does not win a tie by order. Longer paths rank higher than shorter ones.
