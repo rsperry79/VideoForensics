@@ -56,7 +56,7 @@ public class StorageLocationProvider : IStorageLocationProvider
                 return configured;
             }
 
-            string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
+            string root = GetDefaultStorageRoot();
             return category switch
             {
                 StorageCategory.Database => Path.Combine(root, "Database"),
@@ -72,20 +72,28 @@ public class StorageLocationProvider : IStorageLocationProvider
         }
 
         string? configuredLinux = GetConfiguredLinuxPath(category);
+        string linuxRoot = GetDefaultStorageRoot();
         return configuredLinux is not null
             ? configuredLinux
             : category switch
             {
-                StorageCategory.Database => "/var/lib/videoforensics/Database",
-                StorageCategory.Media => "/var/lib/videoforensics/Media",
-                StorageCategory.TempDownload => "/var/lib/videoforensics/Tmp",
+                StorageCategory.Database => Path.Combine(linuxRoot, "Database"),
+                StorageCategory.Media => Path.Combine(linuxRoot, "Media"),
+                StorageCategory.TempDownload => Path.Combine(linuxRoot, "Tmp"),
+                // Logs keep their own system folder on Linux, unchanged by the default storage root.
                 StorageCategory.Logs => "/var/log/videoforensics",
-                StorageCategory.Reports => "/var/lib/videoforensics/Reports",
-                StorageCategory.Backup => "/var/lib/videoforensics/Backup",
-                StorageCategory.Keys => "/var/lib/videoforensics/Keys",
-                StorageCategory.Exports => "/var/lib/videoforensics/Exports",
+                StorageCategory.Reports => Path.Combine(linuxRoot, "Reports"),
+                StorageCategory.Backup => Path.Combine(linuxRoot, "Backup"),
+                StorageCategory.Keys => Path.Combine(linuxRoot, "Keys"),
+                StorageCategory.Exports => Path.Combine(linuxRoot, "Exports"),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
+    }
+
+    /// <inheritdoc />
+    public string GetDefaultStorageRoot()
+    {
+        return DefaultStorageRootPointer.Read(GetDataRoot()) ?? GetDataRoot();
     }
 
     /// <inheritdoc />

@@ -41,6 +41,14 @@ else if (_storageData is null || _storageData.Categories.Count == 0)
 }
 else
 {
+    <section class="card mb-4" data-testid="default-storage-path-section">
+        <div class="card-body">
+            <h6 class="card-title">@L["DefaultPathHeading"]</h6>
+            <p class="small text-muted mb-2">@L["DefaultPathHint"]</p>
+            <code data-testid="default-storage-path">@_storageData.DefaultRoot</code>
+        </div>
+    </section>
+
     <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridEvents TValue="StorageCategoryStatus" RowSelected="OnRowSelected"></GridEvents>

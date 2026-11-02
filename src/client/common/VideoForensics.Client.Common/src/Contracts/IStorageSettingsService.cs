@@ -19,7 +19,8 @@ namespace VideoForensics.Client.Common.Contracts
     /// Domain type representing the full storage settings state.
     /// </summary>
     public record StorageSettings(
-        IReadOnlyList<StorageCategoryStatus> Categories
+        IReadOnlyList<StorageCategoryStatus> Categories,
+        string DefaultRoot = ""
     );
 
     /// <summary>

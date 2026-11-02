@@ -57,6 +57,18 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task GetStatusAsync_IncludesTheDefaultStorageRoot()
+        {
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetDefaultStorageRoot())
+                .Returns(@"D:\VideoForensics");
+
+            StorageSettings status = await _service.GetStatusAsync(CancellationToken.None);
+
+            Assert.Equal(@"D:\VideoForensics", status.DefaultRoot);
+        }
+
+        [Fact]
         public async Task RelocateAsync_NullPath_ResetsToPlatformDefaultAndClearsOverride()
         {
             // Arrange: Media is on a custom folder that does not exist on disk, so nothing needs to move

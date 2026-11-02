@@ -62,7 +62,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             _logger.LogDebug("Storage settings status retrieved: {CategoryCount} categories", categories.Count);
-            return new StorageSettings(categories);
+            return new StorageSettings(categories, _storageLocationProvider.GetDefaultStorageRoot());
         }
 
         public async Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
