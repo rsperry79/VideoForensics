@@ -9,6 +9,10 @@ namespace VideoForensics.Client.Hosting.Tests
         [InlineData("doorbot")]
         [InlineData("authorized_doorbot")]
         [InlineData("stickup_cam")]
+        [InlineData("doorbell")]
+        [InlineData("doorbell_v4")]
+        [InlineData("stickup_cam_v4")]
+        [InlineData("floodlight_cam")]
         public void CameraTypes_HaveSnapshots(string type)
         {
             Assert.True(SnapshotCaptureService.HasCamera(type));
