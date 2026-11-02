@@ -349,6 +349,8 @@ public class ServerMaintenanceClient_Tests
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.Conflict)]
     [InlineData(HttpStatusCode.Found)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
     public async Task StartAsync_RenewStopsHold_CancelsRepairTokenAndReportsHoldLost(HttpStatusCode renewStatus)
     {
         var renewed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -378,6 +380,96 @@ public class ServerMaintenanceClient_Tests
         Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
         Assert.DoesNotContain("POST /api/v1/database/maintenance/end", handler.Requests);
         Assert.DoesNotContain(console.Messages, m => m.Contains("will retry", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(console.Messages, m => m.Contains("revoke this device on the admin page", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData(10, false)]
+    [InlineData(25, true)]
+    public async Task StartAsync_RenewFailsWithServerError_HoldLostOnlyWhenNoRenewSucceededFor25Minutes(int minutesSinceLastRenew, bool expectLost)
+    {
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var routes = ServerRoutes(pollResponses: ["approved"]);
+        var handler = new FakeHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew"))
+            {
+                clock.Advance(TimeSpan.FromMinutes(minutesSinceLastRenew));
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            }
+
+            return routes(request);
+        });
+        using var http = new HttpClient(handler);
+        FakeDelay delay = NewDelay();
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), delay.Delay, clock);
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+        // Why: waits until the renew failure was handled (hold lost, or the loop began its next wait), so the result is not raced.
+        await WaitUntilAsync(() => session.HoldLost || delay.RenewDelays.Count >= 2);
+        await session.DisposeAsync();
+
+        Assert.Equal(expectLost, session.HoldLost);
+        Assert.Equal(expectLost, repairStop.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task StartAsync_BeginReturnsServiceUnavailable_ReportsDrainWithoutPrompt()
+    {
+        var handler = new FakeHandler(request => request.RequestUri!.AbsolutePath.EndsWith("/maintenance/begin")
+            ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            : ServerRoutes(pollResponses: ["approved"])(request));
+        using var http = new HttpClient(handler);
+        var console = new FakeConsole(interactive: true, answer: true);
+        var client = new ServerMaintenanceClient(http, console, NewDelay().Delay);
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None);
+
+        Assert.Null(session);
+        Assert.Empty(console.Questions);
+        Assert.Contains(console.Messages, m => m.Contains("did not finish its work in time; try again later", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ConfirmHoldAsync_RenewRefused_ReturnsFalseAndReportsHoldLost()
+    {
+        var handler = new FakeHandler(request => request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew")
+            ? new HttpResponseMessage(HttpStatusCode.NotFound)
+            : ServerRoutes(pollResponses: ["approved"])(request));
+        using var http = new HttpClient(handler);
+        // Why: the background renew never fires here, so the only renew is the one ConfirmHoldAsync makes.
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), (wait, ct) => wait == RenewInterval ? Task.Delay(Timeout.Infinite, ct) : Task.CompletedTask);
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+
+        bool confirmed = await session.ConfirmHoldAsync(CancellationToken.None);
+
+        Assert.False(confirmed);
+        Assert.True(session.HoldLost);
+        await session.DisposeAsync();
+        Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
+        Assert.DoesNotContain("POST /api/v1/database/maintenance/end", handler.Requests);
+    }
+
+    [Fact]
+    public async Task ConfirmHoldAsync_RenewAccepted_ReturnsTrueAndKeepsHold()
+    {
+        var handler = new FakeHandler(ServerRoutes(pollResponses: ["approved"]));
+        using var http = new HttpClient(handler);
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), (wait, ct) => wait == RenewInterval ? Task.Delay(Timeout.Infinite, ct) : Task.CompletedTask);
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None);
+        Assert.NotNull(session);
+
+        bool confirmed = await session.ConfirmHoldAsync(CancellationToken.None);
+
+        Assert.True(confirmed);
+        Assert.False(session.HoldLost);
+        await session.DisposeAsync();
     }
 
     // Starts a session with a session-less dispose helper so the poll test can dispose a nullable result.
@@ -465,6 +557,30 @@ public class ServerMaintenanceClient_Tests
 
             PollDelays.Add(delay);
             return Task.CompletedTask;
+        }
+    }
+
+    // Moves only when the test advances it, so the 25-minute rule is tested without real waiting.
+    private sealed class FakeClock(DateTimeOffset start) : TimeProvider
+    {
+        private DateTimeOffset _now = start;
+
+        public void Advance(TimeSpan by) => _now += by;
+
+        public override DateTimeOffset GetUtcNow() => _now;
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (!condition())
+        {
+            if (DateTimeOffset.UtcNow > deadline)
+            {
+                throw new TimeoutException("The condition was not met within 5 seconds.");
+            }
+
+            await Task.Delay(10);
         }
     }
 

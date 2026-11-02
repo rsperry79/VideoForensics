@@ -554,22 +554,24 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
             return 1;
         }
 
+        // Why: the hold is checked once more right before the commit. A dry run or a run without a hold has nothing to check.
+        Func<CancellationToken, Task<bool>>? confirmHold = session.Held ? session.ConfirmHoldAsync : null;
         int exitCode;
         await using (session)
         {
-            exitCode = await ReportDingIdRepairAsync(service, factory, apply: true, backup, repairStop.Token);
+            exitCode = await ReportDingIdRepairAsync(service, factory, apply: true, backup, repairStop.Token, confirmHold);
         }
 
         // Why: the session is disposed above, so HoldLost is final here. A stopped repair is never reported as success.
         if (session.HoldLost)
         {
-            Console.Error.WriteLine($"the server ended maintenance; the repair was stopped; the database may be partly repaired; check the report and the backup at {backupPath ?? "(no backup was written)"}");
+            Console.Error.WriteLine($"the server ended maintenance; the repair was stopped; the repair did not commit or was rolled back; check the database and the backup at {backupPath ?? "(no backup was written)"}");
             return 1;
         }
 
         if (repairStop.IsCancellationRequested)
         {
-            Console.Error.WriteLine($"Ding id repair cancelled. The database may be partly repaired; check the backup at {backupPath ?? "(no backup was written)"}");
+            Console.Error.WriteLine($"Ding id repair cancelled; the repair did not commit or was rolled back; check the database and the backup at {backupPath ?? "(no backup was written)"}");
             return 1;
         }
 
@@ -581,11 +583,18 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
     }
 }
 
-static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbContextFactory<VideoForensicsDbContext> factory, bool apply, Func<CancellationToken, Task> backup, CancellationToken ct)
+static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbContextFactory<VideoForensicsDbContext> factory, bool apply, Func<CancellationToken, Task> backup, CancellationToken ct, Func<CancellationToken, Task<bool>>? confirmHold = null)
 {
     try
     {
-        DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct);
+        DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct, confirmHold);
+        if (report.Aborted)
+        {
+            // Why: the hold check failed before the commit, so the service rolled back. Nothing was committed.
+            Console.Error.WriteLine("Ding id repair stopped before the commit because server maintenance could not be confirmed. Nothing was committed.");
+            return 1;
+        }
+
         // Why: a repair that was stopped mid-run must not print a success summary, even if the service returned normally.
         ct.ThrowIfCancellationRequested();
 
