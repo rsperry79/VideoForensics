@@ -14,6 +14,7 @@ using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
+using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -37,6 +38,7 @@ public class BitrateReview_Tests : BunitContext
     private readonly Mock<IMediaFlagRepository> _flags = new();
     private readonly Mock<IMediaItemRepository> _items = new();
     private readonly Mock<IMediaContentUrlProvider> _urls = new();
+    private readonly Mock<IMediaBitrateSeriesSource> _series = new();
     private readonly Mock<IDeviceRepository> _devices = new();
     private readonly Mock<ICaseRepository> _cases = new();
     private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
@@ -53,6 +55,7 @@ public class BitrateReview_Tests : BunitContext
         _ = Services.AddSingleton(_flags.Object);
         _ = Services.AddSingleton(_items.Object);
         _ = Services.AddSingleton(_urls.Object);
+        _ = Services.AddSingleton(_series.Object);
         _ = Services.AddSingleton(_devices.Object);
         _ = Services.AddSingleton(_cases.Object);
         _ = Services.AddSingleton(_snapshots.Object);

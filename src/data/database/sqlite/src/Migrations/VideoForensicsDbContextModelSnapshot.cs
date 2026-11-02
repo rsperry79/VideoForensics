@@ -2894,6 +2894,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("BitrateEstimated")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("BitrateSeriesJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("ClippedPeakCount")
                         .HasColumnType("INTEGER");
 

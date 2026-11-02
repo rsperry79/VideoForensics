@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Primitives;
 
 using VideoForensics.Data.Core.Contracts;
@@ -61,6 +62,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireRateLimiting("media");
 
             _ = group.MapGet("/bitrate-analysis", GetBitrateAnalysisAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media/{id:guid}/bitrate-series", GetBitrateSeriesAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
@@ -618,6 +623,21 @@ namespace VideoForensics.Client.WebApp.Api
         /// Handler for GET /bitrate-analysis: the measured bit rate figures for the cameras in <paramref name="devices"/> over
         /// the window. Same query rules as <see cref="GetSignalAnalysisAsync"/>.
         /// </summary>
+        /// <summary>Per-second video bitrate of a clip: read from the saved series, or computed and saved on first request.</summary>
+        public static async Task<Results<Ok<IReadOnlyList<BitrateSecondDto>>, NotFound>> GetBitrateSeriesAsync(
+            Guid id,
+            IMediaBitrateSeriesService series,
+            CancellationToken ct)
+        {
+            IReadOnlyList<VideoForensics.Core.Providers.Core.BitrateSecond>? points = await series.GetAsync(id, ct);
+            if (points is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok<IReadOnlyList<BitrateSecondDto>>(points.Select(p => p.ToDto()).ToList());
+        }
+
         public static async Task<IResult> GetBitrateAnalysisAsync(
             string? devices,
             DateTime? from,

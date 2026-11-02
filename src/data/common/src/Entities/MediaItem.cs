@@ -60,6 +60,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>When the bitrate analysis ran; null if it has not been analyzed.</summary>
         public DateTime? BitrateAnalyzedAtUtc { get; set; }
 
+        /// <summary>Per-second video bitrate of the clip as JSON (<c>[{"Second":0,"Kbps":120}, ...]</c>), saved the first time the review page computes it; null until then.</summary>
+        public string? BitrateSeriesJson { get; set; }
+
         /// <summary>Lighting class from the video: "Ir", "ColorNight" or "Day"; null if not analysed.</summary>
         public string? LightingMode { get; set; }
 
