@@ -50,14 +50,15 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             var repo = new RemoteCaseNoteRepository(CreateHttpClientWithHandler(handler));
 
-            VideoForensics.Data.Common.Entities.CaseNote result = await repo.AddAsync(
+            VideoForensics.Data.Common.Entities.Note result = await repo.AddAsync(
                 caseId, "Observed motion at 14:02.", "ignored-actor", CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
             Assert.Equal($"/api/v1/cases/{caseId}/notes", handler.CapturedRequest.RequestUri?.PathAndQuery);
             Assert.Equal(dto.Id, result.Id);
-            Assert.Equal(caseId, result.CaseId);
+            Assert.Equal(VideoForensics.Data.Common.Entities.NoteTargetKind.Case, result.TargetKind);
+            Assert.Equal(caseId, result.TargetId);
             Assert.Equal("Observed motion at 14:02.", result.Body);
             Assert.Equal("operator-1", result.AddedBy);
         }

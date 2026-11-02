@@ -403,10 +403,10 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for GET /{id:guid}/notes</summary>
         public static async Task<IResult> ListCaseNotesAsync(
             Guid id,
-            ICaseNoteRepository notes,
+            INoteRepository notes,
             CancellationToken ct)
         {
-            IReadOnlyList<CaseNote> result = await notes.ListForCaseAsync(id, ct);
+            IReadOnlyList<Note> result = await notes.ListAsync(NoteTargetKind.Case, id, ct);
             return Results.Ok(result.Select(n => n.ToDto()));
         }
 
@@ -414,7 +414,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> AddCaseNoteAsync(
             Guid id,
             AddCaseNoteRequest request,
-            ICaseNoteRepository notes,
+            INoteRepository notes,
             HttpContext context,
             CancellationToken ct)
         {
@@ -427,7 +427,7 @@ namespace VideoForensics.Client.WebApp.Api
             try
             {
                 // The repository enforces the body rules (non-blank, at most 4000 characters after trimming).
-                CaseNote note = await notes.AddAsync(id, request.Body, addedBy, ct);
+                Note note = await notes.AddAsync(NoteTargetKind.Case, id, request.Body, addedBy, ct);
                 return Results.Created($"/api/v1/cases/{id}/notes/{note.Id}", note.ToDto());
             }
             catch (ArgumentException ex)

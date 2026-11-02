@@ -173,22 +173,23 @@ namespace VideoForensics.Core.Api.Contracts
         string Body
     );
 
-    /// <summary>Extension methods for mapping CaseNote entities to/from CaseNoteDto.</summary>
+    /// <summary>Extension methods for mapping case Note entities to/from CaseNoteDto.</summary>
     public static class CaseNoteDtoMapping
     {
-        /// <summary>Converts a CaseNote entity to a CaseNoteDto.</summary>
-        public static CaseNoteDto ToDto(this VideoForensics.Data.Common.Entities.CaseNote entity)
+        /// <summary>Converts a case Note entity to a CaseNoteDto. The note's target ID is the case ID.</summary>
+        public static CaseNoteDto ToDto(this VideoForensics.Data.Common.Entities.Note entity)
         {
-            return new CaseNoteDto(entity.Id, entity.CaseId, entity.Body, entity.AddedBy, entity.AddedAtUtc);
+            return new CaseNoteDto(entity.Id, entity.TargetId, entity.Body, entity.AddedBy, entity.AddedAtUtc);
         }
 
-        /// <summary>Converts a CaseNoteDto to a CaseNote entity.</summary>
-        public static VideoForensics.Data.Common.Entities.CaseNote ToDomain(this CaseNoteDto dto)
+        /// <summary>Converts a CaseNoteDto to a case Note entity (target kind Case).</summary>
+        public static VideoForensics.Data.Common.Entities.Note ToDomain(this CaseNoteDto dto)
         {
-            return new VideoForensics.Data.Common.Entities.CaseNote
+            return new VideoForensics.Data.Common.Entities.Note
             {
                 Id = dto.Id,
-                CaseId = dto.CaseId,
+                TargetKind = VideoForensics.Data.Common.Entities.NoteTargetKind.Case,
+                TargetId = dto.CaseId,
                 Body = dto.Body,
                 AddedBy = dto.AddedBy,
                 AddedAtUtc = dto.AddedAtUtc
