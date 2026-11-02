@@ -86,8 +86,26 @@ public class NavPathMatcher_Tests
     }
 
     [Fact]
-        public void NavPathMatcher_Specificity_ItemWithQueryOutranksPlainItemOnSamePath()
+    public void NavPathMatcher_Specificity_ItemWithQueryOutranksPlainItemOnSamePath()
         {
             Assert.True(NavPathMatcher.Specificity("/media?tab=Events") > NavPathMatcher.Specificity("/media"));
         }
+
+    [Fact]
+    public void NavPathMatcher_BestMatch_PicksTheMostSpecificOwner()
+    {
+        Assert.Equal("/settings/logs", NavPathMatcher.BestMatch(["/settings", "/settings/logs"], "/settings/logs", null));
+    }
+
+    [Fact]
+    public void NavPathMatcher_BestMatch_QueryItemWinsOverPlainItemOnSamePath()
+    {
+        Assert.Equal("/media?tab=Events", NavPathMatcher.BestMatch(["/media", "/media?tab=Events"], "/media", "?tab=Events"));
+    }
+
+    [Fact]
+    public void NavPathMatcher_BestMatch_NoMatch_ReturnsNull()
+    {
+        Assert.Null(NavPathMatcher.BestMatch(["/cases"], "/settings", null));
+    }
     }
