@@ -85,7 +85,8 @@ public sealed class ServerMaintenanceClient
     /// </summary>
     /// <param name="server">Base address of the local server.</param>
     /// <param name="ct">Cancellation token for the sign-in and the begin call.</param>
-    public async Task<ServerMaintenanceSession?> StartAsync(Uri server, CancellationToken ct)
+    /// <param name="repairStop">Source the repair listens to. Cancelled when the server ends the hold early, so the repair writes nothing further. Null when nothing needs to be stopped.</param>
+    public async Task<ServerMaintenanceSession?> StartAsync(Uri server, CancellationToken ct, CancellationTokenSource? repairStop = null)
     {
         ArgumentNullException.ThrowIfNull(server);
 
@@ -106,7 +107,7 @@ public sealed class ServerMaintenanceClient
         {
             case BeginOutcome.Held:
                 _console.Write("Server is in maintenance: new work is held and database connections are released.");
-                return new ServerMaintenanceSession(_http, server, pairing.Value.ApiKey, holdToken!.Value, _console, _delay);
+                return new ServerMaintenanceSession(_http, server, pairing.Value.ApiKey, holdToken!.Value, _console, _delay, repairStop);
             case BeginOutcome.InProgress:
                 _console.Write("Server maintenance is already in progress.");
                 return await ConfirmNoHoldAsync(ct) ? ServerMaintenanceSession.WithoutHold() : null;
@@ -206,7 +207,8 @@ public sealed class ServerMaintenanceClient
         while (DateTimeOffset.UtcNow < deadline)
         {
             // Why: a rate limit names how long to wait, so honour it; the wait never runs past the pairing deadline.
-            TimeSpan wait = retryAfter ?? pollInterval;
+            // Why: a Retry-After of 0 or a value below the server interval would make the console re-poll back to back, so the wait is floored at both.
+            TimeSpan wait = retryAfter is { } limitedWait ? TimeSpan.FromTicks(Math.Max(limitedWait.Ticks, Math.Max(pollInterval.Ticks, MinPollInterval.Ticks))) : pollInterval;
             TimeSpan untilDeadline = deadline - DateTimeOffset.UtcNow;
             if (wait > untilDeadline)
             {
@@ -340,8 +342,10 @@ public sealed class ServerMaintenanceClient
         private readonly Func<TimeSpan, CancellationToken, Task>? _delay;
         private readonly CancellationTokenSource? _renewCancel;
         private readonly Task? _renewLoop;
+        private readonly CancellationTokenSource? _repairStop;
+        private volatile bool _holdLost;
 
-        internal ServerMaintenanceSession(HttpClient http, Uri server, string apiKey, Guid holdToken, IMaintenanceConsole console, Func<TimeSpan, CancellationToken, Task> delay)
+        internal ServerMaintenanceSession(HttpClient http, Uri server, string apiKey, Guid holdToken, IMaintenanceConsole console, Func<TimeSpan, CancellationToken, Task> delay, CancellationTokenSource? repairStop = null)
         {
             _http = http;
             _server = server;
@@ -349,6 +353,7 @@ public sealed class ServerMaintenanceClient
             _holdToken = holdToken;
             _console = console;
             _delay = delay;
+            _repairStop = repairStop;
             _renewCancel = new CancellationTokenSource();
             _renewLoop = RenewUntilCancelledAsync(_renewCancel.Token);
         }
@@ -359,6 +364,9 @@ public sealed class ServerMaintenanceClient
 
         /// <summary>True when the server is holding maintenance for this run.</summary>
         public bool Held => _holdToken is not null;
+
+        /// <summary>True when the server ended the hold before the repair finished (renew returned 404, 409 or a redirect). The repair must then be treated as failed.</summary>
+        public bool HoldLost => _holdLost;
 
         /// <summary>A session that holds nothing. Used when the operator accepted running without maintenance.</summary>
         public static ServerMaintenanceSession WithoutHold() => new();
@@ -374,6 +382,12 @@ public sealed class ServerMaintenanceClient
             _renewCancel!.Cancel();
             await _renewLoop!;
             _renewCancel.Dispose();
+
+            // Why: the server already ended the hold, so an end call would only fail with 404 and print a misleading error.
+            if (_holdLost)
+            {
+                return;
+            }
 
             // The key stays valid after the hold ends; the operator has to revoke it, because revoke needs step-up.
             _console!.Write("The console's device pairing stays on the server. Revoke it on the admin page when you are done.");
@@ -419,15 +433,12 @@ public sealed class ServerMaintenanceClient
                 try
                 {
                     using HttpResponseMessage response = await PostWithTokenAsync("api/v1/database/maintenance/renew", ct);
-                    if (response.StatusCode == HttpStatusCode.NotFound)
+                    // Why: 404 (token not active), 409 (max age reached) and a redirect all mean the hold will not be renewed. Stop the repair
+                    // before it writes more, and do not retry. The caller prints the single message that explains the state.
+                    if (response.StatusCode == HttpStatusCode.NotFound || response.StatusCode == HttpStatusCode.Conflict || IsRedirect(response.StatusCode))
                     {
-                        _console!.Write("Server maintenance is no longer held for this run; the server ended it.");
-                        return;
-                    }
-
-                    if (IsRedirect(response.StatusCode))
-                    {
-                        _console!.Write(RedirectMessage(response.StatusCode) + " Renewal stopped; the server's safety timeout still ends maintenance.");
+                        _holdLost = true;
+                        _repairStop?.Cancel();
                         return;
                     }
 

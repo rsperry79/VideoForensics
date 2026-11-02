@@ -318,6 +318,68 @@ public class ServerMaintenanceClient_Tests
         Assert.False(string.IsNullOrWhiteSpace(error));
     }
 
+    [Fact]
+    public async Task StartAsync_PollRetryAfterZero_WaitsAtLeastTwoSeconds()
+    {
+        bool throttled = false;
+        var routes = ServerRoutes(intervalSeconds: 1, pollResponses: ["approved"]);
+        var handler = new FakeHandler(request =>
+        {
+            if (!throttled && request.RequestUri!.AbsolutePath.EndsWith("/poll"))
+            {
+                throttled = true;
+                var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                limited.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.Zero);
+                return limited;
+            }
+
+            return routes(request);
+        });
+        using var http = new HttpClient(handler);
+        FakeDelay delay = NewDelay();
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), delay.Delay);
+
+        ServerMaintenanceSession_Dispose(await client.StartAsync(Server, CancellationToken.None));
+
+        Assert.Equal(2, delay.PollDelays.Count);
+        Assert.True(delay.PollDelays[1] >= TimeSpan.FromSeconds(2), $"wait was {delay.PollDelays[1]}");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.Found)]
+    public async Task StartAsync_RenewStopsHold_CancelsRepairTokenAndReportsHoldLost(HttpStatusCode renewStatus)
+    {
+        var renewed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var routes = ServerRoutes(pollResponses: ["approved"]);
+        var handler = new FakeHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew"))
+            {
+                renewed.TrySetResult();
+                return new HttpResponseMessage(renewStatus);
+            }
+
+            return routes(request);
+        });
+        using var http = new HttpClient(handler);
+        var console = new FakeConsole(interactive: true, answer: false);
+        var client = new ServerMaintenanceClient(http, console, NewDelay().Delay);
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+        await renewed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await session.DisposeAsync();
+
+        Assert.True(repairStop.IsCancellationRequested);
+        Assert.True(session.HoldLost);
+        Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
+        Assert.DoesNotContain("POST /api/v1/database/maintenance/end", handler.Requests);
+        Assert.DoesNotContain(console.Messages, m => m.Contains("will retry", StringComparison.OrdinalIgnoreCase));
+    }
+
     // Starts a session with a session-less dispose helper so the poll test can dispose a nullable result.
     private static void ServerMaintenanceSession_Dispose(ServerMaintenanceClient.ServerMaintenanceSession? session) =>
         session?.DisposeAsync().AsTask().GetAwaiter().GetResult();

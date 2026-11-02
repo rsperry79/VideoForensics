@@ -109,6 +109,10 @@ namespace VideoForensics.Client.WebApp.Api
                     {
                         return Results.Conflict(ex.Message);
                     }
+                    catch (MaintenanceDrainTimeoutException ex)
+                    {
+                        return Results.Text(ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+                    }
                 })
                 .WithName("BeginDatabaseMaintenanceHold")
                 .WithSummary("Drain work, release database connections and hold maintenance for an offline database tool. Returns the hold token.");

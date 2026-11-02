@@ -504,7 +504,9 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
 static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply, string serverValue, CancellationToken ct)
 {
     var service = new DingIdRepairService();
-    Func<CancellationToken, Task> backup = token => BackupDatabaseAsync(dbPath, token);
+    // Why: the path is kept so the stop message can name the backup that the repair wrote before it was stopped.
+    string? backupPath = null;
+    Func<CancellationToken, Task> backup = async token => backupPath = await BackupDatabaseAsync(dbPath, token);
 
     if (!apply)
     {
@@ -534,10 +536,12 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
         // Why: this client sends the server key, so it must not follow redirects to another address.
         using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
         var maintenance = new ServerMaintenanceClient(http, new ConsoleMaintenancePrompts());
+        // Why: the server ending the hold cancels this source, which stops the repair before it writes more. Ctrl+C cancels it too.
+        using var repairStop = CancellationTokenSource.CreateLinkedTokenSource(cancel.Token);
         ServerMaintenanceClient.ServerMaintenanceSession? session = null;
         try
         {
-            session = await maintenance.StartAsync(server, cancel.Token);
+            session = await maintenance.StartAsync(server, cancel.Token, repairStop);
         }
         catch (OperationCanceledException)
         {
@@ -550,10 +554,26 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
             return 1;
         }
 
+        int exitCode;
         await using (session)
         {
-            return await ReportDingIdRepairAsync(service, factory, apply: true, backup, cancel.Token);
+            exitCode = await ReportDingIdRepairAsync(service, factory, apply: true, backup, repairStop.Token);
         }
+
+        // Why: the session is disposed above, so HoldLost is final here. A stopped repair is never reported as success.
+        if (session.HoldLost)
+        {
+            Console.Error.WriteLine($"the server ended maintenance; the repair was stopped; the database may be partly repaired; check the report and the backup at {backupPath ?? "(no backup was written)"}");
+            return 1;
+        }
+
+        if (repairStop.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"Ding id repair cancelled. The database may be partly repaired; check the backup at {backupPath ?? "(no backup was written)"}");
+            return 1;
+        }
+
+        return exitCode;
     }
     finally
     {
@@ -566,6 +586,8 @@ static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbC
     try
     {
         DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct);
+        // Why: a repair that was stopped mid-run must not print a success summary, even if the service returned normally.
+        ct.ThrowIfCancellationRequested();
 
         Console.WriteLine("\nDing id repair (DoorbotHistory feed):");
         Console.WriteLine($"  Matched: {report.DoorbotHistory.Matched}");
@@ -582,6 +604,11 @@ static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbC
 
         return 0;
     }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+        // The caller prints the message that explains the stop.
+        return 1;
+    }
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Ding id repair failed: {ex.Message} ({ex.GetType().Name})");
@@ -589,7 +616,7 @@ static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbC
     }
 }
 
-static Task BackupDatabaseAsync(string dbPath, CancellationToken ct)
+static Task<string> BackupDatabaseAsync(string dbPath, CancellationToken ct)
 {
     ct.ThrowIfCancellationRequested();
     string backupPath = $"{dbPath}.bak-{DateTime.Now:yyyyMMddHHmmss}";
@@ -606,7 +633,7 @@ static Task BackupDatabaseAsync(string dbPath, CancellationToken ct)
     _ = command.Parameters.AddWithValue("$path", backupPath);
     _ = command.ExecuteNonQuery();
     Console.WriteLine($"Backup written: {backupPath}");
-    return Task.CompletedTask;
+    return Task.FromResult(backupPath);
 }
 
 static void PrintUsage()

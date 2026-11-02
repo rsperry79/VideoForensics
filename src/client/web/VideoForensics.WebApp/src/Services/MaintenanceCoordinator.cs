@@ -6,6 +6,9 @@ namespace VideoForensics.Client.WebApp.Services
     /// <summary>Thrown when a maintenance run is requested while another is already in progress.</summary>
     public sealed class MaintenanceInProgressException(string message, Exception? inner = null) : Exception(message, inner);
 
+    /// <summary>Thrown when a maintenance hold cannot start because in-flight work did not finish draining within the drain timeout.</summary>
+    public sealed class MaintenanceDrainTimeoutException(string message) : Exception(message);
+
     /// <summary>
     /// Runs one server maintenance operation with the same drain the update uses: block new work, wait for in-flight work
     /// to finish, release pooled database connections so the file can be rebuilt, run the operation, then end maintenance
@@ -16,9 +19,17 @@ namespace VideoForensics.Client.WebApp.Services
         IDatabaseMaintenanceService lifecycle,
         IServiceScopeFactory scopes,
         ILogger<MaintenanceCoordinator> logger,
-        MaintenanceHoldTimer holdTimer)
+        MaintenanceHoldTimer holdTimer,
+        TimeSpan? drainTimeout = null)
     {
+        /// <summary>How long a hold waits for in-flight work to drain before it gives up. Long enough for slow requests, short enough that a stuck lease cannot block the server indefinitely.</summary>
+        public static readonly TimeSpan DefaultDrainTimeout = TimeSpan.FromMinutes(10);
+
         private const string AlreadyInProgressMessage = "Server maintenance is already in progress.";
+        private const string DrainTimeoutMessage = "server did not drain in time; try again";
+
+        // Why: a lease that never releases must not hold the server in Draining forever; the timeout ends the drain.
+        private readonly TimeSpan _drainTimeout = drainTimeout ?? DefaultDrainTimeout;
 
         /// <summary>
         /// Runs <paramref name="operation"/> under maintenance and returns its result. Throws <see cref="InvalidOperationException"/>
@@ -101,7 +112,18 @@ namespace VideoForensics.Client.WebApp.Services
                 }
 
                 gateClaimed = true;
-                await drained;
+                using var drainCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                drainCts.CancelAfter(_drainTimeout);
+                try
+                {
+                    await drained.WaitAsync(drainCts.Token);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested && drainCts.IsCancellationRequested)
+                {
+                    // Why: the timeout fired, not the caller. Throwing a distinct type lets the endpoint answer 503 instead of 409.
+                    throw new MaintenanceDrainTimeoutException(DrainTimeoutMessage);
+                }
+
                 gate.MarkRunning(description);
                 await lifecycle.ReleaseAllConnectionsAsync(ct);
                 _ = holdTimer.ArmSafetyTimer(token.Value);

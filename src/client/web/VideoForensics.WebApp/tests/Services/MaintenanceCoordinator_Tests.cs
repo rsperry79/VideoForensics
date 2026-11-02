@@ -29,9 +29,9 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = _scopes.Setup(f => f.CreateScope()).Returns(scope.Object);
         }
 
-        private MaintenanceCoordinator CreateCoordinator(MaintenanceHoldTimer? holdTimer = null) =>
+        private MaintenanceCoordinator CreateCoordinator(MaintenanceHoldTimer? holdTimer = null, TimeSpan? drainTimeout = null) =>
             new(_gate.Object, _lifecycle.Object, _scopes.Object, Mock.Of<ILogger<MaintenanceCoordinator>>(),
-                holdTimer ?? new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout));
+                holdTimer ?? new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout), drainTimeout);
 
         [Fact]
         public async Task RunAsync_Default_EndsMaintenanceAfterSuccess()
@@ -274,6 +274,24 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             IResult result = DatabaseEndpoints.RenewHoldResponse(HoldRenewResult.NotActive);
 
             Assert.Equal(StatusCodes.Status404NotFound, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_DrainNeverCompletes_TimesOutAndLeavesGateIdle()
+        {
+            var neverDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ = _gate.SetupSequence(g => g.BeginDrainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(neverDrained.Task)
+                .Returns(Task.CompletedTask);
+            MaintenanceCoordinator coordinator = CreateCoordinator(drainTimeout: TimeSpan.FromMilliseconds(50));
+
+            _ = await Assert.ThrowsAsync<MaintenanceDrainTimeoutException>(() =>
+                coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None)).WaitAsync(TimeSpan.FromSeconds(5));
+
+            _gate.Verify(g => g.End(), Times.Once);
+            _gate.Verify(g => g.MarkRunning(It.IsAny<string>()), Times.Never);
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+            Assert.NotEqual(Guid.Empty, token);
         }
 
         private sealed class CoordinatorFakeClock(DateTimeOffset start) : TimeProvider
