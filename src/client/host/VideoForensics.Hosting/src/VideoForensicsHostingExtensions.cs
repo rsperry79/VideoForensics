@@ -856,8 +856,9 @@ namespace VideoForensics.Client.Hosting
                 IDownloadEventRepository downloadEventRepo = sp.GetRequiredService<IDownloadEventRepository>();
                 IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
                 IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
+                IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
                 int count = await EventBackfillService.BackfillFromDownloadEventsAsync(
-                    downloadEventRepo, mediaItemRepo, eventRepo, logger, ct);
+                    downloadEventRepo, mediaItemRepo, eventRepo, unitOfWork, logger, ct);
                 await appSettingRepo.SetAsync(backfillFlagKey, "true", ct);
                 logger.LogInformation("Events backfill completed: {Count} record(s).", count);
             }
