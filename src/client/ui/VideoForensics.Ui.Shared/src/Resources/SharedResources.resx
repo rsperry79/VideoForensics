@@ -932,9 +932,6 @@
   <data name="FlagActionsReviewedAt" xml:space="preserve">
     <value>Reviewed {0}</value>
   </data>
-  <data name="FlagActionsNote" xml:space="preserve">
-    <value>Note (optional)</value>
-  </data>
   <data name="ReasonMediaFlagDismissReason_FalsePositive" xml:space="preserve">
     <value>False positive</value>
   </data>

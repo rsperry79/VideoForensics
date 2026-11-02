@@ -2,8 +2,10 @@
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @inject JammingToolsOrchestrator JammingTools
+@inject PairedSessionState SessionState
 @inject IStringLocalizer<JammingPanel> L
 
 @if (_isLoading)
@@ -35,6 +37,7 @@ else
         <SfGrid TValue="JammingIncidentRecord" DataSource="@_incidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridEvents TValue="JammingIncidentRecord" RowSelected="OnIncidentRowSelected"></GridEvents>
             <GridColumns>
                 <GridColumn HeaderText="@L["ColDevice"]" MinWidth="100">
                     <Template>
@@ -68,6 +71,11 @@ else
                 <GridColumn Field="@nameof(JammingIncidentRecord.Notes)" HeaderText="@L["ColNotes"]" MinWidth="100" />
             </GridColumns>
         </SfGrid>
+
+        @if (_selectedIncidentId is { } selectedIncidentId)
+        {
+            <JammingNotes JammingIncidentId="@selectedIncidentId" CanAdd="@_canAdd" IsOpen="@true" />
+        }
     }
 
     <h5 class="mt-4 mb-2">@L["RecordManualIncident"]</h5>
@@ -95,7 +103,6 @@ else
             <SfNumericTextBox TValue="double" @bind-Value="_manualAverageDegradationDb" Step="0.1" Format="N1" />
         </div>
         <SfDropDownList TValue="JammingConfidenceLevel" TItem="JammingConfidenceLevel" @bind-Value="_manualConfidence" DataSource="@(Enum.GetValues<JammingConfidenceLevel>().ToList())" />
-        <SfTextBox @bind-Value="_manualNotes" Multiline="true" Placeholder="@L["ColNotes"]" />
         <SfButton Content="@L["RecordIncident"]" OnClick="RecordIncidentAsync" CssClass="e-primary" Disabled="@_recording" />
 
         @if (!string.IsNullOrEmpty(_recordMessage))
@@ -128,7 +135,6 @@ else
     private int _manualAffectedEventCount = 1;
     private double _manualAverageDegradationDb = 10;
     private JammingConfidenceLevel _manualConfidence = JammingConfidenceLevel.Low;
-    private string _manualNotes = string.Empty;
     private bool _recording;
     private string? _recordMessage;
     private bool? _recordSuccess;
@@ -143,6 +149,27 @@ else
         TargetDeviceIds.Select(id => new KeyValuePair<string, string>(id.ToString(), NameOf(id)));
 
     private string NameOf(Guid deviceId) => _deviceNames.GetValueOrDefault(deviceId, deviceId.ToString("D")[..8]);
+
+    /// <summary>The incident whose notes thread is open: the grid row the operator selected, or null for none.</summary>
+    private Guid? _selectedIncidentId;
+
+    /// <summary>The signed-in operator's role, or null when it is unknown or not a valid role.</summary>
+    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+
+    /// <summary>True when the operator holds the Review role or higher, so may record incidents and add notes.</summary>
+    private bool _canAdd => Role is { } role && role >= OperatorRole.Review;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The role comes from the paired session, which loads on first use; the other review panels do the same.
+        await SessionState.EnsureLoadedAsync();
+    }
+
+    /// <summary>Opens the notes thread of the incident the operator selected in the grid.</summary>
+    private void OnIncidentRowSelected(RowSelectEventArgs<JammingIncidentRecord> args)
+    {
+        _selectedIncidentId = args.Data?.Id;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -165,6 +192,7 @@ else
         _analyzedCount = 0;
         _failures.Clear();
         _incidents = new List<JammingIncidentRecord>();
+        _selectedIncidentId = null;
 
         try
         {
@@ -246,7 +274,7 @@ else
                 _manualAffectedEventCount,
                 _manualAverageDegradationDb,
                 _manualConfidence,
-                string.IsNullOrWhiteSpace(_manualNotes) ? null : _manualNotes,
+                null,
                 CancellationToken.None);
 
             _recordSuccess = success;

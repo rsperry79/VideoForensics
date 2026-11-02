@@ -39,6 +39,7 @@ public class RssiReview_Tests : BunitContext
     private readonly Mock<ICaseRepository> _cases = new();
     private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
     private readonly Mock<ILogger<FlagActionsPanel>> _logger = new();
+    private readonly Mock<INoteRepository> _notes = new();
 
     public RssiReview_Tests()
     {
@@ -56,6 +57,9 @@ public class RssiReview_Tests : BunitContext
         _ = Services.AddSingleton(_snapshots.Object);
         _ = Services.AddSingleton(_logger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddLogging();
+        _ = Services.AddSingleton(_notes.Object);
+        _ = _notes.Setup(n => n.ListAsync(NoteTargetKind.MediaFlag, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
         _ = Services.AddScoped<RightPanelContentService>();
 
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
