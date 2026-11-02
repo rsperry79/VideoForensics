@@ -361,6 +361,7 @@ public class FlagActionsPanel_Tests : BunitContext
         await SignInAsync("Review");
         MediaFlag clip = ClipFlag();
         ForensicCase alpha = OpenCase("Alpha");
+        _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
         _ = _cases
             .Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<CancellationToken>()))
@@ -378,6 +379,34 @@ public class FlagActionsPanel_Tests : BunitContext
         // Assert
         IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
         Assert.Equal(TestLocalizer.Create()["FlagActionsMissingTarget"].Value, alert.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_ClipAdd_MissingCase_ShowsMissingCaseMessage()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        ForensicCase alpha = OpenCase("Alpha");
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases
+            .Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        _ = _cases
+            .Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException($"Case {alpha.Id} not found."));
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change(alpha.Id.ToString());
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-to-case']");
+
+        // Assert
+        IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
+        Assert.Equal(TestLocalizer.Create()["FlagActionsMissingCase"].Value, alert.TextContent.Trim());
+        Assert.NotEqual(TestLocalizer.Create()["FlagActionsMissingTarget"].Value, alert.TextContent.Trim());
     }
 
     [Fact]

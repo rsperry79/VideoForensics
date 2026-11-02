@@ -291,6 +291,10 @@ namespace VideoForensics.Client.WebApp.Api
                 await cases.UpdateDetailsAsync(id, request.Title, request.Description, request.LeadOperatorId, updatedBy, ct);
                 return Results.NoContent();
             }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
             catch (InvalidOperationException ex)
             {
                 return Results.Conflict(ex.Message);
@@ -321,6 +325,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await cases.SetScopeAsync(id, request.ScopeFromUtc, request.ScopeToUtc, request.DeviceIds, updatedBy, ct);
                 return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {
@@ -362,6 +370,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 CaseItem item = await cases.AddItemAsync(id, itemKind, request.TargetId, request.Reason, addedBy, ct);
                 return Results.Created($"/api/v1/cases/{id}/items/{item.Id}", item.ToDto());
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {
@@ -461,6 +473,10 @@ namespace VideoForensics.Client.WebApp.Api
                 await cases.CloseAsync(id, closedBy, ct);
                 return Results.NoContent();
             }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
             catch (InvalidOperationException ex)
             {
                 return Results.Conflict(ex.Message);
@@ -484,6 +500,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await cases.ReopenAsync(id, reopenedBy, ct);
                 return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {

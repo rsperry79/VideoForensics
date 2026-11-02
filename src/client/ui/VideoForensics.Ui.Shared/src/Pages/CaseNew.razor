@@ -140,6 +140,10 @@ else
         {
             _submitError = ex.Message;
         }
+        catch (KeyNotFoundException)
+        {
+            _submitError = L["CaseNotFound"].Value;
+        }
         catch (Exception ex)
         {
             _submitError = L["FailedToCreateCase", ex.Message].Value;

@@ -434,8 +434,18 @@
         }
         catch (KeyNotFoundException)
         {
-            Logger.LogError("Adding flagged clip {MediaItemId} to case {CaseId} failed: the media item is missing", mediaId, caseId);
-            _error = L["FlagActionsMissingTarget"];
+            // The case itself may be the missing entity, so check it before blaming the clip.
+            ForensicCase? picked = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
+            if (picked is null)
+            {
+                Logger.LogError("Adding flagged clip to case failed: the case is missing");
+                _error = L["FlagActionsMissingCase"];
+            }
+            else
+            {
+                Logger.LogError("Adding flagged clip {MediaItemId} to case {CaseId} failed: the media item is missing", mediaId, caseId);
+                _error = L["FlagActionsMissingTarget"];
+            }
         }
         catch (Exception ex)
         {

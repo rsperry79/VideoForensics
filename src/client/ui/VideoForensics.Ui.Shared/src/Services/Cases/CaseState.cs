@@ -88,6 +88,10 @@ public class CaseState
         {
             _ = await _pendingTags.AttachToActiveCaseAsync(this, ct);
         }
+        catch (KeyNotFoundException)
+        {
+            throw;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // Activation has already succeeded and the tags stay pending, so there is nothing to undo here.
