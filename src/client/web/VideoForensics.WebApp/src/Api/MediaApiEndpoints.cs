@@ -243,9 +243,10 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>
-        /// Raises a media-missing alert for a clip whose file is gone from storage, then queues an integrity check for its
-        /// device. The notice marker is the dedupe key: when it already exists, this raises nothing and queues nothing.
-        /// Failures are logged and never change the 404 the caller returns.
+        /// Handles a clip whose file is gone from storage: queues an integrity check of that clip's file, then raises a
+        /// media-missing alert. The notice marker is the dedupe key: when it already exists, this does nothing.
+        /// The marker is written only by the alert, so a failed queue leaves no alert and no marker, and the next
+        /// request for the clip retries both. Failures are logged and never change the 404 the caller returns.
         /// </summary>
         private static async Task RaiseMissingClipAlertAsync(
             MediaItem item,
@@ -264,7 +265,28 @@ namespace VideoForensics.Client.WebApp.Api
                 {
                     return;
                 }
+            }
+            catch (Exception ex)
+            {
+                // Message and type only: no stack trace in the log.
+                logger.LogError("Could not check missing clip alert for {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+                return;
+            }
 
+            // Queued before the alert: if the queue fails, nothing is dispatched and no marker is written, so the next
+            // request retries. The check covers this clip's file only, not its whole device.
+            try
+            {
+                _ = await validationJobs.StartIntegrityForMediaItemAsync(item.Id, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Could not queue integrity check for missing clip {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+                return;
+            }
+
+            try
+            {
                 // The device name is read for display only; a clip with no device still gets an alert.
                 var device = await devices.GetAsync(item.DeviceId, ct);
                 string camera = string.IsNullOrWhiteSpace(device?.Name) ? "an unknown camera" : device.Name;
@@ -282,19 +304,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
             catch (Exception ex)
             {
-                // Message and type only: no stack trace in the log.
                 logger.LogError("Could not raise missing clip alert for {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
-                return;
-            }
-
-            // The validation run is queued only after a new alert, so a repeat request never queues a second run.
-            try
-            {
-                _ = await validationJobs.StartIntegrityForDevicesAsync(new[] { item.DeviceId }, ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Could not queue integrity check for missing clip {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
             }
         }
 

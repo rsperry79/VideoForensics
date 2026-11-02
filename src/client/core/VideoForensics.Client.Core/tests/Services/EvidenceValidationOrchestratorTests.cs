@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -70,6 +71,38 @@ namespace VideoForensics.Client.Core.Tests.Services
 
             _ = await _orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
 
+            _thumbnailsMock.Verify(t => t.ReconcileThumbnailAsync(item, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        /// <summary>
+        /// A single-item check reads only that item. Its missing file is reported as "missing" and no other row of
+        /// its device is loaded or touched.
+        /// </summary>
+        [Fact]
+        public async Task VerifyLocalIntegrityForMediaItemAsync_ChecksOnlyThatItem_ReportsMissingFile()
+        {
+            var item = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                FileName = "clip.mp4",
+                FilePath = Path.Combine(Path.GetTempPath(), "vf-verify-" + Guid.NewGuid(), "clip.mp4"),
+                MediaFormat = "video/mp4",
+                Sha256Hash = "h",
+            };
+            _ = _mediaItemRepositoryMock
+                .Setup(r => r.GetAsync(item.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(item);
+
+            IReadOnlyList<MediaVerificationResult> results =
+                await _orchestrator.VerifyLocalIntegrityForMediaItemAsync(item.Id, CancellationToken.None);
+
+            MediaVerificationResult result = Assert.Single(results);
+            Assert.Equal(item.Id, result.MediaItemId);
+            Assert.Equal("missing", result.Status);
+            Assert.Equal(item.DeviceId, result.DeviceId);
+            _mediaItemRepositoryMock.Verify(r => r.GetByDeviceIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            _deviceRepositoryMock.Verify(r => r.ListAsync(It.IsAny<CancellationToken>()), Times.Never);
             _thumbnailsMock.Verify(t => t.ReconcileThumbnailAsync(item, It.IsAny<CancellationToken>()), Times.Once);
         }
 

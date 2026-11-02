@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// <inheritdoc />
         public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
         {
-            return StartIntegrity(deviceId is { } id ? new[] { id } : null, ct);
+            return StartIntegrity(deviceId is { } id ? new[] { id } : null, mediaItemId: null, ct);
         }
 
         /// <inheritdoc />
@@ -36,14 +36,20 @@ namespace VideoForensics.Client.Hosting.Services
             ArgumentNullException.ThrowIfNull(deviceIds);
             return deviceIds.Count == 0
                 ? throw new ArgumentException("At least one device is required.", nameof(deviceIds))
-                : StartIntegrity(deviceIds.Distinct().ToArray(), ct);
+                : StartIntegrity(deviceIds.Distinct().ToArray(), mediaItemId: null, ct);
+        }
+
+        /// <inheritdoc />
+        public Task<EvidenceValidationJob> StartIntegrityForMediaItemAsync(Guid mediaItemId, CancellationToken ct)
+        {
+            return StartIntegrity(deviceIds: null, mediaItemId, ct);
         }
 
         /// <summary>
-        /// Starts the one integrity job, or returns the running one. A null list means every device; a list verifies
-        /// those devices in turn inside the same job.
+        /// Starts the one integrity job, or returns the running one. A null device list with no media item means every
+        /// device; a device list verifies those devices in turn; a media item verifies only that item's file.
         /// </summary>
-        private Task<EvidenceValidationJob> StartIntegrity(IReadOnlyList<Guid>? deviceIds, CancellationToken ct)
+        private Task<EvidenceValidationJob> StartIntegrity(IReadOnlyList<Guid>? deviceIds, Guid? mediaItemId, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             JobRecord job;
@@ -52,22 +58,23 @@ namespace VideoForensics.Client.Hosting.Services
             {
                 if (TryGetRunning(EvidenceValidationJobKind.Integrity, out JobRecord? running))
                 {
-                    // Joining is only safe for the same devices; otherwise the caller would get results for the wrong set.
-                    return SameScope(running!.Scope, deviceIds)
-                        ? Task.FromResult(running.Snapshot())
+                    // Joining is only safe for the same scope; otherwise the caller would get results for the wrong set.
+                    return SameScope(running!, deviceIds, mediaItemId)
+                        ? Task.FromResult(running!.Snapshot())
                         : Task.FromException<EvidenceValidationJob>(new InvalidOperationException(
-                        "An integrity check is already running for a different set of devices. Wait for it to finish."));
+                        "An integrity check is already running for a different set of devices or media items. Wait for it to finish."));
                 }
 
                 job = NewJob(EvidenceValidationJobKind.Integrity);
                 job.Scope = deviceIds;
+                job.MediaItemId = mediaItemId;
                 job.Append("Integrity check started");
                 _latest[EvidenceValidationJobKind.Integrity] = job;
                 snapshot = job.Snapshot();
             }
 
             _logger.LogInformation("Evidence integrity check started");
-            _ = Task.Run(() => RunIntegrityAsync(job, deviceIds));
+            _ = Task.Run(() => RunIntegrityAsync(job, deviceIds, mediaItemId));
             return Task.FromResult(snapshot);
         }
 
@@ -110,7 +117,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
         }
 
-        private async Task RunIntegrityAsync(JobRecord job, IReadOnlyList<Guid>? deviceIds)
+        private async Task RunIntegrityAsync(JobRecord job, IReadOnlyList<Guid>? deviceIds, Guid? mediaItemId)
         {
             try
             {
@@ -119,7 +126,16 @@ namespace VideoForensics.Client.Hosting.Services
                 var progress = new DelegateProgress(line => AppendLog(job, line));
 
                 List<MediaVerificationResult> results = [];
-                if (deviceIds is null)
+                if (mediaItemId is { } itemId)
+                {
+                    // One item's file only: the device-wide and device-list paths below are never reached for this job.
+                    results.AddRange(await validation.VerifyLocalIntegrityForMediaItemAsync(itemId, CancellationToken.None, progress));
+                    lock (_gate)
+                    {
+                        job.IntegrityResults = results.ToArray();
+                    }
+                }
+                else if (deviceIds is null)
                 {
                     results.AddRange(await validation.VerifyLocalIntegrityAsync(null, CancellationToken.None, progress));
                 }
@@ -206,10 +222,21 @@ namespace VideoForensics.Client.Hosting.Services
             _logger.LogError("Evidence validation job failed: {Reason}", message);
         }
 
-        /// <summary>Two integrity scopes match when both mean every device, or both list the same devices.</summary>
-        private static bool SameScope(IReadOnlyList<Guid>? running, IReadOnlyList<Guid>? requested)
+        /// <summary>
+        /// Two integrity scopes match when both are the same single media item, or, for device scopes, both mean every
+        /// device or both list the same devices. A media-item scope never matches a device scope.
+        /// </summary>
+        private static bool SameScope(JobRecord running, IReadOnlyList<Guid>? deviceIds, Guid? mediaItemId)
         {
-            return running is null || requested is null ? running is null && requested is null : running.ToHashSet().SetEquals(requested);
+            if (running.MediaItemId is not null || mediaItemId is not null)
+            {
+                return running.MediaItemId == mediaItemId;
+            }
+
+            IReadOnlyList<Guid>? runningDevices = running.Scope;
+            return runningDevices is null || deviceIds is null
+                ? runningDevices is null && deviceIds is null
+                : runningDevices.ToHashSet().SetEquals(deviceIds);
         }
 
         /// <summary>Caller must hold <see cref="_gate"/>.</summary>
@@ -273,8 +300,11 @@ namespace VideoForensics.Client.Hosting.Services
             public EvidenceValidationJobState State { get; set; }
             public required DateTime StartedUtc { get; init; }
 
-            /// <summary>Devices this integrity run covers; null means every device.</summary>
+            /// <summary>Devices this integrity run covers; null means every device, or the run covers a single media item.</summary>
             public IReadOnlyList<Guid>? Scope { get; set; }
+
+            /// <summary>Media item this integrity run covers; null for a device-scoped run.</summary>
+            public Guid? MediaItemId { get; set; }
             public DateTime? CompletedUtc { get; set; }
             public MediaVerificationResult[]? IntegrityResults { get; set; }
             public ReconciliationDiscrepancy[]? Discrepancies { get; set; }

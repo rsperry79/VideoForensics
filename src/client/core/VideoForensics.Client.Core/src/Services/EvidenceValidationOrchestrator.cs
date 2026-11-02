@@ -76,43 +76,7 @@ namespace VideoForensics.Client.Core.Services
                     IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDeviceIdAsync(id, ct);
                     foreach (MediaItem? item in mediaItems.Where(m => !m.IsPurged))
                     {
-                        // Reported before hashing so a long file shows as "checking" in the job log while it runs.
-                        progress?.Report($"{item.FileName}: checking");
-
-                        // VerifyAsync itself swallows a missing file as a plain `false` (no
-                        // exception, see IntegrityVerificationService.VerifyAsync) - check
-                        // existence here first so "file gone" and "hash mismatch" aren't
-                        // reported identically to the caller.
-                        MediaVerificationResult result;
-                        string itemPath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
-                        if (!File.Exists(itemPath))
-                        {
-                            result = new MediaVerificationResult
-                            {
-                                MediaItemId = item.Id,
-                                FileName = item.FileName,
-                                Status = "missing",
-                                FailureReason = $"File not found at {itemPath}"
-                            };
-                        }
-                        else
-                        {
-                            bool passed = await _integrityService.VerifyAsync(item.Id, ct);
-                            result = new MediaVerificationResult
-                            {
-                                MediaItemId = item.Id,
-                                FileName = item.FileName,
-                                Status = passed ? "verified" : "failed",
-                                FailureReason = passed ? null : "SHA-256 mismatch against stored hash"
-                            };
-                        }
-
-                        // Same run, same pass: a stored thumbnail name whose file has gone is cleared here, so the
-                        // backfill regenerates it. Runs for every row, including one whose clip is missing.
-                        await _thumbnails.ReconcileThumbnailAsync(item, ct);
-
-                        results.Add(result);
-                        progress?.Report(FormatResultLine(result));
+                        results.Add(await VerifyItemAsync(item, ct, progress));
                     }
 
                     _logger.LogDebug("Verified {Count} media item(s) for device {DeviceId}", mediaItems.Count, id);
@@ -130,6 +94,78 @@ namespace VideoForensics.Client.Core.Services
                 _logger.LogError(ex, "Error during local integrity verification");
                 throw;
             }
+        }
+
+        public async Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityForMediaItemAsync(
+            Guid mediaItemId,
+            CancellationToken ct,
+            IProgress<string>? progress = null)
+        {
+            try
+            {
+                MediaItem? item = await _mediaItemRepository.GetAsync(mediaItemId, ct);
+                if (item is null || item.IsPurged)
+                {
+                    return [];
+                }
+
+                MediaVerificationResult result = await VerifyItemAsync(item, ct, progress);
+                // Tagged with the item's device, as the device-scoped path tags its results.
+                result.DeviceId = item.DeviceId;
+                _logger.LogInformation("Single-item integrity verification completed: {Status}", result.Status);
+                return [result];
+            }
+            catch (Exception ex)
+            {
+                // Message and type only: no stack trace in the log.
+                _logger.LogError("Error during single-item integrity verification: {ExceptionType}: {Reason}", ex.GetType().Name, ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Verifies one media item's file and reconciles its thumbnail. Shared by the device-scoped and single-item
+        /// paths, so both report the same statuses and progress lines.
+        /// </summary>
+        private async Task<MediaVerificationResult> VerifyItemAsync(MediaItem item, CancellationToken ct, IProgress<string>? progress)
+        {
+            // Reported before hashing so a long file shows as "checking" in the job log while it runs.
+            progress?.Report($"{item.FileName}: checking");
+
+            // VerifyAsync itself swallows a missing file as a plain `false` (no
+            // exception, see IntegrityVerificationService.VerifyAsync) - check
+            // existence here first so "file gone" and "hash mismatch" aren't
+            // reported identically to the caller.
+            MediaVerificationResult result;
+            string itemPath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
+            if (!File.Exists(itemPath))
+            {
+                result = new MediaVerificationResult
+                {
+                    MediaItemId = item.Id,
+                    FileName = item.FileName,
+                    Status = "missing",
+                    FailureReason = $"File not found at {itemPath}"
+                };
+            }
+            else
+            {
+                bool passed = await _integrityService.VerifyAsync(item.Id, ct);
+                result = new MediaVerificationResult
+                {
+                    MediaItemId = item.Id,
+                    FileName = item.FileName,
+                    Status = passed ? "verified" : "failed",
+                    FailureReason = passed ? null : "SHA-256 mismatch against stored hash"
+                };
+            }
+
+            // Same run, same pass: a stored thumbnail name whose file has gone is cleared here, so the
+            // backfill regenerates it. Runs for every row, including one whose clip is missing.
+            await _thumbnails.ReconcileThumbnailAsync(item, ct);
+
+            progress?.Report(FormatResultLine(result));
+            return result;
         }
 
         public async Task<IReadOnlyList<ReconciliationDiscrepancy>> ReconcileWithProviderAsync(
