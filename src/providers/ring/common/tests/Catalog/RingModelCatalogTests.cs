@@ -123,7 +123,7 @@ public class RingModelCatalogTests
     public void Version_IsBumpedForNewRows()
     {
         // Existing databases re-seed only when the version rises, so new rows must come with a bump.
-        Assert.Equal(3, RingModelCatalog.Version);
+        Assert.Equal(4, RingModelCatalog.Version);
     }
 
     [Fact]
