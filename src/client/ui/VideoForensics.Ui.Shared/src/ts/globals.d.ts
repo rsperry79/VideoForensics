@@ -7,6 +7,7 @@ interface DotNetObjectReference {
 }
 
 interface Window {
+    vfCaseNoteCheck: (body: string) => { valid: boolean; trimmedLength: number; code: "empty" | "tooLong" | null };
     vfClickElement: (element: HTMLElement | null) => void;
     vfDeviceLabel: { get(): string };
     vfLayoutPrefs: { get(key: string): string | null; set(key: string, value: string): void };
