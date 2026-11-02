@@ -77,5 +77,30 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderBy(c => c.CapturedAtUtc)
                 .ToListAsync(ct);
         }
+
+        /// <summary>
+        /// Gets which of the given devices have a capture attempt within a date range. Filtering and de-duplication run in SQL,
+        /// so only the matching device ids come back.
+        /// </summary>
+        public async Task<IReadOnlySet<Guid>> GetDeviceIdsWithAttemptsAsync(IReadOnlyCollection<Guid> deviceIds, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
+        {
+            if (deviceIds.Count == 0)
+            {
+                return new HashSet<Guid>();
+            }
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+
+            DateTimeOffset fromUtc = from.ToUniversalTime();
+            DateTimeOffset toUtc = to.ToUniversalTime();
+
+            List<Guid> ids = await db.SnapshotCaptures
+                .Where(c => deviceIds.Contains(c.DeviceId) && c.CapturedAtUtc >= fromUtc && c.CapturedAtUtc <= toUtc)
+                .Select(c => c.DeviceId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            return ids.ToHashSet();
+        }
     }
 }

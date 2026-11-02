@@ -208,7 +208,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
             ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
             IProviderDeviceStatus deviceStatus = sp.GetRequiredKeyedService<IProviderDeviceStatus>(RingProviderName);
-            var due = new List<Device>();
+            var candidates = new List<(Device Device, TimeSpan Window)>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (Location location in await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(accountId, ct))
@@ -219,6 +219,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // captured every interval. The window check also covers startup: a camera with no probe in the last window is due at once.
                     if (!seen.Add(device.ProviderDeviceId) || !device.SnapshotCaptureEnabled || !HasCamera(device.Type))
                     {
+                        _logger.LogDebug("Snapshot capture skipped {DeviceName} on {AccountName}: capture disabled or not a camera", device.Name, accountName);
                         continue;
                     }
 
@@ -229,18 +230,23 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
 
                     TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollInterval : interval;
-
-                    // Any attempt inside the window (current or failed) means the device has already been tried this window.
-                    IReadOnlyList<SnapshotCapture> recent = await captures.GetAttemptsForDeviceAsync(device.Id, now - window, now, ct);
-                    if (recent.Count == 0)
-                    {
-                        due.Add(device);
-                    }
+                    candidates.Add((device, window));
                 }
+            }
+
+            // Which candidates already have an attempt inside their window (current or failed). One query per distinct window,
+            // not one per device, so a tick costs at most two lookups per account.
+            var due = new List<Device>();
+            foreach (TimeSpan window in candidates.Select(c => c.Window).Distinct())
+            {
+                IReadOnlyCollection<Guid> ids = candidates.Where(c => c.Window == window).Select(c => c.Device.Id).ToList();
+                IReadOnlySet<Guid> attempted = await captures.GetDeviceIdsWithAttemptsAsync(ids, now - window, now, ct);
+                due.AddRange(candidates.Where(c => c.Window == window && !attempted.Contains(c.Device.Id)).Select(c => c.Device));
             }
 
             if (due.Count == 0)
             {
+                _logger.LogDebug("Snapshot capture: no devices due for {AccountName} ({CandidateCount} candidates already attempted this window)", accountName, candidates.Count);
                 return;
             }
 

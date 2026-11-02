@@ -58,6 +58,22 @@ namespace VideoForensics.Client.Hosting.Remote
             return ListAsync(deviceId, from, to, attemptsOnly: true, ct);
         }
 
+        /// <inheritdoc />
+        public async Task<IReadOnlySet<Guid>> GetDeviceIdsWithAttemptsAsync(IReadOnlyCollection<Guid> deviceIds, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
+        {
+            // The server has no batch endpoint yet, so this makes one attempts call per device. The capture loop runs only on the server tier.
+            var withAttempts = new HashSet<Guid>();
+            foreach (Guid deviceId in deviceIds)
+            {
+                if ((await ListAsync(deviceId, from, to, attemptsOnly: true, ct)).Count > 0)
+                {
+                    _ = withAttempts.Add(deviceId);
+                }
+            }
+
+            return withAttempts;
+        }
+
         private async Task<IReadOnlyList<SnapshotCapture>> ListAsync(Guid deviceId, DateTimeOffset from, DateTimeOffset to, bool attemptsOnly, CancellationToken ct)
         {
             string query = $"deviceId={deviceId:D}&from={Uri.EscapeDataString(from.ToString("O"))}"
