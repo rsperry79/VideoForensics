@@ -64,6 +64,18 @@
                         <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
                     }
                 </select>
+            </div>
+
+            @if (_creatingCase)
+            {
+                <div class="flag-new-case mt-2" data-testid="flag-new-case-section">
+                    <div class="mb-2">
+                        <SfTextBox ID="flag-new-case-title" Placeholder="@L["FlagActionsCaseTitle"].Value" @bind-Value="_newCaseTitle" />
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex gap-2 align-items-center mt-2">
                 <SfButton CssClass="e-outline" Content="@L["FlagActionsAddToCase"].Value" data-testid="flag-add-to-case" Disabled="@(!CanAddToCase || _busy)" OnClick="OnAddToCaseAsync" />
             </div>
 
@@ -89,6 +101,18 @@
                             <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
                         }
                     </select>
+                </div>
+
+                @if (_creatingCase)
+                {
+                    <div class="flag-new-case mt-2" data-testid="flag-new-case-section">
+                        <div class="mb-2">
+                            <SfTextBox ID="flag-new-case-title" Placeholder="@L["FlagActionsCaseTitle"].Value" @bind-Value="_newCaseTitle" />
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2 align-items-center mt-2">
                     <SfButton CssClass="e-outline" Content="@L["FlagActionsWindowConfirm"].Value" data-testid="flag-add-window" Disabled="@(!CanAddWindow || _busy)" OnClick="OnAddWindowAsync" />
                 </div>
             }
@@ -97,15 +121,6 @@
             {
                 <div class="small mt-2" data-testid="flag-window-done">@windowNotice</div>
             }
-        </div>
-    }
-
-    @if (_creatingCase)
-    {
-        <div class="flag-new-case mt-2" data-testid="flag-new-case-section">
-            <div class="mb-2">
-                <SfTextBox ID="flag-new-case-title" Placeholder="@L["FlagActionsCaseTitle"].Value" @bind-Value="_newCaseTitle" />
-            </div>
         </div>
     }
 

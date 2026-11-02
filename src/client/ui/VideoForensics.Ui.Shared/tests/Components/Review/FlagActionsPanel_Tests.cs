@@ -459,6 +459,24 @@ public class FlagActionsPanel_Tests : BunitContext
     }
 
     [Fact]
+    public async Task FlagActionsPanel_CreateCase_TitleComesBeforeAddButton()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(ClipFlag(), new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+
+        // Act
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change("create");
+
+        // Assert: the case title field sits between the picker and the Add to case button.
+        int titleAt = cut.Markup.IndexOf("data-testid=\"flag-new-case-section\"", StringComparison.Ordinal);
+        int addAt = cut.Markup.IndexOf("data-testid=\"flag-add-to-case\"", StringComparison.Ordinal);
+        Assert.True(titleAt >= 0 && addAt >= 0);
+        Assert.True(titleAt < addAt);
+    }
+
+    [Fact]
     public async Task FlagActionsPanel_CreateCase_CreatesThenAddsTheClip()
     {
         // Arrange
