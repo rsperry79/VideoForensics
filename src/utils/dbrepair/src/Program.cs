@@ -568,7 +568,16 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
         // Why: the session is disposed above, so HoldLost is final here. A stopped repair is never reported as success.
         if (session.HoldLost)
         {
-            Console.Error.WriteLine(HoldLostMessages.DescribeHoldLost(repairReport?.Applied == true, backupPath ?? "(no backup was written)"));
+            // Why: a committed repair is a success even though the hold ended early, so scripts must not re-run it.
+            bool applied = repairReport?.Applied == true;
+            string message = HoldLostMessages.DescribeHoldLost(applied, backupPath ?? "(no backup was written)");
+            if (applied)
+            {
+                Console.WriteLine(message);
+                return 0;
+            }
+
+            Console.Error.WriteLine(message);
             return 1;
         }
 
