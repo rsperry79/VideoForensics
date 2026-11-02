@@ -640,7 +640,15 @@ namespace VideoForensics.Providers.Ring.Services
                         string fileTypeSegment = MediaFileNamer.FormatEventTypeSegment(@event.Kind, CvDetectionTypes(@event));
                         string fileName = Path.Combine(outputPath,
                             MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, fileTypeSegment, "mp4"));
-                        string eventIdStr = @event.Id?.ToString() ?? "unknown";
+                        // The Events row and download key use the string ding id. The doorbot id is truncated, so an unlinked row is skipped.
+                        DingIdMatchResult dingLink = await ResolveDingIdAsync(@event, rateLimitCts.Token);
+                        if (dingLink.Outcome != DingIdMatchOutcome.Matched)
+                        {
+                            _logger.LogInformation("Skipped doorbot event for {CameraName}: {Outcome}, no string ding id to link yet", SanitizeForLog(cameraName), dingLink.Outcome);
+                            return;
+                        }
+
+                        string eventIdStr = dingLink.DingId!;
                         DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                         int previousAttemptCount = 0;
                         DownloadEvent? existingRecord = null;
@@ -652,6 +660,10 @@ namespace VideoForensics.Providers.Ring.Services
                         // detection have nothing to compare against.
                         Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
+                        if (eventDbId != Guid.Empty)
+                        {
+                            await LinkDoorbotEventAsync(@event, eventDbId, rateLimitCts.Token);
+                        }
 
                         // Use the device GUID resolved at batch start; all events are for this same device
                         // (filtered by deviceId above). Avoids per-item redundant lookups.
@@ -1454,6 +1466,38 @@ namespace VideoForensics.Providers.Ring.Services
         {
             (string? remainder, string hash) = RingEventPayloadRemainder.Split(apiResponse);
             return (remainder, hash);
+        }
+
+        /// <summary>
+        /// Resolves a doorbot history row to its string ding id. The doorbot id is the ding id with its last three digits
+        /// dropped, so only one prefix match on the device's own candidates counts. Anything else is left unlinked.
+        /// </summary>
+        internal async Task<DingIdMatchResult> ResolveDingIdAsync(Entities.DoorbotHistoryEvent doorbotEvent, CancellationToken ct)
+        {
+            if (doorbotEvent.Id is not { } historyId || doorbotEvent.Doorbot is null)
+            {
+                return new DingIdMatchResult(DingIdMatchOutcome.Unmatched, null);
+            }
+
+            IReadOnlyList<string> candidates = await _dataClient.GetDingIdCandidatesAsync(doorbotEvent.Doorbot.Id, ct);
+            return DingIdPrefixMatcher.Match(historyId.ToString(System.Globalization.CultureInfo.InvariantCulture), candidates);
+        }
+
+        /// <summary>Stores the Events link on the doorbot history row. A failed link is logged and does not stop the download.</summary>
+        private async Task LinkDoorbotEventAsync(Entities.DoorbotHistoryEvent doorbotEvent, Guid eventDbId, CancellationToken ct)
+        {
+            try
+            {
+                await _dataClient.LinkDoorbotHistoryEventAsync(doorbotEvent.Id!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), eventDbId, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to link doorbot event to its Events row ({ExceptionType}): {Message}", ex.GetType().Name, ex.Message);
+            }
         }
 
         private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,

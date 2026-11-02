@@ -22,6 +22,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
         public ILocationRepository Locations { get; set; } = null!;
         public IDeviceRepository Devices { get; set; } = null!;
+        public IDingIdLinkRepository DingIdLinks { get; set; } = null!;
         public IMediaItemRepository MediaItems { get; set; } = null!;
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;

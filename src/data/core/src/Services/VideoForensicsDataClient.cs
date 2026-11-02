@@ -328,6 +328,20 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        public Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct)
+        {
+            return _unitOfWork.ExecuteAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
+        }
+
+        public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
+        {
+            return _unitOfWork.ExecuteAsync(async context =>
+            {
+                await context.DingIdLinks.LinkDoorbotHistoryEventAsync(doorbotHistoryProviderEventId, eventId, ct);
+                return true;
+            }, ct);
+        }
+
         public async Task<Event> UpsertEventAsync(
             Event evt,
             CancellationToken ct,

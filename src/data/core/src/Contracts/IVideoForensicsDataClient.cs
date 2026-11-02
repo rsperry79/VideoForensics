@@ -48,6 +48,12 @@ namespace VideoForensics.Data.Core.Contracts
             List<EventDetectedPerson>? persons = null,
             List<EventDetectionTypeOccurrence>? occurrences = null);
 
+        /// <summary>Returns the string ding ids of one device that a doorbot history id could match, read from the string-id feeds.</summary>
+        Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct);
+
+        /// <summary>Links the doorbot history row with the given numeric id to the Events row for its ding.</summary>
+        Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct);
+
         /// <summary>Resolves the effective start date for a download window, considering the watermark.</summary>
         Task<DateTime> GetWatermarkAsync(Guid deviceId, DateTime requestedStartDate, bool force, CancellationToken ct);
 

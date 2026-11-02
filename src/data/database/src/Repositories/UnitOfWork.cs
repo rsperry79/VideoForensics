@@ -208,6 +208,7 @@ namespace VideoForensics.Data.Database.Repositories
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IDeviceRepository Devices => new UnitOfWorkDeviceRepository(_db, _logger);
+        public IDingIdLinkRepository DingIdLinks => new UnitOfWorkDingIdLinkRepository(_db);
         public IMediaItemRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
         public ICredentialRepository Credentials => new UnitOfWorkCredentialRepository(_db, _serviceProvider.GetRequiredService<ICredentialEncryptionProvider>(), _serviceProvider.GetRequiredService<ILogger<ICredentialRepository>>());
@@ -1574,6 +1575,54 @@ namespace VideoForensics.Data.Database.Repositories
             if (occurrences != null && occurrences.Count > 0)
             {
                 _db.EventDetectionTypeOccurrences.AddRange(occurrences);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Device-scoped ding id candidates and the doorbot-to-Events link. Candidates are read only from the string-id feeds
+    /// (location events and video search), because the doorbot history id is a truncated form of the ding id.
+    /// </summary>
+    internal class UnitOfWorkDingIdLinkRepository : IDingIdLinkRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+
+        public UnitOfWorkDingIdLinkRepository(VideoForensicsDbContext db)
+        {
+            _db = db;
+        }
+
+        public Task<IReadOnlyList<string>> GetCandidateDingIdsAsync(long doorbotId, CancellationToken ct)
+        {
+            // Resolve the device first. Without one, a matching doorbot id on a feed row would have no device to scope it.
+            string providerDeviceId = doorbotId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (!_db.Devices.AsNoTracking().Any(d => d.ProviderDeviceId == providerDeviceId))
+            {
+                return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+            }
+
+            List<string> locationDings = _db.RingLocationEvents.AsNoTracking()
+                .Where(e => e.DoorbotId == doorbotId && e.DingIdString != null)
+                .Select(e => e.DingIdString!)
+                .ToList();
+            List<string> searchDings = _db.RingVideoSearchEvents.AsNoTracking()
+                .Where(v => v.ProviderEventId != null && _db.RingEventDoorbots.Any(x => x.Source == RingEventSources.VideoSearch && x.SourceRowId == v.Id && x.DoorbotId == doorbotId))
+                .Select(v => v.ProviderEventId!)
+                .ToList();
+
+            IReadOnlyList<string> candidates = locationDings.Concat(searchDings).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToList();
+            return Task.FromResult(candidates);
+        }
+
+        public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits.
+            RingDoorbotHistoryEvent? row = _db.RingDoorbotHistoryEvents.FirstOrDefault(e => e.ProviderEventId == doorbotHistoryProviderEventId);
+            if (row is not null)
+            {
+                row.LinkedEventId = eventId;
             }
 
             return Task.CompletedTask;
