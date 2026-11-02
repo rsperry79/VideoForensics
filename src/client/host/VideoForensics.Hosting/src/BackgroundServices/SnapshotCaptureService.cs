@@ -144,11 +144,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             using IDisposable? lease = sp.TryEnter();
             if (lease is null)
             {
+                // Another sync or maintenance holds the lease, so this tick captures nothing. Logged so a silent gap is visible.
+                _logger.LogInformation("Snapshot capture tick skipped: another operation holds the lease");
                 return;
             }
 
-
             IReadOnlyList<ProviderAccount> accounts = await sp.GetRequiredService<IProviderAccountRepository>().ListActiveAsync(ct);
+            _logger.LogDebug("Snapshot capture tick started: {AccountCount} active accounts", accounts.Count);
             var counts = new TickCounts();
 
             foreach (ProviderAccount account in accounts)
@@ -191,6 +193,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (IsPaused(accountId, now))
             {
+                _logger.LogDebug("Snapshot capture skipped for {AccountName}: paused until {PausedUntil:t} local time", accountName, _accountPausedUntil[accountId].ToLocalTime());
                 return;
             }
 
@@ -221,6 +224,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     if (_deviceRetryAfter.TryGetValue(device.Id, out DateTimeOffset retryAfter) && retryAfter > now)
                     {
+                        _logger.LogDebug("Snapshot capture held for {DeviceName} on {AccountName} until {RetryAt:t} after a failure", device.Name, accountName, retryAfter.ToLocalTime());
                         continue;
                     }
 
@@ -240,8 +244,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            _logger.LogDebug("Snapshot capture: {DueCount} devices due for {AccountName} at {IntervalSeconds}s spacing", due.Count, accountName, seconds);
+
             if (!await EnsureSessionAsync(sp, accountId, accountName, ct))
             {
+                _logger.LogWarning("Snapshot capture backed off for {AccountName} for {BackoffSeconds}s: no active session", accountName, AccountErrorBackoff.TotalSeconds);
                 _accountPausedUntil[accountId] = _time.GetUtcNow() + AccountErrorBackoff;
                 return;
             }
@@ -329,6 +336,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 await budgetGuard.RecordCallAsync(RingProviderName, ct);
             }
 
+            // One line per attempt, so a failing device shows its HTTP status and how long the provider took.
+            _logger.LogInformation("Snapshot capture attempt for {DeviceName} on {AccountName}: HTTP {HttpStatus} after {ElapsedMs} ms, image {ImageBytes} bytes",
+                device.Name, accountName, attempt.HttpStatus?.ToString(CultureInfo.InvariantCulture) ?? "none",
+                (long)(_time.GetUtcNow() - attemptedAt).TotalMilliseconds, attempt.Image?.Length ?? 0);
+
             if (attempt.ThrottlePause is { } pause)
             {
                 _accountPausedUntil[account.Id] = _time.GetUtcNow() + pause;
@@ -375,6 +387,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
                 var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: null);
                 _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
+                _logger.LogDebug("Snapshot attempt recorded for {DeviceName} on {AccountName}: HTTP {HttpStatus}", device.Name, accountName, status);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

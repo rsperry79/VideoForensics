@@ -168,9 +168,13 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 await pacer.WaitTurnAsync(cancellationToken);
                 await RequestFreshSnapshotAsync(session, doorbotId);
+                _logger.LogDebug("Snapshot capture for {AccountName}: fresh frame requested for device {DeviceId}, settling for {SettleSeconds}s",
+                    RingAccountDisplayName, providerDeviceId, settleDelay.TotalSeconds);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                _logger.LogWarning("Snapshot capture for {AccountName}: fresh-frame request failed for device {DeviceId}: {ExceptionType}",
+                    RingAccountDisplayName, providerDeviceId, ex.GetType().Name);
                 return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
             }
 
@@ -217,8 +221,16 @@ namespace VideoForensics.Providers.Ring.Services
                 await pacer.WaitTurnAsync(cancellationToken);
                 snapshot = await ReadLatestSnapshotAsync(session, doorbotId, cancellationToken);
                 read++;
+                _logger.LogDebug("Snapshot read {ReadNumber} for device {DeviceId}: HTTP {HttpStatus}, {Bytes} bytes",
+                    read, doorbotId, (int)snapshot.Status, snapshot.Bytes?.Length ?? 0);
             }
             while (snapshot.Status == HttpStatusCode.NotFound && read < MaxSnapshotReads);
+
+            if (snapshot.Status == HttpStatusCode.NotFound)
+            {
+                // Ring still has no frame after every re-read. The device is then marked offline by the capture service.
+                _logger.LogWarning("Snapshot for device {DeviceId} still 404 after {ReadCount} reads", doorbotId, read);
+            }
 
             return snapshot;
         }
@@ -278,8 +290,11 @@ namespace VideoForensics.Providers.Ring.Services
                         : throttled.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
                     return new SnapshotCaptureAttempt(429, null, pause);
                 case UnexpectedOutcomeException outcome:
+                    _logger.LogWarning("Snapshot capture for {AccountName} got HTTP {HttpStatus} from Ring", RingAccountDisplayName, (int)outcome.ReturnedStatusCode);
                     return new SnapshotCaptureAttempt((int)outcome.ReturnedStatusCode, null, null);
                 case DeviceUnknownException unknown:
+                    _logger.LogWarning("Snapshot capture for {AccountName}: Ring does not know the device (HTTP {HttpStatus})",
+                        RingAccountDisplayName, (int)(unknown.StatusCode ?? System.Net.HttpStatusCode.NotFound));
                     return new SnapshotCaptureAttempt((int)(unknown.StatusCode ?? System.Net.HttpStatusCode.NotFound), null, null);
                 default:
                     _logger.LogWarning("Snapshot capture for {AccountName} failed without an HTTP status: {ExceptionType}",
