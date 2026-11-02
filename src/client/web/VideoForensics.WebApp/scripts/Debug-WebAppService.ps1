@@ -193,29 +193,41 @@ function Get-WindowsTerminalPath {
     return $null
 }
 
-# Opens the log viewer as a tab in Windows Terminal when wt.exe is installed, otherwise in its own window. Windows
-# Terminal returns at once, so the viewer's dotnet run process is found by its command line. Returns that process ID,
-# or $null when it cannot be found.
+# Publishes the log viewer into a new folder for this run and returns the path of its dll. The viewer runs from that copy, so
+# its build output in bin is never locked by a viewer that is still open, and a new folder per run avoids overwriting one.
+function Publish-LogViewer {
+    param([Parameter(Mandatory)][string]$ProjectPath, [Parameter(Mandatory)][string]$RunDirectory)
+
+    $target = Join-Path $RunDirectory "logviewer-$(Get-Date -Format 'yyyyMMddHHmmss')"
+    Write-Host "Publishing the log viewer to $target"
+    dotnet publish $ProjectPath -c Debug -o $target
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish of the log viewer failed with exit code $LASTEXITCODE." }
+    return (Join-Path $target "$([System.IO.Path]::GetFileNameWithoutExtension($ProjectPath)).dll")
+}
+
+# Opens the log viewer as a tab in Windows Terminal when wt.exe is installed, otherwise in its own window. The viewer runs
+# the published dll with dotnet, not dotnet run, so the launch never builds. Windows Terminal returns at once, so the
+# viewer's process is found by its command line. Returns that process ID, or $null when it cannot be found.
 function Start-LogViewer {
-    param([Parameter(Mandatory)][string]$ProjectPath)
+    param([Parameter(Mandatory)][string]$DllPath)
 
     $wt = Get-WindowsTerminalPath
     if (-not $wt) {
         Write-Host 'Windows Terminal is not installed. Opening the logger console in its own window.'
-        return (Start-Process -FilePath 'dotnet' -ArgumentList @('run', '--project', $ProjectPath) -WindowStyle Normal -PassThru).Id
+        return (Start-Process -FilePath 'dotnet' -ArgumentList @($DllPath) -WindowStyle Normal -PassThru).Id
     }
 
     # Runs that were already open are excluded, so the new tab's process is the one matched.
     $existing = @(Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
-        Where-Object { $_.CommandLine -and $_.CommandLine.Contains($ProjectPath) } |
+        Where-Object { $_.CommandLine -and $_.CommandLine.Contains($DllPath) } |
         ForEach-Object { $_.ProcessId })
 
     Write-Host 'Opening the logger console as a Windows Terminal tab'
-    Start-Process -FilePath $wt -ArgumentList "-w vf-debug new-tab --title `"Log viewer`" dotnet run --project `"$ProjectPath`"" | Out-Null
+    Start-Process -FilePath $wt -ArgumentList "-w vf-debug new-tab --title `"Log viewer`" dotnet `"$DllPath`"" | Out-Null
 
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         $match = Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" |
-            Where-Object { $_.CommandLine -and $_.CommandLine.Contains($ProjectPath) -and $_.ProcessId -notin $existing } |
+            Where-Object { $_.CommandLine -and $_.CommandLine.Contains($DllPath) -and $_.ProcessId -notin $existing } |
             Select-Object -First 1
         if ($match) { return [int]$match.ProcessId }
         Start-Sleep -Seconds 1
@@ -351,7 +363,8 @@ try {
     # open before the WebApp starts.
     $viewerId = $null
     if (-not $NoLogConsole -and $PSCmdlet.ShouldProcess($logConsoleProject, 'Open logger console')) {
-        $viewerId = Start-LogViewer -ProjectPath $logConsoleProject
+        $viewerDll = Publish-LogViewer -ProjectPath $logConsoleProject -RunDirectory $DebugDirectory
+        $viewerId = Start-LogViewer -DllPath $viewerDll
     }
 
     $processId = $null
