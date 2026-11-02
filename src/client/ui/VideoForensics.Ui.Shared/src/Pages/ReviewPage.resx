@@ -470,12 +470,6 @@
   <data name="ResultTagFailed" xml:space="preserve">
     <value>The tag could not be saved.</value>
   </data>
-  <data name="HoldReasonPlaceholder" xml:space="preserve">
-    <value>Reason for the legal hold</value>
-  </data>
-  <data name="HoldReleaseReasonPlaceholder" xml:space="preserve">
-    <value>Reason for releasing the hold</value>
-  </data>
   <data name="HoldConfirm" xml:space="preserve">
     <value>Confirm</value>
   </data>

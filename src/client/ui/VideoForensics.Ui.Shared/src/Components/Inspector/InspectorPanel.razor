@@ -6,6 +6,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
 @using VideoForensics.Client.Ui.Shared.Services.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Dump
+@using VideoForensics.Client.Ui.Shared.Components.Reasons
 @implements IDisposable
 @inject InspectorState InspectorState
 @using Microsoft.Extensions.Localization
@@ -123,15 +124,13 @@
                 }
                 else if (CaseState.ActiveCase.Status == CaseStatus.Open && _role.HasValue && _role >= OperatorRole.Review)
                 {
-                    <textarea class="inspector-pin-reason"
-                              data-testid="pin-reason"
-                              placeholder="@L["InspectorPinReason"]"
-                              @bind="_pinReason"
-                              @bind:event="oninput"></textarea>
+                    <div class="mb-2">
+                        <ReasonPicker TReason="EvidencePinReason" OtherValue="EvidencePinReason.Other" @bind-Value="_pinReason" @bind-Note="_pinNote" ValidityChanged="OnPinReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+                    </div>
                     <button type="button"
                             class="inspector-pin-button"
                             data-testid="pin-to-case"
-                            disabled="@string.IsNullOrWhiteSpace(_pinReason)"
+                            disabled="@(!_pinReasonValid)"
                             @onclick="OnPinClicked">
                         @L["InspectorPinTo", CaseState.ActiveCase.CaseNumber]
                     </button>
@@ -154,13 +153,11 @@
                 {
                     @if (_pendingAction == PendingEvidenceAction.Hold)
                     {
-                        <textarea class="inspector-action-reason"
-                                  data-testid="hold-reason"
-                                  placeholder="@L["InspectorHoldReason"]"
-                                  @bind="_actionReasonInput"
-                                  @bind:event="oninput"></textarea>
+                        <div class="mb-2">
+                            <ReasonPicker TReason="EvidenceHoldReason" OtherValue="EvidenceHoldReason.Other" @bind-Value="_holdReason" @bind-Note="_actionNote" ValidityChanged="OnActionReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+                        </div>
                         <button type="button" data-testid="confirm-place-hold"
-                                disabled="@string.IsNullOrWhiteSpace(_actionReasonInput)"
+                                disabled="@(!_actionReasonValid)"
                                 @onclick="OnConfirmPlaceHoldClicked">
                             @L["InspectorConfirm"]
                         </button>
@@ -180,13 +177,11 @@
                 {
                     @if (_pendingAction == PendingEvidenceAction.Release)
                     {
-                        <textarea class="inspector-action-reason"
-                                  data-testid="hold-reason"
-                                  placeholder="@L["InspectorReleaseReason"]"
-                                  @bind="_actionReasonInput"
-                                  @bind:event="oninput"></textarea>
+                        <div class="mb-2">
+                            <ReasonPicker TReason="EvidenceReleaseReason" OtherValue="EvidenceReleaseReason.Other" @bind-Value="_releaseReason" @bind-Note="_actionNote" ValidityChanged="OnActionReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+                        </div>
                         <button type="button" data-testid="confirm-release-hold"
-                                disabled="@string.IsNullOrWhiteSpace(_actionReasonInput)"
+                                disabled="@(!_actionReasonValid)"
                                 @onclick="OnConfirmReleaseClicked">
                             @L["InspectorConfirm"]
                         </button>
@@ -233,13 +228,18 @@
     private enum PendingEvidenceAction { None, Hold, Release }
 
     private string _activeTab = "fields";
-    private string _pinReason = string.Empty;
+    private EvidencePinReason? _pinReason;
+    private string? _pinNote;
+    private bool _pinReasonValid;
     private string? _pinError;
     private string? _pinSuccessMessage;
     private OperatorRole? _role;
 
     private PendingEvidenceAction _pendingAction = PendingEvidenceAction.None;
-    private string _actionReasonInput = string.Empty;
+    private EvidenceHoldReason? _holdReason;
+    private EvidenceReleaseReason? _releaseReason;
+    private string? _actionNote;
+    private bool _actionReasonValid;
     private string? _actionSuccessMessage;
     private string? _actionError;
 
@@ -277,12 +277,14 @@
             _activeTab = "fields";
         }
 
-        _pinReason = string.Empty;
+        _pinReason = null;
+        _pinNote = null;
+        _pinReasonValid = false;
         _pinError = null;
         _pinSuccessMessage = null;
 
         _pendingAction = PendingEvidenceAction.None;
-        _actionReasonInput = string.Empty;
+        ClearActionReason();
         _actionSuccessMessage = null;
         _actionError = null;
         _hasHoldOverride = false;
@@ -301,7 +303,7 @@
     private async Task OnPinClicked()
     {
         var pin = InspectorState.Current?.Pin;
-        if (pin is null || CaseState.ActiveCase is null || string.IsNullOrWhiteSpace(_pinReason))
+        if (pin is null || CaseState.ActiveCase is null || _pinReason is not { } pinReason || !_pinReasonValid)
         {
             return;
         }
@@ -313,7 +315,8 @@
 
         try
         {
-            await CaseState.PinAsync(pin.Kind, pin.TargetId, _pinReason, actor, CancellationToken.None);
+            string reason = ReasonText.Build(pinReason, EvidencePinReason.Other, _pinNote);
+            await CaseState.PinAsync(pin.Kind, pin.TargetId, reason, actor, CancellationToken.None);
             _pinSuccessMessage = L["InspectorPinnedTo", caseNumber].Value;
         }
         catch (InvalidOperationException ex)
@@ -343,10 +346,31 @@
         }
     }
 
+    /// <summary>Clears the hold and release reasons, their note, and the validity the picker reported for them.</summary>
+    private void ClearActionReason()
+    {
+        _holdReason = null;
+        _releaseReason = null;
+        _actionNote = null;
+        _actionReasonValid = false;
+    }
+
+    /// <summary>Keeps the pin button disabled until the picker reports a complete reason.</summary>
+    private void OnPinReasonValidityChanged(bool valid)
+    {
+        _pinReasonValid = valid;
+    }
+
+    /// <summary>Keeps the hold or release button disabled until the picker reports a complete reason.</summary>
+    private void OnActionReasonValidityChanged(bool valid)
+    {
+        _actionReasonValid = valid;
+    }
+
     private void BeginAction(PendingEvidenceAction action)
     {
         _pendingAction = action;
-        _actionReasonInput = string.Empty;
+        ClearActionReason();
         _actionSuccessMessage = null;
         _actionError = null;
     }
@@ -354,16 +378,18 @@
     private void OnCancelActionClicked()
     {
         _pendingAction = PendingEvidenceAction.None;
-        _actionReasonInput = string.Empty;
+        ClearActionReason();
     }
 
     private async Task OnConfirmPlaceHoldClicked()
     {
         var actions = InspectorState.Current?.Actions;
-        if (actions?.MediaItemId is not { } mediaItemId || string.IsNullOrWhiteSpace(_actionReasonInput))
+        if (actions?.MediaItemId is not { } mediaItemId || _holdReason is not { } holdReason || !_actionReasonValid)
         {
             return;
         }
+
+        string reason = ReasonText.Build(holdReason, EvidenceHoldReason.Other, _actionNote);
 
         _actionError = null;
 
@@ -374,13 +400,13 @@
         {
             _actionError = L["InspectorSignInRequired"].Value;
             _pendingAction = PendingEvidenceAction.None;
-            _actionReasonInput = string.Empty;
+            ClearActionReason();
             return;
         }
 
         try
         {
-            var hold = await LegalHoldRepository.PlaceAsync(mediaItemId, _actionReasonInput, actor, CancellationToken.None);
+            var hold = await LegalHoldRepository.PlaceAsync(mediaItemId, reason, actor, CancellationToken.None);
             _hasHoldOverride = true;
             _holdOverrideActiveHoldId = hold.Id;
             _actionSuccessMessage = L["InspectorHoldPlaced"].Value;
@@ -392,17 +418,19 @@
         finally
         {
             _pendingAction = PendingEvidenceAction.None;
-            _actionReasonInput = string.Empty;
+            ClearActionReason();
         }
     }
 
     private async Task OnConfirmReleaseClicked()
     {
         var activeHoldId = EffectiveActions?.ActiveHoldId;
-        if (activeHoldId is not { } holdId || string.IsNullOrWhiteSpace(_actionReasonInput))
+        if (activeHoldId is not { } holdId || _releaseReason is not { } releaseReason || !_actionReasonValid)
         {
             return;
         }
+
+        string reason = ReasonText.Build(releaseReason, EvidenceReleaseReason.Other, _actionNote);
 
         _actionError = null;
 
@@ -413,13 +441,13 @@
         {
             _actionError = L["InspectorSignInRequired"].Value;
             _pendingAction = PendingEvidenceAction.None;
-            _actionReasonInput = string.Empty;
+            ClearActionReason();
             return;
         }
 
         try
         {
-            await LegalHoldRepository.ReleaseAsync(holdId, actor, _actionReasonInput, CancellationToken.None);
+            await LegalHoldRepository.ReleaseAsync(holdId, actor, reason, CancellationToken.None);
             _hasHoldOverride = true;
             _holdOverrideActiveHoldId = null;
             _actionSuccessMessage = L["InspectorHoldReleased"].Value;
@@ -431,7 +459,7 @@
         finally
         {
             _pendingAction = PendingEvidenceAction.None;
-            _actionReasonInput = string.Empty;
+            ClearActionReason();
         }
     }
 

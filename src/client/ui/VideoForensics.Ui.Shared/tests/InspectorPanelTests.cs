@@ -9,10 +9,13 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using Syncfusion.Blazor.DropDowns;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
+using VideoForensics.Client.Ui.Shared.Components.Reasons;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
@@ -32,6 +35,9 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
         // Defaults: no active case, no signed-in operator. Pin tests override these with
         // RegisterCaseState / RegisterRoleAsync (later registrations win).
@@ -80,6 +86,15 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
         _ = Services.AddScoped(_ => session);
+    }
+
+    /// <summary>Picks a reason in the reason picker, as the operator does in the dropdown.</summary>
+    private static async Task PickReasonAsync<TReason>(IRenderedComponent<InspectorPanel> component, TReason value)
+        where TReason : struct, Enum
+    {
+        IRenderedComponent<SfDropDownList<TReason?, ReasonOption<TReason>>> dropdown =
+            component.FindComponent<SfDropDownList<TReason?, ReasonOption<TReason>>>();
+        await component.InvokeAsync(() => dropdown.Instance.ValueChanged.InvokeAsync(value));
     }
 
     [Fact]
@@ -415,8 +430,42 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
+        Assert.NotNull(component.FindComponent<ReasonPicker<EvidencePinReason>>());
         var button = (AngleSharp.Html.Dom.IHtmlButtonElement)component.Find("[data-testid='pin-to-case']");
         Assert.True(button.IsDisabled);
+    }
+
+    [Fact]
+    public async Task PinButton_OtherNeedsNote_SendsEnumNameAndTrimmedNote()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var state = new InspectorState();
+        state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, eventId)));
+        _ = Services.AddScoped(_ => state);
+
+        ForensicCase testCase = MakeCase();
+        var repository = new Mock<ICaseRepository>();
+        _ = repository
+            .Setup(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Other: camera was moved", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CaseItem { Id = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = eventId, Reason = "Other: camera was moved", AddedBy = "test" });
+        _ = RegisterCaseState(testCase, repository);
+        await RegisterRoleAsync(OperatorRole.Review);
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+
+        // Act: Other alone is not enough
+        await PickReasonAsync(component, EvidencePinReason.Other);
+
+        // Assert
+        Assert.True(component.Find("[data-testid='pin-to-case']").HasAttribute("disabled"));
+
+        // Act: the note makes the reason complete
+        component.Find("[data-testid='reason-picker-note']").Change("  camera was moved  ");
+        component.WaitForAssertion(() => Assert.False(component.Find("[data-testid='pin-to-case']").HasAttribute("disabled")));
+        component.Find("[data-testid='pin-to-case']").Click();
+
+        // Assert: the enum name, then the trimmed note
+        repository.Verify(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Other: camera was moved", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -431,21 +480,20 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         ForensicCase testCase = MakeCase();
         var repository = new Mock<ICaseRepository>();
         _ = repository
-            .Setup(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Confirmed match", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CaseItem { Id = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = eventId, Reason = "Confirmed match", AddedBy = "test" });
+            .Setup(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Corroboration", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CaseItem { Id = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = eventId, Reason = "Corroboration", AddedBy = "test" });
         _ = RegisterCaseState(testCase, repository);
         await RegisterRoleAsync(OperatorRole.Review);
 
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
-        IElement reasonBox = component.Find("[data-testid='pin-reason']");
-        reasonBox.Input("Confirmed match");
+        await PickReasonAsync(component, EvidencePinReason.Corroboration);
 
         // Act
         IElement button = component.Find("[data-testid='pin-to-case']");
         button.Click();
 
         // Assert
-        repository.Verify(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Confirmed match", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        repository.Verify(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Corroboration", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Contains($"Pinned to {testCase.CaseNumber}", component.Markup);
     }
 
@@ -467,7 +515,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         await RegisterRoleAsync(OperatorRole.Review);
 
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
-        component.Find("[data-testid='pin-reason']").Input("Duplicate reason");
+        await PickReasonAsync(component, EvidencePinReason.RelevantToIncident);
 
         // Act
         component.Find("[data-testid='pin-to-case']").Click();
@@ -528,7 +576,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         await RegisterRoleAsync(OperatorRole.Review);
 
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
-        component.Find("[data-testid='pin-reason']").Input("Confirmed match");
+        await PickReasonAsync(component, EvidencePinReason.Corroboration);
         component.Find("[data-testid='pin-to-case']").Click();
         Assert.Contains($"Pinned to {testCase.CaseNumber}", component.Markup);
 
@@ -540,8 +588,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
 
         // Assert - success message and reason are cleared for the new item
         Assert.DoesNotContain($"Pinned to {testCase.CaseNumber}", component.Markup);
-        var reasonBox = (AngleSharp.Html.Dom.IHtmlTextAreaElement)component.Find("[data-testid='pin-reason']");
-        Assert.Equal(string.Empty, reasonBox.Value);
+        Assert.Null(component.FindComponent<ReasonPicker<EvidencePinReason>>().Instance.Value);
     }
 }
 
@@ -561,6 +608,9 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddScoped(_ => new CaseState(new Mock<ICaseRepository>().Object, new ScopeState()));
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped(_ => _legalHoldRepository.Object);
@@ -584,6 +634,15 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         await session.SetAsync("test-token", operatorId, "Review");
         _ = Services.AddScoped(_ => session);
         return operatorId;
+    }
+
+    /// <summary>Picks a reason in the reason picker, as the operator does in the dropdown.</summary>
+    private static async Task PickReasonAsync<TReason>(IRenderedComponent<InspectorPanel> component, TReason value)
+        where TReason : struct, Enum
+    {
+        IRenderedComponent<SfDropDownList<TReason?, ReasonOption<TReason>>> dropdown =
+            component.FindComponent<SfDropDownList<TReason?, ReasonOption<TReason>>>();
+        await component.InvokeAsync(() => dropdown.Instance.ValueChanged.InvokeAsync(value));
     }
 
     [Fact]
@@ -646,6 +705,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
 
         component.Find("[data-testid='place-legal-hold']").Click();
 
+        Assert.NotNull(component.FindComponent<ReasonPicker<EvidenceHoldReason>>());
         var confirmButton = (AngleSharp.Html.Dom.IHtmlButtonElement)component.Find("[data-testid='confirm-place-hold']");
         Assert.True(confirmButton.IsDisabled);
     }
@@ -656,20 +716,20 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         var mediaItemId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
         Guid operatorId = await SignInOperatorAsync();
-        var placedHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "Active investigation", CreatedBy = "op" };
+        var placedHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "LegalHold", CreatedBy = "op" };
         _ = _legalHoldRepository
-            .Setup(r => r.PlaceAsync(mediaItemId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.PlaceAsync(mediaItemId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(placedHold);
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        component.Find("[data-testid='hold-reason']").Input("Active investigation");
+        await PickReasonAsync(component, EvidenceHoldReason.LegalHold);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
 
         _legalHoldRepository.Verify(
-            r => r.PlaceAsync(mediaItemId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()),
+            r => r.PlaceAsync(mediaItemId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()),
             Times.Once);
         Assert.Contains("Legal hold placed", component.Markup);
         Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
@@ -687,7 +747,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        component.Find("[data-testid='hold-reason']").Input("Active investigation");
+        await PickReasonAsync(component, EvidenceHoldReason.LegalHold);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
 
         _legalHoldRepository.Verify(
@@ -704,18 +764,18 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         var activeHoldId = Guid.NewGuid();
         Guid operatorId = await SignInOperatorAsync();
         _ = _legalHoldRepository
-            .Setup(r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()))
+            .Setup(r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "ResolvedNoLongerNeeded", It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: activeHoldId));
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='release-legal-hold']").Click();
-        component.Find("[data-testid='hold-reason']").Input("No longer needed");
+        await PickReasonAsync(component, EvidenceReleaseReason.ResolvedNoLongerNeeded);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-release-hold']").Click());
 
         _legalHoldRepository.Verify(
-            r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()),
+            r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "ResolvedNoLongerNeeded", It.IsAny<CancellationToken>()),
             Times.Once);
         Assert.Contains("Legal hold released", component.Markup);
         Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
@@ -734,13 +794,51 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='release-legal-hold']").Click();
-        component.Find("[data-testid='hold-reason']").Input("No longer needed");
+        await PickReasonAsync(component, EvidenceReleaseReason.ResolvedNoLongerNeeded);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-release-hold']").Click());
 
         _legalHoldRepository.Verify(
             r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
         Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ConfirmPlaceHold_OtherNeedsNote_SendsEnumNameAndTrimmedNote()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        Guid operatorId = await SignInOperatorAsync();
+        _ = _legalHoldRepository
+            .Setup(r => r.PlaceAsync(mediaItemId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "Other: camera was moved", CreatedBy = "op" });
+
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='place-legal-hold']").Click();
+        await PickReasonAsync(component, EvidenceHoldReason.Other);
+        Assert.True(component.Find("[data-testid='confirm-place-hold']").HasAttribute("disabled"));
+
+        component.Find("[data-testid='reason-picker-note']").Change("  camera was moved  ");
+        component.WaitForAssertion(() => Assert.False(component.Find("[data-testid='confirm-place-hold']").HasAttribute("disabled")));
+        await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
+
+        _legalHoldRepository.Verify(
+            r => r.PlaceAsync(mediaItemId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void ReleaseButton_ShowsReleasePicker_NotHoldPicker()
+    {
+        Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: Guid.NewGuid()));
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='release-legal-hold']").Click();
+
+        Assert.Empty(component.FindComponents<ReasonPicker<EvidenceHoldReason>>());
+        Assert.NotNull(component.FindComponent<ReasonPicker<EvidenceReleaseReason>>());
     }
 
     [Fact]
@@ -792,7 +890,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        component.Find("[data-testid='hold-reason']").Input("reason");
+        await PickReasonAsync(component, EvidenceHoldReason.LegalHold);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
         Assert.Contains("Legal hold placed", component.Markup);
 

@@ -641,17 +641,8 @@
   <data name="InspectorSelectCase" xml:space="preserve">
     <value>Select a case in the left panel to pin evidence.</value>
   </data>
-  <data name="InspectorPinReason" xml:space="preserve">
-    <value>Reason for pinning to this case</value>
-  </data>
   <data name="InspectorPinTo" xml:space="preserve">
     <value>Pin to {0}</value>
-  </data>
-  <data name="InspectorHoldReason" xml:space="preserve">
-    <value>Reason for hold</value>
-  </data>
-  <data name="InspectorReleaseReason" xml:space="preserve">
-    <value>Reason for release</value>
   </data>
   <data name="InspectorConfirm" xml:space="preserve">
     <value>Confirm</value>
@@ -945,6 +936,39 @@
     <value>Duplicate of another flag</value>
   </data>
   <data name="ReasonMediaFlagDismissReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonEvidencePinReason_RelevantToIncident" xml:space="preserve">
+    <value>Relevant to the incident</value>
+  </data>
+  <data name="ReasonEvidencePinReason_RequestedByAuthority" xml:space="preserve">
+    <value>Requested by an authority</value>
+  </data>
+  <data name="ReasonEvidencePinReason_Corroboration" xml:space="preserve">
+    <value>Corroboration of another item</value>
+  </data>
+  <data name="ReasonEvidencePinReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_LegalHold" xml:space="preserve">
+    <value>Legal hold</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_PendingReview" xml:space="preserve">
+    <value>Pending review</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_AwaitingRequest" xml:space="preserve">
+    <value>Awaiting a request</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonEvidenceReleaseReason_ResolvedNoLongerNeeded" xml:space="preserve">
+    <value>Resolved, no longer needed</value>
+  </data>
+  <data name="ReasonEvidenceReleaseReason_CaseClosed" xml:space="preserve">
+    <value>Case closed</value>
+  </data>
+  <data name="ReasonEvidenceReleaseReason_Other" xml:space="preserve">
     <value>Other (note required)</value>
   </data>
   <data name="ReasonPickerLabel" xml:space="preserve">

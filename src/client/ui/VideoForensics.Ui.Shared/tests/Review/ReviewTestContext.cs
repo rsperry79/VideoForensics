@@ -130,6 +130,9 @@ public abstract class ReviewTestContext : BunitContext
         ReviewState = new ReviewPageState(timeProvider) { DebounceDelay = TimeSpan.FromMilliseconds(20) };
 
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
         _ = Services.AddSingleton<TimeProvider>(timeProvider);
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
