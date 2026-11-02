@@ -31,6 +31,7 @@ namespace VideoForensics.Data.Database.Configurations
             _ = b.Entity<RingLocationHistoryPage>().HasIndex(p => p.ProviderLocationId).IsUnique();
             _ = b.Entity<RingLocationHistoryEvent>().HasIndex(e => new { e.ProviderLocationId, e.ProviderEventId }).IsUnique();
             _ = b.Entity<RingDoorbotHistoryEvent>().HasIndex(e => e.ProviderEventId).IsUnique();
+            _ = b.Entity<RingDoorbotHistoryEvent>().HasOne<Event>().WithMany().HasForeignKey(e => e.LinkedEventId).OnDelete(DeleteBehavior.SetNull);
         }
 
         private static void ConfigureNestedEventRows(ModelBuilder b)
