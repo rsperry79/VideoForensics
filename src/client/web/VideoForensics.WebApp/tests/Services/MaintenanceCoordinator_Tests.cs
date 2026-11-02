@@ -294,6 +294,20 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             Assert.NotEqual(Guid.Empty, token);
         }
 
+        [Fact]
+        public async Task RunAsync_DrainNeverCompletes_ThrowsDrainTimeoutAndLeavesGateIdle()
+        {
+            var neverDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ = _gate.Setup(g => g.BeginDrainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(neverDrained.Task);
+            MaintenanceCoordinator coordinator = CreateCoordinator(drainTimeout: TimeSpan.FromMilliseconds(50));
+
+            _ = await Assert.ThrowsAsync<MaintenanceDrainTimeoutException>(() =>
+                coordinator.RunAsync<int>("Compacting the database", (sp, ct) => Task.FromResult(1), CancellationToken.None)).WaitAsync(TimeSpan.FromSeconds(5));
+
+            _gate.Verify(g => g.End(), Times.Once);
+            _gate.Verify(g => g.MarkRunning(It.IsAny<string>()), Times.Never);
+        }
+
         private sealed class CoordinatorFakeClock(DateTimeOffset start) : TimeProvider
         {
             public DateTimeOffset Now { get; set; } = start;

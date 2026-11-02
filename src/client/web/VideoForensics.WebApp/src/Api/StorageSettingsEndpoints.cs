@@ -117,6 +117,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 return Results.Conflict(ex.Message);
             }
+            catch (MaintenanceDrainTimeoutException ex)
+            {
+                return Results.Text(ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         }
     }
 }
