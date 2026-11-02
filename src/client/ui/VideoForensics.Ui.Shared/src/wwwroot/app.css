@@ -22,6 +22,17 @@ html[data-theme="dark"] .btn-outline-secondary {
     color: #dee2e6;
 }
 
+/* Bit rate chart: SVG bars default to black, which disappears on the dark page. Bars take the secondary text
+   token (about 7.6:1 on the dark body); the playhead takes the danger token so it stands out from the bars. */
+.bitrate-series-chart .bitrate-bar {
+    fill: var(--bs-secondary-color);
+}
+
+.bitrate-series-chart .bitrate-playhead {
+    stroke: var(--bs-danger);
+    stroke-width: 2;
+}
+
 /* Bootstrap's .card is hard-coded white, but the Syncfusion dark theme (bootstrap5-dark.css) sets
    checkbox labels to white. In dark mode the cards must go dark too, or those labels vanish. */
 html[data-theme="dark"] .card {
