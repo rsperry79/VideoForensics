@@ -217,9 +217,21 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollInterval, not
                     // captured every interval. The window check also covers startup: a camera with no probe in the last window is due at once.
-                    if (!seen.Add(device.ProviderDeviceId) || !device.SnapshotCaptureEnabled || !HasCamera(device.Type))
+                    if (!seen.Add(device.ProviderDeviceId))
                     {
-                        _logger.LogDebug("Snapshot capture skipped {DeviceName} on {AccountName}: capture disabled or not a camera", device.Name, accountName);
+                        continue;
+                    }
+
+                    // Each skip logs its own reason, so a silent camera shows whether its capture is off or its type has no camera.
+                    if (!device.SnapshotCaptureEnabled)
+                    {
+                        _logger.LogDebug("Snapshot capture skipped {DeviceName} on {AccountName}: capture is off for this device", device.Name, accountName);
+                        continue;
+                    }
+
+                    if (!HasCamera(device.Type))
+                    {
+                        _logger.LogDebug("Snapshot capture skipped {DeviceName} on {AccountName}: device type {DeviceType} has no camera", device.Name, accountName, device.Type ?? "unknown");
                         continue;
                     }
 

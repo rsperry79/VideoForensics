@@ -113,14 +113,55 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
         private readonly List<Device> _devicesList = [];
 
-        private async Task RunTickAsync()
+        /// <summary>Keeps the formatted text of every entry, so a test can assert what the service logged.</summary>
+        private sealed class CapturingLogger<T> : ILogger<T>
+        {
+            public List<string> Messages { get; } = [];
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                Messages.Add(formatter(state, exception));
+            }
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_DisabledDevice_LogsCaptureOffWithoutCameraReason()
+        {
+            _ = AddDevice("12345", captureEnabled: false);
+            var logs = new CapturingLogger<SnapshotCaptureService>();
+
+            await RunTickAsync(logs);
+
+            string skip = Assert.Single(logs.Messages, m => m.Contains("Snapshot capture skipped"));
+            Assert.Contains("capture is off", skip);
+            Assert.DoesNotContain("not a camera", skip);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NonCameraDevice_LogsNoCameraTypeWithoutOffReason()
+        {
+            _ = AddDevice("12345", type: "chime");
+            var logs = new CapturingLogger<SnapshotCaptureService>();
+
+            await RunTickAsync(logs);
+
+            string skip = Assert.Single(logs.Messages, m => m.Contains("Snapshot capture skipped"));
+            Assert.Contains("has no camera", skip);
+            Assert.DoesNotContain("capture is off", skip);
+        }
+
+        private async Task RunTickAsync(ILogger<SnapshotCaptureService>? logger = null)
         {
             ServiceProvider provider = BuildProvider();
             try
             {
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    NullLogger<SnapshotCaptureService>.Instance,
+                    logger ?? NullLogger<SnapshotCaptureService>.Instance,
                     _time,
                     _storage.Object);
                 await service.RunOneTickAsync(CancellationToken.None);
