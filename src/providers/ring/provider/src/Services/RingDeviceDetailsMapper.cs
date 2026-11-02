@@ -74,12 +74,13 @@ namespace VideoForensics.Providers.Ring.Services
         /// Builds the capability row. Ring exposes no resolution, storage or cloud-storage field in the
         /// device data, so those stay null rather than being inferred.
         /// </summary>
-        public static DeviceCapabilities ToCapabilities(RingDeviceDetails details, Guid deviceId, DateTime nowUtc)
+        public static DeviceCapabilities ToCapabilities(RingDeviceDetails details, Guid deviceId, DateTime nowUtc, string? resolution = null)
         {
             return new DeviceCapabilities
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
+                Resolution = resolution,
                 HasAudio = details.HasAudio,
                 HasMotionDetection = details.MotionsEnabled,
                 HasNightVision = details.NightVisionEnabled,

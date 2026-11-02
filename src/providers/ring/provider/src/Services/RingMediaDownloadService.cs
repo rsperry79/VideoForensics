@@ -30,6 +30,9 @@ namespace VideoForensics.Providers.Ring.Services
         // polling UI can show a live feed alongside the aggregate GetStatus() counters.
         private readonly ConcurrentQueue<string> _activityLog = new();
 
+        // The catalog is static data, so the download path reads it directly rather than through a constructor change.
+        private static readonly VideoForensics.Providers.Ring.Catalog.RingModelCatalog ModelCatalog = new();
+
         private const int MaxRetries = 3;
         private const int InitialDelayMs = 1000;
         private const int MaxDelayMs = 30000;
@@ -1991,7 +1994,7 @@ namespace VideoForensics.Providers.Ring.Services
                 await _dataClient.RecordDeviceDetailsAsync(
                     deviceGuid,
                     healthId,
-                    RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc),
+                    RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc, ModelCatalog.Find(details.DeviceFields?.RingKind)?.Resolution),
                     RingDeviceDetailsMapper.ToFeatures(details, deviceGuid),
                     RingDeviceDetailsMapper.ToAlerts(details, deviceGuid),
                     ct,
