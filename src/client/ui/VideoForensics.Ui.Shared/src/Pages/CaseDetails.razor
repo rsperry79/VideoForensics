@@ -5,6 +5,7 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
+@using VideoForensics.Client.Ui.Shared.Components.Case
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Scope
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
@@ -164,6 +165,8 @@ else
             }
         </div>
     </div>
+
+    <CaseNotes CaseId="@CaseId" CanAdd="@CanEdit" IsOpen="@(_case.Status == CaseStatus.Open)" />
 }
 </div>
 

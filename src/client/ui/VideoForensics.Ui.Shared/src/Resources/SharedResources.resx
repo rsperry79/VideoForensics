@@ -1103,4 +1103,37 @@
   <data name="RssiReviewTitle" xml:space="preserve">
     <value>Signal flag review</value>
   </data>
+  <data name="NotesHeading" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="NotesEmpty" xml:space="preserve">
+    <value>No notes yet.</value>
+  </data>
+  <data name="NotesAdd" xml:space="preserve">
+    <value>Add note</value>
+  </data>
+  <data name="NotesBodyLabel" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="NotesRemaining" xml:space="preserve">
+    <value>{0} characters left</value>
+  </data>
+  <data name="NotesTooLong" xml:space="preserve">
+    <value>This note is longer than 4000 characters.</value>
+  </data>
+  <data name="NotesEmptyBody" xml:space="preserve">
+    <value>Enter a note.</value>
+  </data>
+  <data name="NotesClosed" xml:space="preserve">
+    <value>This case is closed; notes cannot be added.</value>
+  </data>
+  <data name="NotesFailed" xml:space="preserve">
+    <value>The note could not be saved. Try again.</value>
+  </data>
+  <data name="NotesSignIn" xml:space="preserve">
+    <value>Sign in to add a note.</value>
+  </data>
+  <data name="NotesLoadFailed" xml:space="preserve">
+    <value>The notes could not be loaded.</value>
+  </data>
 </root>

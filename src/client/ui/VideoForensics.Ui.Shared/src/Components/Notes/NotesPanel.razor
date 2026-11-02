@@ -1,0 +1,219 @@
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
+@using VideoForensics.Client.Ui.Shared.Components
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IJSRuntime JS
+@inject ILogger<NotesPanel> Logger
+@inject IStringLocalizer<SharedResources> L
+
+<div class="card mt-4" data-testid="notes-panel">
+    <div class="card-header">@HeadingText</div>
+    <div class="card-body">
+        @if (_loadError is { } loadError)
+        {
+            <div class="alert alert-danger" role="alert" data-testid="notes-load-error">@loadError</div>
+        }
+        else if (_notes is { } notes)
+        {
+            if (notes.Count == 0)
+            {
+                <p class="text-muted" data-testid="notes-empty">@L["NotesEmpty"]</p>
+            }
+            else
+            {
+                <ol class="list-unstyled mb-0" data-testid="notes-list">
+                    @foreach (NoteItem note in notes)
+                    {
+                        <li class="note-item mb-3" data-testid="notes-item">
+                            <div class="small text-muted">
+                                <span class="note-author">@note.Author</span>
+                                <span class="note-time"><LocalTimeText Value="@note.AddedAtUtc" Format="u" /></span>
+                            </div>
+                            <div class="note-body">@note.Body</div>
+                        </li>
+                    }
+                </ol>
+            }
+        }
+
+        @if (!IsOpen)
+        {
+            <p class="text-muted small mt-2 mb-0" data-testid="notes-closed">@L["NotesClosed"]</p>
+        }
+        else if (CanAdd)
+        {
+            <div class="notes-add mt-3" data-testid="notes-form">
+                <label class="form-label small fw-semibold" for="notes-body">@L["NotesBodyLabel"]</label>
+                <SfTextBox ID="notes-body" Multiline="true" Placeholder="@L["NotesBodyLabel"].Value" @bind-Value="_body" @bind-Value:after="OnBodyChangedAsync" />
+                <div class="small mt-1 @(Remaining < 0 ? "text-danger" : "text-muted")" data-testid="notes-remaining">@RemainingText</div>
+
+                @if (_error is { } error)
+                {
+                    <div class="small text-danger mt-1" role="alert" data-testid="notes-error">@error</div>
+                }
+
+                <div class="d-flex justify-content-end mt-2">
+                    <SfButton CssClass="e-primary" Content="@L["NotesAdd"].Value" data-testid="notes-add" Disabled="@(!CanSubmit)" OnClick="SaveAsync" />
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Longest note body accepted, counted after trimming the ends. Matches the server rule for notes.</summary>
+    private const int MaxBodyLength = 4000;
+
+    /// <summary>Loads the notes to show. Called on first render, when the delegate changes, and after each save.</summary>
+    [Parameter, EditorRequired]
+    public Func<CancellationToken, Task<IReadOnlyList<NoteItem>>> LoadNotes { get; set; } = default!;
+
+    /// <summary>
+    /// Saves a note with its trimmed body. It may throw: ArgumentException (blank or too long), InvalidOperationException (closed),
+    /// UnauthorizedAccessException (not signed in), or any other exception, which shows the generic failure text.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Func<string, CancellationToken, Task> AddNote { get; set; } = default!;
+
+    /// <summary>
+    /// Optional owner-specific text for an exception from <see cref="AddNote"/>. Returning null uses the panel's own text for that exception.
+    /// </summary>
+    [Parameter]
+    public Func<Exception, string?>? AddErrorText { get; set; }
+
+    /// <summary>True when the signed-in operator may add a note. The caller decides this.</summary>
+    [Parameter]
+    public bool CanAdd { get; set; }
+
+    /// <summary>False for a closed list: the notes are shown, but no add form is.</summary>
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    /// <summary>Card heading. Null uses the default "Notes" text.</summary>
+    [Parameter]
+    public string? Heading { get; set; }
+
+    /// <summary>
+    /// Result of the TypeScript entry check (<c>vfCaseNoteCheck</c>) for the current body. Its shape is set by the script.
+    /// </summary>
+    public sealed record NoteEntryCheck(bool Valid, int TrimmedLength, string? Code);
+
+    private IReadOnlyList<NoteItem>? _notes;
+    private Func<CancellationToken, Task<IReadOnlyList<NoteItem>>>? _loadedWith;
+    private string? _loadError;
+    private string _body = "";
+    private NoteEntryCheck? _check;
+
+    // Set when the script is not loaded or the call fails. The entry is then left to the server.
+    private bool _jsUnavailable;
+    private bool _saving;
+    private string? _error;
+
+    private string HeadingText => Heading ?? L["NotesHeading"].Value;
+
+    private int Remaining => MaxBodyLength - _body.Trim().Length;
+
+    private string RemainingText => Remaining < 0
+        ? L["NotesTooLong"].Value
+        : L["NotesRemaining", Remaining].Value;
+
+    private bool CanSubmit => !_saving && (_jsUnavailable || _check?.Valid == true);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ReferenceEquals(_loadedWith, LoadNotes))
+        {
+            return;
+        }
+
+        _loadedWith = LoadNotes;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            _notes = await LoadNotes(CancellationToken.None);
+            _loadError = null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Notes could not be loaded: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+            _loadError = L["NotesLoadFailed"].Value;
+        }
+    }
+
+    /// <summary>Runs the TypeScript entry check on the current body, so the add button follows what the operator types.</summary>
+    private async Task OnBodyChangedAsync()
+    {
+        _error = null;
+        if (_jsUnavailable)
+        {
+            return;
+        }
+
+        try
+        {
+            _check = await JS.InvokeAsync<NoteEntryCheck?>("vfCaseNoteCheck", _body);
+        }
+        catch (Exception ex)
+        {
+            _jsUnavailable = true;
+            _check = null;
+            Logger.LogWarning("Note entry check unavailable: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        string trimmed = _body.Trim();
+        bool saved = false;
+        _saving = true;
+        _error = null;
+        try
+        {
+            await AddNote(trimmed, CancellationToken.None);
+            saved = true;
+        }
+        catch (Exception ex)
+        {
+            _error = ErrorTextFor(ex, trimmed);
+        }
+        finally
+        {
+            _saving = false;
+        }
+
+        if (saved)
+        {
+            _body = "";
+            _check = null;
+            await ReloadAsync();
+        }
+    }
+
+    /// <summary>Maps a failed save to the text the operator sees. Only an unexpected exception is logged.</summary>
+    private string ErrorTextFor(Exception ex, string trimmed)
+    {
+        string? owner = AddErrorText?.Invoke(ex);
+        if (owner is not null)
+        {
+            return owner;
+        }
+
+        switch (ex)
+        {
+            case ArgumentException:
+                return trimmed.Length > MaxBodyLength ? L["NotesTooLong"].Value : L["NotesEmptyBody"].Value;
+            case InvalidOperationException:
+                return L["NotesClosed"].Value;
+            case UnauthorizedAccessException:
+                return L["NotesSignIn"].Value;
+            default:
+                Logger.LogError("Note could not be saved: {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+                return L["NotesFailed"].Value;
+        }
+    }
+}
