@@ -36,15 +36,22 @@ function Get-CimInstance {
     # The first query lists runs that already exist (none here); later queries find the new viewer run.
     $script:cimCalls++
     if ($script:cimCalls -eq 1) { return }
-    [pscustomobject]@{ ProcessId = 4242; CommandLine = 'dotnet run --project F:\fake\Viewer.csproj' }
+    [pscustomobject]@{ ProcessId = 4242; CommandLine = 'dotnet F:\fake\viewer-copy\VideoForensics.Utils.LogViewer.dll' }
 }
 
-$processId = Start-LogViewer -ProjectPath 'F:\fake\Viewer.csproj'
+$processId = Start-LogViewer -DllPath 'F:\fake\viewer-copy\VideoForensics.Utils.LogViewer.dll'
 if ($script:launched.Count -ne 1) { $failures += "expected one wt.exe launch, got $($script:launched.Count)" }
 else {
     $arguments = [string]$script:launched[0].Args
     if ($arguments -notmatch '-w vf-debug new-tab') {
         $failures += "log viewer tab must target the named window 'vf-debug'; got: $arguments"
+    }
+    # Running the published copy never builds, so the build output stays unlocked.
+    if ($arguments -match '\brun\b') {
+        $failures += "log viewer must run the published copy, not 'dotnet run' (which rebuilds the project); got: $arguments"
+    }
+    if ($arguments -notmatch 'viewer-copy') {
+        $failures += "log viewer must run the copy folder, not the project's bin output; got: $arguments"
     }
 }
 if ($processId -ne 4242) { $failures += "expected PID 4242, got $processId" }
