@@ -382,7 +382,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 if (forensicCase.Status == CaseStatus.Closed)
@@ -412,6 +412,10 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating case {CaseId}", id);
@@ -433,7 +437,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 if (forensicCase.Status == CaseStatus.Closed)
@@ -483,6 +487,10 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting case scope for {CaseId}", id);
@@ -507,7 +515,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 forensicCase.Status = CaseStatus.Closed;
@@ -532,6 +540,10 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error closing case {CaseId}", id);
@@ -547,7 +559,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 forensicCase.Status = CaseStatus.Open;
@@ -572,6 +584,10 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reopening case {CaseId}", id);
@@ -593,7 +609,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == caseId, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {caseId} not found.");
+                    throw new KeyNotFoundException($"Case {caseId} not found.");
                 }
 
                 if (forensicCase.Status == CaseStatus.Closed)
@@ -661,6 +677,10 @@ namespace VideoForensics.Data.Database.Repositories
                 return caseItem;
             }
             catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (KeyNotFoundException)
             {
                 throw;
             }

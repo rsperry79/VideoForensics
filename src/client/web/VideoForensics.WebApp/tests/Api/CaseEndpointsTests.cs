@@ -725,6 +725,95 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task UpdateCaseDetailsAsync_MissingCase_ReturnsNotFound()
+        {
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            var request = new UpdateCaseDetailsRequestDto("New Title", null, null);
+            _ = cases.Setup(c => c.UpdateDetailsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new KeyNotFoundException("Case not found."));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.UpdateCaseDetailsAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
+
+            _ = Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
+        public async Task SetCaseScopeAsync_MissingCase_ReturnsNotFound()
+        {
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            var request = new SetCaseScopeRequestDto(null, null, []);
+            _ = cases.Setup(c => c.SetScopeAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new KeyNotFoundException("Case not found."));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.SetCaseScopeAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
+
+            _ = Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
+        public async Task AddCaseItemAsync_MissingCase_ReturnsNotFound()
+        {
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            var request = new AddCaseItemRequestDto("Event", Guid.NewGuid(), "Test reason");
+            _ = cases.Setup(c => c.AddItemAsync(It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new KeyNotFoundException("Case not found."));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.AddCaseItemAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
+
+            _ = Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
+        public async Task AddCaseItemAsync_MissingMediaItem_ReturnsNotFound()
+        {
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
+            var request = new AddCaseItemRequestDto("Media", mediaItemId, "Test reason");
+            _ = cases.Setup(c => c.AddItemAsync(It.IsAny<Guid>(), CaseItemKind.Media, mediaItemId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new KeyNotFoundException($"Media item {mediaItemId} not found."));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.AddCaseItemAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
+
+            _ = Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
+        public async Task CloseCaseAsync_MissingCase_ReturnsNotFound()
+        {
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            _ = cases.Setup(c => c.CloseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new KeyNotFoundException("Case not found."));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.CloseCaseAsync(Guid.NewGuid(), cases.Object, context, CancellationToken.None);
+
+            _ = Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
+        public async Task ReopenCaseAsync_MissingCase_ReturnsNotFound()
+        {
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            _ = cases.Setup(c => c.ReopenAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new KeyNotFoundException("Case not found."));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.ReopenCaseAsync(Guid.NewGuid(), cases.Object, context, CancellationToken.None);
+
+            _ = Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
         public async Task ReopenCaseAsync_Success_ReturnsNoContent()
         {
             (Mock<ICaseRepository>? cases, _) = CreateMocks();

@@ -129,6 +129,11 @@ namespace VideoForensics.Client.Hosting.Remote
             var request = new UpdateCaseDetailsRequestDto(title, description, leadOperatorId);
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync($"/api/v1/cases/{id}", request, cancellationToken: ct);
 
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new KeyNotFoundException("Case was not found.");
+            }
+
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
                 string message = await response.Content.ReadAsStringAsync(ct);
@@ -149,6 +154,11 @@ namespace VideoForensics.Client.Hosting.Remote
         {
             var request = new SetCaseScopeRequestDto(fromUtc, toUtc, deviceIds);
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync($"/api/v1/cases/{id}/scope", request, cancellationToken: ct);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new KeyNotFoundException("Case was not found.");
+            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
@@ -173,6 +183,11 @@ namespace VideoForensics.Client.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/cases/{id}/close", null, ct);
 
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new KeyNotFoundException("Case was not found.");
+            }
+
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
                 string message = await response.Content.ReadAsStringAsync(ct);
@@ -186,6 +201,11 @@ namespace VideoForensics.Client.Hosting.Remote
         public async Task ReopenAsync(Guid id, string reopenedBy, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/cases/{id}/reopen", null, ct);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new KeyNotFoundException("Case was not found.");
+            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
@@ -207,6 +227,11 @@ namespace VideoForensics.Client.Hosting.Remote
         {
             var request = new AddCaseItemRequestDto(kind.ToString(), targetId, reason);
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"/api/v1/cases/{caseId}/items", request, cancellationToken: ct);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new KeyNotFoundException("Case or media item was not found.");
+            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
