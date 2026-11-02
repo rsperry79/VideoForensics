@@ -85,6 +85,7 @@ serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Com
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.ChangeTracking.Name);
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Connection.Name);
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Infrastructure.Name);
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Query.Name);
 
 static string SourceOf(Serilog.Events.LogEvent e) =>
     e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
