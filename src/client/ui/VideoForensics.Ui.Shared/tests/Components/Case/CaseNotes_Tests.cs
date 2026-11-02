@@ -37,7 +37,7 @@ public class CaseNotes_Tests : BunitContext
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_notes.Object);
-        _ = _notes.Setup(n => n.ListForCaseAsync(_caseId, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<CaseNote>());
+        _ = _notes.Setup(n => n.ListForCaseAsync(_caseId, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
 
         _ = JSInterop.Setup<NoteEntryCheck>("vfCaseNoteCheck", inv => inv.Arguments.Count > 0 && inv.Arguments[0] is string text && text.Trim().Length > 0)
             .SetResult(new NoteEntryCheck(true, 5, null));
@@ -51,9 +51,9 @@ public class CaseNotes_Tests : BunitContext
         _ = Services.AddScoped(_ => session);
     }
 
-    private static CaseNote Note(Guid caseId, string author, string body)
+    private static Note Note(Guid caseId, string author, string body)
     {
-        return new CaseNote { Id = Guid.NewGuid(), CaseId = caseId, Body = body, AddedBy = author, AddedAtUtc = new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc) };
+        return new Note { Id = Guid.NewGuid(), TargetKind = NoteTargetKind.Case, TargetId = caseId, Body = body, AddedBy = author, AddedAtUtc = new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc) };
     }
 
     [Fact]
