@@ -1991,10 +1991,13 @@ namespace VideoForensics.Providers.Ring.Services
                 // The download path can see a new kind before the settings sync does, so it records unknown kinds too.
                 await RingModelDiscovery.RecordUnknownKindAsync(
                     _dataClient, details.DeviceFields?.RingKind, RingModelDiscovery.FamilyFor(devices, providerDeviceId), ct);
+                // Official spec first. Without one, the largest video resolution this device has produced stands in for it.
+                string? resolution = ModelCatalog.Find(details.DeviceFields?.RingKind)?.Resolution
+                    ?? VideoForensics.Providers.Ring.Catalog.ResolutionPicker.LargestByPixels(await _dataClient.GetObservedVideoResolutionsAsync(deviceGuid, ct));
                 await _dataClient.RecordDeviceDetailsAsync(
                     deviceGuid,
                     healthId,
-                    RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc, ModelCatalog.Find(details.DeviceFields?.RingKind)?.Resolution),
+                    RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc, resolution),
                     RingDeviceDetailsMapper.ToFeatures(details, deviceGuid),
                     RingDeviceDetailsMapper.ToAlerts(details, deviceGuid),
                     ct,

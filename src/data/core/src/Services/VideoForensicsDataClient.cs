@@ -186,6 +186,11 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        public Task<IReadOnlyList<string>> GetObservedVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
+        {
+            return _mediaItemRepository.GetDistinctVideoResolutionsAsync(deviceId, ct);
+        }
+
         public async Task<bool> IsMediaAlreadyDownloadedAsync(Guid deviceId, string providerEventId, CancellationToken ct)
         {
             return await _downloadEventRepository.ExistsForProviderEventIdAsync(deviceId, providerEventId, ct);
