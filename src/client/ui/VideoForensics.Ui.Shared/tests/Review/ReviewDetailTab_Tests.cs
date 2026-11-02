@@ -239,6 +239,27 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewDetailTab_ExpandedEvent_RowShowsTheDetectionTypeInsteadOfTheEventType()
+    {
+        // Arrange
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base);
+        ServeFrom([evt]);
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
+            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
+        ReviewState.SetCameras([Devices[0].Id]);
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+
+        // Act
+        cut.Find(Toggle(evt)).Click();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
+        Assert.Equal(L["DetectionType_human"].Value, cut.Find(Toggle(evt)).QuerySelector(".review-event-type")!.TextContent.Trim());
+    }
+
+    [Fact]
     public void ReviewDetailTab_ExpandedEvent_ShowsTheDetectionFieldsAndLocalizedLabels()
     {
         // Arrange

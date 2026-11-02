@@ -130,7 +130,7 @@
                                 @onclick="() => ToggleEventAsync(evt.Id)">
                             <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
                             <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
-                            <span class="review-event-type">@TypeLabel(evt.EventType)</span>
+                            <span class="review-event-type">@RowTypeLabel(evt)</span>
                         </button>
 
                         @if (expanded)
@@ -721,6 +721,17 @@
 
         LocalizedString label = L["EventType_" + eventType.ToLowerInvariant()];
         return label.ResourceNotFound ? eventType : label.Value;
+    }
+
+    /// <summary>The row's label: the event's detection type once its detail has loaded, else the event's own type.</summary>
+    private string RowTypeLabel(Event evt)
+    {
+        if (_details.TryGetValue(evt.Id, out EventDetail? detail) && detail?.Detection is { DetectionType: { } detectionType } && !string.IsNullOrWhiteSpace(detectionType))
+        {
+            return DetectionLabel(detectionType, evt.EventType);
+        }
+
+        return TypeLabel(evt.EventType);
     }
 
     /// <summary>
