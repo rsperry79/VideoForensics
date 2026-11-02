@@ -33,6 +33,17 @@ html[data-theme="dark"] .btn-outline-secondary {
     stroke-width: 2;
 }
 
+/* One violet mark per bit rate dip run. Violet, not a text token, so it stays apart from the gray bars and the red playhead. */
+.bitrate-series-chart .bitrate-dip-mark {
+    stroke: #b388ff;
+    stroke-width: 2;
+    cursor: pointer;
+}
+
+.bitrate-series-chart .bitrate-bar {
+    cursor: pointer;
+}
+
 /* Bootstrap's .card is hard-coded white, but the Syncfusion dark theme (bootstrap5-dark.css) sets
    checkbox labels to white. In dark mode the cards must go dark too, or those labels vanish. */
 html[data-theme="dark"] .card {

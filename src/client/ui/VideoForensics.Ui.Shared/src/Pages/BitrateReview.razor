@@ -6,6 +6,7 @@
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Core.Api.Contracts
@@ -60,13 +61,13 @@
         {
             @if (_points is { } points)
             {
-                <BitrateSeriesChart Points="@points" Player="@player" />
+                <BitrateSeriesChart Points="@points" Player="@player" StartUtc="@_clipStartUtc" />
             }
 
             <PlaybackTimeline Player="@player"
                               WindowStartUtc="@_windowStart"
                               WindowEndUtc="@_windowEnd"
-                              Markers="@_markers"
+                              MarkTimes="@_dipTimes"
                               OnRateChange="@(r => _rate = r)" />
         }
     </Timeline>
@@ -92,7 +93,7 @@
     private MediaPlayer? _player;
     private DateTime _windowStart;
     private DateTime _windowEnd;
-    private IReadOnlyCollection<MediaFlag> _markers = [];
+    private IReadOnlyList<DateTime> _dipTimes = [];
     private IReadOnlyList<BitrateSecondDto>? _points;
 
     /// <summary>How far the timeline window extends beyond the flag window when the clip has no known duration.</summary>
@@ -116,7 +117,7 @@
         _flag = null;
         _player = null;
         _source = null;
-        _markers = [];
+        _dipTimes = [];
         _points = null;
         _state = MediaFitState.FlagNotFound;
         try
@@ -128,7 +129,6 @@
             }
 
             _flag = flag;
-            _markers = [flag];
             _windowStart = flag.WindowStartUtc - FlagWindowPad;
             _windowEnd = flag.WindowEndUtc + FlagWindowPad;
 
@@ -155,6 +155,11 @@
             _state = MediaStill.IsStill(clip) ? MediaFitState.Still : MediaFitState.Playable;
             _clipStartUtc = clip.RecordedAtUtc;
             _points = await BitrateSeries.GetAsync(clip.Id, ct);
+            _dipTimes = _points is null
+                ? []
+                : BitrateChartGeometry.DipRunStarts(_points)
+                    .Select(second => clip.RecordedAtUtc.AddSeconds(BitrateChartGeometry.SeekSeconds(second)))
+                    .ToList();
             _clipDurationSeconds = clip.DurationSeconds;
             if (clip.DurationSeconds is { } seconds)
             {
@@ -180,7 +185,6 @@
     private void OnFlagChanged(MediaFlag updated)
     {
         _flag = updated;
-        _markers = [updated];
     }
 
     public void Dispose()

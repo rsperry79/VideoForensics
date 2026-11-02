@@ -25,6 +25,10 @@
                 <SliderEvents TValue="double" ValueChange="OnScrubAsync" />
             </SfSlider>
             <div class="playback-timeline-markers">
+                @foreach (DateTime at in _markTimesInWindow)
+                {
+                    <span class="playback-timeline-mark" data-testid="timeline-mark" style="left: @MarkTimePercent(at).ToString(CultureInfo.InvariantCulture)%;"></span>
+                }
                 @foreach (MediaFlag flag in _markersInWindow)
                 {
                     <button type="button"
@@ -59,6 +63,10 @@
     [Parameter]
     public IReadOnlyCollection<MediaFlag> Markers { get; set; } = [];
 
+    /// <summary>Moments to mark on the scrub bar, such as the seconds a bit rate dip starts. Times outside the window are not drawn.</summary>
+    [Parameter]
+    public IReadOnlyList<DateTime> MarkTimes { get; set; } = [];
+
     /// <summary>Raised when a flag marker is clicked.</summary>
     [Parameter]
     public EventCallback<MediaFlag> OnMarkerClick { get; set; }
@@ -85,6 +93,7 @@
     private double _position;
     private double? _nowSeconds;
     private List<MediaFlag> _markersInWindow = [];
+    private List<DateTime> _markTimesInWindow = [];
     private CancellationTokenSource? _pollCts;
     private Task? _pollTask;
 
@@ -103,6 +112,9 @@
         _minSeconds = SecondsSinceEpoch(WindowStartUtc);
         _maxSeconds = SecondsSinceEpoch(WindowEndUtc);
         _position = Math.Clamp(_position, _minSeconds, Math.Max(_minSeconds, _maxSeconds));
+        _markTimesInWindow = MarkTimes
+            .Where(at => at >= WindowStartUtc && at <= WindowEndUtc)
+            .ToList();
         _markersInWindow = Markers
             .Where(flag => flag.WindowStartUtc >= WindowStartUtc && flag.WindowStartUtc <= WindowEndUtc)
             .OrderBy(flag => flag.WindowStartUtc)
@@ -131,6 +143,12 @@
     {
         _position = args.Value;
         await Player.SeekToUtcAsync(DateTime.UnixEpoch.AddSeconds(args.Value));
+    }
+
+    private double MarkTimePercent(DateTime at)
+    {
+        double span = _maxSeconds - _minSeconds;
+        return span <= 0 ? 0 : (SecondsSinceEpoch(at) - _minSeconds) / span * 100;
     }
 
     private double MarkerPercent(MediaFlag flag)

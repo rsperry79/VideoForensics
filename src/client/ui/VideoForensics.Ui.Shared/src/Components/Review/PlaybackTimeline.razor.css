@@ -43,6 +43,18 @@
     cursor: pointer;
 }
 
+/* Marks at the seconds a bit rate dip starts. Not clickable, so they never block the scrub bar. */
+.playback-timeline-mark {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    margin-left: -1px;
+    border-radius: 1px;
+    background-color: #b388ff;
+    pointer-events: none;
+}
+
 .playback-timeline-marker:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 2px;

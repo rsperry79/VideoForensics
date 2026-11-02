@@ -1,4 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
@@ -35,6 +36,36 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services.Review
         public void BitrateChartGeometry_PlayheadFraction_BeforeStart_IsZero()
         {
             Assert.Equal(0, BitrateChartGeometry.PlayheadFraction(-5, 60));
+        }
+
+        [Fact]
+        public void BitrateChartGeometry_SeekSeconds_IsMidpointOfTheClickedSecond()
+        {
+            Assert.Equal(0.5, BitrateChartGeometry.SeekSeconds(0));
+            Assert.Equal(12.5, BitrateChartGeometry.SeekSeconds(12));
+        }
+
+        [Fact]
+        public void BitrateChartGeometry_DipRunStarts_FlatSeries_HasNoDips()
+        {
+            Assert.Empty(BitrateChartGeometry.DipRunStarts(Series(100, 100, 100, 100)));
+        }
+
+        [Fact]
+        public void BitrateChartGeometry_DipRunStarts_ContiguousDip_IsOneRunAtItsFirstSecond()
+        {
+            Assert.Equal([2], BitrateChartGeometry.DipRunStarts(Series(100, 100, 20, 20, 100)));
+        }
+
+        [Fact]
+        public void BitrateChartGeometry_DipRunStarts_SeparateDips_GetOneRunEach()
+        {
+            Assert.Equal([1, 4], BitrateChartGeometry.DipRunStarts(Series(100, 20, 100, 100, 20, 100)));
+        }
+
+        private static List<BitrateSecondDto> Series(params long[] kbps)
+        {
+            return kbps.Select((value, second) => new BitrateSecondDto(second, value)).ToList();
         }
 
         [Fact]
