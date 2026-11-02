@@ -935,8 +935,29 @@
   <data name="FlagActionsNote" xml:space="preserve">
     <value>Note (optional)</value>
   </data>
-  <data name="FlagActionsReason" xml:space="preserve">
-    <value>Reason (required to dismiss)</value>
+  <data name="ReasonMediaFlagDismissReason_FalsePositive" xml:space="preserve">
+    <value>False positive</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_CameraMaintenance" xml:space="preserve">
+    <value>Camera maintenance or repositioning</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_WeatherOrLighting" xml:space="preserve">
+    <value>Weather or lighting change</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_Duplicate" xml:space="preserve">
+    <value>Duplicate of another flag</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonPickerLabel" xml:space="preserve">
+    <value>Reason</value>
+  </data>
+  <data name="ReasonPickerNote" xml:space="preserve">
+    <value>Describe the reason</value>
+  </data>
+  <data name="ReasonPickerPlaceholder" xml:space="preserve">
+    <value>Choose a reason</value>
   </data>
   <data name="FlagActionsKeep" xml:space="preserve">
     <value>Keep</value>
