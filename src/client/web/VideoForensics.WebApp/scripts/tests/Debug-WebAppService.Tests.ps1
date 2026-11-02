@@ -76,6 +76,19 @@ finally {
     Remove-Item -Recurse -Force $fakeLocal
 }
 
+# Test 3: publishing returns only the dll path. dotnet publish prints build lines, which must not reach the caller's output.
+Import-DebugFunction 'Publish-LogViewer'
+function dotnet {
+    'MSBuild output line'
+    'VideoForensics.Utils.LogViewer -> F:\fake\out\'
+    $global:LASTEXITCODE = 0
+}
+$published = @(Publish-LogViewer -ProjectPath 'F:\fake\Viewer.csproj' -RunDirectory 'F:\fake\run')
+if ($published.Count -ne 1 -or $published[0] -isnot [string]) {
+    $failures += "Publish-LogViewer must return one path string, got $($published.Count) item(s)"
+}
+Remove-Item Function:\dotnet
+
 if ($failures) {
     $failures | ForEach-Object { Write-Error $_ }
     exit 1
