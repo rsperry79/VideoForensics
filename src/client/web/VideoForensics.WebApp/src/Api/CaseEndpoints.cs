@@ -83,6 +83,17 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Remove case item")
                 .WithDescription("Soft-removes an item from a case.");
 
+            // Case notes (append-only)
+            _ = group.MapGet("/{id:guid}/notes", ListCaseNotesAsync)
+                .RequireRateLimiting("default")
+                .WithSummary("List case notes")
+                .WithDescription("Retrieves all notes on a case, oldest first.");
+
+            _ = group.MapPost("/{id:guid}/notes", AddCaseNoteAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Review)
+                .RequireRateLimiting("default")
+                .WithSummary("Add case note")
+                .WithDescription("Appends a note to a case. Notes cannot be edited or deleted.");
             // Case lifecycle operations
             _ = group.MapPost("/{id:guid}/close", CloseCaseAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
@@ -389,6 +400,49 @@ namespace VideoForensics.Client.WebApp.Api
             }
         }
 
+        /// <summary>Handler for GET /{id:guid}/notes</summary>
+        public static async Task<IResult> ListCaseNotesAsync(
+            Guid id,
+            ICaseNoteRepository notes,
+            CancellationToken ct)
+        {
+            IReadOnlyList<CaseNote> result = await notes.ListForCaseAsync(id, ct);
+            return Results.Ok(result.Select(n => n.ToDto()));
+        }
+
+        /// <summary>Handler for POST /{id:guid}/notes</summary>
+        public static async Task<IResult> AddCaseNoteAsync(
+            Guid id,
+            AddCaseNoteRequest request,
+            ICaseNoteRepository notes,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string? addedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            if (string.IsNullOrWhiteSpace(addedBy))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                // The repository enforces the body rules (non-blank, at most 4000 characters after trimming).
+                CaseNote note = await notes.AddAsync(id, request.Body, addedBy, ct);
+                return Results.Created($"/api/v1/cases/{id}/notes/{note.Id}", note.ToDto());
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
+        }
         /// <summary>Handler for POST /{id:guid}/close</summary>
         public static async Task<IResult> CloseCaseAsync(
             Guid id,
