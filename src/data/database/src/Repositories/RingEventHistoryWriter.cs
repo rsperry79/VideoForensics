@@ -115,6 +115,15 @@ namespace VideoForensics.Data.Database.Repositories
 
             return ReplaceAsync(async (db, token) =>
             {
+                // Discovery re-reads doorbot rows that the download path already linked. Keep that link rather than clearing it.
+                if (evt.LinkedEventId is null)
+                {
+                    evt.LinkedEventId = await db.RingDoorbotHistoryEvents
+                        .Where(e => e.ProviderEventId == evt.ProviderEventId && e.LinkedEventId != null)
+                        .Select(e => e.LinkedEventId)
+                        .FirstOrDefaultAsync(token);
+                }
+
                 List<Guid> existing = await db.RingDoorbotHistoryEvents
                     .Where(e => e.ProviderEventId == evt.ProviderEventId)
                     .Select(e => e.Id)

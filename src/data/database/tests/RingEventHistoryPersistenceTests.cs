@@ -449,5 +449,26 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("off", (await db.RingEventSirens.SingleAsync(s => s.SourceRowId == evt.Id)).AlarmState);
             Assert.Equal("gps", (await db.RingEventGeolocations.SingleAsync(g => g.SourceRowId == evt.Id)).LocationSource);
         }
+
+        [Fact]
+        public async Task RingEventHistoryWriter_DoorbotHistoryReplaceAfterLink_KeepsEventLink()
+        {
+            Device device = TestDataBuilder.BuildDevice(providerDeviceId: "12345");
+            var linkedEvent = new Event { Id = Guid.NewGuid(), DeviceId = device.Id, ProviderEventId = "1234567890123456789", EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Devices.Add(device);
+                _ = seed.Events.Add(linkedEvent);
+                _ = seed.RingDoorbotHistoryEvents.Add(new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "12345", LinkedEventId = linkedEvent.Id });
+                _ = await seed.SaveChangesAsync();
+            }
+
+            // A discovery sync replaces the row with a fresh copy that carries no link.
+            var replacement = new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "12345", Duration = 41 };
+            await _writer.ReplaceDoorbotHistoryEventAsync(replacement, new RingEventDetails(), CancellationToken.None);
+
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Equal(linkedEvent.Id, (await db.RingDoorbotHistoryEvents.SingleAsync()).LinkedEventId);
+        }
     }
 }
