@@ -117,22 +117,39 @@ namespace VideoForensics.Data.Database.Repositories
 
             return ReplaceAsync(async (db, token) =>
             {
+                // Why: an empty ding id would match rows that are not real events, so neither link lookup runs for it.
+                bool hasProviderEventId = !string.IsNullOrEmpty(evt.ProviderEventId);
+                string? doorbotDeviceId = details.Doorbot?.DoorbotId is long doorbotValue
+                    ? doorbotValue.ToString(CultureInfo.InvariantCulture)
+                    : null;
+
                 // Discovery re-reads doorbot rows that the download path already linked. Keep that link rather than clearing it.
-                if (evt.LinkedEventId is null)
+                if (evt.LinkedEventId is null && hasProviderEventId)
                 {
-                    evt.LinkedEventId = await db.RingDoorbotHistoryEvents
+                    // Why: the carried link must belong to this row's device. Another device's row with the same ding id must not supply it.
+                    IQueryable<Guid?> carried = db.RingDoorbotHistoryEvents
                         .Where(e => e.ProviderEventId == evt.ProviderEventId && e.LinkedEventId != null)
-                        .Select(e => e.LinkedEventId)
-                        .FirstOrDefaultAsync(token);
+                        .Select(e => e.LinkedEventId);
+                    if (doorbotDeviceId is not null)
+                    {
+                        carried = carried.Where(linkId => db.Events.Any(ev => ev.Id == linkId
+                            && db.Devices.Any(d => d.Id == ev.DeviceId && d.ProviderDeviceId == doorbotDeviceId)));
+                    }
+
+                    // Why: with no device to scope by, a link is carried only when every matching row agrees on it.
+                    List<Guid?> links = await carried.Distinct().Take(2).ToListAsync(token);
+                    if (links.Count == 1)
+                    {
+                        evt.LinkedEventId = links[0];
+                    }
                 }
 
-                if (evt.LinkedEventId is null && details.Doorbot?.DoorbotId is long doorbotId)
+                if (evt.LinkedEventId is null && hasProviderEventId && doorbotDeviceId is not null)
                 {
                     // Why: a row first saved after its Events row exists has no carried link. Link it by device and exact ding id;
                     // more than one match is ambiguous, so the row stays unlinked.
-                    string providerDeviceId = doorbotId.ToString(CultureInfo.InvariantCulture);
                     List<Guid> matches = await db.Events
-                        .Where(e => e.ProviderEventId == evt.ProviderEventId && db.Devices.Any(d => d.Id == e.DeviceId && d.ProviderDeviceId == providerDeviceId))
+                        .Where(e => e.ProviderEventId == evt.ProviderEventId && db.Devices.Any(d => d.Id == e.DeviceId && d.ProviderDeviceId == doorbotDeviceId))
                         .Select(e => e.Id)
                         .Take(2)
                         .ToListAsync(token);

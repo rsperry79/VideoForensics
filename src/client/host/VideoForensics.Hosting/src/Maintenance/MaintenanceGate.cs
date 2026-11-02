@@ -66,23 +66,27 @@ namespace VideoForensics.Client.Hosting.Maintenance
                 }
 
                 drainedTask = _drained.Task;
+                // Why: published under the lock, so subscribers see each change in the order the gate made it.
+                Publish(draining);
             }
 
-            Publish(draining);
             return drainedTask.WaitAsync(ct);
         }
 
         /// <inheritdoc />
         public void MarkRunning(string message)
         {
-            MaintenanceStatusDto running;
             lock (_lock)
             {
-                running = new MaintenanceStatusDto(MaintenancePhases.Running, message, _current.StartedUtc);
-                _current = running;
-            }
+                // Why: maintenance may only start on a drained server. From Idle or Normal it would run without the drain.
+                if (_current.Phase != MaintenancePhases.Draining)
+                {
+                    throw new InvalidOperationException("Server maintenance is not draining.");
+                }
 
-            Publish(running);
+                _current = new MaintenanceStatusDto(MaintenancePhases.Running, message, _current.StartedUtc);
+                Publish(_current);
+            }
         }
 
         /// <inheritdoc />
@@ -91,9 +95,8 @@ namespace VideoForensics.Client.Hosting.Maintenance
             lock (_lock)
             {
                 _current = MaintenanceStatusDto.Normal;
+                Publish(_current);
             }
-
-            Publish(MaintenanceStatusDto.Normal);
         }
 
         /// <inheritdoc />
@@ -114,7 +117,8 @@ namespace VideoForensics.Client.Hosting.Maintenance
             }
         }
 
-        // Published outside the lock, so a subscriber that calls back into the gate cannot deadlock.
+        // Called under _lock. Subscribers in this codebase only queue or forward the value and never call back into the gate,
+        // so publishing under the lock cannot deadlock, and it keeps a racing End and Begin from publishing out of order.
         private void Publish(MaintenanceStatusDto status) => _status.OnNext(status);
 
         private static TaskCompletionSource NewDrainSignal() =>

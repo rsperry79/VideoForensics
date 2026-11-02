@@ -24,7 +24,10 @@ namespace VideoForensics.Client.Hosting.Maintenance
         /// </summary>
         Task BeginDrainAsync(string message, CancellationToken ct);
 
-        /// <summary>Marks the drained server as running maintenance. New work stays blocked.</summary>
+        /// <summary>
+        /// Marks the drained server as running maintenance. New work stays blocked. Throws <see cref="InvalidOperationException"/>
+        /// when the gate is not draining, so maintenance never runs without a drain.
+        /// </summary>
         void MarkRunning(string message);
 
         /// <summary>Ends maintenance. Paused work resumes on its next tick.</summary>
