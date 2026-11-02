@@ -2,11 +2,13 @@ using Bunit;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using Syncfusion.Blazor.DropDowns;
 
 using VideoForensics.Client.Ui.Shared.Components.Reasons;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -66,6 +68,23 @@ public class ReasonPicker_Tests : BunitContext
         // Assert
         Assert.Empty(plain.FindAll(NoteTestId));
         Assert.NotEmpty(other.FindAll(NoteTestId));
+    }
+
+    [Fact]
+    public void ReasonPicker_NoValue_ShowsPlaceholderAndIsInvalid()
+    {
+        // Arrange
+        var validity = new List<bool>();
+        string expectedPlaceholder = Services.GetRequiredService<IStringLocalizer<SharedResources>>()["ReasonPickerPlaceholder"].Value;
+
+        // Act
+        IRenderedComponent<ReasonPicker<MediaFlagDismissReason>> cut = RenderPicker(null, null, validity);
+
+        // Assert
+        IRenderedComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>> dropdown =
+            cut.FindComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>>();
+        Assert.Equal(expectedPlaceholder, dropdown.Instance.Placeholder);
+        Assert.Equal(new[] { false }, validity);
     }
 
     [Fact]

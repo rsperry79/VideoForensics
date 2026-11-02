@@ -956,8 +956,8 @@
   <data name="ReasonPickerNote" xml:space="preserve">
     <value>Describe the reason</value>
   </data>
-  <data name="ReasonPickerRequired" xml:space="preserve">
-    <value>Choose a reason.</value>
+  <data name="ReasonPickerPlaceholder" xml:space="preserve">
+    <value>Choose a reason</value>
   </data>
   <data name="FlagActionsKeep" xml:space="preserve">
     <value>Keep</value>

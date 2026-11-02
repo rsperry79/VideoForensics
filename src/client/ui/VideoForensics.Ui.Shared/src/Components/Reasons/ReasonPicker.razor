@@ -6,7 +6,7 @@
 @inject IStringLocalizer<SharedResources> L
 
 <div class="reason-picker" role="group" aria-label="@LabelText" data-testid="reason-picker">
-    <SfDropDownList TValue="TReason?" TItem="ReasonOption<TReason>" Value="@Value" ValueChanged="@OnDropdownChangedAsync" DataSource="@_options" Placeholder="@L["ReasonPickerLabel"].Value" CssClass="w-100" data-testid="reason-picker-dropdown">
+    <SfDropDownList TValue="TReason?" TItem="ReasonOption<TReason>" Value="@Value" ValueChanged="@OnDropdownChangedAsync" DataSource="@_options" Placeholder="@L["ReasonPickerPlaceholder"].Value" CssClass="w-100" data-testid="reason-picker-dropdown">
         <DropDownListFieldSettings Text="Text" Value="Value" />
     </SfDropDownList>
 
@@ -15,11 +15,6 @@
         <div class="mt-2">
             <SfTextBox Multiline="true" Value="@(Note ?? string.Empty)" ValueChanged="@OnNoteChangedAsync" Placeholder="@L["ReasonPickerNote"].Value" data-testid="reason-picker-note" />
         </div>
-    }
-
-    @if (Value is null && _touched)
-    {
-        <div class="small text-danger mt-1" data-testid="reason-picker-required">@L["ReasonPickerRequired"]</div>
     }
 </div>
 
@@ -55,12 +50,6 @@
     /// <summary>The dropdown rows, built once from the enum values in declaration order.</summary>
     private List<ReasonOption<TReason>> _options = [];
 
-    /// <summary>True once the operator has changed the dropdown. Gates the required message.</summary>
-    private bool _touched;
-
-    /// <summary>The value the parent passed on the previous parameter set, used to detect a reset to null.</summary>
-    private TReason? _previousValue;
-
     /// <summary>The validity last reported to the parent, or null before the first report.</summary>
     private bool? _reportedValid;
 
@@ -75,17 +64,6 @@
         _options = Enum.GetValues<TReason>()
             .Select(value => new ReasonOption<TReason>(value, ResolveText(value)))
             .ToList();
-    }
-
-    protected override void OnParametersSet()
-    {
-        // The parent clears the picker by passing null again. A cleared picker starts untouched.
-        if (Value is null && _previousValue is not null)
-        {
-            _touched = false;
-        }
-
-        _previousValue = Value;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -107,7 +85,6 @@
 
     private async Task OnDropdownChangedAsync(TReason? value)
     {
-        _touched = true;
         await ValueChanged.InvokeAsync(value);
     }
 
