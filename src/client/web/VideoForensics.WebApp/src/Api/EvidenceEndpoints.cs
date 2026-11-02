@@ -79,6 +79,29 @@ namespace VideoForensics.Client.WebApp.Api
             }
         }
 
+        /// <summary>Starts (or joins the running) local integrity job over one media item's file and returns its snapshot.</summary>
+        public static async Task<IResult> StartIntegrityMediaItemJobAsync(
+            StartIntegrityMediaItemJobRequest request,
+            IEvidenceValidationJobs jobs,
+            CancellationToken ct)
+        {
+            if (request.MediaItemId == Guid.Empty)
+            {
+                return Results.BadRequest("A media item id is required.");
+            }
+
+            try
+            {
+                EvidenceValidationJob job = await jobs.StartIntegrityForMediaItemAsync(request.MediaItemId, ct);
+                return Results.Ok(job.ToDto());
+            }
+            catch (InvalidOperationException ex)
+            {
+                // A different scope is already being verified; the caller retries once that run finishes.
+                return Results.Conflict(ex.Message);
+            }
+        }
+
         /// <summary>Starts (or joins the running) provider reconciliation job and returns its snapshot.</summary>
         public static async Task<IResult> StartReconcileJobAsync(
             StartReconcileJobRequest request,
@@ -130,6 +153,12 @@ namespace VideoForensics.Client.WebApp.Api
             .RequireRateLimiting("media")
             .WithSummary("Start integrity job")
             .WithDescription("Starts a local file integrity check as an app-lifetime job, or returns the one already running. Poll the latest-job route for progress.");
+
+            _ = group.MapPost("/jobs/integrity/media-item", StartIntegrityMediaItemJobAsync)
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
+            .RequireRateLimiting("media")
+            .WithSummary("Start integrity job for one media item")
+            .WithDescription("Starts a local file integrity check of one media item's file as an app-lifetime job, or returns the integrity job already running for that item. Poll the latest-job route for progress.");
 
             _ = group.MapPost("/jobs/reconcile", StartReconcileJobAsync)
             .AddEndpointFilter<MaintenanceEndpointFilter>()

@@ -124,9 +124,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 e.Details.Contains("Front Door") &&
                 e.Details.Contains("media-missing:" + _mediaItemId.ToString("D"))),
                 It.IsAny<CancellationToken>()), Times.Once);
-            h.ValidationJobs.Verify(j => j.StartIntegrityForDevicesAsync(
-                It.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == _deviceId),
-                It.IsAny<CancellationToken>()), Times.Once);
+            h.ValidationJobs.Verify(j => j.StartIntegrityForMediaItemAsync(_mediaItemId, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -138,8 +136,47 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             _ = Assert.IsType<NotFound>(result);
             h.Dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
-            h.ValidationJobs.Verify(j => j.StartIntegrityForDevicesAsync(
-                It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+            h.ValidationJobs.Verify(j => j.StartIntegrityForMediaItemAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task MediaContent_MissingFile_QueuesValidationForThatClipOnly()
+        {
+            Harness h = CreateHarness(fileExists: false);
+
+            IResult result = await InvokeAsync(h, CreateAuthenticatedContext());
+
+            _ = Assert.IsType<NotFound>(result);
+            h.ValidationJobs.Verify(j => j.StartIntegrityForMediaItemAsync(_mediaItemId, It.IsAny<CancellationToken>()), Times.Once);
+            h.ValidationJobs.Verify(j => j.StartIntegrityForDevicesAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+            h.ValidationJobs.Verify(j => j.StartIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task MediaContent_MissingFile_QueueFails_NoAlertAndNoMarker_RetriesNextTime()
+        {
+            Harness h = CreateHarness(fileExists: false);
+            bool queueWorks = false;
+            _ = h.ValidationJobs.Setup(j => j.StartIntegrityForMediaItemAsync(_mediaItemId, It.IsAny<CancellationToken>()))
+                .Returns((Guid _, CancellationToken _) => queueWorks
+                    ? Task.FromResult<EvidenceValidationJob>(null!)
+                    : throw new InvalidOperationException("Another integrity check is running."));
+
+            // First request: the queue throws, so no alert is dispatched and no marker is written. The response is still 404.
+            IResult first = await InvokeAsync(h, CreateAuthenticatedContext());
+            _ = Assert.IsType<NotFound>(first);
+            h.Dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            // Next request: the queue works, so the alert is dispatched once and the clip is queued again.
+            queueWorks = true;
+            IResult second = await InvokeAsync(h, CreateAuthenticatedContext());
+            _ = Assert.IsType<NotFound>(second);
+            h.Dispatcher.Verify(d => d.DispatchAsync(It.Is<NotificationEvent>(e =>
+                e.EventType == "MediaMissing" &&
+                e.Details != null &&
+                e.Details.Contains("media-missing:" + _mediaItemId.ToString("D"))),
+                It.IsAny<CancellationToken>()), Times.Once);
+            h.ValidationJobs.Verify(j => j.StartIntegrityForMediaItemAsync(_mediaItemId, It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -152,8 +189,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = Assert.IsType<FileStreamHttpResult>(result);
             h.Dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
             h.Notices.Verify(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-            h.ValidationJobs.Verify(j => j.StartIntegrityForDevicesAsync(
-                It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+            h.ValidationJobs.Verify(j => j.StartIntegrityForMediaItemAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }
