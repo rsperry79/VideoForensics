@@ -622,13 +622,10 @@ namespace VideoForensics.Data.Database.Repositories
                 string? mediaSha256AtAdd = null;
                 if (kind == CaseItemKind.Media)
                 {
-                    MediaItem? mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == targetId, ct);
-                    if (mediaItem is not null)
-                    {
-                        mediaSha256AtAdd = mediaItem.Sha256Hash;
-                    }
-                    // Note: We don't validate that the media item exists, as it may be added later.
-                    // FK constraint will be enforced by the database.
+                    // A missing item is rejected here so the UI gets a clear error and no pin is stored without a hash.
+                    MediaItem mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == targetId, ct)
+                        ?? throw new KeyNotFoundException($"Media item {targetId} not found.");
+                    mediaSha256AtAdd = mediaItem.Sha256Hash;
                 }
 
                 var caseItem = new CaseItem

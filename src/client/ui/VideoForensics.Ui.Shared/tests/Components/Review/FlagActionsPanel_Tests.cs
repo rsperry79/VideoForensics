@@ -297,6 +297,32 @@ public class FlagActionsPanel_Tests : BunitContext
     }
 
     [Fact]
+    public async Task FlagActionsPanel_ClipAdd_MissingItem_ShowsMissingTargetMessage()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag clip = ClipFlag();
+        ForensicCase alpha = OpenCase("Alpha");
+        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
+        _ = _cases
+            .Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _ = _cases
+            .Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clip.MediaItemId!.Value, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException($"Media item {clip.MediaItemId} not found."));
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(clip, new List<MediaFlag>());
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='flag-add-to-case-picker']")));
+        cut.Find("[data-testid='flag-add-to-case-picker']").Change(alpha.Id.ToString());
+
+        // Act
+        await ClickAsync(cut, "[data-testid='flag-add-to-case']");
+
+        // Assert
+        IElement alert = cut.WaitForElement("[data-testid='flag-actions-error']");
+        Assert.Equal(TestLocalizer.Create()["FlagActionsMissingTarget"].Value, alert.TextContent.Trim());
+    }
+
+    [Fact]
     public async Task FlagActionsPanel_AddDuplicate_ShowsDuplicateMessage()
     {
         // Arrange

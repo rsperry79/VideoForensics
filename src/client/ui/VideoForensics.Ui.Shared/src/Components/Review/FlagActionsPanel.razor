@@ -432,6 +432,11 @@
         {
             _error = await DescribeAddFailureAsync(caseId, mediaId);
         }
+        catch (KeyNotFoundException)
+        {
+            Logger.LogError("Adding flagged clip {MediaItemId} to case {CaseId} failed: the media item is missing", mediaId, caseId);
+            _error = L["FlagActionsMissingTarget"];
+        }
         catch (Exception ex)
         {
             Logger.LogError("Adding flagged clip {MediaItemId} to case {CaseId} failed: {ExceptionType}: {Message}", mediaId, caseId, ex.GetType().Name, ex.Message);
