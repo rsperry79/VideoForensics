@@ -83,6 +83,8 @@ serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.AspNetCore.Compone
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Command.Name);
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.ChangeTracking.Name);
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Connection.Name);
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Infrastructure.Name);
 
 static string SourceOf(Serilog.Events.LogEvent e) =>
     e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
