@@ -1,4 +1,4 @@
-using VideoForensics.Providers.Ring.Services;
+using VideoForensics.Data.Common.Matching;
 
 using Xunit;
 

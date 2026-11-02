@@ -6159,6 +6159,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("Kind")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("LinkedEventId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OwnerId")
                         .HasColumnType("TEXT");
 
@@ -6172,6 +6175,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LinkedEventId");
 
                     b.HasIndex("ProviderEventId")
                         .IsUnique();
@@ -6751,9 +6756,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<string>("CreatedAt")
                         .HasColumnType("TEXT");
-
-                    b.Property<long?>("DingId")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("DingIdString")
                         .HasColumnType("TEXT");
@@ -8266,6 +8268,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasForeignKey("VideoForensics.Data.Common.Entities.RingDeviceVodSettings", "DeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingDoorbotHistoryEvent", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Event", null)
+                        .WithMany()
+                        .HasForeignKey("LinkedEventId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingEventCvDetectionDetail", b =>

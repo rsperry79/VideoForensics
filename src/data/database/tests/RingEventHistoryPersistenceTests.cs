@@ -174,7 +174,6 @@ namespace VideoForensics.Data.Database.Tests
                 OwnerId = "00000000",
                 Riid = "riid-2",
                 DoorbotId = 86401464,
-                DingId = 7697349643908571000,
                 DingIdString = "7697349643908571576",
                 Kind = "motion",
                 BatteryPercentage = "90",
@@ -193,7 +192,7 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             Assert.Equal("sanitized-pagination-key", (await db.RingLocationEventPages.SingleAsync()).PaginationKey);
             RingLocationEvent stored = await db.RingLocationEvents.SingleAsync();
-            Assert.Equal(7697349643908571000, stored.DingId);
+            Assert.Equal("7697349643908571576", stored.DingIdString);
             Assert.Equal("ready", stored.RecordingStatus);
             Assert.Equal(9, (await db.RingEventSirens.SingleAsync(s => s.SourceRowId == evt.Id)).TriggeredAt);
             Assert.Equal("Last", (await db.RingEventLastLocations.SingleAsync(l => l.SourceRowId == evt.Id)).Name);

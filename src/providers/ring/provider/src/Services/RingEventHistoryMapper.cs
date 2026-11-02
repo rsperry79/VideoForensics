@@ -94,7 +94,6 @@ namespace VideoForensics.Providers.Ring.Services
                 OwnerId = source.OwnerId,
                 Riid = source.Riid,
                 DoorbotId = source.DoorbotId,
-                DingId = source.DingId,
                 DingIdString = source.DingIdString,
                 Kind = source.Kind,
                 BatteryPercentage = source.BatteryPercentage,

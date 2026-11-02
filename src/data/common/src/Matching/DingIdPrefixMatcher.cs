@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Services
+namespace VideoForensics.Data.Common.Matching
 {
     /// <summary>How a doorbot history row relates to the string-id dings of one device.</summary>
     public enum DingIdMatchOutcome

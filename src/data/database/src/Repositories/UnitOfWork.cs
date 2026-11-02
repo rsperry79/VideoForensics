@@ -208,6 +208,7 @@ namespace VideoForensics.Data.Database.Repositories
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IDeviceRepository Devices => new UnitOfWorkDeviceRepository(_db, _logger);
+        public IDingIdLinkRepository DingIdLinks => new UnitOfWorkDingIdLinkRepository(_db);
         public IMediaItemRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
         public ICredentialRepository Credentials => new UnitOfWorkCredentialRepository(_db, _serviceProvider.GetRequiredService<ICredentialEncryptionProvider>(), _serviceProvider.GetRequiredService<ILogger<ICredentialRepository>>());
@@ -1574,6 +1575,37 @@ namespace VideoForensics.Data.Database.Repositories
             if (occurrences != null && occurrences.Count > 0)
             {
                 _db.EventDetectionTypeOccurrences.AddRange(occurrences);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Device-scoped ding id candidates and the doorbot-to-Events link. Candidates are read only from the string-id feeds
+    /// (location events and video search), because the doorbot history id is a truncated form of the ding id.
+    /// </summary>
+    internal class UnitOfWorkDingIdLinkRepository : IDingIdLinkRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+
+        public UnitOfWorkDingIdLinkRepository(VideoForensicsDbContext db)
+        {
+            _db = db;
+        }
+
+        public Task<IReadOnlyList<string>> GetCandidateDingIdsAsync(long doorbotId, CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(DingIdCandidates.ForDoorbot(_db, doorbotId));
+        }
+
+        public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits.
+            RingDoorbotHistoryEvent? row = _db.RingDoorbotHistoryEvents.FirstOrDefault(e => e.ProviderEventId == doorbotHistoryProviderEventId);
+            if (row is not null)
+            {
+                row.LinkedEventId = eventId;
             }
 
             return Task.CompletedTask;
