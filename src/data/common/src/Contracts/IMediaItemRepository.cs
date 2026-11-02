@@ -11,6 +11,13 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets media items by device ID.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct);
 
+        /// <summary>
+        /// Distinct resolutions ("WIDTHxHEIGHT") of this device's video files. Used only as a fallback when no official spec is known.
+        /// Default: no rows, for implementations that have no database behind them (the remote client).
+        /// </summary>
+        Task<IReadOnlyList<string>> GetDistinctVideoResolutionsAsync(Guid deviceId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
         /// <summary>Gets a device's newest media items by recording time, at most <paramref name="limit"/>.</summary>
         Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct);
 

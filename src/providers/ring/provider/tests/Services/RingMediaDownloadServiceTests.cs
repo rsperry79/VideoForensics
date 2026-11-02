@@ -1038,6 +1038,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task CaptureDeviceHealthSnapshotAsync_WritesHealthTelemetryAndDeviceDetails()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.GetObservedVideoResolutionsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Array.Empty<string>());
             _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<VideoForensics.Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((VideoForensics.Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
             var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);

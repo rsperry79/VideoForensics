@@ -25,6 +25,20 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<IReadOnlyList<string>> GetDistinctVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            // Distinct strings only, so the set stays small; the largest is chosen by pixel count in the caller.
+            return await db.MediaItems
+                .Where(m => m.DeviceId == deviceId
+                    && m.Resolution != null
+                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .Select(m => m.Resolution!)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
