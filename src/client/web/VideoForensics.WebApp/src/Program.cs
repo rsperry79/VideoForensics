@@ -935,6 +935,7 @@ app.MapDeviceConfigEndpoints();
 app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
+app.MapNoteEndpoints();
 app.MapJammingEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
