@@ -1390,7 +1390,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
                 HttpStatusCode.NotFound, HttpStatusCode.OK);
 
-            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", Guid.NewGuid(), TimeSpan.Zero, CancellationToken.None);
 
             Assert.Equal(200, attempt.HttpStatus);
             Assert.NotNull(attempt.Image);
@@ -1406,7 +1406,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
                 HttpStatusCode.NotFound);
 
-            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", Guid.NewGuid(), TimeSpan.Zero, CancellationToken.None);
 
             Assert.Equal(404, attempt.HttpStatus);
             Assert.Null(attempt.Image);
@@ -1422,7 +1422,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
                 HttpStatusCode.ServiceUnavailable);
 
-            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", Guid.NewGuid(), TimeSpan.Zero, CancellationToken.None);
 
             Assert.Equal(503, attempt.HttpStatus);
             Assert.Equal(1, service.Reads);

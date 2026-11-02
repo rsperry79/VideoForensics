@@ -326,7 +326,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             try
             {
-                attempt = await provider.CaptureAsync(account.Id, device.ProviderDeviceId, SettleDelay, ct);
+                attempt = await provider.CaptureAsync(account.Id, device.ProviderDeviceId, device.Id, SettleDelay, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -403,7 +403,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 string? storedPath = mediaFilePath is null
                     ? null
                     : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
-                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: null);
+                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: attempt.DeviceHealthId);
                 _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
                 _logger.LogDebug("Snapshot attempt recorded for {DeviceName} on {AccountName}: HTTP {HttpStatus}", device.Name, accountName, status);
             }
@@ -453,6 +453,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     _logger.LogError("Snapshot capture for {DeviceName} on {AccountName} returned HTTP {HttpStatus}", device.Name, accountName, status);
                     counts.Failed++;
                     break;
+            }
+
+            // The provider's connected reading is the device's state. It overrides a 404's offline mark, so a camera Ring reports
+            // as connected shows online even when its latest frame is not ready yet.
+            if (attempt.Connected is bool connected && device.IsOnline != connected)
+            {
+                _logger.LogInformation("Snapshot capture set {DeviceName} on {AccountName} to {OnlineState} from its health reading",
+                    device.Name, accountName, connected ? "online" : "offline");
+                device.IsOnline = connected;
+                await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
             }
         }
 
