@@ -34,10 +34,6 @@
     }
 
     <div class="mb-2">
-        <SfTextBox ID="flag-note" Placeholder="@L["FlagActionsNote"].Value" @bind-Value="_note" />
-    </div>
-
-    <div class="mb-2">
         <ReasonPicker TReason="MediaFlagDismissReason" OtherValue="MediaFlagDismissReason.Other" @bind-Value="_dismissReason" @bind-Note="_dismissNote" ValidityChanged="OnReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
     </div>
 
@@ -45,6 +41,8 @@
         <SfButton CssClass="e-outline" Content="@L["FlagActionsKeep"].Value" data-testid="flag-keep" Disabled="@(!CanAct || _busy)" OnClick="OnKeepAsync" />
         <SfButton CssClass="e-danger" Content="@L["FlagActionsDismiss"].Value" data-testid="flag-dismiss" Disabled="@(!CanAct || _busy || !_reasonValid)" OnClick="OnDismissAsync" />
     </div>
+
+    <FlagNotes FlagId="@Flag.Id" CanAdd="@(RoleReason is null)" IsOpen="@true" />
 
     @if (Flag.MediaItemId is not null)
     {
@@ -150,7 +148,6 @@
     private const string CreateCaseOption = "create";
 
     private readonly CancellationTokenSource _disposeCts = new();
-    private string _note = string.Empty;
     private MediaFlagDismissReason? _dismissReason;
     private string? _dismissNote;
     private bool _reasonValid;
@@ -579,11 +576,10 @@
         }
     }
 
-    /// <summary>Runs a Keep: the expected status is Unreviewed and the optional note is sent when present.</summary>
+    /// <summary>Runs a Keep: the expected status is Unreviewed and no reason is sent. Notes live in the flag's own thread.</summary>
     private Task OnKeepAsync()
     {
-        string? note = string.IsNullOrWhiteSpace(_note) ? null : _note.Trim();
-        return ReviewAsync(MediaFlagStatus.Kept, note);
+        return ReviewAsync(MediaFlagStatus.Kept, null);
     }
 
     /// <summary>Keeps Dismiss enabled only while the reason picker reports a complete reason.</summary>

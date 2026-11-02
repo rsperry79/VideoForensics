@@ -35,6 +35,7 @@ public class FlagActionsPanel_Tests : BunitContext
     private readonly Mock<IMediaItemRepository> _media = new();
     private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
     private readonly Mock<ILogger<FlagActionsPanel>> _logger = new();
+    private readonly Mock<INoteRepository> _notes = new();
 
     public FlagActionsPanel_Tests()
     {
@@ -48,6 +49,9 @@ public class FlagActionsPanel_Tests : BunitContext
         _ = Services.AddSingleton(_media.Object);
         _ = Services.AddSingleton(_snapshots.Object);
         _ = Services.AddSingleton(_logger.Object);
+        _ = Services.AddLogging();
+        _ = Services.AddSingleton(_notes.Object);
+        _ = _notes.Setup(n => n.ListAsync(NoteTargetKind.MediaFlag, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
@@ -180,6 +184,21 @@ public class FlagActionsPanel_Tests : BunitContext
         cut.WaitForAssertion(() => Assert.Single(changes));
         _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(MediaFlagStatus.Kept, changes[0].Status);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_Render_HasNoKeepNoteBox()
+    {
+        // Arrange
+        await SignInAsync("Review");
+        MediaFlag flag = Flag();
+
+        // Act
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, new List<MediaFlag>());
+
+        // Assert: the Keep action takes no note; a flag's notes live in their own thread
+        Assert.Empty(cut.FindAll("#flag-note"));
+        Assert.NotEmpty(cut.FindAll("[data-testid='flag-keep']"));
     }
 
     [Fact]
