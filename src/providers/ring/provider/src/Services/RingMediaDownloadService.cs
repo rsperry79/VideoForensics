@@ -153,7 +153,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// <remarks>
         /// The status of the latest-snapshot read is the real HTTP status Ring returned. A failed trigger reports the status carried by the thrown exception.
         /// </remarks>
-        public async Task<SnapshotCaptureAttempt> CaptureAsync(Guid providerAccountId, string providerDeviceId, TimeSpan settleDelay, CancellationToken cancellationToken)
+        public async Task<SnapshotCaptureAttempt> CaptureAsync(Guid providerAccountId, string providerDeviceId, Guid deviceId, TimeSpan settleDelay, CancellationToken cancellationToken)
         {
             if (!int.TryParse(providerDeviceId, out int doorbotId))
             {
@@ -191,11 +191,40 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 RecordMediaSuccess(providerAccountId);
-                return ClassifySnapshotResponse((int)snapshot.Status, snapshot.Bytes);
+                SnapshotCaptureAttempt attempt = ClassifySnapshotResponse((int)snapshot.Status, snapshot.Bytes);
+                (Guid? healthId, bool? connected) = await RecordSnapshotHealthAsync(session, providerDeviceId, deviceId, cancellationToken);
+                return attempt with { DeviceHealthId = healthId, Connected = connected };
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Reads the device's health from Ring's device list and records it against the device, so every snapshot capture has a
+        /// health row to link to and a connected reading for the device's online state. Best-effort: a failure is logged and the
+        /// capture still reports its snapshot result.
+        /// </summary>
+        private async Task<(Guid? HealthId, bool? Connected)> RecordSnapshotHealthAsync(Session session, string providerDeviceId, Guid deviceId, CancellationToken ct)
+        {
+            try
+            {
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
+                if (health == null)
+                {
+                    return (null, null);
+                }
+
+                Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceId, DateTime.UtcNow);
+                _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
+                return (deviceHealth.Id, deviceHealth.IsOnline);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning("Could not record the health reading for a snapshot of device {DeviceId}: {ExceptionType}", providerDeviceId, ex.GetType().Name);
+                return (null, null);
             }
         }
 

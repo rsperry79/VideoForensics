@@ -12,8 +12,9 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// </summary>
         /// <param name="providerAccountId">Internal account GUID; used to pick the account's session and request pacer.</param>
         /// <param name="providerDeviceId">The provider's device id (for Ring, the numeric doorbot id).</param>
+        /// <param name="deviceId">Internal device GUID; the health reading recorded with the attempt is stored against it.</param>
         /// <param name="settleDelay">How long to wait between the trigger and the read.</param>
-        Task<SnapshotCaptureAttempt> CaptureAsync(Guid providerAccountId, string providerDeviceId, TimeSpan settleDelay, CancellationToken cancellationToken);
+        Task<SnapshotCaptureAttempt> CaptureAsync(Guid providerAccountId, string providerDeviceId, Guid deviceId, TimeSpan settleDelay, CancellationToken cancellationToken);
     }
 
     /// <summary>Outcome of one <see cref="IProviderSnapshotCapture.CaptureAsync"/> attempt.</summary>
@@ -23,5 +24,7 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// </param>
     /// <param name="Image">The JPEG bytes when the attempt succeeded (status 200); null otherwise.</param>
     /// <param name="ThrottlePause">Set on a rate limit or hard ban: how long the account must not be called again.</param>
-    public sealed record SnapshotCaptureAttempt(int? HttpStatus, byte[]? Image, TimeSpan? ThrottlePause);
+    /// <param name="DeviceHealthId">The health record the provider wrote for this attempt, or null when no health was available.</param>
+    /// <param name="Connected">The provider's connected reading for the device, or null when it gave none.</param>
+    public sealed record SnapshotCaptureAttempt(int? HttpStatus, byte[]? Image, TimeSpan? ThrottlePause, Guid? DeviceHealthId = null, bool? Connected = null);
 }
