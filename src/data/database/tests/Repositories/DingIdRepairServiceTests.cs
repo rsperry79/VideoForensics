@@ -163,6 +163,35 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 
+        [Fact]
+        public async Task DingIdRepairService_BeforeWritesFails_AbortsWithoutChanges()
+        {
+            Device device = await SeedDeviceAsync();
+            Guid historyId = await SeedHistoryAsync("1234567890123456");
+            await SeedLocationAsync("1234567890123456789");
+            Guid eventId = await SeedEventAsync(device.Id, "1234567890123456");
+
+            int beforeWritesCalls = 0;
+            var service = new DingIdRepairService();
+            DingIdRepairReport report = await service.RunAsync(
+                _fixture.Factory,
+                apply: true,
+                backup: _ => Task.CompletedTask,
+                ct: CancellationToken.None,
+                beforeWrites: _ =>
+                {
+                    beforeWritesCalls++;
+                    return Task.FromResult(false);
+                });
+
+            Assert.Equal(1, beforeWritesCalls);
+            Assert.True(report.Aborted);
+            Assert.False(report.Applied);
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Equal("1234567890123456", (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
+        }
+
         private async Task<DingIdRepairReport> RunAsync(bool apply, Func<CancellationToken, Task> backup)
         {
             var service = new DingIdRepairService();

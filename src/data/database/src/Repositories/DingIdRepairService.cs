@@ -38,12 +38,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <param name="backup">Invoked once before any write when applying. An exception stops the run before changes.</param>
         /// <param name="ct">Cancellation token for the run.</param>
         /// <param name="confirmHold">Invoked once on apply, after all writes and before the commit. Returning false rolls back and reports <see cref="DingIdRepairReport.Aborted"/>. Null means no check (dry runs take no hold).</param>
+        /// <param name="beforeWrites">Invoked once on apply, after the backup and before the first write. Returning false stops the run with <see cref="DingIdRepairReport.Aborted"/> and nothing written. Null means no check.</param>
         public async Task<DingIdRepairReport> RunAsync(
             IDbContextFactory<VideoForensicsDbContext> factory,
             bool apply,
             Func<CancellationToken, Task> backup,
             CancellationToken ct,
-            Func<CancellationToken, Task<bool>>? confirmHold = null)
+            Func<CancellationToken, Task<bool>>? confirmHold = null,
+            Func<CancellationToken, Task<bool>>? beforeWrites = null)
         {
             ArgumentNullException.ThrowIfNull(factory);
             ArgumentNullException.ThrowIfNull(backup);
@@ -107,6 +109,12 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             await backup(ct);
+
+            // Why: the backup can take a long time on a large database, so the hold is checked again once it is done and before any write starts.
+            if (beforeWrites is not null && !await beforeWrites(ct))
+            {
+                return new DingIdRepairReport(counts, 0, 0, 0, Applied: false, Aborted: true);
+            }
 
             // One transaction: a failure part-way leaves the database as it was before the run.
             await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);

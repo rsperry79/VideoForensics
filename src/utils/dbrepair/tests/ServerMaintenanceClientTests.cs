@@ -472,6 +472,107 @@ public class ServerMaintenanceClient_Tests
         await session.DisposeAsync();
     }
 
+    [Fact]
+    public async Task EnsureHoldFreshAsync_LastRenewOver25MinutesAgo_ReturnsFalseAndMarksHoldLost()
+    {
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var handler = new FakeHandler(ServerRoutes(pollResponses: ["approved"]));
+        using var http = new HttpClient(handler);
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), NoBackgroundRenew, clock);
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+        clock.Advance(TimeSpan.FromMinutes(26));
+
+        bool fresh = await session.EnsureHoldFreshAsync(CancellationToken.None);
+
+        Assert.False(fresh);
+        Assert.True(session.HoldLost);
+        Assert.True(repairStop.IsCancellationRequested);
+        Assert.DoesNotContain("POST /api/v1/database/maintenance/renew", handler.Requests);
+        await session.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task EnsureHoldFreshAsync_LastRenewUnder25MinutesAgo_ReturnsTrueAndKeepsHold()
+    {
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var handler = new FakeHandler(ServerRoutes(pollResponses: ["approved"]));
+        using var http = new HttpClient(handler);
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), NoBackgroundRenew, clock);
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+        clock.Advance(TimeSpan.FromMinutes(24));
+
+        bool fresh = await session.EnsureHoldFreshAsync(CancellationToken.None);
+
+        Assert.True(fresh);
+        Assert.False(session.HoldLost);
+        Assert.False(repairStop.IsCancellationRequested);
+        await session.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task ConfirmHoldAsync_HoldAlreadyLost_ReturnsFalseWithoutCallingServer()
+    {
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var handler = new FakeHandler(ServerRoutes(pollResponses: ["approved"]));
+        using var http = new HttpClient(handler);
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), NoBackgroundRenew, clock);
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+        clock.Advance(TimeSpan.FromMinutes(26));
+        Assert.False(await session.EnsureHoldFreshAsync(CancellationToken.None));
+        int renewsBefore = handler.Requests.Count(r => r.EndsWith("/maintenance/renew", StringComparison.Ordinal));
+
+        bool confirmed = await session.ConfirmHoldAsync(CancellationToken.None);
+
+        Assert.False(confirmed);
+        Assert.Equal(renewsBefore, handler.Requests.Count(r => r.EndsWith("/maintenance/renew", StringComparison.Ordinal)));
+        await session.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task ConfirmHoldAsync_RenewNeverAnswers_TimesOutAndReturnsFalseWithoutLosingHold()
+    {
+        var handler = new HangingRenewHandler(ServerRoutes(pollResponses: ["approved"]));
+        using var http = new HttpClient(handler);
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), NoBackgroundRenew, renewTimeout: TimeSpan.FromMilliseconds(50));
+        using var repairStop = new CancellationTokenSource();
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None, repairStop);
+        Assert.NotNull(session);
+
+        bool confirmed = await session.ConfirmHoldAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(confirmed);
+        Assert.False(session.HoldLost);
+        Assert.False(repairStop.IsCancellationRequested);
+        await session.DisposeAsync();
+    }
+
+    private static Task NoBackgroundRenew(TimeSpan wait, CancellationToken ct) =>
+        wait == RenewInterval ? Task.Delay(Timeout.Infinite, ct) : Task.CompletedTask;
+
+    // Answers every route, but a renew never completes, like a server that stopped responding.
+    private sealed class HangingRenewHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew", StringComparison.Ordinal))
+            {
+                await Task.Delay(Timeout.Infinite, ct);
+            }
+
+            return respond(request);
+        }
+    }
+
     // Starts a session with a session-less dispose helper so the poll test can dispose a nullable result.
     private static void ServerMaintenanceSession_Dispose(ServerMaintenanceClient.ServerMaintenanceSession? session) =>
         session?.DisposeAsync().AsTask().GetAwaiter().GetResult();

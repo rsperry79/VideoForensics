@@ -29,23 +29,29 @@ public sealed class ServerMaintenanceClient
     private static readonly TimeSpan PairingTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan EndTimeout = TimeSpan.FromSeconds(30);
 
+    // Why: a renew that never answers must not hang the commit check or the renew loop. A timeout counts as a failed renew; the 25-minute rule decides whether the hold is lost.
+    private static readonly TimeSpan DefaultRenewTimeout = TimeSpan.FromSeconds(30);
+
     private const string NoHoldQuestion = "Continue without putting the server into maintenance? [y/N]";
 
     private readonly HttpClient _http;
     private readonly IMaintenanceConsole _console;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
     private readonly TimeProvider _time;
+    private readonly TimeSpan _renewTimeout;
 
     /// <param name="http">Client for the server. Its timeout should be infinite: the begin call waits for in-flight work to drain.</param>
     /// <param name="console">Operator input and output.</param>
     /// <param name="delay">Wait used between poll attempts and renewals. Tests replace it so they do not wait in real time.</param>
     /// <param name="time">Clock for the renew-staleness rule. Tests replace it; null uses the system clock.</param>
-    public ServerMaintenanceClient(HttpClient http, IMaintenanceConsole console, Func<TimeSpan, CancellationToken, Task>? delay = null, TimeProvider? time = null)
+    /// <param name="renewTimeout">Longest a single renew call may take before it counts as failed. Tests shorten it; null uses 30 seconds.</param>
+    public ServerMaintenanceClient(HttpClient http, IMaintenanceConsole console, Func<TimeSpan, CancellationToken, Task>? delay = null, TimeProvider? time = null, TimeSpan? renewTimeout = null)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _console = console ?? throw new ArgumentNullException(nameof(console));
         _delay = delay ?? ((wait, ct) => Task.Delay(wait, ct));
         _time = time ?? TimeProvider.System;
+        _renewTimeout = renewTimeout ?? DefaultRenewTimeout;
     }
 
     /// <summary>
@@ -113,7 +119,7 @@ public sealed class ServerMaintenanceClient
         {
             case BeginOutcome.Held:
                 _console.Write("Server is in maintenance: new work is held and database connections are released.");
-                return new ServerMaintenanceSession(_http, server, pairing.Value.ApiKey, holdToken!.Value, _console, _delay, _time, repairStop);
+                return new ServerMaintenanceSession(_http, server, pairing.Value.ApiKey, holdToken!.Value, _console, _delay, _time, _renewTimeout, repairStop);
             case BeginOutcome.InProgress:
                 _console.Write("Server maintenance is already in progress.");
                 return await ConfirmNoHoldAsync(ct) ? ServerMaintenanceSession.WithoutHold() : null;
@@ -361,11 +367,12 @@ public sealed class ServerMaintenanceClient
         private readonly Task? _renewLoop;
         private readonly CancellationTokenSource? _repairStop;
         private readonly TimeProvider _time = TimeProvider.System;
+        private readonly TimeSpan _renewTimeout;
         private volatile bool _holdLost;
         // Why: set when the hold starts and on each successful renew, so the 25-minute rule counts from the last time the server accepted a renew.
         private DateTimeOffset _lastRenewUtc;
 
-        internal ServerMaintenanceSession(HttpClient http, Uri server, string apiKey, Guid holdToken, IMaintenanceConsole console, Func<TimeSpan, CancellationToken, Task> delay, TimeProvider time, CancellationTokenSource? repairStop = null)
+        internal ServerMaintenanceSession(HttpClient http, Uri server, string apiKey, Guid holdToken, IMaintenanceConsole console, Func<TimeSpan, CancellationToken, Task> delay, TimeProvider time, TimeSpan renewTimeout, CancellationTokenSource? repairStop = null)
         {
             _http = http;
             _server = server;
@@ -374,6 +381,7 @@ public sealed class ServerMaintenanceClient
             _console = console;
             _delay = delay;
             _time = time;
+            _renewTimeout = renewTimeout;
             _lastRenewUtc = time.GetUtcNow();
             _repairStop = repairStop;
             _renewCancel = new CancellationTokenSource();
@@ -406,9 +414,21 @@ public sealed class ServerMaintenanceClient
                 return true;
             }
 
+            // Why: a hold already lost has been ended by the server, so renewing it again would only send the key for nothing.
+            if (_holdLost)
+            {
+                return false;
+            }
+
+            // Why: the staleness check runs first, so a commit is refused even when the renew below would succeed on a hold that already timed out.
+            if (!await EnsureHoldFreshAsync(ct))
+            {
+                return false;
+            }
+
             try
             {
-                using HttpResponseMessage response = await PostWithTokenAsync("api/v1/database/maintenance/renew", ct);
+                using HttpResponseMessage response = await RenewAsync(ct);
                 if (response.IsSuccessStatusCode)
                 {
                     _lastRenewUtc = _time.GetUtcNow();
@@ -425,11 +445,57 @@ public sealed class ServerMaintenanceClient
                 _console!.Write($"Could not confirm server maintenance before the commit (HTTP {(int)response.StatusCode}); the repair will not commit.");
                 return false;
             }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Why: the renew timeout fired. That is a failed renew, not a lost hold; the staleness rule decides that later.
+                _console!.Write("Could not confirm server maintenance before the commit: the renew timed out; the repair will not commit.");
+                return false;
+            }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _console!.Write($"Could not confirm server maintenance before the commit: {ex.Message} ({ex.GetType().Name}); the repair will not commit.");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Checks, with no network call, that the last renew the server accepted is under 25 minutes old. Call it before each
+        /// batch of writes and before the commit. Returns false when the hold is already lost or the last accepted renew is
+        /// 25 minutes old or more; in that case it marks the hold lost and cancels the repair stop token. Returns true otherwise,
+        /// and always true when nothing is held.
+        /// </summary>
+        /// <param name="ct">Cancellation token for the check.</param>
+        public async Task<bool> EnsureHoldFreshAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!Held)
+            {
+                return true;
+            }
+
+            if (_holdLost)
+            {
+                return false;
+            }
+
+            // Why: the writes can run long after the last renew, so the server's 30-minute timeout is checked here, not only on the renew tick.
+            if (!IsRenewStale(_time.GetUtcNow() - _lastRenewUtc))
+            {
+                return true;
+            }
+
+            _console!.Write("No server maintenance renew has succeeded for 25 minutes; treating the hold as lost.");
+            LoseHold();
+            return false;
+        }
+
+        // Why: each renew gets its own timeout, so a server that never answers ends the attempt instead of hanging the commit check or the renew loop.
+        private async Task<HttpResponseMessage> RenewAsync(CancellationToken ct)
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(_renewTimeout);
+            return await PostWithTokenAsync("api/v1/database/maintenance/renew", cts.Token);
         }
 
         /// <summary>Stops renewing, then ends the hold. Never throws: a failure prints the way to end maintenance by hand.</summary>
@@ -494,7 +560,7 @@ public sealed class ServerMaintenanceClient
                 bool renewed = false;
                 try
                 {
-                    using HttpResponseMessage response = await PostWithTokenAsync("api/v1/database/maintenance/renew", ct);
+                    using HttpResponseMessage response = await RenewAsync(ct);
                     // Why: 401 and 403 (pairing revoked), 404 (token not active), 409 (max age reached) and a redirect all mean the hold will not be renewed. Stop the repair
                     // before it writes more, and do not retry. The caller prints the single message that explains the state.
                     if (EndsHold(response.StatusCode))
