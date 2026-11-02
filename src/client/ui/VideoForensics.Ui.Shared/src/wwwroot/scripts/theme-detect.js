@@ -77,6 +77,8 @@ window.vfTheme = {
                 link.href = href;
             }
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            // Bootstrap 5.3 switches its text/background tokens (--bs-secondary-color etc.) only on data-bs-theme.
+            document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
         }
         catch {
             // Best-effort - page keeps whatever theme was last successfully applied.
