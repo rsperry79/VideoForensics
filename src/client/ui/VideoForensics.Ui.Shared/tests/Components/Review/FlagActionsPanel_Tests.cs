@@ -9,6 +9,9 @@ using AngleSharp.Dom;
 
 using Moq;
 
+using Syncfusion.Blazor.DropDowns;
+
+using VideoForensics.Client.Ui.Shared.Components.Reasons;
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Contracts;
@@ -150,6 +153,14 @@ public class FlagActionsPanel_Tests : BunitContext
         await cut.InvokeAsync(() => cut.Find(selector).Click());
     }
 
+    /// <summary>Chooses a reason in the dismiss reason dropdown, as the operator's pick does.</summary>
+    private static async Task PickReasonAsync(IRenderedComponent<FlagActionsPanel> cut, MediaFlagDismissReason reason)
+    {
+        IRenderedComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>> dropdown =
+            cut.FindComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>>();
+        await cut.InvokeAsync(() => dropdown.Instance.ValueChanged.InvokeAsync(reason));
+    }
+
     [Fact]
     public async Task FlagActionsPanel_Keep_CallsUpdateStatusWithKept()
     {
@@ -179,22 +190,50 @@ public class FlagActionsPanel_Tests : BunitContext
         MediaFlag flag = Flag();
         var changes = new List<MediaFlag>();
         _repository
-            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Duplicate of earlier flag", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Duplicate", operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Dismissed, RowVersion = 2, ReviewedBy = operatorId.ToString() });
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
-        // Act and Assert: blank reason keeps Dismiss disabled
+        // Act and Assert: no reason chosen keeps Dismiss disabled
         Assert.True(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
 
-        // Act: typing a reason enables Dismiss
-        cut.Find("#flag-reason").Change("Duplicate of earlier flag");
+        // Act: choosing a reason enables Dismiss
+        await PickReasonAsync(cut, MediaFlagDismissReason.Duplicate);
         Assert.False(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
 
         await ClickAsync(cut, "[data-testid='flag-dismiss']");
 
-        // Assert
+        // Assert: the reason is sent as the enum name
         cut.WaitForAssertion(() => Assert.Single(changes));
-        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Duplicate of earlier flag", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Duplicate", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task FlagActionsPanel_Dismiss_OtherNeedsNote_AndSendsTrimmedNote()
+    {
+        // Arrange
+        Guid operatorId = await SignInAsync("Review");
+        MediaFlag flag = Flag();
+        var changes = new List<MediaFlag>();
+        _repository
+            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Dismissed, RowVersion = 2, ReviewedBy = operatorId.ToString() });
+        IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
+
+        // Act: Other alone is not enough
+        await PickReasonAsync(cut, MediaFlagDismissReason.Other);
+
+        // Assert
+        Assert.True(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
+
+        // Act: the note makes the reason complete
+        cut.Find("[data-testid='reason-picker-note']").Change("  camera was moved  ");
+        Assert.False(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
+        await ClickAsync(cut, "[data-testid='flag-dismiss']");
+
+        // Assert: the note is sent after the enum name, trimmed
+        cut.WaitForAssertion(() => Assert.Single(changes));
+        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -213,7 +252,7 @@ public class FlagActionsPanel_Tests : BunitContext
         await ClickAsync(cut, "[data-testid='flag-keep']");
 
         // Assert
-        IElement alert = cut.WaitForElement("[role='alert']");
+        IElement alert = cut.WaitForElement("[role='alert'][data-testid='flag-actions-error']");
         Assert.Equal(TestLocalizer.Create()["FlagActionsConflict"].Value, alert.TextContent.Trim());
         Assert.Empty(changes);
     }
@@ -227,7 +266,7 @@ public class FlagActionsPanel_Tests : BunitContext
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(Flag(), changes);
 
         // Act
-        cut.Find("#flag-reason").Change("Some reason");
+        await PickReasonAsync(cut, MediaFlagDismissReason.Duplicate);
 
         // Assert
         Assert.True(cut.Find("[data-testid='flag-keep']").HasAttribute("disabled"));

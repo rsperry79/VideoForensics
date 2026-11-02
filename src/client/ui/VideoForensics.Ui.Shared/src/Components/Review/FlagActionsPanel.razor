@@ -1,5 +1,6 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Ui.Shared.Components.Reasons
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services
@@ -37,12 +38,12 @@
     </div>
 
     <div class="mb-2">
-        <SfTextBox ID="flag-reason" Placeholder="@L["FlagActionsReason"].Value" @bind-Value="_reason" />
+        <ReasonPicker TReason="MediaFlagDismissReason" OtherValue="MediaFlagDismissReason.Other" @bind-Value="_dismissReason" @bind-Note="_dismissNote" ValidityChanged="OnReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
     </div>
 
     <div class="d-flex justify-content-end gap-2">
         <SfButton CssClass="e-outline" Content="@L["FlagActionsKeep"].Value" data-testid="flag-keep" Disabled="@(!CanAct || _busy)" OnClick="OnKeepAsync" />
-        <SfButton CssClass="e-danger" Content="@L["FlagActionsDismiss"].Value" data-testid="flag-dismiss" Disabled="@(!CanAct || _busy || string.IsNullOrWhiteSpace(_reason))" OnClick="OnDismissAsync" />
+        <SfButton CssClass="e-danger" Content="@L["FlagActionsDismiss"].Value" data-testid="flag-dismiss" Disabled="@(!CanAct || _busy || !_reasonValid)" OnClick="OnDismissAsync" />
     </div>
 
     @if (Flag.MediaItemId is not null)
@@ -150,7 +151,9 @@
 
     private readonly CancellationTokenSource _disposeCts = new();
     private string _note = string.Empty;
-    private string _reason = string.Empty;
+    private MediaFlagDismissReason? _dismissReason;
+    private string? _dismissNote;
+    private bool _reasonValid;
     private bool _busy;
     private LocalizedString? _error;
 
@@ -583,10 +586,27 @@
         return ReviewAsync(MediaFlagStatus.Kept, note);
     }
 
-    /// <summary>Runs a Dismiss: the reason is required and is sent with the new status.</summary>
+    /// <summary>Keeps Dismiss enabled only while the reason picker reports a complete reason.</summary>
+    private void OnReasonValidityChanged(bool valid)
+    {
+        _reasonValid = valid;
+    }
+
+    /// <summary>
+    /// Runs a Dismiss with the chosen reason as its enum name. The Other reason appends ": " and its trimmed note, so the
+    /// note is stored with the reason.
+    /// </summary>
     private Task OnDismissAsync()
     {
-        return ReviewAsync(MediaFlagStatus.Dismissed, _reason.Trim());
+        if (_dismissReason is not { } reason || !_reasonValid)
+        {
+            return Task.CompletedTask;
+        }
+
+        string text = reason == MediaFlagDismissReason.Other
+            ? $"{reason}: {(_dismissNote ?? string.Empty).Trim()}"
+            : reason.ToString();
+        return ReviewAsync(MediaFlagStatus.Dismissed, text);
     }
 
     /// <summary>
