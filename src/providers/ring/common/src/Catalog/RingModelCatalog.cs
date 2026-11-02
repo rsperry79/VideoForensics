@@ -16,7 +16,7 @@ public sealed class RingModelCatalog : IRingModelCatalog
     /// Data version of this catalog. Bump it whenever an entry changes so databases re-seed on the next startup
     /// (see <c>ReferenceDataSeeder</c>); a higher version is the only thing that triggers a reload.
     /// </summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     private static readonly RingModelInfo[] Entries =
     [
@@ -25,6 +25,8 @@ public sealed class RingModelCatalog : IRingModelCatalog
         new("doorbell", RingDeviceFamily.Doorbell, null, null, false),
         new("doorbell_v3", RingDeviceFamily.Doorbell, null, null, false),
         new("doorbell_v4", RingDeviceFamily.Doorbell, null, null, false),
+        // Video Doorbell 4 (Ring support page: 1080p HD). The kind is the one Front Door reports; confirmed by the device owner.
+        new("doorbell_graham_cracker", RingDeviceFamily.Doorbell, "Video Doorbell 4", null, false, "1920x1080"),
         new("doorbell_v5", RingDeviceFamily.Doorbell, null, null, false),
         new("doorbell_portal", RingDeviceFamily.Doorbell, null, null, false),
         new("doorbell_scallop", RingDeviceFamily.Doorbell, null, null, false),
@@ -40,7 +42,7 @@ public sealed class RingModelCatalog : IRingModelCatalog
         new("stickup_cam", RingDeviceFamily.Camera, null, null, false),
         new("stickup_cam_v3", RingDeviceFamily.Camera, null, null, false),
         new("stickup_cam_v4", RingDeviceFamily.Camera, null, null, false),
-        new("stickup_cam_elite", RingDeviceFamily.Camera, null, null, false),
+        new("stickup_cam_elite", RingDeviceFamily.Camera, null, null, false, "1920x1080"),
         new("stickup_cam_lunar", RingDeviceFamily.Camera, null, null, false),
         new("stickup_cam_mini", RingDeviceFamily.Camera, null, null, false),
         new("stickup_cam_mini_v3", RingDeviceFamily.Camera, "Indoor Cam Plus", null, false),
