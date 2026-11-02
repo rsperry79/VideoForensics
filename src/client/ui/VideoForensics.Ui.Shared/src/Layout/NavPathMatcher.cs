@@ -54,6 +54,18 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             return true;
         }
 
+        /// <summary>
+        /// Ranks an item for the active-item choice when several items match the same page. An item that carries a query
+        /// string (e.g. <c>/media?tab=Events</c>) outranks a plain item on the same path (<c>/media</c>), so the plain item
+        /// does not win a tie by order. Longer paths rank higher than shorter ones.
+        /// </summary>
+        public static int Specificity(string itemPath)
+        {
+            int queryIndex = itemPath.IndexOf('?');
+            string itemPathPart = queryIndex >= 0 ? itemPath[..queryIndex] : itemPath;
+            return (queryIndex >= 0 ? 10_000 : 0) + itemPathPart.Length;
+        }
+
         private static Dictionary<string, string> ParseQuery(string? query)
         {
             var result = new Dictionary<string, string>(StringComparer.Ordinal);

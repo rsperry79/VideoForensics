@@ -84,4 +84,10 @@ public class NavPathMatcher_Tests
         Assert.True(NavPathMatcher.Matches("/bitrate-history/review/1234", null, "/bitrate-history"));
         Assert.True(NavPathMatcher.Matches("/signal-history/review/1234", null, "/signal-history"));
     }
-}
+
+    [Fact]
+        public void NavPathMatcher_Specificity_ItemWithQueryOutranksPlainItemOnSamePath()
+        {
+            Assert.True(NavPathMatcher.Specificity("/media?tab=Events") > NavPathMatcher.Specificity("/media"));
+        }
+    }

@@ -110,6 +110,6 @@
     private NavItem? ActiveItem => Sections
         .SelectMany(s => s.Items)
         .Where(i => NavPathMatcher.Matches(CurrentPath, CurrentQuery, i.Path))
-        .OrderByDescending(i => i.Path.Split('?')[0].Length)
+        .OrderByDescending(i => NavPathMatcher.Specificity(i.Path))
         .FirstOrDefault();
 }
