@@ -1596,24 +1596,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<string>> GetCandidateDingIdsAsync(long doorbotId, CancellationToken ct)
         {
-            // Resolve the device first. Without one, a matching doorbot id on a feed row would have no device to scope it.
-            string providerDeviceId = doorbotId.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if (!_db.Devices.AsNoTracking().Any(d => d.ProviderDeviceId == providerDeviceId))
-            {
-                return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
-            }
-
-            List<string> locationDings = _db.RingLocationEvents.AsNoTracking()
-                .Where(e => e.DoorbotId == doorbotId && e.DingIdString != null)
-                .Select(e => e.DingIdString!)
-                .ToList();
-            List<string> searchDings = _db.RingVideoSearchEvents.AsNoTracking()
-                .Where(v => v.ProviderEventId != null && _db.RingEventDoorbots.Any(x => x.Source == RingEventSources.VideoSearch && x.SourceRowId == v.Id && x.DoorbotId == doorbotId))
-                .Select(v => v.ProviderEventId!)
-                .ToList();
-
-            IReadOnlyList<string> candidates = locationDings.Concat(searchDings).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToList();
-            return Task.FromResult(candidates);
+            return Task.FromResult<IReadOnlyList<string>>(DingIdCandidates.ForDoorbot(_db, doorbotId));
         }
 
         public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)

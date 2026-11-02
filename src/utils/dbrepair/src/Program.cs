@@ -7,6 +7,7 @@ using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Utils.DbRepair;
 using VideoForensics.Utils.Diagnostics;
@@ -24,6 +25,12 @@ VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoFore
 // Usage:
 //   VideoForensics.Utils.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
 //   VideoForensics.Utils.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
+//   VideoForensics.Utils.DbRepair --repair-ding-ids [--apply] [--db-path <file>] [--data-root <dir>] [--yes]
+//
+// Ding id repair mode:
+//   Relinks Events and DownloadEvents rows that were stored under the truncated doorbot history id to the matching
+//   string ding id, and sets RingDoorbotHistoryEvents.LinkedEventId. Dry run unless --apply. With --apply, a copy of
+//   the database is written to <db>.bak-<yyyyMMddHHmmss> before any change. Ambiguous and unmatched rows are never changed.
 //
 // Repair mode:
 //   --db-path takes priority over --data-root; --data-root takes priority over the platform default
@@ -48,6 +55,7 @@ string? usernameArg = null;
 bool apply = false;
 bool skipConfirmation = false;
 bool resetSuperAdminPassword = false;
+bool repairDingIds = false;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -55,6 +63,9 @@ for (int i = 0; i < args.Length; i++)
     {
         case "--reset-superadmin-password":
             resetSuperAdminPassword = true;
+            break;
+        case "--repair-ding-ids":
+            repairDingIds = true;
             break;
         case "--db-path" when i + 1 < args.Length:
             dbPathArg = args[++i];
@@ -101,6 +112,12 @@ IDatabaseHealthChecker checker = provider.GetRequiredService<IDatabaseHealthChec
 
 string effectivePath = resolvedDbPath ?? Path.Combine(new StorageLocationProvider().GetDefaultRoot(StorageCategory.Database), "videoforensics.db");
 Console.WriteLine($"Database: {effectivePath}");
+
+// Handle ding id repair if requested
+if (repairDingIds)
+{
+    return await HandleDingIdRepairAsync(factory, effectivePath, apply);
+}
 
 // Handle SuperAdmin password recovery if requested
 if (resetSuperAdminPassword)
@@ -477,6 +494,63 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     }
 }
 
+// Why: the repair writes many rows, so a copy of the database is taken first and the write only runs after the copy succeeds.
+static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply)
+{
+    try
+    {
+        var service = new DingIdRepairService();
+        Func<CancellationToken, Task> backup = ct => BackupDatabaseAsync(dbPath, ct);
+        DingIdRepairReport report;
+        if (apply)
+        {
+            // Why: the service holds the database open and caches what it read; stop it for the writes and start it again after.
+            using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+            if (serviceGuard is null)
+            {
+                Console.Error.WriteLine(stopError);
+                return 1;
+            }
+
+            report = await service.RunAsync(factory, true, backup, CancellationToken.None);
+        }
+        else
+        {
+            report = await service.RunAsync(factory, false, backup, CancellationToken.None);
+        }
+
+        Console.WriteLine("\nDing id repair (DoorbotHistory feed):");
+        Console.WriteLine($"  Matched: {report.DoorbotHistory.Matched}");
+        Console.WriteLine($"  Unmatched: {report.DoorbotHistory.Unmatched}");
+        Console.WriteLine($"  Ambiguous: {report.DoorbotHistory.Ambiguous}");
+        if (report.Applied)
+        {
+            Console.WriteLine($"Repaired Events: {report.EventsRepaired}, DownloadEvents: {report.DownloadEventsRepaired}, skipped (collision): {report.EventsSkipped}");
+        }
+        else
+        {
+            Console.WriteLine("DRY RUN: no changes written. Run with --apply to repair the matched rows.");
+        }
+
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Ding id repair failed: {ex.Message}");
+        return 1;
+    }
+}
+
+static Task BackupDatabaseAsync(string dbPath, CancellationToken ct)
+{
+    ct.ThrowIfCancellationRequested();
+    string backupPath = $"{dbPath}.bak-{DateTime.Now:yyyyMMddHHmmss}";
+    // overwrite: false so an existing backup is never replaced. A failed copy throws here and stops the run before any write.
+    File.Copy(dbPath, backupPath, overwrite: false);
+    Console.WriteLine($"Backup written: {backupPath}");
+    return Task.CompletedTask;
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("""
@@ -493,6 +567,7 @@ static void PrintUsage()
           --data-root <dir>             Directory containing videoforensics.db. Ignored if --db-path is set.
           --apply                       Execute the repair. Without this flag, runs in dry-run mode and only reports issues.
           --reset-superadmin-password   Enable SuperAdmin password recovery (lost passkey recovery mode).
+          --repair-ding-ids             Relink truncated Events/DownloadEvents to matched string ding ids. Dry run unless --apply; --apply writes a .bak copy first.
           --username <name>             Target operator username for recovery. If omitted, uses the primary SuperAdmin.
           --yes, -y                     Skips confirmation prompts. Use only in scripted contexts.
 
