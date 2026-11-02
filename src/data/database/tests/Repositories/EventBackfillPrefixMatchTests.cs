@@ -13,8 +13,8 @@ using Xunit;
 namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
-    /// The backfill resolves a numeric DownloadEvents id, which may be a truncated doorbot id, to its string ding id for
-    /// the device. Only a single prefix match is written; unmatched and ambiguous rows are skipped and logged.
+    /// The backfill resolves a numeric DownloadEvents id to the string ding id for the device. Only an exact match is
+    /// written; unmatched and ambiguous rows are skipped. Non-numeric ids are kept as they are.
     /// </summary>
     public class EventBackfillPrefixMatchTests : IAsyncLifetime
     {
@@ -46,46 +46,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
-        public async Task EventBackfill_NumericIdPrefixesOneDingId_WritesEventWithDingId()
-        {
-            Device device = await SeedDeviceAsync();
-            await SeedLocationEventAsync("1234567890123456789");
-            await AddDownloadEventAsync(device.Id, "1234567890123456");
-
-            int result = await RunBackfillAsync();
-
-            Assert.Equal(1, result);
-            Assert.Equal(new[] { "1234567890123456789" }, await EventIdsAsync());
-        }
-
-        [Fact]
-        public async Task EventBackfill_NumericIdWithoutCandidate_SkipsRow()
-        {
-            Device device = await SeedDeviceAsync();
-            await AddDownloadEventAsync(device.Id, "1234567890123456");
-
-            int result = await RunBackfillAsync();
-
-            Assert.Equal(0, result);
-            Assert.Empty(await EventIdsAsync());
-        }
-
-        [Fact]
-        public async Task EventBackfill_NumericIdWithTwoCandidates_SkipsRow()
-        {
-            Device device = await SeedDeviceAsync();
-            await SeedLocationEventAsync("1234567890123456001");
-            await SeedLocationEventAsync("1234567890123456789");
-            await AddDownloadEventAsync(device.Id, "1234567890123456");
-
-            int result = await RunBackfillAsync();
-
-            Assert.Equal(0, result);
-            Assert.Empty(await EventIdsAsync());
-        }
-
-        [Fact]
-        public async Task EventBackfill_IdAlreadyAStringDingId_KeepsIdAsIs()
+        public async Task EventBackfill_ExactDingIdInCandidates_KeepsIdAsIs()
         {
             Device device = await SeedDeviceAsync();
             await SeedLocationEventAsync("1234567890123456789");
@@ -95,6 +56,31 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             Assert.Equal(1, result);
             Assert.Equal(new[] { "1234567890123456789" }, await EventIdsAsync());
+        }
+
+        [Fact]
+        public async Task EventBackfill_NumericIdOnlyPrefixOfCandidate_SkipsRow()
+        {
+            Device device = await SeedDeviceAsync();
+            await SeedLocationEventAsync("1234567890123456789");
+            await AddDownloadEventAsync(device.Id, "1234567890123456");
+
+            int result = await RunBackfillAsync();
+
+            Assert.Equal(0, result);
+            Assert.Empty(await EventIdsAsync());
+        }
+
+        [Fact]
+        public async Task EventBackfill_NumericIdWithoutCandidate_SkipsRow()
+        {
+            Device device = await SeedDeviceAsync();
+            await AddDownloadEventAsync(device.Id, "1234567890123456789");
+
+            int result = await RunBackfillAsync();
+
+            Assert.Equal(0, result);
+            Assert.Empty(await EventIdsAsync());
         }
 
         [Fact]

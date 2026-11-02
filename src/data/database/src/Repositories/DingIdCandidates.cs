@@ -15,8 +15,8 @@ namespace VideoForensics.Data.Database.Repositories
     {
         /// <summary>
         /// Returns the ordered, distinct string ding ids of the device whose provider id is the doorbot id. Candidates
-        /// come only from the string-id feeds (location events and video search), because the doorbot history id is a
-        /// truncated form of the ding id. Returns an empty list when no device has that doorbot id.
+        /// come only from the string-id feeds (location events and video search), because those feeds store the string
+        /// ding id that a doorbot history id must equal. Returns an empty list when no device has that doorbot id.
         /// </summary>
         /// <param name="db">The context to read from. Reads are untracked.</param>
         /// <param name="doorbotId">The numeric doorbot id of the device.</param>

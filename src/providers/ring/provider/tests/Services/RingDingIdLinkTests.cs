@@ -14,15 +14,15 @@ namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
     /// The download path resolves a doorbot history row to its string ding id before it writes an Events row. Only a
-    /// single device-scoped prefix match counts; anything else leaves the row unlinked and the event is skipped.
+    /// single device-scoped exact match counts; anything else leaves the row unlinked and the event is skipped.
     /// </summary>
     public class RingDingIdLinkTests
     {
         private const int DeviceId = 86401464;
-        private const long HistoryId = 1234567890123456;
+        private const long HistoryId = 1234567890123456789;
 
         [Fact]
-        public async Task ResolveDingIdAsync_OneCandidateHasThePrefix_ReturnsMatchedWithThatDingId()
+        public async Task ResolveDingIdAsync_OneCandidateEqualsTheId_ReturnsMatchedWithThatDingId()
         {
             var data = new Mock<IVideoForensicsDataClient>();
             data.Setup(d => d.GetDingIdCandidatesAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789" });
@@ -32,6 +32,19 @@ namespace VideoForensics.Providers.Ring.Tests
 
             Assert.Equal(DingIdMatchOutcome.Matched, result.Outcome);
             Assert.Equal("1234567890123456789", result.DingId);
+        }
+
+        [Fact]
+        public async Task ResolveDingIdAsync_OneCandidateOnlySharesPrefix_ReturnsUnmatched()
+        {
+            var data = new Mock<IVideoForensicsDataClient>();
+            data.Setup(d => d.GetDingIdCandidatesAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456001" });
+            RingMediaDownloadService service = CreateService(data.Object);
+
+            DingIdMatchResult result = await service.ResolveDingIdAsync(BuildHistoryEvent(), CancellationToken.None);
+
+            Assert.Equal(DingIdMatchOutcome.Unmatched, result.Outcome);
+            Assert.Null(result.DingId);
         }
 
         [Fact]
@@ -48,10 +61,10 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task ResolveDingIdAsync_TwoCandidatesHaveThePrefix_ReturnsAmbiguous()
+        public async Task ResolveDingIdAsync_TwoEqualCandidates_ReturnsAmbiguous()
         {
             var data = new Mock<IVideoForensicsDataClient>();
-            data.Setup(d => d.GetDingIdCandidatesAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456001", "1234567890123456789" });
+            data.Setup(d => d.GetDingIdCandidatesAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789", "1234567890123456789" });
             RingMediaDownloadService service = CreateService(data.Object);
 
             DingIdMatchResult result = await service.ResolveDingIdAsync(BuildHistoryEvent(), CancellationToken.None);

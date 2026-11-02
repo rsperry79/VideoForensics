@@ -2,7 +2,7 @@ namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>
     /// Reads and writes the link between a doorbot history row and the Events row for its ding. A doorbot history id is
-    /// the string ding id with its last three digits dropped, so the download path matches on that prefix.
+    /// the string ding id, so the download path matches on exact equality.
     /// </summary>
     public interface IDingIdLinkRepository
     {

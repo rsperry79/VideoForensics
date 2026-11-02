@@ -6,8 +6,8 @@ using VideoForensics.Data.Common.Contracts;
 namespace VideoForensics.Data.Common.Matching
 {
     /// <summary>
-    /// Decides which provider event id to store for an imported or backfilled row. A numeric id may be a truncated doorbot
-    /// id, so it is kept only when it already is a candidate string ding id, or when exactly one candidate prefix-matches it.
+    /// Decides which provider event id to store for an imported or backfilled row. A numeric id is a doorbot id, which
+    /// equals the string ding id, so it is kept only when it is exactly one of the candidate string ding ids of its device.
     /// Non-numeric ids (snapshot-*, legacy ids such as ring_evt_001) are not doorbot ids and are kept as they are.
     /// </summary>
     public static class ProviderEventIdResolver
@@ -20,13 +20,15 @@ namespace VideoForensics.Data.Common.Matching
             ArgumentNullException.ThrowIfNull(providerEventId);
             ArgumentNullException.ThrowIfNull(candidates);
 
-            if (!providerEventId.All(char.IsAsciiDigit) || candidates.Contains(providerEventId, StringComparer.Ordinal))
+            if (!providerEventId.All(char.IsAsciiDigit))
             {
                 return providerEventId;
             }
 
-            DingIdMatchResult match = DingIdPrefixMatcher.Match(providerEventId, candidates);
-            return match.Outcome == DingIdMatchOutcome.Matched ? match.DingId : null;
+            // Why: exact equality only. A numeric id that is merely a prefix of a candidate is a different ding, so it is skipped.
+            // Two or more equal candidates are ambiguous and skipped, the same rule DingIdPrefixMatcher applies.
+            int equal = candidates.Count(c => string.Equals(c, providerEventId, StringComparison.Ordinal));
+            return equal == 1 ? providerEventId : null;
         }
 
         /// <summary>
