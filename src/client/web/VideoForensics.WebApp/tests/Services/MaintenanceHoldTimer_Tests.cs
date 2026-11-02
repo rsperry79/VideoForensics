@@ -99,5 +99,79 @@ namespace VideoForensics.Client.WebApp.Tests.Services
 
             Assert.Equal(0, calls);
         }
+
+        [Fact]
+        public void TryReserve_WhileIdle_RecordsHoldStartTime()
+        {
+            var clock = new FakeClock(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
+            var timer = new MaintenanceHoldTimer(TimeSpan.FromMinutes(30), TimeSpan.FromHours(4), clock);
+
+            _ = timer.TryReserve(() => { });
+
+            Assert.Equal(clock.Now, timer.HoldStartedAt);
+        }
+
+        [Fact]
+        public void Renew_WithinFourHourCap_ReturnsTrue()
+        {
+            var clock = new FakeClock(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
+            var timer = new MaintenanceHoldTimer(TimeSpan.FromMinutes(30), TimeSpan.FromHours(4), clock);
+            Guid token = timer.TryStart(() => { })!.Value;
+            clock.Now = clock.Now.AddHours(3);
+
+            Assert.Equal(HoldRenewResult.Renewed, timer.RenewOutcome(token));
+        }
+
+        [Fact]
+        public void Renew_PastFourHourCap_ReturnsMaxAgeReached()
+        {
+            var clock = new FakeClock(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
+            var timer = new MaintenanceHoldTimer(TimeSpan.FromMinutes(30), TimeSpan.FromHours(4), clock);
+            Guid token = timer.TryStart(() => { })!.Value;
+            clock.Now = clock.Now.AddHours(4).AddMinutes(1);
+
+            Assert.Equal(HoldRenewResult.MaxAgeReached, timer.RenewOutcome(token));
+            Assert.False(timer.Renew(token));
+        }
+
+        [Fact]
+        public void Renew_WrongToken_ReturnsNotActive()
+        {
+            var timer = new MaintenanceHoldTimer(TimeSpan.FromMinutes(30));
+            _ = timer.TryStart(() => { });
+
+            Assert.Equal(HoldRenewResult.NotActive, timer.RenewOutcome(Guid.NewGuid()));
+        }
+
+        [Fact]
+        public async Task ArmSafetyTimer_AfterReserve_DoesNotExpireBeforeArmed()
+        {
+            int calls = 0;
+            var timer = new MaintenanceHoldTimer(TimeSpan.FromMilliseconds(20));
+            Guid token = timer.TryReserve(() => calls++)!.Value;
+
+            await Task.Delay(100);
+            Assert.Equal(0, calls);
+
+            Assert.True(timer.ArmSafetyTimer(token));
+            await Task.Delay(150);
+            Assert.Equal(1, calls);
+        }
+
+        [Fact]
+        public void ArmSafetyTimer_WrongToken_ReturnsFalse()
+        {
+            var timer = new MaintenanceHoldTimer(TimeSpan.FromMinutes(30));
+            _ = timer.TryReserve(() => { });
+
+            Assert.False(timer.ArmSafetyTimer(Guid.NewGuid()));
+        }
+
+        private sealed class FakeClock(DateTimeOffset start) : TimeProvider
+        {
+            public DateTimeOffset Now { get; set; } = start;
+
+            public override DateTimeOffset GetUtcNow() => Now;
+        }
     }
 }

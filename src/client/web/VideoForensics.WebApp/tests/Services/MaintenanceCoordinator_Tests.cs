@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
 using VideoForensics.Client.Hosting.Maintenance;
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Contracts;
 
@@ -212,6 +214,73 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             await ended.Task.WaitAsync(TimeSpan.FromSeconds(5));
             _gate.Verify(g => g.End(), Times.Once);
             Assert.False(coordinator.EndHold(token));
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_DrainStillRunning_TimerDoesNotEndTheHoldEarly()
+        {
+            var drain = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ = _gate.Setup(g => g.BeginDrainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(drain.Task);
+            MaintenanceCoordinator coordinator = CreateCoordinator(new MaintenanceHoldTimer(TimeSpan.FromMilliseconds(20)));
+
+            Task<Guid> begin = coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+            await Task.Delay(150);
+
+            _gate.Verify(g => g.End(), Times.Never);
+            _ = await Assert.ThrowsAsync<MaintenanceInProgressException>(() =>
+                coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None));
+
+            drain.SetResult();
+            Guid token = await begin;
+            Assert.NotEqual(Guid.Empty, token);
+            _gate.Verify(g => g.MarkRunning("Server held for database repair"), Times.Once);
+        }
+
+        [Fact]
+        public async Task EndHold_GateEndThrows_StillReportsEndedAndFreesTheSlot()
+        {
+            _ = _gate.Setup(g => g.End()).Throws(new InvalidOperationException("gate broke"));
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            bool ended = coordinator.EndHold(token);
+
+            Assert.True(ended);
+            _ = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task RenewHoldOutcome_PastMaxAge_ReturnsMaxAgeReached()
+        {
+            var clock = new CoordinatorFakeClock(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
+            MaintenanceCoordinator coordinator = CreateCoordinator(new MaintenanceHoldTimer(TimeSpan.FromMinutes(30), TimeSpan.FromHours(4), clock));
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+            clock.Now = clock.Now.AddHours(4);
+
+            Assert.Equal(HoldRenewResult.MaxAgeReached, coordinator.RenewHoldOutcome(token));
+        }
+
+        [Fact]
+        public void RenewHoldResponse_MaxAgeReached_Returns409WithReason()
+        {
+            IResult result = DatabaseEndpoints.RenewHoldResponse(HoldRenewResult.MaxAgeReached);
+
+            Assert.Equal(StatusCodes.Status409Conflict, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+        }
+
+        [Fact]
+        public void RenewHoldResponse_NotActive_Returns404()
+        {
+            IResult result = DatabaseEndpoints.RenewHoldResponse(HoldRenewResult.NotActive);
+
+            Assert.Equal(StatusCodes.Status404NotFound, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+        }
+
+        private sealed class CoordinatorFakeClock(DateTimeOffset start) : TimeProvider
+        {
+            public DateTimeOffset Now { get; set; } = start;
+
+            public override DateTimeOffset GetUtcNow() => Now;
         }
     }
 }

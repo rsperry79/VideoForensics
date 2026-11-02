@@ -201,10 +201,20 @@ public sealed class ServerMaintenanceClient
     {
         Uri pollUri = new(server, $"api/v1/pairing/device-code/{Uri.EscapeDataString(deviceCode)}/poll");
         DateTimeOffset deadline = DateTimeOffset.UtcNow + PairingTimeout;
+        TimeSpan? retryAfter = null;
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            await _delay(pollInterval, ct);
+            // Why: a rate limit names how long to wait, so honour it; the wait never runs past the pairing deadline.
+            TimeSpan wait = retryAfter ?? pollInterval;
+            TimeSpan untilDeadline = deadline - DateTimeOffset.UtcNow;
+            if (wait > untilDeadline)
+            {
+                wait = untilDeadline;
+            }
+
+            retryAfter = null;
+            await _delay(wait < TimeSpan.Zero ? TimeSpan.Zero : wait, ct);
 
             using HttpResponseMessage response = await _http.PostAsync(pollUri, null, ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
@@ -216,8 +226,19 @@ public sealed class ServerMaintenanceClient
             // Why: rate limits and server errors are retryable. The next attempt waits the same interval, and the 10-minute deadline still bounds the wait.
             if (response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500)
             {
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    retryAfter = RetryAfterFrom(response);
+                }
+
                 _console.Write($"Pairing is busy (HTTP {(int)response.StatusCode}); retrying.");
                 continue;
+            }
+
+            if (IsRedirect(response.StatusCode))
+            {
+                _console.Write(RedirectMessage(response.StatusCode));
+                return null;
             }
 
             if (!response.IsSuccessStatusCode)
@@ -242,6 +263,19 @@ public sealed class ServerMaintenanceClient
         return null;
     }
 
+    // Why: only the seconds form is read. A missing or date-form header falls back to the normal poll interval.
+    private static TimeSpan? RetryAfterFrom(HttpResponseMessage response)
+    {
+        TimeSpan? delta = response.Headers.RetryAfter?.Delta;
+        return delta is { } seconds && seconds >= TimeSpan.Zero ? seconds : null;
+    }
+
+    // Why: every request that carries the key uses a client that does not follow redirects, so a 3xx is reported and never followed.
+    private static bool IsRedirect(HttpStatusCode status) => (int)status is >= 300 and < 400;
+
+    private static string RedirectMessage(HttpStatusCode status) =>
+        $"The server answered with a redirect (HTTP {(int)status}). Redirects are not followed, so the API key is not sent to another address.";
+
     private async Task<(BeginOutcome Outcome, Guid? HoldToken)> BeginHoldAsync(Uri server, string apiKey, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(server, "api/v1/database/maintenance/begin"));
@@ -252,6 +286,12 @@ public sealed class ServerMaintenanceClient
             if (response.StatusCode == HttpStatusCode.Conflict)
             {
                 return (BeginOutcome.InProgress, null);
+            }
+
+            if (IsRedirect(response.StatusCode))
+            {
+                _console.Write(RedirectMessage(response.StatusCode));
+                return (BeginOutcome.Failed, null);
             }
 
             if (!response.IsSuccessStatusCode)
@@ -348,6 +388,12 @@ public sealed class ServerMaintenanceClient
                     return;
                 }
 
+                if (IsRedirect(response.StatusCode))
+                {
+                    _console.Write(RedirectMessage(response.StatusCode) + " End it from the admin page or restart the server.");
+                    return;
+                }
+
                 _console.Write($"Could not end server maintenance (HTTP {(int)response.StatusCode}). End it from the admin page or restart the server.");
             }
             catch (Exception ex)
@@ -376,6 +422,12 @@ public sealed class ServerMaintenanceClient
                     if (response.StatusCode == HttpStatusCode.NotFound)
                     {
                         _console!.Write("Server maintenance is no longer held for this run; the server ended it.");
+                        return;
+                    }
+
+                    if (IsRedirect(response.StatusCode))
+                    {
+                        _console!.Write(RedirectMessage(response.StatusCode) + " Renewal stopped; the server's safety timeout still ends maintenance.");
                         return;
                     }
 

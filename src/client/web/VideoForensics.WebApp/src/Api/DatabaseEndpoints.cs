@@ -114,15 +114,23 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Drain work, release database connections and hold maintenance for an offline database tool. Returns the hold token.");
 
             _ = group.MapPost("/maintenance/renew", (MaintenanceHoldRequest request, MaintenanceCoordinator coordinator) =>
-                    coordinator.RenewHold(request.HoldToken) ? Results.NoContent() : Results.NotFound())
+                    RenewHoldResponse(coordinator.RenewHoldOutcome(request.HoldToken)))
                 .WithName("RenewDatabaseMaintenanceHold")
-                .WithSummary("Restart the safety timeout of the maintenance hold with this token. 404 when the token is not the active hold.");
+                .WithSummary("Restart the safety timeout of the maintenance hold with this token. 404 when the token is not the active hold. 409 when the hold reached its maximum age.");
 
             _ = group.MapPost("/maintenance/end", (MaintenanceHoldRequest request, MaintenanceCoordinator coordinator) =>
                     coordinator.EndHold(request.HoldToken) ? Results.NoContent() : Results.NotFound())
                 .WithName("EndDatabaseMaintenanceHold")
                 .WithSummary("End the maintenance hold with this token. 404 when the token is not the active hold.");
         }
+
+        // Why: a hold past its maximum age gets 409 with the reason, so the tool stops renewing instead of retrying a token that will never be extended.
+        internal static IResult RenewHoldResponse(HoldRenewResult outcome) => outcome switch
+        {
+            HoldRenewResult.Renewed => Results.NoContent(),
+            HoldRenewResult.MaxAgeReached => Results.Conflict("The maintenance hold reached its 4-hour maximum and was not renewed. It ends at that limit."),
+            _ => Results.NotFound(),
+        };
 
         // Turns an overlapping run into 409 Conflict. Other failures are not caught here, so they surface as server errors.
         private static async Task<IResult> RunMaintenanceAsync(

@@ -78,8 +78,9 @@ namespace VideoForensics.Client.WebApp.Services
         /// <returns>The hold token. Only this token can end the hold.</returns>
         public async Task<Guid> BeginHoldAsync(string description, CancellationToken ct)
         {
-            // Why: the slot and the timer are taken before the gate changes state, so a second begin fails here without touching the gate.
-            Guid? token = holdTimer.TryStart(OnHoldExpired);
+            // Why: the slot is taken before the gate changes state, so a second begin fails here without touching the gate.
+            // The safety timer is armed only after the drain, so a slow drain never counts against the hold's 30 minutes.
+            Guid? token = holdTimer.TryReserve(OnHoldExpired);
             if (token is null)
             {
                 throw new MaintenanceInProgressException(AlreadyInProgressMessage, new InvalidOperationException(AlreadyInProgressMessage));
@@ -103,6 +104,7 @@ namespace VideoForensics.Client.WebApp.Services
                 await drained;
                 gate.MarkRunning(description);
                 await lifecycle.ReleaseAllConnectionsAsync(ct);
+                _ = holdTimer.ArmSafetyTimer(token.Value);
             }
             catch (Exception ex)
             {
@@ -111,7 +113,7 @@ namespace VideoForensics.Client.WebApp.Services
                 {
                     if (gateClaimed)
                     {
-                        gate.End();
+                        ReleaseGate();
                     }
                 });
 
@@ -133,7 +135,7 @@ namespace VideoForensics.Client.WebApp.Services
         /// </summary>
         public bool EndHold(Guid token)
         {
-            bool ended = holdTimer.TryEnd(token, gate.End);
+            bool ended = holdTimer.TryEnd(token, ReleaseGate);
             if (ended)
             {
                 logger.LogInformation("Server maintenance hold ended");
@@ -142,20 +144,29 @@ namespace VideoForensics.Client.WebApp.Services
             return ended;
         }
 
-        /// <summary>Restarts the safety timeout of the active hold. Returns false when the token does not match an active hold.</summary>
-        public bool RenewHold(Guid token) => holdTimer.Renew(token);
+        /// <summary>Restarts the safety timeout of the active hold. Returns false when the token does not match an active hold or the hold reached its maximum age.</summary>
+        public bool RenewHold(Guid token) => RenewHoldOutcome(token) == HoldRenewResult.Renewed;
+
+        /// <summary>Restarts the safety timeout of the active hold and reports why it was not renewed, when it was not.</summary>
+        public HoldRenewResult RenewHoldOutcome(Guid token) => holdTimer.RenewOutcome(token);
 
         // Runs on the timer thread when a hold is not ended in time. Never throws: an exception here would crash the process.
         private void OnHoldExpired()
         {
+            ReleaseGate();
+            logger.LogInformation("Maintenance hold expired at its safety timeout");
+        }
+
+        // Why: the hold is reported as ended even when the gate fails to release, so a failure here is logged and never returned to the caller.
+        private void ReleaseGate()
+        {
             try
             {
                 gate.End();
-                logger.LogInformation("maintenance hold expired after 30 minutes");
             }
             catch (Exception ex)
             {
-                logger.LogError("Maintenance hold expiry failed: {ExceptionType}", ex.GetType().Name);
+                logger.LogError("Server maintenance end failed: {Message} ({ExceptionType})", ex.Message, ex.GetType().Name);
             }
         }
     }

@@ -176,6 +176,80 @@ public class ServerMaintenanceClient_Tests
     }
 
     [Fact]
+    public async Task StartAsync_BeginRedirects_FailsWithRedirectMessageAndDoesNotFollow()
+    {
+        var handler = new FakeHandler(request => request.RequestUri!.AbsolutePath.EndsWith("/maintenance/begin")
+            ? Redirect("https://elsewhere.example/redirected/begin")
+            : ServerRoutes(pollResponses: ["approved"])(request));
+        using var http = new HttpClient(handler);
+        var console = new FakeConsole(interactive: true, answer: false);
+        var client = new ServerMaintenanceClient(http, console, NewDelay().Delay);
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None);
+
+        Assert.Null(session);
+        Assert.Equal(1, handler.Requests.Count(r => r == "POST /api/v1/database/maintenance/begin"));
+        Assert.DoesNotContain(handler.Requests, r => r.Contains("redirected"));
+        Assert.Contains(console.Messages, m => m.Contains("redirect", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task StartAsync_PollReturnsTooManyRequestsWithRetryAfter_WaitsRetryAfterSeconds()
+    {
+        bool throttled = false;
+        var routes = ServerRoutes(pollResponses: ["approved"]);
+        var handler = new FakeHandler(request =>
+        {
+            if (!throttled && request.RequestUri!.AbsolutePath.EndsWith("/poll"))
+            {
+                throttled = true;
+                var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                limited.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(30));
+                return limited;
+            }
+
+            return routes(request);
+        });
+        using var http = new HttpClient(handler);
+        FakeDelay delay = NewDelay();
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), delay.Delay);
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None);
+        await session!.DisposeAsync();
+
+        Assert.Equal([TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)], delay.PollDelays);
+    }
+
+    [Fact]
+    public async Task StartAsync_RetryAfterBeyondPairingDeadline_WaitIsBoundedByDeadline()
+    {
+        bool throttled = false;
+        var routes = ServerRoutes(pollResponses: ["approved"]);
+        var handler = new FakeHandler(request =>
+        {
+            if (!throttled && request.RequestUri!.AbsolutePath.EndsWith("/poll"))
+            {
+                throttled = true;
+                var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                limited.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromHours(1));
+                return limited;
+            }
+
+            return routes(request);
+        });
+        using var http = new HttpClient(handler);
+        FakeDelay delay = NewDelay();
+        var client = new ServerMaintenanceClient(http, new FakeConsole(interactive: true, answer: false), delay.Delay);
+
+        ServerMaintenanceClient.ServerMaintenanceSession? session = await client.StartAsync(Server, CancellationToken.None);
+        await session!.DisposeAsync();
+
+        Assert.Equal(2, delay.PollDelays.Count);
+        Assert.True(delay.PollDelays[1] <= TimeSpan.FromMinutes(10), $"wait was {delay.PollDelays[1]}");
+        Assert.True(delay.PollDelays[1] >= TimeSpan.FromMinutes(9), $"wait was {delay.PollDelays[1]}");
+    }
+
+    [Fact]
     public async Task StartAsync_Held_RenewsWithTokenWhileRepairRuns()
     {
         var renewed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -301,6 +375,13 @@ public class ServerMaintenanceClient_Tests
     private static HttpResponseMessage Json(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 
+    private static HttpResponseMessage Redirect(string location)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.Redirect);
+        response.Headers.Location = new Uri(location);
+        return response;
+    }
+
     private static FakeDelay NewDelay() => new();
 
     private sealed class FakeDelay
@@ -343,11 +424,11 @@ public class ServerMaintenanceClient_Tests
     {
         public List<string> Questions { get; } = [];
 
+        public List<string> Messages { get; } = [];
+
         public bool IsInteractive => interactive;
 
-        public void Write(string message)
-        {
-        }
+        public void Write(string message) => Messages.Add(message);
 
         public Task<bool> ConfirmAsync(string question, CancellationToken ct)
         {

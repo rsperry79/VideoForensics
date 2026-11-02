@@ -121,13 +121,7 @@ Console.WriteLine($"Database: {effectivePath}");
 // Handle ding id repair if requested
 if (repairDingIds)
 {
-    if (!ServerMaintenanceClient.TryValidateServer(serverArg ?? ServerMaintenanceClient.DefaultServer.ToString(), out Uri? serverUri, out string? serverError))
-    {
-        Console.Error.WriteLine(serverError);
-        return 1;
-    }
-
-    return await HandleDingIdRepairAsync(factory, effectivePath, apply, serverUri!, CancellationToken.None);
+    return await HandleDingIdRepairAsync(factory, effectivePath, apply, serverArg ?? ServerMaintenanceClient.DefaultServer.ToString(), CancellationToken.None);
 }
 
 // Handle SuperAdmin password recovery if requested
@@ -507,15 +501,24 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
 
 // Why: a dry run only reads, so it takes no server hold and pairs nothing. An apply run holds the local server for the whole write, so the
 // server neither keeps the file open nor caches what it read. The hold ends in the await-using disposal, after the repair finishes or fails.
-static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply, Uri server, CancellationToken ct)
+static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply, string serverValue, CancellationToken ct)
 {
     var service = new DingIdRepairService();
     Func<CancellationToken, Task> backup = token => BackupDatabaseAsync(dbPath, token);
 
     if (!apply)
     {
+        // Why: a dry run only reads, so it neither contacts nor validates the server.
         return await ReportDingIdRepairAsync(service, factory, apply: false, backup, ct);
     }
+
+    if (!ServerMaintenanceClient.TryValidateServer(serverValue, out Uri? serverUri, out string? serverError))
+    {
+        Console.Error.WriteLine(serverError);
+        return 1;
+    }
+
+    Uri server = serverUri!;
 
     // Why: Ctrl+C cancels the run instead of killing the process, so the disposal below still ends the server hold.
     using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -528,7 +531,8 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
     Console.CancelKeyPress += onCancel;
     try
     {
-        using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        // Why: this client sends the server key, so it must not follow redirects to another address.
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
         var maintenance = new ServerMaintenanceClient(http, new ConsoleMaintenancePrompts());
         ServerMaintenanceClient.ServerMaintenanceSession? session = null;
         try
