@@ -200,7 +200,8 @@ function Publish-LogViewer {
 
     $target = Join-Path $RunDirectory "logviewer-$(Get-Date -Format 'yyyyMMddHHmmss')"
     Write-Host "Publishing the log viewer to $target"
-    dotnet publish $ProjectPath -c Debug -o $target
+    # Out-Host keeps the build lines on screen without adding them to the output, which must be only the dll path.
+    dotnet publish $ProjectPath -c Debug -o $target | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish of the log viewer failed with exit code $LASTEXITCODE." }
     return (Join-Path $target "$([System.IO.Path]::GetFileNameWithoutExtension($ProjectPath)).dll")
 }
