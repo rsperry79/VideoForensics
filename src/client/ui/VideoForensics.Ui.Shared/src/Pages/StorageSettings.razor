@@ -46,8 +46,40 @@ else
             <h6 class="card-title">@L["DefaultPathHeading"]</h6>
             <p class="small text-muted mb-2">@L["DefaultPathHint"]</p>
             <code data-testid="default-storage-path">@_storageData.DefaultRoot</code>
+            <div class="mt-3">
+                <SfButton Content="@L["ChangeDefaultPathButton"]" OnClick="BeginChangeDefault" CssClass="e-primary" />
+            </div>
+
+            @if (_pendingDefaultRoot is not null)
+            {
+                <div class="mt-3 d-flex flex-column gap-2" data-testid="default-storage-path-pending">
+                    <code>@_pendingDefaultRoot</code>
+                    <span class="text-muted">@L["ConfirmDefaultPathMessage"]</span>
+                    <div class="d-flex flex-row gap-2">
+                        <SfButton Content="@L["ConfirmButton"]" OnClick="AskConfirmDefault" CssClass="e-primary" />
+                        <SfButton Content="@L["CancelButton"]" OnClick="CancelDefault" CssClass="e-flat" />
+                    </div>
+                </div>
+            }
+
+            @if (_defaultActionMessage is not null)
+            {
+                <div class="mt-3 @(_defaultActionSuccess ? "text-success" : "text-danger")" role="status" data-testid="default-storage-path-message">@_defaultActionMessage</div>
+            }
         </div>
     </section>
+
+    <SfDialog @bind-Visible="_defaultFolderDialogVisible" Header="@L["BrowseFolderTitle"]" Width="600px" IsModal="true">
+        <FolderPicker OnClosed="OnDefaultFolderSelected" />
+    </SfDialog>
+
+    <SfDialog @bind-Visible="_confirmDefaultVisible" Header="@L["ConfirmMoveTitle"]" Width="500px" IsModal="true">
+        <div class="mb-3">@L["ConfirmDefaultPathMessage"]</div>
+        <div class="d-flex flex-row gap-2 justify-content-end">
+            <SfButton Content="@L["CancelButton"]" OnClick="CancelConfirmDefault" CssClass="e-flat" />
+            <SfButton Content="@L["MoveFilesButton"]" OnClick="ConfirmDefaultAsync" CssClass="e-primary" />
+        </div>
+    </SfDialog>
 
     <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
@@ -100,6 +132,68 @@ else
             await SessionState.EnsureLoadedAsync();
             await LoadAsync();
             StateHasChanged();
+        }
+    }
+
+    private bool _defaultFolderDialogVisible;
+    private bool _confirmDefaultVisible;
+    private string? _pendingDefaultRoot;
+    private string? _defaultActionMessage;
+    private bool _defaultActionSuccess;
+
+    private void BeginChangeDefault()
+    {
+        _defaultActionMessage = null;
+        _defaultFolderDialogVisible = true;
+    }
+
+    private Task OnDefaultFolderSelected(string? path)
+    {
+        _defaultFolderDialogVisible = false;
+        if (path is not null)
+        {
+            _pendingDefaultRoot = path;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void CancelDefault() => _pendingDefaultRoot = null;
+
+    private void AskConfirmDefault() => _confirmDefaultVisible = true;
+
+    private void CancelConfirmDefault() => _confirmDefaultVisible = false;
+
+    private async Task ConfirmDefaultAsync()
+    {
+        _confirmDefaultVisible = false;
+        if (string.IsNullOrWhiteSpace(_pendingDefaultRoot))
+        {
+            _defaultActionSuccess = false;
+            _defaultActionMessage = L["PathRequired"];
+            return;
+        }
+
+        try
+        {
+            RelocateStorageCategoryResult result = await StorageService.ChangeDefaultRootAsync(_pendingDefaultRoot, CancellationToken.None);
+            _defaultActionSuccess = result.Succeeded;
+            _defaultActionMessage = result.Succeeded ? L["ChangeDefaultPathDone"].Value : result.ErrorMessage ?? L["RelocateFailed"].Value;
+            if (result.Succeeded)
+            {
+                _pendingDefaultRoot = null;
+                await LoadAsync();
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _defaultActionSuccess = false;
+            _defaultActionMessage = L["NotAuthorizedToModify"].Value;
+        }
+        catch (Exception ex)
+        {
+            _defaultActionSuccess = false;
+            _defaultActionMessage = L["FailedToLoad", ex.Message].Value;
         }
     }
 

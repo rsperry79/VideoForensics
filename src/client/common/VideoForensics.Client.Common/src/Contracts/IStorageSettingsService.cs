@@ -63,5 +63,14 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="cancellationToken">Cancellation token to allow operation cancellation.</param>
         /// <returns>Result of the relocation attempt with success/error and restart requirement information.</returns>
         Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Changes the default storage root. Every category on the default location is moved under the new root, and the
+        /// new root is recorded so later defaults use it. Categories with an override, and Keys, stay where they are.
+        /// </summary>
+        /// <param name="newDefaultRoot">The new default root folder.</param>
+        /// <param name="cancellationToken">Cancellation token to allow operation cancellation.</param>
+        /// <returns>Result with success/error and restart requirement information.</returns>
+        Task<RelocateStorageCategoryResult> ChangeDefaultRootAsync(string newDefaultRoot, CancellationToken cancellationToken);
     }
 }

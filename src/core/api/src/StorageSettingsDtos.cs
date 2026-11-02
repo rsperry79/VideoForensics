@@ -44,6 +44,12 @@ namespace VideoForensics.Core.Api.Contracts
     );
 
     /// <summary>
+    /// Data transfer object for a request to change the default storage root.
+    /// </summary>
+    /// <param name="NewRootPath">The new default root folder.</param>
+    public record ChangeDefaultRootRequestDto(string NewRootPath);
+
+    /// <summary>
     /// Data transfer object representing the result of a storage category relocation attempt.
     /// </summary>
     /// <param name="Succeeded">True if relocation succeeded; false otherwise.</param>

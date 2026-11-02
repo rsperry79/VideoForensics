@@ -176,6 +176,110 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        /// <inheritdoc />
+        public async Task<RelocateStorageCategoryResult> ChangeDefaultRootAsync(string newDefaultRoot, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(newDefaultRoot))
+            {
+                const string errorMessage = "New default root cannot be empty";
+                _logger.LogError(errorMessage);
+                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
+            }
+
+            string oldRoot = Path.GetFullPath(_storageLocationProvider.GetDefaultStorageRoot());
+            string newRoot = Path.GetFullPath(newDefaultRoot);
+            if (string.Equals(oldRoot, newRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: false);
+            }
+
+            try
+            {
+                IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync("", cancellationToken);
+
+                // Only categories sitting on the default root move. An in-app override, an install-time override, or a
+                // relocated Database is not under the root, so it is skipped. Keys never move.
+                var plan = new List<(StorageCategory Category, string OldPath, string NewPath)>();
+                foreach (StorageCategory category in Enum.GetValues<StorageCategory>())
+                {
+                    if (category == StorageCategory.Keys || !string.IsNullOrWhiteSpace(GetConfigurationOverride(config, category)))
+                    {
+                        continue;
+                    }
+
+                    string currentPath = Path.GetFullPath(_storageLocationProvider.GetDefaultRoot(category));
+                    if (!IsUnderRoot(currentPath, oldRoot))
+                    {
+                        continue;
+                    }
+
+                    plan.Add((category, currentPath, Path.Combine(newRoot, Path.GetRelativePath(oldRoot, currentPath))));
+                }
+
+                _ = Directory.CreateDirectory(newRoot);
+                if (plan.Any(p => p.Category == StorageCategory.Database))
+                {
+                    // Pooled connections keep the database file open, so release them before anything moves.
+                    await _maintenance.ReleaseAllConnectionsAsync(cancellationToken);
+                }
+
+                var moved = new List<(string OldPath, string NewPath)>();
+                try
+                {
+                    foreach ((StorageCategory category, string oldPath, string targetPath) in plan)
+                    {
+                        if (!Directory.Exists(oldPath))
+                        {
+                            continue;
+                        }
+
+                        await MoveDirectoryContentsAsync(oldPath, targetPath, cancellationToken);
+                        moved.Add((oldPath, targetPath));
+                        _logger.LogDebug("Moved {Category} to the new default root", category);
+                    }
+
+                    // Recorded last, so a failed move leaves the old root in place for the next start.
+                    DefaultStorageRootPointer.Write(_storageLocationProvider.GetDataRoot(), newRoot);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Failed to change the default storage root to {NewRoot}: {ExceptionType} {ErrorMessage}", newRoot, ex.GetType().Name, ex.Message);
+                    await MoveBackAsync(moved, cancellationToken);
+                    return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to move storage files: {ex.Message}", RestartRequired: false);
+                }
+
+                // Every process reads the default root and the database location at startup, so the app restarts after a change.
+                _logger.LogInformation("Default storage root changed to {NewRoot}. Categories moved: {MovedCount}", newRoot, moved.Count);
+                return new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error changing the default storage root");
+                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Unexpected error: {ex.Message}", RestartRequired: false);
+            }
+        }
+
+        private async Task MoveBackAsync(List<(string OldPath, string NewPath)> moved, CancellationToken cancellationToken)
+        {
+            for (int i = moved.Count - 1; i >= 0; i--)
+            {
+                try
+                {
+                    await MoveDirectoryContentsAsync(moved[i].NewPath, moved[i].OldPath, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Could not move files back to {OldPath}: {ExceptionType} {ErrorMessage}", moved[i].OldPath, ex.GetType().Name, ex.Message);
+                }
+            }
+        }
+
+        private static bool IsUnderRoot(string path, string root)
+        {
+            string withSeparator = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+            return path.StartsWith(withSeparator, StringComparison.OrdinalIgnoreCase);
+        }
+
         private string? GetConfigurationOverride(IForensicsConfiguration config, StorageCategory category)
         {
             return category switch

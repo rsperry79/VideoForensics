@@ -24,6 +24,11 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithDescription("Retrieves the current state of all storage categories including used space, free space, and whether they are using default or custom paths.")
                 .RequireRateLimiting("media");
 
+            _ = group.MapPost("/default-root", ChangeDefaultRoot)
+                .WithSummary("Change the default storage root")
+                .WithDescription("Moves every category on the default location under the new root and records it. The app restarts after a successful change.")
+                .RequireRateLimiting("media");
+
             _ = group.MapPost("/relocate", RelocateStorageCategory)
                 .WithSummary("Relocate a storage category")
                 .WithDescription("Relocates a storage category to a new root path. Database and Logs categories require an app restart. Keys category cannot be relocated.")
@@ -35,6 +40,42 @@ namespace VideoForensics.Client.WebApp.Api
             StorageSettings settings = await storageSettings.GetStatusAsync(cancellationToken);
             StorageSettingsDto dto = settings.ToDto();
             return Results.Ok(dto);
+        }
+
+        private static async Task<IResult> ChangeDefaultRoot(
+            ChangeDefaultRootRequestDto requestDto,
+            MaintenanceCoordinator coordinator,
+            IHostApplicationLifetime lifetime,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(requestDto.NewRootPath))
+            {
+                return Results.BadRequest("New default root cannot be empty");
+            }
+
+            // Runs under the maintenance gate: the database file may move, so new work waits and pooled connections are released.
+            // The hold stays after success, because this process still points at the old paths; it restarts to pick up the new ones.
+            try
+            {
+                string newRoot = requestDto.NewRootPath;
+                RelocateStorageCategoryResult result = await coordinator.RunAsync(
+                    "Changing the default storage path",
+                    (sp, token) => sp.GetRequiredService<IStorageSettingsService>().ChangeDefaultRootAsync(newRoot, token),
+                    cancellationToken,
+                    holdOnSuccess: true);
+
+                if (result.Succeeded)
+                {
+                    Environment.ExitCode = 1;
+                    lifetime.StopApplication();
+                }
+
+                return Results.Ok(result.ToDto());
+            }
+            catch (MaintenanceInProgressException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
         }
 
         private static async Task<IResult> RelocateStorageCategory(
