@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Matching;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Core.Services
@@ -139,6 +140,11 @@ namespace VideoForensics.Client.Core.Services
                         _ = importedDeviceIds.Add(device.Id);
                     }
 
+                    // Why: the candidate lookup reads devices from the database, so devices added by this import are written first.
+                    await ctx.SaveChangesAsync(ct);
+                    Dictionary<Guid, Device> backupDevices = devices.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+                    var candidatesByDevice = new Dictionary<Guid, IReadOnlyList<string>>();
+
                     var importedEventIds = new HashSet<Guid>();
                     foreach (Event evt in events)
                     {
@@ -158,6 +164,14 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
+                        string? resolvedEventId = await ResolveProviderEventIdAsync(evt.ProviderEventId, evt.DeviceId, backupDevices, ctx, candidatesByDevice, ct);
+                        if (resolvedEventId is null)
+                        {
+                            importResult.Details.Add($"Skipped Event {evt.Id}: its id did not resolve to one ding id");
+                            continue;
+                        }
+
+                        evt.ProviderEventId = resolvedEventId;
                         _ = await ctx.Events.UpsertAsync(evt, ct);
                         importResult.Events.Inserted++;
                         _ = importedEventIds.Add(evt.Id);
@@ -182,6 +196,14 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
+                        string? resolvedDownloadId = await ResolveProviderEventIdAsync(de.ProviderEventId, de.DeviceId, backupDevices, ctx, candidatesByDevice, ct);
+                        if (resolvedDownloadId is null)
+                        {
+                            importResult.Details.Add($"Skipped DownloadEvent {de.Id}: its id did not resolve to one ding id");
+                            continue;
+                        }
+
+                        de.ProviderEventId = resolvedDownloadId;
                         await ctx.DownloadEvents.AddAsync(de, ct);
                         importResult.DownloadEvents.Inserted++;
                         _ = importedDownloadEventIds.Add(de.Id);
@@ -273,6 +295,28 @@ namespace VideoForensics.Client.Core.Services
 
             string json = await File.ReadAllTextAsync(path, ct);
             return JsonSerializer.Deserialize<T>(json);
+        }
+
+        /// <summary>Returns the event id to store for a backup row, or null when it does not resolve to one ding id.</summary>
+        private static async Task<string?> ResolveProviderEventIdAsync(
+            string providerEventId,
+            Guid deviceId,
+            IReadOnlyDictionary<Guid, Device> backupDevices,
+            IUnitOfWorkContext ctx,
+            Dictionary<Guid, IReadOnlyList<string>> candidatesByDevice,
+            CancellationToken ct)
+        {
+            if (!candidatesByDevice.TryGetValue(deviceId, out IReadOnlyList<string>? candidates))
+            {
+                // A device in this backup may not be written yet, so its provider id comes from the backup first.
+                Device? device = backupDevices.TryGetValue(deviceId, out Device? fromBackup)
+                    ? fromBackup
+                    : await ctx.Devices.GetAsync(deviceId, ct);
+                candidates = await ProviderEventIdResolver.CandidatesForDeviceAsync(device, ctx.DingIdLinks, ct);
+                candidatesByDevice[deviceId] = candidates;
+            }
+
+            return ProviderEventIdResolver.Resolve(providerEventId, candidates);
         }
     }
 }

@@ -74,45 +74,24 @@ namespace VideoForensics.Data.Database.Repositories
             return backfilled;
         }
 
-        /// <summary>
-        /// Returns the id to store. Numeric ids are truncated doorbot ids unless they already match a string ding id on the
-        /// device; the prefix match is written only when exactly one candidate matches. Null means skip the row.
-        /// </summary>
+        /// <summary>Returns the id to store for a DownloadEvent, or null when the row cannot be resolved to one ding id.</summary>
         private static async Task<string?> ResolveProviderEventIdAsync(
             DownloadEvent downloadEvent,
             IUnitOfWork unitOfWork,
             Dictionary<Guid, IReadOnlyList<string>> candidatesByDevice,
             CancellationToken ct)
         {
-            string id = downloadEvent.ProviderEventId;
-            // Non-numeric ids (snapshot-*, legacy ids such as ring_evt_001) are not doorbot ids, so they stay as they are.
-            if (!id.All(char.IsAsciiDigit))
-            {
-                return id;
-            }
-
             if (!candidatesByDevice.TryGetValue(downloadEvent.DeviceId, out IReadOnlyList<string>? candidates))
             {
                 candidates = await unitOfWork.ExecuteAsync(async ctx =>
                 {
                     Device? device = await ctx.Devices.GetAsync(downloadEvent.DeviceId, ct);
-                    if (device is null || !long.TryParse(device.ProviderDeviceId, NumberStyles.None, CultureInfo.InvariantCulture, out long doorbotId))
-                    {
-                        return (IReadOnlyList<string>)Array.Empty<string>();
-                    }
-
-                    return await ctx.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct);
+                    return await ProviderEventIdResolver.CandidatesForDeviceAsync(device, ctx.DingIdLinks, ct);
                 }, ct);
                 candidatesByDevice[downloadEvent.DeviceId] = candidates;
             }
 
-            if (candidates.Contains(id, StringComparer.Ordinal))
-            {
-                return id;
-            }
-
-            DingIdMatchResult match = DingIdPrefixMatcher.Match(id, candidates);
-            return match.Outcome == DingIdMatchOutcome.Matched ? match.DingId : null;
+            return ProviderEventIdResolver.Resolve(downloadEvent.ProviderEventId, candidates);
         }
     }
 }
