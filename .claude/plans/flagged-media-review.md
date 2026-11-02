@@ -180,3 +180,19 @@ Still open:
 - Browser checks: the review pages, stills, layout, create-case flow, position readout, missing-clip alert and breadcrumb scope restore are unverified in the running app.
 - Missing case throws InvalidOperationException, missing media throws KeyNotFoundException; the case path is not aligned.
 - Final checks: full build and test run (needs go-ahead), window-size matrix and MAUI check (B8).
+
+## Status update (2026-11-02, later)
+
+Landed on wip since the update above:
+- Case notes: API (`3859b3dc`, on wip via `e79c8bc3`), case-page section and TypeScript entry check (`e887ad4a`). The section uses a generic `NotesPanel` with a thin `CaseNotes` wrapper.
+- Generic notes store (`30bf2a11`): one `Notes` table keyed by `NoteTargetKind` (Case, JammingIncident, MediaFlag) and `TargetId`. Existing case notes were renamed across, not dropped. Routes for jamming and flag notes do not exist yet.
+- Reason picker (`988ef4a1`): Dismiss reason is a choice from `MediaFlagDismissReason` through the shared `ReasonPicker<TReason>`. "Other" needs a note. "Choose a reason" is placeholder text and never validates.
+- Missing media (`21ac3eb1`): adding a nonexistent clip to a case fails with a clear message, and no pin is stored.
+- Missing clip (`78130aca`): a missing clip queues validation for that clip only, and the alert is written only after the queue succeeds, so a failed queue retries.
+
+Not done:
+- Notes for jamming incidents and flags: routes and remote client, then the Jamming manual notes and the flag Keep note move onto `NotesPanel`.
+- Reason enums for pin, inspector action, review menu and case description (values not yet given).
+- Case path error type differs from the media path (`InvalidOperationException` vs `KeyNotFoundException`).
+- Browser checks in the running app: review routes, stills, sidebar, case creation, position readout, notes panel, missing-clip alert.
+- Worktree cleanup for the finished batches.
