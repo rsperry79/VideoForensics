@@ -95,7 +95,46 @@ namespace VideoForensics.Client.WebApp.Api
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .WithName("RepairActionLogChain")
                 .WithSummary("Bridge action log gaps with logged ChainRepaired entries. Altered entries are never bridged.");
+
+            // Used by the offline repair tool, which opens the database file itself. The hold lasts until end, until the
+            // tool stops renewing it, or until the coordinator's safety timeout ends it, so a crashed tool cannot leave the server paused.
+            _ = group.MapPost("/maintenance/begin", async (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                {
+                    try
+                    {
+                        Guid token = await coordinator.BeginHoldAsync("Server held for an offline database tool", ct);
+                        return Results.Ok(new MaintenanceHoldResponse(token));
+                    }
+                    catch (MaintenanceInProgressException ex)
+                    {
+                        return Results.Conflict(ex.Message);
+                    }
+                    catch (MaintenanceDrainTimeoutException ex)
+                    {
+                        return Results.Text(ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+                    }
+                })
+                .WithName("BeginDatabaseMaintenanceHold")
+                .WithSummary("Drain work, release database connections and hold maintenance for an offline database tool. Returns the hold token.");
+
+            _ = group.MapPost("/maintenance/renew", (MaintenanceHoldRequest request, MaintenanceCoordinator coordinator) =>
+                    RenewHoldResponse(coordinator.RenewHoldOutcome(request.HoldToken)))
+                .WithName("RenewDatabaseMaintenanceHold")
+                .WithSummary("Restart the safety timeout of the maintenance hold with this token. 404 when the token is not the active hold. 409 when the hold reached its maximum age.");
+
+            _ = group.MapPost("/maintenance/end", (MaintenanceHoldRequest request, MaintenanceCoordinator coordinator) =>
+                    coordinator.EndHold(request.HoldToken) ? Results.NoContent() : Results.NotFound())
+                .WithName("EndDatabaseMaintenanceHold")
+                .WithSummary("End the maintenance hold with this token. 404 when the token is not the active hold.");
         }
+
+        // Why: a hold past its maximum age gets 409 with the reason, so the tool stops renewing instead of retrying a token that will never be extended.
+        internal static IResult RenewHoldResponse(HoldRenewResult outcome) => outcome switch
+        {
+            HoldRenewResult.Renewed => Results.NoContent(),
+            HoldRenewResult.MaxAgeReached => Results.Conflict("The maintenance hold reached its 4-hour maximum and was not renewed. It ends at that limit."),
+            _ => Results.NotFound(),
+        };
 
         // Turns an overlapping run into 409 Conflict. Other failures are not caught here, so they surface as server errors.
         private static async Task<IResult> RunMaintenanceAsync(
@@ -124,4 +163,12 @@ namespace VideoForensics.Client.WebApp.Api
                 chain.FailedEntryTimestampUtc);
         }
     }
+
+    /// <summary>Response of the maintenance begin call: the token that ends or renews the hold.</summary>
+    /// <param name="HoldToken">Token of the hold that was started.</param>
+    public sealed record MaintenanceHoldResponse(Guid HoldToken);
+
+    /// <summary>Request body of the maintenance renew and end calls.</summary>
+    /// <param name="HoldToken">Token returned by the begin call.</param>
+    public sealed record MaintenanceHoldRequest(Guid HoldToken);
 }

@@ -13,12 +13,14 @@ namespace VideoForensics.Data.Database.Repositories
     /// <param name="EventsSkipped">Matched rows left alone because the device already has an Events row with the ding id.</param>
     /// <param name="DownloadEventsRepaired">DownloadEvents rows renamed alongside their Events rows.</param>
     /// <param name="Applied">True when the run wrote changes; false for a dry run.</param>
+    /// <param name="Aborted">True when the hold check failed just before the commit. Nothing was committed and the counts are zero.</param>
     public sealed record DingIdRepairReport(
         DingIdMatchCounts DoorbotHistory,
         int EventsRepaired,
         int EventsSkipped,
         int DownloadEventsRepaired,
-        bool Applied);
+        bool Applied,
+        bool Aborted = false);
 
     /// <summary>
     /// Repairs Events and DownloadEvents rows that were stored under the truncated doorbot history id. Each doorbot
@@ -35,11 +37,15 @@ namespace VideoForensics.Data.Database.Repositories
         /// <param name="apply">False for a dry run: counts only, no backup, no writes.</param>
         /// <param name="backup">Invoked once before any write when applying. An exception stops the run before changes.</param>
         /// <param name="ct">Cancellation token for the run.</param>
+        /// <param name="confirmHold">Invoked once on apply, after all writes and before the commit. Returning false rolls back and reports <see cref="DingIdRepairReport.Aborted"/>. Null means no check (dry runs take no hold).</param>
+        /// <param name="beforeWrites">Invoked once on apply, after the backup and before the first write. Returning false stops the run with <see cref="DingIdRepairReport.Aborted"/> and nothing written. Null means no check.</param>
         public async Task<DingIdRepairReport> RunAsync(
             IDbContextFactory<VideoForensicsDbContext> factory,
             bool apply,
             Func<CancellationToken, Task> backup,
-            CancellationToken ct)
+            CancellationToken ct,
+            Func<CancellationToken, Task<bool>>? confirmHold = null,
+            Func<CancellationToken, Task<bool>>? beforeWrites = null)
         {
             ArgumentNullException.ThrowIfNull(factory);
             ArgumentNullException.ThrowIfNull(backup);
@@ -104,6 +110,12 @@ namespace VideoForensics.Data.Database.Repositories
 
             await backup(ct);
 
+            // Why: the backup can take a long time on a large database, so the hold is checked again once it is done and before any write starts.
+            if (beforeWrites is not null && !await beforeWrites(ct))
+            {
+                return new DingIdRepairReport(counts, 0, 0, 0, Applied: false, Aborted: true);
+            }
+
             // One transaction: a failure part-way leaves the database as it was before the run.
             await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
             try
@@ -147,6 +159,14 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 _ = await db.SaveChangesAsync(ct);
+
+                // Why: the hold can end while the writes are staged. Checking right before the commit means a lost hold leaves nothing committed.
+                if (confirmHold is not null && !await confirmHold(ct))
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    return new DingIdRepairReport(counts, 0, 0, 0, Applied: false, Aborted: true);
+                }
+
                 await transaction.CommitAsync(ct);
 
                 return new DingIdRepairReport(counts, eventsRepaired, eventsSkipped, downloadEventsRepaired, true);

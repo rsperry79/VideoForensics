@@ -57,6 +57,7 @@ bool apply = false;
 bool skipConfirmation = false;
 bool resetSuperAdminPassword = false;
 bool repairDingIds = false;
+string? serverArg = null;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -73,6 +74,9 @@ for (int i = 0; i < args.Length; i++)
             break;
         case "--data-root" when i + 1 < args.Length:
             dataRootArg = args[++i];
+            break;
+        case "--server" when i + 1 < args.Length:
+            serverArg = args[++i];
             break;
         case "--username" when i + 1 < args.Length:
             usernameArg = args[++i];
@@ -117,7 +121,7 @@ Console.WriteLine($"Database: {effectivePath}");
 // Handle ding id repair if requested
 if (repairDingIds)
 {
-    return await HandleDingIdRepairAsync(factory, effectivePath, apply);
+    return await HandleDingIdRepairAsync(factory, effectivePath, apply, serverArg ?? ServerMaintenanceClient.DefaultServer.ToString(), CancellationToken.None);
 }
 
 // Handle SuperAdmin password recovery if requested
@@ -495,30 +499,108 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     }
 }
 
-// Why: the repair writes many rows, so a copy of the database is taken first and the write only runs after the copy succeeds.
-static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply)
+// Why: a dry run only reads, so it takes no server hold and pairs nothing. An apply run holds the local server for the whole write, so the
+// server neither keeps the file open nor caches what it read. The hold ends in the await-using disposal, after the repair finishes or fails.
+static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply, string serverValue, CancellationToken ct)
+{
+    var service = new DingIdRepairService();
+    // Why: the path is kept so the stop message can name the backup that the repair wrote before it was stopped.
+    string? backupPath = null;
+    Func<CancellationToken, Task> backup = async token => backupPath = await BackupDatabaseAsync(dbPath, token);
+
+    if (!apply)
+    {
+        // Why: a dry run only reads, so it neither contacts nor validates the server.
+        return await ReportDingIdRepairAsync(service, factory, apply: false, backup, ct);
+    }
+
+    if (!ServerMaintenanceClient.TryValidateServer(serverValue, out Uri? serverUri, out string? serverError))
+    {
+        Console.Error.WriteLine(serverError);
+        return 1;
+    }
+
+    Uri server = serverUri!;
+
+    // Why: Ctrl+C cancels the run instead of killing the process, so the disposal below still ends the server hold.
+    using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
+    ConsoleCancelEventHandler onCancel = (_, e) =>
+    {
+        e.Cancel = true;
+        cancel.Cancel();
+    };
+
+    Console.CancelKeyPress += onCancel;
+    try
+    {
+        // Why: this client sends the server key, so it must not follow redirects to another address.
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
+        var maintenance = new ServerMaintenanceClient(http, new ConsoleMaintenancePrompts());
+        // Why: the server ending the hold cancels this source, which stops the repair before it writes more. Ctrl+C cancels it too.
+        using var repairStop = CancellationTokenSource.CreateLinkedTokenSource(cancel.Token);
+        ServerMaintenanceClient.ServerMaintenanceSession? session = null;
+        try
+        {
+            session = await maintenance.StartAsync(server, cancel.Token, repairStop);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled while the hold was being taken: the begin call may still have held the server, and its safety timeout ends that.
+        }
+
+        if (session is null)
+        {
+            Console.Error.WriteLine("Ding id repair cancelled. The database was not changed.");
+            return 1;
+        }
+
+        // Why: the hold is checked before the first write and again right before the commit. A run without a hold has nothing to check.
+        Func<CancellationToken, Task<bool>>? confirmHold = session.Held ? session.ConfirmHoldAsync : null;
+        Func<CancellationToken, Task<bool>>? beforeWrites = session.Held ? session.EnsureHoldFreshAsync : null;
+        DingIdRepairReport? repairReport = null;
+        int exitCode;
+        await using (session)
+        {
+            exitCode = await ReportDingIdRepairAsync(service, factory, apply: true, backup, repairStop.Token, confirmHold, beforeWrites, r => repairReport = r);
+        }
+
+        // Why: the session is disposed above, so HoldLost is final here. A stopped repair is never reported as success.
+        if (session.HoldLost)
+        {
+            Console.Error.WriteLine(HoldLostMessages.DescribeHoldLost(repairReport?.Applied == true, backupPath ?? "(no backup was written)"));
+            return 1;
+        }
+
+        if (repairStop.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"Ding id repair cancelled; the repair did not commit or was rolled back; check the database and the backup at {backupPath ?? "(no backup was written)"}");
+            return 1;
+        }
+
+        return exitCode;
+    }
+    finally
+    {
+        Console.CancelKeyPress -= onCancel;
+    }
+}
+
+static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbContextFactory<VideoForensicsDbContext> factory, bool apply, Func<CancellationToken, Task> backup, CancellationToken ct, Func<CancellationToken, Task<bool>>? confirmHold = null, Func<CancellationToken, Task<bool>>? beforeWrites = null, Action<DingIdRepairReport>? onReport = null)
 {
     try
     {
-        var service = new DingIdRepairService();
-        Func<CancellationToken, Task> backup = ct => BackupDatabaseAsync(dbPath, ct);
-        DingIdRepairReport report;
-        if (apply)
+        DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct, confirmHold, beforeWrites);
+        // Why: the caller needs the Applied flag to word a lost-hold message after the session has ended.
+        onReport?.Invoke(report);
+        if (report.Aborted)
         {
-            // Why: the service holds the database open and caches what it read; stop it for the writes and start it again after.
-            using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
-            if (serviceGuard is null)
-            {
-                Console.Error.WriteLine(stopError);
-                return 1;
-            }
+            // Why: the hold check failed before the commit, so the service rolled back. Nothing was committed.
+            Console.Error.WriteLine("Ding id repair stopped before the commit because server maintenance could not be confirmed. Nothing was committed.");
+            return 1;
+        }
 
-            report = await service.RunAsync(factory, true, backup, CancellationToken.None);
-        }
-        else
-        {
-            report = await service.RunAsync(factory, false, backup, CancellationToken.None);
-        }
+        // Why: a repair that was stopped mid-run must not print a success summary, even if the service returned normally.
+        ct.ThrowIfCancellationRequested();
 
         Console.WriteLine("\nDing id repair (DoorbotHistory feed):");
         Console.WriteLine($"  Matched: {report.DoorbotHistory.Matched}");
@@ -535,14 +617,19 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
 
         return 0;
     }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+        // The caller prints the message that explains the stop.
+        return 1;
+    }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"Ding id repair failed: {ex.Message}");
+        Console.Error.WriteLine($"Ding id repair failed: {ex.Message} ({ex.GetType().Name})");
         return 1;
     }
 }
 
-static Task BackupDatabaseAsync(string dbPath, CancellationToken ct)
+static Task<string> BackupDatabaseAsync(string dbPath, CancellationToken ct)
 {
     ct.ThrowIfCancellationRequested();
     string backupPath = $"{dbPath}.bak-{DateTime.Now:yyyyMMddHHmmss}";
@@ -559,7 +646,7 @@ static Task BackupDatabaseAsync(string dbPath, CancellationToken ct)
     _ = command.Parameters.AddWithValue("$path", backupPath);
     _ = command.ExecuteNonQuery();
     Console.WriteLine($"Backup written: {backupPath}");
-    return Task.CompletedTask;
+    return Task.FromResult(backupPath);
 }
 
 static void PrintUsage()
@@ -579,6 +666,7 @@ static void PrintUsage()
           --apply                       Execute the repair. Without this flag, runs in dry-run mode and only reports issues.
           --reset-superadmin-password   Enable SuperAdmin password recovery (lost passkey recovery mode).
           --repair-ding-ids             Relink truncated Events/DownloadEvents to matched string ding ids. Dry run unless --apply; --apply writes a .bak copy first.
+          --server <url>                Local server to hold in maintenance during --repair-ding-ids. Default http://localhost:5162/.
           --username <name>             Target operator username for recovery. If omitted, uses the primary SuperAdmin.
           --yes, -y                     Skips confirmation prompts. Use only in scripted contexts.
 
