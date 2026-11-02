@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<CaseNote> AddAsync(Guid caseId, string body, string addedBy, CancellationToken ct)
+        public async Task<Note> AddAsync(Guid caseId, string body, string addedBy, CancellationToken ct)
         {
             var request = new AddCaseNoteRequest(body);
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"/api/v1/cases/{caseId}/notes", request, cancellationToken: ct);
@@ -55,7 +55,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<CaseNote>> ListForCaseAsync(Guid caseId, CancellationToken ct)
+        public async Task<IReadOnlyList<Note>> ListForCaseAsync(Guid caseId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/{caseId}/notes", ct);
             _ = response.EnsureSuccessStatusCode();

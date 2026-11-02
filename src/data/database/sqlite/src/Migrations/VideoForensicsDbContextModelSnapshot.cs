@@ -444,35 +444,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         });
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseNote", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("AddedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AddedBy")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Body")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("CaseId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CaseId", "AddedAtUtc");
-
-                    b.ToTable("CaseNotes", (string)null);
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Credential", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3100,6 +3071,40 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasDatabaseName("IX_MediaStillCaptures_SourceMediaItemId");
 
                     b.ToTable("MediaStillCaptures");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.Note", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AddedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TargetKind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetKind", "TargetId", "AddedAtUtc");
+
+                    b.ToTable("Notes", (string)null);
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Notice", b =>
@@ -7809,15 +7814,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("SnapshotCaptureId")
                         .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseNote", b =>
-                {
-                    b.HasOne("VideoForensics.Data.Common.Entities.ForensicCase", null)
-                        .WithMany()
-                        .HasForeignKey("CaseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZoneVertex", b =>
