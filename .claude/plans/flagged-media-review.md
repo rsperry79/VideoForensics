@@ -196,3 +196,21 @@ Not done:
 - Case path error type differs from the media path (`InvalidOperationException` vs `KeyNotFoundException`).
 - Browser checks in the running app: review routes, stills, sidebar, case creation, position readout, notes panel, missing-clip alert.
 - Worktree cleanup for the finished batches.
+
+## Status update (2026-11-02, latest)
+
+Built on the branches listed below. Each is verified; pushes wait on approval.
+- Generic notes store (`30bf2a11`): one `Notes` table for case, jamming-incident and flag notes, keyed by `NoteTargetKind` and `TargetId`. Existing case notes carried over by rename.
+- Notes routes (`301227cb`): `GET`/`POST /api/v1/notes/{kind}/{targetId}` for jamming incidents and flags, with a target-existence check before any write. Client remote `RemoteNoteRepository` registered.
+- Notes panels (`ee4e4a86`): `NotesPanel` replaces the Jamming manual notes (a selected incident gets its own thread; the record form has no notes box) and the flag's Keep note (Keep takes no note; the flag gets a thread). Notes stay addable on reviewed flags (decided).
+- Case notes UI (`e887ad4a`): notes section on the case page, remaining-characters count, TypeScript entry check.
+- Reason picker (`988ef4a1`, `9c4af7f6`): Dismiss reason is an enum choice ("Other" needs a note). "Choose a reason" is placeholder text and never validates.
+- Reason lists (`c54bbc3d`): pin, hold placement and hold release are enums. Tag and verify take no reason input, so no list (decided; values accepted for now).
+- Missing clip (`78130aca`): validation runs for that clip only; the alert is written only after the queue succeeds, so a failed queue retries.
+- Missing media pin (`21ac3eb1`): adding a nonexistent clip to a case fails with a clear message; no pin is stored.
+- Case not found (committed `103dd45b` on `fix/case-not-found-type`, not yet merged or pushed): a missing case throws `KeyNotFoundException`, as a missing media item does. The remote client maps 404 for the case write methods; the endpoints return 404; the screens show "case not found". Duplicate pins and closed cases keep `InvalidOperationException`. The case-item miss keeps its type.
+
+Still open:
+- Browser checks in the running app: review routes and top tab, stills, sidebar layout, create-case flow, position readout, notes panels (case, jamming, flag), missing-clip alert, breadcrumb scope restore.
+- Full test suites on the reason-list and notes-panel changes (the filtered suites pass).
+- Gaps tracked in `plans/todo.md`: audio and lighting flags, the timeline flag list, legal hold on Keep, Admin re-open of a dismissed flag, nav badge, mobile layout hand-off, the Jamming flag decision.
