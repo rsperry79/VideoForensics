@@ -22,5 +22,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// (inclusive of both ends), oldest first. Failed attempts matter to timelines: they end a still's hold.
         /// </summary>
         Task<IReadOnlyList<SnapshotCapture>> GetAttemptsForDeviceAsync(Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken ct);
+
+        /// <summary>
+        /// Gets which of the given devices have at least one capture attempt (current or not) within a date range (inclusive of both ends).
+        /// One call covers every device of an account, so the capture loop does not query once per device.
+        /// </summary>
+        Task<IReadOnlySet<Guid>> GetDeviceIdsWithAttemptsAsync(IReadOnlyCollection<Guid> deviceIds, DateTimeOffset from, DateTimeOffset to, CancellationToken ct);
     }
 }

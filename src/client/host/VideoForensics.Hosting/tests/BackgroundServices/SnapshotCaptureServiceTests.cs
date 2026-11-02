@@ -71,6 +71,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = _captureRows.Setup(r => r.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
                     _rows.Where(r => r.DeviceId == deviceId && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).ToList());
+            _ = _captureRows.Setup(r => r.GetDeviceIdsWithAttemptsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IReadOnlyCollection<Guid> ids, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
+                    (IReadOnlySet<Guid>)_rows.Where(r => ids.Contains(r.DeviceId) && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).Select(r => r.DeviceId).ToHashSet());
         }
 
         public void Dispose()
@@ -150,6 +153,22 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private static string ExpectedFileName(DateTimeOffset at)
         {
             return "Front_Door_12345_" + at.UtcDateTime.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + "_snapshot.jpg";
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ManyDevices_ChecksRecentAttemptsOncePerAccount()
+        {
+            _ = AddDevice("1");
+            _ = AddDevice("2");
+            _ = AddDevice("3");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _captureRows.Verify(r => r.GetDeviceIdsWithAttemptsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 3), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Once);
+            _captureRows.Verify(r => r.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
