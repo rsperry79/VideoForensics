@@ -740,6 +740,7 @@ builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.Signa
 builder.Services.AddScoped<DeviceOwnershipService>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, VideoForensics.Client.Hosting.Signal.BitrateAnalysisService>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IMediaBitrateSeriesSource, VideoForensics.Client.Hosting.Signal.LocalMediaBitrateSeriesSource>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();

@@ -1061,6 +1061,12 @@
   <data name="PlaybackMarker" xml:space="preserve">
     <value>{0} flag at {1}</value>
   </data>
+  <data name="BitrateSeriesChartLabel" xml:space="preserve">
+    <value>Video bit rate by second</value>
+  </data>
+  <data name="BitrateSeriesEmpty" xml:space="preserve">
+    <value>No bit rate data for this clip.</value>
+  </data>
   <data name="PlaybackNow" xml:space="preserve">
     <value>Now {0}</value>
   </data>
