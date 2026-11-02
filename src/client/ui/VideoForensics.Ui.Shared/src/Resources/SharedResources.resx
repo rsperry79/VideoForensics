@@ -887,12 +887,6 @@
   <data name="FlaggedMediaColStatus" xml:space="preserve">
     <value>Status</value>
   </data>
-  <data name="FlaggedMediaColReview" xml:space="preserve">
-    <value>Review</value>
-  </data>
-  <data name="FlaggedMediaReviewLink" xml:space="preserve">
-    <value>Review</value>
-  </data>
   <data name="FlaggedMediaWindowRange" xml:space="preserve">
     <value>{0} to {1}</value>
   </data>

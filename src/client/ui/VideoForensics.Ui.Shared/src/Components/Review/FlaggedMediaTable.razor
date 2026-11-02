@@ -1,3 +1,4 @@
+@using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
 @using Syncfusion.Blazor.Grids
 @using VideoForensics.Client.Ui.Shared.Resources
@@ -7,6 +8,7 @@
 @implements IDisposable
 @inject IStringLocalizer<SharedResources> L
 @inject IMediaFlagRepository MediaFlagRepository
+@inject NavigationManager Navigation
 
 <div class="flagged-media-table" data-testid="flagged-media-table" aria-label="@L["FlaggedMediaTableLabel"].Value">
     @if (_loaded && _rows.Count == 0)
@@ -22,6 +24,7 @@
 
         <SfGrid TValue="MediaFlag" DataSource="@_rows" AllowPaging="true" AllowResizing="true">
             <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridEvents TValue="MediaFlag" RowSelected="OnRowSelected"></GridEvents>
             <GridColumns>
                 <GridColumn HeaderText="@L["FlaggedMediaColRaised"].Value" Width="170">
                     <Template>
@@ -54,17 +57,6 @@
                         <span>@StatusName(((MediaFlag)context).Status)</span>
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="@L["FlaggedMediaColReview"].Value" Width="110">
-                    <Template>
-                        @{
-                            string? reviewPath = ReviewPath((MediaFlag)context);
-                        }
-                        @if (reviewPath is not null)
-                        {
-                            <a href="@reviewPath">@L["FlaggedMediaReviewLink"].Value</a>
-                        }
-                    </Template>
-                </GridColumn>
             </GridColumns>
         </SfGrid>
     }
@@ -94,6 +86,22 @@
             MediaFlagType.RssiDeviation => RssiReviewPathPrefix + flag.Id,
             _ => null,
         };
+    }
+
+    /// <summary>Opens the review page for the clicked row. A flag type with no review page leaves the list where it is.</summary>
+    /// <param name="flag">The flag on the clicked row.</param>
+    public void OpenFlag(MediaFlag flag)
+    {
+        string? path = ReviewPath(flag);
+        if (path is not null)
+        {
+            Navigation.NavigateTo(path);
+        }
+    }
+
+    private void OnRowSelected(RowSelectEventArgs<MediaFlag> args)
+    {
+        OpenFlag(args.Data);
     }
 
     /// <summary>The flag types to list. Each report page passes only its own type.</summary>

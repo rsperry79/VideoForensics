@@ -1,5 +1,6 @@
 using Bunit;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
@@ -90,7 +91,7 @@ public class FlaggedMediaTable_Tests : BunitContext
     }
 
     [Fact]
-    public void FlaggedMediaTable_BitrateFlag_LinksToBitrateReview()
+    public async Task FlaggedMediaTable_OpenFlag_BitrateFlag_NavigatesToBitrateReview()
     {
         MediaFlag flag = Flag(MediaFlagType.BitrateCollapse);
         _ = _repository
@@ -99,12 +100,15 @@ public class FlaggedMediaTable_Tests : BunitContext
 
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.BitrateCollapse }));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")));
 
-        cut.WaitForAssertion(() => Assert.Equal($"/bitrate-history/review/{flag.Id}",cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
+        await cut.InvokeAsync(() => cut.Instance.OpenFlag(flag));
+
+        Assert.EndsWith($"/bitrate-history/review/{flag.Id}", Services.GetRequiredService<NavigationManager>().Uri);
     }
 
     [Fact]
-    public void FlaggedMediaTable_RssiFlag_LinksToRssiReview()
+    public async Task FlaggedMediaTable_OpenFlag_RssiFlag_NavigatesToRssiReview()
     {
         MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
         _ = _repository
@@ -113,21 +117,29 @@ public class FlaggedMediaTable_Tests : BunitContext
 
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")));
 
-        cut.WaitForAssertion(() => Assert.Equal($"/signal-history/review/{flag.Id}",cut.Find("[data-testid=flagged-media-table] tbody tr a").GetAttribute("href")));
+        await cut.InvokeAsync(() => cut.Instance.OpenFlag(flag));
+
+        Assert.EndsWith($"/signal-history/review/{flag.Id}", Services.GetRequiredService<NavigationManager>().Uri);
     }
 
     [Fact]
-    public void FlaggedMediaTable_OtherType_HasNoLink()
+    public async Task FlaggedMediaTable_OpenFlag_OtherType_StaysOnPage()
     {
+        MediaFlag flag = Flag(MediaFlagType.Jamming);
         _ = _repository
             .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlagPage([Flag(MediaFlagType.Jamming)], 1));
+            .ReturnsAsync(new MediaFlagPage([flag], 1));
 
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.Jamming }));
-
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")));
-        Assert.Empty(cut.FindAll("[data-testid=flagged-media-table] tbody tr a"));
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        string before = navigation.Uri;
+
+        await cut.InvokeAsync(() => cut.Instance.OpenFlag(flag));
+
+        Assert.Equal(before, navigation.Uri);
     }
 }
