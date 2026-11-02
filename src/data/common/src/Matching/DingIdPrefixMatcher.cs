@@ -3,13 +3,13 @@ namespace VideoForensics.Data.Common.Matching
     /// <summary>How a doorbot history row relates to the string-id dings of one device.</summary>
     public enum DingIdMatchOutcome
     {
-        /// <summary>Exactly one candidate ding has this doorbot id as its prefix.</summary>
+        /// <summary>Exactly one candidate ding is equal to the doorbot id.</summary>
         Matched,
 
-        /// <summary>No candidate ding has this doorbot id as its prefix.</summary>
+        /// <summary>No candidate ding is equal to the doorbot id.</summary>
         Unmatched,
 
-        /// <summary>More than one candidate ding has this doorbot id as its prefix. Nothing is linked.</summary>
+        /// <summary>More than one candidate ding is equal to the doorbot id. Nothing is linked.</summary>
         Ambiguous,
     }
 
@@ -19,26 +19,24 @@ namespace VideoForensics.Data.Common.Matching
     public sealed record DingIdMatchResult(DingIdMatchOutcome Outcome, string? DingId);
 
     /// <summary>Per-feed totals of match outcomes, reported by the migration.</summary>
-    /// <param name="Matched">Rows with exactly one candidate.</param>
-    /// <param name="Unmatched">Rows with no candidate.</param>
-    /// <param name="Ambiguous">Rows with more than one candidate.</param>
+    /// <param name="Matched">Rows with exactly one equal candidate.</param>
+    /// <param name="Unmatched">Rows with no equal candidate.</param>
+    /// <param name="Ambiguous">Rows with more than one equal candidate.</param>
     public sealed record DingIdMatchCounts(int Matched, int Unmatched, int Ambiguous);
 
     /// <summary>
-    /// Links a doorbot history id to a string ding id. Ring's numeric doorbot id is the string ding id with its last
-    /// three digits dropped (truncated, not rounded), so the match is exact on that prefix. Callers pass only the
-    /// candidates of one device, resolved from the device table first; matching across devices is not allowed.
+    /// Links a doorbot history id to a string ding id by exact equality. Ring's doorbot history id is the same 19-digit
+    /// value as the string ding id it belongs to, so a candidate matches only when it equals the id. Callers pass only
+    /// the candidates of one device, resolved from the device table first; matching across devices is not allowed.
     /// There is no time-window fallback: motion bursts on one device can fall inside any short window.
+    /// The class name is historical; it no longer matches on a prefix.
     /// </summary>
     public static class DingIdPrefixMatcher
     {
-        // Ring drops exactly three trailing digits from the string ding id to form the numeric doorbot id.
-        private const int TruncatedDigits = 3;
-
-        /// <summary>Matches one doorbot id against the string ding ids of its device.</summary>
+        /// <summary>Matches one doorbot id against the string ding ids of its device by exact equality.</summary>
         /// <param name="doorbotId">The numeric doorbot history id, as text.</param>
         /// <param name="candidateDingIds">The string ding ids of the same device.</param>
-        /// <returns>The outcome, with the ding id when exactly one candidate matches.</returns>
+        /// <returns>The outcome, with the ding id when exactly one candidate is equal.</returns>
         public static DingIdMatchResult Match(string doorbotId, IEnumerable<string> candidateDingIds)
         {
             ArgumentException.ThrowIfNullOrEmpty(doorbotId);
@@ -48,8 +46,8 @@ namespace VideoForensics.Data.Common.Matching
             int count = 0;
             foreach (string candidate in candidateDingIds)
             {
-                if (candidate.Length - TruncatedDigits != doorbotId.Length
-                    || !candidate.StartsWith(doorbotId, StringComparison.Ordinal))
+                // Why: a shared prefix is not a match. Ring ids are exact, so a longer id that starts with the same digits is a different ding.
+                if (!string.Equals(candidate, doorbotId, StringComparison.Ordinal))
                 {
                     continue;
                 }

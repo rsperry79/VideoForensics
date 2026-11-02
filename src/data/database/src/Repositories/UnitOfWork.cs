@@ -1583,7 +1583,7 @@ namespace VideoForensics.Data.Database.Repositories
 
     /// <summary>
     /// Device-scoped ding id candidates and the doorbot-to-Events link. Candidates are read only from the string-id feeds
-    /// (location events and video search), because the doorbot history id is a truncated form of the ding id.
+    /// (location events and video search), because those feeds store the string ding id that a doorbot history id must equal.
     /// </summary>
     internal class UnitOfWorkDingIdLinkRepository : IDingIdLinkRepository
     {

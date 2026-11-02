@@ -352,8 +352,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
-            // The stubbed history event 987654 belongs to doorbot 12345; its string ding id is the same digits plus three.
-            _ = dataClientMock.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "987654001" });
+            // The stubbed history event 987654 belongs to doorbot 12345; its string ding id is the same digits.
+            _ = dataClientMock.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "987654" });
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
             string folder = Path.Combine(Path.GetTempPath(), "ring_handle_" + Guid.NewGuid().ToString("N"));
@@ -449,8 +449,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
-            // The stubbed history event 987654 belongs to doorbot 12345; its string ding id is the same digits plus three.
-            _ = dataClientMock.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "987654001" });
+            // The stubbed history event 987654 belongs to doorbot 12345; its string ding id is the same digits.
+            _ = dataClientMock.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "987654" });
             configureDataClient?.Invoke(dataClientMock);
             var tagger = new Mock<IMediaMetadataTagger>();
             _ = tagger.Setup(t => t.TagEventIdAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -1242,8 +1242,8 @@ namespace VideoForensics.Providers.Ring.Tests
                     IsOnline = true
                 });
 
-            // The history JSON below has event id 123 on doorbot 86401464; its string ding id is 123 plus three digits.
-            _ = dataClient.Setup(d => d.GetDingIdCandidatesAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "123001" });
+            // The history JSON below has event id 123 on doorbot 86401464; its string ding id is 123.
+            _ = dataClient.Setup(d => d.GetDingIdCandidatesAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "123" });
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient.Object, new Mock<IMediaMetadataTagger>().Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
             return service;

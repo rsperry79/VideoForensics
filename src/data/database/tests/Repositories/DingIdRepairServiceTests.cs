@@ -11,12 +11,14 @@ using Xunit;
 namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
-    /// The one-time repair that moves truncated Events and DownloadEvents rows onto their matched string ding ids.
-    /// A dry run reports counts only. Apply takes a backup first, then changes matched rows in one transaction.
+    /// The repair links each exactly matched doorbot history row to the Events row that already holds its string ding
+    /// id on the same device. It changes no other data. A dry run reports counts only. Apply takes a backup first and
+    /// links in one transaction.
     /// </summary>
     public class DingIdRepairServiceTests : IAsyncLifetime
     {
         private const long DoorbotId = 86401464;
+        private const string DingId = "1234567890123456789";
         private SqliteInMemoryFixture _fixture = null!;
 
         public async ValueTask InitializeAsync()
@@ -35,13 +37,12 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task DingIdRepairService_DryRun_ReportsCountsAndChangesNothing()
         {
             Device device = await SeedDeviceAsync();
-            _ = await SeedHistoryAsync("1234567890123456");
-            _ = await SeedHistoryAsync("9999999999999999");
-            _ = await SeedHistoryAsync("1111111111111111");
-            await SeedLocationAsync("1234567890123456789");
+            _ = await SeedHistoryAsync(DingId);
+            _ = await SeedHistoryAsync("9999999999999999999");
+            _ = await SeedHistoryAsync("1111111111111111111");
+            await SeedLocationAsync(DingId);
             await SeedLocationAsync("1111111111111111111");
-            await SeedLocationAsync("1111111111111111222");
-            Guid eventId = await SeedEventAsync(device.Id, "1234567890123456");
+            Guid eventId = await SeedEventAsync(device.Id, DingId);
 
             int backupCalls = 0;
             DingIdRepairReport report = await RunAsync(false, _ =>
@@ -51,95 +52,97 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             });
 
             Assert.False(report.Applied);
-            Assert.Equal(new DingIdMatchCounts(1, 1, 1), report.DoorbotHistory);
+            Assert.Equal(new DingIdMatchCounts(2, 1, 0), report.DoorbotHistory);
+            Assert.Equal(0, report.EventsLinked);
             Assert.Equal(0, backupCalls);
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            Assert.Equal("1234567890123456", (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Equal(DingId, (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Empty(await db.RingDoorbotHistoryEvents.Where(h => h.LinkedEventId != null).ToListAsync());
         }
 
         [Fact]
-        public async Task DingIdRepairService_Apply_RepairsTruncatedEventsAndLinks()
+        public async Task DingIdRepairService_Apply_LinksExactMatchAndChangesNothingElse()
         {
             Device device = await SeedDeviceAsync();
-            Guid historyId = await SeedHistoryAsync("1234567890123456");
-            await SeedLocationAsync("1234567890123456789");
-            Guid eventId = await SeedEventAsync(device.Id, "1234567890123456");
-            await SeedDownloadAsync(device.Id, "1234567890123456");
+            Guid historyId = await SeedHistoryAsync(DingId);
+            await SeedLocationAsync(DingId);
+            Guid eventId = await SeedEventAsync(device.Id, DingId);
+            await SeedDownloadAsync(device.Id, DingId);
 
             DingIdRepairReport report = await RunAsync(true, _ => Task.CompletedTask);
 
             Assert.True(report.Applied);
-            Assert.Equal(1, report.EventsRepaired);
-            Assert.Equal(1, report.DownloadEventsRepaired);
+            Assert.Equal(1, report.EventsLinked);
+            Assert.Equal(0, report.NoEventRow);
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            Assert.Equal("1234567890123456789", (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
-            Assert.Equal("1234567890123456789", (await db.DownloadEvents.SingleAsync()).ProviderEventId);
+            Assert.Equal(DingId, (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Equal(DingId, (await db.DownloadEvents.SingleAsync()).ProviderEventId);
             Assert.Equal(eventId, (await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 
         [Fact]
-        public async Task DingIdRepairService_Apply_AmbiguousRowIsLeftAlone()
+        public async Task DingIdRepairService_Apply_MatchedRowWithoutEventRow_CountsNoEventRowAndCreatesNothing()
         {
-            Device device = await SeedDeviceAsync();
-            _ = await SeedHistoryAsync("1111111111111111");
-            await SeedLocationAsync("1111111111111111111");
-            await SeedLocationAsync("1111111111111111222");
-            Guid eventId = await SeedEventAsync(device.Id, "1111111111111111");
+            _ = await SeedDeviceAsync();
+            Guid historyId = await SeedHistoryAsync(DingId);
+            await SeedLocationAsync(DingId);
 
             DingIdRepairReport report = await RunAsync(true, _ => Task.CompletedTask);
 
-            Assert.Equal(1, report.DoorbotHistory.Ambiguous);
-            Assert.Equal(0, report.EventsRepaired);
+            Assert.Equal(1, report.DoorbotHistory.Matched);
+            Assert.Equal(0, report.EventsLinked);
+            Assert.Equal(1, report.NoEventRow);
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            Assert.Equal("1111111111111111", (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Empty(await db.Events.ToListAsync());
+            Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 
         [Fact]
-        public async Task DingIdRepairService_Apply_CollisionWithExistingRow_IsSkippedAndCounted()
+        public async Task DingIdRepairService_Apply_PrefixOnlyCandidate_IsUnmatchedAndNotLinked()
         {
             Device device = await SeedDeviceAsync();
-            _ = await SeedHistoryAsync("1234567890123456");
-            await SeedLocationAsync("1234567890123456789");
-            Guid truncatedEventId = await SeedEventAsync(device.Id, "1234567890123456");
-            _ = await SeedEventAsync(device.Id, "1234567890123456789");
+            Guid historyId = await SeedHistoryAsync("1234567890123456");
+            await SeedLocationAsync(DingId);
+            Guid eventId = await SeedEventAsync(device.Id, DingId);
 
             DingIdRepairReport report = await RunAsync(true, _ => Task.CompletedTask);
 
-            Assert.Equal(1, report.EventsSkipped);
-            Assert.Equal(0, report.EventsRepaired);
+            Assert.Equal(new DingIdMatchCounts(0, 1, 0), report.DoorbotHistory);
+            Assert.Equal(0, report.EventsLinked);
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            Assert.Equal("1234567890123456", (await db.Events.SingleAsync(e => e.Id == truncatedEventId)).ProviderEventId);
+            Assert.Equal(DingId, (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 
         [Fact]
         public async Task DingIdRepairService_Apply_CallsBackupBeforeChanges()
         {
             Device device = await SeedDeviceAsync();
-            _ = await SeedHistoryAsync("1234567890123456");
-            await SeedLocationAsync("1234567890123456789");
-            _ = await SeedEventAsync(device.Id, "1234567890123456");
+            _ = await SeedHistoryAsync(DingId);
+            await SeedLocationAsync(DingId);
+            _ = await SeedEventAsync(device.Id, DingId);
 
             int backupCalls = 0;
-            string? eventIdSeenByBackup = null;
+            string? eventLinkSeenByBackup = "not-run";
             _ = await RunAsync(true, async ct =>
             {
                 backupCalls++;
                 await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-                eventIdSeenByBackup = (await db.Events.SingleAsync(ct)).ProviderEventId;
+                eventLinkSeenByBackup = (await db.RingDoorbotHistoryEvents.SingleAsync(ct)).LinkedEventId?.ToString();
             });
 
             Assert.Equal(1, backupCalls);
-            Assert.Equal("1234567890123456", eventIdSeenByBackup);
+            Assert.Null(eventLinkSeenByBackup);
         }
 
         [Fact]
         public async Task DingIdRepairService_Apply_HoldLostBeforeCommit_RollsBackAndAborts()
         {
             Device device = await SeedDeviceAsync();
-            Guid historyId = await SeedHistoryAsync("1234567890123456");
-            await SeedLocationAsync("1234567890123456789");
-            Guid eventId = await SeedEventAsync(device.Id, "1234567890123456");
-            await SeedDownloadAsync(device.Id, "1234567890123456");
+            Guid historyId = await SeedHistoryAsync(DingId);
+            await SeedLocationAsync(DingId);
+            Guid eventId = await SeedEventAsync(device.Id, DingId);
+            await SeedDownloadAsync(device.Id, DingId);
 
             int confirmCalls = 0;
             var service = new DingIdRepairService();
@@ -158,8 +161,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.True(report.Aborted);
             Assert.False(report.Applied);
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            Assert.Equal("1234567890123456", (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
-            Assert.Equal("1234567890123456", (await db.DownloadEvents.SingleAsync()).ProviderEventId);
+            Assert.Equal(DingId, (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Equal(DingId, (await db.DownloadEvents.SingleAsync()).ProviderEventId);
             Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 
@@ -167,9 +170,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task DingIdRepairService_BeforeWritesFails_AbortsWithoutChanges()
         {
             Device device = await SeedDeviceAsync();
-            Guid historyId = await SeedHistoryAsync("1234567890123456");
-            await SeedLocationAsync("1234567890123456789");
-            Guid eventId = await SeedEventAsync(device.Id, "1234567890123456");
+            Guid historyId = await SeedHistoryAsync(DingId);
+            await SeedLocationAsync(DingId);
+            Guid eventId = await SeedEventAsync(device.Id, DingId);
 
             int beforeWritesCalls = 0;
             var service = new DingIdRepairService();
@@ -188,7 +191,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.True(report.Aborted);
             Assert.False(report.Applied);
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            Assert.Equal("1234567890123456", (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
+            Assert.Equal(DingId, (await db.Events.SingleAsync(e => e.Id == eventId)).ProviderEventId);
             Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 

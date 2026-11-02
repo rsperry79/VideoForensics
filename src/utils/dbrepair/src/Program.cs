@@ -29,9 +29,10 @@ VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoFore
 //   VideoForensics.Utils.DbRepair --repair-ding-ids [--apply] [--db-path <file>] [--data-root <dir>] [--yes]
 //
 // Ding id repair mode:
-//   Relinks Events and DownloadEvents rows that were stored under the truncated doorbot history id to the matching
-//   string ding id, and sets RingDoorbotHistoryEvents.LinkedEventId. Dry run unless --apply. With --apply, a copy of
-//   the database is written to <db>.bak-<yyyyMMddHHmmss> before any change. Ambiguous and unmatched rows are never changed.
+//   Links each doorbot history row to the Events row that already holds its string ding id. A doorbot history id equals
+//   the ding id exactly (same digits), so the match is exact equality within one device. The repair sets only
+//   RingDoorbotHistoryEvents.LinkedEventId; it renames nothing. Dry run unless --apply. With --apply, a copy of the
+//   database is written to <db>.bak-<yyyyMMddHHmmss> before any change. Unmatched and ambiguous rows are never linked.
 //
 // Repair mode:
 //   --db-path takes priority over --data-root; --data-root takes priority over the platform default
@@ -608,7 +609,7 @@ static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbC
         Console.WriteLine($"  Ambiguous: {report.DoorbotHistory.Ambiguous}");
         if (report.Applied)
         {
-            Console.WriteLine($"Repaired Events: {report.EventsRepaired}, DownloadEvents: {report.DownloadEventsRepaired}, skipped (collision): {report.EventsSkipped}");
+            Console.WriteLine($"Linked: {report.EventsLinked}, no Events row (not created): {report.NoEventRow}");
         }
         else
         {
@@ -665,7 +666,7 @@ static void PrintUsage()
           --data-root <dir>             Directory containing videoforensics.db. Ignored if --db-path is set.
           --apply                       Execute the repair. Without this flag, runs in dry-run mode and only reports issues.
           --reset-superadmin-password   Enable SuperAdmin password recovery (lost passkey recovery mode).
-          --repair-ding-ids             Relink truncated Events/DownloadEvents to matched string ding ids. Dry run unless --apply; --apply writes a .bak copy first.
+          --repair-ding-ids             Link doorbot history rows to the Events rows that hold their exact string ding id. Dry run unless --apply; --apply writes a .bak copy first.
           --server <url>                Local server to hold in maintenance during --repair-ding-ids. Default http://localhost:5162/.
           --username <name>             Target operator username for recovery. If omitted, uses the primary SuperAdmin.
           --yes, -y                     Skips confirmation prompts. Use only in scripted contexts.

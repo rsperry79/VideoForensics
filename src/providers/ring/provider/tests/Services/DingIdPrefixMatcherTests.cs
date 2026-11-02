@@ -5,26 +5,39 @@ using Xunit;
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
-    /// Tests for DingIdPrefixMatcher. Doorbot history ids are the string ding id with its last three digits dropped,
-    /// so a doorbot row matches a string-id ding only by that prefix, within one device's candidates.
+    /// Tests for DingIdPrefixMatcher. A Ring doorbot history id is exactly equal to the string ding id it belongs to,
+    /// so a row matches only a candidate that is equal to it, within one device's candidates. A candidate that merely
+    /// shares a prefix does not match.
     /// </summary>
     public class DingIdPrefixMatcherTests
     {
         [Fact]
-        public void Match_DoorbotIdIsPrefixOfOneCandidate_ReturnsMatchedWithThatDingId()
+        public void Match_ExactCandidateEqualsId_ReturnsMatchedWithThatDingId()
         {
             var candidates = new[] { "1234567890123456789", "9999999999999999999" };
 
-            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456", candidates);
+            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", candidates);
 
             Assert.Equal(DingIdMatchOutcome.Matched, result.Outcome);
             Assert.Equal("1234567890123456789", result.DingId);
         }
 
         [Fact]
-        public void Match_NoCandidateHasThePrefix_ReturnsUnmatchedAndNoDingId()
+        public void Match_NoEqualCandidate_ReturnsUnmatchedAndNoDingId()
         {
             var candidates = new[] { "9999999999999999999" };
+
+            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", candidates);
+
+            Assert.Equal(DingIdMatchOutcome.Unmatched, result.Outcome);
+            Assert.Null(result.DingId);
+        }
+
+        [Fact]
+        public void Match_CandidateOnlySharesPrefix_ReturnsUnmatched()
+        {
+            // A shared prefix is not a match under exact equality.
+            var candidates = new[] { "1234567890123456789" };
 
             DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456", candidates);
 
@@ -33,11 +46,11 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void Match_TwoCandidatesShareThePrefix_ReturnsAmbiguousAndNoDingId()
+        public void Match_TwoEqualCandidates_ReturnsAmbiguousAndNoDingId()
         {
-            var candidates = new[] { "1234567890123456001", "1234567890123456789" };
+            var candidates = new[] { "1234567890123456789", "1234567890123456789" };
 
-            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456", candidates);
+            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", candidates);
 
             Assert.Equal(DingIdMatchOutcome.Ambiguous, result.Outcome);
             Assert.Null(result.DingId);
@@ -46,19 +59,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Match_NoCandidates_ReturnsUnmatched()
         {
-            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456", Array.Empty<string>());
-
-            Assert.Equal(DingIdMatchOutcome.Unmatched, result.Outcome);
-        }
-
-        [Fact]
-        public void Match_CandidateNearInTimeWithoutPrefix_ReturnsUnmatched()
-        {
-            // Time-based fallback is dropped: a doorbot row must never attach to a ding it does not prefix-match,
-            // even if the candidate sits next to it in time. This candidate shares no prefix with the doorbot id.
-            var candidates = new[] { "1234567890123457000" };
-
-            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456", candidates);
+            DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", Array.Empty<string>());
 
             Assert.Equal(DingIdMatchOutcome.Unmatched, result.Outcome);
         }

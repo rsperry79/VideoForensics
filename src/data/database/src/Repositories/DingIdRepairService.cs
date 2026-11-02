@@ -7,31 +7,30 @@ using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Repositories
 {
-    /// <summary>Result of a ding id repair run. Counts are always filled; the repaired and skipped totals are zero on a dry run.</summary>
-    /// <param name="DoorbotHistory">Per-outcome counts for the doorbot history feed.</param>
-    /// <param name="EventsRepaired">Events rows renamed from the truncated id to the matched ding id.</param>
-    /// <param name="EventsSkipped">Matched rows left alone because the device already has an Events row with the ding id.</param>
-    /// <param name="DownloadEventsRepaired">DownloadEvents rows renamed alongside their Events rows.</param>
+    /// <summary>Result of a ding id repair run. Counts are always filled; the link totals are zero on a dry run.</summary>
+    /// <param name="DoorbotHistory">Per-outcome counts for the doorbot history feed, using exact equality.</param>
+    /// <param name="EventsLinked">Doorbot history rows linked to the Events row that already holds their ding id.</param>
+    /// <param name="NoEventRow">Exactly matched doorbot history rows whose device has no Events row with that ding id. Nothing is created for them.</param>
     /// <param name="Applied">True when the run wrote changes; false for a dry run.</param>
-    /// <param name="Aborted">True when the hold check failed just before the commit. Nothing was committed and the counts are zero.</param>
+    /// <param name="Aborted">True when the hold check failed before the commit or before the first write. Nothing was committed and the counts are zero.</param>
     public sealed record DingIdRepairReport(
         DingIdMatchCounts DoorbotHistory,
-        int EventsRepaired,
-        int EventsSkipped,
-        int DownloadEventsRepaired,
+        int EventsLinked,
+        int NoEventRow,
         bool Applied,
         bool Aborted = false);
 
     /// <summary>
-    /// Repairs Events and DownloadEvents rows that were stored under the truncated doorbot history id. Each doorbot
-    /// history row is matched to the string ding ids of its own device. Only exact, single matches are changed.
-    /// Ambiguous and unmatched rows are counted and never touched. Nothing is deleted.
+    /// Links doorbot history rows to the Events rows that already hold their string ding id. Each doorbot history row is
+    /// matched by exact equality to the string ding ids of its own device. Only exact, single matches are linked; the
+    /// repair writes only RingDoorbotHistoryEvents.LinkedEventId. It renames nothing and deletes nothing.
+    /// The class name is historical.
     /// </summary>
     public sealed class DingIdRepairService
     {
         /// <summary>
         /// Matches every doorbot history row to its device's ding ids. When <paramref name="apply"/> is true, takes a
-        /// backup first, then applies all changes for matched rows in one transaction.
+        /// backup first, then applies all links in one transaction.
         /// </summary>
         /// <param name="factory">Creates the context used for reads and, on apply, the single write transaction.</param>
         /// <param name="apply">False for a dry run: counts only, no backup, no writes.</param>
@@ -73,7 +72,7 @@ namespace VideoForensics.Data.Database.Repositories
             // Candidates and the device's Guid are the same for every row of one doorbot, so resolve each doorbot once.
             var deviceByDoorbot = new Dictionary<long, (Guid? DeviceId, List<string> Candidates)>();
             var results = new List<DingIdMatchResult>(historyRows.Count);
-            var matched = new List<(Guid HistoryId, Guid DeviceId, string Truncated, string DingId)>();
+            var matched = new List<(Guid HistoryId, Guid DeviceId, string DingId)>();
 
             foreach ((Guid historyId, string historyProviderEventId) in historyRows)
             {
@@ -98,14 +97,14 @@ namespace VideoForensics.Data.Database.Repositories
                 results.Add(result);
                 if (result.Outcome == DingIdMatchOutcome.Matched && resolved.DeviceId is Guid device)
                 {
-                    matched.Add((historyId, device, historyProviderEventId, result.DingId!));
+                    matched.Add((historyId, device, result.DingId!));
                 }
             }
 
             DingIdMatchCounts counts = DingIdPrefixMatcher.CountOutcomes(results);
             if (!apply)
             {
-                return new DingIdRepairReport(counts, 0, 0, 0, false);
+                return new DingIdRepairReport(counts, 0, 0, false);
             }
 
             await backup(ct);
@@ -113,49 +112,32 @@ namespace VideoForensics.Data.Database.Repositories
             // Why: the backup can take a long time on a large database, so the hold is checked again once it is done and before any write starts.
             if (beforeWrites is not null && !await beforeWrites(ct))
             {
-                return new DingIdRepairReport(counts, 0, 0, 0, Applied: false, Aborted: true);
+                return new DingIdRepairReport(counts, 0, 0, Applied: false, Aborted: true);
             }
 
             // One transaction: a failure part-way leaves the database as it was before the run.
             await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
             try
             {
-                int eventsRepaired = 0;
-                int eventsSkipped = 0;
-                int downloadEventsRepaired = 0;
+                int eventsLinked = 0;
+                int noEventRow = 0;
 
-                foreach ((Guid historyId, Guid deviceId, string truncated, string dingId) in matched)
+                foreach ((Guid historyId, Guid deviceId, string dingId) in matched)
                 {
-                    Event? evt = await db.Events.FirstOrDefaultAsync(
-                        e => e.DeviceId == deviceId && e.ProviderEventId == truncated, ct);
-                    if (evt is null)
+                    // Why: Events rows already hold the string ding id, so the link is found by equality, never by renaming a row.
+                    Guid? eventId = await db.Events.AsNoTracking()
+                        .Where(e => e.DeviceId == deviceId && e.ProviderEventId == dingId)
+                        .Select(e => (Guid?)e.Id)
+                        .FirstOrDefaultAsync(ct);
+                    if (eventId is null)
                     {
+                        noEventRow++;
                         continue;
-                    }
-
-                    // Renaming onto an existing ding id would violate (DeviceId, ProviderEventId) uniqueness. Leave both rows as they are.
-                    bool collision = await db.Events.AnyAsync(
-                        e => e.DeviceId == deviceId && e.ProviderEventId == dingId, ct);
-                    if (collision)
-                    {
-                        eventsSkipped++;
-                        continue;
-                    }
-
-                    evt.ProviderEventId = dingId;
-                    eventsRepaired++;
-
-                    List<DownloadEvent> downloads = await db.DownloadEvents
-                        .Where(d => d.DeviceId == deviceId && d.ProviderEventId == truncated)
-                        .ToListAsync(ct);
-                    foreach (DownloadEvent download in downloads)
-                    {
-                        download.ProviderEventId = dingId;
-                        downloadEventsRepaired++;
                     }
 
                     RingDoorbotHistoryEvent history = await db.RingDoorbotHistoryEvents.FirstAsync(h => h.Id == historyId, ct);
-                    history.LinkedEventId = evt.Id;
+                    history.LinkedEventId = eventId.Value;
+                    eventsLinked++;
                 }
 
                 _ = await db.SaveChangesAsync(ct);
@@ -164,12 +146,12 @@ namespace VideoForensics.Data.Database.Repositories
                 if (confirmHold is not null && !await confirmHold(ct))
                 {
                     await transaction.RollbackAsync(CancellationToken.None);
-                    return new DingIdRepairReport(counts, 0, 0, 0, Applied: false, Aborted: true);
+                    return new DingIdRepairReport(counts, 0, 0, Applied: false, Aborted: true);
                 }
 
                 await transaction.CommitAsync(ct);
 
-                return new DingIdRepairReport(counts, eventsRepaired, eventsSkipped, downloadEventsRepaired, true);
+                return new DingIdRepairReport(counts, eventsLinked, noEventRow, true);
             }
             catch
             {

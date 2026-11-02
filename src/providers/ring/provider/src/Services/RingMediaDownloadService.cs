@@ -644,7 +644,7 @@ namespace VideoForensics.Providers.Ring.Services
                         string fileTypeSegment = MediaFileNamer.FormatEventTypeSegment(@event.Kind, CvDetectionTypes(@event));
                         string fileName = Path.Combine(outputPath,
                             MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, fileTypeSegment, "mp4"));
-                        // The Events row and download key use the string ding id. The doorbot id is truncated, so an unlinked row is skipped.
+                        // The Events row and download key use the string ding id. The doorbot id equals the ding id exactly, so a row with no exact match is skipped.
                         DingIdMatchResult dingLink = await ResolveDingIdAsync(@event, rateLimitCts.Token);
                         if (dingLink.Outcome != DingIdMatchOutcome.Matched)
                         {
@@ -1473,8 +1473,8 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Resolves a doorbot history row to its string ding id. The doorbot id is the ding id with its last three digits
-        /// dropped, so only one prefix match on the device's own candidates counts. Anything else is left unlinked.
+        /// Resolves a doorbot history row to its string ding id. The doorbot id is exactly the ding id, so only one exact
+        /// match on the device's own candidates counts. Zero or several equal candidates are left unlinked.
         /// </summary>
         internal async Task<DingIdMatchResult> ResolveDingIdAsync(Entities.DoorbotHistoryEvent doorbotEvent, CancellationToken ct)
         {
