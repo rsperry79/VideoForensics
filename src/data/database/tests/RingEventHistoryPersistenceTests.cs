@@ -470,5 +470,49 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             Assert.Equal(linkedEvent.Id, (await db.RingDoorbotHistoryEvents.SingleAsync()).LinkedEventId);
         }
+
+        private static RingEventDetails BuildDoorbotHistoryDetails(Guid rowId, long doorbotId)
+        {
+            return new RingEventDetails
+            {
+                Doorbot = new RingEventDoorbot { Id = Guid.NewGuid(), Source = RingEventSources.DoorbotHistory, SourceRowId = rowId, DoorbotId = doorbotId },
+            };
+        }
+
+        [Fact]
+        public async Task RingEventHistoryWriter_DoorbotHistoryFirstSavedAfterEvent_LinksToExactEventRow()
+        {
+            Device device = TestDataBuilder.BuildDevice(providerDeviceId: "12345");
+            var eventRow = new Event { Id = Guid.NewGuid(), DeviceId = device.Id, ProviderEventId = "1234567890123456789", EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Devices.Add(device);
+                _ = seed.Events.Add(eventRow);
+                _ = await seed.SaveChangesAsync();
+            }
+
+            var row = new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "1234567890123456789", Duration = 41 };
+            await _writer.ReplaceDoorbotHistoryEventAsync(row, BuildDoorbotHistoryDetails(row.Id, 12345), CancellationToken.None);
+
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Equal(eventRow.Id, (await db.RingDoorbotHistoryEvents.SingleAsync()).LinkedEventId);
+        }
+
+        [Fact]
+        public async Task RingEventHistoryWriter_DoorbotHistoryWithNoEventRow_LeavesLinkNull()
+        {
+            Device device = TestDataBuilder.BuildDevice(providerDeviceId: "12345");
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Devices.Add(device);
+                _ = await seed.SaveChangesAsync();
+            }
+
+            var row = new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "1234567890123456789", Duration = 41 };
+            await _writer.ReplaceDoorbotHistoryEventAsync(row, BuildDoorbotHistoryDetails(row.Id, 12345), CancellationToken.None);
+
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync()).LinkedEventId);
+        }
     }
 }

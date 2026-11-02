@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -122,6 +124,22 @@ namespace VideoForensics.Data.Database.Repositories
                         .Where(e => e.ProviderEventId == evt.ProviderEventId && e.LinkedEventId != null)
                         .Select(e => e.LinkedEventId)
                         .FirstOrDefaultAsync(token);
+                }
+
+                if (evt.LinkedEventId is null && details.Doorbot?.DoorbotId is long doorbotId)
+                {
+                    // Why: a row first saved after its Events row exists has no carried link. Link it by device and exact ding id;
+                    // more than one match is ambiguous, so the row stays unlinked.
+                    string providerDeviceId = doorbotId.ToString(CultureInfo.InvariantCulture);
+                    List<Guid> matches = await db.Events
+                        .Where(e => e.ProviderEventId == evt.ProviderEventId && db.Devices.Any(d => d.Id == e.DeviceId && d.ProviderDeviceId == providerDeviceId))
+                        .Select(e => e.Id)
+                        .Take(2)
+                        .ToListAsync(token);
+                    if (matches.Count == 1)
+                    {
+                        evt.LinkedEventId = matches[0];
+                    }
                 }
 
                 List<Guid> existing = await db.RingDoorbotHistoryEvents

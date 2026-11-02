@@ -40,6 +40,7 @@ namespace VideoForensics.Client.WebApp.Services
         /// leaves the running process unsafe to continue, such as a database file that has moved. The caller must then
         /// stop the process. A failed operation always ends maintenance.
         /// </param>
+        /// <exception cref="MaintenanceDrainTimeoutException">In-flight work did not drain within the drain timeout. This run never started, so maintenance is ended.</exception>
         public async Task<T> RunAsync<T>(string description, Func<IServiceProvider, CancellationToken, Task<T>> operation, CancellationToken ct, bool holdOnSuccess = false)
         {
             bool succeeded = false;
@@ -56,7 +57,7 @@ namespace VideoForensics.Client.WebApp.Services
 
             try
             {
-                await drained;
+                await WaitForDrainAsync(drained, ct);
                 gate.MarkRunning(description);
                 await lifecycle.ReleaseAllConnectionsAsync(ct);
 
@@ -112,17 +113,7 @@ namespace VideoForensics.Client.WebApp.Services
                 }
 
                 gateClaimed = true;
-                using var drainCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                drainCts.CancelAfter(_drainTimeout);
-                try
-                {
-                    await drained.WaitAsync(drainCts.Token);
-                }
-                catch (OperationCanceledException) when (!ct.IsCancellationRequested && drainCts.IsCancellationRequested)
-                {
-                    // Why: the timeout fired, not the caller. Throwing a distinct type lets the endpoint answer 503 instead of 409.
-                    throw new MaintenanceDrainTimeoutException(DrainTimeoutMessage);
-                }
+                await WaitForDrainAsync(drained, ct);
 
                 gate.MarkRunning(description);
                 await lifecycle.ReleaseAllConnectionsAsync(ct);
@@ -171,6 +162,22 @@ namespace VideoForensics.Client.WebApp.Services
 
         /// <summary>Restarts the safety timeout of the active hold and reports why it was not renewed, when it was not.</summary>
         public HoldRenewResult RenewHoldOutcome(Guid token) => holdTimer.RenewOutcome(token);
+
+        // Why: a drain that never finishes must not block the caller forever. Only the timeout raises the distinct exception; a caller cancel passes through.
+        private async Task WaitForDrainAsync(Task drained, CancellationToken ct)
+        {
+            using var drainCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            drainCts.CancelAfter(_drainTimeout);
+            try
+            {
+                await drained.WaitAsync(drainCts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested && drainCts.IsCancellationRequested)
+            {
+                // Why: the timeout fired, not the caller. Throwing a distinct type lets the endpoint answer 503 instead of 409.
+                throw new MaintenanceDrainTimeoutException(DrainTimeoutMessage);
+            }
+        }
 
         // Runs on the timer thread when a hold is not ended in time. Never throws: an exception here would crash the process.
         private void OnHoldExpired()

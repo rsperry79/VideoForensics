@@ -77,6 +77,36 @@ namespace VideoForensics.Client.Hosting.Tests.Maintenance
             Assert.Equal("compacting", received?.Message);
         }
 
+        [Fact]
+        public async Task BeginDrainAsync_TwoConcurrentCallsOnFreshGate_ExactlyOneSucceeds()
+        {
+            // Why: the race window is a few instructions wide, so many fresh gates are needed to hit it reliably.
+            for (int i = 0; i < 2000; i++)
+            {
+                using var gate = new MaintenanceGate();
+                using var start = new Barrier(2);
+
+                Task<bool> Attempt() => Task.Run(() =>
+                {
+                    start.SignalAndWait();
+                    try
+                    {
+                        _ = gate.BeginDrainAsync("race", CancellationToken.None);
+                        return true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return false;
+                    }
+                });
+
+                bool[] results = await Task.WhenAll(Attempt(), Attempt());
+
+                Assert.Equal(1, results.Count(succeeded => succeeded));
+                Assert.Equal(MaintenancePhases.Draining, gate.Current.Phase);
+            }
+        }
+
         private sealed class Observer(Action<MaintenanceStatusDto> onNext) : IObserver<MaintenanceStatusDto>
         {
             public void OnNext(MaintenanceStatusDto value) => onNext(value);
