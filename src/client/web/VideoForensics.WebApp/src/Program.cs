@@ -100,9 +100,10 @@ Log.Logger = new LoggerConfiguration()
         && e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source)
         && source.ToString().Trim('"') == "CloudflaredKit.CloudflaredProcess"
         && e.MessageTemplate.Text.Contains("exited unexpectedly", StringComparison.Ordinal))
-    // Audit files hold stored entries only: Trace-only framework noise never reaches them.
+    // Audit files hold stored entries only: Trace-only framework noise never reaches them, and Trace and Debug are never
+    // written to the files at all (they stay on the console and the named pipe).
     .WriteTo.Logger(files => files
-        .Filter.ByExcluding(e => !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e)))
+        .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e)))
         // Text format: human-readable with structured properties appended
         .WriteTo.File(
             path: Path.Combine(logsDir, "audit-.txt"),

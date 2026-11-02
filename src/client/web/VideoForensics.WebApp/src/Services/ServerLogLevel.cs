@@ -19,6 +19,12 @@ public sealed class ServerLogLevel
     /// <summary>The same level for the live log buffer, which is not a Serilog sink.</summary>
     public LogLevelSource BufferLevel { get; } = new() { Minimum = LogLevel.Information };
 
+    /// <summary>
+    /// Whether the audit files store an entry at this level. Trace and Debug are shown live (console and named pipe) at those
+    /// settings, but never written to the files, because they grow the files too fast.
+    /// </summary>
+    public static bool StoresInFiles(LogEventLevel level) => level >= LogEventLevel.Information;
+
     /// <summary>Applies a configured level name such as "Warning". An unknown name keeps the current level.</summary>
     public void Apply(string? level)
     {
