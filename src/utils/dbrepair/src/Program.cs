@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -545,8 +546,18 @@ static Task BackupDatabaseAsync(string dbPath, CancellationToken ct)
 {
     ct.ThrowIfCancellationRequested();
     string backupPath = $"{dbPath}.bak-{DateTime.Now:yyyyMMddHHmmss}";
-    // overwrite: false so an existing backup is never replaced. A failed copy throws here and stops the run before any write.
-    File.Copy(dbPath, backupPath, overwrite: false);
+    if (File.Exists(backupPath))
+    {
+        throw new IOException($"Backup already exists: {backupPath}");
+    }
+
+    // Why: VACUUM INTO writes a consistent copy that includes committed WAL pages, which a plain file copy can miss.
+    using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = dbPath, Mode = SqliteOpenMode.ReadOnly }.ToString());
+    connection.Open();
+    using SqliteCommand command = connection.CreateCommand();
+    command.CommandText = "VACUUM INTO $path";
+    _ = command.Parameters.AddWithValue("$path", backupPath);
+    _ = command.ExecuteNonQuery();
     Console.WriteLine($"Backup written: {backupPath}");
     return Task.CompletedTask;
 }
