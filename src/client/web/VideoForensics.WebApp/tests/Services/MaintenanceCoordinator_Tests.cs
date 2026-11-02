@@ -27,8 +27,9 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = _scopes.Setup(f => f.CreateScope()).Returns(scope.Object);
         }
 
-        private MaintenanceCoordinator CreateCoordinator() =>
-            new(_gate.Object, _lifecycle.Object, _scopes.Object, Mock.Of<ILogger<MaintenanceCoordinator>>());
+        private MaintenanceCoordinator CreateCoordinator(MaintenanceHoldTimer? holdTimer = null) =>
+            new(_gate.Object, _lifecycle.Object, _scopes.Object, Mock.Of<ILogger<MaintenanceCoordinator>>(),
+                holdTimer ?? new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout));
 
         [Fact]
         public async Task RunAsync_Default_EndsMaintenanceAfterSuccess()
@@ -53,6 +54,164 @@ namespace VideoForensics.Client.WebApp.Tests.Services
                 CreateCoordinator().RunAsync<int>("Moving the database", (sp, ct) => throw new InvalidOperationException("boom"), CancellationToken.None, holdOnSuccess: true));
 
             _gate.Verify(g => g.End(), Times.Once);
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_WhileIdle_ReturnsTokenMarksRunningAndReleasesConnections()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            Assert.NotEqual(Guid.Empty, token);
+            _gate.Verify(g => g.MarkRunning("Server held for database repair"), Times.Once);
+            _lifecycle.Verify(l => l.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_WhileAlreadyInMaintenance_ThrowsMaintenanceInProgressException()
+        {
+            _ = _gate.Setup(g => g.BeginDrainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Throws(new InvalidOperationException("Server maintenance is already in progress."));
+
+            _ = await Assert.ThrowsAsync<MaintenanceInProgressException>(() =>
+                CreateCoordinator().BeginHoldAsync("Server held for database repair", CancellationToken.None));
+
+            _gate.Verify(g => g.MarkRunning(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_GateBusyWithAnotherRun_DoesNotEndTheOtherRun()
+        {
+            _ = _gate.Setup(g => g.BeginDrainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Throws(new InvalidOperationException("Server maintenance is already in progress."));
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+
+            _ = await Assert.ThrowsAsync<MaintenanceInProgressException>(() =>
+                coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None));
+
+            _gate.Verify(g => g.End(), Times.Never);
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_ReleaseFails_EndsMaintenanceAndRethrows()
+        {
+            _ = _lifecycle.Setup(l => l.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new IOException("disk gone"));
+
+            _ = await Assert.ThrowsAsync<IOException>(() =>
+                CreateCoordinator().BeginHoldAsync("Server held for database repair", CancellationToken.None));
+
+            _gate.Verify(g => g.End(), Times.Once);
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_ReleaseFails_ClearsTheHoldSoANewBeginSucceeds()
+        {
+            _ = _lifecycle.SetupSequence(l => l.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new IOException("disk gone"))
+                .Returns(Task.CompletedTask);
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            _ = await Assert.ThrowsAsync<IOException>(() => coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None));
+
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            Assert.NotEqual(Guid.Empty, token);
+        }
+
+        [Fact]
+        public async Task EndHold_WithActiveToken_EndsMaintenanceAndReturnsTrue()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            bool ended = coordinator.EndHold(token);
+
+            Assert.True(ended);
+            _gate.Verify(g => g.End(), Times.Once);
+        }
+
+        [Fact]
+        public async Task EndHold_WrongToken_DoesNothingAndKeepsTheHold()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            _ = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            bool ended = coordinator.EndHold(Guid.NewGuid());
+
+            Assert.False(ended);
+            _gate.Verify(g => g.End(), Times.Never);
+        }
+
+        [Fact]
+        public void EndHold_NoActiveHold_ReturnsFalseAndDoesNotEndMaintenance()
+        {
+            bool ended = CreateCoordinator().EndHold(Guid.NewGuid());
+
+            Assert.False(ended);
+            _gate.Verify(g => g.End(), Times.Never);
+        }
+
+        [Fact]
+        public async Task EndHold_CalledTwiceWithSameToken_EndsOnlyOnce()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            bool first = coordinator.EndHold(token);
+            bool second = coordinator.EndHold(token);
+
+            Assert.True(first);
+            Assert.False(second);
+            _gate.Verify(g => g.End(), Times.Once);
+        }
+
+        [Fact]
+        public async Task EndHold_TokenFromAnEarlierHold_CannotEndALaterHold()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            Guid firstToken = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+            Assert.True(coordinator.EndHold(firstToken));
+            Guid secondToken = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            bool ended = coordinator.EndHold(firstToken);
+
+            Assert.False(ended);
+            Assert.NotEqual(firstToken, secondToken);
+            _gate.Verify(g => g.End(), Times.Once);
+        }
+
+        [Fact]
+        public async Task RenewHold_WithActiveToken_ReturnsTrue()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            Assert.True(coordinator.RenewHold(token));
+            _gate.Verify(g => g.End(), Times.Never);
+        }
+
+        [Fact]
+        public async Task RenewHold_WrongToken_ReturnsFalse()
+        {
+            MaintenanceCoordinator coordinator = CreateCoordinator();
+            _ = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            Assert.False(coordinator.RenewHold(Guid.NewGuid()));
+        }
+
+        [Fact]
+        public async Task BeginHoldAsync_NoEndCalled_TimeoutEndsMaintenance()
+        {
+            var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ = _gate.Setup(g => g.End()).Callback(() => ended.TrySetResult());
+            MaintenanceCoordinator coordinator = CreateCoordinator(new MaintenanceHoldTimer(TimeSpan.FromMilliseconds(20)));
+
+            Guid token = await coordinator.BeginHoldAsync("Server held for database repair", CancellationToken.None);
+
+            await ended.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            _gate.Verify(g => g.End(), Times.Once);
+            Assert.False(coordinator.EndHold(token));
         }
     }
 }

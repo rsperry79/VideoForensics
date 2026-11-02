@@ -15,6 +15,7 @@ namespace VideoForensics.Client.WebApp.Services
         {
             services.TryAddSingleton<MaintenanceGate>();
             services.TryAddSingleton<IMaintenanceGate>(sp => sp.GetRequiredService<MaintenanceGate>());
+            services.TryAddSingleton(_ => new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout));
             services.TryAddScoped<MaintenanceCoordinator>();
             return services;
         }

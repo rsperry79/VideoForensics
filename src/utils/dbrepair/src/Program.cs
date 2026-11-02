@@ -57,6 +57,7 @@ bool apply = false;
 bool skipConfirmation = false;
 bool resetSuperAdminPassword = false;
 bool repairDingIds = false;
+string? serverArg = null;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -73,6 +74,9 @@ for (int i = 0; i < args.Length; i++)
             break;
         case "--data-root" when i + 1 < args.Length:
             dataRootArg = args[++i];
+            break;
+        case "--server" when i + 1 < args.Length:
+            serverArg = args[++i];
             break;
         case "--username" when i + 1 < args.Length:
             usernameArg = args[++i];
@@ -117,7 +121,13 @@ Console.WriteLine($"Database: {effectivePath}");
 // Handle ding id repair if requested
 if (repairDingIds)
 {
-    return await HandleDingIdRepairAsync(factory, effectivePath, apply);
+    if (!ServerMaintenanceClient.TryValidateServer(serverArg ?? ServerMaintenanceClient.DefaultServer.ToString(), out Uri? serverUri, out string? serverError))
+    {
+        Console.Error.WriteLine(serverError);
+        return 1;
+    }
+
+    return await HandleDingIdRepairAsync(factory, effectivePath, apply, serverUri!, CancellationToken.None);
 }
 
 // Handle SuperAdmin password recovery if requested
@@ -495,30 +505,63 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     }
 }
 
-// Why: the repair writes many rows, so a copy of the database is taken first and the write only runs after the copy succeeds.
-static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply)
+// Why: a dry run only reads, so it takes no server hold and pairs nothing. An apply run holds the local server for the whole write, so the
+// server neither keeps the file open nor caches what it read. The hold ends in the await-using disposal, after the repair finishes or fails.
+static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply, Uri server, CancellationToken ct)
+{
+    var service = new DingIdRepairService();
+    Func<CancellationToken, Task> backup = token => BackupDatabaseAsync(dbPath, token);
+
+    if (!apply)
+    {
+        return await ReportDingIdRepairAsync(service, factory, apply: false, backup, ct);
+    }
+
+    // Why: Ctrl+C cancels the run instead of killing the process, so the disposal below still ends the server hold.
+    using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
+    ConsoleCancelEventHandler onCancel = (_, e) =>
+    {
+        e.Cancel = true;
+        cancel.Cancel();
+    };
+
+    Console.CancelKeyPress += onCancel;
+    try
+    {
+        using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        var maintenance = new ServerMaintenanceClient(http, new ConsoleMaintenancePrompts());
+        ServerMaintenanceClient.ServerMaintenanceSession? session = null;
+        try
+        {
+            session = await maintenance.StartAsync(server, cancel.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled while the hold was being taken: the begin call may still have held the server, and its safety timeout ends that.
+        }
+
+        if (session is null)
+        {
+            Console.Error.WriteLine("Ding id repair cancelled. The database was not changed.");
+            return 1;
+        }
+
+        await using (session)
+        {
+            return await ReportDingIdRepairAsync(service, factory, apply: true, backup, cancel.Token);
+        }
+    }
+    finally
+    {
+        Console.CancelKeyPress -= onCancel;
+    }
+}
+
+static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbContextFactory<VideoForensicsDbContext> factory, bool apply, Func<CancellationToken, Task> backup, CancellationToken ct)
 {
     try
     {
-        var service = new DingIdRepairService();
-        Func<CancellationToken, Task> backup = ct => BackupDatabaseAsync(dbPath, ct);
-        DingIdRepairReport report;
-        if (apply)
-        {
-            // Why: the service holds the database open and caches what it read; stop it for the writes and start it again after.
-            using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
-            if (serviceGuard is null)
-            {
-                Console.Error.WriteLine(stopError);
-                return 1;
-            }
-
-            report = await service.RunAsync(factory, true, backup, CancellationToken.None);
-        }
-        else
-        {
-            report = await service.RunAsync(factory, false, backup, CancellationToken.None);
-        }
+        DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct);
 
         Console.WriteLine("\nDing id repair (DoorbotHistory feed):");
         Console.WriteLine($"  Matched: {report.DoorbotHistory.Matched}");
@@ -537,7 +580,7 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"Ding id repair failed: {ex.Message}");
+        Console.Error.WriteLine($"Ding id repair failed: {ex.Message} ({ex.GetType().Name})");
         return 1;
     }
 }
@@ -579,6 +622,7 @@ static void PrintUsage()
           --apply                       Execute the repair. Without this flag, runs in dry-run mode and only reports issues.
           --reset-superadmin-password   Enable SuperAdmin password recovery (lost passkey recovery mode).
           --repair-ding-ids             Relink truncated Events/DownloadEvents to matched string ding ids. Dry run unless --apply; --apply writes a .bak copy first.
+          --server <url>                Local server to hold in maintenance during --repair-ding-ids. Default http://localhost:5162/.
           --username <name>             Target operator username for recovery. If omitted, uses the primary SuperAdmin.
           --yes, -y                     Skips confirmation prompts. Use only in scripted contexts.
 
