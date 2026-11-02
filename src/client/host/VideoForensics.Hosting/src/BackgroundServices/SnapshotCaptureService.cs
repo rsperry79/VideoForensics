@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -547,7 +548,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         internal static bool HasCamera(string? type)
         {
-            return type is "doorbot" or "authorized_doorbot" or "stickup_cam";
+            return DeviceKinds.IsCamera(type);
         }
 
         /// <summary>
