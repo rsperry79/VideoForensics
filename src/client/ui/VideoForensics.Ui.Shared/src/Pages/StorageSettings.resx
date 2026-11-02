@@ -32,6 +32,15 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
+  <data name="ChangeDefaultPathButton" xml:space="preserve">
+    <value>Change default path</value>
+  </data>
+  <data name="ConfirmDefaultPathMessage" xml:space="preserve">
+    <value>Every category on the default location will be moved into this folder. The app restarts after the change.</value>
+  </data>
+  <data name="ChangeDefaultPathDone" xml:space="preserve">
+    <value>Default storage path changed. The app is restarting to use it.</value>
+  </data>
   <data name="DefaultPathHeading" xml:space="preserve">
     <value>Default storage path</value>
   </data>

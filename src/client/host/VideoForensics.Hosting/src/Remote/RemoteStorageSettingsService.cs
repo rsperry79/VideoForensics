@@ -33,6 +33,17 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <inheritdoc />
+        public async Task<RelocateStorageCategoryResult> ChangeDefaultRootAsync(string newDefaultRoot, CancellationToken cancellationToken)
+        {
+            var requestDto = new ChangeDefaultRootRequestDto(newDefaultRoot);
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/storage-settings/default-root", requestDto, cancellationToken);
+            _ = response.EnsureSuccessStatusCode();
+            RelocateStorageCategoryResultDto? dto = await response.Content.ReadFromJsonAsync<RelocateStorageCategoryResultDto>(JsonOptions, cancellationToken);
+            RelocateStorageCategoryResultDto result = dto ?? throw new InvalidOperationException("Server returned null default root result");
+            return result.ToDomain();
+        }
+
         public async Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
         {
             RelocateStorageCategoryRequestDto requestDto = request.ToDto();
