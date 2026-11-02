@@ -22,3 +22,11 @@
 - [x] Hemisphere is a configured setting (`MediaAnalysis:Hemisphere`, default northern).
 - [x] Drift is recorded on each device (`BaselineDriftDetected`, `BaselineDriftChangeFraction`) for review.
 - [x] Analysis is awaited before the next provider call; the shared data client does this for every provider that records downloads (today: Ring).
+
+- [ ] **Flagged media: audio and lighting flags.** Not written yet; they wait for their own report.
+- [ ] **Flagged media: timeline flag list.** The Syncfusion flag list on the playback timeline is not built (optional until decided).
+- [ ] **Flagged media: legal hold on Keep.** Keep cannot place a legal hold yet.
+- [ ] **Flagged media: Admin re-open.** No Admin re-open of a dismissed flag yet.
+- [ ] **Flagged media: nav badge.** No nav badge for unreviewed counts yet.
+- [ ] **Flagged media: mobile layout.** No mobile layout hand-off for the review pages yet.
+- [ ] **Flagged media: Jamming flag decision.** Not recorded yet.
