@@ -44,6 +44,32 @@ public class AccountDetailsPage_EditAccess_Tests : AccountDetailsPageTestBase
         cut.WaitForAssertion(() => Assert.Contains(Strings["Reauthenticate"], GatingPageHelpers.ButtonLabels(cut)));
         Assert.Contains(Strings["RemoveAccount"], GatingPageHelpers.ButtonLabels(cut));
     }
+
+    [Fact]
+    public void AccountDetails_CredentialErrorBanner_EditAllowed_ShowsReauthenticateInBanner()
+    {
+        EditAccess.CanEdit = true;
+        Account.LastErrorMessage = "Failed to decrypt stored credential: Error occurred during a cryptographic operation.";
+        SetEmptyLists();
+
+        IRenderedComponent<AccountDetails> cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Strings["CredentialRecoveryMessage"], cut.Markup));
+        Assert.Contains(Strings["Reauthenticate"], cut.Find("[role=\"alert\"]").QuerySelectorAll("button").Select(b => b.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void AccountDetails_CredentialErrorBanner_EditDenied_HidesReauthenticateInBanner()
+    {
+        EditAccess.CanEdit = false;
+        Account.LastErrorMessage = "Failed to decrypt stored credential: Error occurred during a cryptographic operation.";
+        SetEmptyLists();
+
+        IRenderedComponent<AccountDetails> cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Strings["CredentialRecoveryMessage"], cut.Markup));
+        Assert.DoesNotContain(Strings["Reauthenticate"], cut.Find("[role=\"alert\"]").QuerySelectorAll("button").Select(b => b.TextContent.Trim()));
+    }
 }
 
 public class AccountsPage_EditAccess_Tests : AccountsPageTestBase
