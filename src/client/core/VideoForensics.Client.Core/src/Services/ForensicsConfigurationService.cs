@@ -140,6 +140,10 @@ namespace VideoForensics.Client.Core.Services
                 config.MaxConcurrentDownloads = await GetIntSetting("MaxConcurrentDownloads", config.MaxConcurrentDownloads, cancellationToken);
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
+                config.EnableScheduledReports = await GetBoolSetting("EnableScheduledReports", config.EnableScheduledReports, cancellationToken);
+                config.ScheduledReportIntervalHours = await GetIntSetting("ScheduledReportIntervalHours", config.ScheduledReportIntervalHours, cancellationToken);
+                config.LogPruneIntervalHours = await GetIntSetting("LogPruneIntervalHours", config.LogPruneIntervalHours, cancellationToken);
+                config.MediaBackfillIntervalHours = await GetIntSetting("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
                 config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
@@ -212,6 +216,10 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableScheduledReports", config.EnableScheduledReports.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ScheduledReportIntervalHours", config.ScheduledReportIntervalHours.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("LogPruneIntervalHours", config.LogPruneIntervalHours.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);

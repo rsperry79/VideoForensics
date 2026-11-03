@@ -147,3 +147,6 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-11-03 | sqlite tests | test project failed to build: CS0103 BackfillDeviceCapabilitiesResolution does not exist (BackfillDeviceCapabilitiesResolutionTests.cs:33) | test 30a8d5e5 was committed to wip with no implementation class | added src/data/database/sqlite/src/Migrations/BackfillDeviceCapabilitiesResolution.cs with the Sql constant; test green
 2026-11-03 09:53 | build | BitrateDeviationAlerts.cs first build | CS0104 Device ambiguous (Core.Providers.Common.Contracts vs Data.Common.Entities) | fully qualified the Device type as SignalDeviationAlerts does
 2026-11-03 09:53 | build | red test run | missing using for INotificationDispatcher in new test file | added Core.Providers.Common.Contracts using (test-side slip)
+2026-11-03 | services-page tests | Hosting: 8 DeviceHealthSyncServiceTests/DeviceOfflineAlertTests failures | Also fail on clean wip (baseline 8/32) | Pre-existing; not caused by services change | Leave; track separately
+2026-11-03 | services-page tests | Core: PathUtilitiesTests ContainsProgramDataFolder (2) | Also fails on clean wip (2/2) | Pre-existing environment issue (ProgramData path) | Leave
+2026-11-03 | services-page tests | Hosting: UpdateStagerTests SameVersionStagedTwice access denied (1 run) | Temp-dir permission, passed on rerun | Environmental | None

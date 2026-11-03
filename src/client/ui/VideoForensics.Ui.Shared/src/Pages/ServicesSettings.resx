@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="AdminOnlyNote" xml:space="preserve">
+    <value>Only an administrator can change these services. Ask an administrator to make the change.</value>
+  </data>
+  <data name="ConfigurationNotSupported" xml:space="preserve">
+    <value>This setting can only be changed from the server directly.</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToChangeSettings" xml:space="preserve">
+    <value>to change services.</value>
+  </data>
+  <data name="HealthSyncSection" xml:space="preserve">
+    <value>Health Sync</value>
+  </data>
+  <data name="HealthSyncDescription" xml:space="preserve">
+    <value>Lets the server keep collecting signal strength and device-health readings in the background, so device status stays current.</value>
+  </data>
+  <data name="EnableHealthSync" xml:space="preserve">
+    <value>Enable RSSI / device-health background sync</value>
+  </data>
+  <data name="HealthSyncStatus" xml:space="preserve">
+    <value>Health sync {0}</value>
+  </data>
+  <data name="HealthSyncError" xml:space="preserve">
+    <value>Failed to update health sync: {0}</value>
+  </data>
+  <data name="ScheduledServicesSection" xml:space="preserve">
+    <value>Scheduled services</value>
+  </data>
+  <data name="ScheduledServicesDescription" xml:space="preserve">
+    <value>Background services that are not set per provider. Provider schedules are managed on each provider account.</value>
+  </data>
+  <data name="ReportGenerationLabel" xml:space="preserve">
+    <value>Enable scheduled report generation</value>
+  </data>
+  <data name="ReportGenerationDescription" xml:space="preserve">
+    <value>Writes the enabled reports on the schedule below. Each run covers the previous 24 hours.</value>
+  </data>
+  <data name="ReportIntervalLabel" xml:space="preserve">
+    <value>Run report every (hours)</value>
+  </data>
+  <data name="ReportIntervalHelp" xml:space="preserve">
+    <value>Between 1 and 168 hours. Each report covers the previous 24 hours.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="ReportGenerationStatus" xml:space="preserve">
+    <value>Scheduled report generation {0}.</value>
+  </data>
+  <data name="ReportIntervalStatus" xml:space="preserve">
+    <value>Scheduled reports will run every {0} hours.</value>
+  </data>
+  <data name="ReportGenerationError" xml:space="preserve">
+    <value>Failed to update scheduled reports: {0}</value>
+  </data>
+  <data name="EnabledWord" xml:space="preserve">
+    <value>enabled</value>
+  </data>
+  <data name="DisabledWord" xml:space="preserve">
+    <value>disabled</value>
+  </data>
+  <data name="LogPruneLabel" xml:space="preserve">
+    <value>Log pruning: run every (hours)</value>
+  </data>
+  <data name="UpdateCheckLabel" xml:space="preserve">
+    <value>Update check: run every (hours)</value>
+  </data>
+  <data name="UpdateCheckHelp" xml:space="preserve">
+    <value>Takes effect after the server restarts.</value>
+  </data>
+  <data name="MediaBackfillLabel" xml:space="preserve">
+    <value>Media thumbnail and preview backfill: run every (hours)</value>
+  </data>
+  <data name="FixedBackfillNote" xml:space="preserve">
+    <value>Jamming, codec and flag backfills run every 15 minutes and are not adjustable here.</value>
+  </data>
+  <data name="IntervalHelp" xml:space="preserve">
+    <value>Between 1 and 168 hours.</value>
+  </data>
+  <data name="IntervalError" xml:space="preserve">
+    <value>Failed to update the interval: {0}</value>
+  </data>
+</root>

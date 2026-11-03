@@ -22,6 +22,7 @@ using Xunit;
 using ExportEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ExportEvidence;
 using SettingsInfrastructurePage = VideoForensics.Client.Ui.Shared.Pages.SettingsInfrastructure;
 using SettingsPage = VideoForensics.Client.Ui.Shared.Pages.Settings;
+using ServicesSettingsPage = VideoForensics.Client.Ui.Shared.Pages.ServicesSettings;
 using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
@@ -130,9 +131,9 @@ public class OperatorSessionGateTests : OperatorSessionGateTestBase
     }
 
     [Fact]
-    public void Settings_NoOperatorSession_ShowsNotSignedIn()
+    public void Services_NoOperatorSession_ShowsNotSignedIn()
     {
-        IRenderedComponent<SettingsPage> component = Render<SettingsPage>();
+        IRenderedComponent<ServicesSettingsPage> component = Render<ServicesSettingsPage>();
         Assert.Contains(NotSignedIn, component.Markup);
     }
 }

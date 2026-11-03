@@ -28,6 +28,7 @@ namespace VideoForensics.Client.WebApp.Services
                 RestrictedSettings.Notifications => "Permissions.NotificationSettings",
                 RestrictedSettings.Llm => "Permissions.LlmSettings",
                 RestrictedSettings.Infrastructure => "Permissions.InfrastructureSettings",
+                RestrictedSettings.Services => "Permissions.ServicesSettings",
                 _ => throw new ArgumentOutOfRangeException(nameof(area), area, "Not a single restricted settings page."),
             };
         }

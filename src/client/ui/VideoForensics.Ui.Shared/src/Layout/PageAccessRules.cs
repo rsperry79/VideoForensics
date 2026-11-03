@@ -33,6 +33,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>SuperAdmin, or Admin once a Super Admin has opened the Infrastructure settings page to admins.</summary>
         InfrastructureSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened the Services page to admins.</summary>
+        ServicesSettings,
     }
 
     /// <summary>
@@ -103,6 +106,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/llm"] = AccessPolicy.LlmSettings,
                 ["/settings/lockout-policy"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/auth-methods"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/services"] = AccessPolicy.ServicesSettings,
             };
 
         /// <summary>Returns the policy a page requires, if the page is listed. Query strings are ignored.</summary>
@@ -134,6 +138,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
                 AccessPolicy.LlmSettings => AllowsSetting(RestrictedSettings.Llm, ctx),
                 AccessPolicy.InfrastructureSettings => AllowsSetting(RestrictedSettings.Infrastructure, ctx),
+                AccessPolicy.ServicesSettings => AllowsSetting(RestrictedSettings.Services, ctx),
                 _ => false,
             };
         }

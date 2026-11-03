@@ -528,6 +528,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<SignalDeviationAlerts>();
             _ = services.AddScoped<BitrateDeviationAlerts>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
+            services.TryAddSingleton(TimeProvider.System);
+            _ = services.AddHostedService<ScheduledReportService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
             _ = services.AddHostedService<MediaPreviewBackfillService>();
             _ = services.AddHostedService<JammingAnalysisBackfillService>();
