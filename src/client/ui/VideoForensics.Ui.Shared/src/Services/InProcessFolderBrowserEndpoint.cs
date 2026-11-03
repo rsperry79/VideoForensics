@@ -68,6 +68,12 @@ namespace VideoForensics.Client.Ui.Shared.Services
                     response = new FolderBrowseResponseDto(null, Array.Empty<FolderBrowseEntryDto>(), new FolderBrowseErrorDto("browse-failed", "The folder list could not be loaded."));
                 }
 
+                // A rejected request is an expected outcome for the user, but the path is the only clue to why.
+                if (response.Error is { } error)
+                {
+                    _logger.LogError("Folder browse rejected: action {Action}, code {Code}, path {Path}", body?.Action, error.Code, body?.Path);
+                }
+
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = JsonContent.Create(response, options: JsonOptions),
