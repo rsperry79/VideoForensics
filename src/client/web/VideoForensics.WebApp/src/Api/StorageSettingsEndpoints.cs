@@ -86,26 +86,20 @@ namespace VideoForensics.Client.WebApp.Api
             CancellationToken cancellationToken)
         {
             RelocateStorageCategoryRequest request = requestDto.ToDomain();
-            if (request.Category is not (StorageCategory.Database or StorageCategory.Logs))
-            {
-                RelocateStorageCategoryResult plain = await storageSettings.RelocateAsync(request, cancellationToken);
-                return Results.Ok(plain.ToDto());
-            }
 
-            // The database and the logs must be closed or quiet before their files move. The coordinator blocks new work,
-            // waits for in-flight work, and releases pooled connections before the relocation runs.
+            // Every move runs under maintenance: the coordinator blocks new work, waits for in-flight work, and releases
+            // pooled connections before the files move. Database and Logs restart afterwards, because this process still
+            // points at the old files, so their hold stays on success. Other categories end maintenance when the move ends.
+            bool restarts = request.Category is StorageCategory.Database or StorageCategory.Logs;
             try
             {
-                // Maintenance stays held after a successful move: this process still points at the old files, so nothing
-                // may write to them. The process then stops with a failure code, which the service recovery action turns into
-                // a restart on the new location (the same restart path a staged update uses). The restart finishes a Logs move.
                 RelocateStorageCategoryResult result = await coordinator.RunAsync(
-                    request.Category == StorageCategory.Logs ? "Moving the logs" : "Moving the database",
+                    $"Moving {request.Category}",
                     (sp, token) => sp.GetRequiredService<IStorageSettingsService>().RelocateAsync(request, token),
                     cancellationToken,
-                    holdOnSuccess: true);
+                    holdOnSuccess: restarts);
 
-                if (result.Succeeded)
+                if (restarts && result.Succeeded)
                 {
                     Environment.ExitCode = 1;
                     lifetime.StopApplication();

@@ -45,6 +45,22 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public void Discard_AfterAFailedMove_RemovesTheCopiesAndKeepsTheOriginal()
+        {
+            string oldFile = Path.Combine(_source, "audit-20261103.json");
+            string newFile = Path.Combine(_logs, "audit-20261103.json");
+            File.WriteAllText(oldFile, "a\nb\n");
+            File.WriteAllText(newFile, "a\n");
+            LogRelocationManifest.Write(_logs, [new LogRelocationManifest.Entry(oldFile, "audit-20261103.json", 2L)]);
+
+            LogRelocationManifest.Discard(_logs);
+
+            Assert.Equal("a\nb\n", File.ReadAllText(oldFile));
+            Assert.False(File.Exists(newFile));
+            Assert.False(File.Exists(Path.Combine(_logs, LogRelocationManifest.FileName)));
+        }
+
+        [Fact]
         public void Reconcile_NoManifest_LeavesFilesAlone()
         {
             string file = Path.Combine(_logs, "audit-20261103.json");

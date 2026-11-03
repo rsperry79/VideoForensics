@@ -46,6 +46,34 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        /// <summary>
+        /// Rolls back a Logs copy whose move did not finish: removes the copies and the manifest. The originals are never
+        /// touched, so the audit trail stays complete in the old folder.
+        /// </summary>
+        public static void Discard(string logsDir)
+        {
+            string manifestPath = Path.Combine(logsDir, FileName);
+            if (!File.Exists(manifestPath))
+            {
+                return;
+            }
+
+            List<Entry> entries = JsonSerializer.Deserialize<List<Entry>>(File.ReadAllText(manifestPath)) ?? [];
+            foreach (Entry entry in entries)
+            {
+                try
+                {
+                    File.Delete(Path.Combine(logsDir, entry.RelativePath));
+                }
+                catch (IOException)
+                {
+                    // A copy that cannot be removed is left behind. The original is still complete.
+                }
+            }
+
+            File.Delete(manifestPath);
+        }
+
         private static bool TryReconcile(string logsDir, Entry entry)
         {
             if (!File.Exists(entry.SourcePath))
