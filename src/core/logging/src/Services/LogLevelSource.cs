@@ -41,16 +41,22 @@ namespace VideoForensics.Core.Logging.Services
             return false;
         }
 
-        /// <summary>Whether a live output (console or named pipe) shows the entry.</summary>
-        public bool AdmitsLive(string category)
+        /// <summary>
+        /// Whether a live output (console or named pipe) shows the entry. Warnings and errors are never demoted by
+        /// <see cref="TraceOnlyCategories"/>, so <paramref name="isWarningOrAbove"/> is true for them.
+        /// </summary>
+        public bool AdmitsLive(string category, bool isWarningOrAbove)
         {
-            return Minimum == LogLevel.Trace || !IsTraceOnly(category);
+            return isWarningOrAbove || Minimum == LogLevel.Trace || !IsTraceOnly(category);
         }
 
-        /// <summary>Whether the entry is stored: the audit files and the in-memory buffer. Trace-only entries never are.</summary>
-        public bool AdmitsStored(string category)
+        /// <summary>
+        /// Whether the entry is stored: the audit files and the in-memory buffer. Trace-only entries never are, except
+        /// warnings and errors, which are always stored.
+        /// </summary>
+        public bool AdmitsStored(string category, bool isWarningOrAbove)
         {
-            return !IsTraceOnly(category);
+            return isWarningOrAbove || !IsTraceOnly(category);
         }
     }
 }

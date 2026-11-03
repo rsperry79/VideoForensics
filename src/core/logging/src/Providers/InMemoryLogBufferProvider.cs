@@ -98,8 +98,8 @@ namespace VideoForensics.Core.Logging.Providers
                     return;
                 }
 
-                // Trace-only framework noise is shown live but never stored in the buffer.
-                if (_provider._level is { } levelSource && !levelSource.AdmitsStored(_categoryName))
+                // Trace-only framework noise is shown live but never stored in the buffer. Warnings and errors are always stored.
+                if (_provider._level is { } levelSource && !levelSource.AdmitsStored(_categoryName, logLevel >= LogLevel.Warning))
                 {
                     return;
                 }

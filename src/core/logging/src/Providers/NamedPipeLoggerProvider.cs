@@ -41,7 +41,7 @@ namespace VideoForensics.Core.Logging.Providers
         /// <summary>Whether the live pipe shows the entry, per the gate's level source.</summary>
         // The saved Recording level gates the pipe too, so it matches the console and the audit files.
         internal bool AdmitsLive(LogLevel logLevel, string category) =>
-            logLevel >= (_gate?.Level?.Minimum ?? LogLevel.Trace) && (_gate?.Level?.AdmitsLive(category) ?? true);
+            logLevel >= (_gate?.Level?.Minimum ?? LogLevel.Trace) && (_gate?.Level?.AdmitsLive(category, logLevel >= LogLevel.Warning) ?? true);
 
         /// <param name="gate">Optional runtime switch. Null leaves the pipe always open, as before.</param>
         public NamedPipeLoggerProvider(NamedPipeLogGate? gate = null)
