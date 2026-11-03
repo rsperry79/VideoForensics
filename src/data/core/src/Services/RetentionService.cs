@@ -100,7 +100,7 @@ namespace VideoForensics.Data.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error purging media item {MediaItemId}", item.Id);
+                        _logger.LogError("Error purging media item {MediaItemId}: {Message} ({ErrorType})", item.Id, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -111,7 +111,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during retention purge");
+                _logger.LogError("Error during retention purge: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

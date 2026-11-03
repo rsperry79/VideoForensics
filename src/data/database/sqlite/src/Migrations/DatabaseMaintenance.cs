@@ -103,7 +103,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Database maintenance diagnosis failed, will proceed with full maintenance.");
+                logger.LogError("Database maintenance diagnosis failed, will proceed with full maintenance.: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 diagnosis.ShouldMaintain = true; // Conservative: run maintenance on diagnosis failure
                 return diagnosis;
             }
@@ -180,7 +180,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Database maintenance failed (non-fatal) - performance may be degraded.");
+                logger.LogError("Database maintenance failed (non-fatal) - performance may be degraded.: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

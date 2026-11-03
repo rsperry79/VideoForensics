@@ -74,7 +74,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to start Ring live view for doorbot {DoorbotId}", doorbotId);
+                _logger.LogError("Failed to start Ring live view for doorbot {DoorbotId}: {Message} ({ErrorType})", doorbotId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

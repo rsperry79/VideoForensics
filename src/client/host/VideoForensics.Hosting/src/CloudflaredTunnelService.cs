@@ -121,7 +121,7 @@ namespace VideoForensics.Client.Hosting
             catch (Exception ex)
             {
                 // Every failure is logged and shown with its reason, so the page never reports a tunnel that did not start.
-                _logger.LogError(ex, "Cloudflare tunnel failed to start");
+                _logger.LogError("Cloudflare tunnel failed to start: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 lock (_gate)
                 {
                     _state = _state with

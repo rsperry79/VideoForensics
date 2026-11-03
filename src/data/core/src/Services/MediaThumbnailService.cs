@@ -131,7 +131,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Thumbnail generation failed for media item {MediaItemId}", media.Id);
+                _logger.LogError("Thumbnail generation failed for media item {MediaItemId}: {Message} ({ErrorType})", media.Id, ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -152,7 +152,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not announce thumbnail for media item {MediaItemId}", mediaItemId);
+                _logger.LogWarning("Could not announce thumbnail for media item {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
             }
         }
 

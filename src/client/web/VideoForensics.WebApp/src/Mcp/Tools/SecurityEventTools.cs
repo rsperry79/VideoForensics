@@ -115,7 +115,7 @@ namespace VideoForensics.Client.WebApp.Mcp.Tools
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "GetSecurityEvents: service error for operatorId={OperatorId}", targetOperatorId);
+                Logger.LogError("GetSecurityEvents: service error for operatorId={OperatorId}: {Message} ({ErrorType})", targetOperatorId, ex.Message, ex.GetType().Name);
                 return new SecurityEventsResult { Events = [], TotalCount = 0, Error = $"Service error: {ex.Message}" };
             }
         }

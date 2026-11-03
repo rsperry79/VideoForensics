@@ -213,7 +213,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error relocating storage category {Category}", request.Category);
+                _logger.LogError("Unexpected error relocating storage category {Category}: {Message} ({ErrorType})", request.Category, ex.Message, ex.GetType().Name);
                 return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Unexpected error: {ex.Message}", RestartRequired: false);
             }
         }
@@ -344,7 +344,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error changing the default storage root");
+                _logger.LogError("Unexpected error changing the default storage root: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Unexpected error: {ex.Message}", RestartRequired: false);
             }
         }
@@ -461,7 +461,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to compute directory size for {Path}", path);
+                _logger.LogError("Failed to compute directory size for {Path}: {Message} ({ErrorType})", path, ex.Message, ex.GetType().Name);
                 return 0;
             }
         }
@@ -481,7 +481,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to compute free space for {Path}", path);
+                _logger.LogError("Failed to compute free space for {Path}: {Message} ({ErrorType})", path, ex.Message, ex.GetType().Name);
                 return 0;
             }
         }
@@ -568,7 +568,7 @@ namespace VideoForensics.Data.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to delete empty directory {Path}", dir.FullName);
+                    _logger.LogError("Failed to delete empty directory {Path}: {Message} ({ErrorType})", dir.FullName, ex.Message, ex.GetType().Name);
                 }
             }
         }

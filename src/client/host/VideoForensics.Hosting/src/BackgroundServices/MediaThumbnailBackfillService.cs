@@ -92,7 +92,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Thumbnail backfill pass failed; the next pass will retry");
+                _logger.LogError("Thumbnail backfill pass failed; the next pass will retry: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

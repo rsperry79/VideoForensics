@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Database.Repositories
             catch (Exception ex)
             {
                 ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error decrypting credential for {ProviderName} account", account?.ProviderName ?? "unknown");
+                _logger.LogError("Error decrypting credential for {ProviderName} account: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -99,7 +99,7 @@ namespace VideoForensics.Data.Database.Repositories
             catch (Exception ex)
             {
                 ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error setting credential for {ProviderName} account", account?.ProviderName ?? "unknown");
+                _logger.LogError("Error setting credential for {ProviderName} account: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -125,7 +125,7 @@ namespace VideoForensics.Data.Database.Repositories
             catch (Exception ex)
             {
                 ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error deleting credential for {ProviderName} account", account?.ProviderName ?? "unknown");
+                _logger.LogError("Error deleting credential for {ProviderName} account: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -152,8 +152,7 @@ namespace VideoForensics.Data.Database.Repositories
             catch (Exception ex)
             {
                 ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error deleting all credentials for {ProviderName} account",
-                    account?.ProviderName ?? "unknown");
+                _logger.LogError("Error deleting all credentials for {ProviderName} account: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

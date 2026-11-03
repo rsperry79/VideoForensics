@@ -110,14 +110,14 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             else
                             {
-                                _logger.LogWarning(ex, "Failed to fetch Ring health for account {ProviderName} (non-critical)", account.ProviderName);
+                                _logger.LogWarning("Failed to fetch Ring health for account {ProviderName} (non-critical): {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                             }
                             // Continue with next account
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error processing Ring account {ProviderName} (non-critical)", account.ProviderName);
+                        _logger.LogWarning("Error processing Ring account {ProviderName} (non-critical): {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                         // Continue with next account
                     }
                 }
@@ -126,7 +126,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch Ring device health telemetry for multi-account scenario (non-critical)");
+                _logger.LogWarning("Failed to fetch Ring device health telemetry for multi-account scenario (non-critical): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Array.Empty<DeviceHealthReading>();
             }
         }
@@ -159,7 +159,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch Ring device health telemetry (non-critical)");
+                _logger.LogWarning("Failed to fetch Ring device health telemetry (non-critical): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Array.Empty<DeviceHealthReading>();
             }
         }

@@ -86,7 +86,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick");
+                _logger.LogError("Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 
@@ -103,7 +103,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Bitrate calibration tick: failed to list devices; skipping this tick");
+                _logger.LogError("Bitrate calibration tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 
@@ -164,7 +164,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // One device's failure must not stop others - each device gets its own try/catch
-                    _logger.LogWarning(ex, "Bitrate calibration tick: device {DeviceName} failed (non-critical)", device.Name);
+                    _logger.LogWarning("Bitrate calibration tick: device {DeviceName} failed (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 }
             }
         }

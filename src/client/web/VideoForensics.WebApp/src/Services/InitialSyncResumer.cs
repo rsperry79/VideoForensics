@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Resuming first sync failed for {ProviderName}", account.ProviderName);
+                    _logger.LogError("Resuming first sync failed for {ProviderName}: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                 }
             }
         }

@@ -221,7 +221,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing media item {MediaItemId} for export, skipping", mediaItemId);
+                        _logger.LogError("Error processing media item {MediaItemId} for export, skipping: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
                         excludedItems.Add(mediaItemId);
                     }
                 }
@@ -307,7 +307,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to retrieve action log for media item {MediaItemId}, skipping history", item.Id);
+                        _logger.LogError("Failed to retrieve action log for media item {MediaItemId}, skipping history: {Message} ({ErrorType})", item.Id, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -349,7 +349,7 @@ namespace VideoForensics.Client.Core.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to add media file {FileName} to archive", item.FileName);
+                            _logger.LogError("Failed to add media file {FileName} to archive: {Message} ({ErrorType})", item.FileName, ex.Message, ex.GetType().Name);
                         }
                     }
 
@@ -447,7 +447,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Evidence export failed");
+                _logger.LogError("Evidence export failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 result.Success = false;
                 result.ErrorMessage = $"Export failed: {ex.Message}";
                 return result;

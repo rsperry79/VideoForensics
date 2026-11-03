@@ -151,7 +151,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device details for device {DeviceName}", device?.Name ?? "unknown device");
+                _logger.LogError("Error recording device details for device {DeviceName}: {Message} ({ErrorType})", device?.Name ?? "unknown device", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

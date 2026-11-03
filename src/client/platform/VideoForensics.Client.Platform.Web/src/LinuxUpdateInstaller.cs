@@ -28,7 +28,7 @@ namespace VideoForensics.Client.Platform.Web
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to download/invoke installer for asset '{AssetName}'", asset.Name);
+                _logger.LogError("Failed to download/invoke installer for asset '{AssetName}': {Message} ({ErrorType})", asset.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

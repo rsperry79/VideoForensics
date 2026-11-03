@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting event: {ProviderEventId}", SanitizeForLog(@event.ProviderEventId));
+                _logger.LogError("Error upserting event: {ProviderEventId}: {Message} ({ErrorType})", SanitizeForLog(@event.ProviderEventId), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -105,7 +105,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating event: {ProviderEventId}", SanitizeForLog(@event.ProviderEventId));
+                _logger.LogError("Error creating event: {ProviderEventId}: {Message} ({ErrorType})", SanitizeForLog(@event.ProviderEventId), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -129,7 +129,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating event: {EventId}", @event.Id);
+                _logger.LogError("Error updating event: {EventId}: {Message} ({ErrorType})", @event.Id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -318,7 +318,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating event download failure: {EventId}", eventId);
+                _logger.LogError("Error updating event download failure: {EventId}: {Message} ({ErrorType})", eventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -339,7 +339,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting event: {EventId}", eventId);
+                _logger.LogError("Error deleting event: {EventId}: {Message} ({ErrorType})", eventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

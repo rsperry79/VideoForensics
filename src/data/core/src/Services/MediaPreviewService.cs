@@ -131,7 +131,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Preview generation failed for {FileName}: {Message}", media.FileName, ex.Message);
+                _logger.LogError("Preview generation failed for {FileName}: {Message} ({ErrorType})", media.FileName, ex.Message, ex.GetType().Name);
                 return false;
             }
             finally
@@ -166,7 +166,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not save preview path for {FileName}: {Message}", media.FileName, ex.Message);
+                _logger.LogWarning("Could not save preview path for {FileName}: {Message} ({ErrorType})", media.FileName, ex.Message, ex.GetType().Name);
             }
         }
 

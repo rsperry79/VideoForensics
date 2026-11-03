@@ -47,7 +47,7 @@ namespace VideoForensics.Client.WebApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Resuming incomplete first syncs failed");
+                _logger.LogError("Resuming incomplete first syncs failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

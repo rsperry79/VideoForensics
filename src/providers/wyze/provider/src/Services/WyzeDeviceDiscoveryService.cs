@@ -43,7 +43,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching Wyze locations");
+                _logger.LogError("Error fetching Wyze locations: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new List<Location>().AsReadOnly();
             }
         }
@@ -75,7 +75,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching Wyze devices for location {LocationId}", locationId);
+                _logger.LogError("Error fetching Wyze devices for location {LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 return new List<Device>().AsReadOnly();
             }
         }
@@ -106,7 +106,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching Wyze device {DeviceId}", deviceId);
+                _logger.LogError("Error fetching Wyze device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return null;
             }
         }

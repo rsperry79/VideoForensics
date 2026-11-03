@@ -92,7 +92,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error registering device {DeviceName}", device.Name);
+                _logger.LogError("Error registering device {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -107,7 +107,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
+                _logger.LogError("Error recording device health metric for device {DeviceId}: {Message} ({ErrorType})", health.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -132,7 +132,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
+                _logger.LogError("Error recording device details for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -167,7 +167,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating detail fields for device {DeviceId}", deviceId);
+                _logger.LogError("Error updating detail fields for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -180,8 +180,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording provider API error log for event {EventId}, device {DeviceId}",
-                    entry.EventId, entry.DeviceId);
+                _logger.LogError("Error recording provider API error log for event {EventId}, device {DeviceId}: {Message} ({ErrorType})",
+                    entry.EventId, entry.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -229,7 +229,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+                _logger.LogError("Media analysis failed for media item {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -327,8 +327,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording download event for device {DeviceId}, provider event {ProviderEventId}",
-                    evt.DeviceId, evt.ProviderEventId);
+                _logger.LogError("Error recording download event for device {DeviceId}, provider event {ProviderEventId}: {Message} ({ErrorType})",
+                    evt.DeviceId, evt.ProviderEventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -428,8 +428,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting event for device {DeviceId}, provider event {ProviderEventId}",
-                    evt.DeviceId, evt.ProviderEventId);
+                _logger.LogError("Error upserting event for device {DeviceId}, provider event {ProviderEventId}: {Message} ({ErrorType})",
+                    evt.DeviceId, evt.ProviderEventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -516,8 +516,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user {DisplayName}",
-                    providerName, displayName);
+                _logger.LogError("Error ensuring user and account for provider {ProviderName}, user {DisplayName}: {Message} ({ErrorType})",
+                    providerName, displayName, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -564,8 +564,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring location {LocationName} for provider account {ProviderAccountId}",
-                    name, providerAccountId);
+                _logger.LogError("Error ensuring location {LocationName} for provider account {ProviderAccountId}: {Message} ({ErrorType})",
+                    name, providerAccountId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -863,8 +863,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring device {DeviceName} for location {LocationId}",
-                    name, locationId);
+                _logger.LogError("Error ensuring device {DeviceName} for location {LocationId}: {Message} ({ErrorType})",
+                    name, locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -908,7 +908,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device watermark for device {DeviceId}", deviceId);
+                _logger.LogError("Error updating device watermark for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -930,7 +930,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving account download watermark for account {AccountId}", providerAccountId);
+                _logger.LogError("Error retrieving account download watermark for account {AccountId}: {Message} ({ErrorType})", providerAccountId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -962,7 +962,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating account download watermark for account {AccountId}", providerAccountId);
+                _logger.LogError("Error updating account download watermark for account {AccountId}: {Message} ({ErrorType})", providerAccountId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

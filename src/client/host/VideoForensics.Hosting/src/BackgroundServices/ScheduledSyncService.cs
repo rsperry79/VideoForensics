@@ -89,7 +89,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Scheduled sync tick failed; will retry on the next tick");
+                        _logger.LogError("Scheduled sync tick failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
             }
@@ -215,7 +215,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // One account's failure must never stop the others.
-                    _logger.LogError(ex, "Scheduled sync failed for {ProviderName} account", providerName);
+                    _logger.LogError("Scheduled sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
             }
         }
@@ -325,7 +325,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Scheduled first sync failed for {ProviderName} account", providerName);
+                    _logger.LogError("Scheduled first sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
 
                 DateTime attemptedUtc = _time.GetUtcNow().UtcDateTime;
@@ -441,7 +441,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Scheduled event sync failed for {ProviderName} account", providerName);
+                _logger.LogError("Scheduled event sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 outcome = ex.Message;
             }
 
@@ -508,7 +508,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Could not record the completed scheduled sync");
+                _logger.LogError("Could not record the completed scheduled sync: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

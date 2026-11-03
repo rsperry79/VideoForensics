@@ -137,7 +137,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error appending action log entry: {Action}", action);
+                _logger.LogError("Error appending action log entry: {Action}: {Message} ({ErrorType})", action, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

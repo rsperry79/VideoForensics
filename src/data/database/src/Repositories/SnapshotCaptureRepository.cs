@@ -34,7 +34,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording snapshot capture for device {DeviceId}", capture.DeviceId);
+                _logger.LogError("Error recording snapshot capture for device {DeviceId}: {Message} ({ErrorType})", capture.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

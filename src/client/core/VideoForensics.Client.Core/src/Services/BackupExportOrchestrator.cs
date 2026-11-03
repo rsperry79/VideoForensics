@@ -95,7 +95,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to backfill sidecar for event {EventId}", evt.Id);
+                        _logger.LogError("Failed to backfill sidecar for event {EventId}: {Message} ({ErrorType})", evt.Id, ex.Message, ex.GetType().Name);
                         result.MissingSidecarUnrecoverable++;
                         result.Details.Add($"Could not reconcile sidecar for event {evt.Id}: {mediaPath}");
                     }
@@ -190,7 +190,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Backup export failed");
+                _logger.LogError("Backup export failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 result.Success = false;
                 result.ErrorMessage = $"Export failed: {ex.Message}";
                 return result;

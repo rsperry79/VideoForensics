@@ -69,7 +69,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 else
                 {
-                    _logger.LogError(ex, "Error fetching events for device {DeviceId}", SanitizeForLog(deviceId));
+                    _logger.LogError("Error fetching events for device {DeviceId}: {Message} ({ErrorType})", SanitizeForLog(deviceId), ex.Message, ex.GetType().Name);
                 }
                 return new List<DeviceEvent>().AsReadOnly();
             }
@@ -107,7 +107,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching configuration for device {DeviceId}", deviceId);
+                _logger.LogError("Error fetching configuration for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -123,7 +123,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating configuration for device {DeviceId}", deviceId);
+                _logger.LogError("Error updating configuration for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -175,7 +175,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 else
                 {
-                    _logger.LogError(ex, "Error fetching events for device {DeviceId} for {ProviderName} account", SanitizeForLog(deviceId), ProviderName);
+                    _logger.LogError("Error fetching events for device {DeviceId} for {ProviderName} account: {Message} ({ErrorType})", SanitizeForLog(deviceId), ProviderName, ex.Message, ex.GetType().Name);
                 }
                 return new List<DeviceEvent>().AsReadOnly();
             }
@@ -215,7 +215,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
+                _logger.LogError("Error fetching configuration for device {DeviceId} for {ProviderName} account: {Message} ({ErrorType})", deviceId, ProviderName, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -234,7 +234,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
+                _logger.LogError("Error updating configuration for device {DeviceId} for {ProviderName} account: {Message} ({ErrorType})", deviceId, ProviderName, ex.Message, ex.GetType().Name);
                 return false;
             }
         }

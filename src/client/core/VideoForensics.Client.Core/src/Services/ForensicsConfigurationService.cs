@@ -55,7 +55,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load configuration from database, using defaults");
+                _logger.LogError("Failed to load configuration from database, using defaults: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             await EnsureFfmpegBinDirectoryAsync(config, cancellationToken);
@@ -111,7 +111,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "ffmpeg bin directory discovery failed; set FfmpegBinDirectory");
+                _logger.LogWarning("ffmpeg bin directory discovery failed; set FfmpegBinDirectory: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 
@@ -186,7 +186,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load configuration from database");
+                _logger.LogError("Failed to load configuration from database: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -259,7 +259,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save configuration to database");
+                _logger.LogError("Failed to save configuration to database: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

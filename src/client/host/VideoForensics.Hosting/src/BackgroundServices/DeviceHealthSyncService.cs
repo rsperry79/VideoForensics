@@ -136,7 +136,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "Signal deviation check failed for {DeviceName}", device.Name);
+                _logger.LogWarning("Signal deviation check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -152,7 +152,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "Bit rate deviation check failed for {DeviceName}", device.Name);
+                _logger.LogWarning("Bit rate deviation check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -185,7 +185,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Health sync tick: failed to list devices; skipping this tick");
+                _logger.LogError("Health sync tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 
@@ -324,7 +324,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         catch (Exception ex)
                         {
                             // Non-critical: don't let degradation check failure break the main tick
-                            _logger.LogWarning(ex, "Health sync tick: degradation check for device {DeviceName} failed (non-critical)", device.Name);
+                            _logger.LogWarning("Health sync tick: degradation check for device {DeviceName} failed (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                         }
                     }
 
@@ -336,7 +336,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One provider's failure must not stop another's - each health source gets its
                     // own try/catch, matching the plan's explicit call-out for this.
-                    _logger.LogWarning(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogWarning("Health sync tick: {SourceType} failed (non-critical): {Message} ({ErrorType})", healthSource.GetType().Name, ex.Message, ex.GetType().Name);
                 }
             }
         }
@@ -373,7 +373,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Elevated polling tick: failed to list devices; skipping this tick");
+                _logger.LogError("Elevated polling tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 
@@ -467,7 +467,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogWarning("Elevated polling tick: {SourceType} failed (non-critical): {Message} ({ErrorType})", healthSource.GetType().Name, ex.Message, ex.GetType().Name);
                 }
             }
 
@@ -515,7 +515,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
                     string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
-                    _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
+                    _logger.LogWarning("Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical): {Message} ({ErrorType})", deviceName, ex.Message, ex.GetType().Name);
                 }
             }
         }
@@ -582,7 +582,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Health sync: failed to dispatch offline alert for device {DeviceName} (non-critical)", device.Name);
+                _logger.LogWarning("Health sync: failed to dispatch offline alert for device {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
             }
         }
 

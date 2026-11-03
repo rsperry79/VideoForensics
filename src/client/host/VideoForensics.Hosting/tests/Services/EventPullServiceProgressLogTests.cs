@@ -163,7 +163,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
-            Assert.Contains("Error: Failed to pull events for device Front Door", _logs.Lines);
+            Assert.Contains(_logs.Lines, line => line.StartsWith("Error: Failed to pull events for device Front Door:", StringComparison.Ordinal));
         }
 
         [Fact]

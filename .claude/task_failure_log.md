@@ -153,3 +153,4 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-11-03 | services-page tests | Hosting: 8 DeviceHealthSyncServiceTests/DeviceOfflineAlertTests failures | Also fail on clean wip (baseline 8/32) | Pre-existing; not caused by services change | Leave; track separately
 2026-11-03 | services-page tests | Core: PathUtilitiesTests ContainsProgramDataFolder (2) | Also fails on clean wip (2/2) | Pre-existing environment issue (ProgramData path) | Leave
 2026-11-03 | services-page tests | Hosting: UpdateStagerTests SameVersionStagedTwice access denied (1 run) | Temp-dir permission, passed on rerun | Environmental | None
+2026-11-03 | logging | Credential error logs passed exception objects (stack traces) | CLAUDE.md rule: never log stack traces; RingAuthService and CredentialRepository used LogError(ex, ...) | Replaced with message and exception type in the credential path; ~420 other call sites still pass exceptions (not yet swept)

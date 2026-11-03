@@ -125,8 +125,8 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recomputing baseline bucket for device: {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}",
-                    deviceId, hourOfDay, isWeekend);
+                _logger.LogError("Error recomputing baseline bucket for device: {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}: {Message} ({ErrorType})",
+                    deviceId, hourOfDay, isWeekend, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

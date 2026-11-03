@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error dismissing notice: NoticeId {NoticeId}, OperatorId {OperatorId}", noticeId, operatorId);
+                _logger.LogError("Error dismissing notice: NoticeId {NoticeId}, OperatorId {OperatorId}: {Message} ({ErrorType})", noticeId, operatorId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -90,7 +90,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error dismissing multiple notices for Operator {OperatorId}", operatorId);
+                _logger.LogError("Error dismissing multiple notices for Operator {OperatorId}: {Message} ({ErrorType})", operatorId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

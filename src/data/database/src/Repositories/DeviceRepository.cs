@@ -71,7 +71,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding device: {DeviceName}", device.Name);
+                _logger.LogError("Error adding device: {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -88,7 +88,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device: {DeviceName}", device.Name);
+                _logger.LogError("Error updating device: {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -110,7 +110,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device watermark: {DeviceName}", device?.Name ?? "unknown device");
+                _logger.LogError("Error updating device watermark: {DeviceName}: {Message} ({ErrorType})", device?.Name ?? "unknown device", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -132,7 +132,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting device: {DeviceName}", device?.Name ?? "unknown device");
+                _logger.LogError("Error deleting device: {DeviceName}: {Message} ({ErrorType})", device?.Name ?? "unknown device", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

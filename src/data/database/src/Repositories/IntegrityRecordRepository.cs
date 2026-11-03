@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding integrity record for media item {MediaItemId}", record.MediaItemId);
+                _logger.LogError("Error adding integrity record for media item {MediaItemId}: {Message} ({ErrorType})", record.MediaItemId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

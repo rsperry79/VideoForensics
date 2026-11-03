@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Scheduled report run failed; it will run again at the next interval");
+                    _logger.LogError("Scheduled report run failed; it will run again at the next interval: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             }
         }

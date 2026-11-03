@@ -176,7 +176,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     catch (Exception ex)
                     {
                         // Installer failure is non-critical; log it but don't crash the tick.
-                        _logger.LogWarning(ex, "Update check tick: Failed to download/invoke installer (non-critical)");
+                        _logger.LogWarning("Update check tick: Failed to download/invoke installer (non-critical): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -220,7 +220,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     _updateAvailable = false;
                 }
 
-                _logger.LogWarning(ex, "Update check tick: Unexpected error (non-critical)");
+                _logger.LogWarning("Update check tick: Unexpected error (non-critical): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

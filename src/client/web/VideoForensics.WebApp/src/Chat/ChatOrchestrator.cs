@@ -285,7 +285,7 @@ namespace VideoForensics.Client.WebApp.Chat
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogError(ex, "ChatOrchestrator: Request cancelled");
+                _logger.LogError("ChatOrchestrator: Request cancelled: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new ChatTurnResult
                 {
                     Reply = "The request was cancelled.",
@@ -294,7 +294,7 @@ namespace VideoForensics.Client.WebApp.Chat
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ChatOrchestrator: Unhandled exception");
+                _logger.LogError("ChatOrchestrator: Unhandled exception: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new ChatTurnResult
                 {
                     Reply = "An error occurred while processing your request.",

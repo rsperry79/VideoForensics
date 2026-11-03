@@ -56,7 +56,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to persist notice event {EventType} to database (non-critical, continuing with provider dispatch)", notificationEvent.EventType);
+                _logger.LogWarning("Failed to persist notice event {EventType} to database (non-critical, continuing with provider dispatch): {Message} ({ErrorType})", notificationEvent.EventType, ex.Message, ex.GetType().Name);
             }
 
             // Open Notices pages reload on this publish, so it comes after the notice row is saved.
@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Notification provider {Provider} failed to send event {EventType}", provider.Name, notificationEvent.EventType);
+                    _logger.LogWarning("Notification provider {Provider} failed to send event {EventType}: {Message} ({ErrorType})", provider.Name, notificationEvent.EventType, ex.Message, ex.GetType().Name);
                 }
             }
         }

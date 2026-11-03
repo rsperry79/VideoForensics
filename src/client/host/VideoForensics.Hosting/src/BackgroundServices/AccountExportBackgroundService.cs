@@ -38,7 +38,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        _logger.LogError(ex, "Account export job {JobId} crashed", jobId);
+                        _logger.LogError("Account export job {JobId} crashed: {Message} ({ErrorType})", jobId, ex.Message, ex.GetType().Name);
                     }
                 }
             }

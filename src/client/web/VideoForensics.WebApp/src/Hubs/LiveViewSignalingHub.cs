@@ -126,7 +126,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in RequestOffer for session {SessionId}", liveViewSessionId);
+                _logger.LogError("Error in RequestOffer for session {SessionId}: {Message} ({ErrorType})", liveViewSessionId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -173,7 +173,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in SubmitAnswer for session {SessionId}", liveViewSessionId);
+                _logger.LogError("Error in SubmitAnswer for session {SessionId}: {Message} ({ErrorType})", liveViewSessionId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -221,7 +221,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in SubmitIceCandidate for session {SessionId}", liveViewSessionId);
+                _logger.LogError("Error in SubmitIceCandidate for session {SessionId}: {Message} ({ErrorType})", liveViewSessionId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -242,7 +242,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error cleaning up browser peers for connection {ConnectionId}", Context.ConnectionId);
+                _logger.LogError("Error cleaning up browser peers for connection {ConnectionId}: {Message} ({ErrorType})", Context.ConnectionId, ex.Message, ex.GetType().Name);
             }
 
             await base.OnDisconnectedAsync(exception);

@@ -78,7 +78,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to set download location to {path}", path);
+                _logger.LogError("Failed to set download location to {path}: {Message} ({ErrorType})", path, ex.Message, ex.GetType().Name);
                 return (false, $"Failed to set download location: {ex.Message}");
             }
         }
@@ -307,7 +307,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Factory reset failed");
+                _logger.LogError("Factory reset failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return (false, $"Factory reset failed: {ex.Message}");
             }
         }

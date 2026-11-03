@@ -48,7 +48,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching Wyze events for device {DeviceId}", SanitizeForLog(deviceId));
+                _logger.LogError("Error fetching Wyze events for device {DeviceId}: {Message} ({ErrorType})", SanitizeForLog(deviceId), ex.Message, ex.GetType().Name);
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -80,7 +80,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching Wyze config for device {DeviceId}", deviceId);
+                _logger.LogError("Error fetching Wyze config for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -114,7 +114,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating Wyze config for device {DeviceId}", deviceId);
+                _logger.LogError("Error updating Wyze config for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return false;
             }
         }

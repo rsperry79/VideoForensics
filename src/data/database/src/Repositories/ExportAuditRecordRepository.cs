@@ -54,7 +54,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording export audit for location {LocationId}", locationId);
+                _logger.LogError("Error recording export audit for location {LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -135,7 +135,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving export statistics");
+                _logger.LogError("Error retrieving export statistics: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

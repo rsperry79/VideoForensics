@@ -181,7 +181,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to publish state change for live view session {SessionId} (non-critical)", session.Id);
+                _logger.LogWarning("Failed to publish state change for live view session {SessionId} (non-critical): {Message} ({ErrorType})", session.Id, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -236,7 +236,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Telemetry sampler for live view session {SessionId} ended with an error during stop", sessionId);
+                _logger.LogError("Telemetry sampler for live view session {SessionId} ended with an error during stop: {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
             }
 
             pipeline.Cancellation.Dispose();
@@ -295,7 +295,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to persist telemetry sample for live view session {SessionId} (sampler continues)", sessionId);
+                _logger.LogError("Failed to persist telemetry sample for live view session {SessionId} (sampler continues): {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -328,7 +328,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to score telemetry sample for live view session {SessionId}; persisting unscored (non-critical)", sessionId);
+                _logger.LogWarning("Failed to score telemetry sample for live view session {SessionId}; persisting unscored (non-critical): {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -348,7 +348,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to publish telemetry sample for live view session {SessionId} (non-critical)", sessionId);
+                _logger.LogWarning("Failed to publish telemetry sample for live view session {SessionId} (non-critical): {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -473,7 +473,7 @@ namespace VideoForensics.Client.Core.Tools
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error handling connection state change for session {SessionId}", session.Id);
+                        _logger.LogError("Error handling connection state change for session {SessionId}: {Message} ({ErrorType})", session.Id, ex.Message, ex.GetType().Name);
                     }
                 };
 
@@ -539,7 +539,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to dispatch sustained mode notification for session {SessionId} (non-critical)", sessionId);
+                _logger.LogWarning("Failed to dispatch sustained mode notification for session {SessionId} (non-critical): {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
             }
 
             return session;
@@ -598,7 +598,7 @@ namespace VideoForensics.Client.Core.Tools
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error closing connection for session {SessionId}", sessionId);
+                    _logger.LogError("Error closing connection for session {SessionId}: {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
                 }
             }
 

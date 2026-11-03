@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error computing hash for file {FilePath}", filePath);
+                _logger.LogError("Error computing hash for file {FilePath}: {Message} ({ErrorType})", filePath, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -91,7 +91,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during integrity verification of {FilePath}", filePath);
+                _logger.LogError("Error during integrity verification of {FilePath}: {Message} ({ErrorType})", filePath, ex.Message, ex.GetType().Name);
                 await RecordResultAsync(mediaItemId, mediaItem.Sha256Hash, passed: false, failureReason: ex.Message, ct);
                 return false;
             }
@@ -116,7 +116,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording integrity result for media item {MediaItemId}", mediaItemId);
+                _logger.LogError("Error recording integrity result for media item {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
             }
         }
 

@@ -86,7 +86,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Database initialization failed. The application cannot continue.");
+                logger.LogError("Database initialization failed. The application cannot continue.: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -121,7 +121,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             {
                 // Log backup failure but don't fail initialization if backup fails
                 // The user should be aware, but we proceed with caution
-                logger.LogError(ex, "Failed to create pre-migration backup. Proceeding with migration anyway.");
+                logger.LogError("Failed to create pre-migration backup. Proceeding with migration anyway.: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             await Task.CompletedTask;
@@ -170,7 +170,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to run database integrity check.");
+                logger.LogError("Failed to run database integrity check.: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 // Don't rethrow - integrity check failure shouldn't block app startup
             }
         }

@@ -105,7 +105,7 @@ namespace VideoForensics.Client.WebApp.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error forwarding RTP packet to browser peer for session {SessionId}", sessionId);
+                    _logger.LogError("Error forwarding RTP packet to browser peer for session {SessionId}: {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
                 }
             }
 
@@ -127,7 +127,7 @@ namespace VideoForensics.Client.WebApp.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error forwarding audio RTP packet to browser peer for session {SessionId}", sessionId);
+                    _logger.LogError("Error forwarding audio RTP packet to browser peer for session {SessionId}: {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
                 }
             }
 
@@ -190,7 +190,7 @@ namespace VideoForensics.Client.WebApp.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error disposing browser peer for session {SessionId}", sessionId);
+                    _logger.LogError("Error disposing browser peer for session {SessionId}: {Message} ({ErrorType})", sessionId, ex.Message, ex.GetType().Name);
                 }
             }
 

@@ -230,7 +230,7 @@ namespace VideoForensics.Client.WebApp.Api
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to record access audit for media item {MediaItemId} by operator {OperatorId}", id, operatorId);
+                    logger.LogError("Failed to record access audit for media item {MediaItemId} by operator {OperatorId}: {Message} ({ErrorType})", id, operatorId, ex.Message, ex.GetType().Name);
                     return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
                 }
             }
