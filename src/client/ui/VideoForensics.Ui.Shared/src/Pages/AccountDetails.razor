@@ -83,6 +83,10 @@ else
                         <p class="mb-0">
                             <strong>@L["MessageLabel"]</strong> @L["CredentialRecoveryMessage"]
                         </p>
+                        @if (CanEditAccount)
+                        {
+                            <SfButton CssClass="e-warning" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                        }
                     </div>
                 }
 
