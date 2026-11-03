@@ -134,7 +134,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>Builds and registers one device's loop. Returns false when the window has no usable snapshots.</summary>
         private async Task<bool> RollUpDeviceAsync(DeviceEntity device, string deviceFolder, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
-            IReadOnlyList<TimelineStill> stills = await LoadStillsAsync(device.Id, fromUtc, toUtc, cancellationToken);
+            IReadOnlyList<TimelineStill> stills = await LoadStillsAsync(device.Id, device.Name, fromUtc, toUtc, cancellationToken);
             if (stills.Count == 0)
             {
                 // Nothing to roll up in this window is not a failure.
@@ -159,11 +159,11 @@ namespace VideoForensics.Client.Hosting.Services
         /// The window's snapshot JPEGs for one device, oldest first. Each is held until the next snapshot; the newest is
         /// held until the window end. Files that are missing from disk are skipped rather than failing the loop.
         /// </summary>
-        private async Task<IReadOnlyList<TimelineStill>> LoadStillsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<TimelineStill>> LoadStillsAsync(Guid deviceId, string deviceName, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             if (_captures is not null && _stillMapper is not null)
             {
-                return await LoadStillsFromCapturesAsync(deviceId, fromUtc, toUtc, cancellationToken);
+                return await LoadStillsFromCapturesAsync(deviceId, deviceName, fromUtc, toUtc, cancellationToken);
             }
 
 
@@ -199,7 +199,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// the still before it, so an outage becomes a gap that the builder fills with gray. The newest still is held to the
         /// window end unless a failure ends it first.
         /// </summary>
-        private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, string deviceName, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             IReadOnlyList<SnapshotCapture> rows = await _captures!.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
             var records = new List<SnapshotStillRecord>(rows.Count);
@@ -214,11 +214,30 @@ namespace VideoForensics.Client.Hosting.Services
                 .Select(r => (DateTimeOffset?)r.CapturedAtUtc).Max();
             if (newestStill is null)
             {
+                LogNoUsableStill(deviceName, rows.Count);
                 return [];
             }
 
             TimeSpan lastHold = new DateTimeOffset(toUtc, TimeSpan.Zero) - newestStill.Value;
-            return _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, lastHold < MinimumHold ? MinimumHold : lastHold));
+            IReadOnlyList<TimelineStill> stills = _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, lastHold < MinimumHold ? MinimumHold : lastHold));
+            if (stills.Count == 0)
+            {
+                LogNoUsableStill(deviceName, rows.Count);
+            }
+
+            return stills;
+        }
+
+        /// <summary>
+        /// Logs why a window with capture attempts built no loop. A quiet window with no attempts is normal and not logged.
+        /// Without this line a roll-up that finds no usable image records success and leaves no trace.
+        /// </summary>
+        private void LogNoUsableStill(string deviceName, int attemptCount)
+        {
+            if (attemptCount > 0)
+            {
+                _logger.LogWarning("Snapshot roll-up for {DeviceName} built no loop: {AttemptCount} capture attempts in the window, none with a usable image on disk", deviceName, attemptCount);
+            }
         }
 
         /// <summary>Registers the MP4 as a Media row. RecordedAtUtc is the window end, which is unique per roll-up tick.</summary>
