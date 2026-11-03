@@ -165,9 +165,12 @@
     <value>Bit rate alert: readings more than 2 std devs from the camera&apos;s mean</value>
   </data>
   <data name="AlertLine" xml:space="preserve">
-    <value>{0}: {1} kbps at {2} UTC</value>
+    <value>{0}: {1} kbps at {2}</value>
   </data>
   <data name="TimelineLabel" xml:space="preserve">
     <value>Bit rate over time</value>
+  </data>
+  <data name="BitrateFlagsHeading" xml:space="preserve">
+    <value>Bit rate collapse flags</value>
   </data>
 </root>
