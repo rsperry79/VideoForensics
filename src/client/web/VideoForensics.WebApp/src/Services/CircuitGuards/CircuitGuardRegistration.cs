@@ -39,7 +39,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
         /// Re-registers the service as a scoped decorator around its current registration. The original registration
         /// stays in place and is resolved inside the decorator, so its own lifetime and construction are unchanged.
         /// </summary>
-        private static IServiceCollection DecorateScoped<TService>(this IServiceCollection services, Func<TService, IServiceProvider, TService> decorate)
+        internal static IServiceCollection DecorateScoped<TService>(this IServiceCollection services, Func<TService, IServiceProvider, TService> decorate)
             where TService : class
         {
             ServiceDescriptor original = services.LastOrDefault(d => d.ServiceType == typeof(TService))
