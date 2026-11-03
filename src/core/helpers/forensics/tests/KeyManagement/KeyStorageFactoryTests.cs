@@ -127,10 +127,10 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
         }
 
         [Fact]
-        public async Task GetDefaultProviderAsync_CanStoreAndRetrieveKeys()
+        public async Task CreateFileBasedProvider_CanStoreAndRetrieveKeys()
         {
             // Arrange
-            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
+            IKeyStorageProvider provider = KeyStorageFactory.CreateFileBasedProvider(_tempDirectory);
             string keyId = "factory-test-key";
 
             // Act

@@ -128,8 +128,11 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Act - the debounce fires on its own
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Equal("Ring", ReviewState.ProviderFilter));
-        Assert.Equal(_ring.Id, ReviewState.AccountFilter);
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("Ring", ReviewState.ProviderFilter);
+            Assert.Equal(_ring.Id, ReviewState.AccountFilter);
+        });
     }
 
     [Fact]
