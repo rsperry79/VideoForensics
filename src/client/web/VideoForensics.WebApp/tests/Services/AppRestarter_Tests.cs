@@ -1,0 +1,45 @@
+using Microsoft.Extensions.Hosting;
+
+using Moq;
+
+using VideoForensics.Client.WebApp.Services;
+
+using Xunit;
+
+namespace VideoForensics.Client.WebApp.Tests.Services
+{
+    public class AppRestarter_Tests
+    {
+        private readonly Mock<IHostApplicationLifetime> _lifetime = new();
+
+        [Fact]
+        public void Restart_OutsideAService_StartsAFreshCopyThenStops()
+        {
+            var launched = new List<string>();
+            var scheduled = new List<string>();
+            var restarter = new AppRestarter(_lifetime.Object, launched.Add, () => false, name => { scheduled.Add(name); return true; }, @"C:\VideoForensics\WebApp.exe", ["--urls", "http://localhost:5162"]);
+
+            restarter.Restart();
+
+            Assert.Single(launched);
+            Assert.Contains(@"C:\VideoForensics\WebApp.exe", launched[0]);
+            Assert.Contains("--urls", launched[0]);
+            Assert.Empty(scheduled);
+            _lifetime.Verify(l => l.StopApplication(), Times.Once);
+        }
+
+        [Fact]
+        public void Restart_AsAWindowsService_SchedulesTheServiceStartAndDoesNotLaunchACopy()
+        {
+            var launched = new List<string>();
+            var scheduled = new List<string>();
+            var restarter = new AppRestarter(_lifetime.Object, launched.Add, () => true, name => { scheduled.Add(name); return true; }, @"C:\VideoForensics\WebApp.exe", []);
+
+            restarter.Restart();
+
+            Assert.Empty(launched);
+            Assert.Equal(new[] { "VideoForensics" }, scheduled);
+            _lifetime.Verify(l => l.StopApplication(), Times.Once);
+        }
+    }
+}

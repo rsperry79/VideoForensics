@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
@@ -16,12 +15,8 @@ namespace VideoForensics.Client.WebApp.Services
     public sealed class MaintainedStorageSettingsService(
         IStorageSettingsService inner,
         MaintenanceCoordinator coordinator,
-        IHostApplicationLifetime lifetime,
-        Func<string, bool>? scheduleServiceStart = null) : IStorageSettingsService
+        IAppRestarter restarter) : IStorageSettingsService
     {
-        private const string ServiceName = "VideoForensics";
-
-        private readonly Func<string, bool> _scheduleServiceStart = scheduleServiceStart ?? (name => ServiceRestartScheduler.TrySchedule(name));
 
         public Task<StorageSettings> GetStatusAsync(CancellationToken cancellationToken) => inner.GetStatusAsync(cancellationToken);
 
@@ -51,16 +46,8 @@ namespace VideoForensics.Client.WebApp.Services
 
             if (restarts && result.Succeeded)
             {
-                // Exiting alone leaves the service stopped: the failure exit runs no recovery action here. A detached helper
-                // starts the service after this process has gone. When the helper cannot start, the process still stops, and
-                // the service has to be started by hand.
-                if (!_scheduleServiceStart(ServiceName))
-                {
-                    Serilog.Log.Error("Could not schedule the service start after {Operation}; start the service manually", description);
-                }
-
-                Environment.ExitCode = 1;
-                lifetime.StopApplication();
+                // The restarter brings the server back: the service is started when it runs as one, otherwise a copy is launched.
+                restarter.Restart();
             }
 
             return result;
@@ -75,7 +62,7 @@ namespace VideoForensics.Client.WebApp.Services
             return services.DecorateScoped<IStorageSettingsService>((inner, sp) => new MaintainedStorageSettingsService(
                 inner,
                 sp.GetRequiredService<MaintenanceCoordinator>(),
-                sp.GetRequiredService<IHostApplicationLifetime>()));
+                sp.GetRequiredService<IAppRestarter>()));
         }
     }
 }

@@ -787,6 +787,7 @@ builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
 // they wrap, so each decorator wraps the final registration.
 builder.Services.AddCircuitOperatorGuards();
 // Every storage move, from the pages or the HTTP endpoints, runs under maintenance (see MaintainedStorageSettingsService).
+builder.Services.AddSingleton<IAppRestarter>(sp => AppRestarter.ForCurrentProcess(sp.GetRequiredService<IHostApplicationLifetime>(), Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService));
 builder.Services.AddMaintainedStorageSettings();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 

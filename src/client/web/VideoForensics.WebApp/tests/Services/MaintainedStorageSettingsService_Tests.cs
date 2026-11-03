@@ -20,7 +20,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         private readonly Mock<IDatabaseMaintenanceService> _lifecycle = new();
         private readonly Mock<IServiceScopeFactory> _scopes = new();
         private readonly Mock<IStorageSettingsService> _inner = new();
-        private readonly Mock<IHostApplicationLifetime> _lifetime = new();
+        private readonly Mock<IAppRestarter> _restarter = new();
 
         public MaintainedStorageSettingsService_Tests()
         {
@@ -32,28 +32,11 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = _scopes.Setup(f => f.CreateScope()).Returns(scope.Object);
         }
 
-        private MaintainedStorageSettingsService CreateService(Func<string, bool>? scheduleServiceStart = null)
+        private MaintainedStorageSettingsService CreateService()
         {
             var coordinator = new MaintenanceCoordinator(_gate.Object, _lifecycle.Object, _scopes.Object,
                 Mock.Of<ILogger<MaintenanceCoordinator>>(), new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout));
-            return new MaintainedStorageSettingsService(_inner.Object, coordinator, _lifetime.Object, scheduleServiceStart ?? (_ => true));
-        }
-
-        [Fact]
-        public async Task RelocateAsync_KeysMoveThatRestarts_SchedulesTheServiceStartBeforeStopping()
-        {
-            _ = _inner.Setup(s => s.RelocateAsync(It.IsAny<RelocateStorageCategoryRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: true));
-            var order = new List<string>();
-            _ = _lifetime.Setup(l => l.StopApplication()).Callback(() => order.Add("stop"));
-
-            _ = await CreateService(name =>
-            {
-                order.Add($"start:{name}");
-                return true;
-            }).RelocateAsync(new RelocateStorageCategoryRequest(StorageCategory.Keys, @"D:\Keys"), CancellationToken.None);
-
-            Assert.Equal(new[] { "start:VideoForensics", "stop" }, order);
+            return new MaintainedStorageSettingsService(_inner.Object, coordinator, _restarter.Object);
         }
 
         [Fact]
@@ -66,7 +49,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
 
             _gate.Verify(g => g.BeginDrainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
             _gate.Verify(g => g.End(), Times.Never);
-            _lifetime.Verify(l => l.StopApplication(), Times.Once);
+            _restarter.Verify(r => r.Restart(), Times.Once);
         }
 
         [Fact]
@@ -78,7 +61,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = await CreateService().RelocateAsync(new RelocateStorageCategoryRequest(StorageCategory.Media, @"D:\Media"), CancellationToken.None);
 
             _gate.Verify(g => g.End(), Times.Once);
-            _lifetime.Verify(l => l.StopApplication(), Times.Never);
+            _restarter.Verify(r => r.Restart(), Times.Never);
         }
 
         [Fact]
@@ -90,7 +73,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = await CreateService().ChangeDefaultRootAsync(@"G:\VideoForensics", CancellationToken.None);
 
             _gate.Verify(g => g.End(), Times.Never);
-            _lifetime.Verify(l => l.StopApplication(), Times.Once);
+            _restarter.Verify(r => r.Restart(), Times.Once);
         }
     }
 }
