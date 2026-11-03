@@ -32,11 +32,28 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = _scopes.Setup(f => f.CreateScope()).Returns(scope.Object);
         }
 
-        private MaintainedStorageSettingsService CreateService()
+        private MaintainedStorageSettingsService CreateService(Func<string, bool>? scheduleServiceStart = null)
         {
             var coordinator = new MaintenanceCoordinator(_gate.Object, _lifecycle.Object, _scopes.Object,
                 Mock.Of<ILogger<MaintenanceCoordinator>>(), new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout));
-            return new MaintainedStorageSettingsService(_inner.Object, coordinator, _lifetime.Object);
+            return new MaintainedStorageSettingsService(_inner.Object, coordinator, _lifetime.Object, scheduleServiceStart ?? (_ => true));
+        }
+
+        [Fact]
+        public async Task RelocateAsync_KeysMoveThatRestarts_SchedulesTheServiceStartBeforeStopping()
+        {
+            _ = _inner.Setup(s => s.RelocateAsync(It.IsAny<RelocateStorageCategoryRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: true));
+            var order = new List<string>();
+            _ = _lifetime.Setup(l => l.StopApplication()).Callback(() => order.Add("stop"));
+
+            _ = await CreateService(name =>
+            {
+                order.Add($"start:{name}");
+                return true;
+            }).RelocateAsync(new RelocateStorageCategoryRequest(StorageCategory.Keys, @"D:\Keys"), CancellationToken.None);
+
+            Assert.Equal(new[] { "start:VideoForensics", "stop" }, order);
         }
 
         [Fact]

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Platform;
 
@@ -12,8 +13,16 @@ namespace VideoForensics.Client.WebApp.Services
     /// A move of the Database or the Logs leaves maintenance held and stops the process, because this process still points at
     /// the old files. The restart then opens the new location.
     /// </summary>
-    public sealed class MaintainedStorageSettingsService(IStorageSettingsService inner, MaintenanceCoordinator coordinator, IHostApplicationLifetime lifetime) : IStorageSettingsService
+    public sealed class MaintainedStorageSettingsService(
+        IStorageSettingsService inner,
+        MaintenanceCoordinator coordinator,
+        IHostApplicationLifetime lifetime,
+        Func<string, bool>? scheduleServiceStart = null) : IStorageSettingsService
     {
+        private const string ServiceName = "VideoForensics";
+
+        private readonly Func<string, bool> _scheduleServiceStart = scheduleServiceStart ?? (name => ServiceRestartScheduler.TrySchedule(name));
+
         public Task<StorageSettings> GetStatusAsync(CancellationToken cancellationToken) => inner.GetStatusAsync(cancellationToken);
 
         public Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
@@ -42,6 +51,14 @@ namespace VideoForensics.Client.WebApp.Services
 
             if (restarts && result.Succeeded)
             {
+                // Exiting alone leaves the service stopped: the failure exit runs no recovery action here. A detached helper
+                // starts the service after this process has gone. When the helper cannot start, the process still stops, and
+                // the service has to be started by hand.
+                if (!_scheduleServiceStart(ServiceName))
+                {
+                    Serilog.Log.Error("Could not schedule the service start after {Operation}; start the service manually", description);
+                }
+
                 Environment.ExitCode = 1;
                 lifetime.StopApplication();
             }
