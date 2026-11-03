@@ -44,8 +44,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> ChangeDefaultRoot(
             ChangeDefaultRootRequestDto requestDto,
-            MaintenanceCoordinator coordinator,
-            IHostApplicationLifetime lifetime,
+            IStorageSettingsService storageSettings,
             CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(requestDto.NewRootPath))
@@ -53,58 +52,33 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.BadRequest("New default root cannot be empty");
             }
 
-            // Runs under the maintenance gate: the database file may move, so new work waits and pooled connections are released.
-            // The hold stays after success, because this process still points at the old paths; it restarts to pick up the new ones.
+            // The service runs the move under maintenance and restarts the process on success.
             try
             {
-                string newRoot = requestDto.NewRootPath;
-                RelocateStorageCategoryResult result = await coordinator.RunAsync(
-                    "Changing the default storage path",
-                    (sp, token) => sp.GetRequiredService<IStorageSettingsService>().ChangeDefaultRootAsync(newRoot, token),
-                    cancellationToken,
-                    holdOnSuccess: true);
-
-                if (result.Succeeded)
-                {
-                    Environment.ExitCode = 1;
-                    lifetime.StopApplication();
-                }
-
+                RelocateStorageCategoryResult result = await storageSettings.ChangeDefaultRootAsync(requestDto.NewRootPath, cancellationToken);
                 return Results.Ok(result.ToDto());
             }
             catch (MaintenanceInProgressException ex)
             {
                 return Results.Conflict(ex.Message);
             }
+            catch (MaintenanceDrainTimeoutException ex)
+            {
+                return Results.Text(ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         }
 
         private static async Task<IResult> RelocateStorageCategory(
             RelocateStorageCategoryRequestDto requestDto,
             IStorageSettingsService storageSettings,
-            MaintenanceCoordinator coordinator,
-            IHostApplicationLifetime lifetime,
             CancellationToken cancellationToken)
         {
             RelocateStorageCategoryRequest request = requestDto.ToDomain();
 
-            // Every move runs under maintenance: the coordinator blocks new work, waits for in-flight work, and releases
-            // pooled connections before the files move. Database and Logs restart afterwards, because this process still
-            // points at the old files, so their hold stays on success. Other categories end maintenance when the move ends.
-            bool restarts = request.Category is StorageCategory.Database or StorageCategory.Logs;
+            // The service runs every move under maintenance and restarts the process after a Database or Logs move.
             try
             {
-                RelocateStorageCategoryResult result = await coordinator.RunAsync(
-                    $"Moving {request.Category}",
-                    (sp, token) => sp.GetRequiredService<IStorageSettingsService>().RelocateAsync(request, token),
-                    cancellationToken,
-                    holdOnSuccess: restarts);
-
-                if (restarts && result.Succeeded)
-                {
-                    Environment.ExitCode = 1;
-                    lifetime.StopApplication();
-                }
-
+                RelocateStorageCategoryResult result = await storageSettings.RelocateAsync(request, cancellationToken);
                 return Results.Ok(result.ToDto());
             }
             catch (MaintenanceInProgressException ex)

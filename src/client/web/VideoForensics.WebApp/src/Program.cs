@@ -784,6 +784,8 @@ builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
 // Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
 // they wrap, so each decorator wraps the final registration.
 builder.Services.AddCircuitOperatorGuards();
+// Every storage move, from the pages or the HTTP endpoints, runs under maintenance (see MaintainedStorageSettingsService).
+builder.Services.AddMaintainedStorageSettings();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
 // Holds every background service back until the startup init has finished, so none touches an unmigrated database.
