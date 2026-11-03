@@ -39,6 +39,17 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
+                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot-rollup\""))
+                .OrderByDescending(m => m.RecordedAtUtc)
+                .FirstOrDefaultAsync(ct);
+        }
+        /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);

@@ -519,6 +519,14 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).ToList());
         }
+        public Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
+                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot-rollup\""))
+                .OrderByDescending(m => m.RecordedAtUtc)
+                .FirstOrDefault());
+        }
         public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
