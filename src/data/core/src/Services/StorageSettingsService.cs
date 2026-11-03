@@ -45,8 +45,8 @@ namespace VideoForensics.Data.Core.Services
 
                 long usedBytes = ComputeDirectorySize(effectivePath);
                 long freeBytes = ComputeFreeBytes(effectivePath);
-                bool isRelocatable = category != StorageCategory.Keys;
-                bool requiresRestart = category is StorageCategory.Database or StorageCategory.Logs;
+                bool isRelocatable = true;
+                bool requiresRestart = category is StorageCategory.Database or StorageCategory.Logs or StorageCategory.Keys;
 
                 var status = new StorageCategoryStatus(
                     Category: category,
@@ -69,14 +69,6 @@ namespace VideoForensics.Data.Core.Services
         public async Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Relocating storage category {Category} to {NewPath}", request.Category, request.NewRootPath ?? "platform default");
-
-            // Keys cannot be relocated
-            if (request.Category == StorageCategory.Keys)
-            {
-                const string errorMessage = "Storage category 'Keys' cannot be relocated";
-                _logger.LogError(errorMessage);
-                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
-            }
 
             // A null path resets the category to its platform default. An empty path is rejected.
             bool reset = request.NewRootPath is null;
@@ -129,6 +121,11 @@ namespace VideoForensics.Data.Core.Services
                             // The running server holds its audit file open, so the originals stay until the restart removes them.
                             CopyLogsForRestart(currentPath, newRootPath);
                         }
+                        else if (request.Category == StorageCategory.Keys)
+                        {
+                            // Keys are copied and verified by hash on restart; the originals are removed only after a match.
+                            CopyKeysForRestart(currentPath, newRootPath);
+                        }
                         else
                         {
                             await MoveDirectoryContentsAsync(currentPath, newRootPath, cancellationToken);
@@ -143,6 +140,10 @@ namespace VideoForensics.Data.Core.Services
                         {
                             // The originals are complete, so only the partial copies go.
                             LogRelocationManifest.Discard(newRootPath);
+                        }
+                        else if (request.Category == StorageCategory.Keys)
+                        {
+                            KeyRelocationManifest.Discard(newRootPath);
                         }
 
                         if (isDatabase)
@@ -170,6 +171,18 @@ namespace VideoForensics.Data.Core.Services
                         return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to record new database location: {ex.Message}", RestartRequired: false);
                     }
                 }
+                else if (request.Category == StorageCategory.Keys)
+                {
+                    // Keys have no configuration override. Startup reads their folder from this pointer before any key loads.
+                    if (reset)
+                    {
+                        KeysLocationPointer.Clear(_storageLocationProvider.GetDataRoot());
+                    }
+                    else
+                    {
+                        KeysLocationPointer.Write(_storageLocationProvider.GetDataRoot(), newRootPath);
+                    }
+                }
                 else
                 {
                     // Persist the new override in configuration
@@ -194,7 +207,7 @@ namespace VideoForensics.Data.Core.Services
                     }
                 }
 
-                bool requiresRestart = request.Category is StorageCategory.Database or StorageCategory.Logs;
+                bool requiresRestart = request.Category is StorageCategory.Database or StorageCategory.Logs or StorageCategory.Keys;
                 _logger.LogInformation("Storage category {Category} relocation completed. Restart required: {RestartRequired}", request.Category, requiresRestart);
                 return new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: requiresRestart);
             }
@@ -493,6 +506,25 @@ namespace VideoForensics.Data.Core.Services
             }
 
             LogRelocationManifest.Write(destinationPath, entries);
+        }
+
+        /// <summary>
+        /// Copies every key file into the new folder and records each copy's SHA-256. The originals stay until the restart
+        /// verifies the copies, so a failed copy never costs the only key.
+        /// </summary>
+        private static void CopyKeysForRestart(string sourcePath, string destinationPath)
+        {
+            var entries = new List<KeyRelocationManifest.Entry>();
+            foreach (FileInfo file in new DirectoryInfo(sourcePath).EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                string relativePath = Path.GetRelativePath(sourcePath, file.FullName);
+                string destFilePath = Path.Combine(destinationPath, relativePath);
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+                File.Copy(file.FullName, destFilePath, overwrite: true);
+                entries.Add(new KeyRelocationManifest.Entry(file.FullName, relativePath, KeyRelocationManifest.HashOf(destFilePath)));
+            }
+
+            KeyRelocationManifest.Write(destinationPath, entries);
         }
 
         private async Task MoveDirectoryContentsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)

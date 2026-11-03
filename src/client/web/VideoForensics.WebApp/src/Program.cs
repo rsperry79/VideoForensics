@@ -78,6 +78,8 @@ Directory.CreateDirectory(logsDir);
 // Finishes a Logs move from the previous run: appends what the old audit file gained after its copy, then removes it.
 // Must run before the logger below opens the folder, so appended lines stay in order.
 VideoForensics.Data.Core.Services.LogRelocationManifest.Reconcile(logsDir);
+// Verifies each copied key against its recorded hash, then removes the original. Keys must not load before this runs.
+VideoForensics.Data.Core.Services.KeyRelocationManifest.Reconcile(storageProvider.GetDefaultRoot(StorageCategory.Keys));
 
 // The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
 ServerLogLevel serverLogLevel = new();

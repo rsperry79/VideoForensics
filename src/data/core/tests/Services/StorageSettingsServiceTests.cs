@@ -251,6 +251,47 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task RelocateAsync_KeysMove_CopiesKeysKeepsOriginalsAndRecordsThePointer()
+        {
+            // Arrange: keys are copied, never moved, and the originals stay until the restart verifies the copies
+            string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string sourceDir = Path.Combine(dataRoot, "Keys");
+            string destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "master.key"), "secret");
+
+            try
+            {
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDataRoot()).Returns(dataRoot);
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetEffectiveRoot(StorageCategory.Keys, It.IsAny<string?>()))
+                    .Returns(sourceDir);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Keys, NewRootPath: destDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.True(result.RestartRequired);
+                Assert.True(File.Exists(Path.Combine(sourceDir, "master.key")));
+                Assert.Equal("secret", File.ReadAllText(Path.Combine(destDir, "master.key")));
+                Assert.True(File.Exists(Path.Combine(destDir, KeyRelocationManifest.FileName)));
+                Assert.Equal(destDir, KeysLocationPointer.Read(dataRoot));
+            }
+            finally
+            {
+                foreach (string dir in new[] { dataRoot, destDir })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
         public async Task GetStatusAsync_Keys_IsNotReportedAsDefault()
         {
             // Keys never follow the default root, so the table must not label them "Default"
@@ -331,7 +372,7 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task GetStatusAsync_KeysIsNotRelocatable()
+        public async Task GetStatusAsync_KeysIsRelocatable()
         {
             // Act
             StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
@@ -339,7 +380,7 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             StorageCategoryStatus? keysStatus = settings.Categories.FirstOrDefault(c => c.Category == StorageCategory.Keys);
             Assert.NotNull(keysStatus);
-            Assert.False(keysStatus.IsRelocatable);
+            Assert.True(keysStatus.IsRelocatable);
         }
 
         [Theory]
@@ -374,7 +415,7 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task GetStatusAsync_AllCategoriesAreRelocatableExceptKeys()
+        public async Task GetStatusAsync_AllCategoriesAreRelocatable()
         {
             // Act
             StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
@@ -382,33 +423,8 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             foreach (StorageCategoryStatus status in settings.Categories)
             {
-                if (status.Category == StorageCategory.Keys)
-                {
-                    Assert.False(status.IsRelocatable);
-                }
-                else
-                {
-                    Assert.True(status.IsRelocatable, $"Category {status.Category} should be relocatable");
-                }
+                Assert.True(status.IsRelocatable, $"Category {status.Category} should be relocatable");
             }
-        }
-
-        [Fact]
-        public async Task RelocateAsync_RejectsKeysCategory()
-        {
-            // Arrange
-            var request = new RelocateStorageCategoryRequest(
-                Category: StorageCategory.Keys,
-                NewRootPath: "/some/path");
-
-            // Act
-            RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
-
-            // Assert
-            Assert.False(result.Succeeded);
-            Assert.NotNull(result.ErrorMessage);
-            Assert.Contains("Keys", result.ErrorMessage);
-            Assert.False(result.RestartRequired);
         }
 
         [Fact]

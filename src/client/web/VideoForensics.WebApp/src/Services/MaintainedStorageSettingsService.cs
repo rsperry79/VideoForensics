@@ -18,7 +18,7 @@ namespace VideoForensics.Client.WebApp.Services
 
         public Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
         {
-            bool restarts = request.Category is StorageCategory.Database or StorageCategory.Logs;
+            bool restarts = request.Category is StorageCategory.Database or StorageCategory.Logs or StorageCategory.Keys;
             return RunMaintainedAsync($"Moving {request.Category}", restarts, token => inner.RelocateAsync(request, token), cancellationToken);
         }
 
