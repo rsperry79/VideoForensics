@@ -526,6 +526,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IProviderHealthSource, RingHealthSource>();
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddScoped<SignalDeviationAlerts>();
+            _ = services.AddScoped<BitrateDeviationAlerts>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
             _ = services.AddHostedService<MediaPreviewBackfillService>();

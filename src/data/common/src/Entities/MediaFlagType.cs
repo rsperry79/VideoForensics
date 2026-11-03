@@ -9,6 +9,7 @@ namespace VideoForensics.Data.Common.Entities
         UnusualLighting,
         AudioDropout,
         RssiDeviation,
-        Jamming
+        Jamming,
+        BitrateDeviation
     }
 }

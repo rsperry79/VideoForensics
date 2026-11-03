@@ -164,6 +164,6 @@ public class BitrateHistory_Tests : ScopeRailTestContext
         FlaggedMediaTable table = page.FindComponent<FlaggedMediaTable>().Instance;
 
         Assert.NotNull(table);
-        Assert.Equal(new[] { MediaFlagType.BitrateCollapse }, table.Types);
+        Assert.Equal(new[] { MediaFlagType.BitrateCollapse, MediaFlagType.BitrateDeviation }, table.Types);
     }
 }

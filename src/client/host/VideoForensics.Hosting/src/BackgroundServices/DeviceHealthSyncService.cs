@@ -140,6 +140,22 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
         }
 
+        /// <summary>
+        /// Runs the bit rate deviation check for one camera. A failure is logged and does not stop the poll: the reading
+        /// is already saved, and the next poll checks again.
+        /// </summary>
+        private async Task CheckBitrateDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            try
+            {
+                _ = await sp.GetRequiredService<BitrateDeviationAlerts>().CheckAsync(device, ct);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Bit rate deviation check failed for {DeviceName}", device.Name);
+            }
+        }
+
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             using IServiceScope scope = _scopeFactory.CreateScope();
@@ -267,6 +283,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         // Readings more than 2 std devs from the camera's mean raise an alert. Base poll only: the elevated
                         // poll runs far more often and each check reads the camera's full history.
                         await CheckSignalDeviationAsync(sp, device, ct);
+
+                        // Clip bit rates more than 2 std devs from the camera's mean raise an alert. Same base-poll-only rule as above.
+                        await CheckBitrateDeviationAsync(sp, device, ct);
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try
