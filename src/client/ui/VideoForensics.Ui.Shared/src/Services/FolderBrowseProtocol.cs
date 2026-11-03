@@ -20,6 +20,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
         public const string Route = "/api/v1/filesystem/fileoperations";
 
         private const string Separator = "/";
+        private const string VirtualRootName = "This PC";
         private const string FolderType = "Folder";
 
         /// <summary>Handles one request and returns the response the component expects.</summary>
@@ -41,7 +42,8 @@ namespace VideoForensics.Client.Ui.Shared.Services
             {
                 // The virtual root lists the filesystem roots themselves; there is no real folder to list.
                 IReadOnlyList<FolderBrowseEntryDto> rootEntries = roots.Select(root => ToEntry(root.Name, Separator, root.FullPath)).ToList();
-                return new FolderBrowseResponseDto(ToEntry(string.Empty, Separator, string.Empty), rootEntries, null);
+                // The name must not be empty: Syncfusion's FileManager calls String.Replace with it when a folder is opened.
+                return new FolderBrowseResponseDto(ToEntry(VirtualRootName, Separator, string.Empty), rootEntries, null);
             }
 
             if (!TryResolve(segments, roots, out string? folder) || folder is null)

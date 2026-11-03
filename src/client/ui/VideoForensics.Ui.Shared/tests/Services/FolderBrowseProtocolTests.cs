@@ -34,6 +34,16 @@ public class FolderBrowseProtocol_Tests
     }
 
     [Fact]
+    public void FolderBrowseProtocol_ReadVirtualRoot_CwdHasNonEmptyName()
+    {
+        // Syncfusion's FileManager calls String.Replace with the current folder's name when a folder is
+        // double-clicked. An empty name throws ArgumentException and ends the Blazor circuit.
+        FolderBrowseResponseDto response = FolderBrowseProtocol.Handle(new FolderBrowseRequestDto("read", "/", null), _browser.Object);
+
+        Assert.False(string.IsNullOrEmpty(response.Cwd?.Name));
+    }
+
+    [Fact]
     public void FolderBrowseProtocol_ReadDrive_ListsChildFoldersWithAbsoluteIds()
     {
         FolderBrowseResponseDto response = FolderBrowseProtocol.Handle(new FolderBrowseRequestDto("read", "/C:\\/", null), _browser.Object);
