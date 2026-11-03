@@ -524,6 +524,26 @@ namespace VideoForensics.Providers.Ring.Tests
                 Times.Once);
         }
 
+        [Fact]
+        public async Task ValidateStoredCredentialAsync_ReadsTheSavedCredentialAndReturnsFalseWhenThereIsNone()
+        {
+            // Arrange: no saved refresh token, so there is nothing that could validate
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
+            var credentialRepository = new Mock<ICredentialRepository>();
+            _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(((string, string)?)null);
+            var service = new RingAuthService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<ICredentialStore>().Object, credentialRepository.Object);
+
+            // Act
+            bool valid = await service.ValidateStoredCredentialAsync(accountId);
+
+            // Assert: validation goes to the saved credential, never to a cached answer
+            Assert.False(valid);
+            credentialRepository.Verify(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         [Theory]
         [InlineData("Stored provider credential could not be decrypted. Reauthentication is required.")]
         [InlineData("Failed to decrypt stored credential: Error occurred during a cryptographic operation.")]
