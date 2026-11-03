@@ -212,6 +212,45 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task ChangeDefaultRootAsync_MediaOverrideUnderOldRoot_MovesMediaAndClearsOverride()
+        {
+            // Arrange: Media was pointed at a folder under the old default root, so it is part of the default-root move
+            string oldRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string mediaDir = Path.Combine(oldRoot, "Media");
+            _ = Directory.CreateDirectory(mediaDir);
+            File.WriteAllText(Path.Combine(mediaDir, "clip.jpg"), "frame");
+            var config = new ForensicsConfiguration { DownloadLocation = mediaDir };
+
+            try
+            {
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(config);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultStorageRoot()).Returns(oldRoot);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.ChangeDefaultRootAsync(newRoot, CancellationToken.None);
+
+                // Assert: the file moved under the new root, and the override no longer points at the old folder
+                Assert.True(result.Succeeded);
+                Assert.True(File.Exists(Path.Combine(newRoot, "Media", "clip.jpg")));
+                Assert.False(File.Exists(Path.Combine(mediaDir, "clip.jpg")));
+                Assert.Null(config.DownloadLocation);
+                _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            }
+            finally
+            {
+                foreach (string dir in new[] { oldRoot, newRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
         public async Task GetStatusAsync_ReturnsAllEightCategories()
         {
             // Act

@@ -228,20 +228,39 @@ namespace VideoForensics.Data.Core.Services
                 // Only categories sitting on the default root move. An in-app override, an install-time override, or a
                 // relocated Database is not under the root, so it is skipped. Keys never move.
                 var plan = new List<(StorageCategory Category, string OldPath, string NewPath)>();
+                var clearedOverrides = new List<StorageCategory>();
                 foreach (StorageCategory category in Enum.GetValues<StorageCategory>())
                 {
-                    if (category == StorageCategory.Keys || !string.IsNullOrWhiteSpace(GetConfigurationOverride(config, category)))
+                    if (category == StorageCategory.Keys)
                     {
                         continue;
                     }
 
-                    string currentPath = Path.GetFullPath(_storageLocationProvider.GetDefaultRoot(category));
+                    // An override under the old root is part of the default-root move. Database and Logs keep their
+                    // overrides because their bootstrap pointers would also need clearing. Those overrides are skipped.
+                    string? overridePath = GetConfigurationOverride(config, category);
+                    bool overrideUnderRoot = !string.IsNullOrWhiteSpace(overridePath) && IsUnderRoot(Path.GetFullPath(overridePath), oldRoot);
+                    if (!string.IsNullOrWhiteSpace(overridePath) && !overrideUnderRoot)
+                    {
+                        continue;
+                    }
+
+                    if (category is StorageCategory.Database or StorageCategory.Logs && !string.IsNullOrWhiteSpace(overridePath))
+                    {
+                        continue;
+                    }
+
+                    string currentPath = Path.GetFullPath(overrideUnderRoot ? overridePath! : _storageLocationProvider.GetDefaultRoot(category));
                     if (!IsUnderRoot(currentPath, oldRoot))
                     {
                         continue;
                     }
 
                     plan.Add((category, currentPath, Path.Combine(newRoot, Path.GetRelativePath(oldRoot, currentPath))));
+                    if (overrideUnderRoot)
+                    {
+                        clearedOverrides.Add(category);
+                    }
                 }
 
                 _ = Directory.CreateDirectory(newRoot);
@@ -273,6 +292,21 @@ namespace VideoForensics.Data.Core.Services
                         await MoveDirectoryContentsAsync(oldPath, targetPath, cancellationToken);
                         moved.Add((oldPath, targetPath));
                         _logger.LogDebug("Moved {Category} to the new default root", category);
+                    }
+
+                    // Overrides that pointed under the old root now follow the new default. Saved before the default is recorded.
+                    if (clearedOverrides.Count > 0)
+                    {
+                        foreach (StorageCategory category in clearedOverrides)
+                        {
+                            SetConfigurationOverride(config, category, null);
+                        }
+
+                        RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, clearedOverrides[0], cancellationToken);
+                        if (saveFailure is not null)
+                        {
+                            throw new InvalidOperationException(saveFailure.ErrorMessage);
+                        }
                     }
 
                     // Recorded last, so a failed move leaves the old root in place for the next start.

@@ -75,7 +75,8 @@ public class StorageLocationProvider : IStorageLocationProvider
                 StorageCategory.Logs => Path.Combine(root, "Logs"),
                 StorageCategory.Reports => Path.Combine(root, "Reports"),
                 StorageCategory.Backup => Path.Combine(root, "Backup"),
-                StorageCategory.Keys => Path.Combine(root, "Keys"),
+                // Keys never move with the default root: the signing and encryption keys must stay where they were created.
+                StorageCategory.Keys => Path.Combine(GetDataRoot(), "Keys"),
                 StorageCategory.Exports => Path.Combine(root, "Exports"),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
@@ -94,7 +95,7 @@ public class StorageLocationProvider : IStorageLocationProvider
                 StorageCategory.Logs => "/var/log/videoforensics",
                 StorageCategory.Reports => Path.Combine(linuxRoot, "Reports"),
                 StorageCategory.Backup => Path.Combine(linuxRoot, "Backup"),
-                StorageCategory.Keys => Path.Combine(linuxRoot, "Keys"),
+                StorageCategory.Keys => Path.Combine(GetDataRoot(), "Keys"),
                 StorageCategory.Exports => Path.Combine(linuxRoot, "Exports"),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
