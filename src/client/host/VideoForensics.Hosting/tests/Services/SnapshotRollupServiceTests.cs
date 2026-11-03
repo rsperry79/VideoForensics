@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -231,6 +232,29 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _media.Verify(m => m.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
+        [Fact]
+        public async Task RollUp_WindowWithCapturesButNoUsableStill_LogsWhyNothingWasBuilt()
+        {
+            // Production symptom: roll-ups record success but write no loop. An empty window must say why, not stay silent.
+            var captures = new Mock<ISnapshotCaptureRepository>();
+            _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
+            [
+                SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "gone.jpg", null),
+            ]);
+            var logger = new Mock<ILogger<SnapshotRollupService>>();
+            SnapshotRollupService service = new(
+                _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
+                logger.Object,
+                captures: captures.Object,
+                stillMapper: new SnapshotStillMapper(),
+                mediaPaths: RootedPaths());
+
+            SnapshotRollupResult result = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(0, result.DevicesRolledUp);
+            Assert.Null(result.ErrorMessage);
+            Assert.Contains(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Warning));
+        }
         [Fact]
         public async Task RollUp_BuildFails_ReportsFailureWithoutRegisteringLoop()
         {
