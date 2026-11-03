@@ -138,6 +138,44 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task RelocateAsync_LogsMove_CopiesEveryFileAndKeepsOriginalsUntilRestart()
+        {
+            // Arrange: the audit file is open by the running server, so the move must not delete it
+            string sourceDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "audit-20261103.json"), "line1\n");
+
+            try
+            {
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetEffectiveRoot(StorageCategory.Logs, It.IsAny<string?>()))
+                    .Returns(sourceDir);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Logs, NewRootPath: destDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert: copied, original kept, manifest written for the restart to finish the move
+                Assert.True(result.Succeeded);
+                Assert.True(result.RestartRequired);
+                Assert.True(File.Exists(Path.Combine(sourceDir, "audit-20261103.json")));
+                Assert.Equal("line1\n", File.ReadAllText(Path.Combine(destDir, "audit-20261103.json")));
+                Assert.True(File.Exists(Path.Combine(destDir, LogRelocationManifest.FileName)));
+            }
+            finally
+            {
+                foreach (string dir in new[] { sourceDir, destDir })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
         public async Task GetStatusAsync_ReturnsAllEightCategories()
         {
             // Act

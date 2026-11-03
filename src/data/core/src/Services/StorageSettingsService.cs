@@ -123,7 +123,16 @@ namespace VideoForensics.Data.Core.Services
                 {
                     try
                     {
-                        await MoveDirectoryContentsAsync(currentPath, newRootPath, cancellationToken);
+                        if (request.Category == StorageCategory.Logs)
+                        {
+                            // The running server holds its audit file open, so the originals stay until the restart removes them.
+                            CopyLogsForRestart(currentPath, newRootPath);
+                        }
+                        else
+                        {
+                            await MoveDirectoryContentsAsync(currentPath, newRootPath, cancellationToken);
+                        }
+
                         _logger.LogDebug("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, newRootPath);
                     }
                     catch (Exception ex)
@@ -162,6 +171,19 @@ namespace VideoForensics.Data.Core.Services
                     if (saveFailure is not null)
                     {
                         return saveFailure;
+                    }
+
+                    if (request.Category == StorageCategory.Logs)
+                    {
+                        // Startup reads the Logs folder from this pointer, because the logger starts before the saved configuration can be read.
+                        if (reset)
+                        {
+                            LogsLocationPointer.Clear(_storageLocationProvider.GetDataRoot());
+                        }
+                        else
+                        {
+                            LogsLocationPointer.Write(_storageLocationProvider.GetDataRoot(), newRootPath);
+                        }
                     }
                 }
 
@@ -394,6 +416,28 @@ namespace VideoForensics.Data.Core.Services
                 _logger.LogError(ex, "Failed to compute free space for {Path}", path);
                 return 0;
             }
+        }
+
+        /// <summary>
+        /// Copies every log file into the new folder and records each copy's length, leaving the originals in place. The
+        /// running server still holds its audit file open, so the originals are removed after the restart by
+        /// <see cref="LogRelocationManifest.Reconcile"/>.
+        /// </summary>
+        private void CopyLogsForRestart(string sourcePath, string destinationPath)
+        {
+            var entries = new List<LogRelocationManifest.Entry>();
+            foreach (FileInfo file in new DirectoryInfo(sourcePath).EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                string relativePath = Path.GetRelativePath(sourcePath, file.FullName);
+                string destFilePath = Path.Combine(destinationPath, relativePath);
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+                File.Copy(file.FullName, destFilePath, overwrite: true);
+
+                // The copy's own length, not the original's, so any bytes the open file gains later are appended on restart.
+                entries.Add(new LogRelocationManifest.Entry(file.FullName, relativePath, new FileInfo(destFilePath).Length));
+            }
+
+            LogRelocationManifest.Write(destinationPath, entries);
         }
 
         private async Task MoveDirectoryContentsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
