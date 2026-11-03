@@ -81,7 +81,12 @@ else
         </div>
     </SfDialog>
 
-    <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false" AllowResizing="true">
+    <div class="mb-2">
+        <h6 class="mb-1" data-testid="storage-table-heading">@L["StorageTableHeading"]</h6>
+        <p class="small text-muted mb-2">@L["StorageTableHint"]</p>
+    </div>
+
+    <SfGrid TValue="StorageCategoryStatus" DataSource="@StorageCategoryTotals.Ordered(_storageData.Categories)" AllowSorting="true" AllowPaging="false" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridEvents TValue="StorageCategoryStatus" RowSelected="OnRowSelected"></GridEvents>
         <GridColumns>
@@ -112,6 +117,10 @@ else
             </GridColumn>
         </GridColumns>
     </SfGrid>
+
+    <div class="d-flex justify-content-end mt-2 fw-semibold" data-testid="storage-total-used">
+        @L["StorageTotalUsed"]: @FormatBytes(StorageCategoryTotals.TotalUsed(_storageData.Categories))
+    </div>
 }
 
 @code {

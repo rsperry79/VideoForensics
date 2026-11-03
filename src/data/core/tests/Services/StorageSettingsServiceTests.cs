@@ -251,6 +251,16 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task GetStatusAsync_Keys_IsNotReportedAsDefault()
+        {
+            // Keys never follow the default root, so the table must not label them "Default"
+            StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
+
+            StorageCategoryStatus keys = settings.Categories.Single(c => c.Category == StorageCategory.Keys);
+            Assert.False(keys.IsDefault);
+        }
+
+        [Fact]
         public async Task GetStatusAsync_ReturnsAllEightCategories()
         {
             // Act
