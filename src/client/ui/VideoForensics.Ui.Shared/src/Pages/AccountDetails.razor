@@ -86,7 +86,7 @@ else
                     </div>
                 }
 
-                <div class="mb-3 d-flex gap-2 align-items-center" style="color: #212529;">
+                <div class="mb-3 d-flex gap-2 align-items-center" style="color: var(--bs-body-color);">
                     <SfButton CssClass="e-warning" Content="@(_validationBusy ? L["Validating"] : L["ValidateCredential"])" OnClick="ValidateCredentialAsync" Disabled="@_validationBusy" />
                     @if (CanEditAccount)
                     {
@@ -100,7 +100,7 @@ else
 
                 @if (_showReauthentication && CanEditAccount)
                 {
-                    <div class="mb-3 p-3 border rounded" style="color: #212529;">
+                    <div class="mb-3 p-3 border rounded" style="color: var(--bs-body-color);">
                         <h6>@L["ReauthenticateHeading"]</h6>
                         <p>@L["ReauthenticatePrompt"]</p>
                         <AuthForm IdPrefix="account-reauth" SubmitLabel="@L["Reauthenticate"]"

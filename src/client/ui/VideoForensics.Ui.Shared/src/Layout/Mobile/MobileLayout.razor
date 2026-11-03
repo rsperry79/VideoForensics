@@ -72,7 +72,7 @@
             <div style="max-height: 400px; overflow-y: auto;">
                 @if (_noticesList.Count == 0)
                 {
-                    <div style="padding: 16px; text-align: center; color: #666;">@L["NoNotices"]</div>
+                    <div style="padding: 16px; text-align: center; color: var(--bs-secondary-color);">@L["NoNotices"]</div>
                 }
                 else
                 {
@@ -86,10 +86,10 @@
                                     </span>
                                     <strong style="font-size: 13px;">@notice.EventType</strong>
                                 </div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 4px;" title="@notice.Details">
+                                <div style="font-size: 12px; color: var(--bs-secondary-color); margin-bottom: 4px;" title="@notice.Details">
                                     @(notice.Details?.Length > 80 ? notice.Details.Substring(0, 80) + "..." : notice.Details ?? "")
                                 </div>
-                                <div style="font-size: 11px; color: #999;">
+                                <div style="font-size: 11px; color: var(--bs-secondary-color);">
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
                             </div>
@@ -99,7 +99,7 @@
                 }
             </div>
             <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; text-align: center;">
-                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">@L["ViewAll"]</a>
+                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: var(--bs-link-color); text-decoration: none; font-size: 12px; cursor: pointer;">@L["ViewAll"]</a>
             </div>
         </div>
     }
