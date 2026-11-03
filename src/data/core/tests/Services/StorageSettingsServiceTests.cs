@@ -292,13 +292,35 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task GetStatusAsync_Keys_IsNotReportedAsDefault()
+        public async Task GetStatusAsync_Keys_IsDefaultWhenNotRelocated()
         {
-            // Keys never follow the default root, so the table must not label them "Default"
+            // No Keys pointer means the keys are in the data root's Keys folder, which is the Keys default
             StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
 
             StorageCategoryStatus keys = settings.Categories.Single(c => c.Category == StorageCategory.Keys);
-            Assert.False(keys.IsDefault);
+            Assert.True(keys.IsDefault);
+        }
+
+        [Fact]
+        public async Task GetStatusAsync_Keys_IsNotDefaultWhenRelocated()
+        {
+            string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            try
+            {
+                KeysLocationPointer.Write(dataRoot, @"D:\Keys");
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDataRoot()).Returns(dataRoot);
+
+                StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
+
+                StorageCategoryStatus keys = settings.Categories.Single(c => c.Category == StorageCategory.Keys);
+                Assert.False(keys.IsDefault);
+            }
+            finally
+            {
+                try
+                { Directory.Delete(dataRoot, recursive: true); }
+                catch { }
+            }
         }
 
         [Fact]

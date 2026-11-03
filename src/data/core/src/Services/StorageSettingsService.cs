@@ -51,8 +51,10 @@ namespace VideoForensics.Data.Core.Services
                 var status = new StorageCategoryStatus(
                     Category: category,
                     CurrentPath: effectivePath,
-                    // Keys never follow the default root, so they are never reported as on the default location.
-                    IsDefault: category != StorageCategory.Keys && string.IsNullOrWhiteSpace(configuredOverride),
+                    // Keys are default until a Keys pointer moves them. They do not follow the default root.
+                    IsDefault: category == StorageCategory.Keys
+                        ? KeysLocationPointer.Read(_storageLocationProvider.GetDataRoot()) is null
+                        : string.IsNullOrWhiteSpace(configuredOverride),
                     UsedBytes: usedBytes,
                     FreeBytes: freeBytes,
                     IsRelocatable: isRelocatable,
