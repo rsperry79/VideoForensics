@@ -88,10 +88,9 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 return Array.Empty<string>();
             }
 
-            return path.Split('/', StringSplitOptions.RemoveEmptyEntries)
-                .Select(segment => segment.Trim('\\'))
-                .Where(segment => segment.Length > 0)
-                .ToList();
+            // Backslash is a separator too: the picker appends folder names to drive roots such as "G:\".
+            // Windows file names cannot contain either separator, so splitting on both cannot break a name.
+            return path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
         }
 
         /// <summary>
