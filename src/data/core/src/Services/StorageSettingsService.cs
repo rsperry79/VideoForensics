@@ -138,6 +138,12 @@ namespace VideoForensics.Data.Core.Services
                     catch (Exception ex)
                     {
                         _logger.LogError("Failed to move {Category} contents from {OldPath} to {NewPath}: {ExceptionType} {ErrorMessage}", request.Category, currentPath, newRootPath, ex.GetType().Name, ex.Message);
+                        if (request.Category == StorageCategory.Logs)
+                        {
+                            // The originals are complete, so only the partial copies go.
+                            LogRelocationManifest.Discard(newRootPath);
+                        }
+
                         if (isDatabase)
                         {
                             // The file did not move, so the saved override must point back at it.
@@ -246,12 +252,21 @@ namespace VideoForensics.Data.Core.Services
                 }
 
                 var moved = new List<(string OldPath, string NewPath)>();
+                var copiedLogs = new List<string>();
                 try
                 {
                     foreach ((StorageCategory category, string oldPath, string targetPath) in plan)
                     {
                         if (!Directory.Exists(oldPath))
                         {
+                            continue;
+                        }
+
+                        if (category == StorageCategory.Logs)
+                        {
+                            // The running server holds its audit file open, so the originals stay until the restart removes them.
+                            CopyLogsForRestart(oldPath, targetPath);
+                            copiedLogs.Add(targetPath);
                             continue;
                         }
 
@@ -266,6 +281,11 @@ namespace VideoForensics.Data.Core.Services
                 catch (Exception ex)
                 {
                     _logger.LogError("Failed to change the default storage root to {NewRoot}: {ExceptionType} {ErrorMessage}", newRoot, ex.GetType().Name, ex.Message);
+                    foreach (string copiedLogDir in copiedLogs)
+                    {
+                        LogRelocationManifest.Discard(copiedLogDir);
+                    }
+
                     await MoveBackAsync(moved, cancellationToken);
                     return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to move storage files: {ex.Message}", RestartRequired: false);
                 }

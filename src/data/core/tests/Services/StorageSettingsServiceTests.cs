@@ -176,6 +176,42 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task ChangeDefaultRootAsync_WithLogsOnTheDefaultRoot_CopiesLogsAndKeepsOriginals()
+        {
+            // Arrange: the audit file is open by the running server, so the default-root move must not delete it
+            string oldRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string logsDir = Path.Combine(oldRoot, "Logs");
+            _ = Directory.CreateDirectory(logsDir);
+            File.WriteAllText(Path.Combine(logsDir, "audit-20261103.json"), "line1\n");
+
+            try
+            {
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultStorageRoot()).Returns(oldRoot);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultRoot(StorageCategory.Logs)).Returns(logsDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.ChangeDefaultRootAsync(newRoot, CancellationToken.None);
+
+                // Assert: copied, original kept, manifest written in the new Logs folder for the restart to finish
+                Assert.True(result.Succeeded);
+                Assert.True(result.RestartRequired);
+                Assert.True(File.Exists(Path.Combine(logsDir, "audit-20261103.json")));
+                Assert.Equal("line1\n", File.ReadAllText(Path.Combine(newRoot, "Logs", "audit-20261103.json")));
+                Assert.True(File.Exists(Path.Combine(newRoot, "Logs", LogRelocationManifest.FileName)));
+            }
+            finally
+            {
+                foreach (string dir in new[] { oldRoot, newRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
         public async Task GetStatusAsync_ReturnsAllEightCategories()
         {
             // Act
