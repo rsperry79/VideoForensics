@@ -34,6 +34,16 @@ public class FolderBrowseProtocol_Tests
     }
 
     [Fact]
+    public void FolderBrowseProtocol_ReadPathWithBackslashAfterDrive_ListsFolder()
+    {
+        // The picker appends folder names to a drive root such as "G:\", so a backslash can separate them.
+        FolderBrowseResponseDto response = FolderBrowseProtocol.Handle(new FolderBrowseRequestDto("read", "/C:\\Videos/", null), _browser.Object);
+
+        Assert.Null(response.Error);
+        Assert.Equal("Videos", response.Cwd?.Name);
+    }
+
+    [Fact]
     public void FolderBrowseProtocol_ReadVirtualRoot_CwdHasNonEmptyName()
     {
         // Syncfusion's FileManager calls String.Replace with the current folder's name when a folder is
