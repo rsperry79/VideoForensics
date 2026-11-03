@@ -21,6 +21,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="MaxConcurrentDownloads">Maximum number of simultaneous media downloads from providers.</param>
     /// <param name="DownloadStartDate">Start date for downloads as "yyyy-MM-dd" string; empty if unset.</param>
     /// <param name="EnableHealthSync">Toggles periodic RSSI/device-health background sync.</param>
+    /// <param name="EnableScheduledReports">Toggles the scheduled report run on the Services page.</param>
+    /// <param name="ScheduledReportIntervalHours">Hours between scheduled report runs (1 to 168).</param>
     /// <param name="EnableMdnsAdvertisement">Toggles mDNS advertisement on LAN (_videoforensics._tcp.local) for device discovery.</param>
     /// <param name="EnableEmailNotifications">Toggles the email notification channel for urgent security events.</param>
     /// <param name="ConfiguredNetworkTier">Which network tier the server is configured to be reachable at (Local, Network, or Internet).</param>
@@ -66,7 +68,11 @@ namespace VideoForensics.Core.Api.Contracts
         int CalibrationCheckIntervalMinutes,
         int CalibrationSessionDurationSeconds,
         int MinCalibrationSamplesPerBucket,
-        int CalibrationStalenessDays
+        int CalibrationStalenessDays,
+        bool EnableScheduledReports = true,
+        int ScheduledReportIntervalHours = 24,
+        int LogPruneIntervalHours = 24,
+        int MediaBackfillIntervalHours = 6
     );
 
     /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
@@ -91,6 +97,10 @@ namespace VideoForensics.Core.Api.Contracts
                 MaxConcurrentDownloads: config.MaxConcurrentDownloads,
                 DownloadStartDate: config.DownloadStartDate,
                 EnableHealthSync: config.EnableHealthSync,
+                EnableScheduledReports: config.EnableScheduledReports,
+                ScheduledReportIntervalHours: config.ScheduledReportIntervalHours,
+                LogPruneIntervalHours: config.LogPruneIntervalHours,
+                MediaBackfillIntervalHours: config.MediaBackfillIntervalHours,
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,
                 ConfiguredNetworkTier: config.ConfiguredNetworkTier,
@@ -131,6 +141,10 @@ namespace VideoForensics.Core.Api.Contracts
                 MaxConcurrentDownloads = dto.MaxConcurrentDownloads,
                 DownloadStartDate = dto.DownloadStartDate,
                 EnableHealthSync = dto.EnableHealthSync,
+                EnableScheduledReports = dto.EnableScheduledReports,
+                ScheduledReportIntervalHours = dto.ScheduledReportIntervalHours,
+                LogPruneIntervalHours = dto.LogPruneIntervalHours,
+                MediaBackfillIntervalHours = dto.MediaBackfillIntervalHours,
                 EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
                 EnableEmailNotifications = dto.EnableEmailNotifications,
                 ConfiguredNetworkTier = dto.ConfiguredNetworkTier,

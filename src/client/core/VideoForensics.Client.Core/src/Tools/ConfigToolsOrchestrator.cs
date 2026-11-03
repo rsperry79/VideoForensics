@@ -161,6 +161,64 @@ namespace VideoForensics.Client.Core.Tools
             return (true, enabled ? "Health sync enabled" : "Health sync disabled");
         }
 
+        public async Task<(bool Success, string Message)> SetScheduledReportsEnabledAsync(
+            IForensicsConfiguration config,
+            bool enabled,
+            CancellationToken ct = default)
+        {
+            config.EnableScheduledReports = enabled;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Scheduled reports set to {enabled}", enabled);
+            return (true, enabled ? "Scheduled reports enabled" : "Scheduled reports disabled");
+        }
+
+        public async Task<(bool Success, string Message)> SetScheduledReportIntervalHoursAsync(
+            IForensicsConfiguration config,
+            int hours,
+            CancellationToken ct = default)
+        {
+            if (hours is < 1 or > 168)
+            {
+                return (false, "Scheduled report interval must be between 1 and 168 hours");
+            }
+
+            config.ScheduledReportIntervalHours = hours;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Scheduled report interval set to {hours} hours", hours);
+            return (true, $"Scheduled reports will run every {hours} hours");
+        }
+
+        public async Task<(bool Success, string Message)> SetServiceIntervalHoursAsync(
+            IForensicsConfiguration config,
+            string service,
+            int hours,
+            CancellationToken ct = default)
+        {
+            if (hours is < 1 or > 168)
+            {
+                return (false, "Service interval must be between 1 and 168 hours");
+            }
+
+            switch (service)
+            {
+                case "LogPrune":
+                    config.LogPruneIntervalHours = hours;
+                    break;
+                case "UpdateCheck":
+                    config.UpdateCheckIntervalHours = hours;
+                    break;
+                case "MediaBackfill":
+                    config.MediaBackfillIntervalHours = hours;
+                    break;
+                default:
+                    return (false, $"Unknown service: {service}");
+            }
+
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Service {service} interval set to {hours} hours", service, hours);
+            return (true, $"{service} will run every {hours} hours");
+        }
+
         public async Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(
             IForensicsConfiguration config,
             bool enabled,

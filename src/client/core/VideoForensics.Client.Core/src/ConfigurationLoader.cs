@@ -42,6 +42,10 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
+                runtimeConfig.EnableScheduledReports = loadedConfig.EnableScheduledReports;
+                runtimeConfig.ScheduledReportIntervalHours = loadedConfig.ScheduledReportIntervalHours;
+                runtimeConfig.LogPruneIntervalHours = loadedConfig.LogPruneIntervalHours;
+                runtimeConfig.MediaBackfillIntervalHours = loadedConfig.MediaBackfillIntervalHours;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
                 runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;

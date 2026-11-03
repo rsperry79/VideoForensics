@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
@@ -29,12 +30,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<MediaPreviewBackfillService> _logger;
         private readonly ThreadHeartbeats? _heartbeats;
+        private readonly IForensicsConfiguration? _config;
+
+        /// <summary>The wait between passes: the Services page setting when present, otherwise the built-in interval.</summary>
+        private TimeSpan CurrentInterval => _config is null ? PassInterval : ScheduledReportService.IntervalFor(_config.MediaBackfillIntervalHours);
 
         /// <summary>Creates the service.</summary>
-        public MediaPreviewBackfillService(IServiceScopeFactory scopeFactory, ILogger<MediaPreviewBackfillService> logger, ThreadHeartbeats? heartbeats = null)
+        public MediaPreviewBackfillService(IServiceScopeFactory scopeFactory, ILogger<MediaPreviewBackfillService> logger, ThreadHeartbeats? heartbeats = null, IForensicsConfiguration? config = null)
         {
             _scopeFactory = scopeFactory;
             _heartbeats = heartbeats;
+            _config = config;
             _logger = logger;
         }
 
@@ -43,13 +49,25 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         {
             await Task.Delay(StartupDelay, stoppingToken);
 
-            using var timer = new PeriodicTimer(PassInterval);
             do
             {
-                _heartbeats?.Beat(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow, PassInterval);
+                _heartbeats?.Beat(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow, CurrentInterval);
                 await RunPassAsync(stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
+            while (await WaitForNextPassAsync(stoppingToken));
+        }
+
+        private async Task<bool> WaitForNextPassAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentInterval, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <summary>

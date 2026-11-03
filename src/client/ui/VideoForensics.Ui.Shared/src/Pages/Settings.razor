@@ -1,13 +1,9 @@
 @page "/settings"
-@using VideoForensics.Client.Core.Tools
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @inject PairedSessionState SessionState
-@inject IForensicsConfiguration Config
-@inject IForensicsConfigurationService ConfigService
-@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Settings> L
 @inject VideoForensics.Client.Ui.Shared.Services.PairedSessionState SessionState
@@ -51,88 +47,8 @@
     </div>
 }
 
-@if (_isLoading)
-{
-    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
-}
-else if (!_isAuthenticated)
-{
-    <div class="alert alert-info">
-        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToChangeSettings"]
-    </div>
-}
-else
-{
-    <h6 class="mt-4 mb-2">@L["HealthSyncSection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-column gap-2">
-            <small class="text-body-secondary">@L["HealthSyncDescription"]</small>
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableHealthSync" @bind-Checked:after="@(async () => await SaveHealthSyncAsync(Config.EnableHealthSync))" Label="@L["EnableHealthSync"].Value" />
-            @if (_healthSyncMessage is not null)
-            {
-                <span style="@(_healthSyncSuccess ? "color: green;" : "color: red;")">@_healthSyncMessage</span>
-            }
-        </div>
-    </div>
-}
-
 @code {
-    private bool _isLoading = true;
-    private bool _isAuthenticated;
-
-    private bool _healthSyncSuccess;
-    private string? _healthSyncMessage;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            await SessionState.EnsureLoadedAsync();
-            _isAuthenticated = SessionState.IsSignedIn;
-            if (_isAuthenticated)
-            {
-            }
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
     private bool CanAdmin => PageAccessRules.Allows(AccessPolicy.Admin, NavContext.FromSession(SessionState, appLockSupported: false));
 
     private bool CanLocalAdmin => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
-
-    private async Task SaveHealthSyncAsync(bool enabled)
-    {
-        try
-        {
-            Config.EnableHealthSync = enabled;
-            try
-            {
-                (bool applied, _) = await ConfigTools.SetHealthSyncAsync(Config, enabled, CancellationToken.None);
-                if (!applied)
-                {
-                    Config.EnableHealthSync = !enabled;
-                    _healthSyncSuccess = false;
-                    _healthSyncMessage = L["AdminOnlySettingsNote"].Value;
-                    return;
-                }
-            }
-            catch (NotSupportedException)
-            {
-                _healthSyncSuccess = false;
-                _healthSyncMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
-                return;
-            }
-            _healthSyncSuccess = true;
-            _healthSyncMessage = L["HealthSyncStatus", enabled ? "enabled" : "disabled"].Value;
-        }
-        catch (Exception ex)
-        {
-            _healthSyncSuccess = false;
-            _healthSyncMessage = L["HealthSyncError", ex.Message].Value;
-        }
-    }
-
 }
