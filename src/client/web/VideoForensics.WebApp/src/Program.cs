@@ -81,11 +81,9 @@ ServerLogLevel serverLogLevel = new();
 // Framework noise logged at Debug, shown only at Trace and only in live outputs (console, named pipe). Never stored.
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
-serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Command.Name);
-serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.ChangeTracking.Name);
-serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Database.Connection.Name);
-serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Infrastructure.Name);
-serverLogLevel.BufferLevel.TraceOnlyCategories.Add(DbLoggerCategory.Query.Name);
+// EF Core (all of its categories) and our own database classes are chatty: Trace-only. Warnings and errors still pass (see LogLevelSource).
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("VideoForensics.Data.Database");
 
 static string SourceOf(Serilog.Events.LogEvent e) =>
     e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
@@ -96,7 +94,7 @@ Log.Logger = new LoggerConfiguration()
     // written to the audit files at any saved level. The saved level alone decides what the files hold.
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.Client.WebApp")
-    .Filter.ByExcluding(e => !serverLogLevel.BufferLevel.AdmitsLive(SourceOf(e)))
+    .Filter.ByExcluding(e => !serverLogLevel.BufferLevel.AdmitsLive(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
     // CloudflaredKit logs its process dying as a warning; CloudflaredTunnelService logs the same event at Error with the exit code,
     // so the package's warning is dropped to avoid a duplicate line.
     .Filter.ByExcluding(e => e.Level == Serilog.Events.LogEventLevel.Warning
@@ -106,7 +104,7 @@ Log.Logger = new LoggerConfiguration()
     // Audit files hold stored entries only: Trace-only framework noise never reaches them, and Trace and Debug are never
     // written to the files at all (they stay on the console and the named pipe).
     .WriteTo.Logger(files => files
-        .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e)))
+        .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
         // Text format: human-readable with structured properties appended
         .WriteTo.File(
             path: Path.Combine(logsDir, "audit-.txt"),

@@ -288,10 +288,25 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             var source = new LogLevelSource { Minimum = LogLevel.Debug };
             source.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
 
-            Assert.False(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer"));
+            Assert.False(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer", isWarningOrAbove: false));
             source.Minimum = LogLevel.Trace;
-            Assert.True(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer"));
-            Assert.True(source.AdmitsLive("VideoForensics.Something"));
+            Assert.True(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer", isWarningOrAbove: false));
+            Assert.True(source.AdmitsLive("VideoForensics.Something", isWarningOrAbove: false));
+        }
+
+        [Fact]
+        public void TraceOnlyCategory_WarningsAndErrorsAreNeverDemoted()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Information };
+            source.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
+            source.TraceOnlyCategories.Add("VideoForensics.Data.Database");
+            const string category = "Microsoft.EntityFrameworkCore.Database.Transaction";
+
+            Assert.False(source.AdmitsLive(category, isWarningOrAbove: false));
+            Assert.False(source.AdmitsStored(category, isWarningOrAbove: false));
+            Assert.True(source.AdmitsLive(category, isWarningOrAbove: true));
+            Assert.True(source.AdmitsStored(category, isWarningOrAbove: true));
+            Assert.False(source.AdmitsLive("VideoForensics.Data.Database.Sqlite.Foo", isWarningOrAbove: false));
         }
     }
 }
