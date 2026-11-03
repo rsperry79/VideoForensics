@@ -334,7 +334,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                         if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                         {
-                            _logger.LogDebug("Restoring Ring session from database for account {ProviderName}", ProviderName);
+                            _logger.LogTrace("Restoring Ring session from database for account {ProviderName}", ProviderName);
                             credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                         }
                     }
@@ -407,7 +407,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                     if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                                     {
-                                        _logger.LogDebug("Restoring Ring session from database for account {ProviderName}", account.ProviderName);
+                                        _logger.LogTrace("Restoring Ring session from database for account {ProviderName}", account.ProviderName);
                                         credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                                         resolvedAccountId = account.Id;
                                         break;
@@ -632,7 +632,7 @@ namespace VideoForensics.Providers.Ring.Services
                 await _ringAccountRepository.AddAsync(ringAccount, ct);
             }
 
-            _logger.LogDebug("Persisted Ring authentication for {Username}", MaskForLog(username));
+            _logger.LogTrace("Persisted Ring authentication for {Username}", MaskForLog(username));
         }
     }
 }
