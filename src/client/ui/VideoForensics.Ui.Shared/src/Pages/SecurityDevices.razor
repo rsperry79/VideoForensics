@@ -111,6 +111,17 @@ else
                                 </div>
                             }
                         }
+                        else
+                        {
+                            <SfButton Content="@L["RemoveButton"]" OnClick="() => BeginRemove(device.Id)" CssClass="e-danger" />
+                            @if (_pendingRemoveDeviceId == device.Id)
+                            {
+                                <div class="d-flex flex-row gap-2 align-items-center mt-2">
+                                    <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRemove(device.Id)" CssClass="e-danger" />
+                                    <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
+                                </div>
+                            }
+                        }
                     }
                 </Template>
             </GridColumn>
@@ -131,6 +142,7 @@ else
     private string? _loadError;
     private string? _actionError;
     private Guid? _pendingRevokeDeviceId;
+    private Guid? _pendingRemoveDeviceId;
     private string _reasonInput = string.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -193,7 +205,49 @@ else
     private void CancelPending()
     {
         _pendingRevokeDeviceId = null;
+        _pendingRemoveDeviceId = null;
         _reasonInput = string.Empty;
+    }
+
+    private void BeginRemove(Guid deviceId)
+    {
+        _pendingRemoveDeviceId = deviceId;
+        _pendingRevokeDeviceId = null;
+        _actionError = null;
+    }
+
+    private async Task ConfirmRemove(Guid deviceId)
+    {
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = L["SignInFirstError"];
+            return;
+        }
+
+        _actionError = null;
+        try
+        {
+            // Removing is as high-risk as revoking (it erases the pairing record), so it gets the
+            // same fresh passkey step-up as the revoke action.
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.DeleteAsync($"api/devices-management/paired-devices/{deviceId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? L["RemoveFailed1", response.StatusCode];
+                return;
+            }
+
+            CancelPending();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = L["RemoveFailed2", ex.Message];
+        }
     }
 
     private async Task ConfirmRevoke(Guid deviceId)
