@@ -22,6 +22,11 @@ html[data-theme="dark"] .btn-outline-secondary {
     color: #dee2e6;
 }
 
+/* Helper text (.text-muted) uses Bootstrap's secondary token, which is too faint on the dark body. Lift it to a light gray, about 8:1. */
+html[data-theme="dark"] .text-muted {
+    color: #adb5bd;
+}
+
 /* Bit rate chart: SVG bars default to black, which disappears on the dark page. Bars take the secondary text
    token (about 7.6:1 on the dark body); the playhead takes the danger token so it stands out from the bars. */
 .bitrate-series-chart .bitrate-bar {
