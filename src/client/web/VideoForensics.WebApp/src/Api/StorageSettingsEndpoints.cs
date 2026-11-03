@@ -86,21 +86,21 @@ namespace VideoForensics.Client.WebApp.Api
             CancellationToken cancellationToken)
         {
             RelocateStorageCategoryRequest request = requestDto.ToDomain();
-            if (request.Category != StorageCategory.Database)
+            if (request.Category is not (StorageCategory.Database or StorageCategory.Logs))
             {
                 RelocateStorageCategoryResult plain = await storageSettings.RelocateAsync(request, cancellationToken);
                 return Results.Ok(plain.ToDto());
             }
 
-            // The database must be closed before its file moves. The coordinator blocks new work, waits for in-flight work,
-            // and releases pooled connections before the relocation runs.
+            // The database and the logs must be closed or quiet before their files move. The coordinator blocks new work,
+            // waits for in-flight work, and releases pooled connections before the relocation runs.
             try
             {
-                // Maintenance stays held after a successful move: this process still points at the old file, so nothing
-                // may write to it. The process then stops with a failure code, which the service recovery action turns into
-                // a restart on the new location (the same restart path a staged update uses).
+                // Maintenance stays held after a successful move: this process still points at the old files, so nothing
+                // may write to them. The process then stops with a failure code, which the service recovery action turns into
+                // a restart on the new location (the same restart path a staged update uses). The restart finishes a Logs move.
                 RelocateStorageCategoryResult result = await coordinator.RunAsync(
-                    "Moving the database",
+                    request.Category == StorageCategory.Logs ? "Moving the logs" : "Moving the database",
                     (sp, token) => sp.GetRequiredService<IStorageSettingsService>().RelocateAsync(request, token),
                     cancellationToken,
                     holdOnSuccess: true);

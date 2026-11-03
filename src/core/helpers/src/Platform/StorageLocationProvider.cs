@@ -42,6 +42,16 @@ public class StorageLocationProvider : IStorageLocationProvider
             }
         }
 
+        // The logger starts before the saved configuration can be read, so a relocated Logs folder is read from its pointer.
+        if (category == StorageCategory.Logs)
+        {
+            string? relocated = LogsLocationPointer.Read(GetDataRoot());
+            if (relocated is not null)
+            {
+                return relocated;
+            }
+        }
+
         return GetPlatformDefaultRoot(category);
     }
 

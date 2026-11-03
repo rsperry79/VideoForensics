@@ -75,6 +75,9 @@ NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocat
 var storageProvider = new StorageLocationProvider();
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
+// Finishes a Logs move from the previous run: appends what the old audit file gained after its copy, then removes it.
+// Must run before the logger below opens the folder, so appended lines stay in order.
+VideoForensics.Data.Core.Services.LogRelocationManifest.Reconcile(logsDir);
 
 // The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
 ServerLogLevel serverLogLevel = new();
