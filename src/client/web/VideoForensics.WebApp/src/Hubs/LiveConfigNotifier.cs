@@ -36,7 +36,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // The save has already succeeded; a failed push only means remote settings views update on their next load.
-                _logger.LogWarning(ex, "Could not push a settings change to live clients");
+                _logger.LogWarning("Could not push a settings change to live clients: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

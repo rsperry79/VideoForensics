@@ -223,7 +223,7 @@ namespace VideoForensics.Client.Hosting.Services
                                 }
                                 catch (Exception ex) when (ex is not OperationCanceledException)
                                 {
-                                    _logger.LogError(ex, "Preview generation failed; media was synced");
+                                    _logger.LogError("Preview generation failed; media was synced: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                                 }
                             }
                         }
@@ -244,7 +244,7 @@ namespace VideoForensics.Client.Hosting.Services
                         }
                         else
                         {
-                            _logger.LogError(ex, "Failed to pull events for device {DeviceName}", deviceName);
+                            _logger.LogError("Failed to pull events for device {DeviceName}: {Message} ({ErrorType})", deviceName, ex.Message, ex.GetType().Name);
                         }
 
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
@@ -289,7 +289,7 @@ namespace VideoForensics.Client.Hosting.Services
                 }
                 else
                 {
-                    _logger.LogError(ex, "Failed to pull events for account");
+                    _logger.LogError("Failed to pull events for account: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
 
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
@@ -483,7 +483,7 @@ namespace VideoForensics.Client.Hosting.Services
                     catch (Exception ex)
                     {
                         _ = Interlocked.Increment(ref failed);
-                        _logger.LogError(ex, "Preview failed for clip {FileName}: {Message}", clip.FileName, ex.Message);
+                        _logger.LogError("Preview failed for clip {FileName}: {Message} ({ErrorType})", clip.FileName, ex.Message, ex.GetType().Name);
                     }
                     finally
                     {
@@ -500,7 +500,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Preview generation failed for device {DeviceName}", deviceName);
+                _logger.LogError("Preview generation failed for device {DeviceName}: {Message} ({ErrorType})", deviceName, ex.Message, ex.GetType().Name);
             }
         }
 

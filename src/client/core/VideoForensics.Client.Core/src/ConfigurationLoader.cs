@@ -86,7 +86,7 @@ namespace VideoForensics.Client.Core
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to load configuration from database; using defaults");
+                logger.LogError("Failed to load configuration from database; using defaults: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

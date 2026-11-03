@@ -454,7 +454,7 @@ try
 catch (Exception ex)
 {
     Console.Error.WriteLine($"Database repair failed: {ex.Message}");
-    logger.LogError(ex, "Unhandled exception during repair");
+    logger.LogError("Unhandled exception during repair: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
     return 1;
 }
 

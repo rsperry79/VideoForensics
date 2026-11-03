@@ -122,7 +122,7 @@ namespace VideoForensics.Client.Hosting.Services
                 catch (Exception ex)
                 {
                     failed++;
-                    _logger.LogError(ex, "Snapshot roll-up failed for {DeviceName}", device.Name);
+                    _logger.LogError("Snapshot roll-up failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                     firstError ??= $"{device.Name}: {ex.Message}";
                 }
             }

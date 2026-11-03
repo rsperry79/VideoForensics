@@ -47,7 +47,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error appending device config snapshot for device {DeviceId}", snapshot.DeviceId);
+                _logger.LogError("Error appending device config snapshot for device {DeviceId}: {Message} ({ErrorType})", snapshot.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

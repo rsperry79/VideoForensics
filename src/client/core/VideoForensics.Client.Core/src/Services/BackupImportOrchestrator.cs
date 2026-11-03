@@ -268,7 +268,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Backup import failed");
+                _logger.LogError("Backup import failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new BackupImportResult { Success = false, ErrorMessage = $"Import failed: {ex.Message}" };
             }
             finally

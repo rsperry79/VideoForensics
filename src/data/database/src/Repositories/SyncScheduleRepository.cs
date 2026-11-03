@@ -139,7 +139,7 @@ namespace VideoForensics.Data.Database.Repositories
             catch (Exception ex)
             {
                 ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
+                _logger.LogError("Error upserting sync schedule for provider account: {ProviderName}: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -162,7 +162,7 @@ namespace VideoForensics.Data.Database.Repositories
             catch (Exception ex)
             {
                 ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
+                _logger.LogError("Error deleting sync schedule for provider account: {ProviderName}: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

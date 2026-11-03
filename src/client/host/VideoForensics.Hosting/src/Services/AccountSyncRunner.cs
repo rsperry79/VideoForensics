@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to record sync run");
+                logger.LogError("Failed to record sync run: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }
@@ -277,7 +277,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Restoring saved credentials failed before sync");
+                _logger.LogError("Restoring saved credentials failed before sync: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 string restoreError = $"Restoring saved credentials failed: {ex.Message}";
                 await RecordErrorAsync(accountId, restoreError, cancellationToken);
                 return restoreError;
@@ -327,7 +327,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Device sync failed before the event pull");
+                _logger.LogError("Device sync failed before the event pull: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 string syncError = $"Device sync failed: {ex.Message}";
                 await RecordErrorAsync(accountId, syncError, cancellationToken);
                 return syncError;
@@ -490,7 +490,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to record sync completion");
+                _logger.LogError("Failed to record sync completion: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

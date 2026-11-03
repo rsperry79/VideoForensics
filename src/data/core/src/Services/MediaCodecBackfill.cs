@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Core.Services
                 catch (Exception ex)
                 {
                     _ = _skipped.Add(item.Id);
-                    _logger.LogWarning(ex, "Codec backfill could not read {FileName}; skipped until restart", item.FileName);
+                    _logger.LogWarning("Codec backfill could not read {FileName}; skipped until restart: {Message} ({ErrorType})", item.FileName, ex.Message, ex.GetType().Name);
                 }
             }
 

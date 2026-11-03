@@ -40,7 +40,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading Wyze videos for device {DeviceId}", deviceId);
+                _logger.LogError("Error downloading Wyze videos for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -71,7 +71,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading Wyze snapshots for device {DeviceId}", deviceId);
+                _logger.LogError("Error downloading Wyze snapshots for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,

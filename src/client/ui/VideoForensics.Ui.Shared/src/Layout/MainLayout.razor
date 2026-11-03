@@ -102,13 +102,18 @@
                                 @{
                                     string? settingsLink = NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath);
                                     string? reviewLink = NoticeActions.ReviewLink(notice.EventType, notice.ActionPath);
+                                    string? reauthLink = NoticeActions.ReauthenticateLink(notice.EventType, notice.ActionPath);
                                 }
-                                @if (settingsLink is not null || reviewLink is not null)
+                                @if (settingsLink is not null || reviewLink is not null || reauthLink is not null)
                                 {
                                     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
                                         @if (reviewLink is not null)
                                         {
                                             <a href="@reviewLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
+                                        }
+                                        @if (reauthLink is not null)
+                                        {
+                                            <a href="@reauthLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-reauth">@L["NoticeReauthenticate"]</a>
                                         }
                                         @if (settingsLink is not null)
                                         {

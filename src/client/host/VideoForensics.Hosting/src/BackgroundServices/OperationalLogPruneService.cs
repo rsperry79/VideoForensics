@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Operational log prune failed; it will run again at the next interval");
+                    _logger.LogError("Operational log prune failed; it will run again at the next interval: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             }
             while (await WaitForNextPassAsync(stoppingToken));

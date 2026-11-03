@@ -55,4 +55,23 @@ public class NoticeActionsTests
     {
         Assert.False(NoticeActions.ShowsOpenLink("SomethingElse", null));
     }
+    [Fact]
+    public void ReauthenticateLink_ForCredentialDecryptionFailed_IsTheAccountPage()
+    {
+        Assert.Equal("/accounts/abc", NoticeActions.ReauthenticateLink("CredentialDecryptionFailed", "/accounts/abc"));
+    }
+
+    [Fact]
+    public void ReauthenticateLink_IsNullForOtherNoticesOrWithoutAPath()
+    {
+        Assert.Null(NoticeActions.ReauthenticateLink("DeviceOffline", "/accounts/abc/sync"));
+        Assert.Null(NoticeActions.ReauthenticateLink("CredentialDecryptionFailed", null));
+        Assert.Null(NoticeActions.ReauthenticateLink("CredentialDecryptionFailed", "  "));
+    }
+
+    [Fact]
+    public void ShowsOpenLink_IsFalseForCredentialDecryptionFailed_BecauseReauthenticateOpensThePath()
+    {
+        Assert.False(NoticeActions.ShowsOpenLink("CredentialDecryptionFailed", "/accounts/abc"));
+    }
 }

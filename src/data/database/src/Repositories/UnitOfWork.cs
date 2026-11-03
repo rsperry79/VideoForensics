@@ -106,7 +106,7 @@ namespace VideoForensics.Data.Database.Repositories
                 worked = clock.Elapsed;
                 await transaction.RollbackAsync(ct);
                 LogTransaction(caller, "rolled back", begun, worked, clock.Elapsed);
-                _logger.LogError(ex, "Unit of work rolled back due to exception");
+                _logger.LogError("Unit of work rolled back due to exception: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
             finally

@@ -294,7 +294,7 @@ namespace VideoForensics.Client.MauiApp
                     try
                     {
                         ILogger logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("MauiApp");
-                        logger.LogError(ex, "Failed to start live hub connection");
+                        logger.LogError("Failed to start live hub connection: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                     catch
                     {

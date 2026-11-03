@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Snapshot capture tick failed; will retry on the next tick");
+                        _logger.LogError("Snapshot capture tick failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
             }
@@ -175,7 +175,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One account's failure must never stop the others.
                     _accountPausedUntil[account.Id] = _time.GetUtcNow() + AccountErrorBackoff;
-                    _logger.LogError(ex, "Snapshot capture failed for {ProviderName} account", account.ProviderName);
+                    _logger.LogError("Snapshot capture failed for {ProviderName} account: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                 }
             }
 
@@ -343,7 +343,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Snapshot capture failed for {DeviceName} on {AccountName}", device.Name, accountName);
+                _logger.LogError("Snapshot capture failed for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
                 Hold(device.Id, interval);
                 counts.Failed++;
                 return;
@@ -392,7 +392,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogError(ex, "Could not write the snapshot for {DeviceName} on {AccountName}", device.Name, accountName);
+                    _logger.LogError("Could not write the snapshot for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
                     Hold(device.Id, interval);
                     counts.Failed++;
                     return;
@@ -410,7 +410,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Could not record the snapshot attempt for {DeviceName} on {AccountName}", device.Name, accountName);
+                _logger.LogError("Could not record the snapshot attempt for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
                 counts.Failed++;
                 return;
             }
@@ -506,7 +506,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Could not record the captured snapshot in Media for {DeviceName} on {AccountName}", device.Name, accountName);
+                _logger.LogError("Could not record the captured snapshot in Media for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -578,7 +578,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not dispatch the offline alert for {DeviceName} (non-critical)", device.Name);
+                _logger.LogWarning("Could not dispatch the offline alert for {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
             }
         }
 

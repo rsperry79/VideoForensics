@@ -85,7 +85,7 @@ namespace VideoForensics.Client.WebApp.Discovery
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to start mDNS advertisement");
+                _logger.LogError("Failed to start mDNS advertisement: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 _mdns?.Dispose();
                 _serviceDiscovery?.Dispose();
                 _mdns = null;
@@ -106,7 +106,7 @@ namespace VideoForensics.Client.WebApp.Discovery
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while unadvertising mDNS service");
+                _logger.LogError("Error while unadvertising mDNS service: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
             finally
             {
@@ -153,7 +153,7 @@ namespace VideoForensics.Client.WebApp.Discovery
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "mDNS advertisement check failed");
+                    _logger.LogError("mDNS advertisement check failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             } while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
         }
@@ -170,7 +170,7 @@ namespace VideoForensics.Client.WebApp.Discovery
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error during Dispose while unadvertising");
+                    _logger.LogError("Error during Dispose while unadvertising: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
                 finally
                 {

@@ -91,7 +91,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during local integrity verification");
+                _logger.LogError("Error during local integrity verification: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -193,7 +193,7 @@ namespace VideoForensics.Client.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to fetch events from provider for device {ProviderDeviceId}", SanitizeForLog(providerDeviceId));
+                    _logger.LogError("Failed to fetch events from provider for device {ProviderDeviceId}: {Message} ({ErrorType})", SanitizeForLog(providerDeviceId), ex.Message, ex.GetType().Name);
                     throw;
                 }
 
@@ -352,7 +352,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during provider reconciliation for device {DeviceId}", deviceId);
+                _logger.LogError("Error during provider reconciliation for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -373,8 +373,8 @@ namespace VideoForensics.Client.Core.Services
                 }
                 catch (Exception ex) when (IsRateLimitError(ex) && attempt < MaxRetries)
                 {
-                    _logger.LogError(ex, "Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
-                        SanitizeForLog(operationName), attempt, MaxRetries, delayMs);
+                    _logger.LogError("Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.: {Message} ({ErrorType})",
+                        SanitizeForLog(operationName), attempt, MaxRetries, delayMs, ex.Message, ex.GetType().Name);
 
                     await Task.Delay(delayMs, cancellationToken);
                     delayMs = Math.Min(delayMs * 2, MaxDelayMs);

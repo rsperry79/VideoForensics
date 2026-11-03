@@ -39,7 +39,7 @@ public sealed class StartupInitializationService : BackgroundService
         catch (Exception ex)
         {
             // Degraded, not fatal: the same policy as before the move. The gate still opens so the site can answer.
-            _logger.LogCritical(ex, "Database initialization failed. Continuing startup in a degraded state.");
+            _logger.LogCritical("Database initialization failed. Continuing startup in a degraded state.: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
         }
         finally
         {

@@ -392,6 +392,9 @@
   <data name="NoticeDeviceSettings" xml:space="preserve">
     <value>Device settings</value>
   </data>
+  <data name="NoticeReauthenticate" xml:space="preserve">
+    <value>Reauthenticate</value>
+  </data>
   <data name="ClearAll" xml:space="preserve">
     <value>Clear all</value>
   </data>

@@ -243,7 +243,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error adding media item: {FileName}", SanitizeForLog(mediaItem.FileName));
+                logger.LogError("Error adding media item: {FileName}: {Message} ({ErrorType})", SanitizeForLog(mediaItem.FileName), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -264,7 +264,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error updating media item: {FileName}", SanitizeForLog(mediaItem.FileName));
+                logger.LogError("Error updating media item: {FileName}: {Message} ({ErrorType})", SanitizeForLog(mediaItem.FileName), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -289,7 +289,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error deleting media item: {MediaItemId}", mediaItemId);
+                logger.LogError("Error deleting media item: {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

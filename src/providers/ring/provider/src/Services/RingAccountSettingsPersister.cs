@@ -132,7 +132,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ring {Area} settings were not stored; sync continues", area);
+                _logger.LogError("Ring {Area} settings were not stored; sync continues: {Message} ({ErrorType})", area, ex.Message, ex.GetType().Name);
                 return false;
             }
         }

@@ -88,7 +88,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                     throw;
                 }
 
-                _logger.LogError(ex, "Failed to send download progress snapshot to connection {ConnectionId}", Context.ConnectionId);
+                _logger.LogError("Failed to send download progress snapshot to connection {ConnectionId}: {Message} ({ErrorType})", Context.ConnectionId, ex.Message, ex.GetType().Name);
             }
 
             // Admin-only snapshot-on-connect for the self-test status. Non-admins never receive this
@@ -113,7 +113,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                         throw;
                     }
 
-                    _logger.LogError(ex, "Failed to send self-test status snapshot to connection {ConnectionId}", Context.ConnectionId);
+                    _logger.LogError("Failed to send self-test status snapshot to connection {ConnectionId}: {Message} ({ErrorType})", Context.ConnectionId, ex.Message, ex.GetType().Name);
                 }
             }
 

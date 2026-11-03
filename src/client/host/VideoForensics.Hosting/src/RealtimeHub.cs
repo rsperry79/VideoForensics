@@ -198,7 +198,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex) when (HubAuthFailure.IsAuthFailure(ex))
             {
-                _logger.LogError(ex, "Live hub rejected the session token (401); not retrying until the device is re-paired");
+                _logger.LogError("Live hub rejected the session token (401); not retrying until the device is re-paired: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 Publish(ConnectionState.AuthFailed);
                 throw;
             }
@@ -228,7 +228,7 @@ namespace VideoForensics.Client.Hosting
                     Publish(ConnectionState.Reconnecting);
                 }
 
-                _logger.LogError(ex, "Live hub initial connection failed; retrying with backoff");
+                _logger.LogError("Live hub initial connection failed; retrying with backoff: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 _ = ReconnectLoopAsync(lifetimeToken);
                 return;
             }
@@ -368,7 +368,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Live hub reconnect loop stopped unexpectedly; the live feed is offline until the next start");
+                _logger.LogError("Live hub reconnect loop stopped unexpectedly; the live feed is offline until the next start: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 Publish(ConnectionState.Disconnected);
             }
         }
@@ -395,7 +395,7 @@ namespace VideoForensics.Client.Hosting
                 }
                 catch (Exception ex) when (HubAuthFailure.IsAuthFailure(ex))
                 {
-                    _logger.LogError(ex, "Live hub reconnect rejected with 401; reconnect stopped until the device is re-paired");
+                    _logger.LogError("Live hub reconnect rejected with 401; reconnect stopped until the device is re-paired: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     await ClearExpiredSessionAsync();
                     Publish(ConnectionState.AuthFailed);
                     return;
@@ -403,7 +403,7 @@ namespace VideoForensics.Client.Hosting
                 catch (Exception ex)
                 {
                     attempt++;
-                    _logger.LogError(ex, "Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s", attempt, delay.TotalSeconds);
+                    _logger.LogError("Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s: {Message} ({ErrorType})", attempt, delay.TotalSeconds, ex.Message, ex.GetType().Name);
                 }
             }
         }
@@ -474,7 +474,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to clear the expired paired session");
+                _logger.LogError("Failed to clear the expired paired session: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 
@@ -579,7 +579,7 @@ namespace VideoForensics.Client.Hosting
                 }
 
                 // The session id is not logged: it is a GUID, and only the failure matters here.
-                _logger.LogError(ex, "Live hub rejected a live-view subscription; it will not be replayed");
+                _logger.LogError("Live hub rejected a live-view subscription; it will not be replayed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

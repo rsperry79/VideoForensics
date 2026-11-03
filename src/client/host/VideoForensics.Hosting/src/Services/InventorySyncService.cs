@@ -115,7 +115,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not read or record device configuration; inventory was synced");
+                _logger.LogWarning("Could not read or record device configuration; inventory was synced: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }
         }

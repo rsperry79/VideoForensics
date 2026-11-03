@@ -139,9 +139,9 @@ namespace VideoForensics.Client.WebApp.Services
                             {
                                 // Reconciliation is part of the validate-all pass, so its failure fails this device.
                                 result.FailedDevices++;
-                                _logger.LogError(ex,
-                                    "Provider reconciliation failed for device {DeviceName}",
-                                    device.Name);
+                                _logger.LogError(
+                                    "Provider reconciliation failed for device {DeviceName}: {Message} ({ErrorType})",
+                                    device.Name, ex.Message, ex.GetType().Name);
                             }
                         }
                         else
@@ -152,7 +152,7 @@ namespace VideoForensics.Client.WebApp.Services
                     catch (Exception ex)
                     {
                         result.FailedDevices++;
-                        _logger.LogError(ex, "Validation failed for device {DeviceName}", device.Name);
+                        _logger.LogError("Validation failed for device {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                         // Continue with next device rather than failing entire bulk operation
                     }
                 }
@@ -169,7 +169,7 @@ namespace VideoForensics.Client.WebApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Bulk validation failed");
+                _logger.LogError("Bulk validation failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 result.ErrorMessage = $"Bulk validation failed: {ex.Message}";
             }
             finally

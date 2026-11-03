@@ -52,7 +52,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error appending export record with {ItemCount} items", items.Count);
+                _logger.LogError("Error appending export record with {ItemCount} items: {Message} ({ErrorType})", items.Count, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

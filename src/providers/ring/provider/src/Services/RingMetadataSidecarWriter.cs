@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogError("Failed to write metadata file for {MediaFilePath}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -126,7 +126,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogError("Failed to write metadata file for {MediaFilePath}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -169,12 +169,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Invalid JSON in sidecar: {JsonPath}", jsonPath);
+                _logger.LogError("Invalid JSON in sidecar: {JsonPath}: {Message} ({ErrorType})", jsonPath, ex.Message, ex.GetType().Name);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to validate JSON sidecar: {JsonPath}", jsonPath);
+                _logger.LogError("Failed to validate JSON sidecar: {JsonPath}: {Message} ({ErrorType})", jsonPath, ex.Message, ex.GetType().Name);
                 return false;
             }
         }

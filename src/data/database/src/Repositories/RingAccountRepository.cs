@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding Ring account");
+                _logger.LogError("Error adding Ring account: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -60,8 +60,8 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating Ring account: {AccountId} (subscription: {SubscriptionLevel})",
-                    account.Id, account.SubscriptionLevel);
+                _logger.LogError("Error updating Ring account: {AccountId} (subscription: {SubscriptionLevel}): {Message} ({ErrorType})",
+                    account.Id, account.SubscriptionLevel, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting Ring account: {AccountId}", id);
+                _logger.LogError("Error deleting Ring account: {AccountId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

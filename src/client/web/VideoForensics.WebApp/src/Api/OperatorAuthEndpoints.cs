@@ -281,7 +281,7 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, credential.OperatorId, null,
                     tierResolver.ResolveClientIp(context), ex.Message, isUrgent: true, ct);
-                logger.LogWarning(ex, "Passkey sign-in failed verification: {Reason}", ex.Message);
+                logger.LogWarning("Passkey sign-in failed verification: {Reason}: {Message} ({ErrorType})", ex.Message, ex.Message, ex.GetType().Name);
                 return Results.Unauthorized();
             }
 

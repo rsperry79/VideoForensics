@@ -114,7 +114,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Session validation failed");
+                    _logger.LogError("Session validation failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     throw;
                 }
 
@@ -186,7 +186,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 else
                 {
-                    _logger.LogError(ex, "Error fetching locations from Ring API");
+                    _logger.LogError("Error fetching locations from Ring API: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
 
                 throw;
@@ -418,7 +418,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching the account's device list");
+                _logger.LogError("Error fetching the account's device list: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new List<Device>().AsReadOnly();
             }
             finally
@@ -449,7 +449,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching device {DeviceId}", deviceId);
+                _logger.LogError("Error fetching device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -519,7 +519,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 else
                 {
-                    _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
+                    _logger.LogError("Error fetching locations for {ProviderName} account: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
                 }
 
                 throw;
@@ -542,7 +542,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ring session validation failed");
+                _logger.LogError("Ring session validation failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -1100,7 +1100,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ring {Area} fetch failed; sync continues", area);
+                _logger.LogError("Ring {Area} fetch failed; sync continues: {Message} ({ErrorType})", area, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -1311,7 +1311,7 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
-            logger.LogError(ex, "Ring {Feed} sync failed; sync continues", feed);
+            logger.LogError("Ring {Feed} sync failed; sync continues: {Message} ({ErrorType})", feed, ex.Message, ex.GetType().Name);
         }
 
         /// <summary>
@@ -1476,7 +1476,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching device list for {ProviderName} account", ProviderName);
+                _logger.LogError("Error fetching device list for {ProviderName} account: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
                 throw;
             }
             finally
@@ -1510,7 +1510,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
+                _logger.LogError("Error fetching device {DeviceId} for {ProviderName} account: {Message} ({ErrorType})", deviceId, ProviderName, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -1592,7 +1592,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Skipping location metadata capture (non-critical operation failed)");
+                _logger.LogWarning("Skipping location metadata capture (non-critical operation failed): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

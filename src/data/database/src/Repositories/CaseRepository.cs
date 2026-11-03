@@ -311,7 +311,7 @@ namespace VideoForensics.Data.Database.Repositories
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error creating case {CaseNumber}", finalCaseNumber);
+                    _logger.LogError("Error creating case {CaseNumber}: {Message} ({ErrorType})", finalCaseNumber, ex.Message, ex.GetType().Name);
                     throw;
                 }
             }
@@ -418,7 +418,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating case {CaseId}", id);
+                _logger.LogError("Error updating case {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -493,7 +493,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting case scope for {CaseId}", id);
+                _logger.LogError("Error setting case scope for {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -546,7 +546,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error closing case {CaseId}", id);
+                _logger.LogError("Error closing case {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -590,7 +590,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error reopening case {CaseId}", id);
+                _logger.LogError("Error reopening case {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -686,7 +686,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding item to case {CaseId}", caseId);
+                _logger.LogError("Error adding item to case {CaseId}: {Message} ({ErrorType})", caseId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -725,7 +725,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing case item {CaseItemId}", caseItemId);
+                _logger.LogError("Error removing case item {CaseItemId}: {Message} ({ErrorType})", caseItemId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
