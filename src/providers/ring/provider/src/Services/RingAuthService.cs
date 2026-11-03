@@ -319,6 +319,15 @@ namespace VideoForensics.Providers.Ring.Services
             return await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId, cancellationToken);
         }
 
+        /// <inheritdoc />
+        public Task<bool> ValidateStoredCredentialAsync(Guid providerAccountId, CancellationToken cancellationToken = default)
+        {
+            // Validation must reach Ring. A session restored by a sync tick inside the reuse window would otherwise answer
+            // "valid" without decrypting the saved token, so the window entry is dropped first.
+            _ = _lastRestoredUtc.TryRemove(providerAccountId, out _);
+            return RestoreFromSavedCredentialsWithAccountAsync(providerAccountId, cancellationToken);
+        }
+
         public async Task<bool> RestoreFromSavedCredentialsWithAccountAsync(
             Guid? providerAccountId = null,
             CancellationToken cancellationToken = default)

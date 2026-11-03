@@ -166,7 +166,7 @@ else
         try
         {
             bool valid = await MultiProviderAuthService.GetService(Account.ProviderName)
-                .RestoreFromSavedCredentialsAsync(Account.Id, CancellationToken.None);
+                .ValidateStoredCredentialAsync(Account.Id, CancellationToken.None);
             _credentialStatus = valid ? L["CredentialValid"] : L["CredentialInvalidReauthenticate"];
             if (valid)
             {
