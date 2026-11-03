@@ -113,7 +113,7 @@
         <div class="nav-drawer-backdrop" @onclick="@(() => CloseNavDrawerAsync())"></div>
         <div class="nav-drawer">
             <div class="nav-drawer-header">
-                <div style="flex: 1; font-weight: 600; color: #333;">@L["Navigation"]</div>
+                <div style="flex: 1; font-weight: 600; color: var(--bs-emphasis-color);">@L["Navigation"]</div>
                 <SfButton Content="✕" CssClass="drawer-close-button e-flat" OnClick="@CloseNavDrawerAsync" title="@L["CloseNavigation"]" />
             </div>
             <div class="nav-drawer-content">
@@ -140,7 +140,7 @@
         <div class="settings-sheet-backdrop" @onclick="@(() => CloseSettingsSheetAsync())"></div>
         <div class="settings-sheet">
             <div class="settings-sheet-header">
-                <div style="flex: 1; font-weight: 600; color: #333;">@L["Settings"]</div>
+                <div style="flex: 1; font-weight: 600; color: var(--bs-emphasis-color);">@L["Settings"]</div>
                 <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="@CloseSettingsSheetAsync" title="@L["CloseSettings"]" />
             </div>
             <div class="settings-sheet-content">
