@@ -158,4 +158,13 @@
   <data name="CategoryKeys" xml:space="preserve">
     <value>Keys</value>
   </data>
+  <data name="StorageTableHeading" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="StorageTableHint" xml:space="preserve">
+    <value>Click a category for details.</value>
+  </data>
+  <data name="StorageTotalUsed" xml:space="preserve">
+    <value>Total used</value>
+  </data>
 </root>
