@@ -12,7 +12,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [ModuleInitializer]
         internal static void IsolatePointerStore()
         {
-            string root = Path.Combine(Path.GetTempPath(), "vf-test-pointer-" + Guid.NewGuid().ToString("N"));
+            string root = Path.Combine(VideoForensics.Build.TestTempRedirect.Root ?? Path.GetTempPath(), "vf-test-pointer-" + Guid.NewGuid().ToString("N"));
             DatabaseLocationPointerStore.Current = new FileDatabaseLocationPointerStore(root);
         }
     }

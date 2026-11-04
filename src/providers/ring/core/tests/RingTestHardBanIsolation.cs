@@ -17,7 +17,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     {
         /// <summary>Per-process store used for every test in this assembly.</summary>
         internal static readonly FileHardBanStateStore Store = new(
-            Path.Combine(Path.GetTempPath(), "vf-ring-core-tests-" + Guid.NewGuid().ToString("N")));
+            Path.Combine(VideoForensics.Build.TestTempRedirect.Root ?? Path.GetTempPath(), "vf-ring-core-tests-" + Guid.NewGuid().ToString("N")));
 
         /// <summary>
         /// Clears the isolated store and the in-process throttle and ban state. The 429 tests add to that state, and without a reset
