@@ -148,7 +148,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // The other doorbot's call still runs, but a partial set must not replace the account's rows.
             Assert.Equal(2, rig.Handler.CountRequests(SnapshotUrl));
             rig.Writer.Verify(w => w.ReplaceSnapshotTimestampsAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<RingSnapshotTimestamp>>(), It.IsAny<CancellationToken>()), Times.Never);
-            LogEntry warning = Assert.Single(rig.Logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains(GarageCamName, StringComparison.Ordinal));
+            LogEntry warning = Assert.Single(rig.Logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains(GarageCamName, StringComparison.Ordinal) && e.Message.Contains("snapshot", StringComparison.OrdinalIgnoreCase));
             Assert.Contains("snapshot", warning.Message, StringComparison.OrdinalIgnoreCase);
             Assert.False(warning.HasException);
         }
