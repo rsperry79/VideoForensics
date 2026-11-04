@@ -15,4 +15,8 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
+  </ItemGroup>
+
 </Project>
