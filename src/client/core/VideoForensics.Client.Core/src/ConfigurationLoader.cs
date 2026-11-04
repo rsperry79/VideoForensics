@@ -35,6 +35,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.TempDownloadLocation = loadedConfig.TempDownloadLocation;
                 runtimeConfig.LogsLocation = loadedConfig.LogsLocation;
                 runtimeConfig.ReportsLocation = loadedConfig.ReportsLocation;
+                runtimeConfig.KeysLocation = loadedConfig.KeysLocation;
                 runtimeConfig.RedactionLevel = loadedConfig.RedactionLevel;
                 runtimeConfig.KeyStorageProvider = loadedConfig.KeyStorageProvider;
                 runtimeConfig.RetentionDaysDefault = loadedConfig.RetentionDaysDefault;

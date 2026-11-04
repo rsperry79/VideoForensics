@@ -6,6 +6,7 @@ using Xunit;
 
 namespace VideoForensics.Core.Helpers.Tests.Platform
 {
+    [Xunit.Collection("storage-static")]
     public class StorageLocationProviderTests
     {
         private readonly StorageLocationProvider _provider = new();

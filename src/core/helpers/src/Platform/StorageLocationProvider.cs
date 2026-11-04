@@ -45,7 +45,8 @@ public class StorageLocationProvider : IStorageLocationProvider
         // Keys are read before the saved configuration is available, so a relocated Keys folder is read from its pointer.
         if (category == StorageCategory.Keys)
         {
-            string? relocated = KeysLocationPointer.Read(GetDataRoot());
+            // The saved Keys folder wins. The legacy pointer file is read only until the saved value exists.
+            string? relocated = StorageLocationStore.KeysRoot ?? KeysLocationPointer.Read(GetDataRoot());
             if (relocated is not null)
             {
                 return relocated;

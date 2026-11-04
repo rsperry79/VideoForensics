@@ -251,7 +251,7 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task RelocateAsync_KeysMove_CopiesKeysKeepsOriginalsAndRecordsThePointer()
+        public async Task RelocateAsync_KeysMove_CopiesKeysKeepsOriginalsAndSavesTheLocation()
         {
             // Arrange: keys are copied, never moved, and the originals stay until the restart verifies the copies
             string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -278,7 +278,8 @@ namespace VideoForensics.Data.Core.Tests
                 Assert.True(File.Exists(Path.Combine(sourceDir, "master.key")));
                 Assert.Equal("secret", File.ReadAllText(Path.Combine(destDir, "master.key")));
                 Assert.True(File.Exists(Path.Combine(destDir, KeyRelocationManifest.FileName)));
-                Assert.Equal(destDir, KeysLocationPointer.Read(dataRoot));
+                _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(
+                    It.Is<IForensicsConfiguration>(c => c.KeysLocation == destDir), It.IsAny<CancellationToken>()), Times.Once);
             }
             finally
             {
@@ -307,7 +308,9 @@ namespace VideoForensics.Data.Core.Tests
             string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                KeysLocationPointer.Write(dataRoot, @"D:\Keys");
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new ForensicsConfiguration { KeysLocation = @"D:\Keys" });
                 _ = _mockStorageLocationProvider.Setup(x => x.GetDataRoot()).Returns(dataRoot);
 
                 StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);

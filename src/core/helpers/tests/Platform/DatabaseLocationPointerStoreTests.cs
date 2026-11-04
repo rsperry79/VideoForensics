@@ -6,6 +6,7 @@ using Xunit;
 
 namespace VideoForensics.Core.Helpers.Tests.Platform
 {
+    [Xunit.Collection("storage-static")]
     public class DatabaseLocationPointerStore_Tests : IDisposable
     {
         private readonly IDatabaseLocationPointerStore _previous = DatabaseLocationPointerStore.Current;

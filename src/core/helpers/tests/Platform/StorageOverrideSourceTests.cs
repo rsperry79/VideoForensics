@@ -7,6 +7,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
     /// <summary>
     /// Tests that <see cref="StorageLocationProvider"/> takes its per-category overrides from an injected source.
     /// </summary>
+    [Xunit.Collection("storage-static")]
     public class StorageOverrideSourceTests
     {
         private sealed class RecordingOverrideSource : IStorageOverrideSource

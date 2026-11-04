@@ -53,7 +53,7 @@ namespace VideoForensics.Data.Core.Services
                     CurrentPath: effectivePath,
                     // Keys are default until a Keys pointer moves them. They do not follow the default root.
                     IsDefault: category == StorageCategory.Keys
-                        ? KeysLocationPointer.Read(_storageLocationProvider.GetDataRoot()) is null
+                        ? string.IsNullOrWhiteSpace(config.KeysLocation)
                         : string.IsNullOrWhiteSpace(configuredOverride),
                     UsedBytes: usedBytes,
                     FreeBytes: freeBytes,
@@ -175,15 +175,15 @@ namespace VideoForensics.Data.Core.Services
                 }
                 else if (request.Category == StorageCategory.Keys)
                 {
-                    // Keys have no configuration override. Startup reads their folder from this pointer before any key loads.
-                    if (reset)
+                    // The saved Keys folder is read from the database at startup, before any key loads.
+                    config.KeysLocation = reset ? null : newRootPath;
+                    RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                    if (saveFailure is not null)
                     {
-                        KeysLocationPointer.Clear(_storageLocationProvider.GetDataRoot());
+                        return saveFailure;
                     }
-                    else
-                    {
-                        KeysLocationPointer.Write(_storageLocationProvider.GetDataRoot(), newRootPath);
-                    }
+
+                    StorageLocationStore.KeysRoot = config.KeysLocation;
                 }
                 else
                 {

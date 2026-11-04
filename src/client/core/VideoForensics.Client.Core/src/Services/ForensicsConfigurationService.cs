@@ -133,6 +133,7 @@ namespace VideoForensics.Client.Core.Services
                 config.TempDownloadLocation = await GetStringSetting("TempDownloadLocation", config.TempDownloadLocation, cancellationToken);
                 config.LogsLocation = await GetStringSetting("LogsLocation", config.LogsLocation, cancellationToken);
                 config.ReportsLocation = await GetStringSetting("ReportsLocation", config.ReportsLocation, cancellationToken);
+                config.KeysLocation = await GetStringSetting("KeysLocation", config.KeysLocation, cancellationToken);
                 config.RedactionLevel = await GetEnumSetting("RedactionLevel", config.RedactionLevel, cancellationToken);
                 config.KeyStorageProvider = await GetEnumSetting("KeyStorageProvider", config.KeyStorageProvider, cancellationToken);
                 config.RetentionDaysDefault = await GetIntSetting("RetentionDaysDefault", config.RetentionDaysDefault, cancellationToken);
@@ -209,6 +210,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("ReportsLocation", config.ReportsLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("KeysLocation", config.KeysLocation ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("RedactionLevel", config.RedactionLevel.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("KeyStorageProvider", config.KeyStorageProvider.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("RetentionDaysDefault", config.RetentionDaysDefault.ToString(), cancellationToken);
