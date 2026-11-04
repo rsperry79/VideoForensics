@@ -218,6 +218,9 @@
   <data name="Provider Accounts" xml:space="preserve">
     <value>Provider Accounts</value>
   </data>
+  <data name="Manual Sync" xml:space="preserve">
+    <value>Manual Sync</value>
+  </data>
   <data name="API Tester" xml:space="preserve">
     <value>API Tester</value>
   </data>

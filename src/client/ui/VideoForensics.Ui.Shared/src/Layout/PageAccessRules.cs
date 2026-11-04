@@ -54,6 +54,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Permissions setting. Permanent delete is SuperAdminLocal (AccountRemovePanel and the Accounts grid hide it from
                 // others). On the WebApp these pages call repositories in-process, so the guarded repository is the second gate.
                 ["/accounts"] = AccessPolicy.Admin,
+                // Manual sync runs provider pulls on demand from the Sources section: Super Admin only, on any tier.
+                ["/accounts/manual-sync"] = AccessPolicy.SuperAdmin,
                 // Analyze tabs are query-keyed, so each tab has its own row. The first three read the server database
                 // under the paired session (Analyze.razor); jamming can change incidents and recompute stats, so Admin.
                 ["/analyze?analysis=reports"] = AccessPolicy.ReadOnly,
