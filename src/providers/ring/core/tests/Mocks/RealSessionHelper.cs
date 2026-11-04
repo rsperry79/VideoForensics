@@ -1,7 +1,11 @@
+using System.Threading;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Providers.Ring.Services;
 
@@ -36,8 +40,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 
             // Same fixed key-ring location and DAPI protection (Windows-only) as every other host -
             // must match, or a refresh token saved by one host can't be decrypted by another.
-            string dataProtectionKeyPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
+            string dataProtectionKeyPath = new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys);
             _ = Directory.CreateDirectory(dataProtectionKeyPath);
             IDataProtectionBuilder dataProtectionBuilder = services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
@@ -105,39 +108,75 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         /// <summary>The same composition root the helper builds. Live tests that need the saved database resolve repositories from it.</summary>
         public static IServiceProvider Services => ServiceProviderLazy.Value;
 
+        private enum CredentialState
+        {
+            /// <summary>No Ring account in the database holds a refresh token. Live tests skip.</summary>
+            None,
+
+            /// <summary>A refresh token is saved and restores a session. Live tests run.</summary>
+            Usable,
+
+            /// <summary>A refresh token is saved but does not restore. Live tests fail, so a broken login is not hidden.</summary>
+            Broken,
+        }
+
         // Probed once per test process: restoring a session calls the Ring API, so every live test must not repeat it.
-        private static readonly Lazy<bool> CredentialsPresent = new(ProbeSavedCredentials);
+        private static readonly Lazy<CredentialState> CredentialStateLazy = new(ProbeCredentialState);
 
         /// <summary>
-        /// True when the database holds usable Ring credentials. Live tests run whenever this is true and skip
-        /// otherwise, so no environment variable is needed to enable them.
+        /// True when the database holds usable Ring credentials. Live tests run whenever this is true, so no environment
+        /// variable is needed to enable them.
         /// </summary>
         public static bool CredentialsAvailable()
         {
-            return CredentialsPresent.Value;
+            return CredentialStateLazy.Value == CredentialState.Usable;
         }
 
-        /// <summary>Skips the calling test when no Ring credentials are saved in the database.</summary>
+        /// <summary>
+        /// Skips the calling test when no Ring credentials are saved, and fails it when they are saved but do not restore.
+        /// A skip is only for "nothing to test"; saved credentials that no longer work are a failure.
+        /// </summary>
         public static void RequireLive()
         {
-            if (!CredentialsAvailable())
+            switch (CredentialStateLazy.Value)
             {
-                Xunit.Assert.Skip("No Ring credentials in the database. " + SetupPointer);
+                case CredentialState.None:
+                    Xunit.Assert.Skip("No Ring credentials in the database. " + SetupPointer);
+                    break;
+                case CredentialState.Broken:
+                    Xunit.Assert.Fail("Ring credentials are saved in the database but did not restore a session. " + SetupPointer);
+                    break;
             }
         }
 
-        private static bool ProbeSavedCredentials()
+        private static CredentialState ProbeCredentialState()
         {
+            IServiceProvider sp = ServiceProviderLazy.Value;
+            using IServiceScope scope = sp.CreateScope();
+            IProviderAccountRepository accounts = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+            ICredentialRepository credentials = scope.ServiceProvider.GetRequiredService<ICredentialRepository>();
+
+            IReadOnlyList<ProviderAccount> ringAccounts = accounts.ListAsync(CancellationToken.None).GetAwaiter().GetResult();
+            bool hasRefreshToken = false;
+            foreach (ProviderAccount account in ringAccounts.Where(a => a.ProviderName == "Ring"))
+            {
+                IReadOnlyList<Credential> saved = credentials.GetByProviderAccountIdAsync(account.Id, CancellationToken.None).GetAwaiter().GetResult();
+                hasRefreshToken |= saved.Any(c => c.CredentialType == "RefreshToken");
+            }
+
+            if (!hasRefreshToken)
+            {
+                return CredentialState.None;
+            }
+
             try
             {
-                IServiceProvider sp = ServiceProviderLazy.Value;
-                using IServiceScope scope = sp.CreateScope();
-                IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
-                return authService.RestoreFromSavedCredentialsAsync().GetAwaiter().GetResult();
+                IProviderAuthService authService = sp.CreateScope().ServiceProvider.GetRequiredService<IProviderAuthService>();
+                return authService.RestoreFromSavedCredentialsAsync().GetAwaiter().GetResult() ? CredentialState.Usable : CredentialState.Broken;
             }
             catch
             {
-                return false;
+                return CredentialState.Broken;
             }
         }
 

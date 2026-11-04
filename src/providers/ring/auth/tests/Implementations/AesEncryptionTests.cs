@@ -270,7 +270,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             Assert.Equal(16, saltSizeValue);
         }
 
-        [Fact]
+        [Fact(Skip = "Skipped: these tests read and delete the real Keys salt file. Re-enable once the salt path can be injected.")]
         public void AesEncryption_Salt_Persists_AfterFirstCall()
         {
             SetupTestEnvironment();
@@ -298,7 +298,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Skipped: these tests read and delete the real Keys salt file. Re-enable once the salt path can be injected.")]
         public void AesEncryption_Salt_Reuse_SameAcrossCalls()
         {
             SetupTestEnvironment();
