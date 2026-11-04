@@ -35,6 +35,20 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 
         private static IServiceProvider BuildServiceProvider()
         {
+            // Same startup as the hosts: the database is found through the bootstrap pointer, then the saved storage
+            // locations are loaded, before the key ring and the database are used. Without this the helper looks in the
+            // default folders and finds no credentials, so the live tests skip.
+            if (OperatingSystem.IsWindows())
+            {
+                DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
+            }
+
+            var storageProvider = new StorageLocationProvider();
+            SavedStorageSettings saved = new StorageSettingsBootstrap(storageProvider).Read();
+            StorageLocationStore.KeysRoot = saved.KeysRoot;
+            StorageLocationStore.LogsRoot = saved.LogsRoot;
+            StorageLocationStore.DefaultRoot = saved.DefaultRoot;
+
             var services = new ServiceCollection();
             _ = services.AddLogging();
 

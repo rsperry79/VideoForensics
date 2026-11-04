@@ -167,3 +167,4 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-11-04 | test | RingSmallEndpointConfigSync OneSnapshotFails fails: two Garage Cam warnings, one unrelated device-settings warning | predicate too broad | predicate also requires 'snapshot' in message
 2026-11-04 | test | FieldMap (2) fail: location-events ding_id column dropped by migration 20261102082344 | field-map entry stale | entry changed to NotData reason
 2026-11-04 | test | Ring DataProtection key not found after WebApp restart | my test fixes pointed Ring salt tests at the real Keys folder, which wrote keys and salt there; the pinner then pinned Keys to ProgramData | salt tests skipped until the path is injectable; pinner and keys pointer still need a fix
+2026-11-04 | test | Ring.Core UnitTest.GetSnapshotTimestampTest failed once, passed on rerun | live Ring call, cause unknown | none; watch for recurrence
