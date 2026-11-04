@@ -59,16 +59,18 @@
     <Timeline>
         @if (_player is { } player && _flag is not null)
         {
-            @if (_points is { } points)
-            {
-                <BitrateSeriesChart Points="@points" Player="@player" StartUtc="@_clipStartUtc" />
-            }
-
-            <PlaybackTimeline Player="@player"
-                              WindowStartUtc="@_windowStart"
-                              WindowEndUtc="@_windowEnd"
-                              MarkTimes="@_dipTimes"
-                              OnRateChange="@(r => _rate = r)" />
+            <HistogramTimeline Player="@player"
+                               WindowStartUtc="@_windowStart"
+                               WindowEndUtc="@_windowEnd"
+                               MarkTimes="@_dipTimes"
+                               OnRateChange="@(r => _rate = r)">
+                <Histogram>
+                    @if (_points is { } points)
+                    {
+                        <BitrateSeriesChart Points="@points" Player="@player" StartUtc="@_clipStartUtc" />
+                    }
+                </Histogram>
+            </HistogramTimeline>
         }
     </Timeline>
 </FlagReviewShell>

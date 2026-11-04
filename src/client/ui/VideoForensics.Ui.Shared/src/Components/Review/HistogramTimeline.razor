@@ -1,0 +1,49 @@
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Data.Common.Entities
+
+<div class="histogram-timeline" data-testid="histogram-timeline">
+    <PlaybackTimeline Player="@Player"
+                      WindowStartUtc="@WindowStartUtc"
+                      WindowEndUtc="@WindowEndUtc"
+                      Markers="@Markers"
+                      MarkTimes="@MarkTimes"
+                      OnMarkerClick="@OnMarkerClick"
+                      OnRateChange="@OnRateChange" />
+    <div class="histogram-timeline-histogram" data-testid="histogram-timeline-histogram">
+        @Histogram
+    </div>
+</div>
+
+@code {
+    /// <summary>The player driven by the scrub timeline and, through the histogram, its playhead.</summary>
+    [Parameter, EditorRequired]
+    public MediaPlayer Player { get; set; } = default!;
+
+    /// <summary>The start of the timeline window (UTC). The scrub bar's minimum.</summary>
+    [Parameter, EditorRequired]
+    public DateTime WindowStartUtc { get; set; }
+
+    /// <summary>The end of the timeline window (UTC). The scrub bar's maximum.</summary>
+    [Parameter, EditorRequired]
+    public DateTime WindowEndUtc { get; set; }
+
+    /// <summary>Flags to draw on the scrub bar.</summary>
+    [Parameter]
+    public IReadOnlyCollection<MediaFlag> Markers { get; set; } = [];
+
+    /// <summary>Moments to mark on the scrub bar.</summary>
+    [Parameter]
+    public IReadOnlyList<DateTime> MarkTimes { get; set; } = [];
+
+    /// <summary>Raised when a flag marker is clicked.</summary>
+    [Parameter]
+    public EventCallback<MediaFlag> OnMarkerClick { get; set; }
+
+    /// <summary>Raised when the speed button changes the playback rate.</summary>
+    [Parameter]
+    public EventCallback<double> OnRateChange { get; set; }
+
+    /// <summary>The histogram to draw below the scrub timeline. Any chart can be fed here.</summary>
+    [Parameter]
+    public RenderFragment? Histogram { get; set; }
+}
