@@ -132,8 +132,8 @@ Log.Logger = new LoggerConfiguration()
             fileSizeLimitBytes: 256L * 1024 * 1024,
             retainedFileCountLimit: 30,
             shared: true))
-    // Console only: UTC time, the category on its own line above the message, the structured properties left out, and [INF] in green.
-    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}"))
+    // Console only: UTC time, the category on its own line above the message, the structured properties left out, and the level tag and message coloured by level.
+    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console())
     .CreateLogger();
 
 // A fatal exception off the request path (async void, timer, thread pool) only reaches stderr, which a service or container

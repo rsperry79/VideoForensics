@@ -35,10 +35,10 @@ if (!TryParseLevel(options.Level, out LogEventLevel minimumLevel))
     return 1;
 }
 
-// Same output as the WebApp's console sink (Program.cs there): UTC time, category above the message, no properties, [INF] in green.
+// Same output as the WebApp's console sink (Program.cs there): UTC time, category above the message, no properties, level colours.
 Logger logger = new LoggerConfiguration()
     .MinimumLevel.Is(minimumLevel)
-    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}"))
+    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console())
     .CreateLogger();
 
 // Ctrl+C is left to the console: with text selected it copies, as in any console window. Ctrl+D is the exit key.
