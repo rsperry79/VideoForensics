@@ -17,12 +17,27 @@
     font-variant-numeric: tabular-nums;
 }
 
+.histogram-timeline-body {
+    position: relative;
+}
+
+/* The play bar sits on the vertical middle of the histogram. The overlay ignores pointer input except on the bar itself. */
+.playback-timeline-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    pointer-events: none;
+}
+
 .playback-timeline-track {
     position: relative;
     min-width: 0;
+    pointer-events: auto;
 }
 
-/* The marker layer lets the slider underneath take pointer input; only the markers themselves are clickable. */
+/* Spans the full histogram height. Only the markers themselves are clickable. */
 .playback-timeline-markers {
     position: absolute;
     inset: 0;

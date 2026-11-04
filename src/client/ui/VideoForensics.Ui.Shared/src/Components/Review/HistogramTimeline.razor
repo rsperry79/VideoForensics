@@ -20,32 +20,34 @@
                 <span class="playback-timeline-now" data-testid="timeline-now">@L["PlaybackNow", Zone.Format(NowUtc, "yyyy-MM-dd HH:mm:ss")].Value</span>
             }
         </div>
-        <div class="playback-timeline-scrub">
+    </div>
+    <div class="histogram-timeline-body">
+        <div class="histogram-timeline-histogram" data-testid="histogram-timeline-histogram">
+            @Histogram
+        </div>
+        <div class="playback-timeline-overlay">
             <div class="playback-timeline-track">
                 <SfSlider TValue="double" Min="_minSeconds" Max="_maxSeconds" Step="1" Value="_position" Enabled="_maxSeconds > _minSeconds">
                     <SliderEvents TValue="double" ValueChange="OnScrubAsync" />
                 </SfSlider>
-                <div class="playback-timeline-markers">
-                    @foreach (DateTime at in _markTimesInWindow)
-                    {
-                        <span class="playback-timeline-mark" data-testid="timeline-mark" style="left: @MarkTimePercent(at).ToString(CultureInfo.InvariantCulture)%;"></span>
-                    }
-                    @foreach (MediaFlag flag in _markersInWindow)
-                    {
-                        <button type="button"
-                                class="playback-timeline-marker"
-                                data-testid="timeline-marker"
-                                style="left: @MarkerPercent(flag).ToString(CultureInfo.InvariantCulture)%;"
-                                aria-label="@MarkerLabel(flag)"
-                                title="@MarkerLabel(flag)"
-                                @onclick="() => OnMarkerClick.InvokeAsync(flag)"></button>
-                    }
-                </div>
+            </div>
+            <div class="playback-timeline-markers">
+                @foreach (DateTime at in _markTimesInWindow)
+                {
+                    <span class="playback-timeline-mark" data-testid="timeline-mark" style="left: @MarkTimePercent(at).ToString(CultureInfo.InvariantCulture)%;"></span>
+                }
+                @foreach (MediaFlag flag in _markersInWindow)
+                {
+                    <button type="button"
+                            class="playback-timeline-marker"
+                            data-testid="timeline-marker"
+                            style="left: @MarkerPercent(flag).ToString(CultureInfo.InvariantCulture)%;"
+                            aria-label="@MarkerLabel(flag)"
+                            title="@MarkerLabel(flag)"
+                            @onclick="() => OnMarkerClick.InvokeAsync(flag)"></button>
+                }
             </div>
         </div>
-    </div>
-    <div class="histogram-timeline-histogram" data-testid="histogram-timeline-histogram">
-        @Histogram
     </div>
 </div>
 
