@@ -115,6 +115,7 @@ namespace VideoForensics.Utils.SelfTest
             // Windows host: read install-time storage overrides and data directory access from the platform, as the server does.
             VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
             VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+            VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 
             (CliOptions? options, string? parseError) = CliOptions.Parse(args);
             if (parseError != null)

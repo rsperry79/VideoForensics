@@ -35,7 +35,7 @@ public class StorageLocationProvider : IStorageLocationProvider
         // (server, service, utilities) resolves the Database through here, so they all open the moved file.
         if (category == StorageCategory.Database)
         {
-            string? relocated = DatabaseLocationPointer.Read(GetDataRoot());
+            string? relocated = DatabaseLocationPointerStore.Current.Read();
             if (relocated is not null)
             {
                 return relocated;

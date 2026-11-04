@@ -13,6 +13,7 @@ using VideoForensics.Client.Hosting;
 // Windows host: read install-time storage overrides from the registry, as the server does.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
 VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 
 // VideoForensics.Utils.DbSetup: creates/migrates the VideoForensics SQLite database at a specified path,
 // without needing to start the full server. Intended for provisioning a database ahead of first

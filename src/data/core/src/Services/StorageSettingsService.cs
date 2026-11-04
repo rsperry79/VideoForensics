@@ -165,7 +165,7 @@ namespace VideoForensics.Data.Core.Services
                     // Database move in the bootstrap pointer that every startup path reads before opening the database.
                     try
                     {
-                        DatabaseLocationPointer.Write(_storageLocationProvider.GetDataRoot(), newRootPath);
+                        DatabaseLocationPointerStore.Current.Write(newRootPath);
                     }
                     catch (Exception ex)
                     {

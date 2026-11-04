@@ -521,6 +521,9 @@ namespace VideoForensics.Data.Core.Tests
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             _ = Directory.CreateDirectory(tempDir);
+            IDatabaseLocationPointerStore previous = DatabaseLocationPointerStore.Current;
+            var recorder = new RecordingPointerStore();
+            DatabaseLocationPointerStore.Current = recorder;
 
             try
             {
@@ -535,10 +538,11 @@ namespace VideoForensics.Data.Core.Tests
 
                 // Assert
                 Assert.True(result.Succeeded);
-                Assert.Equal(tempDir, DatabaseLocationPointer.Read(dataRoot));
+                Assert.Equal(tempDir, recorder.Written);
             }
             finally
             {
+                DatabaseLocationPointerStore.Current = previous;
                 foreach (string dir in new[] { tempDir, dataRoot })
                 {
                     try
@@ -628,5 +632,17 @@ namespace VideoForensics.Data.Core.Tests
                 catch { }
             }
         }
-    }
+    
+        private sealed class RecordingPointerStore : IDatabaseLocationPointerStore
+        {
+            public string? Written { get; private set; }
+
+            public string? Read() => Written;
+
+            public void Write(string databaseRoot)
+            {
+                Written = databaseRoot;
+            }
+        }
+}
 }
