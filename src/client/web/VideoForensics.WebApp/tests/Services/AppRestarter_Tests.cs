@@ -13,15 +13,17 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         private readonly Mock<IHostApplicationLifetime> _lifetime = new();
 
         [Fact]
-        public void Restart_OutsideAService_StartsAFreshCopyThenStops()
+        public void Restart_OutsideAService_StartsAFreshCopyAfterThisProcessExits()
         {
             var launched = new List<string>();
+            var waitedFor = new List<int>();
             var scheduled = new List<string>();
-            var restarter = new AppRestarter(_lifetime.Object, launched.Add, () => false, name => { scheduled.Add(name); return true; }, @"C:\VideoForensics\WebApp.exe", ["--urls", "http://localhost:5162"]);
+            var restarter = new AppRestarter(_lifetime.Object, (pid, command) => { waitedFor.Add(pid); launched.Add(command); }, () => false, name => { scheduled.Add(name); return true; }, @"C:\VideoForensics\WebApp.exe", ["--urls", "http://localhost:5162"]);
 
             restarter.Restart();
 
             Assert.Single(launched);
+            Assert.Equal(new[] { Environment.ProcessId }, waitedFor);
             Assert.Contains(@"C:\VideoForensics\WebApp.exe", launched[0]);
             Assert.Contains("--urls", launched[0]);
             Assert.Empty(scheduled);
@@ -33,7 +35,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             var launched = new List<string>();
             var scheduled = new List<string>();
-            var restarter = new AppRestarter(_lifetime.Object, launched.Add, () => true, name => { scheduled.Add(name); return true; }, @"C:\VideoForensics\WebApp.exe", []);
+            var restarter = new AppRestarter(_lifetime.Object, (pid, command) => launched.Add(command), () => true, name => { scheduled.Add(name); return true; }, @"C:\VideoForensics\WebApp.exe", []);
 
             restarter.Restart();
 

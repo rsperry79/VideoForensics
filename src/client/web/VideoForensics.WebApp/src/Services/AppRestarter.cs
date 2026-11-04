@@ -17,13 +17,13 @@ namespace VideoForensics.Client.WebApp.Services
     /// </summary>
     public sealed class AppRestarter(
         IHostApplicationLifetime lifetime,
-        Action<string> launch,
+        Action<int, string> launch,
         Func<bool> isWindowsService,
         Func<string, bool> scheduleServiceStart,
         string exePath,
         IReadOnlyList<string> args) : IAppRestarter
     {
-        private const int DelaySeconds = 3;
+        private const int WaitSeconds = 120;
         private const string ServiceName = "VideoForensics";
 
         public void Restart()
@@ -40,7 +40,8 @@ namespace VideoForensics.Client.WebApp.Services
             }
             else
             {
-                launch(string.Join(" ", new[] { exePath }.Concat(args).Select(Quote)));
+                // The copy starts only after this process has exited, so it never races this one for the port.
+                launch(Environment.ProcessId, string.Join(" ", new[] { exePath }.Concat(args).Select(Quote)));
             }
 
             lifetime.StopApplication();
@@ -60,12 +61,12 @@ namespace VideoForensics.Client.WebApp.Services
             return new AppRestarter(lifetime, LaunchDetached, isWindowsService, name => ServiceRestartScheduler.TrySchedule(name), exe, args);
         }
 
-        /// <summary>Starts a shell that waits for this process to exit, then runs the command.</summary>
-        private static void LaunchDetached(string command)
+        /// <summary>Starts a shell that waits for the process to exit, then runs the command. Gives up waiting after two minutes.</summary>
+        private static void LaunchDetached(int processId, string command)
         {
             var info = OperatingSystem.IsWindows()
-                ? new ProcessStartInfo("cmd.exe") { Arguments = $"/c \"timeout /t {DelaySeconds} /nobreak >nul & {command}\"" }
-                : new ProcessStartInfo("/bin/sh") { ArgumentList = { "-c", $"sleep {DelaySeconds}; {command}" } };
+                ? new ProcessStartInfo("cmd.exe") { Arguments = $"/c \"powershell -NoProfile -WindowStyle Hidden -Command \"Wait-Process -Id {processId} -Timeout {WaitSeconds} -ErrorAction SilentlyContinue\" & {command}\"" }
+                : new ProcessStartInfo("/bin/sh") { ArgumentList = { "-c", $"while kill -0 {processId} 2>/dev/null; do sleep 1; done; {command}" } };
 
             info.UseShellExecute = false;
             info.CreateNoWindow = true;
