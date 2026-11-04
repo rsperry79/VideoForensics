@@ -65,15 +65,18 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             Assert.Null(ColoredConsoleSink.ColourFor(LogEventLevel.Verbose));
         }
 
-        [Fact]
-        public void Emit_InformationEntry_WrapsTheWholeLineInGreenThenReset()
+        [Theory]
+        [InlineData(LogEventLevel.Information, Green, "[INF]")]
+        [InlineData(LogEventLevel.Warning, Orange, "[WRN]")]
+        [InlineData(LogEventLevel.Error, Red, "[ERR]")]
+        public void Emit_Entry_ColoursOnlyTheLevelTagAndMessage(LogEventLevel level, string colour, string tag)
         {
             var original = Console.Out;
             var captured = new StringWriter();
             try
             {
                 Console.SetOut(captured);
-                new ColoredConsoleSink(Template).Emit(Event(new DateTimeOffset(2026, 11, 4, 17, 19, 5, TimeSpan.Zero), LogEventLevel.Information));
+                new ColoredConsoleSink().Emit(Event(new DateTimeOffset(2026, 11, 4, 17, 19, 5, TimeSpan.Zero), level));
             }
             finally
             {
@@ -81,8 +84,9 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             }
 
             string text = captured.ToString();
-            Assert.StartsWith(Green, text);
-            Assert.Contains("2026-11-04 17:19:05.000 UTC [INF] hello" + Reset, text);
+            Assert.StartsWith("2026-11-04 17:19:05.000 UTC " + colour + tag + Reset, text);
+            Assert.Contains(colour + "hello" + Reset, text);
+            Assert.DoesNotContain(colour + "2026", text);
         }
     }
 }

@@ -14,10 +14,10 @@ namespace VideoForensics.Core.Logging.Providers
             _inner = inner;
         }
 
-        /// <summary>Console output with UTC time and colour by level (see <see cref="ColoredConsoleSink"/>). The template should print the timestamp without an offset and label it UTC.</summary>
-        public static UtcTimestampSink Console(string outputTemplate)
+        /// <summary>Console output with UTC time and colour by level (see <see cref="ColoredConsoleSink"/>).</summary>
+        public static UtcTimestampSink Console()
         {
-            return new UtcTimestampSink(new ColoredConsoleSink(outputTemplate));
+            return new UtcTimestampSink(new ColoredConsoleSink());
         }
 
         /// <inheritdoc />
