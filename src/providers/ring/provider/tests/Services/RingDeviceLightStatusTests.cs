@@ -81,7 +81,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void UnstoredLog_UnknownLedStringNote_LogsInfoWithDeviceNameKeyAndTypeButNoValue()
+        public void UnstoredLog_UnknownLedStringNote_LogsWarningWithDeviceNameKeyAndTypeButNoValue()
         {
             var logger = new Mock<ILogger>();
             _ = logger.Setup(l => l.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
@@ -89,7 +89,7 @@ namespace VideoForensics.Providers.Ring.Tests
             RingUnstoredValueLog.Log(logger.Object, "Gate", Load("5007"));
 
             logger.Verify(l => l.Log(
-                LogLevel.Information,
+                LogLevel.Warning,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((s, _) => s.ToString()!.Contains("Gate") && s.ToString()!.Contains("led_status") && s.ToString()!.Contains("String") && !s.ToString()!.Contains("bright")),
                 null,
