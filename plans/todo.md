@@ -30,3 +30,4 @@
 - [ ] **Flagged media: nav badge.** No nav badge for unreviewed counts yet.
 - [ ] **Flagged media: mobile layout.** No mobile layout hand-off for the review pages yet.
 - [ ] **Flagged media: Jamming flag decision.** Not recorded yet.
+- [ ] **Combine and remove shared controls.** Review the reusable controls in `.claude/rules/ui-shared.md` (`HistogramTimeline`, `BitrateSeriesChart`, `RssiSeriesChart`, `MediaPlayer`, `TimelineStrip`, `IntervalSecondsInput`, `LocalTimeText`), merge controls that overlap, and delete the ones pages no longer use.
