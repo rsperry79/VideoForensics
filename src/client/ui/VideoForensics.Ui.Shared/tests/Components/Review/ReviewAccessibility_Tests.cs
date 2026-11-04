@@ -85,7 +85,7 @@ public class ReviewAccessibility_Tests : BunitContext
     public void ReviewAccessibility_PlaybackTimeline_MarkersAreNamedButtons()
     {
         IRenderedComponent<MediaPlayer> player = Render<MediaPlayer>();
-        IRenderedComponent<PlaybackTimeline> cut = Render<PlaybackTimeline>(p => p
+        IRenderedComponent<HistogramTimeline> cut = Render<HistogramTimeline>(p => p
             .Add(c => c.Player, player.Instance)
             .Add(c => c.WindowStartUtc, WindowStart)
             .Add(c => c.WindowEndUtc, WindowEnd)
