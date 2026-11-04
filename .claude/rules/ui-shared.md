@@ -18,3 +18,14 @@ paths:
 - Desktop-first. Resizable panels via Syncfusion `SfSplitter`.
 - `Routes.razor` uses `ResponsiveLayout`, which swaps to `MobileLayout` below 600px.
 - Mobile logic goes in `MobileLayout` or `ResponsiveLayout`, never `MainLayout`.
+
+## Reusable controls
+
+Use these before writing a new control. Feed data in through parameters; do not copy a control into a page.
+
+- `Components/Review/HistogramTimeline.razor`: scrub timeline above, any histogram below it via the `Histogram` render fragment. Use for any per-second or per-bucket chart tied to playback.
+- `Components/Review/PlaybackTimeline.razor`: transport (play, back 10 seconds, speed), scrub bar and flag or time markers over a `MediaPlayer`. Size is fixed by the control; do not restyle it per page.
+- `Components/Review/BitrateSeriesChart.razor`: bar histogram of per-second bitrate with dip marks and a playhead. Seeks on click when given a start time.
+- `Components/Viewer/MediaPlayer.razor`: the only video element. Playback, seek and rate go through it.
+- `Components/Viewer/TimelineStrip.razor`: horizontal timeline strip over a time window.
+- `Components/IntervalSecondsInput.razor`, `Components/LocalTimeText.razor`: shared input and time display; use them instead of local copies.
