@@ -143,7 +143,8 @@ static LogEvent? ToLogEvent(string line)
             time,
             ToSerilogLevel(Text(root, "level")),
             null,
-            new MessageTemplateParser().Parse("{Message}"),
+            // The literal format keeps the message text as logged. A plain hole would print a string in quotes.
+            new MessageTemplateParser().Parse("{Message:l}"),
             [
                 new LogEventProperty("SourceContext", new ScalarValue(category)),
                 new LogEventProperty("Message", new ScalarValue(message)),
