@@ -138,14 +138,15 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>
-        /// A device's stream-reported bitrates, oldest first. Estimated and missing bitrates are excluded and only the needed
-        /// columns are read, all in SQL.
+        /// A device's stream-reported bitrates, oldest first. Estimated and missing bitrates are excluded, and so are time-lapse
+        /// roll-ups: they are built from snapshots, so their bitrate is not a camera signal. Only the needed columns are read, all in SQL.
         /// </summary>
         public async Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
+                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
                 .OrderBy(m => m.RecordedAtUtc)
                 .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id))
                 .ToListAsync(ct);

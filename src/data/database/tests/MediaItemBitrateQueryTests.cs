@@ -71,5 +71,21 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(early.Id, rows[0].MediaItemId);
             Assert.Equal(late.Id, rows[2].MediaItemId);
         }
+
+        [Fact]
+        public async Task GetMeasuredBitrateByDeviceAsync_ExcludesTimeLapseRollups_KeepsCameraClips()
+        {
+            var device = Guid.NewGuid();
+            MediaItem clip = Row(device, "clip", Start.AddMinutes(1), 1_000_000, false);
+            MediaItem lapse = Row(device, "lapse", Start.AddMinutes(2), 300_000, false);
+            lapse.MetadataJson = "{\"type\":\"snapshot-rollup\"}";
+            await _repository.AddAsync(clip, CancellationToken.None);
+            await _repository.AddAsync(lapse, CancellationToken.None);
+
+            IReadOnlyList<MeasuredBitrate> rows = await _repository.GetMeasuredBitrateByDeviceAsync(device, CancellationToken.None);
+
+            Assert.Equal(new long[] { 1_000_000 }, rows.Select(r => r.VideoBitrateBps).ToArray());
+            Assert.Equal(clip.Id, rows[0].MediaItemId);
+        }
     }
 }
