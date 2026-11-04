@@ -21,14 +21,18 @@ namespace VideoForensics.Core.Logging.Providers
         /// <inheritdoc />
         public void Format(LogEvent logEvent, TextWriter output)
         {
-            var utcEvent = new LogEvent(
+            _inner.Format(ToUtc(logEvent), output);
+        }
+
+        /// <summary>Copies the event with its timestamp in UTC. The instant is unchanged.</summary>
+        public static LogEvent ToUtc(LogEvent logEvent)
+        {
+            return new LogEvent(
                 logEvent.Timestamp.ToUniversalTime(),
                 logEvent.Level,
                 logEvent.Exception,
                 logEvent.MessageTemplate,
                 logEvent.Properties.Select(p => new LogEventProperty(p.Key, p.Value)));
-
-            _inner.Format(utcEvent, output);
         }
     }
 }
