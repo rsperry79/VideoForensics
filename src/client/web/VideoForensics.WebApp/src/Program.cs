@@ -74,8 +74,11 @@ NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocat
 // Configure Serilog for structured audit logging BEFORE creating the host.
 // Dual-write: file sinks (primary/truth) + IActionLogRepository (secondary/searchable).
 var storageProvider = new StorageLocationProvider();
-// The saved Keys folder comes from the database, read before the Keys reconcile and before any key ring loads.
-VideoForensics.Core.Helpers.Platform.StorageLocationStore.KeysRoot = new VideoForensics.Client.Hosting.StorageSettingsBootstrap(storageProvider).ReadKeysRoot();
+// The saved storage locations come from the database. They are read before the logs folder, the Keys reconcile and the key ring load.
+VideoForensics.Client.Hosting.SavedStorageSettings savedStorage = new VideoForensics.Client.Hosting.StorageSettingsBootstrap(storageProvider).Read();
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.KeysRoot = savedStorage.KeysRoot;
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.LogsRoot = savedStorage.LogsRoot;
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.DefaultRoot = savedStorage.DefaultRoot;
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
 // Finishes a Logs move from the previous run: appends what the old audit file gained after its copy, then removes it.

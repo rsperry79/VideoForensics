@@ -21,6 +21,8 @@ namespace VideoForensics.Client.Common.Contracts
         string? ReportsLocation { get; set; }
         /// <summary>Folder for the Keys store. Null/empty = the default Keys folder under the default storage root.</summary>
         string? KeysLocation { get; set; }
+        /// <summary>The default storage root chosen in the app. Null/empty = the built-in root.</summary>
+        string? DefaultStorageRoot { get; set; }
         RedactionLevel RedactionLevel { get; set; }
         KeyStorageProvider KeyStorageProvider { get; set; }
         int RetentionDaysDefault { get; set; }
@@ -191,6 +193,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string? LogsLocation { get; set; }
         public string? ReportsLocation { get; set; }
         public string? KeysLocation { get; set; }
+        public string? DefaultStorageRoot { get; set; }
         public RedactionLevel RedactionLevel { get; set; } = RedactionLevel.Medium;
         public KeyStorageProvider KeyStorageProvider { get; set; } = KeyStorageProvider.Auto;
         public int RetentionDaysDefault { get; set; } = 180;

@@ -9,5 +9,11 @@ namespace VideoForensics.Core.Helpers.Platform
     {
         /// <summary>The saved Keys folder, or null when none is saved.</summary>
         public static string? KeysRoot { get; set; }
+
+        /// <summary>The saved Logs folder override, or null when none is saved.</summary>
+        public static string? LogsRoot { get; set; }
+
+        /// <summary>The saved default storage root, or null when none is saved.</summary>
+        public static string? DefaultRoot { get; set; }
     }
 }

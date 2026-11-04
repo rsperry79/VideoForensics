@@ -197,15 +197,8 @@ namespace VideoForensics.Data.Core.Services
 
                     if (request.Category == StorageCategory.Logs)
                     {
-                        // Startup reads the Logs folder from this pointer, because the logger starts before the saved configuration can be read.
-                        if (reset)
-                        {
-                            LogsLocationPointer.Clear(_storageLocationProvider.GetDataRoot());
-                        }
-                        else
-                        {
-                            LogsLocationPointer.Write(_storageLocationProvider.GetDataRoot(), newRootPath);
-                        }
+                        // Startup reads the saved Logs folder from the database before the logger opens.
+                        StorageLocationStore.LogsRoot = reset ? null : newRootPath;
                     }
                 }
 
@@ -279,6 +272,25 @@ namespace VideoForensics.Data.Core.Services
                     }
                 }
 
+                // Saved before anything moves. The database is still at the old path this process has open, and it moves with the saved value.
+                var previousOverrides = clearedOverrides.ToDictionary(c => c, c => GetConfigurationOverride(config, c));
+                string? previousDefaultRoot = config.DefaultStorageRoot;
+                foreach (StorageCategory category in clearedOverrides)
+                {
+                    SetConfigurationOverride(config, category, null);
+                }
+
+                config.DefaultStorageRoot = newRoot;
+                try
+                {
+                    await _configurationService.SaveConfigurationAsync(config, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Failed to persist the default storage root {NewRoot}: {ExceptionType} {ErrorMessage}", newRoot, ex.GetType().Name, ex.Message);
+                    return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to save configuration: {ex.Message}", RestartRequired: false);
+                }
+
                 _ = Directory.CreateDirectory(newRoot);
                 if (plan.Any(p => p.Category == StorageCategory.Database))
                 {
@@ -288,6 +300,7 @@ namespace VideoForensics.Data.Core.Services
 
                 var moved = new List<(string OldPath, string NewPath)>();
                 var copiedLogs = new List<string>();
+                string? movedDatabasePath = null;
                 try
                 {
                     foreach ((StorageCategory category, string oldPath, string targetPath) in plan)
@@ -307,26 +320,22 @@ namespace VideoForensics.Data.Core.Services
 
                         await MoveDirectoryContentsAsync(oldPath, targetPath, cancellationToken);
                         moved.Add((oldPath, targetPath));
+                        if (category == StorageCategory.Database)
+                        {
+                            movedDatabasePath = targetPath;
+                        }
+
                         _logger.LogDebug("Moved {Category} to the new default root", category);
                     }
 
-                    // Overrides that pointed under the old root now follow the new default. Saved before the default is recorded.
-                    if (clearedOverrides.Count > 0)
+                    // Recorded last, so a failed move leaves the old root in place for the next start. The bootstrap pointer
+                    // follows a moved database, because startup has to find the database before it reads the saved root.
+                    if (movedDatabasePath is not null)
                     {
-                        foreach (StorageCategory category in clearedOverrides)
-                        {
-                            SetConfigurationOverride(config, category, null);
-                        }
-
-                        RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, clearedOverrides[0], cancellationToken);
-                        if (saveFailure is not null)
-                        {
-                            throw new InvalidOperationException(saveFailure.ErrorMessage);
-                        }
+                        DatabaseLocationPointerStore.Current.Write(movedDatabasePath);
                     }
 
-                    // Recorded last, so a failed move leaves the old root in place for the next start.
-                    DefaultStorageRootPointer.Write(_storageLocationProvider.GetDataRoot(), newRoot);
+                    StorageLocationStore.DefaultRoot = newRoot;
                 }
                 catch (Exception ex)
                 {
@@ -337,6 +346,23 @@ namespace VideoForensics.Data.Core.Services
                     }
 
                     await MoveBackAsync(moved, cancellationToken);
+
+                    // The saved root and overrides were written before the move, so put back the values from before it.
+                    config.DefaultStorageRoot = previousDefaultRoot;
+                    foreach (KeyValuePair<StorageCategory, string?> previous in previousOverrides)
+                    {
+                        SetConfigurationOverride(config, previous.Key, previous.Value);
+                    }
+
+                    try
+                    {
+                        await _configurationService.SaveConfigurationAsync(config, cancellationToken);
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        _logger.LogError("Could not restore the saved configuration after a failed default-root move: {ExceptionType} {ErrorMessage}", restoreEx.GetType().Name, restoreEx.Message);
+                    }
+
                     return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to move storage files: {ex.Message}", RestartRequired: false);
                 }
 

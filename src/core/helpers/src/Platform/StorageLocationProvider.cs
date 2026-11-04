@@ -56,7 +56,8 @@ public class StorageLocationProvider : IStorageLocationProvider
         // The logger starts before the saved configuration can be read, so a relocated Logs folder is read from its pointer.
         if (category == StorageCategory.Logs)
         {
-            string? relocated = LogsLocationPointer.Read(GetDataRoot());
+            // The saved Logs folder wins. The legacy pointer file is read only until the saved value exists.
+            string? relocated = StorageLocationStore.LogsRoot ?? LogsLocationPointer.Read(GetDataRoot());
             if (relocated is not null)
             {
                 return relocated;
@@ -115,7 +116,8 @@ public class StorageLocationProvider : IStorageLocationProvider
     /// <inheritdoc />
     public string GetDefaultStorageRoot()
     {
-        return DefaultStorageRootPointer.Read(GetDataRoot()) ?? GetDataRoot();
+        // The saved default root wins. The legacy pointer file is read only until the saved value exists.
+        return StorageLocationStore.DefaultRoot ?? DefaultStorageRootPointer.Read(GetDataRoot()) ?? GetDataRoot();
     }
 
     /// <inheritdoc />

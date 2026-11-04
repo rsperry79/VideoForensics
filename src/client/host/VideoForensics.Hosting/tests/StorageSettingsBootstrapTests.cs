@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Hosting.Tests
         }
 
         [Fact]
-        public void ReadKeysRoot_SavedValue_ReturnsIt()
+        public void Read_SavedValues_ReturnsAllThree()
         {
             _ = Directory.CreateDirectory(_dbRoot);
             using (var connection = new SqliteConnection("Data Source=" + Path.Combine(_dbRoot, "videoforensics.db")))
@@ -32,23 +32,29 @@ namespace VideoForensics.Client.Hosting.Tests
                 create.CommandText = "CREATE TABLE AppSettings (Key TEXT PRIMARY KEY, Value TEXT)";
                 _ = create.ExecuteNonQuery();
                 using SqliteCommand insert = connection.CreateCommand();
-                insert.CommandText = "INSERT INTO AppSettings (Key, Value) VALUES ('KeysLocation', 'G:/Saved/Keys')";
+                insert.CommandText = "INSERT INTO AppSettings (Key, Value) VALUES ('KeysLocation', 'G:/Saved/Keys'), ('LogsLocation', 'G:/Saved/Logs'), ('DefaultStorageRoot', 'G:/Saved/Root')";
                 _ = insert.ExecuteNonQuery();
             }
 
             DatabaseLocationPointerStore.Current = new FixedPointerStore(_dbRoot);
             var bootstrap = new StorageSettingsBootstrap(new StorageLocationProvider());
 
-            Assert.Equal("G:/Saved/Keys", bootstrap.ReadKeysRoot());
+            SavedStorageSettings saved = bootstrap.Read();
+            Assert.Equal("G:/Saved/Keys", saved.KeysRoot);
+            Assert.Equal("G:/Saved/Logs", saved.LogsRoot);
+            Assert.Equal("G:/Saved/Root", saved.DefaultRoot);
         }
 
         [Fact]
-        public void ReadKeysRoot_NoDatabase_ReturnsNull()
+        public void Read_NoDatabase_ReturnsNulls()
         {
             DatabaseLocationPointerStore.Current = new FixedPointerStore(_dbRoot);
             var bootstrap = new StorageSettingsBootstrap(new StorageLocationProvider());
 
-            Assert.Null(bootstrap.ReadKeysRoot());
+            SavedStorageSettings saved = bootstrap.Read();
+            Assert.Null(saved.KeysRoot);
+            Assert.Null(saved.LogsRoot);
+            Assert.Null(saved.DefaultRoot);
         }
 
         private sealed class FixedPointerStore(string root) : IDatabaseLocationPointerStore

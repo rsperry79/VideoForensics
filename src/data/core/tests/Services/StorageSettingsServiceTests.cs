@@ -176,6 +176,39 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task ChangeDefaultRootAsync_SavesTheDefaultRootInConfiguration()
+        {
+            // The new default root is saved in configuration, not a pointer file, and the save happens before any move
+            string oldRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ForensicsConfiguration();
+
+            try
+            {
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(config);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultStorageRoot()).Returns(oldRoot);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultRoot(It.IsAny<StorageCategory>())).Returns(Path.Combine(oldRoot, "Nothing"));
+
+                RelocateStorageCategoryResult result = await _service.ChangeDefaultRootAsync(newRoot, CancellationToken.None);
+
+                Assert.True(result.Succeeded);
+                _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(
+                    It.Is<IForensicsConfiguration>(c => c.DefaultStorageRoot == newRoot), It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                foreach (string dir in new[] { oldRoot, newRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
         public async Task ChangeDefaultRootAsync_WithLogsOnTheDefaultRoot_CopiesLogsAndKeepsOriginals()
         {
             // Arrange: the audit file is open by the running server, so the default-root move must not delete it
