@@ -226,3 +226,6 @@ artifacts/webapp-debug/
 
 # Syncfusion key written by CI from the SYNCFUSION_LICENSE_KEY secret; never commit
 src/client/web/VideoForensics.WebApp/src/syncfusion-license.key
+
+# Test temp folders, created inside the checkout by test runs and removed with it
+.testtemp/
