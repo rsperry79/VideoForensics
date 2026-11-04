@@ -16,12 +16,12 @@ using Xunit;
 namespace VideoForensics.Client.Ui.Shared.Tests.Components.Review;
 
 /// <summary>The playback timeline: transport controls, speed cycling and flag markers over one media player.</summary>
-public class PlaybackTimeline_Tests : BunitContext
+public class HistogramTimeline_Playback_Tests : BunitContext
 {
     private static readonly DateTime WindowStart = new(2026, 10, 30, 12, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime WindowEnd = new(2026, 10, 30, 12, 5, 0, DateTimeKind.Utc);
 
-    public PlaybackTimeline_Tests()
+    public HistogramTimeline_Playback_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
@@ -44,10 +44,10 @@ public class PlaybackTimeline_Tests : BunitContext
         };
     }
 
-    private IRenderedComponent<PlaybackTimeline> RenderTimeline(IReadOnlyCollection<MediaFlag> markers, EventCallback<MediaFlag> onMarkerClick = default)
+    private IRenderedComponent<HistogramTimeline> RenderTimeline(IReadOnlyCollection<MediaFlag> markers, EventCallback<MediaFlag> onMarkerClick = default)
     {
         IRenderedComponent<MediaPlayer> player = Render<MediaPlayer>();
-        return Render<PlaybackTimeline>(p => p
+        return Render<HistogramTimeline>(p => p
             .Add(c => c.Player, player.Instance)
             .Add(c => c.WindowStartUtc, WindowStart)
             .Add(c => c.WindowEndUtc, WindowEnd)
@@ -58,7 +58,7 @@ public class PlaybackTimeline_Tests : BunitContext
     [Fact]
     public void PlaybackTimeline_Renders_OneMarkerPerFlagInWindow()
     {
-        IRenderedComponent<PlaybackTimeline> cut = RenderTimeline(
+        IRenderedComponent<HistogramTimeline> cut = RenderTimeline(
         [
             Flag(MediaFlagType.RssiDeviation, WindowStart.AddSeconds(60)),
             Flag(MediaFlagType.BitrateCollapse, WindowStart.AddSeconds(120)),
@@ -71,7 +71,7 @@ public class PlaybackTimeline_Tests : BunitContext
     [Fact]
     public void PlaybackTimeline_RateButton_CyclesThroughRates()
     {
-        IRenderedComponent<PlaybackTimeline> cut = RenderTimeline([]);
+        IRenderedComponent<HistogramTimeline> cut = RenderTimeline([]);
         IElement rate = cut.Find("[data-testid=timeline-rate]");
 
         Assert.Contains("1x", rate.TextContent);
@@ -91,7 +91,7 @@ public class PlaybackTimeline_Tests : BunitContext
     {
         MediaFlag flag = Flag(MediaFlagType.RssiDeviation, WindowStart.AddSeconds(60));
         MediaFlag? clicked = null;
-        IRenderedComponent<PlaybackTimeline> cut = RenderTimeline(
+        IRenderedComponent<HistogramTimeline> cut = RenderTimeline(
             [flag],
             EventCallback.Factory.Create<MediaFlag>(this, f => clicked = f));
 

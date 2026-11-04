@@ -12,9 +12,11 @@ using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
+using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -40,6 +42,7 @@ public class RssiReview_Tests : BunitContext
     private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
     private readonly Mock<ILogger<FlagActionsPanel>> _logger = new();
     private readonly Mock<INoteRepository> _notes = new();
+    private readonly Mock<ISignalAnalysisService> _signals = new();
 
     public RssiReview_Tests()
     {
@@ -59,6 +62,9 @@ public class RssiReview_Tests : BunitContext
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddLogging();
         _ = Services.AddSingleton(_notes.Object);
+        _ = Services.AddSingleton(_signals.Object);
+        _ = _signals.Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SignalAnalysis([]));
         _ = _notes.Setup(n => n.ListAsync(NoteTargetKind.MediaFlag, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
         _ = Services.AddScoped<RightPanelContentService>();
 
