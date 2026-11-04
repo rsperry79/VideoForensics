@@ -22,7 +22,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 LocationId = Guid.NewGuid(),
                 ProviderDeviceId = providerDeviceId,
                 Name = "Test Device",
-                Type = "camera"
+                Type = "camera",
+                SnapshotCaptureEnabled = false
             };
         }
 

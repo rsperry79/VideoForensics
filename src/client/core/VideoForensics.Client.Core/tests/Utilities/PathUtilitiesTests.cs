@@ -1,4 +1,5 @@
 using VideoForensics.Client.Core.Utilities;
+using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
 
@@ -18,10 +19,10 @@ namespace VideoForensics.Client.Core.Tests.Utilities
         }
 
         [Fact]
-        public void GetDefaultDownloadLocation_ContainsProgramDataFolder()
+        public void GetDefaultDownloadLocation_IsUnderDefaultStorageRoot()
         {
             string result = PathUtilities.GetDefaultDownloadLocation();
-            string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            string programDataPath = new StorageLocationProvider().GetDefaultStorageRoot();
 
             // On Windows, paths should start with ProgramData; on Linux they should use /var/lib
             if (OperatingSystem.IsWindows())
@@ -63,10 +64,10 @@ namespace VideoForensics.Client.Core.Tests.Utilities
         }
 
         [Fact]
-        public void GetDefaultQueryExportLocation_ContainsProgramDataFolder()
+        public void GetDefaultQueryExportLocation_IsUnderDefaultStorageRoot()
         {
             string result = PathUtilities.GetDefaultQueryExportLocation();
-            string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            string programDataPath = new StorageLocationProvider().GetDefaultStorageRoot();
 
             // On Windows, paths should start with ProgramData; on Linux they should use /var/lib
             if (OperatingSystem.IsWindows())

@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring.Implementations;
 
 namespace VideoForensics.Providers.Ring.Auth.Tests
@@ -285,9 +286,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 // Call DeriveKey via encryption to trigger salt creation
                 // The salt should be created in the default location
                 string saltPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
-                    "Keys",
+                    new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys),
                     "ring-credential-salt.bin");
 
                 // Assert
@@ -313,9 +312,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 // Act
                 // Get the salt path that will be used
                 string saltPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
-                    "Keys",
+                    new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys),
                     "ring-credential-salt.bin");
 
                 // Ensure clean state

@@ -1902,7 +1902,7 @@
   "location-events:events[].device_placement.area": "RingEventDevicePlacements.Area",
   "location-events:events[].device_placement.room": "RingEventDevicePlacements.Room",
   "location-events:events[].device_placement.zone_id": "RingEventDevicePlacements.ZoneId",
-  "location-events:events[].ding_id": "RingLocationEvents.DingId",
+  "location-events:events[].ding_id": "NotData:RingLocationEvents.DingId was dropped (migration DropLocationDingIdAddDoorbotEventLink); the doorbot event link replaces it",
   "location-events:events[].ding_id_str": "RingLocationEvents.DingIdString",
   "location-events:events[].doorbot.description": "RingEventDoorbots.Description",
   "location-events:events[].doorbot.id": "RingEventDoorbots.DoorbotId",
