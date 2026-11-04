@@ -85,8 +85,20 @@ public class NavGroups_Tests
 
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         var sourceItems = group.Items.Where(i => i.Section == "Sources").ToList();
-        Assert.Equal(new[] { "/accounts", "/query" }, sourceItems.Select(i => i.Path).ToList());
+        Assert.Equal(new[] { "/accounts", "/accounts/manual-sync", "/query" }, sourceItems.Select(i => i.Path).ToList());
         Assert.DoesNotContain(group.Items, i => i.Path == "/query/api-tester" || i.Path == "/tools/ring-selftest" || i.Path == "/devices/config");
+    }
+
+    [Fact]
+    public void Sources_ManualSync_RequiresSuperAdminOnAnyTier()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem manualSyncItem = group.Items.First(i => i.Path == "/accounts/manual-sync");
+
+        Assert.Equal("Manual Sync", manualSyncItem.Text);
+        Assert.False(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: false)));
     }
 
     [Fact]

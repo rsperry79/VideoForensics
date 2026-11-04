@@ -105,6 +105,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Reports", "/settings/reports", Section: "General"),
 
                 new("Provider Accounts", "/accounts", Section: "Sources"),
+                new("Manual Sync", "/accounts/manual-sync", Section: "Sources"),
                 new("Query API", "/query", Section: "Sources"),
 
                 new("Network Access", "/settings/network", Section: "System & Network"),
