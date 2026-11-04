@@ -87,7 +87,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void UnstoredLog_UnknownFeatureKeys_LogsInfoWithDeviceNameAndNoValue()
+        public void UnstoredLog_UnknownFeatureKeys_LogsWarningWithDeviceNameAndNoValue()
         {
             var logger = new Mock<ILogger>();
             _ = logger.Setup(l => l.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
@@ -95,7 +95,7 @@ namespace VideoForensics.Providers.Ring.Tests
             RingUnstoredValueLog.Log(logger.Object, "Gate", Load("device-features-unknown-keys.json", "6001"));
 
             logger.Verify(l => l.Log(
-                LogLevel.Information,
+                LogLevel.Warning,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((s, _) => s.ToString()!.Contains("Gate") && s.ToString()!.Contains("features.mystery_flag") && !s.ToString()!.Contains("SECRETVALUE")),
                 null,
