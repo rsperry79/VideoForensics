@@ -5,7 +5,9 @@
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services.Signal
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -13,6 +15,7 @@
 @inject IMediaItemRepository MediaItemRepository
 @inject IMediaContentUrlProvider MediaContentUrls
 @inject IDeviceRepository DeviceRepository
+@inject ISignalAnalysisService Signals
 @inject IStringLocalizer<SharedResources> L
 
 <PageRightPanelContent>
@@ -55,11 +58,15 @@
     <Timeline>
         @if (_player is { } player && _flag is not null)
         {
-            <PlaybackTimeline Player="@player"
-                              WindowStartUtc="@_windowStart"
-                              WindowEndUtc="@_windowEnd"
-                              Markers="@_markers"
-                              OnRateChange="@(r => _rate = r)" />
+            <HistogramTimeline Player="@player"
+                               WindowStartUtc="@_windowStart"
+                               WindowEndUtc="@_windowEnd"
+                               Markers="@_markers"
+                               OnRateChange="@(r => _rate = r)">
+                <Histogram>
+                    <RssiSeriesChart Readings="@_readings" WindowStartUtc="@_windowStart" WindowEndUtc="@_windowEnd" Player="@player" />
+                </Histogram>
+            </HistogramTimeline>
         }
     </Timeline>
 </FlagReviewShell>
@@ -91,6 +98,7 @@
     private DateTime _windowStart;
     private DateTime _windowEnd;
     private IReadOnlyCollection<MediaFlag> _markers = [];
+    private IReadOnlyList<SignalSample> _readings = [];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -111,6 +119,7 @@
         _player = null;
         _source = null;
         _markers = [];
+        _readings = [];
         _state = MediaFitState.FlagNotFound;
         try
         {
@@ -157,6 +166,9 @@
                 _windowStart = clip.RecordedAtUtc;
                 _windowEnd = clip.RecordedAtUtc.AddSeconds(seconds);
             }
+
+            SignalAnalysis analysis = await Signals.AnalyzeAsync([flag.DeviceId], _windowStart, _windowEnd, ct);
+            _readings = analysis.Devices.FirstOrDefault(d => d.DeviceId == flag.DeviceId)?.Readings ?? [];
         }
         catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
         {

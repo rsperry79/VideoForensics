@@ -1130,6 +1130,12 @@
   <data name="RssiReviewTitle" xml:space="preserve">
     <value>Signal flag review</value>
   </data>
+  <data name="RssiSeriesChartLabel" xml:space="preserve">
+    <value>Signal strength histogram</value>
+  </data>
+  <data name="RssiSeriesEmpty" xml:space="preserve">
+    <value>No signal readings in this window.</value>
+  </data>
   <data name="NotesHeading" xml:space="preserve">
     <value>Notes</value>
   </data>
