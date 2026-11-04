@@ -114,8 +114,8 @@ Log.Logger = new LoggerConfiguration()
         .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
         // Text format: human-readable with structured properties appended
         .WriteTo.File(
+            new VideoForensics.Core.Logging.Providers.UtcConsoleFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"),
             path: Path.Combine(logsDir, "audit-.txt"),
-            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
             rollingInterval: RollingInterval.Day,
             // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
             rollOnFileSizeLimit: true,
