@@ -7,6 +7,8 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -325,6 +327,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             DateTimeOffset attemptedAt = _time.GetUtcNow();
             SnapshotCaptureAttempt attempt;
 
+            // Read before the call, because the call writes this attempt's health row. Offline is a health transition, so the
+            // alert needs the reading that was current before this attempt.
+            DeviceHealth? previousHealth = sp.GetService<IDeviceHealthRepository>() is { } healthRepository
+                ? await healthRepository.GetLatestAsync(device.Id, ct)
+                : null;
+
             try
             {
                 attempt = await provider.CaptureAsync(account.Id, device.ProviderDeviceId, device.Id, SettleDelay, ct);
@@ -425,24 +433,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 case 200:
                     counts.Captured++;
-                    if (device.IsOnline == false)
-                    {
-                        // A frame from a camera marked offline means it is back. Mark it online so it is captured every interval again.
-                        device.IsOnline = true;
-                        await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
-                    }
                     break;
                 case 404:
-                    // Ring has no frame for the camera even after the refresh and re-reads, so it is not reporting. Mark it
-                    // offline so the next ticks skip it instead of logging an error each time. Device health sync sets
-                    // IsOnline again once Ring reports the camera connected.
-                    bool wasOnline = device.IsOnline != false;
-                    _logger.LogInformation("Snapshot capture for {DeviceName} on {AccountName}: Ring has no frame, so the device is marked offline", device.Name, accountName);
-                    device.IsOnline = false;
-                    await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
-                    if (wasOnline)
+                    // Ring has no frame. Offline is decided by the health reading, not by a missing frame, so this leaves the
+                    // device's state alone. A 404 while Ring reports the camera connected is a bug.
+                    if (attempt.Connected == true)
                     {
-                        await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
+                        _logger.LogError("Snapshot capture for {DeviceName} on {AccountName} got HTTP 404 while Ring reports the device connected; this is a bug", device.Name, accountName);
                     }
                     counts.Failed++;
                     break;
@@ -464,6 +461,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     device.Name, accountName, connected ? "online" : "offline");
                 device.IsOnline = connected;
                 await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
+            }
+
+            if (attempt.Connected == false && previousHealth is { IsOnline: true })
+            {
+                await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
             }
         }
 
@@ -552,7 +554,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>
-        /// Raises the DeviceOffline alert when a camera is found offline by a 404. The link opens the account's sync page, where the
+        /// Raises the DeviceOffline alert when a health reading turns a camera offline. The link opens the account's sync page, where the
         /// device's polling mode is set. A dispatch failure is logged and never fails the capture.
         /// </summary>
         private async Task RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
@@ -571,7 +573,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     OperatorId: null,
                     PairedDeviceId: device.Id,
                     SourceIp: null,
-                    Details: $"{device.Name} went offline: Ring has no snapshot for it",
+                    Details: $"{device.Name} went offline",
                     Audience: NotificationAudience.AdminsOnly,
                     Severity: NoticeSeverity.Alert,
                     ActionPath: $"/accounts/{accountId}/sync"), ct);

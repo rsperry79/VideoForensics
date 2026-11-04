@@ -8,6 +8,7 @@ using System.Globalization;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
@@ -43,6 +44,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
         private readonly Mock<INotificationDispatcher> _dispatcher = new();
+        private readonly Mock<IDeviceHealthRepository> _health = new();
         private readonly List<SnapshotCapture> _rows = [];
 
         // The provider's offline rule, resolved keyed by provider name. Tests can swap it before building the provider.
@@ -118,6 +120,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             public List<string> Messages { get; } = [];
 
+            public List<string> Errors { get; } = [];
+
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
             public bool IsEnabled(LogLevel logLevel) => true;
@@ -125,6 +129,10 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
                 Messages.Add(formatter(state, exception));
+                if (logLevel == LogLevel.Error)
+                {
+                    Errors.Add(formatter(state, exception));
+                }
             }
         }
 
@@ -187,6 +195,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             _ = services.AddSingleton(_budget.Object);
             _ = services.AddSingleton(_dispatcher.Object);
+            _ = services.AddSingleton(_health.Object);
             _ = services.AddSingleton(_configuration.Object);
             return services.BuildServiceProvider();
         }
@@ -275,12 +284,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
 
         [Fact]
-        public async Task RunOneTickAsync_OfflineDevice_ProbesOnStartupAndMarksOnlineWhenFrameArrives()
+        public async Task RunOneTickAsync_OfflineDevice_ProbesOnStartupAndMarksOnlineWhenHealthSaysConnected()
         {
-            // At startup an offline camera is probed once, so a camera that came back is captured without waiting for health sync.
+            // At startup an offline camera is probed once. Online state comes from the health reading, so a frame alone changes nothing.
             Device device = AddDevice("12345", isOnline: false);
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), true));
 
             await RunTickAsync();
 
@@ -290,12 +299,15 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_NotFound_RaisesOneOfflineAlertLinkedToTheAccountSyncPage()
+        public async Task RunOneTickAsync_HealthSaysOfflineOnTransition_RaisesOneOfflineAlertLinkedToTheAccountSyncPage()
         {
-            // The alert fires on the transition to offline only. Repolls that still get a 404 do not alert again.
+            // Offline comes from health only. The alert fires when the health reading turns from online to offline, not on each repoll.
             _ = AddDevice("12345", isOnline: true);
+            _ = _health.SetupSequence(h => h.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DeviceHealth { IsOnline = true })
+                .ReturnsAsync(new DeviceHealth { IsOnline = false });
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null, Guid.NewGuid(), false));
 
             await RunTickAsync();
             _time.Now = T0.AddMinutes(11);
@@ -503,18 +515,32 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_NotFound_MarksDeviceOfflineAndSkipsItOnNextTick()
+        public async Task RunOneTickAsync_NotFoundWithoutHealthReading_LeavesOnlineStateAlone()
         {
-            // Ring has no frame for a camera that is not reporting, so a 404 marks it offline and the next tick skips it.
-            Device device = AddDevice("12345");
+            // Offline comes only from health. A 404 with no connected reading is not evidence the camera went offline.
+            Device device = AddDevice("12345", isOnline: true);
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
 
             await RunTickAsync();
-            _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == false), It.IsAny<CancellationToken>()), Times.Once);
 
-            await RunTickAsync();
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(device.IsOnline);
+            _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == false), It.IsAny<CancellationToken>()), Times.Never);
+            _dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NotFoundWhileHealthSaysConnected_LogsBugError()
+        {
+            // A 404 for a camera Ring reports connected is a bug in the capture path, so it is logged as an error.
+            _ = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null, Guid.NewGuid(), true));
+            var logs = new CapturingLogger<SnapshotCaptureService>();
+
+            await RunTickAsync(logs);
+
+            Assert.Single(logs.Errors, m => m.Contains("404") && m.Contains("bug"));
         }
 
         [Fact]
