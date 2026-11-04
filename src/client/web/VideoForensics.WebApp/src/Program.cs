@@ -80,6 +80,8 @@ Directory.CreateDirectory(logsDir);
 VideoForensics.Data.Core.Services.LogRelocationManifest.Reconcile(logsDir);
 // Verifies each copied key against its recorded hash, then removes the original. Keys must not load before this runs.
 VideoForensics.Data.Core.Services.KeyRelocationManifest.Reconcile(storageProvider.GetDefaultRoot(StorageCategory.Keys));
+// Pins keys still on the data root when the Keys default moved, so they are not looked for on the new drive. Runs after the reconcile.
+VideoForensics.Data.Core.Services.KeysLocationPinner.Pin(storageProvider.GetDataRoot(), storageProvider.GetPlatformDefaultRoot(StorageCategory.Keys));
 
 // The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
 ServerLogLevel serverLogLevel = new();
