@@ -52,8 +52,9 @@
   </ItemGroup>
 
   <!-- Visual Studio Debug builds stage themselves for the installed service, which applies the package and restarts.
+       Off unless StageDebugBuild=true is set (for example in the user environment), so ordinary builds do not restart the server.
        Command-line builds, including the test projects, do not stage. -->
-  <Target Name="StageDebugBuildForService" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' == 'true'">
+  <Target Name="StageDebugBuildForService" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' == 'true' And '$(StageDebugBuild)' == 'true'">
     <Exec Command="wscript.exe //B //Nologo &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.vbs&quot; &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.ps1&quot; &quot;$(MSBuildProjectFullPath)&quot; $(Configuration) &quot;$(ProjectDir)$(IntermediateOutputPath)stage-debug-build.log&quot;" />
   </Target>
 
