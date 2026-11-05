@@ -14,6 +14,37 @@ namespace VideoForensics.Data.Core.Tests
     public class StorageDefaultPath_Tests
     {
         [Fact]
+        public void GetDefaultStorageRoot_SavedSettingsReadWithoutDefaultRow_UsesDefaultRootPointer()
+        {
+            // The database lives under the default storage root, so the pointer must still be read when the saved
+            // DefaultStorageRoot row is absent. Ignoring it sends startup to the empty database on the system drive.
+            string dataRoot = Path.Combine(Path.GetTempPath(), "vf-data-" + Guid.NewGuid().ToString("N"));
+            string pointedRoot = Path.Combine(Path.GetTempPath(), "vf-pointed-" + Guid.NewGuid().ToString("N"));
+            string? previousDefault = StorageLocationStore.DefaultRoot;
+            bool previousSaved = StorageLocationStore.SavedSettingsRead;
+
+            try
+            {
+                DefaultStorageRootPointer.Write(dataRoot, pointedRoot);
+                StorageLocationStore.DefaultRoot = null;
+                StorageLocationStore.SavedSettingsRead = true;
+
+                var provider = new StorageLocationProvider(new NullStorageOverrideSource(), dataRoot);
+
+                Assert.Equal(pointedRoot, provider.GetDefaultStorageRoot());
+            }
+            finally
+            {
+                StorageLocationStore.DefaultRoot = previousDefault;
+                StorageLocationStore.SavedSettingsRead = previousSaved;
+                if (Directory.Exists(dataRoot))
+                {
+                    Directory.Delete(dataRoot, recursive: true);
+                }
+            }
+        }
+
+        [Fact]
         public async Task GetStatusAsync_EveryDefaultCategory_CurrentPathMatchesPlatformDefault()
         {
             // A category reported as default must show the folder it actually uses, which is root\<Category> under

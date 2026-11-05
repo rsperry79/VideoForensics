@@ -121,8 +121,9 @@ public class StorageLocationProvider : IStorageLocationProvider
     /// <inheritdoc />
     public string GetDefaultStorageRoot()
     {
-        // The saved default root wins. Once saved settings were read, a null here means default, so a stale pointer is ignored.
-        return StorageLocationStore.DefaultRoot ?? LegacyPointer(() => DefaultStorageRootPointer.Read(GetDataRoot())) ?? GetDataRoot();
+        // The saved default root wins. The pointer is still read when no row is saved: the default root is where the
+        // database itself lives, so it has to be found before the saved settings can be read.
+        return StorageLocationStore.DefaultRoot ?? DefaultStorageRootPointer.Read(GetDataRoot()) ?? GetDataRoot();
     }
 
     /// <summary>
