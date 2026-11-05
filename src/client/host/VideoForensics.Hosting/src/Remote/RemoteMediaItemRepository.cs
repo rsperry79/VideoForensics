@@ -64,13 +64,17 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         /// <summary>Paged clip listing for the media viewer, served by the server's <c>/media-items/page</c> endpoint.</summary>
         public async Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
-            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct, bool videoOnly = false)
         {
             var parameters = deviceIds.Select(id => $"deviceIds={id:D}").ToList();
             parameters.Add($"from={Uri.EscapeDataString(fromUtc.ToString("o"))}");
             parameters.Add($"to={Uri.EscapeDataString(toUtc.ToString("o"))}");
             parameters.Add($"skip={skip}");
             parameters.Add($"take={take}");
+            if (videoOnly)
+            {
+                parameters.Add("videoOnly=true");
+            }
 
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items/page?" + string.Join('&', parameters), ct);
             _ = response.EnsureSuccessStatusCode();

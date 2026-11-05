@@ -80,7 +80,8 @@ public sealed class ReviewClipLoader : IReviewClipLoader
     {
         // The query sorts oldest first. Learn the total, then start at the newest clips that fit the cap: the timeline
         // must cover the present, where the cursor usually sits, and the oldest clips are the ones left out.
-        MediaItemPage probe = await _mediaItems.GetPageByDevicesAndDateRangeAsync(chunk, fromUtc, toUtc, 0, 1, ct);
+        // Only playable video counts toward the cap; stills and snapshots are filtered in the query, not here.
+        MediaItemPage probe = await _mediaItems.GetPageByDevicesAndDateRangeAsync(chunk, fromUtc, toUtc, 0, 1, ct, videoOnly: true);
         int total = probe.TotalCount;
         int remaining = MaxItems - items.Count;
         int skip = Math.Max(0, total - remaining);
@@ -88,7 +89,7 @@ public sealed class ReviewClipLoader : IReviewClipLoader
         while (skip < total)
         {
             MediaItemPage page = await _mediaItems.GetPageByDevicesAndDateRangeAsync(
-                chunk, fromUtc, toUtc, skip, Math.Min(PageSize, total - skip), ct);
+                chunk, fromUtc, toUtc, skip, Math.Min(PageSize, total - skip), ct, videoOnly: true);
             if (page.Items.Count == 0)
             {
                 break;

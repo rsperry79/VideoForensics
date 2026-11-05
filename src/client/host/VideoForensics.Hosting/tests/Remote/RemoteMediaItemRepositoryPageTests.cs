@@ -113,6 +113,35 @@ public class RemoteMediaItemRepositoryPageTests
     }
 
     [Fact]
+    public async Task RemoteMediaItemRepository_GetPage_VideoOnly_AddsVideoOnlyQueryParameter()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new MockHttpMessageHandler(async request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+        var repo = new RemoteMediaItemRepository(httpClient);
+
+        _ = await repo.GetPageByDevicesAndDateRangeAsync(
+            new[] { Guid.NewGuid() },
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+            skip: 0, take: 10, CancellationToken.None, videoOnly: true);
+
+        Assert.NotNull(capturedRequest);
+        Dictionary<string, List<string>> query = ParseQuery(capturedRequest!.RequestUri!);
+        Assert.Equal(new[] { "true" }, query["videoOnly"]);
+    }
+
+    [Fact]
     public async Task RemoteMediaItemRepository_GetPage_ResponseItemsAndTotal_MapToMediaItemPage()
     {
         Guid idOne = Guid.NewGuid();

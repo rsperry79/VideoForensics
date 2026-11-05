@@ -505,6 +505,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// - deviceIds (1..64) and from/to (from must be &lt;= to) are required
         /// - skip defaults to 0, must be &gt;= 0
         /// - take defaults to 100, must be 1..500
+        /// - videoOnly defaults to false; when true, only video clips are counted and returned
         /// </summary>
         public static async Task<IResult> ListMediaItemPageAsync(
             Guid[]? deviceIds,
@@ -512,6 +513,7 @@ namespace VideoForensics.Client.WebApp.Api
             DateTime? to,
             int? skip,
             int? take,
+            bool? videoOnly,
             IMediaItemRepository mediaItems,
             CancellationToken ct)
         {
@@ -537,7 +539,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             MediaItemPage page = await mediaItems.GetPageByDevicesAndDateRangeAsync(
-                deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct);
+                deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct, videoOnly ?? false);
 
             return Results.Ok(new MediaItemPageDto([.. page.Items.Select(x => x.ToDto())], page.TotalCount));
         }
