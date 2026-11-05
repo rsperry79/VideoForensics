@@ -78,6 +78,12 @@ namespace VideoForensics.Data.Core.Services
             && (media.MetadataJson is null || !media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal));
         }
 
+        /// <summary>True for a roll-up time-lapse loop, whose duration is the window it covers.</summary>
+        private static bool IsRollUpLoop(MediaItem media)
+        {
+            return media.MetadataJson is not null && media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal);
+        }
+
         /// <inheritdoc />
         public async Task AnalyzeAsync(Guid mediaItemId, CancellationToken ct)
         {
@@ -101,7 +107,12 @@ namespace VideoForensics.Data.Core.Services
             if (bitrate is not null)
             {
                 media.VideoBitrateBps = bitrate.VideoBitrateBps;
-                media.DurationSeconds = bitrate.DurationSeconds;
+                // A roll-up loop's duration is its real window, set when it is recorded. The MP4's playback length is not that.
+                if (!IsRollUpLoop(media))
+                {
+                    media.DurationSeconds = bitrate.DurationSeconds;
+                }
+
                 media.BitrateEstimated = bitrate.BitrateEstimated;
                 media.BitrateAnalyzedAtUtc = DateTime.UtcNow;
                 media.VideoCodec = bitrate.VideoCodec;
