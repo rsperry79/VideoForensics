@@ -29,7 +29,7 @@
         <small style="font-weight: bold;">@L["FilterAccount"]</small>
         <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
             Placeholder="@L["AllAccounts"]" data-testid="manual-sync-account-filter"
-            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
+            ValueChanged="@OnAccountFilterChanged">
             <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
         </SfDropDownList>
     </div>
@@ -288,9 +288,10 @@ else
         }
     }
 
-    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    /// <summary>Stores the account the user picked. The value is the account's id as text, bound the same way as the other pages' dropdowns.</summary>
+    private void OnAccountFilterChanged(string value)
     {
-        _accountFilterValue = args.Value ?? string.Empty;
+        _accountFilterValue = value ?? string.Empty;
     }
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)
