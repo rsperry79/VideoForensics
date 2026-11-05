@@ -102,7 +102,7 @@ else
                 @if (live)
                 {
                     <div class="live-view-container">
-                        <MediaPlayer Live="true" ElementId="liveViewPlayer" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" />
+                        <MediaPlayer Live="true" ElementId="liveViewPlayer" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" Fit="MediaFitMode.Cover" />
                     </div>
                 }
                 else if (_stills.TryGetValue(id, out string? url) && !string.IsNullOrEmpty(url))
@@ -503,7 +503,8 @@ else
     display: block;
     width: 100%;
     height: auto;
-    object-fit: contain;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
 }
 
 .live-view-empty {
@@ -532,6 +533,6 @@ div.live-view-container > div.media-player {
 .live-view-video {
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain;
+    object-fit: cover;
 }
 </style>
