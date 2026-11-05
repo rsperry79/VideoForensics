@@ -286,7 +286,8 @@ namespace VideoForensics.Data.Database.Repositories
             IQueryable<Event> matches = db.Events
                 .AsNoTracking()
                 .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType)
-                    && (included.Length == 0 || included.Contains(e.EventType)
+                    && (included.Length == 0
+                        || (included.Contains(e.EventType) && !(e.EventType == "motion" && db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && d.DetectionType != "motion" && d.DetectionType != "other_motion")))
                         || db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && included.Contains(d.DetectionType))));
 
             int total = await matches.CountAsync(ct);
