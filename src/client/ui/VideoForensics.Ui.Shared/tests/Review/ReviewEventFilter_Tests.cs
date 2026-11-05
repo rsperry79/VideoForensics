@@ -86,6 +86,22 @@ public class ReviewEventFilter_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewEventFilter_AllToggledOff_SelectsEveryType()
+    {
+        // Arrange: "All events" is on (nothing selected), so the user switches it off.
+        IRenderedComponent<ReviewEventFilter> cut = RenderFilter();
+        cut.Find("[data-testid='review-event-button']").Click();
+
+        // Act
+        cut.Find("[data-testid='review-event-all']").Change(false);
+
+        // Assert: switching All off checks every other box, so the selection is every selectable type.
+        cut.WaitForAssertion(() => Assert.True(
+            ReviewState.EventTypes.Count == ReviewEventFilters.SelectableEventTypes.Count
+            && ReviewEventFilters.SelectableEventTypes.All(ReviewState.EventTypes.Contains)));
+    }
+
+    [Fact]
     public void ReviewEventFilter_OneSelected_ButtonNamesIt_TwoSelected_ButtonCountsThem()
     {
         // Arrange

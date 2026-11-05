@@ -94,15 +94,13 @@
         _debounce.Schedule();
     }
 
-    // "All events" is the empty selection, so switching it on clears every choice.
+    // "All events" is the empty selection, so switching it on clears every choice. Switching it off checks every type,
+    // which is the same as nothing being filtered out, so the switch and the boxes always agree.
     private void OnAllChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
         bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
-        if (on)
-        {
-            _pending = [];
-            _debounce.Schedule();
-        }
+        _pending = on ? [] : ReviewEventFilters.SelectableEventTypes.ToHashSet();
+        _debounce.Schedule();
     }
 
     private void ApplyPending()
