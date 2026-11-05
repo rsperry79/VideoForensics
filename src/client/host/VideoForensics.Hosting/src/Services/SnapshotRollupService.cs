@@ -30,6 +30,9 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>Metadata written on each roll-up loop row. The Devices tab reads it to pick the latest loop.</summary>
         public const string SnapshotRollupMarker = "{\"type\":\"snapshot-rollup\"}";
 
+        /// <summary>Event type of the row each loop writes to the Events table. The Events tab shows it as Time Lapse.</summary>
+        public const string TimelapseEventType = "timelapse";
+
         /// <summary>The loop's frames are each held at least this long; the builder rounds to whole seconds.</summary>
         private static readonly TimeSpan MinimumHold = TimeSpan.FromSeconds(1);
 
@@ -39,6 +42,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IProviderAccountRepository _accounts;
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
+        private readonly IEventRepository _events;
         private readonly ITimelineVideoBuilder _builder;
         private readonly ILogger<SnapshotRollupService> _logger;
 
@@ -56,6 +60,7 @@ namespace VideoForensics.Client.Hosting.Services
             IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
             ILogger<SnapshotRollupService> logger,
+            IEventRepository events,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
@@ -72,6 +77,7 @@ namespace VideoForensics.Client.Hosting.Services
             _accounts = accounts;
             _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
+            _events = events;
             _builder = builder;
             _logger = logger;
         }
@@ -263,6 +269,21 @@ namespace VideoForensics.Client.Hosting.Services
                 IntegrityVerified = false,
                 // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
                 MetadataJson = SnapshotRollupMarker,
+            }, cancellationToken);
+
+            // The Events tab reads the Events table, so the loop also gets an event row. It is marked Downloaded so the event
+            // media puller never tries to fetch it from the provider. The window end is the key, so a rerun updates the same row.
+            DateTime now = DateTime.UtcNow;
+            _ = await _events.UpsertAsync(new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = device.Id,
+                ProviderEventId = $"{TimelapseEventType}-{windowEndUtc:yyyyMMddHHmmss}",
+                EventType = TimelapseEventType,
+                OccurredAtUtc = windowEndUtc,
+                DiscoveredAtUtc = now,
+                DownloadedAtUtc = now,
+                DownloadStatus = EventDownloadStatus.Downloaded,
             }, cancellationToken);
 
             await _evidenceChanges.EvidenceChangedAsync(device.Id, cancellationToken);

@@ -34,6 +34,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IForensicsConfiguration> _config = new();
+        private readonly Mock<IEventRepository> _events = new();
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         private readonly Device _device;
 
@@ -71,6 +72,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _storage.Object,
             _builder.Object,
             NullLogger<SnapshotRollupService>.Instance,
+            _events.Object,
             configurationService: _configuration.Object);
         }
 
@@ -245,6 +247,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             SnapshotRollupService service = new(
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 logger.Object,
+                _events.Object,
                 captures: captures.Object,
                 stillMapper: new SnapshotStillMapper(),
                 mediaPaths: RootedPaths());
@@ -291,6 +294,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             SnapshotRollupService service = new(
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 NullLogger<SnapshotRollupService>.Instance,
+                _events.Object,
                 captures: captures.Object,
                 stillMapper: new SnapshotStillMapper(),
                 mediaPaths: RootedPaths());
@@ -301,6 +305,26 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             Assert.NotNull(sent);
             Assert.Equal(TimeSpan.FromMinutes(2), sent!.Stills[0].Hold);
             Assert.Equal(TimeSpan.FromMinutes(5), sent.Stills[1].Hold);
+        }
+
+        [Fact]
+        public async Task RollUp_RecordsTimelapseEventForTheDevice_AlreadyDownloaded()
+        {
+            // The Events tab reads the Events table, so each loop also needs an event row. It is marked Downloaded so the
+            // event media puller does not try to fetch it from the provider.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            BuildSucceeds();
+
+            _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            _events.Verify(e => e.UpsertAsync(
+                It.Is<Event>(ev => ev.DeviceId == _device.Id
+                    && ev.EventType == "timelapse"
+                    && ev.OccurredAtUtc == To
+                    && ev.DownloadStatus == EventDownloadStatus.Downloaded
+                    && ev.DownloadedAtUtc.HasValue
+                    && ev.ProviderEventId == $"timelapse-{To:yyyyMMddHHmmss}"),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 
