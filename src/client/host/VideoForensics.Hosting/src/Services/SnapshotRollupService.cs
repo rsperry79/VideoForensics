@@ -157,7 +157,7 @@ namespace VideoForensics.Client.Hosting.Services
                 throw new InvalidOperationException(result.ErrorMessage ?? "the timeline build failed");
             }
 
-            await RecordLoopAsync(device, outputPath, toUtc, cancellationToken);
+            await RecordLoopAsync(device, outputPath, fromUtc, toUtc, cancellationToken);
             // Success is logged so a roll-up that builds a loop leaves a trace. Only the file name is logged, not the full path.
             _logger.LogInformation("Time lapse built for {DeviceName}: {SnapshotCount} snapshots, file {FileName}", device.Name, stills.Count, Path.GetFileName(outputPath));
             return true;
@@ -248,8 +248,11 @@ namespace VideoForensics.Client.Hosting.Services
             }
         }
 
-        /// <summary>Registers the MP4 as a Media row. RecordedAtUtc is the window end, which is unique per roll-up tick.</summary>
-        private async Task RecordLoopAsync(DeviceEntity device, string mp4Path, DateTime windowEndUtc, CancellationToken cancellationToken)
+        /// <summary>
+        /// Registers the MP4 as a Media row. The loop covers the real window [fromUtc, toUtc), so it starts at fromUtc and lasts
+        /// the window's length on the timeline. The MP4's own playback length is not used: analysis keeps this value for loops.
+        /// </summary>
+        private async Task RecordLoopAsync(DeviceEntity device, string mp4Path, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             byte[] hash;
             await using (FileStream stream = File.OpenRead(mp4Path))
@@ -265,7 +268,8 @@ namespace VideoForensics.Client.Hosting.Services
                 FilePath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken),
                 MediaFormat = "mp4",
                 FileSizeBytes = new FileInfo(mp4Path).Length,
-                RecordedAtUtc = windowEndUtc,
+                RecordedAtUtc = fromUtc,
+                DurationSeconds = (toUtc - fromUtc).TotalSeconds,
                 DownloadedAtUtc = DateTime.UtcNow,
                 Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
                 IntegrityVerified = false,
@@ -273,16 +277,17 @@ namespace VideoForensics.Client.Hosting.Services
                 MetadataJson = SnapshotRollupMarker,
             }, cancellationToken);
 
-            // The Events tab reads the Events table, so the loop also gets an event row. It is marked Downloaded so the event
-            // media puller never tries to fetch it from the provider. The window end is the key, so a rerun updates the same row.
+            // The Events tab reads the Events table, so the loop also gets an event row at the loop's start. It is marked
+            // Downloaded so the event media puller never tries to fetch it from the provider. The window end is the key, so a
+            // rerun updates the same row.
             DateTime now = DateTime.UtcNow;
             _ = await _events.UpsertAsync(new Event
             {
                 Id = Guid.NewGuid(),
                 DeviceId = device.Id,
-                ProviderEventId = $"{TimelapseEventType}-{windowEndUtc:yyyyMMddHHmmss}",
+                ProviderEventId = $"{TimelapseEventType}-{toUtc:yyyyMMddHHmmss}",
                 EventType = TimelapseEventType,
-                OccurredAtUtc = windowEndUtc,
+                OccurredAtUtc = fromUtc,
                 DiscoveredAtUtc = now,
                 DownloadedAtUtc = now,
                 DownloadStatus = EventDownloadStatus.Downloaded,

@@ -122,6 +122,22 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task AnalyzeAsync_RollUpLoop_KeepsItsWindowDurationNotThePlaybackLength()
+        {
+            // A roll-up loop covers its real window (15 minutes) on the timeline. Its MP4 plays for 30 seconds, and analysis
+            // must not overwrite the window length with that.
+            MediaItem loop = Clip(_deviceId, "Day", 0);
+            loop.MetadataJson = "{\"type\":\"snapshot-rollup\"}";
+            loop.DurationSeconds = 900;
+            SetUpClip(loop, Array.Empty<MediaItem>(), new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), null!);
+
+            await CreateSut().AnalyzeAsync(loop.Id, CancellationToken.None);
+
+            Assert.Equal(900, loop.DurationSeconds);
+        }
+
+        [Fact]
         public async Task AnalyzeAsync_IrClipNotComparedWithDayBaseline()
         {
             // Day clips run at 4 Mb/s; an IR clip at 300 kb/s must not be called a collapse against them.

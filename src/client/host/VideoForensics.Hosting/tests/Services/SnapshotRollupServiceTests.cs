@@ -152,7 +152,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             Assert.Equal(1, result.DevicesRolledUp);
             _media.Verify(m => m.AddAsync(
-                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == To && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
+                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == From
+                    && i.DurationSeconds == (To - From).TotalSeconds && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -320,7 +321,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _events.Verify(e => e.UpsertAsync(
                 It.Is<Event>(ev => ev.DeviceId == _device.Id
                     && ev.EventType == "timelapse"
-                    && ev.OccurredAtUtc == To
+                    && ev.OccurredAtUtc == From
                     && ev.DownloadStatus == EventDownloadStatus.Downloaded
                     && ev.DownloadedAtUtc.HasValue
                     && ev.ProviderEventId == $"timelapse-{To:yyyyMMddHHmmss}"),
