@@ -74,6 +74,16 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
+    public void ManualSync_EditAccessNeverAnswers_StillLoadsTheSyncControls()
+    {
+        // The accounts must load even when the edit-access check hangs, so the page never sits on its spinner.
+        EditAccess.NeverAnswers = true;
+        IRenderedComponent<ManualSync> cut = RenderManualSync();
+
+        _ = cut.WaitForElement("#sync-type");
+    }
+
+    [Fact]
     public void ManualSync_EditAccessArrivesAfterFirstRender_ShowsSyncNow()
     {
         EditAccess.Answers.Enqueue(false);
