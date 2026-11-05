@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addIceCandidate, initializeHubConnection, startLiveView, stopHubConnection, stopLiveView } from "../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/liveview.js";
+import { addIceCandidate, initializeHubConnection, startLiveView, stopHubConnection, stopLiveView } from "../../../../../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/liveview.js";
 
 // WebRTC negotiation for the live view. jsdom has no RTCPeerConnection, so a fake records calls.
 

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadClassicScript, uiScriptsRoot } from "../../../../../../tests/js/load-script";
+import { loadClassicScript, uiScriptsRoot } from "./load-script";
 
 // The case note entry check mirrors the server rule: the body is trimmed, then must be non-blank and at most 4000 characters.
 // The server answers the same rule, so this check only decides whether the add button is enabled while the operator types.

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 // Not new URL(): jsdom replaces the global URL class, and it rejects the file: base.
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
 
 // Classic (non-module) scripts assign to window.* at load time, so they must run in the global
 // scope. Indirect eval is the global-scope form of eval, and in the jsdom environment the global

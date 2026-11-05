@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadClassicScript, uiScriptsRoot } from "./load-script";
-import { downloadText, scrollToBottom } from "../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/server-logs.js";
-import { focusElement, getCurrentTimeMs, setPlaybackRate, stepFrame, togglePlay } from "../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/media-viewer.js";
+import { downloadText, scrollToBottom } from "../../../../../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/server-logs.js";
+import { focusElement, getCurrentTimeMs, setPlaybackRate, stepFrame, togglePlay } from "../../../../../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/media-viewer.js";
 
 // Small interop helpers. Each one guards a specific behavior the Blazor pages rely on, so the
 // tests pin those guards rather than just the happy path.
