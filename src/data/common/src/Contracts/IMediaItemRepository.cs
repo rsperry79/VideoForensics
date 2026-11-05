@@ -28,9 +28,10 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>
         /// Pages non-purged clips from any of the given devices within a UTC range, oldest first. Filtering, sorting, paging and
-        /// counting all run in SQL. <paramref name="take"/> must be 1..500.
+        /// counting all run in SQL. <paramref name="take"/> must be 1..500. When <paramref name="videoOnly"/> is true, only video
+        /// rows (MediaFormat containing "mp4" or "video") are counted and returned.
         /// </summary>
-        Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct);
+        Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct, bool videoOnly = false);
 
         /// <summary>Gets media items by device ID within a date range.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);

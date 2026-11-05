@@ -1,6 +1,7 @@
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -35,11 +36,14 @@ public class ReviewClipLoader_Tests
         var repository = new Mock<IMediaItemRepository>();
         _ = repository
             .Setup(r => r.GetPageByDevicesAndDateRangeAsync(
-                It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Returns((IReadOnlyCollection<Guid> devices, DateTime from, DateTime to, int skip, int take, CancellationToken ct) =>
+                It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+            .Returns((IReadOnlyCollection<Guid> devices, DateTime from, DateTime to, int skip, int take, CancellationToken ct, bool videoOnly) =>
             {
                 _pageCalls.Add((devices.Count, skip, take));
-                List<MediaItem> matching = items.Where(item => devices.Contains(item.DeviceId)).ToList();
+                List<MediaItem> matching = items
+                    .Where(item => devices.Contains(item.DeviceId))
+                    .Where(item => !videoOnly || MediaFormatHelper.IsVideo(item.MediaFormat))
+                    .ToList();
                 IReadOnlyList<MediaItem> page = matching.Skip(skip).Take(take).ToList();
                 return Task.FromResult(new MediaItemPage(page, matching.Count));
             });
@@ -81,6 +85,30 @@ public class ReviewClipLoader_Tests
         // The newest clips are kept, so a cursor at the present still finds its clip; the oldest are the ones left out.
         Assert.Equal(items[1].Id, result.Items[0].Id);
         Assert.Equal(items[^1].Id, result.Items[^1].Id);
+    }
+
+    [Fact]
+    public async Task ReviewClipLoader_StillsBeyondTheCap_DoNotCountTowardIt()
+    {
+        // Arrange: 6000 rows, one in ten a video. Only the videos are playable, so 600 fit under the cap.
+        Guid device = Guid.NewGuid();
+        List<MediaItem> items = Enumerable.Range(0, 6000)
+            .Select(i =>
+            {
+                MediaItem item = Item(device, i);
+                item.MediaFormat = i % 10 == 0 ? "mp4" : "jpg";
+                return item;
+            })
+            .ToList();
+        var loader = new ReviewClipLoader(RepositoryServing(items).Object);
+
+        // Act
+        ReviewClipSet result = await loader.LoadAsync([device], FromUtc, ToUtc, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(600, result.Items.Count);
+        Assert.False(result.Truncated);
+        Assert.All(result.Items, item => Assert.Equal("mp4", item.MediaFormat));
     }
 
     [Fact]
@@ -128,7 +156,7 @@ public class ReviewClipLoader_Tests
         Assert.Empty(result.Items);
         Assert.False(result.Truncated);
         repository.Verify(r => r.GetPageByDevicesAndDateRangeAsync(
-            It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()), Times.Never);
     }
 
     private static ReviewCaseMode NoCase()

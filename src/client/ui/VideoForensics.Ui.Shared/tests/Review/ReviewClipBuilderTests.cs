@@ -35,9 +35,9 @@ public class ReviewClipBuilder_Tests
     }
 
     [Fact]
-    public void BuildClips_TimeLapse_Excluded()
+    public void BuildClips_TimeLapse_Included()
     {
-        // Arrange
+        // Arrange: a roll-up is a playable mp4 loop, so it is a clip the timeline shows.
         Guid device = Guid.NewGuid();
         var items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"snapshot-rollup\"}") };
 
@@ -45,11 +45,11 @@ public class ReviewClipBuilder_Tests
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
 
         // Assert
-        Assert.Empty(clips);
+        Assert.Single(clips);
     }
 
     [Fact]
-    public void BuildClips_TimeLapseMarkerDifferentCase_Excluded()
+    public void BuildClips_TimeLapseMarkerDifferentCase_Included()
     {
         // Arrange
         Guid device = Guid.NewGuid();
@@ -59,7 +59,7 @@ public class ReviewClipBuilder_Tests
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
 
         // Assert
-        Assert.Empty(clips);
+        Assert.Single(clips);
     }
 
     [Fact]

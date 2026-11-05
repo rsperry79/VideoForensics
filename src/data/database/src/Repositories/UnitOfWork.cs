@@ -533,7 +533,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         public Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
-            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct, bool videoOnly = false)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
             ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
@@ -543,6 +543,10 @@ namespace VideoForensics.Data.Database.Repositories
             IQueryable<MediaItem> matches = _db.MediaItems
                 .AsNoTracking()
                 .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
+            if (videoOnly)
+            {
+                matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
+            }
 
             int total = matches.Count();
             List<MediaItem> items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
