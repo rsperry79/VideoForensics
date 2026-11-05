@@ -200,6 +200,8 @@ else
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
         // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
         _ = RefreshEditAccessAsync();
+        // The account list is a bearer-token call. Without the session loaded it goes out with no token and returns 401.
+        await SessionState.EnsureLoadedAsync();
         await LoadAccountsAsync();
     }
 
