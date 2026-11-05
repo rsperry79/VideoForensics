@@ -1134,3 +1134,23 @@ Should the tooltip show the clock time (as planned) or only the seconds offset i
 ## Open point
 
 Existing RSSI flags have no stored value. Either backfill them from the current all-time baseline (a one-off job), or leave them as "-" until they are re-flagged. The plan defaults to leaving them as "-".
+
+---
+
+# Issue 30: GitHub reports 5 dependency vulnerabilities (2 critical, 3 moderate)
+
+## Status
+
+Reported by GitHub on push to `wip` (2026-11-05), on the default branch. Not reviewed yet.
+
+## Steps
+
+1. **Review the alerts.** Open the Dependabot list (`https://github.com/rsperry79/VideoForensics/security/dependabot`) and record each alert: package, version in use, fixed version, severity, and whether it is in a runtime or test-only project.
+2. **Check reachability.** For each alert, confirm the package ships in a server or client runtime project, not only in tests or tooling. Test-only findings are lower priority.
+3. **Fix the criticals first.** Bump each affected `PackageReference` to the fixed version, one package per commit, following the NuGet rules in `IMPLEMENTATION_PLAN.md` (red test or scoped build first, then the change, then a scoped test run).
+4. **Fix the moderates.** Same approach. If a fix needs a major version bump, stop and ask before changing it.
+5. **Record the result.** Re-run the Dependabot check after the push and note which alerts are closed and which remain, with the reason.
+
+## Open point
+
+Do you want the review (step 1 and 2) only, or the fixes as well?
