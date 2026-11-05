@@ -159,7 +159,7 @@
     <value>No clips in this time range.</value>
   </data>
   <data name="ClipsTruncated" xml:space="preserve">
-    <value>Showing the first {0} clips. Narrow the time range to see the rest.</value>
+    <value>Showing the latest {0} clips. Narrow the time range to see older ones.</value>
   </data>
   <data name="ClipsLoadFailed" xml:space="preserve">
     <value>Clips could not be loaded. Change the cameras or time range to try again.</value>
