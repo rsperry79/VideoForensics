@@ -15,5 +15,12 @@ namespace VideoForensics.Core.Helpers.Platform
 
         /// <summary>The saved default storage root, or null when none is saved.</summary>
         public static string? DefaultRoot { get; set; }
+
+        /// <summary>
+        /// True once the database was read at startup. From then on the saved values are authoritative: a null value
+        /// means the category is on its default, so legacy pointer files are ignored. Pointers are read only when the
+        /// database is missing or unreadable, which is the upgrade path from before the values were saved.
+        /// </summary>
+        public static bool SavedSettingsRead { get; set; }
     }
 }
