@@ -1,6 +1,6 @@
 # Downloads through sync (was: one-off account download jobs)
 
-Status (2026-10-28): done; the remaining items are optional or belong to other work (see TODO). Parent plan: `media-page-rework.md` (side task: remove the active account, finished).
+Status (2026-10-28): done; the remaining items are optional or belong to other work (see TODO). Parent plan: `plans/media-page-rework.md` (side task: remove the active account, finished).
 
 ## Decision
 Downloads run through each source's existing account sync, not a separate job queue.

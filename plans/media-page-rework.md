@@ -98,7 +98,7 @@ The new page lives at `/media/review` until the last batch, so `/media` keeps wo
 
 ## Side task: remove the active account (done)
 - Removed the right-panel account switcher, `AccountSelectionState`, `IForensicsConfiguration.ActiveProviderAccountId`, the config DTO field, and the `AppSettings` column (migration `RemoveActiveProviderAccountId`). `e0da8bd3`. Breaking for the config API DTO.
-- Downloads now run through account sync, which passes the account explicitly. Details, commits, and remaining work are in `one-off-account-download-jobs.md`.
+- Downloads now run through account sync, which passes the account explicitly. Details, commits, and remaining work are in `.claude/plans/archive/one-off-account-download-jobs.md`.
 
 ## Rules to follow
 - `ui-shared.md`: every new string in `SharedResources` or the page `.resx`, including top-bar labels (Back, Live, Filter, Actions, tab names, range text). Desktop-first; `MobileLayout` handles narrow screens.
@@ -112,4 +112,4 @@ The new page lives at `/media/review` until the last batch, so `/media` keeps wo
 2. `EventType` values that identify stills and time-lapses (to build the Events filter).
 3. Whether `IEvidenceChangedSource` fires on every event write, or the Events tab needs its own change source.
 4. Route and bookmarks: confirm `NoticeActions.ReviewLink` targets before moving or renaming `/media`.
-5. Known unrelated failing tests on `wip` (other sessions' changes): eight `AccountDetails` Remove and Purge tests, and `CaseDetailsExportEntryTests`. See `one-off-account-download-jobs.md`.
+5. Known unrelated failing tests on `wip` (other sessions' changes): eight `AccountDetails` Remove and Purge tests, and `CaseDetailsExportEntryTests`. See `.claude/plans/archive/one-off-account-download-jobs.md`.
