@@ -326,6 +326,27 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                     && ev.ProviderEventId == $"timelapse-{To:yyyyMMddHHmmss}"),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        [Fact]
+        public async Task RollUp_SuccessfulLoop_LogsInformationWithDeviceAndFrameCount()
+        {
+            // A successful loop must leave a trace: the device, how many snapshots went in, and the file name.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)), Snapshot(WriteJpeg("b.jpg"), From.AddMinutes(5)));
+            BuildSucceeds();
+            var logger = new Mock<ILogger<SnapshotRollupService>>();
+            SnapshotRollupService service = new(
+                _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
+                logger.Object,
+                _events.Object,
+                configurationService: _configuration.Object);
+
+            _ = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Contains(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log)
+                && Equals(i.Arguments[0], LogLevel.Information)
+                && i.Arguments[2].ToString()!.Contains("Porch", StringComparison.Ordinal)
+                && i.Arguments[2].ToString()!.Contains("2 snapshots", StringComparison.Ordinal));
+        }
     }
 
     /// <summary>When a roll-up is due: never rolled up, or the interval has passed since the last one.</summary>

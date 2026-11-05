@@ -158,6 +158,8 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             await RecordLoopAsync(device, outputPath, toUtc, cancellationToken);
+            // Success is logged so a roll-up that builds a loop leaves a trace. Only the file name is logged, not the full path.
+            _logger.LogInformation("Time lapse built for {DeviceName}: {SnapshotCount} snapshots, file {FileName}", device.Name, stills.Count, Path.GetFileName(outputPath));
             return true;
         }
 
