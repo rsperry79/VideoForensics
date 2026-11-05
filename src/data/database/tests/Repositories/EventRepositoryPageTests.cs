@@ -215,6 +215,33 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         /// <summary>Verifies that a detection type in the include list matches the event whose detection has it, whatever the event type.</summary>
+        /// <summary>
+        /// Verifies that "motion" returns only motion events with no subtype. A motion event whose detection is a subtype
+        /// (human) is left out of "motion", and still shows under that subtype.
+        /// </summary>
+        [Fact]
+        public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_IncludeMotion_LeavesOutMotionWithASubtype()
+        {
+            var device = Guid.NewGuid();
+            Event plainMotion = Ev(device, 1, "motion");
+            Event humanMotion = Ev(device, 2, "motion");
+            _ = await _repository.CreateAsync(plainMotion, CancellationToken.None);
+            _ = await _repository.CreateAsync(humanMotion, CancellationToken.None);
+            await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
+            {
+                _ = db.EventDetections.Add(new EventDetection { Id = Guid.NewGuid(), EventId = humanMotion.Id, DetectionType = "human" });
+                _ = await db.SaveChangesAsync();
+            }
+
+            var motionPage = await _repository.ListPageByDevicesAndDateRangeAsync(
+                new[] { device }, Start, Start.AddHours(1), null, new[] { "motion" }, skip: 0, take: 10, CancellationToken.None);
+            var humanPage = await _repository.ListPageByDevicesAndDateRangeAsync(
+                new[] { device }, Start, Start.AddHours(1), null, new[] { "human" }, skip: 0, take: 10, CancellationToken.None);
+
+            Assert.Equal(plainMotion.Id, Assert.Single(motionPage.Items).Id);
+            Assert.Equal(humanMotion.Id, Assert.Single(humanPage.Items).Id);
+        }
+
         [Fact]
         public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_IncludeDetectionType_MatchesTheEventsDetection()
         {
