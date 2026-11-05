@@ -127,9 +127,10 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
 
         // Assert
-        Assert.Equal(3, cut.FindAll("[data-testid='review-detail-no-cameras']").Count);
+        Assert.Equal(4, cut.FindAll("[data-testid='review-detail-no-cameras']").Count);
         Assert.Empty(DetailLoader.JammingCalls);
         Assert.Empty(DetailLoader.AnomalyCalls);
+        Assert.Empty(DetailLoader.BitRateCalls);
         Assert.Empty(EventLoader.Calls);
     }
 

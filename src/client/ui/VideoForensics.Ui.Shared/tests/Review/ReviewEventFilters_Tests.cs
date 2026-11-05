@@ -39,7 +39,7 @@ public class ReviewEventFilters_Tests
     public void SelectableEventTypes_ListsProviderTypesThenSystemTypes()
     {
         Assert.Equal(
-            [.. ReviewEventFilters.KnownEventTypes, ReviewEventFilters.SignalAnomaly, ReviewEventFilters.Jamming],
+            [.. ReviewEventFilters.KnownEventTypes, ReviewEventFilters.SignalAnomaly, ReviewEventFilters.Jamming, ReviewEventFilters.BitRate],
             ReviewEventFilters.SelectableEventTypes);
     }
 
@@ -55,6 +55,14 @@ public class ReviewEventFilters_Tests
         // A time-lapse row is stored as an event of type "timelapse". Dropping it here would match no events.
         Assert.Equal(["timelapse"], ReviewEventFilters.ProviderTypes(["timelapse", "jamming"]));
         Assert.Contains("timelapse", ReviewEventFilters.SelectableEventTypes);
+    }
+
+    [Fact]
+    public void BitRate_IsOfferedAsASystemType_AndSelectingItLeavesOutProviderEvents()
+    {
+        // Bit Rate is a system type: it shows flagged clips, not provider events, so alone it matches no provider type.
+        Assert.Contains("bitrate", ReviewEventFilters.SelectableEventTypes);
+        Assert.Empty(ReviewEventFilters.ProviderTypes(["bitrate"])!);
     }
 
     [Fact]

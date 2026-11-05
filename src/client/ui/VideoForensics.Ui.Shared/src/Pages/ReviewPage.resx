@@ -542,4 +542,25 @@
   <data name="CaseNotFound" xml:space="preserve">
     <value>The case was not found. Showing all evidence.</value>
   </data>
+  <data name="EventType_bitrate" xml:space="preserve">
+    <value>Bit Rate</value>
+  </data>
+  <data name="DetailBitRateTitle" xml:space="preserve">
+    <value>Bit rate flags</value>
+  </data>
+  <data name="DetailBitRateEmpty" xml:space="preserve">
+    <value>No bit rate flags in this range.</value>
+  </data>
+  <data name="DetailBitRateLoading" xml:space="preserve">
+    <value>Loading bit rate flags…</value>
+  </data>
+  <data name="DetailBitRateLoadFailed" xml:space="preserve">
+    <value>Could not load bit rate flags.</value>
+  </data>
+  <data name="DetailBitRateCollapse" xml:space="preserve">
+    <value>Bit rate collapse</value>
+  </data>
+  <data name="DetailBitRateDeviation" xml:space="preserve">
+    <value>Bit rate deviation</value>
+  </data>
 </root>
