@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Serilog;
@@ -395,12 +396,20 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // Access to the key directory is still restricted by its filesystem ACL.
 // When the TPM is usable, the key ring is encrypted to a TPM-held certificate, so only this machine's TPM can
 // decrypt it. Otherwise DPAPI (machine scope) protects it.
+string dataProtectionWrapping = "not Windows";
 if (OperatingSystem.IsWindows())
 {
     X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate();
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
         : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+
+    // Logged at startup: a restart that falls back to DPAPI cannot later read keys wrapped by the TPM certificate.
+    bool elevated = new System.Security.Principal.WindowsPrincipal(System.Security.Principal.WindowsIdentity.GetCurrent())
+        .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    bool tpmProbeAvailable = new VideoForensics.Client.Platform.Windows.KeyManagement.TpmKeyStorageProvider().IsAvailable;
+    dataProtectionWrapping = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.Describe(
+        tpmCertificate is not null, tpmProbeAvailable, elevated);
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -827,6 +836,7 @@ for (int i = 0; i < builder.Services.Count; i++)
 }
 
 WebApplication app = builder.Build();
+app.Logger.LogInformation("Data protection key ring wrapped by {Wrapping}", dataProtectionWrapping);
 
 // Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
 using (IServiceScope levelScope = app.Services.CreateScope())
