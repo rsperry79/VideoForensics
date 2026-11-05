@@ -29,7 +29,7 @@
         <small style="font-weight: bold;">@L["FilterAccount"]</small>
         <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
             Placeholder="@L["AllAccounts"]" data-testid="manual-sync-account-filter"
-            ValueChanged="@OnAccountFilterChanged">
+            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
             <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
         </SfDropDownList>
     </div>
@@ -186,56 +186,11 @@ else
         _ => L["SyncRangeCustom"],
     };
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // The session can finish loading after OnInitializedAsync, so the first edit-access answer may be stale.
-            _ = RefreshEditAccessAsync();
-        }
-    }
-
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
-        // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
-        _ = RefreshEditAccessAsync();
-        // The account list is a bearer-token call. Without the session loaded it goes out with no token and returns 401.
-        await WaitForSessionAsync();
+        CanEditAccount = await EditAccess.CanEditAsync(CancellationToken.None);
         await LoadAccountsAsync();
-    }
-
-    /// <summary>The account list needs the session's token, but a session that never answers must not keep the page on its spinner.</summary>
-    private static readonly TimeSpan SessionWaitLimit = TimeSpan.FromSeconds(5);
-
-    private async Task WaitForSessionAsync()
-    {
-        try
-        {
-            await SessionState.EnsureLoadedAsync().WaitAsync(SessionWaitLimit);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // Load the list anyway: the call reports its own error if the session really is unusable.
-        }
-    }
-
-    /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>
-    private async Task RefreshEditAccessAsync()
-    {
-        try
-        {
-            bool canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
-            if (canEdit != CanEditAccount)
-            {
-                CanEditAccount = canEdit;
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            CanEditAccount = false;
-        }
     }
 
     private async Task LoadAccountsAsync()
@@ -316,10 +271,9 @@ else
         }
     }
 
-    /// <summary>Stores the account the user picked. The value is the account's id as text, bound the same way as the other pages' dropdowns.</summary>
-    private void OnAccountFilterChanged(string value)
+    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
     {
-        _accountFilterValue = value ?? string.Empty;
+        _accountFilterValue = args.Value ?? string.Empty;
     }
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)
