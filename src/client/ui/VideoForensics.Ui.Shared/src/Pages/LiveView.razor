@@ -1,23 +1,27 @@
 ﻿@page "/live-view"
+@using System.Reactive.Linq
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Client.Ui.Shared.Layout.LeftPanel
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
 @using Microsoft.JSInterop
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Common.Viewer
 @implements IAsyncDisposable
 
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
-@using VideoForensics.Client.Ui.Shared.Components.Scope
-@using VideoForensics.Client.Ui.Shared.Services.Scope
 @inject ILiveViewSessionService LiveViewSessionService
 @inject ILiveViewSessionSource LiveViewSessionSource
 @inject IDeviceRepository DeviceRepository
+@inject IMediaItemRepository MediaItems
+@inject IMediaContentUrlProvider ContentUrls
+@inject IEvidenceChangedSource EvidenceChangedSource
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
 @inject PairedSessionState SessionState
@@ -42,34 +46,16 @@ else
         <div class="right-panel-section">
             <small>@L["Title"]</small>
             <div class="d-flex flex-column gap-2">
-                <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
-                <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>"
-                    @bind-Value="_selectedDeviceIdStr"
-                    DataSource="@(DeviceOptions.ToList())"
-                    Placeholder="@L["SelectDevice"]">
-                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-                </SfDropDownList>
-
-                <div class="d-flex flex-row gap-2">
-                    <SfButton Content="@(_isConnected ? L["Stop"] : L["Start"])"
-                        OnClick="@(async () => await ToggleLiveViewAsync())"
-                        CssClass="@(_isConnected ? "e-danger" : "e-primary")"
-                        Disabled="@(_isToggling || string.IsNullOrEmpty(_selectedDeviceIdStr))" />
-                </div>
+                <ReviewCameraSelector State="_cameraState" Devices="_cameraIds" DeviceNames="_deviceNames" Mode="DevicePickerMode.Cameras" />
 
                 @if (!string.IsNullOrEmpty(_error))
                 {
                     <div class="alert alert-danger">@_error</div>
                 }
-
-                @if (_isConnected)
-                {
-                    <div class="alert alert-success">@L["Connected"]</div>
-                }
             </div>
         </div>
 
-        @if (_selectedSessionId.HasValue)
+        @if (_liveDeviceId.HasValue)
         {
             <div class="right-panel-section">
                 <small>@L["TelemetryHeading"]</small>
@@ -100,52 +86,75 @@ else
         }
     </PageRightPanelContent>
 
-    <div class="live-view-container">
-        <MediaPlayer Live="true" ElementId="liveViewPlayer" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" />
+    <div class="live-view-grid">
+        @foreach (Guid id in ShownCameras)
+        {
+            bool live = _liveDeviceId == id;
+            <div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small">@NameOf(id)</span>
+                    <SfButton Content="@(live ? L["Stop"] : L["Start"])"
+                        OnClick="@(async () => await ToggleLiveAsync(id))"
+                        CssClass="@(live ? "e-danger" : "e-primary")"
+                        Disabled="@(_isToggling || (_liveDeviceId.HasValue && !live))" />
+                </div>
+
+                @if (live)
+                {
+                    <div class="live-view-container">
+                        <MediaPlayer Live="true" ElementId="liveViewPlayer" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" />
+                    </div>
+                }
+                else if (_stills.TryGetValue(id, out string? url) && !string.IsNullOrEmpty(url))
+                {
+                    <img class="live-view-still" src="@url" alt="@NameOf(id)" data-testid="live-view-still" />
+                }
+                else
+                {
+                    <div class="live-view-empty small text-muted">@L["NoStill"]</div>
+                }
+            </div>
+        }
     </div>
 }
 
 @code {
     private bool _isLoading = true;
     private bool _isAuthenticated = false;
-    private bool _isConnected = false;
     private bool _isToggling = false;
-    private string? _selectedDeviceIdStr;
+    private string? _error;
 
-    /// <summary>The camera to start with, passed by the review page's Live link.</summary>
+    /// <summary>The camera to show first, passed by the review page's Live link.</summary>
     [SupplyParameterFromQuery(Name = "device")]
     public Guid? Device { get; set; }
+
+    private IReadOnlyList<Guid> _cameraIds = [];
+    private Dictionary<Guid, string> _deviceNames = new();
+
+    // The media page's camera filter. An empty selection means the first cameras, as the media page shows them.
+    private readonly ReviewPageState _cameraState = new();
+
+    // The latest still per camera, as a browser-loadable URL. A null value means the camera has no still in the last hour.
+    private readonly Dictionary<Guid, string?> _stills = new();
+
+    // One live stream at a time. _pendingStreamSessionId starts the stream once its tile has rendered.
+    private Guid? _liveDeviceId;
     private Guid? _selectedSessionId;
-    private string? _error;
-    private Dictionary<string, string> DeviceOptions { get; set; } = new();
-    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
-    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
-
-    private static Dictionary<string, string> BuildDeviceOptions(IEnumerable<VideoForensics.Data.Common.Entities.Device> devices) =>
-        devices
-            .ToDictionary(d => d.Id.ToString(), d => d.Name ?? $"Device {d.ProviderDeviceId}")
-            .OrderBy(kv => kv.Value)
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-    /// <summary>Narrows the device picker to the Provider/Account filter. A selection that the filter hides is cleared.</summary>
-    private Task OnDeviceFilterChanged(DeviceFilterResult result)
-    {
-        _visibleDevices = result.Devices.ToList();
-        DeviceOptions = BuildDeviceOptions(_visibleDevices);
-        if (_selectedDeviceIdStr is not null && !DeviceOptions.ContainsKey(_selectedDeviceIdStr))
-        {
-            _selectedDeviceIdStr = null;
-        }
-
-        return Task.CompletedTask;
-    }
-
+    private Guid? _pendingStreamSessionId;
     private IJSObjectReference? _hubConnection;
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
     private IDisposable? _telemetrySubscription;
+    private IDisposable? _evidenceSubscription;
     private volatile bool _disposed;
     private LiveViewTelemetrySample? _latestTelemetry;
+
+    private IReadOnlyList<Guid> ShownCameras =>
+        _cameraState.CameraIds.Count > 0
+            ? _cameraState.CameraIds
+            : _cameraIds.Take(CameraSync.MaxTiles).ToList();
+
+    private string NameOf(Guid id) => _deviceNames.TryGetValue(id, out string? name) ? name : id.ToString("D");
 
     protected override async Task OnInitializedAsync()
     {
@@ -154,14 +163,20 @@ else
 
         try
         {
-            // Load available devices
             var devices = await DeviceRepository.ListAsync(System.Threading.CancellationToken.None);
-            _devices = devices.Where(device => DeviceKinds.IsCamera(device.Type)).ToList();
-            _visibleDevices = _devices;
-            DeviceOptions = BuildDeviceOptions(_visibleDevices);
-            _selectedDeviceIdStr = LiveViewDeviceSelection.Initial(_devices, Device);
+            var cameras = devices.Where(device => DeviceKinds.IsCamera(device.Type)).ToList();
+            _cameraIds = cameras.Select(device => device.Id).ToList();
+            _deviceNames = cameras.ToDictionary(device => device.Id, device => device.Name ?? $"Device {device.ProviderDeviceId}");
 
-            // Load JavaScript module
+            if (Device is Guid requested && _cameraIds.Contains(requested))
+            {
+                _cameraState.SetCameras([requested]);
+            }
+
+            _cameraState.OnChange += OnCameraSelectionChanged;
+            _evidenceSubscription = EvidenceChangedSource.EvidenceChanged.Subscribe(OnEvidenceChanged);
+            await LoadMissingStillsAsync();
+
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/VideoForensics.Client.Ui.Shared/scripts/liveview.js");
 
@@ -179,82 +194,150 @@ else
         }
     }
 
-    private async Task ToggleLiveViewAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The stream starts only after its tile has rendered, so the player element exists when the JS looks for it.
+        if (_pendingStreamSessionId is Guid sessionId && _jsModule is not null && _hubConnection is not null)
+        {
+            _pendingStreamSessionId = null;
+            try
+            {
+                await _jsModule.InvokeVoidAsync("startLiveView", _hubConnection, sessionId, "liveViewPlayer");
+            }
+            catch (JSException ex)
+            {
+                _error = ex.Message;
+                await StopLiveAsync();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void OnCameraSelectionChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            await LoadMissingStillsAsync();
+            StateHasChanged();
+        });
+    }
+
+    // The evidence feed says which camera gained a snapshot. Only a camera on screen reloads its still.
+    private void OnEvidenceChanged(EvidenceChangedDto change)
+    {
+        if (_disposed || !ShownCameras.Contains(change.DeviceId) || _liveDeviceId == change.DeviceId)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            await LoadStillAsync(change.DeviceId, System.Threading.CancellationToken.None);
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadMissingStillsAsync()
+    {
+        foreach (Guid id in ShownCameras)
+        {
+            if (!_stills.ContainsKey(id))
+            {
+                await LoadStillAsync(id, System.Threading.CancellationToken.None);
+            }
+        }
+    }
+
+    /// <summary>Loads the camera's newest snapshot in the last hour, as a browser-loadable URL.</summary>
+    private async Task LoadStillAsync(Guid deviceId, System.Threading.CancellationToken ct)
+    {
+        try
+        {
+            DateTime now = DateTime.UtcNow;
+            IReadOnlyList<MediaItem> snapshots = await MediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, now.AddHours(-1), now, ct);
+            MediaItem? newest = snapshots.LastOrDefault();
+            if (newest is null)
+            {
+                _stills[deviceId] = null;
+                return;
+            }
+
+            IReadOnlyDictionary<Guid, string> urls = await ContentUrls.GetContentUrlsAsync([newest.Id], ct);
+            _stills[deviceId] = urls.TryGetValue(newest.Id, out string? url) ? url : null;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not load the latest still for {DeviceName}: {ExceptionType}: {Message}", NameOf(deviceId), ex.GetType().FullName, ex.Message);
+            _stills[deviceId] = null;
+        }
+    }
+
+    private async Task ToggleLiveAsync(Guid deviceId)
     {
         try
         {
             _isToggling = true;
             _error = null;
 
-            if (_isConnected)
+            if (_liveDeviceId == deviceId)
             {
-                // Stop the session
-                if (_selectedSessionId.HasValue)
-                {
-                    await LiveViewSessionService.StopAsync(
-                        _selectedSessionId.Value,
-                        "ManualStop",
-                        System.Threading.CancellationToken.None);
-
-                    await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
-                    _selectedSessionId = null;
-                    _isConnected = false;
-                }
+                await StopLiveAsync();
+                return;
             }
-            else
+
+            if (_liveDeviceId.HasValue)
             {
-                // Start new session
-                if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
-                {
-                    _error = L["InvalidDevice"];
-                    return;
-                }
-
-                var session = await LiveViewSessionService.StartAsync(
-                    deviceId,
-                    LiveViewTriggerReason.Manual,
-                    null,
-                    System.Threading.CancellationToken.None);
-
-                _selectedSessionId = session.Id;
-                SubscribeToTelemetry(session.Id);
-
-                // Always wait, even when the start response is already Active. The waiter joins the session's push
-                // group before its race-guard read, so telemetry arrives for a session that was Active at start.
-                LiveViewSession? active = await _activationWaiter.WaitForActiveAsync(
-                    session.Id,
-                    LiveViewSessionSource,
-                    ct => LiveViewSessionService.GetActiveSessionAsync(deviceId, ct),
-                    LiveViewActivationWaiter.DefaultTimeout,
-                    System.Threading.CancellationToken.None);
-
-                if (active is null)
-                {
-                    _error = L["SessionFailedToConnect"];
-                    await UnsubscribeFromSessionAsync(session.Id);
-                    _selectedSessionId = null;
-                    return;
-                }
-
-                // Start WebRTC stream
-                if (_jsModule != null && _hubConnection != null)
-                {
-                    await _jsModule.InvokeVoidAsync(
-                        "startLiveView",
-                        _hubConnection,
-                        active.Id,
-                        "liveViewPlayer");
-                    _isConnected = true;
-                }
+                await StopLiveAsync();
             }
+
+            var session = await LiveViewSessionService.StartAsync(
+                deviceId,
+                LiveViewTriggerReason.Manual,
+                null,
+                System.Threading.CancellationToken.None);
+
+            _selectedSessionId = session.Id;
+            _liveDeviceId = deviceId;
+            SubscribeToTelemetry(session.Id);
+
+            // Always wait, even when the start response is already Active. The waiter joins the session's push
+            // group before its race-guard read, so telemetry arrives for a session that was Active at start.
+            LiveViewSession? active = await _activationWaiter.WaitForActiveAsync(
+                session.Id,
+                LiveViewSessionSource,
+                ct => LiveViewSessionService.GetActiveSessionAsync(deviceId, ct),
+                LiveViewActivationWaiter.DefaultTimeout,
+                System.Threading.CancellationToken.None);
+
+            if (active is null)
+            {
+                _error = L["SessionFailedToConnect"];
+                await UnsubscribeFromSessionAsync(session.Id);
+                _selectedSessionId = null;
+                _liveDeviceId = null;
+                return;
+            }
+
+            _pendingStreamSessionId = active.Id;
         }
         catch (Exception ex)
         {
             _error = ex.Message;
-            _isConnected = false;
-            if (_selectedSessionId.HasValue)
-                await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
-            _selectedSessionId = null;
+            await StopLiveAsync();
         }
         finally
         {
@@ -262,19 +345,52 @@ else
         }
     }
 
-    private async Task CleanupAsync()
+    /// <summary>Stops the live stream on screen and puts that camera's still back.</summary>
+    private async Task StopLiveAsync()
     {
-        _disposed = true;
-        if (_isConnected && _selectedSessionId.HasValue)
+        Guid? stopped = _liveDeviceId;
+
+        if (_selectedSessionId is Guid sessionId)
         {
             try
             {
-                await LiveViewSessionService.StopAsync(
-                    _selectedSessionId.Value,
-                    "PageDisposed",
-                    System.Threading.CancellationToken.None);
+                await LiveViewSessionService.StopAsync(sessionId, "ManualStop", System.Threading.CancellationToken.None);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Logger.LogError("Could not stop a live-view session: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            }
+
+            await UnsubscribeFromSessionAsync(sessionId);
+        }
+
+        _selectedSessionId = null;
+        _liveDeviceId = null;
+        _pendingStreamSessionId = null;
+
+        if (stopped is Guid id)
+        {
+            await LoadStillAsync(id, System.Threading.CancellationToken.None);
+        }
+    }
+
+    private async Task CleanupAsync()
+    {
+        _disposed = true;
+        _cameraState.OnChange -= OnCameraSelectionChanged;
+        _evidenceSubscription?.Dispose();
+        _evidenceSubscription = null;
+
+        if (_liveDeviceId.HasValue && _selectedSessionId.HasValue)
+        {
+            try
+            {
+                await LiveViewSessionService.StopAsync(_selectedSessionId.Value, "PageDisposed", System.Threading.CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Could not stop a live-view session on leaving the page: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            }
         }
 
         if (_selectedSessionId.HasValue)
@@ -310,7 +426,6 @@ else
                 // The circuit closed first, so the module is already gone.
             }
         }
-            await _jsModule.DisposeAsync();
     }
 
     // Leaving the push group is best effort: the page is already leaving this session. A failure is logged and does not
@@ -372,12 +487,37 @@ else
 }
 
 <style>
+.live-view-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.75rem;
+}
+
+.live-view-tile {
+    background-color: #111;
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+.live-view-still {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.live-view-empty {
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .live-view-container {
     display: flex;
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 100%;
     background-color: #000;
 }
 
