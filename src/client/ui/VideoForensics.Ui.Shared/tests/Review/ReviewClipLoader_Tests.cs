@@ -60,7 +60,7 @@ public class ReviewClipLoader_Tests
         // Assert
         Assert.Equal(600, result.Items.Count);
         Assert.False(result.Truncated);
-        Assert.Equal([(1, 0, 500), (1, 500, 500)], _pageCalls);
+        Assert.Equal([(1, 0, 1), (1, 0, 500), (1, 500, 100)], _pageCalls);
     }
 
     [Fact]
@@ -77,6 +77,10 @@ public class ReviewClipLoader_Tests
         // Assert
         Assert.Equal(ReviewClipLoader.MaxItems, result.Items.Count);
         Assert.True(result.Truncated);
+
+        // The newest clips are kept, so a cursor at the present still finds its clip; the oldest are the ones left out.
+        Assert.Equal(items[1].Id, result.Items[0].Id);
+        Assert.Equal(items[^1].Id, result.Items[^1].Id);
     }
 
     [Fact]
@@ -201,6 +205,7 @@ public class ReviewClipLoader_Tests
 
         // Assert
         Assert.Equal(3, result.Items.Count);
-        Assert.Single(_pageCalls);
+        // One call learns the total, one reads the page.
+        Assert.Equal([(1, 0, 1), (1, 0, 3)], _pageCalls);
     }
 }

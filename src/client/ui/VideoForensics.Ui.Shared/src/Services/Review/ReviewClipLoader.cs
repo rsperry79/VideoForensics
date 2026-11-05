@@ -78,27 +78,26 @@ public sealed class ReviewClipLoader : IReviewClipLoader
     private async Task<bool> ReadChunkAsync(
         IReadOnlyCollection<Guid> chunk, DateTime fromUtc, DateTime toUtc, List<MediaItem> items, CancellationToken ct)
     {
-        int skip = 0;
-        while (true)
+        // The query sorts oldest first. Learn the total, then start at the newest clips that fit the cap: the timeline
+        // must cover the present, where the cursor usually sits, and the oldest clips are the ones left out.
+        MediaItemPage probe = await _mediaItems.GetPageByDevicesAndDateRangeAsync(chunk, fromUtc, toUtc, 0, 1, ct);
+        int total = probe.TotalCount;
+        int remaining = MaxItems - items.Count;
+        int skip = Math.Max(0, total - remaining);
+
+        while (skip < total)
         {
-            int remaining = MaxItems - items.Count;
-            if (remaining == 0)
+            MediaItemPage page = await _mediaItems.GetPageByDevicesAndDateRangeAsync(
+                chunk, fromUtc, toUtc, skip, Math.Min(PageSize, total - skip), ct);
+            if (page.Items.Count == 0)
             {
-                // The cap is spent. Ask for one row to learn whether anything was left unread, without reading it.
-                MediaItemPage probe = await _mediaItems.GetPageByDevicesAndDateRangeAsync(chunk, fromUtc, toUtc, 0, 1, ct);
-                return probe.TotalCount > 0;
+                break;
             }
 
-            MediaItemPage page = await _mediaItems.GetPageByDevicesAndDateRangeAsync(
-                chunk, fromUtc, toUtc, skip, Math.Min(PageSize, remaining), ct);
             items.AddRange(page.Items);
             skip += page.Items.Count;
-
-            // An empty page or a page that reached the total means the chunk is finished.
-            if (page.Items.Count == 0 || skip >= page.TotalCount)
-            {
-                return false;
-            }
         }
+
+        return total > remaining;
     }
 }
