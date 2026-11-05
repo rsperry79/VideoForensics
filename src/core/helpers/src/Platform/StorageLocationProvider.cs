@@ -6,14 +6,19 @@ namespace VideoForensics.Core.Helpers.Platform;
 public class StorageLocationProvider : IStorageLocationProvider
 {
     private readonly IStorageOverrideSource _overrides;
+    private readonly string? _dataRoot;
 
     /// <param name="overrides">
     /// Source for install-time overrides. Defaults to <see cref="StorageOverrides.Current"/>, so existing call sites
     /// pick up the host's registry source without changes.
     /// </param>
-    public StorageLocationProvider(IStorageOverrideSource? overrides = null)
+    /// <param name="dataRoot">
+    /// Folder holding the legacy pointer files. Null uses the platform data root. Tests pass a temp folder.
+    /// </param>
+    public StorageLocationProvider(IStorageOverrideSource? overrides = null, string? dataRoot = null)
     {
         _overrides = overrides ?? StorageOverrides.Current;
+        _dataRoot = dataRoot;
     }
 
     /// <summary>Windows registry location for install-time per-category path overrides, written by
@@ -45,8 +50,8 @@ public class StorageLocationProvider : IStorageLocationProvider
         // Keys are read before the saved configuration is available, so a relocated Keys folder is read from its pointer.
         if (category == StorageCategory.Keys)
         {
-            // The saved Keys folder wins. The legacy pointer file is read only until the saved value exists.
-            string? relocated = StorageLocationStore.KeysRoot ?? KeysLocationPointer.Read(GetDataRoot());
+            // The saved Keys folder wins. Once saved settings were read, a null here means default, so a stale pointer is ignored.
+            string? relocated = StorageLocationStore.KeysRoot ?? LegacyPointer(() => KeysLocationPointer.Read(GetDataRoot()));
             if (relocated is not null)
             {
                 return relocated;
@@ -56,8 +61,8 @@ public class StorageLocationProvider : IStorageLocationProvider
         // The logger starts before the saved configuration can be read, so a relocated Logs folder is read from its pointer.
         if (category == StorageCategory.Logs)
         {
-            // The saved Logs folder wins. The legacy pointer file is read only until the saved value exists.
-            string? relocated = StorageLocationStore.LogsRoot ?? LogsLocationPointer.Read(GetDataRoot());
+            // The saved Logs folder wins. Once saved settings were read, a null here means default, so a stale pointer is ignored.
+            string? relocated = StorageLocationStore.LogsRoot ?? LegacyPointer(() => LogsLocationPointer.Read(GetDataRoot()));
             if (relocated is not null)
             {
                 return relocated;
@@ -116,13 +121,27 @@ public class StorageLocationProvider : IStorageLocationProvider
     /// <inheritdoc />
     public string GetDefaultStorageRoot()
     {
-        // The saved default root wins. The legacy pointer file is read only until the saved value exists.
-        return StorageLocationStore.DefaultRoot ?? DefaultStorageRootPointer.Read(GetDataRoot()) ?? GetDataRoot();
+        // The saved default root wins. Once saved settings were read, a null here means default, so a stale pointer is ignored.
+        return StorageLocationStore.DefaultRoot ?? LegacyPointer(() => DefaultStorageRootPointer.Read(GetDataRoot())) ?? GetDataRoot();
+    }
+
+    /// <summary>
+    /// Reads a legacy pointer file only when the database was not read. A read database is authoritative, so its null
+    /// means the category is on its default and any leftover pointer must not move it.
+    /// </summary>
+    private static string? LegacyPointer(Func<string?> read)
+    {
+        return StorageLocationStore.SavedSettingsRead ? null : read();
     }
 
     /// <inheritdoc />
     public string GetDataRoot()
     {
+        if (_dataRoot is not null)
+        {
+            return _dataRoot;
+        }
+
         // Same root that the per-category Windows defaults hang off, so root-level files and category folders
         // always live under one VideoForensics directory.
         return OperatingSystem.IsWindows()

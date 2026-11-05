@@ -5,7 +5,8 @@ using VideoForensics.Core.Helpers.Platform;
 namespace VideoForensics.Client.Hosting
 {
     /// <summary>The storage locations saved in the database. Each is null when it is not saved.</summary>
-    public sealed record SavedStorageSettings(string? KeysRoot, string? LogsRoot, string? DefaultRoot);
+    /// <param name="DatabaseRead">True when the database was read. Its null values then mean default, not "unknown".</param>
+    public sealed record SavedStorageSettings(string? KeysRoot, string? LogsRoot, string? DefaultRoot, bool DatabaseRead = false);
 
     /// <summary>
     /// Reads the saved storage locations from the database before any key loads or log file opens. The database is found
@@ -30,7 +31,8 @@ namespace VideoForensics.Client.Hosting
                 return new SavedStorageSettings(
                     ReadValue(connection, "KeysLocation"),
                     ReadValue(connection, "LogsLocation"),
-                    ReadValue(connection, "DefaultStorageRoot"));
+                    ReadValue(connection, "DefaultStorageRoot"),
+                    DatabaseRead: true);
             }
             catch
             {

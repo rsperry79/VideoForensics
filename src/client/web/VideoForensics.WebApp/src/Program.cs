@@ -79,6 +79,8 @@ VideoForensics.Client.Hosting.SavedStorageSettings savedStorage = new VideoForen
 VideoForensics.Core.Helpers.Platform.StorageLocationStore.KeysRoot = savedStorage.KeysRoot;
 VideoForensics.Core.Helpers.Platform.StorageLocationStore.LogsRoot = savedStorage.LogsRoot;
 VideoForensics.Core.Helpers.Platform.StorageLocationStore.DefaultRoot = savedStorage.DefaultRoot;
+// Once the database was read, its null values mean default and legacy pointer files are ignored.
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.SavedSettingsRead = savedStorage.DatabaseRead;
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
 // Finishes a Logs move from the previous run: appends what the old audit file gained after its copy, then removes it.
