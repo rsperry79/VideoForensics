@@ -9,8 +9,11 @@ public static class ReviewEventFilters
     /// </summary>
     public static readonly IReadOnlyList<string> ExcludedEventTypes = ["snapshot"];
 
-    /// <summary>The provider event types the Event Filter offers, in display order. Each has an <c>EventType_&lt;type&gt;</c> label.</summary>
-    public static readonly IReadOnlyList<string> KnownEventTypes = ["motion", "ding", "doorbell", "on_demand", "alarm", "human", "vehicle", "animal"];
+    /// <summary>
+    /// The event types the Event Filter offers, in display order. Each has an <c>EventType_&lt;type&gt;</c> label.
+    /// "timelapse" is written by the snapshot roll-up as an event row, not by the provider.
+    /// </summary>
+    public static readonly IReadOnlyList<string> KnownEventTypes = ["motion", "ding", "doorbell", "on_demand", "alarm", "human", "vehicle", "animal", "timelapse"];
 
     /// <summary>The system type for signal anomalies (the Detail tab's Anomalies section).</summary>
     public const string SignalAnomaly = "signal_anomaly";

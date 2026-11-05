@@ -50,6 +50,14 @@ public class ReviewEventFilters_Tests
     }
 
     [Fact]
+    public void ProviderTypes_TimeLapseSelected_KeepsIt()
+    {
+        // A time-lapse row is stored as an event of type "timelapse". Dropping it here would match no events.
+        Assert.Equal(["timelapse"], ReviewEventFilters.ProviderTypes(["timelapse", "jamming"]));
+        Assert.Contains("timelapse", ReviewEventFilters.SelectableEventTypes);
+    }
+
+    [Fact]
     public void KnownEventTypes_IncludesVehicleAndAnimal()
     {
         Assert.Contains("vehicle", ReviewEventFilters.KnownEventTypes);
