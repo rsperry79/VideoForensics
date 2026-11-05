@@ -173,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.All(attempts, a => Assert.InRange(a.CapturedAtUtc, start, end));
             Assert.True(attempts.Min(a => a.CapturedAtUtc) < start + SnapInterval, "The first capture did not start at the beginning of the timeframe.");
 
-            // The loop is registered as a Media row on this device, marked with the roll-up marker and stamped with the window end.
+            // The loop is registered as a Media row on this device, marked with the roll-up marker and stamped with the window start (the loop covers the real window from its start).
             IReadOnlyList<MediaItem> inWindow = await mediaItems.GetByDeviceAndDateRangeAsync(device.Id, start.UtcDateTime.AddSeconds(-1), end.UtcDateTime.AddSeconds(1), ct);
             MediaItem? loop = inWindow
                 .Where(m => m.MetadataJson == SnapshotRollupService.SnapshotRollupMarker)
@@ -184,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // The roll-up stores the loop's path relative to the media root, so resolve it before touching the file.
             string loopPath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToAbsoluteAsync(loop.FilePath, ct);
             Assert.True(File.Exists(loopPath), $"The time lapse file is missing at {loopPath}.");
-            Assert.True(Math.Abs((loop.RecordedAtUtc - end.UtcDateTime).TotalSeconds) < 1, "The time lapse is not stamped with the end of the capture timeframe.");
+            Assert.True(Math.Abs((loop.RecordedAtUtc - start.UtcDateTime).TotalSeconds) < 1, "The time lapse is not stamped with the start of the capture timeframe.");
 
             // The file itself must run for the capture timeframe, so the loop's length is read from the MP4 and compared to end - start.
             double lapseSeconds = await ProbeDurationSecondsAsync(ffprobe, loopPath, ct);
