@@ -18,8 +18,11 @@ public static class ReviewEventFilters
     /// <summary>The system type for jamming incidents (the Detail tab's Jamming section).</summary>
     public const string Jamming = "jamming";
 
-    /// <summary>System types the Event Filter offers after the provider types. They come from signal analysis, not the provider.</summary>
-    public static readonly IReadOnlyList<string> SystemEventTypes = [SignalAnomaly, Jamming];
+    /// <summary>The system type for bit-rate flagged clips (the Detail tab's Bit Rate section).</summary>
+    public const string BitRate = "bitrate";
+
+    /// <summary>System types the Event Filter offers after the provider types. They come from analysis, not the provider.</summary>
+    public static readonly IReadOnlyList<string> SystemEventTypes = [SignalAnomaly, Jamming, BitRate];
 
     /// <summary>Every type the Event Filter offers, provider types first, in display order.</summary>
     public static readonly IReadOnlyList<string> SelectableEventTypes = [.. KnownEventTypes, .. SystemEventTypes];

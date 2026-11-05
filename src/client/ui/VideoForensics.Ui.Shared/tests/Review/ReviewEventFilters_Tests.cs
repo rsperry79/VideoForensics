@@ -39,7 +39,7 @@ public class ReviewEventFilters_Tests
     public void SelectableEventTypes_ListsProviderTypesThenSystemTypes()
     {
         Assert.Equal(
-            [.. ReviewEventFilters.KnownEventTypes, ReviewEventFilters.SignalAnomaly, ReviewEventFilters.Jamming],
+            [.. ReviewEventFilters.KnownEventTypes, ReviewEventFilters.SignalAnomaly, ReviewEventFilters.Jamming, ReviewEventFilters.BitRate],
             ReviewEventFilters.SelectableEventTypes);
     }
 
@@ -47,6 +47,14 @@ public class ReviewEventFilters_Tests
     public void ProviderTypes_VehicleSelected_KeepsIt()
     {
         Assert.Equal(["vehicle"], ReviewEventFilters.ProviderTypes(["vehicle", "jamming"]));
+    }
+
+    [Fact]
+    public void BitRate_IsOfferedAsASystemType_AndSelectingItLeavesOutProviderEvents()
+    {
+        // Bit Rate is a system type: it shows flagged clips, not provider events, so alone it matches no provider type.
+        Assert.Contains("bitrate", ReviewEventFilters.SelectableEventTypes);
+        Assert.Empty(ReviewEventFilters.ProviderTypes(["bitrate"])!);
     }
 
     [Fact]
