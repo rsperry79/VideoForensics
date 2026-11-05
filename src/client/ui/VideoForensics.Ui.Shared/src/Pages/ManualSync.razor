@@ -201,8 +201,23 @@ else
         // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
         _ = RefreshEditAccessAsync();
         // The account list is a bearer-token call. Without the session loaded it goes out with no token and returns 401.
-        await SessionState.EnsureLoadedAsync();
+        await WaitForSessionAsync();
         await LoadAccountsAsync();
+    }
+
+    /// <summary>The account list needs the session's token, but a session that never answers must not keep the page on its spinner.</summary>
+    private static readonly TimeSpan SessionWaitLimit = TimeSpan.FromSeconds(5);
+
+    private async Task WaitForSessionAsync()
+    {
+        try
+        {
+            await SessionState.EnsureLoadedAsync().WaitAsync(SessionWaitLimit);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Load the list anyway: the call reports its own error if the session really is unusable.
+        }
     }
 
     /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>

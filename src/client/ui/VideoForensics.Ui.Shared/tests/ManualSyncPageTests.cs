@@ -93,3 +93,25 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
         cut.WaitForAssertion(() => Assert.Contains(Manual["SyncNow"], cut.Markup));
     }
 }
+
+/// <summary>A paired session that never finishes loading, as when its JS store or server check hangs.</summary>
+public class ManualSyncSessionHang_Tests : AccountDetailsPageTestBase
+{
+    private sealed class NeverLoadingSession(Microsoft.JSInterop.IJSRuntime js) : PairedSessionState(js)
+    {
+        public override Task EnsureLoadedAsync() => new TaskCompletionSource().Task;
+    }
+
+    protected override PairedSessionState CreateSession(IServiceProvider sp) =>
+        new NeverLoadingSession(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>());
+
+    [Fact]
+    public void ManualSync_SessionNeverLoads_StillShowsTheAccountsPage()
+    {
+        // The page must not stay on its spinner waiting for the session: the account list loads anyway.
+        IRenderedComponent<ManualSync> cut = Render<ManualSync>();
+        IStringLocalizer<ManualSync> manual = Services.GetRequiredService<IStringLocalizer<ManualSync>>();
+
+        cut.WaitForAssertion(() => Assert.Contains(manual["PickAccountHint"], cut.Markup), TimeSpan.FromSeconds(15));
+    }
+}
