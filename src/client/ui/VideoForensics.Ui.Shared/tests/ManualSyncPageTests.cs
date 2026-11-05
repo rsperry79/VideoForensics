@@ -72,4 +72,14 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
         Assert.Contains("Ring", providers.Instance.Value!);
         _ = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfDropDownList<string, KeyValuePair<string, string>>>();
     }
+
+    [Fact]
+    public void ManualSync_EditAccessArrivesAfterFirstRender_ShowsSyncNow()
+    {
+        EditAccess.Answers.Enqueue(false);
+        EditAccess.Answers.Enqueue(true);
+        IRenderedComponent<ManualSync> cut = RenderManualSync();
+
+        cut.WaitForAssertion(() => Assert.Contains(Manual["SyncNow"], cut.Markup));
+    }
 }

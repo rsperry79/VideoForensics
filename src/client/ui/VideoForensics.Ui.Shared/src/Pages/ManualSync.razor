@@ -186,6 +186,23 @@ else
         _ => L["SyncRangeCustom"],
     };
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // The session can finish loading after OnInitializedAsync, so the first edit-access answer may be stale.
+        await SessionState.EnsureLoadedAsync();
+        bool canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
+        if (canEdit != CanEditAccount)
+        {
+            CanEditAccount = canEdit;
+            StateHasChanged();
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
