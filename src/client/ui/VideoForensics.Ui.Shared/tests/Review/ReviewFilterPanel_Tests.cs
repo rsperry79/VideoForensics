@@ -111,7 +111,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
 
         // Assert: the Ring account is not offered by Wyze, so the account choice reads "All accounts" again
-        Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
+        cut.WaitForAssertion(() => Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value));
         cut.WaitForAssertion(() => Assert.Equal("Wyze", ReviewState.ProviderFilter));
         Assert.Null(ReviewState.AccountFilter);
     }

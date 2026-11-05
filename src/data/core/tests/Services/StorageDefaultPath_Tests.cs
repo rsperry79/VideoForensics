@@ -11,6 +11,7 @@ using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
 {
+    [Collection("StorageLocationStore")]
     public class StorageDefaultPath_Tests
     {
         [Fact]
