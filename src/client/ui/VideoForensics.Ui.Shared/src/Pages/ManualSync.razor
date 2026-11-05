@@ -188,26 +188,37 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
         {
-            return;
-        }
-
-        // The session can finish loading after OnInitializedAsync, so the first edit-access answer may be stale.
-        await SessionState.EnsureLoadedAsync();
-        bool canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
-        if (canEdit != CanEditAccount)
-        {
-            CanEditAccount = canEdit;
-            StateHasChanged();
+            // The session can finish loading after OnInitializedAsync, so the first edit-access answer may be stale.
+            _ = RefreshEditAccessAsync();
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
-        CanEditAccount = await EditAccess.CanEditAsync(CancellationToken.None);
+        // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
+        _ = RefreshEditAccessAsync();
         await LoadAccountsAsync();
+    }
+
+    /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>
+    private async Task RefreshEditAccessAsync()
+    {
+        try
+        {
+            bool canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
+            if (canEdit != CanEditAccount)
+            {
+                CanEditAccount = canEdit;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CanEditAccount = false;
+        }
     }
 
     private async Task LoadAccountsAsync()
