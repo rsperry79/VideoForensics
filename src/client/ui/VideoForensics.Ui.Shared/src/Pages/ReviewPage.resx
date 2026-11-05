@@ -191,6 +191,9 @@
   <data name="EventType_motion" xml:space="preserve">
     <value>Motion</value>
   </data>
+  <data name="EventType_timelapse" xml:space="preserve">
+    <value>Time Lapse</value>
+  </data>
   <data name="EventType_ding" xml:space="preserve">
     <value>Doorbell press</value>
   </data>

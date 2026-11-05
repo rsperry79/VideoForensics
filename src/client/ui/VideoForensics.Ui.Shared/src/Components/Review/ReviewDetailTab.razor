@@ -120,7 +120,7 @@
                 @foreach (Event evt in _events.Items)
                 {
                     bool selected = evt.Id == State.SelectedEventId;
-                    bool expanded = evt.Id == _expandedId;
+                    bool expanded = _expandedIds.Contains(evt.Id);
                     <div class="review-detail-event" data-testid="review-detail-event">
                         <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center @(selected ? "active" : string.Empty)"
                                 aria-expanded="@(expanded ? "true" : "false")"
@@ -293,7 +293,8 @@
     private readonly Dictionary<Guid, EventDetail?> _details = [];
     private readonly HashSet<Guid> _detailInFlight = [];
     private readonly HashSet<Guid> _detailFailed = [];
-    private Guid? _expandedId;
+    // Every loaded row is expanded by default, so its detection type and fields show without a click.
+    private readonly HashSet<Guid> _expandedIds = [];
     private Guid? _autoExpandedFor;
 
     private IDisposable? _evidenceSubscription;
@@ -577,12 +578,9 @@
                     _details.Remove(row.Id);
                 }
 
-                if (_expandedId is Guid expanded && _events.Items.Any(row => row.Id == expanded))
-                {
-                    await EnsureDetailAsync(expanded);
-                }
             }
 
+            await LoadAllDetailsAsync();
             await ExpandSelectedAsync();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -610,8 +608,59 @@
 
     private Task ToggleEventAsync(Guid id)
     {
-        _expandedId = _expandedId == id ? null : id;
-        return _expandedId is Guid expanded ? EnsureDetailAsync(expanded) : Task.CompletedTask;
+        if (_expandedIds.Remove(id))
+        {
+            return Task.CompletedTask;
+        }
+
+        _expandedIds.Add(id);
+        return EnsureDetailAsync(id);
+    }
+
+    /// <summary>
+    /// Expands every row on the loaded pages and reads their details in one batch. The detail decides a motion row's label
+    /// (Person, Vehicle and so on), so each row needs it even before it is clicked.
+    /// </summary>
+    private async Task LoadAllDetailsAsync()
+    {
+        if (_events is null || _disposed)
+        {
+            return;
+        }
+
+        _expandedIds.UnionWith(_events.Items.Select(row => row.Id));
+        Guid[] missing = _events.Items.Select(row => row.Id)
+            .Where(id => !_details.ContainsKey(id) && !_detailInFlight.Contains(id))
+            .ToArray();
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        _detailInFlight.UnionWith(missing);
+        try
+        {
+            IReadOnlyDictionary<Guid, EventDetail> rows = await DetailLoader.LoadEventDetailsAsync(missing, _disposeCts.Token);
+            foreach (Guid id in missing)
+            {
+                _details[id] = rows.TryGetValue(id, out EventDetail? detail) ? detail : null;
+            }
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not load event details for the detail list: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            foreach (Guid id in missing)
+            {
+                _detailFailed.Add(id);
+            }
+        }
+        finally
+        {
+            _detailInFlight.ExceptWith(missing);
+        }
     }
 
     /// <summary>
@@ -632,7 +681,7 @@
         }
 
         _autoExpandedFor = selected;
-        _expandedId = selected;
+        _ = _expandedIds.Add(selected.Value);
         await EnsureDetailAsync(selected.Value);
     }
 
@@ -714,39 +763,19 @@
     /// <summary>The localized label for a provider event type. A type with no label shows its raw string.</summary>
     private string TypeLabel(string eventType)
     {
-        if (string.IsNullOrWhiteSpace(eventType))
-        {
-            return L["EventTypeUnknown"].Value;
-        }
-
-        LocalizedString label = L["EventType_" + eventType.ToLowerInvariant()];
-        return label.ResourceNotFound ? eventType : label.Value;
+        return ReviewEventLabels.TypeLabel(L, eventType);
     }
 
-    /// <summary>The row's label: the event's detection type once its detail has loaded, else the event's own type.</summary>
+    /// <summary>The row's label: the detection type once its detail has loaded, else the event's own type.</summary>
     private string RowTypeLabel(Event evt)
     {
-        if (_details.TryGetValue(evt.Id, out EventDetail? detail) && detail?.Detection is { DetectionType: { } detectionType } && !string.IsNullOrWhiteSpace(detectionType))
-        {
-            return DetectionLabel(detectionType, evt.EventType);
-        }
-
-        return TypeLabel(evt.EventType);
+        _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
+        return ReviewEventLabels.RowLabel(L, evt, detail);
     }
 
-    /// <summary>
-    /// The localized label for a Ring detection type. A type with no label shows its raw string. "motion" and
-    /// "other_motion" say nothing the event does not, so they show the event's own type (also localized) instead.
-    /// </summary>
     private string DetectionLabel(string detectionType, string eventType)
     {
-        if (detectionType.Equals("motion", StringComparison.OrdinalIgnoreCase) || detectionType.Equals("other_motion", StringComparison.OrdinalIgnoreCase))
-        {
-            return TypeLabel(eventType);
-        }
-
-        LocalizedString label = L["DetectionType_" + detectionType.ToLowerInvariant()];
-        return label.ResourceNotFound ? detectionType : label.Value;
+        return ReviewEventLabels.DetectionLabel(L, detectionType, eventType);
     }
 
     private string ConfidenceLabel(JammingConfidenceLevel level)

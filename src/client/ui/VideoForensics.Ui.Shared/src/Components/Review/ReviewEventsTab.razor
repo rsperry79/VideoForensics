@@ -5,9 +5,11 @@
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @inject IReviewEventLoader EventLoader
+@inject IReviewDetailLoader DetailLoader
 @inject IServiceProvider ServiceProvider
 @inject IStringLocalizer<ReviewPage> L
 @inject ILogger<ReviewEventsTab> Logger
@@ -42,7 +44,7 @@
                         @onclick="() => OnRowClick(evt)">
                     <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
                     <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
-                    <span class="review-event-type">@TypeLabel(evt.EventType)</span>
+                    <span class="review-event-type">@RowTypeLabel(evt)</span>
                 </button>
             }
         </div>
@@ -69,6 +71,9 @@
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
 
     private LoadedEvents? _loaded;
+
+    // Each row's detail, read once per page so a motion row can show its Person or Vehicle type.
+    private readonly Dictionary<Guid, EventDetail?> _details = [];
     private LoadKey? _requested;
     private IReadOnlySet<Guid> _shownDeviceIds = new HashSet<Guid>();
     private CancellationTokenSource? _loadCts;
@@ -200,6 +205,7 @@
                 return;
             }
 
+            await LoadRowDetailsAsync(page.Items, ct);
             _loaded = mode == LoadMode.More && _loaded is not null
                 ? _loaded with { Items = _loaded.Items.Concat(page.Items).ToList(), Total = page.TotalCount }
                 : new LoadedEvents(key, page.Items.ToList(), page.TotalCount);
@@ -256,16 +262,41 @@
         return DeviceNames.TryGetValue(deviceId, out string? name) ? name : deviceId.ToString("D");
     }
 
-    /// <summary>The localized label for a provider event type. A type with no label shows its raw string.</summary>
-    private string TypeLabel(string eventType)
+    /// <summary>The row's label: the detection type (Person, Vehicle) when its detail names one, else the event's own type.</summary>
+    private string RowTypeLabel(Event evt)
     {
-        if (string.IsNullOrWhiteSpace(eventType))
+        _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
+        return ReviewEventLabels.RowLabel(L, evt, detail);
+    }
+
+    /// <summary>
+    /// Reads the detail for rows not yet read, in one batch. A failure here is logged and the rows keep their event-type
+    /// label, so the list still shows.
+    /// </summary>
+    private async Task LoadRowDetailsAsync(IReadOnlyList<Event> rows, CancellationToken ct)
+    {
+        Guid[] missing = rows.Select(row => row.Id).Where(id => !_details.ContainsKey(id)).ToArray();
+        if (missing.Length == 0)
         {
-            return L["EventTypeUnknown"].Value;
+            return;
         }
 
-        LocalizedString label = L["EventType_" + eventType.ToLowerInvariant()];
-        return label.ResourceNotFound ? eventType : label.Value;
+        try
+        {
+            IReadOnlyDictionary<Guid, EventDetail> found = await DetailLoader.LoadEventDetailsAsync(missing, ct);
+            foreach (Guid id in missing)
+            {
+                _details[id] = found.TryGetValue(id, out EventDetail? detail) ? detail : null;
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not load event details for the events list: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+        }
     }
 
     public void Dispose()

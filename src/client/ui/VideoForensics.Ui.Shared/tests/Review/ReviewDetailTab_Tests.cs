@@ -198,7 +198,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewDetailTab_ExpandEvent_LoadsOnlyThatEventsDetailOnceAndCachesIt()
+    public void ReviewDetailTab_LoadedRows_ReadTheirDetailInOneBatchAndDoNotReloadOnToggle()
     {
         // Arrange
         AddDevices(1);
@@ -208,15 +208,15 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(EventRow).Count));
+        cut.WaitForAssertion(() => Assert.Single(DetailLoader.DetailCalls));
 
-        // Act
-        cut.Find(Toggle(first)).Click();
+        // Act: rows open by default, so a click closes one and a second click opens it again.
         cut.Find(Toggle(first)).Click();
         cut.Find(Toggle(first)).Click();
         cut.Find(Toggle(second)).Click();
 
         // Assert
-        Assert.Equal(new[] { new[] { first.Id }, new[] { second.Id } }, DetailLoader.DetailCalls.Select(c => c.ToArray()).ToArray());
+        Assert.Equal(new[] { new[] { first.Id, second.Id } }, DetailLoader.DetailCalls.Select(c => c.ToArray()).ToArray());
     }
 
     [Fact]
@@ -229,17 +229,18 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+        Assert.Equal("true", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
 
-        // Act
+        // Act: a click closes the row that opens by default.
         cut.Find(Toggle(evt)).Click();
 
         // Assert
-        Assert.Equal("true", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
-        Assert.Single(cut.FindAll(EventBody));
+        Assert.Equal("false", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(EventBody));
     }
 
     [Fact]
-    public void ReviewDetailTab_ExpandedEvent_RowShowsTheDetectionTypeInsteadOfTheEventType()
+    public void ReviewDetailTab_Row_ShowsTheDetectionTypeWithoutAClick()
     {
         // Arrange
         AddDevices(1);
@@ -251,12 +252,10 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
-        // Act
-        cut.Find(Toggle(evt)).Click();
+        // Act: nothing is clicked. The row takes its label from its detail as soon as the list loads.
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
-        Assert.Equal(L["DetectionType_human"].Value, cut.Find(Toggle(evt)).QuerySelector(".review-event-type")!.TextContent.Trim());
+        cut.WaitForAssertion(() => Assert.Equal(L["DetectionType_human"].Value, cut.Find(Toggle(evt)).QuerySelector(".review-event-type")!.TextContent.Trim()));
     }
 
     [Fact]
@@ -273,7 +272,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
@@ -306,7 +304,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains(L["DetailNone"].Value, cut.Find(EventBody).TextContent));
@@ -326,7 +323,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='review-detail-occurrence']").Count));
@@ -348,7 +344,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ReviewState.SetTab(ReviewTab.Detail);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
-        cut.Find(Toggle(evt)).Click();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='review-detail-occurrence']").Count));
         ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
 
@@ -550,7 +545,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll($"{EventBody}[data-event-id='{evt.Id:D}']")));
         Assert.Equal("true", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
         Assert.Single(cut.FindAll($"{EventRow}.active"));
     }
@@ -619,7 +614,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains("mystery-kind", cut.Find(EventBody).TextContent));
@@ -683,7 +677,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
