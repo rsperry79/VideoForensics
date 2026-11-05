@@ -37,7 +37,7 @@ All 9 pre-flight preparation items have been completed. The critical path is cle
 - Validates cache widening logic
 - All tests pass locally, lite gate passes
 
-**Key Finding:** Cache widening metadata is correctly preserved under concurrent access. Risk #2 from DEEP_CODE_REVIEW.md is MITIGATED.
+**Key Finding:** Cache widening metadata is correctly preserved under concurrent access. Risk #2 from ../DEEP_CODE_REVIEW.md is MITIGATED.
 
 **Test Results:**
 ```
