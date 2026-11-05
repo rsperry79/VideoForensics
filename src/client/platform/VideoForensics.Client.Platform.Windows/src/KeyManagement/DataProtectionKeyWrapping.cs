@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Security.Cryptography.X509Certificates;
 
 namespace VideoForensics.Client.Platform.Windows.KeyManagement
 {
@@ -21,6 +22,46 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
             }
 
             return $"DPAPI (machine scope): TPM certificate not used (TPM available: {tpmProbeAvailable}, elevated: {elevated})";
+        }
+
+        /// <summary>
+        /// Returns the TPM certificate once it loads, retrying after each delay. When every attempt fails and the machine
+        /// already has the TPM data-protection key, this throws instead of letting the caller fall back to DPAPI: keys wrapped
+        /// with DPAPI would not be readable on a machine whose TPM comes back. Returns null only when no TPM key exists, so a
+        /// machine that never had a TPM key can still start on DPAPI.
+        /// </summary>
+        /// <param name="tryLoad">Loads or creates the TPM certificate. Null when the TPM is not usable.</param>
+        /// <param name="tpmKeyExists">True when the machine already has the TPM data-protection key.</param>
+        /// <param name="wait">Waits between attempts.</param>
+        /// <param name="delays">The wait before each retry. Attempts are one more than this count.</param>
+        public static X509Certificate2? ResolveTpmCertificate(
+            Func<X509Certificate2?> tryLoad,
+            Func<bool> tpmKeyExists,
+            Action<TimeSpan> wait,
+            IReadOnlyList<TimeSpan> delays)
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                X509Certificate2? certificate = tryLoad();
+                if (certificate is not null)
+                {
+                    return certificate;
+                }
+
+                if (attempt >= delays.Count)
+                {
+                    break;
+                }
+
+                wait(delays[attempt]);
+            }
+
+            if (tpmKeyExists())
+            {
+                throw new InvalidOperationException("The TPM data-protection key exists but could not be used after retries. Refusing to start rather than wrap keys with DPAPI. Check the TPM and the service account, then restart.");
+            }
+
+            return null;
         }
     }
 }

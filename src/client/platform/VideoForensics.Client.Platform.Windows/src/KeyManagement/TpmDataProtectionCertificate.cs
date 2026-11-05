@@ -19,6 +19,27 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
         public const string KeyId = "DataProtection";
 
         /// <summary>
+        /// True when the machine already has the data-protection TPM key. A TPM that cannot be read counts as no key, so the
+        /// caller decides the policy.
+        /// </summary>
+        public static bool KeyExists()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
+            try
+            {
+                return new TpmKeyStorageProvider().KeyExists(KeyId);
+            }
+            catch (CryptographicException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Returns a certificate backed by the TPM key, creating the key on first use. Returns null when the TPM is
         /// not usable, so the caller can fall back to DPAPI. Creating the key needs an elevated process.
         /// </summary>

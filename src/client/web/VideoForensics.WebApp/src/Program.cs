@@ -399,7 +399,12 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 string dataProtectionWrapping = "not Windows";
 if (OperatingSystem.IsWindows())
 {
-    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate();
+    // A machine that already has the TPM key never falls back to DPAPI: the start is retried with waits, then refused.
+    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.ResolveTpmCertificate(
+        VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate,
+        VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.KeyExists,
+        wait => System.Threading.Thread.Sleep(wait),
+        [TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)]);
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
         : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
