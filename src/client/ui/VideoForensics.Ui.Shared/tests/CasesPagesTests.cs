@@ -43,6 +43,7 @@ public abstract class CasesPagesTestBase : BunitContext
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
     protected Mock<IEventRepository> EventRepositoryMock { get; } = new();
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
+    protected Mock<ICaseNoteRepository> CaseNoteRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected CaseState CaseState { get; }
@@ -111,6 +112,11 @@ public abstract class CasesPagesTestBase : BunitContext
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => EventRepositoryMock.Object);
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        _ = CaseNoteRepositoryMock
+            .Setup(r => r.ListForCaseAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _ = Services.AddScoped(_ => CaseNoteRepositoryMock.Object);
+        _ = Services.AddLogging();
 
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);

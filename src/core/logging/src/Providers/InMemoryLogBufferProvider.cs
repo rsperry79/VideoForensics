@@ -14,14 +14,16 @@ namespace VideoForensics.Core.Logging.Providers
     public sealed class InMemoryLogBufferProvider : ILoggerProvider
     {
         private readonly InMemoryLogBuffer _buffer;
+        private readonly LogLevelSource? _level;
         private volatile bool _disposed;
 
         /// <summary>
         /// Initializes a new instance with the given buffer.
         /// </summary>
-        public InMemoryLogBufferProvider(InMemoryLogBuffer buffer)
+        public InMemoryLogBufferProvider(InMemoryLogBuffer buffer, LogLevelSource? level = null)
         {
             _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+            _level = level;
         }
 
         /// <summary>
@@ -81,7 +83,7 @@ namespace VideoForensics.Core.Logging.Providers
 
             public bool IsEnabled(LogLevel logLevel)
             {
-                return logLevel != LogLevel.None;
+                return logLevel != LogLevel.None && logLevel >= (_provider._level?.Minimum ?? LogLevel.Trace);
             }
 
             public void Log<TState>(
@@ -92,6 +94,12 @@ namespace VideoForensics.Core.Logging.Providers
                 Func<TState, Exception?, string> formatter)
             {
                 if (!IsEnabled(logLevel) || _provider._disposed)
+                {
+                    return;
+                }
+
+                // Trace-only framework noise is shown live but never stored in the buffer. Warnings and errors are always stored.
+                if (_provider._level is { } levelSource && !levelSource.AdmitsStored(_categoryName, logLevel >= LogLevel.Warning))
                 {
                     return;
                 }

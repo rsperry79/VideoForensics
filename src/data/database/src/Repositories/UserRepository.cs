@@ -53,7 +53,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding user: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
+                _logger.LogError("Error adding user: {DisplayName}: {Message} ({ErrorType})", MaskForLog(SanitizeForLog(user.DisplayName)), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -70,7 +70,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
+                _logger.LogError("Error updating user: {DisplayName}: {Message} ({ErrorType})", MaskForLog(SanitizeForLog(user.DisplayName)), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -91,7 +91,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting user: {UserId}", userId);
+                _logger.LogError("Error deleting user: {UserId}: {Message} ({ErrorType})", userId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

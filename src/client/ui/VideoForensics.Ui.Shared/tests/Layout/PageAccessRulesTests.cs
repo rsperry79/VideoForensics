@@ -177,7 +177,7 @@ public class NavGroupsSections_Tests
         IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin, local: true));
 
         Assert.Equal(
-            new[] { "General", "Sources", "Security", "Diagnostics & Updates", "Devices & Network", "Storage & Data", "Integrations" },
+            new[] { "General", "Sources", "System & Network", "Storage & Data", "Integrations", "Security", "Diagnostics & Updates" },
             sections.Select(s => s.Title).ToList());
     }
 
@@ -187,7 +187,7 @@ public class NavGroupsSections_Tests
         var titles = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.ReadOnly)).Select(s => s.Title).ToList();
 
         Assert.DoesNotContain("Integrations", titles);
-        Assert.DoesNotContain("Devices & Network", titles);
+        Assert.DoesNotContain("System & Network", titles);
         Assert.Contains("General", titles);
         Assert.Contains("Security", titles);
     }

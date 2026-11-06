@@ -1,7 +1,10 @@
+using System.Globalization;
+
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Matching;
 
 namespace VideoForensics.Data.Database.Repositories
 {
@@ -19,6 +22,7 @@ namespace VideoForensics.Data.Database.Repositories
             IDownloadEventRepository downloadEventRepository,
             IMediaItemRepository mediaItemRepository,
             IEventRepository eventRepository,
+            IUnitOfWork unitOfWork,
             ILogger logger,
             CancellationToken ct)
         {
@@ -35,6 +39,8 @@ namespace VideoForensics.Data.Database.Repositories
                 .GroupBy(m => m.DownloadEventId!.Value)
                 .ToDictionary(g => g.Key, g => g.First().Sha256Hash);
 
+            var candidatesByDevice = new Dictionary<Guid, IReadOnlyList<string>>();
+            int skipped = 0;
             int backfilled = 0;
             foreach (DownloadEvent downloadEvent in downloadEvents)
             {
@@ -42,11 +48,18 @@ namespace VideoForensics.Data.Database.Repositories
 
                 _ = hashByDownloadEventId.TryGetValue(downloadEvent.Id, out string? hash);
 
+                string? providerEventId = await ResolveProviderEventIdAsync(downloadEvent, unitOfWork, candidatesByDevice, ct);
+                if (providerEventId is null)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 _ = await eventRepository.UpsertAsync(new Event
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = downloadEvent.DeviceId,
-                    ProviderEventId = downloadEvent.ProviderEventId,
+                    ProviderEventId = providerEventId,
                     EventType = downloadEvent.EventType ?? "unknown",
                     OccurredAtUtc = downloadEvent.EventOccurredAtUtc,
                     DiscoveredAtUtc = downloadEvent.DownloadStartedUtc,
@@ -57,8 +70,28 @@ namespace VideoForensics.Data.Database.Repositories
                 backfilled++;
             }
 
-            logger.LogInformation("Events backfill: reconstructed {Count} Event records from existing DownloadEvents.", backfilled);
+            logger.LogInformation("Events backfill: reconstructed {Count} Event records from existing DownloadEvents; skipped {Skipped} whose id did not resolve to one ding id.", backfilled, skipped);
             return backfilled;
+        }
+
+        /// <summary>Returns the id to store for a DownloadEvent, or null when the row cannot be resolved to one ding id.</summary>
+        private static async Task<string?> ResolveProviderEventIdAsync(
+            DownloadEvent downloadEvent,
+            IUnitOfWork unitOfWork,
+            Dictionary<Guid, IReadOnlyList<string>> candidatesByDevice,
+            CancellationToken ct)
+        {
+            if (!candidatesByDevice.TryGetValue(downloadEvent.DeviceId, out IReadOnlyList<string>? candidates))
+            {
+                candidates = await unitOfWork.ExecuteAsync(async ctx =>
+                {
+                    Device? device = await ctx.Devices.GetAsync(downloadEvent.DeviceId, ct);
+                    return await ProviderEventIdResolver.CandidatesForDeviceAsync(device, ctx.DingIdLinks, ct);
+                }, ct);
+                candidatesByDevice[downloadEvent.DeviceId] = candidates;
+            }
+
+            return ProviderEventIdResolver.Resolve(downloadEvent.ProviderEventId, candidates);
         }
     }
 }

@@ -75,7 +75,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Chat: unhandled exception");
+                logger.LogError("Chat: unhandled exception: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
@@ -136,7 +136,7 @@ namespace VideoForensics.Client.WebApp.Api
             catch (Exception ex)
             {
                 // Headers are already sent, so the status code cannot change. Log and let the stream end.
-                logger.LogError(ex, "Chat: unhandled exception while streaming");
+                logger.LogError("Chat: unhandled exception while streaming: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

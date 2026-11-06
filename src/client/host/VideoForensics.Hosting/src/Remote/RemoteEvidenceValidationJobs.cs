@@ -39,10 +39,21 @@ namespace VideoForensics.Client.Hosting.Remote
             return PostIntegrityAsync(new StartIntegrityJobRequest(single, ids), ct);
         }
 
-        private async Task<EvidenceValidationJob> PostIntegrityAsync(StartIntegrityJobRequest request, CancellationToken ct)
+        /// <inheritdoc />
+        public Task<EvidenceValidationJob> StartIntegrityForMediaItemAsync(Guid mediaItemId, CancellationToken ct)
+        {
+            return PostJobAsync("/api/v1/evidence/jobs/integrity/media-item", new StartIntegrityMediaItemJobRequest(mediaItemId), ct);
+        }
+
+        private Task<EvidenceValidationJob> PostIntegrityAsync(StartIntegrityJobRequest request, CancellationToken ct)
+        {
+            return PostJobAsync("/api/v1/evidence/jobs/integrity", request, ct);
+        }
+
+        private async Task<EvidenceValidationJob> PostJobAsync(string route, object request, CancellationToken ct)
         {
             string jsonContent = JsonSerializer.Serialize(request);
-            var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/evidence/jobs/integrity")
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, route)
             {
                 Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
             };

@@ -22,7 +22,8 @@ public sealed record ReviewUrlState(
     string? Provider,
     Guid? Account,
     Guid? CaseId = null,
-    Guid? Location = null)
+    Guid? Location = null,
+    IReadOnlyList<string>? EventTypes = null)
 {
     /// <summary>Compares every field, with <see cref="Devices"/> compared by sequence.</summary>
     public bool Equals(ReviewUrlState? other)
@@ -36,7 +37,8 @@ public sealed record ReviewUrlState(
             && Provider == other.Provider
             && Account == other.Account
             && CaseId == other.CaseId
-            && Location == other.Location;
+            && Location == other.Location
+            && (EventTypes ?? []).SequenceEqual(other.EventTypes ?? []);
     }
 
     /// <summary>Hash code that agrees with <see cref="Equals(ReviewUrlState)"/>.</summary>
@@ -56,6 +58,10 @@ public sealed record ReviewUrlState(
         hash.Add(Account);
         hash.Add(CaseId);
         hash.Add(Location);
+        foreach (string type in EventTypes ?? [])
+        {
+            hash.Add(type);
+        }
         return hash.ToHashCode();
     }
 }
@@ -85,6 +91,7 @@ public static class ReviewUrl
         Guid? account = null;
         Guid? caseId = null;
         Guid? location = null;
+        IReadOnlyList<string> eventTypes = [];
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -126,6 +133,9 @@ public static class ReviewUrl
                     case "location":
                         location = Guid.TryParse(value.Trim(), out Guid locationValue) ? locationValue : location;
                         break;
+                    case "eventtypes":
+                        eventTypes = ReviewEventFilters.Normalize(value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+                        break;
                     case "reviewcase":
                         caseId = Guid.TryParse(value.Trim(), out Guid caseValue) ? caseValue : caseId;
                         break;
@@ -142,7 +152,8 @@ public static class ReviewUrl
             provider,
             account,
             caseId,
-            location);
+            location,
+            eventTypes);
     }
 
     /// <summary>
@@ -211,6 +222,11 @@ public static class ReviewUrl
         if (state.Location is Guid location)
         {
             parts.Add("location=" + location.ToString("D"));
+        }
+
+        if (state.EventTypes is { Count: > 0 } eventTypes)
+        {
+            parts.Add("eventtypes=" + HttpUtility.UrlEncode(string.Join(",", eventTypes)));
         }
 
         if (state.CaseId is Guid caseGuid)

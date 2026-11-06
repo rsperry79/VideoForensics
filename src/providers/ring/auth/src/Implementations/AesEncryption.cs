@@ -23,14 +23,20 @@ namespace VideoForensics.Providers.Ring.Implementations
     public class AesEncryption : ICredentialEncryption
     {
         private readonly IMachineGuidSource _machineGuidSource;
+        private readonly string _saltDirectory;
 
         /// <param name="machineGuidSource">
         /// Supplies the machine identifier used in key derivation. Defaults to the registry MachineGuid on Windows,
         /// so callers that pass nothing get the same key as before this parameter existed.
         /// </param>
-        public AesEncryption(IMachineGuidSource machineGuidSource = null)
+        /// <param name="saltDirectory">
+        /// Folder that holds the salt file. Defaults to the saved Keys folder, which is where the app keeps it.
+        /// Tests pass a temp folder so they never touch the real salt.
+        /// </param>
+        public AesEncryption(IMachineGuidSource machineGuidSource = null, string saltDirectory = null)
         {
             _machineGuidSource = machineGuidSource ?? new RegistryMachineGuidSource();
+            _saltDirectory = saltDirectory;
         }
 
         private const int KeySize = 32; // AES-256
@@ -134,7 +140,7 @@ namespace VideoForensics.Providers.Ring.Implementations
         private byte[] GetOrCreateSalt()
         {
             string saltPath = Path.Combine(
-                new StorageLocationProvider().GetDataRoot(),
+                _saltDirectory ?? new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys),
                 "ring-credential-salt.bin");
 
             // If the salt file exists, read and return it

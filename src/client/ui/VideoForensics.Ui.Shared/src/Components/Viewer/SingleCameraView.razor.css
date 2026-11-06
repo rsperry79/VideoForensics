@@ -30,7 +30,7 @@
     cursor: pointer;
 }
 
-.single-camera-preview video,
+.single-camera-preview ::deep video,
 .single-camera-placeholder {
     display: flex;
     width: 100%;

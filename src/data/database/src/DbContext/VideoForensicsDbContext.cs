@@ -70,6 +70,7 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the legal holds.</summary>
         public DbSet<LegalHold> LegalHolds { get; set; }
+        public DbSet<MediaFlag> MediaFlags { get; set; }
 
         /// <summary>Gets or sets the events.</summary>
         public DbSet<Event> Events { get; set; }
@@ -92,8 +93,12 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the device configuration snapshots.</summary>
         public DbSet<DeviceConfigSnapshot> DeviceConfigSnapshots { get; set; }
 
+        public DbSet<DeviceConfigSnapshotSetting> DeviceConfigSnapshotSettings { get; set; }
+
         /// <summary>Gets or sets the device setting change history.</summary>
         public DbSet<DeviceSettingChange> DeviceSettingChanges { get; set; }
+
+        public DbSet<DeviceLightEvent> DeviceLightEvents { get; set; }
 
         /// <summary>Gets or sets the provider reconciliation records.</summary>
         public DbSet<ProviderReconciliationRecord> ProviderReconciliationRecords { get; set; }
@@ -152,6 +157,24 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the current location modes.</summary>
         public DbSet<RingLocationMode> RingLocationModes { get; set; }
 
+        /// <summary>Ring-only location fields (devices/v1/locations), one row per location.</summary>
+        public DbSet<RingLocationDetails> RingLocationDetails { get; set; }
+
+        /// <summary>Users shared onto a Ring location.</summary>
+        public DbSet<RingLocationSharedUser> RingLocationSharedUsers { get; set; }
+
+        /// <summary>Device grants of a shared Ring user.</summary>
+        public DbSet<RingLocationSharedUserDevice> RingLocationSharedUserDevices { get; set; }
+
+        /// <summary>Permissions of a shared Ring user's device grant.</summary>
+        public DbSet<RingLocationSharedUserDevicePermission> RingLocationSharedUserDevicePermissions { get; set; }
+
+        /// <summary>Doorbots linked to a chime.</summary>
+        public DbSet<RingChimeLinkedDoorbot> RingChimeLinkedDoorbots { get; set; }
+
+        /// <summary>Latest snapshot timestamp per doorbot.</summary>
+        public DbSet<RingSnapshotTimestamp> RingSnapshotTimestamps { get; set; }
+
         /// <summary>Gets or sets the raw notYetParticipatingInMode elements of location modes.</summary>
         public DbSet<RingLocationModeNotYetParticipating> RingLocationModeNotYetParticipating { get; set; }
 
@@ -169,6 +192,12 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the location mode sharing state, one per location.</summary>
         public DbSet<RingLocationModeSharing> RingLocationModeSharings { get; set; }
+
+        /// <summary>Gets or sets the alarm account monitoring status, one per location.</summary>
+        public DbSet<RingAccountMonitoringStatus> RingAccountMonitoringStatuses { get; set; }
+
+        /// <summary>Gets or sets the compatible monitoring plans of account monitoring statuses.</summary>
+        public DbSet<RingAccountMonitoringPlan> RingAccountMonitoringPlans { get; set; }
 
         /// <summary>Gets or sets the video search results (one row per search result).</summary>
         public DbSet<RingVideoSearchEvent> RingVideoSearchEvents { get; set; }
@@ -305,6 +334,65 @@ namespace VideoForensics.Data.Database.DbContext
         public DbSet<DeviceDetectionType> DeviceDetectionTypes { get; set; }
         public DbSet<DeviceDetectionThreshold> DeviceDetectionThresholds { get; set; }
 
+        /// <summary>Gets or sets the per-feature state rows of a device's Ring features object.</summary>
+        public DbSet<RingDeviceFeatureState> RingDeviceFeatureStates { get; set; }
+
+        /// <summary>Gets or sets the reason list entries of device feature states.</summary>
+        public DbSet<RingDeviceFeatureReason> RingDeviceFeatureReasons { get; set; }
+
+        /// <summary>Gets or sets the device-reported health rows (the health object of each ring_devices entry).</summary>
+        public DbSet<DeviceReportedHealth> DeviceReportedHealths { get; set; }
+
+        /// <summary>Gets or sets the Ring-only top-level device detail rows.</summary>
+        public DbSet<RingDeviceDetails> RingDeviceDetails { get; set; }
+
+        /// <summary>Gets or sets the Ring-only health reading rows.</summary>
+        public DbSet<RingDeviceHealthExtras> RingDeviceHealthExtras { get; set; }
+
+        /// <summary>Gets or sets the battery rows of device-reported health.</summary>
+        public DbSet<DeviceReportedBattery> DeviceReportedBatteries { get; set; }
+
+        /// <summary>Gets or sets the Ring-only paid feature flags of a device (cv_paid_features and other_paid_features).</summary>
+        public DbSet<RingDevicePaidFeatures> RingDevicePaidFeatures { get; set; }
+
+        /// <summary>Gets or sets the provider-agnostic network settings of a device.</summary>
+        public DbSet<DeviceNetworkSettings> DeviceNetworkSettings { get; set; }
+
+        /// <summary>Gets or sets the Ring-only network diagnosis of a device.</summary>
+        public DbSet<RingDeviceNetworkDiagnosis> RingDeviceNetworkDiagnosis { get; set; }
+
+        /// <summary>Gets or sets the Ring-only scalar settings of a device (settings keys and created_at).</summary>
+        public DbSet<RingDeviceSettings> RingDeviceSettings { get; set; }
+
+        /// <summary>Gets or sets the Ring ignore zones (ignore_zones.zoneN) of a device; vertices are child rows.</summary>
+        public DbSet<RingDeviceIgnoreZone> RingDeviceIgnoreZones { get; set; }
+
+        /// <summary>Gets or sets the vertices of the Ring ignore zones.</summary>
+        public DbSet<RingDeviceIgnoreZoneVertex> RingDeviceIgnoreZoneVertices { get; set; }
+
+        /// <summary>Gets or sets the entries of a device's Ring motion_zones array.</summary>
+        public DbSet<RingDeviceMotionZone> RingDeviceMotionZones { get; set; }
+
+        /// <summary>Gets or sets the entries of a device's Ring advanced_motion_detection_types array.</summary>
+        public DbSet<RingDeviceAdvancedMotionDetectionType> RingDeviceAdvancedMotionDetectionTypes { get; set; }
+
+        /// <summary>Gets or sets the provider-agnostic general settings of a device.</summary>
+        public DbSet<DeviceGeneralSettings> DeviceGeneralSettings { get; set; }
+        public DbSet<RingDeviceAdvancedMotionSettings> RingDeviceAdvancedMotionSettings { get; set; }
+        public DbSet<RingDeviceBackendSettings> RingDeviceBackendSettings { get; set; }
+        public DbSet<RingDeviceClientDeviceSettings> RingDeviceClientDeviceSettings { get; set; }
+        public DbSet<RingDeviceCvSettings> RingDeviceCvSettings { get; set; }
+        public DbSet<RingDeviceGeneralSettings> RingDeviceGeneralSettings { get; set; }
+        public DbSet<RingDeviceMiscSettings> RingDeviceMiscSettings { get; set; }
+        public DbSet<RingDeviceMotionSettings> RingDeviceMotionSettings { get; set; }
+        public DbSet<RingDeviceSnapshotSettings> RingDeviceSnapshotSettings { get; set; }
+        public DbSet<RingDeviceStreamSettings> RingDeviceStreamSettings { get; set; }
+        public DbSet<RingDeviceVideoSettings> RingDeviceVideoSettings { get; set; }
+        public DbSet<RingDeviceVodSettings> RingDeviceVodSettings { get; set; }
+        public DbSet<RingDeviceMotionSnoozeProfile> RingDeviceMotionSnoozeProfiles { get; set; }
+        public DbSet<RingDeviceCvThresholdOverrideVersion> RingDeviceCvThresholdOverrideVersions { get; set; }
+        public DbSet<RingDeviceCvThresholdOverrideValue> RingDeviceCvThresholdOverrideValues { get; set; }
+
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
 
@@ -373,6 +461,9 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the evidence items pinned to cases (events and media).</summary>
         public DbSet<CaseItem> CaseItems { get; set; }
+
+        /// <summary>Gets or sets the append-only notes on a case, jamming incident or media flag (multi-line text with author and write time).</summary>
+        public DbSet<Note> Notes { get; set; }
 
         /// <summary>Gets or sets the derived-still capture provenance rows (Evidence "grab still with hash").</summary>
         public DbSet<MediaStillCapture> MediaStillCaptures { get; set; }

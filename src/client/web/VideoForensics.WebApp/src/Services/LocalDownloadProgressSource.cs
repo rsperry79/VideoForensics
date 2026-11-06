@@ -76,7 +76,7 @@ namespace VideoForensics.Client.WebApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Download progress sample failed; skipping this tick");
+                _logger.LogError("Download progress sample failed; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 

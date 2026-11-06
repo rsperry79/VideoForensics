@@ -69,6 +69,7 @@ public static class EvidenceTimelineStyle
             "motion" => MotionTone,
             "manual" or "on_demand" => ManualTone,
             "ding" => DingTone,
+            "timelapse" => TimeLapseTone,
             _ => NoEventTone
         };
     }

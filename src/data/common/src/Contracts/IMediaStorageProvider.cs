@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Common.Contracts
     /// </summary>
     public interface IMediaStorageProvider
     {
-        /// <summary>Opens a read stream for the media file at the given path (today: an absolute local-disk path, taken directly from MediaItem.FilePath).</summary>
+        /// <summary>Opens a read stream for the media file at the given path (today: MediaItem.FilePath as stored, relative to the media root, or an absolute local-disk path).</summary>
         Task<Stream> OpenReadStreamAsync(string path, CancellationToken ct);
 
         /// <summary>True if the media file exists at the given path.</summary>

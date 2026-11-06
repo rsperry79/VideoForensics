@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Primitives;
 
 using VideoForensics.Data.Core.Contracts;
@@ -5,6 +6,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
@@ -59,6 +61,14 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/bitrate-analysis", GetBitrateAnalysisAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media/{id:guid}/bitrate-series", GetBitrateSeriesAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/devices/{id:guid}/health", GetDeviceHealthHistoryAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -95,6 +105,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireRateLimiting("media");
 
             _ = group.MapPost("/media/{id:guid}/stills", CreateMediaStillAsync)
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireAuthorization(VideoForensicsPolicies.Review)
                 .RequireRateLimiting("media");
         }
@@ -163,6 +174,10 @@ namespace VideoForensics.Client.WebApp.Api
             IAccessAuditLogRepository auditLog,
             INetworkTierResolver tierResolver,
             ILogger<Program> logger,
+            INotificationDispatcher dispatcher,
+            INoticeRepository notices,
+            IDeviceRepository devices,
+            IEvidenceValidationJobs validationJobs,
             HttpContext context,
             CancellationToken ct)
         {
@@ -184,6 +199,7 @@ namespace VideoForensics.Client.WebApp.Api
             if (!await storage.ExistsAsync(item.FilePath, ct))
             {
                 logger.LogWarning("Media item {MediaItemId} has no file on disk at {FilePath}", id, item.FilePath);
+                await RaiseMissingClipAlertAsync(item, dispatcher, notices, devices, validationJobs, logger, ct);
                 return Results.NotFound();
             }
 
@@ -214,7 +230,7 @@ namespace VideoForensics.Client.WebApp.Api
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to record access audit for media item {MediaItemId} by operator {OperatorId}", id, operatorId);
+                    logger.LogError("Failed to record access audit for media item {MediaItemId} by operator {OperatorId}: {Message} ({ErrorType})", id, operatorId, ex.Message, ex.GetType().Name);
                     return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
                 }
             }
@@ -229,6 +245,72 @@ namespace VideoForensics.Client.WebApp.Api
             };
 
             return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Handles a clip whose file is gone from storage: queues an integrity check of that clip's file, then raises a
+        /// media-missing alert. The notice marker is the dedupe key: when it already exists, this does nothing.
+        /// The marker is written only by the alert, so a failed queue leaves no alert and no marker, and the next
+        /// request for the clip retries both. Failures are logged and never change the 404 the caller returns.
+        /// </summary>
+        private static async Task RaiseMissingClipAlertAsync(
+            MediaItem item,
+            INotificationDispatcher dispatcher,
+            INoticeRepository notices,
+            IDeviceRepository devices,
+            IEvidenceValidationJobs validationJobs,
+            ILogger<Program> logger,
+            CancellationToken ct)
+        {
+            // The marker is written into the details, so a repeat request for the same clip finds it and stays quiet.
+            string marker = $"media-missing:{item.Id:D}";
+            try
+            {
+                if (await notices.ExistsWithDetailsAsync(marker, ct))
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Message and type only: no stack trace in the log.
+                logger.LogError("Could not check missing clip alert for {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+                return;
+            }
+
+            // Queued before the alert: if the queue fails, nothing is dispatched and no marker is written, so the next
+            // request retries. The check covers this clip's file only, not its whole device.
+            try
+            {
+                _ = await validationJobs.StartIntegrityForMediaItemAsync(item.Id, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Could not queue integrity check for missing clip {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+                return;
+            }
+
+            try
+            {
+                // The device name is read for display only; a clip with no device still gets an alert.
+                var device = await devices.GetAsync(item.DeviceId, ct);
+                string camera = string.IsNullOrWhiteSpace(device?.Name) ? "an unknown camera" : device.Name;
+
+                await dispatcher.DispatchAsync(new NotificationEvent(
+                    EventType: "MediaMissing",
+                    TimestampUtc: DateTime.UtcNow,
+                    OperatorId: null,
+                    PairedDeviceId: null,
+                    SourceIp: null,
+                    Details: $"Clip {item.FileName} from {camera} is missing from storage. [{marker}]",
+                    Audience: NotificationAudience.All,
+                    Severity: NoticeSeverity.Alert,
+                    ActionPath: "/media"), ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("Could not raise missing clip alert for {FileName}: {ExceptionType}: {Reason}", item.FileName, ex.GetType().Name, ex.Message);
+            }
         }
 
         /// <summary>
@@ -423,6 +505,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// - deviceIds (1..64) and from/to (from must be &lt;= to) are required
         /// - skip defaults to 0, must be &gt;= 0
         /// - take defaults to 100, must be 1..500
+        /// - videoOnly defaults to false; when true, only video clips are counted and returned
         /// </summary>
         public static async Task<IResult> ListMediaItemPageAsync(
             Guid[]? deviceIds,
@@ -430,6 +513,7 @@ namespace VideoForensics.Client.WebApp.Api
             DateTime? to,
             int? skip,
             int? take,
+            bool? videoOnly,
             IMediaItemRepository mediaItems,
             CancellationToken ct)
         {
@@ -455,7 +539,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             MediaItemPage page = await mediaItems.GetPageByDevicesAndDateRangeAsync(
-                deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct);
+                deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct, videoOnly ?? false);
 
             return Results.Ok(new MediaItemPageDto([.. page.Items.Select(x => x.ToDto())], page.TotalCount));
         }
@@ -534,6 +618,55 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             SignalAnalysis result = await analysis.AnalyzeAsync(ids, from.Value, to.Value, ct);
+            return Results.Ok(result.ToDto());
+        }
+
+        /// <summary>
+        /// Handler for GET /bitrate-analysis: the measured bit rate figures for the cameras in <paramref name="devices"/> over
+        /// the window. Same query rules as <see cref="GetSignalAnalysisAsync"/>.
+        /// </summary>
+        /// <summary>Per-second video bitrate of a clip: read from the saved series, or computed and saved on first request.</summary>
+        public static async Task<Results<Ok<IReadOnlyList<BitrateSecondDto>>, NotFound>> GetBitrateSeriesAsync(
+            Guid id,
+            IMediaBitrateSeriesService series,
+            CancellationToken ct)
+        {
+            IReadOnlyList<VideoForensics.Core.Providers.Core.BitrateSecond>? points = await series.GetAsync(id, ct);
+            if (points is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok<IReadOnlyList<BitrateSecondDto>>(points.Select(p => p.ToDto()).ToList());
+        }
+
+        public static async Task<IResult> GetBitrateAnalysisAsync(
+            string? devices,
+            DateTime? from,
+            DateTime? to,
+            IBitrateAnalysisService analysis,
+            CancellationToken ct)
+        {
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            var ids = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(devices))
+            {
+                foreach (string part in devices.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (!Guid.TryParse(part, out Guid id))
+                    {
+                        return Results.BadRequest();
+                    }
+
+                    ids.Add(id);
+                }
+            }
+
+            BitrateAnalysis result = await analysis.AnalyzeAsync(ids, from.Value, to.Value, ct);
             return Results.Ok(result.ToDto());
         }
 

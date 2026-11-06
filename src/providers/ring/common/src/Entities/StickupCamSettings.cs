@@ -77,6 +77,23 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public AdvancedObjectSettings AdvancedObjectSettings { get; set; }
 
+        [JsonPropertyName("ignore_zones")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IgnoreZones IgnoreZones { get; set; }
+
+        [JsonPropertyName("motion_zones")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long?[] MotionZones { get; set; }
+
+        [JsonPropertyName("advanced_motion_detection_types")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[] AdvancedMotionDetectionTypes { get; set; }
+
+        /// <summary>settings.zone_settings: the same motion and package zones the top-level zone_settings key carries.</summary>
+        [JsonPropertyName("zone_settings")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ZoneSettings ZoneSettings { get; set; }
+
         /// <summary>Settings keys this model does not name. Stored as settings metadata JSON so no Ring value is dropped.</summary>
         [JsonExtensionData]
         public Dictionary<string, JsonElement>? AdditionalFields { get; set; }

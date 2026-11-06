@@ -21,6 +21,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="MaxConcurrentDownloads">Maximum number of simultaneous media downloads from providers.</param>
     /// <param name="DownloadStartDate">Start date for downloads as "yyyy-MM-dd" string; empty if unset.</param>
     /// <param name="EnableHealthSync">Toggles periodic RSSI/device-health background sync.</param>
+    /// <param name="EnableScheduledReports">Toggles the scheduled report run on the Services page.</param>
+    /// <param name="ScheduledReportIntervalHours">Hours between scheduled report runs (1 to 168).</param>
     /// <param name="EnableMdnsAdvertisement">Toggles mDNS advertisement on LAN (_videoforensics._tcp.local) for device discovery.</param>
     /// <param name="EnableEmailNotifications">Toggles the email notification channel for urgent security events.</param>
     /// <param name="ConfiguredNetworkTier">Which network tier the server is configured to be reachable at (Local, Network, or Internet).</param>
@@ -37,6 +39,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="CalibrationSessionDurationSeconds">Duration in seconds of a single bitrate calibration session.</param>
     /// <param name="MinCalibrationSamplesPerBucket">Minimum telemetry samples per time bucket to consider calibration complete for that bucket.</param>
     /// <param name="CalibrationStalenessDays">Staleness threshold in days; calibration buckets older than this are re-sampled even if at minimum threshold.</param>
+    /// <param name="LogPruneIntervalHours">Hours between operational log prune runs (1 to 168).</param>
+    /// <param name="MediaBackfillIntervalHours">Hours between media backfill runs (1 to 168).</param>
     public record ClientConfigDto(
         bool EnableForensicAnalysisReports,
         bool EnableSignalAnomalyReports,
@@ -66,7 +70,11 @@ namespace VideoForensics.Core.Api.Contracts
         int CalibrationCheckIntervalMinutes,
         int CalibrationSessionDurationSeconds,
         int MinCalibrationSamplesPerBucket,
-        int CalibrationStalenessDays
+        int CalibrationStalenessDays,
+        bool EnableScheduledReports = true,
+        int ScheduledReportIntervalHours = 24,
+        int LogPruneIntervalHours = 24,
+        int MediaBackfillIntervalHours = 6
     );
 
     /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
@@ -91,6 +99,10 @@ namespace VideoForensics.Core.Api.Contracts
                 MaxConcurrentDownloads: config.MaxConcurrentDownloads,
                 DownloadStartDate: config.DownloadStartDate,
                 EnableHealthSync: config.EnableHealthSync,
+                EnableScheduledReports: config.EnableScheduledReports,
+                ScheduledReportIntervalHours: config.ScheduledReportIntervalHours,
+                LogPruneIntervalHours: config.LogPruneIntervalHours,
+                MediaBackfillIntervalHours: config.MediaBackfillIntervalHours,
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,
                 ConfiguredNetworkTier: config.ConfiguredNetworkTier,
@@ -108,6 +120,50 @@ namespace VideoForensics.Core.Api.Contracts
                 MinCalibrationSamplesPerBucket: config.MinCalibrationSamplesPerBucket,
                 CalibrationStalenessDays: config.CalibrationStalenessDays
             );
+        }
+
+        /// <summary>
+        /// Converts a ClientConfigDto back to a configuration object. Only the client-safe allowlist is set; every other
+        /// setting keeps its default, because the server never sends it. A client must not persist the result.
+        /// </summary>
+        public static ForensicsConfiguration ToDomain(this ClientConfigDto dto)
+        {
+            return new ForensicsConfiguration
+            {
+                EnableForensicAnalysisReports = dto.EnableForensicAnalysisReports,
+                EnableSignalAnomalyReports = dto.EnableSignalAnomalyReports,
+                EnableChainOfCustodyReports = dto.EnableChainOfCustodyReports,
+                EnableEvidenceValidationReports = dto.EnableEvidenceValidationReports,
+                EnableAccessControlMonitoring = dto.EnableAccessControlMonitoring,
+                EnablePiiRedaction = dto.EnablePiiRedaction,
+                ReportOutputFormat = dto.ReportOutputFormat,
+                RedactionLevel = dto.RedactionLevel,
+                RetentionDaysDefault = dto.RetentionDaysDefault,
+                LogLevel = dto.LogLevel,
+                MaxConcurrentDownloads = dto.MaxConcurrentDownloads,
+                DownloadStartDate = dto.DownloadStartDate,
+                EnableHealthSync = dto.EnableHealthSync,
+                EnableScheduledReports = dto.EnableScheduledReports,
+                ScheduledReportIntervalHours = dto.ScheduledReportIntervalHours,
+                LogPruneIntervalHours = dto.LogPruneIntervalHours,
+                MediaBackfillIntervalHours = dto.MediaBackfillIntervalHours,
+                EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
+                EnableEmailNotifications = dto.EnableEmailNotifications,
+                ConfiguredNetworkTier = dto.ConfiguredNetworkTier,
+                InternetServerUrl = dto.InternetServerUrl,
+                EnableLiveView = dto.EnableLiveView,
+                LiveViewIdleTimeoutMinutes = dto.LiveViewIdleTimeoutMinutes,
+                LiveViewTelemetrySampleIntervalSeconds = dto.LiveViewTelemetrySampleIntervalSeconds,
+                SustainedModeMaxDurationMinutes = dto.SustainedModeMaxDurationMinutes,
+                LiveViewTelemetryRetentionDays = dto.LiveViewTelemetryRetentionDays,
+                ElevatedPollingWindowMinutes = dto.ElevatedPollingWindowMinutes,
+                ElevatedPollingIntervalSeconds = dto.ElevatedPollingIntervalSeconds,
+                EnableBitrateCalibration = dto.EnableBitrateCalibration,
+                CalibrationCheckIntervalMinutes = dto.CalibrationCheckIntervalMinutes,
+                CalibrationSessionDurationSeconds = dto.CalibrationSessionDurationSeconds,
+                MinCalibrationSamplesPerBucket = dto.MinCalibrationSamplesPerBucket,
+                CalibrationStalenessDays = dto.CalibrationStalenessDays
+            };
         }
     }
 }

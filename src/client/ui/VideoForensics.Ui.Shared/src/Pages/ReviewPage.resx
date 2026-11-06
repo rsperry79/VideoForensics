@@ -51,13 +51,34 @@
     <value>All cameras</value>
   </data>
   <data name="CamerasSelected" xml:space="preserve">
-    <value>{0} cameras</value>
-  </data>
-  <data name="CameraSelectedOne" xml:space="preserve">
-    <value>1 camera</value>
+    <value>{0} Cameras</value>
   </data>
   <data name="CamerasLabel" xml:space="preserve">
     <value>Cameras</value>
+  </data>
+  <data name="MaxCamerasReached" xml:space="preserve">
+    <value>{0} cameras are selected, the most that can be shown. Clear one to pick another.</value>
+  </data>
+  <data name="MaxDevicesReached" xml:space="preserve">
+    <value>{0} devices are selected, the most that can be shown. Clear one to pick another.</value>
+  </data>
+  <data name="AllDevices" xml:space="preserve">
+    <value>All devices</value>
+  </data>
+  <data name="DevicesSelected" xml:space="preserve">
+    <value>{0} Devices</value>
+  </data>
+  <data name="DevicesLabel" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="NoDevices" xml:space="preserve">
+    <value>No devices are available.</value>
+  </data>
+  <data name="TooManyDevices" xml:space="preserve">
+    <value>At most {0} devices can be shown at once.</value>
+  </data>
+  <data name="SelectAtLeastOneDevice" xml:space="preserve">
+    <value>Select at least one device.</value>
   </data>
   <data name="RangeLabel" xml:space="preserve">
     <value>Time range</value>
@@ -138,7 +159,7 @@
     <value>No clips in this time range.</value>
   </data>
   <data name="ClipsTruncated" xml:space="preserve">
-    <value>Showing the first {0} clips. Narrow the time range to see the rest.</value>
+    <value>Showing the latest {0} clips. Narrow the time range to see older ones.</value>
   </data>
   <data name="ClipsLoadFailed" xml:space="preserve">
     <value>Clips could not be loaded. Change the cameras or time range to try again.</value>
@@ -170,6 +191,9 @@
   <data name="EventType_motion" xml:space="preserve">
     <value>Motion</value>
   </data>
+  <data name="EventType_timelapse" xml:space="preserve">
+    <value>Time Lapse</value>
+  </data>
   <data name="EventType_ding" xml:space="preserve">
     <value>Doorbell press</value>
   </data>
@@ -182,8 +206,32 @@
   <data name="EventType_alarm" xml:space="preserve">
     <value>Alarm</value>
   </data>
-  <data name="EventType_person" xml:space="preserve">
-    <value>Person</value>
+  <data name="EventType_human" xml:space="preserve">
+    <value>Human</value>
+  </data>
+  <data name="EventType_vehicle" xml:space="preserve">
+    <value>Vehicle</value>
+  </data>
+  <data name="EventType_animal" xml:space="preserve">
+    <value>Animal</value>
+  </data>
+  <data name="EventTypeFilterLabel" xml:space="preserve">
+    <value>Event type</value>
+  </data>
+  <data name="EventTypeAll" xml:space="preserve">
+    <value>All events</value>
+  </data>
+  <data name="EventFilterTitle" xml:space="preserve">
+    <value>Event Filter</value>
+  </data>
+  <data name="EventTypesSelected" xml:space="preserve">
+    <value>{0} event types</value>
+  </data>
+  <data name="EventType_signal_anomaly" xml:space="preserve">
+    <value>Signal anomalies</value>
+  </data>
+  <data name="EventType_jamming" xml:space="preserve">
+    <value>Jamming</value>
   </data>
   <data name="FilterTitle" xml:space="preserve">
     <value>Filter cameras</value>
@@ -425,12 +473,6 @@
   <data name="ResultTagFailed" xml:space="preserve">
     <value>The tag could not be saved.</value>
   </data>
-  <data name="HoldReasonPlaceholder" xml:space="preserve">
-    <value>Reason for the legal hold</value>
-  </data>
-  <data name="HoldReleaseReasonPlaceholder" xml:space="preserve">
-    <value>Reason for releasing the hold</value>
-  </data>
   <data name="HoldConfirm" xml:space="preserve">
     <value>Confirm</value>
   </data>
@@ -499,5 +541,26 @@
   </data>
   <data name="CaseNotFound" xml:space="preserve">
     <value>The case was not found. Showing all evidence.</value>
+  </data>
+  <data name="EventType_bitrate" xml:space="preserve">
+    <value>Bit Rate</value>
+  </data>
+  <data name="DetailBitRateTitle" xml:space="preserve">
+    <value>Bit rate flags</value>
+  </data>
+  <data name="DetailBitRateEmpty" xml:space="preserve">
+    <value>No bit rate flags in this range.</value>
+  </data>
+  <data name="DetailBitRateLoading" xml:space="preserve">
+    <value>Loading bit rate flags…</value>
+  </data>
+  <data name="DetailBitRateLoadFailed" xml:space="preserve">
+    <value>Could not load bit rate flags.</value>
+  </data>
+  <data name="DetailBitRateCollapse" xml:space="preserve">
+    <value>Bit rate collapse</value>
+  </data>
+  <data name="DetailBitRateDeviation" xml:space="preserve">
+    <value>Bit rate deviation</value>
   </data>
 </root>

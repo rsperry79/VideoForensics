@@ -1,0 +1,19 @@
+{
+  "device_health": {
+    "id": 1,
+    "battery_percentage_category": "x",
+    "battery_voltage": null,
+    "battery_voltage_category": null,
+    "latest_signal_strength": 1.5,
+    "latest_signal_category": "x",
+    "average_signal_strength": 1.5,
+    "average_signal_category": "x",
+    "firmware": "x",
+    "updated_at": "x",
+    "packet_loss_strength": null,
+    "packet_loss_category": "x",
+    "wifi_name": "x",
+    "wifi_is_ring_network": false,
+    "battery_percentage": null
+  }
+}

@@ -16,6 +16,7 @@ public class ScopeRailTestContext_Defaults_Tests : ScopeRailTestContext
         _ = RegisterDeviceRepository(MakeDevice("Front Door"));
 
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
+        component.Find("[data-testid='scope-device-button']").Click();
 
         Assert.Contains("Front Door", component.Markup);
     }

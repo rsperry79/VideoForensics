@@ -900,31 +900,6 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task UnitOfWorkLocationRepository_GetByApiHashAsync_ReturnsLocation()
-        {
-            string apiHash = $"hash_{Guid.NewGuid()}";
-            var locationId = Guid.NewGuid();
-
-            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
-            {
-                Location location = TestDataBuilder.BuildLocation();
-                location.Id = locationId;
-                location.ApiResponseHash = apiHash;
-                await context.Locations.AddAsync(location, CancellationToken.None);
-                return null;
-            }, CancellationToken.None);
-
-            Location? result = await _unitOfWork.ExecuteAsync(async context =>
-            {
-                return await context.Locations.GetByApiHashAsync(apiHash, CancellationToken.None);
-            }, CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Equal(locationId, result.Id);
-            Assert.Equal(apiHash, result.ApiResponseHash);
-        }
-
-        [Fact]
         public async Task UnitOfWorkLocationRepository_ListAsync_ReturnsAllLocations()
         {
             var loc1Id = Guid.NewGuid();
@@ -1088,36 +1063,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(2, results.Count);
             Assert.True(results.Any(d => d.Id == device1Id));
             Assert.True(results.Any(d => d.Id == device2Id));
-        }
-
-        [Fact]
-        public async Task UnitOfWorkDeviceRepository_GetByApiHashAsync_ReturnsDevice()
-        {
-            var locationId = Guid.NewGuid();
-            var deviceId = Guid.NewGuid();
-            string apiHash = $"hash_{Guid.NewGuid()}";
-
-            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
-            {
-                Location location = TestDataBuilder.BuildLocation();
-                location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
-
-                Device device = TestDataBuilder.BuildDevice(locationId);
-                device.Id = deviceId;
-                device.ApiResponseHash = apiHash;
-                await context.Devices.AddAsync(device, CancellationToken.None);
-                return null;
-            }, CancellationToken.None);
-
-            Device? result = await _unitOfWork.ExecuteAsync(async context =>
-            {
-                return await context.Devices.GetByApiHashAsync(apiHash, CancellationToken.None);
-            }, CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Equal(deviceId, result.Id);
-            Assert.Equal(apiHash, result.ApiResponseHash);
         }
 
         [Fact]

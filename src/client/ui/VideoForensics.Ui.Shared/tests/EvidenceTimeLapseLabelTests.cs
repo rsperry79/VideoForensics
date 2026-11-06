@@ -51,6 +51,31 @@ public class EvidenceTimeLapseLabelTests
     }
 
     [Fact]
+    public void TimelapseEvent_IsLabelledTimeLapse()
+    {
+        // The roll-up writes an event row of type "timelapse" for each loop; the Events tab must not show the raw type.
+        var item = new EvidenceItem
+        {
+            Key = "k",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Porch",
+            Event = new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.Empty,
+                ProviderEventId = "timelapse-20261020121500",
+                EventType = "timelapse",
+                OccurredAtUtc = DateTime.UtcNow,
+                DiscoveredAtUtc = DateTime.UtcNow,
+            },
+        };
+
+        Assert.Equal("Time Lapse", item.Label);
+    }
+
+    [Fact]
     public void VideoWithoutMetadata_StaysLabelledVideo()
     {
         Assert.Equal("Video", Video(null).Label);

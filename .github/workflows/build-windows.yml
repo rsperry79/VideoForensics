@@ -33,6 +33,16 @@ jobs:
       - name: Restore NuGet packages
         run: dotnet restore VideoForensics.CI.slnf
 
+      # The WebApp embeds this file as its syncfusion-license.key resource. It is git-ignored, so CI writes it here.
+      - name: Write embedded Syncfusion key for the WebApp
+        shell: bash
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: |
+          if [ -n "$SYNCFUSION_LICENSE_KEY" ]; then
+            printf '%s' "$SYNCFUSION_LICENSE_KEY" > src/client/web/VideoForensics.WebApp/src/syncfusion-license.key
+          fi
+
       - name: Build solution
         shell: bash
         env:

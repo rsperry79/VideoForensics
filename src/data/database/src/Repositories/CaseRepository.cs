@@ -311,7 +311,7 @@ namespace VideoForensics.Data.Database.Repositories
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error creating case {CaseNumber}", finalCaseNumber);
+                    _logger.LogError("Error creating case {CaseNumber}: {Message} ({ErrorType})", finalCaseNumber, ex.Message, ex.GetType().Name);
                     throw;
                 }
             }
@@ -382,7 +382,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 if (forensicCase.Status == CaseStatus.Closed)
@@ -412,9 +412,13 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating case {CaseId}", id);
+                _logger.LogError("Error updating case {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -433,7 +437,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 if (forensicCase.Status == CaseStatus.Closed)
@@ -483,9 +487,13 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting case scope for {CaseId}", id);
+                _logger.LogError("Error setting case scope for {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -507,7 +515,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 forensicCase.Status = CaseStatus.Closed;
@@ -532,9 +540,13 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error closing case {CaseId}", id);
+                _logger.LogError("Error closing case {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -547,7 +559,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {id} not found.");
+                    throw new KeyNotFoundException($"Case {id} not found.");
                 }
 
                 forensicCase.Status = CaseStatus.Open;
@@ -572,9 +584,13 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error reopening case {CaseId}", id);
+                _logger.LogError("Error reopening case {CaseId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -593,7 +609,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == caseId, ct);
                 if (forensicCase is null)
                 {
-                    throw new InvalidOperationException($"Case {caseId} not found.");
+                    throw new KeyNotFoundException($"Case {caseId} not found.");
                 }
 
                 if (forensicCase.Status == CaseStatus.Closed)
@@ -608,6 +624,8 @@ namespace VideoForensics.Data.Database.Repositories
                         ci => ci.CaseId == caseId && ci.EventId == targetId && ci.RemovedAtUtc == null, ct),
                     CaseItemKind.Media => await db.CaseItems.FirstOrDefaultAsync(
                         ci => ci.CaseId == caseId && ci.MediaItemId == targetId && ci.RemovedAtUtc == null, ct),
+                    CaseItemKind.Snapshot => await db.CaseItems.FirstOrDefaultAsync(
+                        ci => ci.CaseId == caseId && ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null, ct),
                     _ => null
                 };
 
@@ -620,13 +638,10 @@ namespace VideoForensics.Data.Database.Repositories
                 string? mediaSha256AtAdd = null;
                 if (kind == CaseItemKind.Media)
                 {
-                    MediaItem? mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == targetId, ct);
-                    if (mediaItem is not null)
-                    {
-                        mediaSha256AtAdd = mediaItem.Sha256Hash;
-                    }
-                    // Note: We don't validate that the media item exists, as it may be added later.
-                    // FK constraint will be enforced by the database.
+                    // A missing item is rejected here so the UI gets a clear error and no pin is stored without a hash.
+                    MediaItem mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == targetId, ct)
+                        ?? throw new KeyNotFoundException($"Media item {targetId} not found.");
+                    mediaSha256AtAdd = mediaItem.Sha256Hash;
                 }
 
                 var caseItem = new CaseItem
@@ -636,6 +651,7 @@ namespace VideoForensics.Data.Database.Repositories
                     Kind = kind,
                     EventId = kind == CaseItemKind.Event ? targetId : null,
                     MediaItemId = kind == CaseItemKind.Media ? targetId : null,
+                    SnapshotCaptureId = kind == CaseItemKind.Snapshot ? targetId : null,
                     Reason = reason,
                     AddedBy = addedBy,
                     AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
@@ -664,9 +680,13 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 throw;
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding item to case {CaseId}", caseId);
+                _logger.LogError("Error adding item to case {CaseId}: {Message} ({ErrorType})", caseId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -705,7 +725,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing case item {CaseItemId}", caseItemId);
+                _logger.LogError("Error removing case item {CaseItemId}: {Message} ({ErrorType})", caseItemId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -731,6 +751,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 CaseItemKind.Event => db.CaseItems.Where(ci => ci.EventId == targetId && ci.RemovedAtUtc == null),
                 CaseItemKind.Media => db.CaseItems.Where(ci => ci.MediaItemId == targetId && ci.RemovedAtUtc == null),
+                CaseItemKind.Snapshot => db.CaseItems.Where(ci => ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null),
                 _ => db.CaseItems.Where(ci => false)
             };
 

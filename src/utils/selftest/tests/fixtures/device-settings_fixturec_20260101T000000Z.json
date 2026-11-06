@@ -1,0 +1,498 @@
+{
+  "advanced_motion_settings": {
+    "zone_1": {
+      "name": "fake-text",
+      "state": 1,
+      "vertex1": {
+        "x": 1,
+        "y": 0.5
+      },
+      "vertex2": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "vertex3": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "vertex4": {
+        "x": 1,
+        "y": 0.5
+      },
+      "vertex5": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex6": {
+        "x": 0.5,
+        "y": 1
+      },
+      "vertex7": {
+        "x": 0.5,
+        "y": 1
+      },
+      "vertex8": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    "zone_2": {
+      "name": "fake-text",
+      "state": 1,
+      "vertex1": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex2": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex3": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex4": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex5": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex6": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex7": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex8": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    "zone_3": {
+      "name": "fake-text",
+      "state": 1,
+      "vertex1": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex2": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex3": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex4": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex5": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex6": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex7": {
+        "x": 1,
+        "y": 1
+      },
+      "vertex8": {
+        "x": 1,
+        "y": 1
+      }
+    }
+  },
+  "attestation_settings": {
+    "rda_enabled": true
+  },
+  "audio_settings": {
+    "enable_live_view_audio_override": true
+  },
+  "auth_settings": {
+    "fallback_enabled": true,
+    "protocol": "fake-text",
+    "retry_interval": 1
+  },
+  "backend_settings": {
+    "enable_rich_notifications": true,
+    "live_view_disabled": true,
+    "live_view_preset_profile": "fake-text",
+    "motion_snooze_preset_profile": "fake-text",
+    "motion_warning_enabled": true,
+    "paid_features": {
+      "ai_alexa_plus_greetings": true,
+      "ai_automated_warnings": true,
+      "ai_labs_daily_clips": true,
+      "ai_labs_memorable_moments": true,
+      "alarm_triggered_recording": true,
+      "alexa_concierge": true,
+      "animal": true,
+      "appstore": true,
+      "baby_cry": true,
+      "car_alarm": true,
+      "closed_caption": true,
+      "co2_smoke_alarm": true,
+      "critical_alerts": true,
+      "cv_triggers": true,
+      "daily_digest": true,
+      "ding_call": true,
+      "dog_bark": true,
+      "extended_live_view": true,
+      "general_sound": true,
+      "glass_break": true,
+      "human": true,
+      "live_speak": true,
+      "loitering": true,
+      "motion": true,
+      "motion_awareness": true,
+      "motion_stop": true,
+      "multicam_live_view": true,
+      "natural_language_search": true,
+      "other_motion": true,
+      "package_delivery": true,
+      "package_pickup": true,
+      "package_protection": true,
+      "person_identification": true,
+      "recording_24x7": true,
+      "retinal_tuning": true,
+      "rogers_vqa": true,
+      "sheila_cv": true,
+      "sheila_recording": true,
+      "smart_media_descriptions": true,
+      "snapshot_capture_plus": true,
+      "system_level_pip": true,
+      "unverified_motion": true,
+      "vehicle": true
+    },
+    "terms_of_service_accepted": {
+      "autoreply": true,
+      "concierge": true
+    },
+    "user_specified_footage_hours_ttl": 1,
+    "user_specified_recording_ttl": 1
+  },
+  "chime_settings": {
+    "duration": 1,
+    "enable": true,
+    "type": 1
+  },
+  "client_device_settings": {
+    "advanced_motion_enabled": true,
+    "cfes_eligible": true,
+    "dynamic_network_switching_eligible": true,
+    "light_schedule_enabled": true,
+    "local_playback_enabled": true,
+    "motion_message_enabled": true,
+    "motion_zone_recommendation": true,
+    "night_vision_enabled": true,
+    "people_only_enabled": true,
+    "ptz_setup_complete": true,
+    "rich_notifications_eligible": true,
+    "ringtones_enabled": true,
+    "shadow_correction_enabled": true,
+    "sheila_camera_eligible": true,
+    "sheila_camera_processing_eligible": true,
+    "show_24x7_lite": true,
+    "show_offline_motion_events": true,
+    "show_radar_data": true,
+    "vehicle_detection_eligible": true
+  },
+  "concierge_settings": {
+    "alexa_settings": {
+      "delay_ms": 1
+    },
+    "autoreply_settings": {
+      "delay_ms": 1
+    },
+    "mode": "fake-text"
+  },
+  "cv_settings": {
+    "detection_types": {
+      "human": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "loitering": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "motion": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "moving_vehicle": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "nearby_pom": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "other_motion": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "package_delivery": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "package_pickup": {
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      },
+      "vehicle": {
+        "action": "fake-text",
+        "enabled": true,
+        "mode": "fake-text",
+        "notification": true
+      }
+    },
+    "search_types": {
+      "natural_language_search": {
+        "enabled": true,
+        "mode": "fake-text"
+      }
+    },
+    "threshold": {
+      "loitering": 1,
+      "package_delivery": 1
+    },
+    "threshold_overrides": {
+      "package_delivery": {
+        "versions": [
+          {
+            "values": [
+              0.5
+            ],
+            "version": "fake-text"
+          }
+        ]
+      }
+    }
+  },
+  "event_settings": {
+    "on_demand": {
+      "max_duration_s": 1
+    }
+  },
+  "floodlight_settings": {
+    "always_on_duration": "fake-text",
+    "brightness": 1
+  },
+  "general_settings": {
+    "country_code": "fake-text",
+    "country_code_enabled": true,
+    "data_collection_enabled": true,
+    "enable_audio_recording": true,
+    "events_via_rss": true,
+    "firmwares_locked": true,
+    "lite_24x7_enabled": true,
+    "lite_24x7_subscribed": true,
+    "offline_motion_event_enabled": true,
+    "offline_motion_event_subscribed": true,
+    "theft_alarm_enable": true,
+    "use_wrapup_domain": true,
+    "utc_offset": "fake-text",
+    "wrapup_domain": "fake-text"
+  },
+  "keep_alive_settings": {
+    "keep_alive_auto": 1
+  },
+  "light_snooze_settings": {
+    "duration": 1
+  },
+  "lite_24x7": {
+    "mode": "fake-text",
+    "mode_properties": {
+      "sheila": {}
+    }
+  },
+  "motion_settings": {
+    "advanced_motion_detection_enabled": true,
+    "advanced_motion_detection_human_only_mode": true,
+    "advanced_motion_detection_loitering_mode": true,
+    "advanced_motion_detection_mode": "fake-text",
+    "advanced_motion_glance_enabled": true,
+    "advanced_motion_recording_human_mode": true,
+    "advanced_motion_zones_enabled": true,
+    "advanced_motion_zones_type": "fake-text",
+    "advanced_pir_motion_zones": {
+      "zone1_sensitivity": 1,
+      "zone2_sensitivity": 1,
+      "zone3_sensitivity": 1,
+      "zone4_sensitivity": 1,
+      "zone5_sensitivity": 1,
+      "zone6_sensitivity": 1
+    },
+    "enable_ir": 1,
+    "enable_recording": true,
+    "end_detection": 1,
+    "loitering_threshold": 1,
+    "motion_detection_enabled": true,
+    "motion_snooze_device_enabled": true,
+    "motion_snooze_profile": [
+      1
+    ],
+    "motion_snooze_threshold_mins": 1,
+    "zone_settings_v2_enabled": true,
+    "enable_audio": true,
+    "motion_sensitivity_profile": 1
+  },
+  "pir_settings": {
+    "sensitivity_1": 1,
+    "sensitivity_2": 1,
+    "sensitivity_3": 1,
+    "zone_enable": 1,
+    "zone_mask": 1
+  },
+  "ptz_settings": {},
+  "schedule_settings": {},
+  "sheila_settings": {
+    "cv_processing_enabled": true,
+    "local_storage_enabled": true,
+    "session_registration_api": 1
+  },
+  "snapshot_settings": {
+    "close_container": 1,
+    "frequency_after_secs": 1,
+    "frequency_secs": 1,
+    "lite_24x7_resolution_p": 1,
+    "max_upload_kb": 1,
+    "ome_resolution_p": 1,
+    "period_after_secs": 1
+  },
+  "stream_settings": {
+    "active_streaming_profile": "fake-text",
+    "profile": 1,
+    "streaming_profiles": {
+      "freeswitch": {},
+      "rms": {
+        "host": "fake-text",
+        "port": 1
+      }
+    }
+  },
+  "thermometer_settings": {},
+  "type": "fake-text",
+  "video_settings": {
+    "abc_enabled": true,
+    "ae_level": 1,
+    "ae_mode": 1,
+    "aspect_ratio": "fake-text",
+    "auto_clip_length_enabled": true,
+    "brightness": 1,
+    "clip_length_max": 1,
+    "clip_length_min": 1,
+    "contrast": 1,
+    "dynamic_resolution_enabled": true,
+    "encryption_enabled": true,
+    "encryption_method": 1,
+    "exposure_control": 1,
+    "hdr_enable": true,
+    "ignore_zones": {
+      "zone1": {
+        "name": "fake-text",
+        "state": 1,
+        "vertex1": {
+          "x": 1,
+          "y": 1
+        },
+        "vertex2": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "zone2": {
+        "name": "fake-text",
+        "state": 1,
+        "vertex1": {
+          "x": 1,
+          "y": 1
+        },
+        "vertex2": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "zone3": {
+        "name": "fake-text",
+        "state": 1,
+        "vertex1": {
+          "x": 1,
+          "y": 1
+        },
+        "vertex2": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "zone4": {
+        "name": "fake-text",
+        "state": 1,
+        "vertex1": {
+          "x": 1,
+          "y": 1
+        },
+        "vertex2": {
+          "x": 1,
+          "y": 1
+        }
+      }
+    },
+    "night_color_enable": true,
+    "recording_24x7_mode": 1,
+    "retinal_tuning": {
+      "user_specified_enabled": true,
+      "enabled": true
+    },
+    "saturation": 1
+  },
+  "vod_settings": {
+    "cached_vod_domain": "fake-text",
+    "enable": true,
+    "forced_enable_vod": true,
+    "toggled_at": "fake-text",
+    "use_cached_vod_domain": true
+  },
+  "volume_settings": {
+    "doorbell_volume": 1,
+    "mic_volume": 1,
+    "voice_volume": 1
+  },
+  "zone_settings": {
+    "motion": [
+      {
+        "id": "fake-text",
+        "name": "fake-text",
+        "properties": {
+          "detection_types": [
+            "fake-text"
+          ],
+          "style": 1
+        },
+        "state": "fake-text",
+        "vertices": [
+          {
+            "x": 1,
+            "y": 0.5
+          }
+        ]
+      }
+    ]
+  }
+}

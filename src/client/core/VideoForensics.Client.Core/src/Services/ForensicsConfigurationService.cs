@@ -13,37 +13,60 @@ namespace VideoForensics.Client.Core.Services
         private readonly IAppSettingRepository _settingRepository;
         private readonly IFfmpegToolLocation? _ffmpegToolLocation;
         private readonly Func<string?> _discoverBinDirectory;
+        private readonly IConfigurationChangeNotifier? _changeNotifier;
+        private readonly ConfigurationCache? _cache;
 
         /// <param name="ffmpegToolLocation">Optional holder that consumers read the ffmpeg bin directory from; kept in sync on load and save.</param>
         /// <param name="discoverBinDirectory">Optional discovery used on first run when FfmpegBinDirectory is empty. Defaults to <see cref="FfmpegBinDirectoryLocator.DiscoverDefault"/>.</param>
+        /// <param name="changeNotifier">Optional announcer told about each successful save, so live clients refresh their settings.</param>
+        /// <param name="cache">Optional process-wide cache, so background services do not re-read every setting on each tick; cleared on save.</param>
         public ForensicsConfigurationService(
             ILogger<ForensicsConfigurationService> logger,
             IAppSettingRepository settingRepository,
             IFfmpegToolLocation? ffmpegToolLocation = null,
-            Func<string?>? discoverBinDirectory = null)
+            Func<string?>? discoverBinDirectory = null,
+            IConfigurationChangeNotifier? changeNotifier = null,
+            ConfigurationCache? cache = null)
         {
             _logger = logger;
             _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
             _ffmpegToolLocation = ffmpegToolLocation;
             _discoverBinDirectory = discoverBinDirectory ?? FfmpegBinDirectoryLocator.DiscoverDefault;
+            _changeNotifier = changeNotifier;
+            _cache = cache;
         }
 
         public async Task<IForensicsConfiguration> LoadConfigurationAsync(string configPath, CancellationToken cancellationToken = default)
         {
+            // Why: callers mutate what they get (settings pages edit then save), so hand out copies, never the cached instance.
+            ForensicsConfiguration? cached = _cache?.Get();
+            if (cached is not null)
+            {
+                return cached.Clone();
+            }
+
             var config = new ForensicsConfiguration();
+            bool loaded = false;
 
             try
             {
                 await LoadFromDatabaseAsync(config, cancellationToken);
+                loaded = true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load configuration from database, using defaults");
+                _logger.LogError("Failed to load configuration from database, using defaults: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             await EnsureFfmpegBinDirectoryAsync(config, cancellationToken);
 
             _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
+
+            // Why: a failed load returned defaults; caching those would hide the real settings until the next save.
+            if (loaded)
+            {
+                _cache?.Set(config.Clone());
+            }
 
             return config;
         }
@@ -51,8 +74,15 @@ namespace VideoForensics.Client.Core.Services
         public async Task SaveConfigurationAsync(IForensicsConfiguration config, CancellationToken cancellationToken = default)
         {
             await SaveToDatabaseAsync(config, cancellationToken);
+            _cache?.Clear();
 
             _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
+
+            // Why: announce only after the write succeeds, so a client never refreshes to values that were not saved.
+            if (_changeNotifier is not null)
+            {
+                await _changeNotifier.ConfigurationSavedAsync(config, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -81,7 +111,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "ffmpeg bin directory discovery failed; set FfmpegBinDirectory");
+                _logger.LogWarning("ffmpeg bin directory discovery failed; set FfmpegBinDirectory: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 
@@ -103,6 +133,8 @@ namespace VideoForensics.Client.Core.Services
                 config.TempDownloadLocation = await GetStringSetting("TempDownloadLocation", config.TempDownloadLocation, cancellationToken);
                 config.LogsLocation = await GetStringSetting("LogsLocation", config.LogsLocation, cancellationToken);
                 config.ReportsLocation = await GetStringSetting("ReportsLocation", config.ReportsLocation, cancellationToken);
+                config.KeysLocation = await GetStringSetting("KeysLocation", config.KeysLocation, cancellationToken);
+                config.DefaultStorageRoot = await GetStringSetting("DefaultStorageRoot", config.DefaultStorageRoot, cancellationToken);
                 config.RedactionLevel = await GetEnumSetting("RedactionLevel", config.RedactionLevel, cancellationToken);
                 config.KeyStorageProvider = await GetEnumSetting("KeyStorageProvider", config.KeyStorageProvider, cancellationToken);
                 config.RetentionDaysDefault = await GetIntSetting("RetentionDaysDefault", config.RetentionDaysDefault, cancellationToken);
@@ -110,6 +142,10 @@ namespace VideoForensics.Client.Core.Services
                 config.MaxConcurrentDownloads = await GetIntSetting("MaxConcurrentDownloads", config.MaxConcurrentDownloads, cancellationToken);
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
+                config.EnableScheduledReports = await GetBoolSetting("EnableScheduledReports", config.EnableScheduledReports, cancellationToken);
+                config.ScheduledReportIntervalHours = await GetIntSetting("ScheduledReportIntervalHours", config.ScheduledReportIntervalHours, cancellationToken);
+                config.LogPruneIntervalHours = await GetIntSetting("LogPruneIntervalHours", config.LogPruneIntervalHours, cancellationToken);
+                config.MediaBackfillIntervalHours = await GetIntSetting("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
                 config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
@@ -145,11 +181,14 @@ namespace VideoForensics.Client.Core.Services
                 config.MinCalibrationSamplesPerBucket = await GetIntSetting("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket, cancellationToken);
                 config.CalibrationStalenessDays = await GetIntSetting("CalibrationStalenessDays", config.CalibrationStalenessDays, cancellationToken);
 
-                _logger.LogInformation("Configuration loaded from database");
+                // Why: names what was read, not just that a read happened; mail and credential settings are left out.
+                _logger.LogInformation(
+                    "Configuration loaded from database: NetworkTier={NetworkTier}, LogLevel={LogLevel}, HttpPort={HttpPort}, HttpsPort={HttpsPort}, ReleaseChannel={ReleaseChannel}, DownloadLocation={DownloadLocation}, FfmpegBinDirectory={FfmpegBinDirectory}",
+                    config.ConfiguredNetworkTier, config.LogLevel, config.ServerHttpPort, config.ServerHttpsPort, config.ReleaseChannel, config.DownloadLocation, config.FfmpegBinDirectory);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load configuration from database");
+                _logger.LogError("Failed to load configuration from database: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -172,6 +211,8 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("ReportsLocation", config.ReportsLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("KeysLocation", config.KeysLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("DefaultStorageRoot", config.DefaultStorageRoot ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("RedactionLevel", config.RedactionLevel.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("KeyStorageProvider", config.KeyStorageProvider.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("RetentionDaysDefault", config.RetentionDaysDefault.ToString(), cancellationToken);
@@ -179,6 +220,10 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableScheduledReports", config.EnableScheduledReports.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ScheduledReportIntervalHours", config.ScheduledReportIntervalHours.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("LogPruneIntervalHours", config.LogPruneIntervalHours.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);
@@ -218,7 +263,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save configuration to database");
+                _logger.LogError("Failed to save configuration to database: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

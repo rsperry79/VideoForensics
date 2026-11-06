@@ -146,7 +146,7 @@ namespace VideoForensics.Client.Hosting.ServerDiscovery
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "mDNS discovery failed, will attempt fallback");
+                _logger.LogError("mDNS discovery failed, will attempt fallback: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return null;
             }
         }

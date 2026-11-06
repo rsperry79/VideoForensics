@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve"><value>Database</value></data>
+  <data name="StatsHeading" xml:space="preserve"><value>Database statistics</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
+  <data name="Engine" xml:space="preserve"><value>Engine</value></data>
+  <data name="Location" xml:space="preserve"><value>Location</value></data>
+  <data name="FileSize" xml:space="preserve"><value>File size</value></data>
+  <data name="Pages" xml:space="preserve"><value>Pages</value></data>
+  <data name="FreePages" xml:space="preserve"><value>free</value></data>
+  <data name="JournalMode" xml:space="preserve"><value>Journal mode</value></data>
+  <data name="MediaRows" xml:space="preserve"><value>Media rows</value></data>
+  <data name="PurgedRows" xml:space="preserve"><value>purged</value></data>
+  <data name="ActionLogEntries" xml:space="preserve"><value>Action log entries</value></data>
+  <data name="RefreshButton" xml:space="preserve"><value>Refresh</value></data>
+  <data name="MaintenanceHeading" xml:space="preserve"><value>Maintenance</value></data>
+  <data name="MaintenanceDescription" xml:space="preserve"><value>Compact rebuilds the file to reclaim space. Repair runs an integrity check and rebuilds indexes. Validate lists problems without changing anything.</value></data>
+  <data name="CompactButton" xml:space="preserve"><value>Compact</value></data>
+  <data name="RepairButton" xml:space="preserve"><value>Repair</value></data>
+  <data name="ValidateButton" xml:space="preserve"><value>Validate</value></data>
+  <data name="ValidationHeading" xml:space="preserve"><value>Validation results</value></data>
+  <data name="ValidationClean" xml:space="preserve"><value>No missing media files, and the action log chain verifies.</value></data>
+  <data name="MissingFilesFound" xml:space="preserve"><value>{0} media record(s) point at files that are not on disk. Each one is logged as an error.</value></data>
+  <data name="MoreMissingFiles" xml:space="preserve"><value>{0} more not listed.</value></data>
+  <data name="PurgeQuestion" xml:space="preserve"><value>Purge these records? Rows under legal hold are skipped, and each purge is logged.</value></data>
+  <data name="PurgeButton" xml:space="preserve"><value>Purge {0} record(s)</value></data>
+  <data name="ChainGapFound" xml:space="preserve"><value>The action log chain has a gap: an entry was removed, so the next entry no longer links to the one before it.</value></data>
+  <data name="RepairChainQuestion" xml:space="preserve"><value>Repair the chain? A logged ChainRepaired entry bridges each gap. The removed entries are not recreated, and the repair stays visible in the log.</value></data>
+  <data name="RepairChainButton" xml:space="preserve"><value>Repair chain</value></data>
+  <data name="ChainAltered" xml:space="preserve"><value>An action log entry was altered after it was written. This cannot be repaired, and it is not bridged, so the tampering stays visible.</value></data>
+  <data name="CompactDone" xml:space="preserve"><value>Database compacted.</value></data>
+  <data name="RepairOk" xml:space="preserve"><value>Integrity check passed. Indexes rebuilt.</value></data>
+  <data name="RepairFailed" xml:space="preserve"><value>Integrity check reported: {0}</value></data>
+  <data name="PurgeDone" xml:space="preserve"><value>{0} record(s) purged.</value></data>
+  <data name="ChainRepairDone" xml:space="preserve"><value>{0} gap(s) bridged with logged repair entries.</value></data>
+  <data name="StepUpCancelled" xml:space="preserve"><value>Confirmation was cancelled. Nothing was changed.</value></data>
+  <data name="RequestFailed" xml:space="preserve"><value>The database request failed. Check the server log.</value></data>
+</root>

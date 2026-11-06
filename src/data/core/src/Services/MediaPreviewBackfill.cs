@@ -71,7 +71,7 @@ namespace VideoForensics.Data.Core.Services
                     catch (Exception ex)
                     {
                         failed++;
-                        _logger.LogError(ex, "Preview backfill failed for {FileName}", media.FileName);
+                        _logger.LogError("Preview backfill failed for {FileName}: {Message} ({ErrorType})", media.FileName, ex.Message, ex.GetType().Name);
                     }
                 }
 

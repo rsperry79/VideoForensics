@@ -491,5 +491,90 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Never);
         }
+        [Fact]
+        public async Task RestoreFromSavedCredentialsAsync_FirstDecryptFailure_RaisesOneCriticalNoticeWithAccountLink()
+        {
+            // Arrange: the account has no recorded error yet, so this failure is new and the operator must hear about it
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            var credentialRepository = new Mock<ICredentialRepository>();
+            _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new System.Security.Cryptography.CryptographicException("key not found"));
+            var providerAccountRepository = new Mock<IProviderAccountRepository>();
+            _ = providerAccountRepository.Setup(par => par.GetAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProviderAccount { Id = accountId, ProviderName = "Ring", LastErrorMessage = null });
+            var dispatcher = new Mock<INotificationDispatcher>();
+            var service = new RingAuthService(
+                new Mock<ILogger>().Object,
+                sessionProvider.Object,
+                new Mock<ICredentialStore>().Object,
+                credentialRepository.Object,
+                providerAccountRepository: providerAccountRepository.Object,
+                notificationDispatcher: dispatcher.Object);
+
+            // Act
+            _ = await service.RestoreFromSavedCredentialsWithAccountAsync(accountId);
+
+            // Assert
+            dispatcher.Verify(
+                d => d.DispatchAsync(
+                    It.Is<NotificationEvent>(e => e.EventType == "CredentialDecryptionFailed" && e.ActionPath == $"/accounts/{accountId}"),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ValidateStoredCredentialAsync_ReadsTheSavedCredentialAndReturnsFalseWhenThereIsNone()
+        {
+            // Arrange: no saved refresh token, so there is nothing that could validate
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
+            var credentialRepository = new Mock<ICredentialRepository>();
+            _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(((string, string)?)null);
+            var service = new RingAuthService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<ICredentialStore>().Object, credentialRepository.Object);
+
+            // Act
+            bool valid = await service.ValidateStoredCredentialAsync(accountId);
+
+            // Assert: validation goes to the saved credential, never to a cached answer
+            Assert.False(valid);
+            credentialRepository.Verify(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("Stored provider credential could not be decrypted. Reauthentication is required.")]
+        [InlineData("Failed to decrypt stored credential: Error occurred during a cryptographic operation.")]
+        public async Task RestoreFromSavedCredentialsAsync_RepeatDecryptFailure_DoesNotRaiseAnotherNotice(string lastError)
+        {
+            // Arrange: the last recorded error is already a decryption failure, so the operator has been told and this is a repeat
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            var credentialRepository = new Mock<ICredentialRepository>();
+            _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new System.Security.Cryptography.CryptographicException("key not found"));
+            var providerAccountRepository = new Mock<IProviderAccountRepository>();
+            _ = providerAccountRepository.Setup(par => par.GetAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProviderAccount { Id = accountId, ProviderName = "Ring", LastErrorMessage = lastError });
+            var dispatcher = new Mock<INotificationDispatcher>();
+            var service = new RingAuthService(
+                new Mock<ILogger>().Object,
+                sessionProvider.Object,
+                new Mock<ICredentialStore>().Object,
+                credentialRepository.Object,
+                providerAccountRepository: providerAccountRepository.Object,
+                notificationDispatcher: dispatcher.Object);
+
+            // Act
+            _ = await service.RestoreFromSavedCredentialsWithAccountAsync(accountId);
+
+            // Assert
+            dispatcher.Verify(
+                d => d.DispatchAsync(It.Is<NotificationEvent>(e => e.EventType == "CredentialDecryptionFailed"), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
     }
 }

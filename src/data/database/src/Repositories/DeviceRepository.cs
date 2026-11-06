@@ -42,13 +42,6 @@ namespace VideoForensics.Data.Database.Repositories
                 d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId, ct);
         }
 
-        /// <summary>Gets a device by API response hash for deduplication.</summary>
-        public async Task<Device?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Devices.FirstOrDefaultAsync(d => d.ApiResponseHash == apiResponseHash, ct);
-        }
-
         /// <summary>Lists all devices.</summary>
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
@@ -78,7 +71,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding device: {DeviceName}", device.Name);
+                _logger.LogError("Error adding device: {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -95,7 +88,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device: {DeviceName}", device.Name);
+                _logger.LogError("Error updating device: {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -117,7 +110,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device watermark: {DeviceName}", device?.Name ?? "unknown device");
+                _logger.LogError("Error updating device watermark: {DeviceName}: {Message} ({ErrorType})", device?.Name ?? "unknown device", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -139,7 +132,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting device: {DeviceName}", device?.Name ?? "unknown device");
+                _logger.LogError("Error deleting device: {DeviceName}: {Message} ({ErrorType})", device?.Name ?? "unknown device", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

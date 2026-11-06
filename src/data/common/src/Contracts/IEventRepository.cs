@@ -59,10 +59,12 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>
         /// Pages events from any of the given devices within a UTC range, newest first (OccurredAtUtc descending, then Id).
-        /// Device and range filtering, the exclusion of <paramref name="excludeEventTypes"/>, sorting, paging and counting run in SQL.
+        /// Device and range filtering, the exclusion of <paramref name="excludeEventTypes"/>, the optional restriction to
+        /// <paramref name="includeEventTypes"/>, sorting, paging and counting run in SQL. A null or empty include list means
+        /// no include restriction; a non-empty one keeps only events whose type exactly matches an entry. Exclusion still applies.
         /// <paramref name="take"/> must be 1..500, <paramref name="skip"/> at least 0 and <paramref name="deviceIds"/> hold 1..64 ids.
         /// </summary>
-        Task<EventPage> ListPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes, int skip, int take, CancellationToken ct);
+        Task<EventPage> ListPageByDevicesAndDateRangeAsync(IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes, IReadOnlyCollection<string>? includeEventTypes, int skip, int take, CancellationToken ct);
 
         /// <summary>Updates an event's download failure status and timestamp.</summary>
         Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct);

@@ -6,6 +6,8 @@ namespace VideoForensics.Data.Common.Entities
         public Guid Id { get; set; }
         public Guid LocationId { get; set; }
         public string? StreetAddress { get; set; }
+        public string? StreetAddress2 { get; set; }
+        public string? CrossStreet { get; set; }
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
@@ -16,7 +18,5 @@ namespace VideoForensics.Data.Common.Entities
         public bool? IsOwner { get; set; }
         public DateTime? LastSyncedUtc { get; set; }
         public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
-        public string? ApiResponseHash { get; set; }
-        public string? MetadataJson { get; set; }
     }
 }

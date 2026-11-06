@@ -1,0 +1,60 @@
+{
+  "disarmed": [
+    {
+      "deviceId": "x",
+      "deviceIdType": "x",
+      "actions": [
+        "x"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "x"
+        ],
+        "motionDetection": [
+          "x"
+        ]
+      }
+    }
+  ],
+  "home": [
+    {
+      "deviceId": "x",
+      "deviceIdType": "x",
+      "actions": [
+        "x"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "x"
+        ],
+        "motionDetection": [
+          "x"
+        ]
+      }
+    }
+  ],
+  "away": [
+    {
+      "deviceId": "x",
+      "deviceIdType": "x",
+      "actions": [
+        "x"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "x"
+        ],
+        "motionDetection": [
+          "x"
+        ]
+      }
+    }
+  ],
+  "options": {
+    "supportedActionGroups": [
+      "x"
+    ],
+    "defaultCameraOnlyMode": "x"
+  },
+  "lastUpdateTimeMS": 1
+}

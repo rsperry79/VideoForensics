@@ -50,7 +50,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging access for EvidenceId={EvidenceId}", evidenceId);
+                _logger.LogError("Error logging access for EvidenceId={EvidenceId}: {Message} ({ErrorType})", evidenceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -84,7 +84,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging export for ExportId={ExportId}", exportId);
+                _logger.LogError("Error logging export for ExportId={ExportId}: {Message} ({ErrorType})", exportId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -118,7 +118,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting access history for EvidenceId={EvidenceId}", evidenceId);
+                _logger.LogError("Error getting access history for EvidenceId={EvidenceId}: {Message} ({ErrorType})", evidenceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -171,7 +171,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting access history for LocationId={LocationId}", locationId);
+                _logger.LogError("Error getting access history for LocationId={LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -220,7 +220,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting paginated access history for EvidenceId={EvidenceId}", evidenceId);
+                _logger.LogError("Error getting paginated access history for EvidenceId={EvidenceId}: {Message} ({ErrorType})", evidenceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -316,7 +316,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting cursor-paginated export history for LocationId={LocationId}", locationId);
+                _logger.LogError("Error getting cursor-paginated export history for LocationId={LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -392,7 +392,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying chain of custody for LocationId={LocationId}", locationId);
+                _logger.LogError("Error verifying chain of custody for LocationId={LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -475,7 +475,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error flagging unauthorized access for LocationId={LocationId}", locationId);
+                _logger.LogError("Error flagging unauthorized access for LocationId={LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -531,7 +531,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting export history for LocationId={LocationId}", locationId);
+                _logger.LogError("Error getting export history for LocationId={LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -590,7 +590,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying export integrity for ExportId={ExportId}", exportId);
+                _logger.LogError("Error verifying export integrity for ExportId={ExportId}: {Message} ({ErrorType})", exportId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -637,7 +637,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting audit trail summary for LocationId={LocationId}", locationId);
+                _logger.LogError("Error getting audit trail summary for LocationId={LocationId}: {Message} ({ErrorType})", locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

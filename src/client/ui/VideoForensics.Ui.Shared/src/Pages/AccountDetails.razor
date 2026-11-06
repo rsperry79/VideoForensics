@@ -83,10 +83,14 @@ else
                         <p class="mb-0">
                             <strong>@L["MessageLabel"]</strong> @L["CredentialRecoveryMessage"]
                         </p>
+                        @if (CanEditAccount)
+                        {
+                            <SfButton CssClass="e-warning" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                        }
                     </div>
                 }
 
-                <div class="mb-3 d-flex gap-2 align-items-center" style="color: #212529;">
+                <div class="mb-3 d-flex gap-2 align-items-center" style="color: var(--bs-body-color);">
                     <SfButton CssClass="e-warning" Content="@(_validationBusy ? L["Validating"] : L["ValidateCredential"])" OnClick="ValidateCredentialAsync" Disabled="@_validationBusy" />
                     @if (CanEditAccount)
                     {
@@ -100,7 +104,7 @@ else
 
                 @if (_showReauthentication && CanEditAccount)
                 {
-                    <div class="mb-3 p-3 border rounded" style="color: #212529;">
+                    <div class="mb-3 p-3 border rounded" style="color: var(--bs-body-color);">
                         <h6>@L["ReauthenticateHeading"]</h6>
                         <p>@L["ReauthenticatePrompt"]</p>
                         <AuthForm IdPrefix="account-reauth" SubmitLabel="@L["Reauthenticate"]"
@@ -162,7 +166,7 @@ else
         try
         {
             bool valid = await MultiProviderAuthService.GetService(Account.ProviderName)
-                .RestoreFromSavedCredentialsAsync(Account.Id, CancellationToken.None);
+                .ValidateStoredCredentialAsync(Account.Id, CancellationToken.None);
             _credentialStatus = valid ? L["CredentialValid"] : L["CredentialInvalidReauthenticate"];
             if (valid)
             {

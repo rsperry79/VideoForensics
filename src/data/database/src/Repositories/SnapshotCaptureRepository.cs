@@ -34,9 +34,18 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording snapshot capture for device {DeviceId}", capture.DeviceId);
+                _logger.LogError("Error recording snapshot capture for device {DeviceId}: {Message} ({ErrorType})", capture.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
+        }
+
+        /// <summary>Gets one capture attempt by its id, or null when no such capture exists.</summary>
+        public async Task<SnapshotCapture?> GetAsync(Guid id, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.SnapshotCaptures
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == id, ct);
         }
 
         /// <summary>Gets a device's current captures (IsCurrent == true) within a date range, oldest first.</summary>
@@ -67,6 +76,31 @@ namespace VideoForensics.Data.Database.Repositories
                 .Where(c => c.DeviceId == deviceId && c.CapturedAtUtc >= fromUtc && c.CapturedAtUtc <= toUtc)
                 .OrderBy(c => c.CapturedAtUtc)
                 .ToListAsync(ct);
+        }
+
+        /// <summary>
+        /// Gets which of the given devices have a capture attempt within a date range. Filtering and de-duplication run in SQL,
+        /// so only the matching device ids come back.
+        /// </summary>
+        public async Task<IReadOnlySet<Guid>> GetDeviceIdsWithAttemptsAsync(IReadOnlyCollection<Guid> deviceIds, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
+        {
+            if (deviceIds.Count == 0)
+            {
+                return new HashSet<Guid>();
+            }
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+
+            DateTimeOffset fromUtc = from.ToUniversalTime();
+            DateTimeOffset toUtc = to.ToUniversalTime();
+
+            List<Guid> ids = await db.SnapshotCaptures
+                .Where(c => deviceIds.Contains(c.DeviceId) && c.CapturedAtUtc >= fromUtc && c.CapturedAtUtc <= toUtc)
+                .Select(c => c.DeviceId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            return ids.ToHashSet();
         }
     }
 }

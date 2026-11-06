@@ -31,12 +31,6 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.RingAccounts.FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
         }
 
-        public async Task<RingAccount?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.RingAccounts.FirstOrDefaultAsync(a => a.ApiResponseHash == apiResponseHash, ct);
-        }
-
         public async Task AddAsync(RingAccount account, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
@@ -49,7 +43,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding Ring account");
+                _logger.LogError("Error adding Ring account: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -66,8 +60,8 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating Ring account: {AccountId} (subscription: {SubscriptionLevel})",
-                    account.Id, account.SubscriptionLevel);
+                _logger.LogError("Error updating Ring account: {AccountId} (subscription: {SubscriptionLevel}): {Message} ({ErrorType})",
+                    account.Id, account.SubscriptionLevel, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -87,7 +81,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting Ring account: {AccountId}", id);
+                _logger.LogError("Error deleting Ring account: {AccountId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

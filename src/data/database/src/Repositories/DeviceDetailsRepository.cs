@@ -96,6 +96,26 @@ namespace VideoForensics.Data.Database.Repositories
                         existingFeatures.NightVisionEnabled = features.NightVisionEnabled;
                         existingFeatures.ShowVodSettings = features.ShowVodSettings;
                         existingFeatures.RingtonesEnabled = features.RingtonesEnabled;
+                        existingFeatures.CfesEligible = features.CfesEligible;
+                        existingFeatures.PackageWarning = features.PackageWarning;
+                        existingFeatures.AutoZoomTrack = features.AutoZoomTrack;
+                        existingFeatures.AutomatedSiren = features.AutomatedSiren;
+                        existingFeatures.AlexaPlusGreetings = features.AlexaPlusGreetings;
+                        existingFeatures.RemoteAccessControl = features.RemoteAccessControl;
+                        existingFeatures.AutoShutoffDevice = features.AutoShutoffDevice;
+                        existingFeatures.ShortOnLongOff = features.ShortOnLongOff;
+                        existingFeatures.Tracklight = features.Tracklight;
+                        existingFeatures.MotionZoneRecommendation = features.MotionZoneRecommendation;
+                        existingFeatures.RichNotificationsEligible = features.RichNotificationsEligible;
+                        existingFeatures.ShowOfflineMotionEvents = features.ShowOfflineMotionEvents;
+                        existingFeatures.SheilaCameraEligible = features.SheilaCameraEligible;
+                        existingFeatures.SheilaCameraProcessingEligible = features.SheilaCameraProcessingEligible;
+                        existingFeatures.DynamicNetworkSwitchingEligible = features.DynamicNetworkSwitchingEligible;
+                        existingFeatures.VehicleDetectionEligible = features.VehicleDetectionEligible;
+                        existingFeatures.AnimalDetectionEligible = features.AnimalDetectionEligible;
+                        existingFeatures.Show24x7Lite = features.Show24x7Lite;
+                        existingFeatures.Recording24x7Eligible = features.Recording24x7Eligible;
+                        existingFeatures.PropertyView = features.PropertyView;
                     }
 
                     device.DeviceFeaturesId = existingFeatures.Id;
@@ -131,7 +151,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device details for device {DeviceName}", device?.Name ?? "unknown device");
+                _logger.LogError("Error recording device details for device {DeviceName}: {Message} ({ErrorType})", device?.Name ?? "unknown device", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -197,6 +217,370 @@ namespace VideoForensics.Data.Database.Repositories
             return changes;
         }
 
+        /// <summary>
+        /// Replaces the device's feature-state rows (and their reason rows) with the given complete list. A null list leaves
+        /// stored rows untouched; an empty list clears them. Feature states are not change-logged.
+        /// </summary>
+        private static async Task ReplaceFeatureStatesAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.FeatureStates == null)
+            {
+                return;
+            }
+
+            List<RingDeviceFeatureState> stored = await db.RingDeviceFeatureStates.Where(s => s.DeviceId == deviceId).ToListAsync(ct);
+            List<Guid> storedIds = stored.Select(s => s.Id).ToList();
+            db.RingDeviceFeatureReasons.RemoveRange(await db.RingDeviceFeatureReasons.Where(r => storedIds.Contains(r.FeatureStateId)).ToListAsync(ct));
+            db.RingDeviceFeatureStates.RemoveRange(stored);
+            // EF orders the deletes ahead of the inserts, so re-adding a replaced (DeviceId, FeatureKey) does not hit the unique index.
+
+            foreach (RingDeviceFeatureState state in settings.FeatureStates)
+            {
+                state.Id = state.Id == Guid.Empty ? Guid.NewGuid() : state.Id;
+                state.DeviceId = deviceId;
+                foreach (RingDeviceFeatureReason reason in state.Reasons)
+                {
+                    reason.Id = reason.Id == Guid.Empty ? Guid.NewGuid() : reason.Id;
+                    reason.FeatureStateId = state.Id;
+                }
+
+                _ = db.RingDeviceFeatureStates.Add(state);
+            }
+        }
+
+        /// <summary>
+        /// Replaces the device's reported-health row and battery rows. A null health leaves stored rows untouched; a health row
+        /// with a null battery list clears the batteries (Ring sent the object without a batteries array). Not change-logged.
+        /// </summary>
+        private static async Task ReplaceReportedHealthAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.ReportedHealth == null)
+            {
+                return;
+            }
+
+            db.DeviceReportedHealths.RemoveRange(await db.DeviceReportedHealths.Where(h => h.DeviceId == deviceId).ToListAsync(ct));
+            db.DeviceReportedBatteries.RemoveRange(await db.DeviceReportedBatteries.Where(b => b.DeviceId == deviceId).ToListAsync(ct));
+            db.RingDeviceHealthExtras.RemoveRange(await db.RingDeviceHealthExtras.Where(h => h.DeviceId == deviceId).ToListAsync(ct));
+            // EF orders the deletes ahead of the inserts, so the unique (DeviceId) and (DeviceId, Position) indexes are not hit.
+
+            DeviceReportedHealth health = settings.ReportedHealth;
+            health.Id = health.Id == Guid.Empty ? Guid.NewGuid() : health.Id;
+            health.DeviceId = deviceId;
+            health.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.DeviceReportedHealths.Add(health);
+
+            if (settings.RingHealthExtras != null)
+            {
+                RingDeviceHealthExtras extras = settings.RingHealthExtras;
+                extras.Id = extras.Id == Guid.Empty ? Guid.NewGuid() : extras.Id;
+                extras.DeviceId = deviceId;
+                extras.UpdatedAtUtc = health.UpdatedAtUtc;
+                _ = db.RingDeviceHealthExtras.Add(extras);
+            }
+
+            foreach (DeviceReportedBattery battery in settings.ReportedBatteries ?? [])
+            {
+                battery.Id = battery.Id == Guid.Empty ? Guid.NewGuid() : battery.Id;
+                battery.DeviceId = deviceId;
+                _ = db.DeviceReportedBatteries.Add(battery);
+            }
+        }
+
+        /// <summary>Replaces the device's Ring-only top-level detail row. A null row leaves the stored row untouched.</summary>
+        private static async Task ReplaceRingDetailsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.RingDetails == null)
+            {
+                return;
+            }
+
+            db.RingDeviceDetails.RemoveRange(await db.RingDeviceDetails.Where(r => r.DeviceId == deviceId).ToListAsync(ct));
+            RingDeviceDetails row = settings.RingDetails;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDeviceDetails.Add(row);
+        }
+
+        /// <summary>Replaces the device's Ring paid-feature row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplacePaidFeaturesAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.PaidFeatures == null)
+            {
+                return;
+            }
+
+            db.RingDevicePaidFeatures.RemoveRange(await db.RingDevicePaidFeatures.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+            RingDevicePaidFeatures row = settings.PaidFeatures;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDevicePaidFeatures.Add(row);
+        }
+
+        /// <summary>Replaces the device's network-settings row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplaceNetworkSettingsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.NetworkSettings == null)
+            {
+                return;
+            }
+
+            db.DeviceNetworkSettings.RemoveRange(await db.DeviceNetworkSettings.Where(n => n.DeviceId == deviceId).ToListAsync(ct));
+            DeviceNetworkSettings row = settings.NetworkSettings;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.DeviceNetworkSettings.Add(row);
+        }
+
+        /// <summary>Replaces the device's Ring network-diagnosis row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplaceNetworkDiagnosisAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.NetworkDiagnosis == null)
+            {
+                return;
+            }
+
+            db.RingDeviceNetworkDiagnosis.RemoveRange(await db.RingDeviceNetworkDiagnosis.Where(d => d.DeviceId == deviceId).ToListAsync(ct));
+            RingDeviceNetworkDiagnosis row = settings.NetworkDiagnosis;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDeviceNetworkDiagnosis.Add(row);
+        }
+
+        /// <summary>Replaces the device's Ring settings row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplaceRingSettingsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.RingSettings == null)
+            {
+                return;
+            }
+
+            db.RingDeviceSettings.RemoveRange(await db.RingDeviceSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+            RingDeviceSettings row = settings.RingSettings;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.RingDeviceSettings.Add(row);
+        }
+
+        /// <summary>Replaces the device's general settings row. A null row leaves the stored row untouched; an empty one writes a row of nulls.</summary>
+        private static async Task ReplaceGeneralSettingsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.GeneralSettings == null)
+            {
+                return;
+            }
+
+            db.DeviceGeneralSettings.RemoveRange(await db.DeviceGeneralSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+            DeviceGeneralSettings row = settings.GeneralSettings;
+            row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+            row.DeviceId = deviceId;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            _ = db.DeviceGeneralSettings.Add(row);
+        }
+
+        /// <summary>Replaces the device's endpoint setting group rows. A null group or list leaves the stored rows untouched; a non-null group writes its row, nulls included, and a list replaces the stored rows.</summary>
+        private static async Task ReplaceSettingGroupRowsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            RingDeviceSettingGroupRows? g = settings.RingSettingGroups;
+            if (g == null)
+            {
+                return;
+            }
+
+            if (g.AdvancedMotion != null)
+            {
+                db.RingDeviceAdvancedMotionSettings.RemoveRange(await db.RingDeviceAdvancedMotionSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceAdvancedMotionSettings row = g.AdvancedMotion;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceAdvancedMotionSettings.Add(row);
+            }
+
+            if (g.Backend != null)
+            {
+                db.RingDeviceBackendSettings.RemoveRange(await db.RingDeviceBackendSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceBackendSettings row = g.Backend;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceBackendSettings.Add(row);
+            }
+
+            if (g.ClientDevice != null)
+            {
+                db.RingDeviceClientDeviceSettings.RemoveRange(await db.RingDeviceClientDeviceSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceClientDeviceSettings row = g.ClientDevice;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceClientDeviceSettings.Add(row);
+            }
+
+            if (g.Cv != null)
+            {
+                db.RingDeviceCvSettings.RemoveRange(await db.RingDeviceCvSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceCvSettings row = g.Cv;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceCvSettings.Add(row);
+            }
+
+            if (g.General != null)
+            {
+                db.RingDeviceGeneralSettings.RemoveRange(await db.RingDeviceGeneralSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceGeneralSettings row = g.General;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceGeneralSettings.Add(row);
+            }
+
+            if (g.Misc != null)
+            {
+                db.RingDeviceMiscSettings.RemoveRange(await db.RingDeviceMiscSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceMiscSettings row = g.Misc;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceMiscSettings.Add(row);
+            }
+
+            if (g.Motion != null)
+            {
+                db.RingDeviceMotionSettings.RemoveRange(await db.RingDeviceMotionSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceMotionSettings row = g.Motion;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceMotionSettings.Add(row);
+            }
+
+            if (g.Snapshot != null)
+            {
+                db.RingDeviceSnapshotSettings.RemoveRange(await db.RingDeviceSnapshotSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceSnapshotSettings row = g.Snapshot;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceSnapshotSettings.Add(row);
+            }
+
+            if (g.Stream != null)
+            {
+                db.RingDeviceStreamSettings.RemoveRange(await db.RingDeviceStreamSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceStreamSettings row = g.Stream;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceStreamSettings.Add(row);
+            }
+
+            if (g.Video != null)
+            {
+                db.RingDeviceVideoSettings.RemoveRange(await db.RingDeviceVideoSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceVideoSettings row = g.Video;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceVideoSettings.Add(row);
+            }
+
+            if (g.Vod != null)
+            {
+                db.RingDeviceVodSettings.RemoveRange(await db.RingDeviceVodSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                RingDeviceVodSettings row = g.Vod;
+                row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                row.DeviceId = deviceId;
+                row.UpdatedAtUtc = DateTime.UtcNow;
+                _ = db.RingDeviceVodSettings.Add(row);
+            }
+            if (g.MotionSnoozeProfiles != null)
+            {
+                db.RingDeviceMotionSnoozeProfiles.RemoveRange(await db.RingDeviceMotionSnoozeProfiles.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceMotionSnoozeProfile row in g.MotionSnoozeProfiles)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceMotionSnoozeProfiles.Add(row);
+                }
+            }
+            if (g.CvThresholdVersions != null)
+            {
+                db.RingDeviceCvThresholdOverrideVersions.RemoveRange(await db.RingDeviceCvThresholdOverrideVersions.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceCvThresholdOverrideVersion row in g.CvThresholdVersions)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceCvThresholdOverrideVersions.Add(row);
+                }
+            }
+            if (g.CvThresholdValues != null)
+            {
+                db.RingDeviceCvThresholdOverrideValues.RemoveRange(await db.RingDeviceCvThresholdOverrideValues.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceCvThresholdOverrideValue row in g.CvThresholdValues)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceCvThresholdOverrideValues.Add(row);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Replaces the device's Ring-only ignore zones (with their vertices), motion-zone values and advanced detection-type names as sets. Each list
+        /// is the complete value Ring sent, so an empty list clears the stored rows; a null list leaves them untouched (chimes send none). Not change-logged.
+        /// </summary>
+        private static async Task ReplaceRingZoneRowsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            if (settings.RingIgnoreZones != null)
+            {
+                List<RingDeviceIgnoreZone> storedZones = await db.RingDeviceIgnoreZones.Include(z => z.Vertices).Where(z => z.DeviceId == deviceId).ToListAsync(ct);
+                db.RingDeviceIgnoreZoneVertices.RemoveRange(storedZones.SelectMany(z => z.Vertices));
+                db.RingDeviceIgnoreZones.RemoveRange(storedZones);
+                foreach (RingDeviceIgnoreZone zone in settings.RingIgnoreZones)
+                {
+                    zone.Id = zone.Id == Guid.Empty ? Guid.NewGuid() : zone.Id;
+                    zone.DeviceId = deviceId;
+                    foreach (RingDeviceIgnoreZoneVertex vertex in zone.Vertices)
+                    {
+                        vertex.Id = vertex.Id == Guid.Empty ? Guid.NewGuid() : vertex.Id;
+                        vertex.RingDeviceIgnoreZoneId = zone.Id;
+                    }
+
+                    _ = db.RingDeviceIgnoreZones.Add(zone);
+                }
+            }
+
+            if (settings.RingMotionZones != null)
+            {
+                db.RingDeviceMotionZones.RemoveRange(await db.RingDeviceMotionZones.Where(z => z.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceMotionZone row in settings.RingMotionZones)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceMotionZones.Add(row);
+                }
+            }
+
+            if (settings.RingAdvancedMotionDetectionTypes != null)
+            {
+                db.RingDeviceAdvancedMotionDetectionTypes.RemoveRange(await db.RingDeviceAdvancedMotionDetectionTypes.Where(t => t.DeviceId == deviceId).ToListAsync(ct));
+                foreach (RingDeviceAdvancedMotionDetectionType row in settings.RingAdvancedMotionDetectionTypes)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.RingDeviceAdvancedMotionDetectionTypes.Add(row);
+                }
+            }
+        }
+
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
         private static string OfflineMotionText(DeviceOfflineMotionSettings s)
         {
@@ -214,10 +598,16 @@ namespace VideoForensics.Data.Database.Repositories
             // Stored rows are read before anything is removed, so the change rows compare the old state with the incoming one.
             List<DeviceMotionSnoozePreset> storedSnooze = await db.DeviceMotionSnoozePresets.Where(p => p.DeviceId == deviceId).ToListAsync(ct);
             List<DeviceLiveViewPreset> storedLive = await db.DeviceLiveViewPresets.Where(p => p.DeviceId == deviceId).ToListAsync(ct);
-            List<DeviceAdvancedMotionZone> existingZones = await db.DeviceAdvancedMotionZones
-                .Include(z => z.Vertices)
-                .Where(z => z.DeviceId == deviceId)
-                .ToListAsync(ct);
+            // Advanced motion zones are only read, compared and replaced when the caller supplied them. The download path
+            // rebuilds from the partial device list, which carries none, so a null list must leave the stored zones alone.
+            List<DeviceAdvancedMotionZone> existingZones = [];
+            if (settings.AdvancedMotionZones != null)
+            {
+                existingZones = await db.DeviceAdvancedMotionZones
+                    .Include(z => z.Vertices)
+                    .Where(z => z.DeviceId == deviceId)
+                    .ToListAsync(ct);
+            }
 
             // Zones and object settings are only read, compared and replaced when the caller supplied them (null leaves stored rows as they are).
             List<DeviceZone> existingZoneRows = [];
@@ -237,15 +627,26 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             var changes = new List<DeviceSettingChange>();
-            AddWholeItemChanges(changes, deviceId, changedAtUtc, "MotionSnoozePreset",
-                ToMap(storedSnooze, p => PositionKey(p.Position), p => p.Preset),
-                ToMap(settings.MotionSnoozePresets, p => PositionKey(p.Position), p => p.Preset));
-            AddWholeItemChanges(changes, deviceId, changedAtUtc, "LiveViewPreset",
-                ToMap(storedLive, p => PositionKey(p.Position), p => p.Preset),
-                ToMap(settings.LiveViewPresets, p => PositionKey(p.Position), p => p.Preset));
-            AddWholeItemChanges(changes, deviceId, changedAtUtc, "AdvancedMotionZone",
-                ToMap(existingZones, z => z.ZoneKey, MotionZoneText),
-                ToMap(settings.AdvancedMotionZones, z => z.ZoneKey, MotionZoneText));
+            if (settings.MotionSnoozePresets != null)
+            {
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "MotionSnoozePreset",
+                    ToMap(storedSnooze, p => PositionKey(p.Position), p => p.Preset),
+                    ToMap(settings.MotionSnoozePresets, p => PositionKey(p.Position), p => p.Preset));
+            }
+
+            if (settings.LiveViewPresets != null)
+            {
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "LiveViewPreset",
+                    ToMap(storedLive, p => PositionKey(p.Position), p => p.Preset),
+                    ToMap(settings.LiveViewPresets, p => PositionKey(p.Position), p => p.Preset));
+            }
+            if (settings.AdvancedMotionZones != null)
+            {
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "AdvancedMotionZone",
+                    ToMap(existingZones, z => z.ZoneKey, MotionZoneText),
+                    ToMap(settings.AdvancedMotionZones, z => z.ZoneKey, MotionZoneText));
+            }
+
             if (settings.Zones != null)
             {
                 AddZoneChanges(changes, deviceId, changedAtUtc, existingZoneRows, settings.Zones);
@@ -260,27 +661,49 @@ namespace VideoForensics.Data.Database.Repositories
 
             db.DeviceSettingChanges.AddRange(changes);
             db.DeviceSettingChanges.AddRange(await ReplaceTypedSettingsAsync(db, deviceId, settings, changedAtUtc, ct));
+            await ReplaceFeatureStatesAsync(db, deviceId, settings, ct);
+            await ReplaceReportedHealthAsync(db, deviceId, settings, ct);
+            await ReplaceRingDetailsAsync(db, deviceId, settings, ct);
+            await ReplacePaidFeaturesAsync(db, deviceId, settings, ct);
+            await ReplaceNetworkSettingsAsync(db, deviceId, settings, ct);
+            await ReplaceNetworkDiagnosisAsync(db, deviceId, settings, ct);
+            await ReplaceRingSettingsAsync(db, deviceId, settings, ct);
+            await ReplaceGeneralSettingsAsync(db, deviceId, settings, ct);
+            await ReplaceSettingGroupRowsAsync(db, deviceId, settings, ct);
+            await ReplaceRingZoneRowsAsync(db, deviceId, settings, ct);
+            // An Observed light event is written only on an off-to-on transition, in the same save as the rest of the sync.
+            _ = await DeviceLightEventRepository.AddObservedIfTransitionAsync(db, deviceId, settings.LightSecondsRemaining, changedAtUtc, ct);
+            if (settings.LightIsOn is { } lightOn)
+            {
+                _ = await DeviceLightEventRepository.AddObservedStateIfChangedAsync(db, deviceId, lightOn, changedAtUtc, ct);
+            }
 
-            db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
-            db.DeviceLiveViewPresets.RemoveRange(storedLive);
+            if (settings.MotionSnoozePresets != null)
+            {
+                db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
+                foreach (DeviceMotionSnoozePreset preset in settings.MotionSnoozePresets)
+                {
+                    preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
+                    preset.DeviceId = deviceId;
+                    _ = db.DeviceMotionSnoozePresets.Add(preset);
+                }
+            }
+
+            if (settings.LiveViewPresets != null)
+            {
+                db.DeviceLiveViewPresets.RemoveRange(storedLive);
+                foreach (DeviceLiveViewPreset preset in settings.LiveViewPresets)
+                {
+                    preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
+                    preset.DeviceId = deviceId;
+                    _ = db.DeviceLiveViewPresets.Add(preset);
+                }
+            }
+
             db.DeviceAdvancedMotionZoneVertices.RemoveRange(existingZones.SelectMany(z => z.Vertices));
             db.DeviceAdvancedMotionZones.RemoveRange(existingZones);
 
-            foreach (DeviceMotionSnoozePreset preset in settings.MotionSnoozePresets)
-            {
-                preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
-                preset.DeviceId = deviceId;
-                _ = db.DeviceMotionSnoozePresets.Add(preset);
-            }
-
-            foreach (DeviceLiveViewPreset preset in settings.LiveViewPresets)
-            {
-                preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
-                preset.DeviceId = deviceId;
-                _ = db.DeviceLiveViewPresets.Add(preset);
-            }
-
-            foreach (DeviceAdvancedMotionZone zone in settings.AdvancedMotionZones)
+            foreach (DeviceAdvancedMotionZone zone in settings.AdvancedMotionZones ?? Enumerable.Empty<DeviceAdvancedMotionZone>())
             {
                 zone.Id = zone.Id == Guid.Empty ? Guid.NewGuid() : zone.Id;
                 zone.DeviceId = deviceId;

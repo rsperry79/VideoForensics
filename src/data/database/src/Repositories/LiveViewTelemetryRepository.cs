@@ -37,7 +37,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding telemetry sample for session: {SessionId}", sample.SessionId);
+                _logger.LogError("Error adding telemetry sample for session: {SessionId}: {Message} ({ErrorType})", sample.SessionId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -72,7 +72,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error pruning telemetry samples");
+                _logger.LogError("Error pruning telemetry samples: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

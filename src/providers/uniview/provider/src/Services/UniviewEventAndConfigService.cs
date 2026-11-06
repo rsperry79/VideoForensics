@@ -109,8 +109,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to query segments for channel {Channel} in month {Month}",
-                    channel, monthStart.ToString("yyyy-MM"));
+                _logger.LogError("Failed to query segments for channel {Channel} in month {Month}: {Message} ({ErrorType})",
+                    channel, monthStart.ToString("yyyy-MM"), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -166,9 +166,9 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to parse motion detection config for channel {Channel} - " +
-                        "field names may differ from documented defaults; using safe defaults",
-                        channel);
+                    _logger.LogError("Failed to parse motion detection config for channel {Channel} - " +
+                        "field names may differ from documented defaults; using safe defaults: {Message} ({ErrorType})",
+                        channel, ex.Message, ex.GetType().Name);
                     motionDetectionEnabled = false;
                     motionSensitivity = 0;
                 }
@@ -191,9 +191,9 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to parse record schedule config for channel {Channel} - " +
-                        "field names may differ from documented defaults; using 'unknown'",
-                        channel);
+                    _logger.LogError("Failed to parse record schedule config for channel {Channel} - " +
+                        "field names may differ from documented defaults; using 'unknown': {Message} ({ErrorType})",
+                        channel, ex.Message, ex.GetType().Name);
                     recordingMode = "unknown";
                 }
             }
@@ -221,7 +221,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get device config for channel {Channel}", channel);
+            _logger.LogError("Failed to get device config for channel {Channel}: {Message} ({ErrorType})", channel, ex.Message, ex.GetType().Name);
             throw;
         }
     }
@@ -279,8 +279,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to round-trip motion detection raw JSON for channel {Channel}; " +
-                        "falling back to reconstructed config", channel);
+                    _logger.LogError("Failed to round-trip motion detection raw JSON for channel {Channel}; " +
+                        "falling back to reconstructed config: {Message} ({ErrorType})", channel, ex.Message, ex.GetType().Name);
                     motionDetectionData = BuildMotionDetectionJson(config);
                 }
             }
@@ -301,7 +301,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update device config for channel {Channel}", channel);
+            _logger.LogError("Failed to update device config for channel {Channel}: {Message} ({ErrorType})", channel, ex.Message, ex.GetType().Name);
             return false;
         }
     }
@@ -386,8 +386,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to query segments for {ProviderName} account channel {Channel} in month {Month}",
-                    ProviderName, channel, monthStart.ToString("yyyy-MM"));
+                _logger.LogError("Failed to query segments for {ProviderName} account channel {Channel} in month {Month}: {Message} ({ErrorType})",
+                    ProviderName, channel, monthStart.ToString("yyyy-MM"), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -443,9 +443,9 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to parse motion detection config for {ProviderName} account channel {Channel} - " +
-                        "field names may differ from documented defaults; using safe defaults",
-                        ProviderName, channel);
+                    _logger.LogError("Failed to parse motion detection config for {ProviderName} account channel {Channel} - " +
+                        "field names may differ from documented defaults; using safe defaults: {Message} ({ErrorType})",
+                        ProviderName, channel, ex.Message, ex.GetType().Name);
                     motionDetectionEnabled = false;
                     motionSensitivity = 0;
                 }
@@ -468,9 +468,9 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to parse record schedule config for {ProviderName} account channel {Channel} - " +
-                        "field names may differ from documented defaults; using 'unknown'",
-                        ProviderName, channel);
+                    _logger.LogError("Failed to parse record schedule config for {ProviderName} account channel {Channel} - " +
+                        "field names may differ from documented defaults; using 'unknown': {Message} ({ErrorType})",
+                        ProviderName, channel, ex.Message, ex.GetType().Name);
                     recordingMode = "unknown";
                 }
             }
@@ -498,8 +498,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get device config for {ProviderName} account channel {Channel}",
-                ProviderName, channel);
+            _logger.LogError("Failed to get device config for {ProviderName} account channel {Channel}: {Message} ({ErrorType})",
+                ProviderName, channel, ex.Message, ex.GetType().Name);
             throw;
         }
     }
@@ -557,8 +557,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to round-trip motion detection raw JSON for {ProviderName} account channel {Channel}; " +
-                        "falling back to reconstructed config", ProviderName, channel);
+                    _logger.LogError("Failed to round-trip motion detection raw JSON for {ProviderName} account channel {Channel}; " +
+                        "falling back to reconstructed config: {Message} ({ErrorType})", ProviderName, channel, ex.Message, ex.GetType().Name);
                     motionDetectionData = BuildMotionDetectionJson(config);
                 }
             }
@@ -579,8 +579,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update device config for {ProviderName} account channel {Channel}",
-                ProviderName, channel);
+            _logger.LogError("Failed to update device config for {ProviderName} account channel {Channel}: {Message} ({ErrorType})",
+                ProviderName, channel, ex.Message, ex.GetType().Name);
             return false;
         }
     }

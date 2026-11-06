@@ -45,5 +45,9 @@ namespace VideoForensics.Providers.Ring.Entities
         /// <summary>Mode the security status was last set to.</summary>
         [JsonPropertyName("md")]
         public string Mode { get; set; }
+
+        /// <summary>Id of the entity that set the security status (securityStatus.initiatingEntityId).</summary>
+        [JsonPropertyName("initiatingEntityId")]
+        public string InitiatingEntityId { get; set; }
     }
 }

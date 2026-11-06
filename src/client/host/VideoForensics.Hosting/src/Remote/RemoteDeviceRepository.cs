@@ -59,12 +59,6 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public Task<Device?> GetByApiHashAsync(string apiHash, CancellationToken ct)
-        {
-            throw new NotSupportedException("Remote API doesn't yet support GetByApiHashAsync");
-        }
-
-        /// <inheritdoc />
         public Task AddAsync(Device device, CancellationToken ct)
         {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");

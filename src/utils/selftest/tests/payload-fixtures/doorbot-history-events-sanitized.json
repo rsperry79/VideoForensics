@@ -1,0 +1,360 @@
+[
+  {
+    "id": 7000000000000000001,
+    "created_at": "2026-01-01T08:00:00.000Z",
+    "answered": true,
+    "events": [],
+    "kind": "on_demand",
+    "favorite": false,
+    "snapshot_url": "",
+    "recording": {
+      "status": "ready"
+    },
+    "duration": 120.0,
+    "cv_properties": {
+      "person_detected": null,
+      "stream_broken": false,
+      "detection_type": null,
+      "detection_types": null,
+      "security_alerts": null,
+      "profiles": null,
+      "full_description": null,
+      "short_description": null,
+      "similarity": null,
+      "anomaly": null,
+      "detection_details": null,
+      "tags": null,
+      "key_moments": null
+    },
+    "properties": {
+      "is_alexa": false,
+      "is_sidewalk": false,
+      "is_autoreply": false,
+      "stark_reviewed": false
+    },
+    "doorbot": {
+      "id": 1,
+      "description": "Front Door",
+      "type": "doorbell_graham_cracker"
+    },
+    "device_placement": null,
+    "geolocation": null,
+    "last_location": null,
+    "siren": null,
+    "is_e2ee": false,
+    "had_subscription": true,
+    "owner_id": "1",
+    "riid": null
+  },
+  {
+    "id": 7000000000000000002,
+    "created_at": "2026-01-02T08:00:00.000Z",
+    "answered": true,
+    "events": [],
+    "kind": "on_demand",
+    "favorite": false,
+    "snapshot_url": "",
+    "recording": {
+      "status": "ready"
+    },
+    "duration": 120.0,
+    "cv_properties": {
+      "person_detected": null,
+      "stream_broken": false,
+      "detection_type": null,
+      "detection_types": null,
+      "security_alerts": null,
+      "profiles": null,
+      "full_description": null,
+      "short_description": null,
+      "similarity": null,
+      "anomaly": null,
+      "detection_details": null,
+      "tags": null,
+      "key_moments": null
+    },
+    "properties": {
+      "is_alexa": false,
+      "is_sidewalk": false,
+      "is_autoreply": false,
+      "stark_reviewed": false
+    },
+    "doorbot": {
+      "id": 1,
+      "description": "Front Door",
+      "type": "doorbell_graham_cracker"
+    },
+    "device_placement": null,
+    "geolocation": null,
+    "last_location": null,
+    "siren": null,
+    "is_e2ee": false,
+    "had_subscription": true,
+    "owner_id": "1",
+    "riid": null
+  },
+  {
+    "id": 7000000000000000003,
+    "created_at": "2026-01-03T08:00:00.000Z",
+    "answered": false,
+    "events": [],
+    "kind": "motion",
+    "favorite": false,
+    "snapshot_url": "",
+    "recording": {
+      "status": "ready"
+    },
+    "duration": 30.0,
+    "cv_properties": {
+      "person_detected": true,
+      "stream_broken": false,
+      "detection_type": "human",
+      "detection_types": [
+        {
+          "detection_type": "human",
+          "verified_timestamps": [
+            1767254400002
+          ]
+        }
+      ],
+      "security_alerts": null,
+      "profiles": null,
+      "full_description": null,
+      "short_description": null,
+      "similarity": null,
+      "anomaly": null,
+      "detection_details": null,
+      "tags": null,
+      "key_moments": null
+    },
+    "properties": {
+      "is_alexa": false,
+      "is_sidewalk": false,
+      "is_autoreply": false,
+      "stark_reviewed": false
+    },
+    "doorbot": {
+      "id": 1,
+      "description": "Front Door",
+      "type": "doorbell_graham_cracker"
+    },
+    "device_placement": null,
+    "geolocation": null,
+    "last_location": null,
+    "siren": null,
+    "is_e2ee": false,
+    "had_subscription": true,
+    "owner_id": "1",
+    "riid": "riid-2"
+  },
+  {
+    "id": 7000000000000000004,
+    "created_at": "2026-01-04T08:00:00.000Z",
+    "answered": false,
+    "events": [],
+    "kind": "motion",
+    "favorite": false,
+    "snapshot_url": "",
+    "recording": {
+      "status": "ready"
+    },
+    "duration": 19.0,
+    "cv_properties": {
+      "person_detected": true,
+      "stream_broken": false,
+      "detection_type": "human",
+      "detection_types": [
+        {
+          "detection_type": "human",
+          "verified_timestamps": [
+            1767254400003
+          ]
+        }
+      ],
+      "security_alerts": null,
+      "profiles": null,
+      "full_description": null,
+      "short_description": null,
+      "similarity": null,
+      "anomaly": null,
+      "detection_details": null,
+      "tags": null,
+      "key_moments": null
+    },
+    "properties": {
+      "is_alexa": false,
+      "is_sidewalk": false,
+      "is_autoreply": false,
+      "stark_reviewed": false
+    },
+    "doorbot": {
+      "id": 1,
+      "description": "Front Door",
+      "type": "doorbell_graham_cracker"
+    },
+    "device_placement": null,
+    "geolocation": null,
+    "last_location": null,
+    "siren": null,
+    "is_e2ee": false,
+    "had_subscription": true,
+    "owner_id": "1",
+    "riid": "riid-3"
+  },
+  {
+    "id": 7000000000000000005,
+    "created_at": "2026-01-05T08:00:00.000Z",
+    "answered": false,
+    "events": [],
+    "kind": "motion",
+    "favorite": false,
+    "snapshot_url": "",
+    "recording": {
+      "status": "ready"
+    },
+    "duration": 15.0,
+    "cv_properties": {
+      "person_detected": true,
+      "stream_broken": false,
+      "detection_type": "human",
+      "detection_types": [
+        {
+          "detection_type": "human",
+          "verified_timestamps": [
+            1767254400004
+          ]
+        }
+      ],
+      "security_alerts": null,
+      "profiles": null,
+      "full_description": null,
+      "short_description": null,
+      "similarity": null,
+      "anomaly": null,
+      "detection_details": null,
+      "tags": null,
+      "key_moments": null
+    },
+    "properties": {
+      "is_alexa": false,
+      "is_sidewalk": false,
+      "is_autoreply": false,
+      "stark_reviewed": false
+    },
+    "doorbot": {
+      "id": 1,
+      "description": "Front Door",
+      "type": "doorbell_graham_cracker"
+    },
+    "device_placement": null,
+    "geolocation": null,
+    "last_location": null,
+    "siren": null,
+    "is_e2ee": false,
+    "had_subscription": true,
+    "owner_id": "1",
+    "riid": "riid-4"
+  },
+  {
+    "id": 7000000000000000099,
+    "created_at": "2026-01-09T08:00:00.000Z",
+    "answered": true,
+    "events": [],
+    "kind": "ding",
+    "favorite": true,
+    "snapshot_url": "https://example.invalid/snap/99.jpg",
+    "recording": {
+      "status": "ready"
+    },
+    "duration": 42.0,
+    "cv_properties": {
+      "person_detected": true,
+      "stream_broken": false,
+      "detection_type": "human",
+      "detection_types": [
+        {
+          "detection_type": "human",
+          "verified_timestamps": [
+            1767254400099,
+            1767254400100
+          ]
+        }
+      ],
+      "security_alerts": {
+        "severity": "low",
+        "alerts": [
+          "alert text"
+        ]
+      },
+      "profiles": [
+        {
+          "id": "p1",
+          "name": "Person",
+          "confidence": 0.5,
+          "thumbnail_url": "https://example.invalid/p1.jpg"
+        }
+      ],
+      "full_description": "Person at the door",
+      "short_description": "Person",
+      "similarity": 0.25,
+      "anomaly": 0.125,
+      "detection_details": {
+        "confidence": 0.75,
+        "model_version": "v1",
+        "zones": [
+          {
+            "id": "z1",
+            "name": "Zone 1",
+            "confidence": 0.5
+          }
+        ]
+      },
+      "tags": [
+        "tag one"
+      ],
+      "key_moments": "moment text"
+    },
+    "properties": {
+      "is_alexa": false,
+      "is_sidewalk": false,
+      "is_autoreply": false,
+      "stark_reviewed": true,
+      "package_pickup_detected": false,
+      "detection_confidence": 0.5
+    },
+    "doorbot": {
+      "id": 1,
+      "description": "Front Door",
+      "type": "doorbell_graham_cracker"
+    },
+    "device_placement": {
+      "room": "Hall",
+      "area": "Entry",
+      "zone_id": "zp1"
+    },
+    "geolocation": {
+      "latitude": 1.5,
+      "longitude": 2.5,
+      "accuracy": 3.5,
+      "timestamp": 1767254400000,
+      "source": "gps"
+    },
+    "last_location": {
+      "latitude": 1.5,
+      "longitude": 2.5,
+      "accuracy": 3.5,
+      "timestamp": 1767254400000,
+      "name": "Home"
+    },
+    "siren": {
+      "armed": true,
+      "triggered_at": 1767254400000,
+      "trigger_type": "manual",
+      "alarm_state": "idle"
+    },
+    "is_e2ee": false,
+    "had_subscription": true,
+    "owner_id": "1",
+    "riid": "riid-99"
+  }
+]

@@ -56,7 +56,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "LlmSettings: GET failed with unhandled exception");
+                logger.LogError("LlmSettings: GET failed with unhandled exception: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
@@ -121,7 +121,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "LlmSettings: POST failed with unhandled exception");
+                logger.LogError("LlmSettings: POST failed with unhandled exception: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
         }

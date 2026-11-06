@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace VideoForensics.Providers.Ring.Entities
@@ -89,5 +90,12 @@ namespace VideoForensics.Providers.Ring.Entities
 
         [JsonPropertyName("siren")]
         public LocationEventSirenInfo Siren { get; set; }
+
+        /// <summary>
+        /// Root keys Ring sends that this model does not declare. Kept so they reach the event remainder as unknown leaves. Serialized with the
+        /// event, so an event that carries such a key has a different integrity hash from the same event without it.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? UnknownFields { get; set; }
     }
 }

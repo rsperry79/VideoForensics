@@ -26,11 +26,11 @@
 
                     @if (isLast || string.IsNullOrEmpty(item.Url))
                     {
-                        <li aria-current="@(isLast ? "page" : null)" style="font-weight: 600; color: #333;">@item.Label</li>
+                        <li aria-current="@(isLast ? "page" : null)" style="font-weight: 600; color: var(--bs-emphasis-color);">@item.Label</li>
                     }
                     else
                     {
-                        <li><a href="@item.Url" style="text-decoration: none; color: #0066cc; cursor: pointer;">@item.Label</a></li>
+                        <li><a href="@item.Url" style="text-decoration: none; color: var(--bs-link-color); cursor: pointer;">@item.Label</a></li>
                     }
                 }
             </ol>

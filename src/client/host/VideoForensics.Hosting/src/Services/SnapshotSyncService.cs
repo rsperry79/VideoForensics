@@ -154,7 +154,7 @@ namespace VideoForensics.Client.Hosting.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Snapshot download failed for a device on {AccountName}", accountName);
+                    _logger.LogError("Snapshot download failed for a device on {AccountName}: {Message} ({ErrorType})", accountName, ex.Message, ex.GetType().Name);
                     failed++;
                     firstError ??= $"{device.Name}: {ex.Message}";
                 }

@@ -29,7 +29,8 @@ namespace VideoForensics.Client.Hosting.Tests
                 LocationId = Guid.NewGuid(),
                 ProviderDeviceId = "ring-1",
                 Name = DeviceName,
-                Type = "stickup_cam"
+                Type = "stickup_cam",
+                SnapshotCaptureEnabled = false
             };
 
             var deviceRepo = new Mock<IDeviceRepository>();

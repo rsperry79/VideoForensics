@@ -33,6 +33,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>SuperAdmin, or Admin once a Super Admin has opened the Infrastructure settings page to admins.</summary>
         InfrastructureSettings,
+
+        /// <summary>SuperAdmin, or Admin once a Super Admin has opened the Services page to admins.</summary>
+        ServicesSettings,
     }
 
     /// <summary>
@@ -51,6 +54,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Permissions setting. Permanent delete is SuperAdminLocal (AccountRemovePanel and the Accounts grid hide it from
                 // others). On the WebApp these pages call repositories in-process, so the guarded repository is the second gate.
                 ["/accounts"] = AccessPolicy.Admin,
+                // Manual sync runs provider pulls on demand from the Sources section: Super Admin only, on any tier.
+                ["/accounts/manual-sync"] = AccessPolicy.SuperAdmin,
                 // Analyze tabs are query-keyed, so each tab has its own row. The first three read the server database
                 // under the paired session (Analyze.razor); jamming can change incidents and recompute stats, so Admin.
                 ["/analyze?analysis=reports"] = AccessPolicy.ReadOnly,
@@ -83,6 +88,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
                 // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
                 ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,
+                // Database maintenance (stats, compact, repair, validate) is Super Admin only, on the local tier like Storage and Logs.
+                ["/settings/database"] = AccessPolicy.SuperAdminLocal,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/notifications"] = AccessPolicy.NotificationSettings,
                 ["/settings/security-log"] = AccessPolicy.Admin,
@@ -95,11 +102,13 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/integrations/email"] = AccessPolicy.EmailSettings,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/storage/details"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/llm"] = AccessPolicy.LlmSettings,
                 ["/settings/lockout-policy"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/auth-methods"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/services"] = AccessPolicy.ServicesSettings,
             };
 
         /// <summary>Returns the policy a page requires, if the page is listed. Query strings are ignored.</summary>
@@ -131,6 +140,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
                 AccessPolicy.LlmSettings => AllowsSetting(RestrictedSettings.Llm, ctx),
                 AccessPolicy.InfrastructureSettings => AllowsSetting(RestrictedSettings.Infrastructure, ctx),
+                AccessPolicy.ServicesSettings => AllowsSetting(RestrictedSettings.Services, ctx),
                 _ => false,
             };
         }

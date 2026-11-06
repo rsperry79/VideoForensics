@@ -1,3 +1,8 @@
+using System.Security.Cryptography;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting
@@ -18,13 +23,16 @@ namespace VideoForensics.Client.Hosting
 
         private readonly IAppSettingRepository _settings;
         private readonly ICredentialEncryptionProvider _encryption;
+        private readonly ILogger<CloudflareTokenStore> _logger;
 
         public CloudflareTokenStore(
             IAppSettingRepository settings,
-            ICredentialEncryptionProvider encryption)
+            ICredentialEncryptionProvider encryption,
+            ILogger<CloudflareTokenStore>? logger = null)
         {
             _settings = settings;
             _encryption = encryption;
+            _logger = logger ?? NullLogger<CloudflareTokenStore>.Instance;
         }
 
         public Task SetApiTokenAsync(string plainToken, CancellationToken ct)
@@ -63,9 +71,26 @@ namespace VideoForensics.Client.Hosting
         private async Task<string?> GetDecryptedAsync(string key, CancellationToken ct)
         {
             string? encrypted = await _settings.GetAsync(key, ct);
-            return string.IsNullOrEmpty(encrypted)
-                ? null
-                : await _encryption.DecryptAsync(encrypted, ct);
+            if (string.IsNullOrEmpty(encrypted))
+            {
+                return null;
+            }
+
+            // The key ring can lose the key that sealed this value (wiped or regenerated key folder). The token is
+            // then unrecoverable, so report it as not configured. Throwing here would fail the whole status endpoint.
+            try
+            {
+                return await _encryption.DecryptAsync(encrypted, ct);
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogError(
+                    "Stored Cloudflare value {SettingKey} could not be decrypted ({ExceptionType}): {Message}. Re-enter the token in Remote Access settings.",
+                    key,
+                    ex.GetType().Name,
+                    ex.Message);
+                return null;
+            }
         }
     }
 }

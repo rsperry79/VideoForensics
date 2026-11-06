@@ -597,4 +597,63 @@ public class ReviewPageState_Tests
         // Assert
         Assert.Equal(0, raised);
     }
+
+    [Fact]
+    public void SetEventTypes_NewSelection_IsStoredAndRaisesOnChange()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        int changes = 0;
+        state.OnChange += () => changes++;
+
+        // Act
+        state.SetEventTypes(["human", "motion"]);
+
+        // Assert: kept in the filter's display order, not the order given
+        Assert.Equal(["motion", "human"], state.EventTypes);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
+    public void SetEventTypes_SameSelection_RaisesNothing()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        state.SetEventTypes(["motion"]);
+        int changes = 0;
+        state.OnChange += () => changes++;
+
+        // Act
+        state.SetEventTypes(["motion", "motion"]);
+
+        // Assert
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
+    public void SetEventTypes_UnknownTypes_AreDropped()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+
+        // Act
+        state.SetEventTypes(["motion", "bogus", "jamming"]);
+
+        // Assert
+        Assert.Equal(["motion", "jamming"], state.EventTypes);
+    }
+
+    [Fact]
+    public void SetEventTypes_Empty_MeansAllTypes()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        state.SetEventTypes(["motion"]);
+
+        // Act
+        state.SetEventTypes([]);
+
+        // Assert
+        Assert.Empty(state.EventTypes);
+    }
 }

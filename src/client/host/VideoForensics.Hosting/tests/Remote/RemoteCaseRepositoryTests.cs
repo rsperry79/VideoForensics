@@ -312,6 +312,86 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
+        public async Task UpdateDetailsAsync_NotFound_ThrowsKeyNotFoundException()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteCaseRepository(httpClient);
+
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => repo.UpdateDetailsAsync(Guid.NewGuid(), "New Title", null, null, "admin", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SetScopeAsync_NotFound_ThrowsKeyNotFoundException()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteCaseRepository(httpClient);
+
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => repo.SetScopeAsync(Guid.NewGuid(), null, null, [], "admin", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CloseAsync_NotFound_ThrowsKeyNotFoundException()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteCaseRepository(httpClient);
+
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => repo.CloseAsync(Guid.NewGuid(), "admin", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ReopenAsync_NotFound_ThrowsKeyNotFoundException()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteCaseRepository(httpClient);
+
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => repo.ReopenAsync(Guid.NewGuid(), "admin", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task AddItemAsync_NotFound_ThrowsKeyNotFoundException()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteCaseRepository(httpClient);
+
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => repo.AddItemAsync(Guid.NewGuid(), CaseItemKind.Media, Guid.NewGuid(), "Reason", "admin", CancellationToken.None));
+        }
+
+        [Fact]
         public async Task UpdateDetailsAsync_Conflict_ThrowsInvalidOperationException()
         {
             var id = Guid.NewGuid();

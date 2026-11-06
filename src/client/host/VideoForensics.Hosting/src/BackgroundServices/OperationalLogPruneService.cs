@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
@@ -22,22 +23,26 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<OperationalLogPruneService> _logger;
         private readonly TimeProvider _time;
         private readonly ThreadHeartbeats? _heartbeats;
+        private readonly IForensicsConfiguration? _config;
 
-        public OperationalLogPruneService(IServiceScopeFactory scopeFactory, ILogger<OperationalLogPruneService> logger, TimeProvider time, ThreadHeartbeats? heartbeats = null)
+        /// <summary>The wait between passes: the Services page setting when present, otherwise the built-in interval.</summary>
+        private TimeSpan CurrentInterval => _config is null ? Interval : ScheduledReportService.IntervalFor(_config.LogPruneIntervalHours);
+
+        public OperationalLogPruneService(IServiceScopeFactory scopeFactory, ILogger<OperationalLogPruneService> logger, TimeProvider time, ThreadHeartbeats? heartbeats = null, IForensicsConfiguration? config = null)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
             _time = time;
             _heartbeats = heartbeats;
+            _config = config;
         }
 
         /// <inheritdoc />
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(Interval, _time);
             do
             {
-                _heartbeats?.Beat(nameof(OperationalLogPruneService), _time.GetUtcNow(), Interval);
+                _heartbeats?.Beat(nameof(OperationalLogPruneService), _time.GetUtcNow(), CurrentInterval);
                 try
                 {
                     await PruneOnceAsync(stoppingToken);
@@ -48,10 +53,23 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Operational log prune failed; it will run again tomorrow");
+                    _logger.LogError("Operational log prune failed; it will run again at the next interval: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
+            while (await WaitForNextPassAsync(stoppingToken));
+        }
+
+        private async Task<bool> WaitForNextPassAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentInterval, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <summary>Runs one prune pass. Internal so tests can call it without waiting a day.</summary>

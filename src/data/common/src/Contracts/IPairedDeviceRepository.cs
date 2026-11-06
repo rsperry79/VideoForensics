@@ -21,6 +21,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Sets RevokedAtUtc/RevokedReason - the immediate, first-class action symmetric with pairing (plan §5.4). Does not by itself disconnect a live SignalR connection; the caller (an endpoint with access to the hub context) must do that separately.</summary>
         Task RevokeAsync(Guid pairedDeviceId, string reason, CancellationToken ct);
 
+        /// <summary>Permanently removes a device row. Only revoked devices are removed; an active device is left untouched and returns false, so a device must be revoked (and its live connection dropped) before it can be removed.</summary>
+        Task<bool> DeleteRevokedAsync(Guid pairedDeviceId, CancellationToken ct);
+
         /// <summary>Revokes every currently-active device belonging to an Operator in one action - the bulk equivalent of RevokeAsync, used when deactivating an Operator entirely (plan §5.11). Returns the ids revoked, so the caller can force-disconnect each one's live connection.</summary>
         Task<IReadOnlyList<Guid>> RevokeAllForOperatorAsync(Guid operatorId, string reason, CancellationToken ct);
 

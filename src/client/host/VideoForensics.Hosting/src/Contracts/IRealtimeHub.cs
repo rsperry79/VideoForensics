@@ -12,6 +12,9 @@ namespace VideoForensics.Client.Hosting.Contracts
         /// <summary>Download progress pushes (server sends a snapshot on connect, then only on change).</summary>
         IObservable<DownloadProgressDto> DownloadProgress { get; }
 
+        /// <summary>Server maintenance state. The server sends the current state on connect, then each change.</summary>
+        IObservable<MaintenanceStatusDto> Maintenance { get; }
+
         /// <summary>Urgent security events.</summary>
         IObservable<NotificationEvent> UrgentEvents { get; }
 
@@ -29,6 +32,12 @@ namespace VideoForensics.Client.Hosting.Contracts
 
         /// <summary>Device health readings recorded on the server (the "DeviceHealthChanged" hub push).</summary>
         IObservable<DeviceHealthChangedDto> DeviceHealthChanged { get; }
+
+        /// <summary>Media flags reviewed or re-opened on the server (the "MediaFlagChanged" hub push). Raw push, no replay.</summary>
+        IObservable<MediaFlagChangedDto> MediaFlagChanged { get; }
+
+        /// <summary>Settings were saved on the server (the "ClientConfigChanged" hub push). Carries the client-safe snapshot.</summary>
+        IObservable<ClientConfigDto> ClientConfigChanged { get; }
 
         /// <summary>
         /// Starts connecting to the hub. The first call connects; repeated calls while connecting or connected are no-ops.

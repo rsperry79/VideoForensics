@@ -104,6 +104,10 @@ namespace VideoForensics.Providers.Ring.Entities
         /// </summary>
         [JsonPropertyName("tags")]
         public List<string> Tags { get; set; }
+
+        /// <summary>cv_properties.key_moments. Shape not captured (null in every sample): read as a raw value, stored only if it is a string.</summary>
+        [JsonPropertyName("key_moments")]
+        public System.Text.Json.JsonElement? KeyMoments { get; set; }
     }
 
     /// <summary>

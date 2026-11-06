@@ -183,7 +183,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                 Assert.NotNull(result.ArchivePath);
                 Assert.True(File.Exists(result.ArchivePath));
                 // Archive will be in AppContext.BaseDirectory/exports/<relativeExportPath>
-                Assert.True(result.ArchivePath.Contains("exports"), "Archive path should be in exports directory");
+                Assert.Contains("Exports", result.ArchivePath, StringComparison.OrdinalIgnoreCase);
             }
             finally
             {

@@ -31,12 +31,6 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.DeviceId == deviceId, ct);
         }
 
-        public async Task<DeviceCapabilities?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.ApiResponseHash == apiResponseHash, ct);
-        }
-
         public async Task AddAsync(DeviceCapabilities capabilities, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
@@ -48,7 +42,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding device capabilities for device {DeviceId}", capabilities.DeviceId);
+                _logger.LogError("Error adding device capabilities for device {DeviceId}: {Message} ({ErrorType})", capabilities.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -64,7 +58,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device capabilities for device {DeviceId}", capabilities.DeviceId);
+                _logger.LogError("Error updating device capabilities for device {DeviceId}: {Message} ({ErrorType})", capabilities.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -84,7 +78,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting device capabilities: {CapabilitiesId}", id);
+                _logger.LogError("Error deleting device capabilities: {CapabilitiesId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

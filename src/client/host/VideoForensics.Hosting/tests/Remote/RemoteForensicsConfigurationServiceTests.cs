@@ -1,52 +1,75 @@
+using System.Text.Json;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
     public class RemoteForensicsConfigurationServiceTests
     {
         [Fact]
-        public async Task LoadConfigurationAsync_Always_ThrowsNotSupportedException()
+        public async Task LoadConfigurationAsync_ServerSnapshot_MapsAllowlistedSettings()
         {
-            var httpClient = new HttpClient() { BaseAddress = new Uri("https://example.test") };
+            var snapshot = new ClientConfigDto(
+                EnableForensicAnalysisReports: false,
+                EnableSignalAnomalyReports: true,
+                EnableChainOfCustodyReports: true,
+                EnableEvidenceValidationReports: true,
+                EnableAccessControlMonitoring: true,
+                EnablePiiRedaction: true,
+                ReportOutputFormat: "pdf",
+                RedactionLevel: RedactionLevel.Heavy,
+                RetentionDaysDefault: 90,
+                LogLevel: "Debug",
+                MaxConcurrentDownloads: 4,
+                DownloadStartDate: "2026-01-01",
+                EnableHealthSync: true,
+                EnableMdnsAdvertisement: false,
+                EnableEmailNotifications: true,
+                ConfiguredNetworkTier: NetworkTier.Network,
+                InternetServerUrl: "https://example.test",
+                EnableLiveView: true,
+                LiveViewIdleTimeoutMinutes: 7,
+                LiveViewTelemetrySampleIntervalSeconds: 3,
+                SustainedModeMaxDurationMinutes: 60,
+                LiveViewTelemetryRetentionDays: 10,
+                ElevatedPollingWindowMinutes: 11,
+                ElevatedPollingIntervalSeconds: 30,
+                EnableBitrateCalibration: true,
+                CalibrationCheckIntervalMinutes: 20,
+                CalibrationSessionDurationSeconds: 15,
+                MinCalibrationSamplesPerBucket: 6,
+                CalibrationStalenessDays: 21);
+            var httpClient = new HttpClient(new StubHandler(JsonSerializer.Serialize(snapshot))) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteForensicsConfigurationService(httpClient);
 
-            NotSupportedException exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
-            {
-                _ = await service.LoadConfigurationAsync("/path/to/config.json", CancellationToken.None);
-            });
+            IForensicsConfiguration config = await service.LoadConfigurationAsync(string.Empty, CancellationToken.None);
 
-            Assert.NotNull(exception);
-            Assert.Contains("Not supported on a remote", exception.Message);
+            Assert.False(config.EnableForensicAnalysisReports);
+            Assert.Equal("pdf", config.ReportOutputFormat);
+            Assert.Equal(RedactionLevel.Heavy, config.RedactionLevel);
+            Assert.Equal(60, config.SustainedModeMaxDurationMinutes);
+            Assert.Equal("https://example.test", config.InternetServerUrl);
         }
 
-        [Fact]
-        public async Task LoadConfigurationAsync_WithCancellationToken_StillThrowsNotSupportedException()
+        private sealed class StubHandler : HttpMessageHandler
         {
-            var httpClient = new HttpClient() { BaseAddress = new Uri("https://example.test") };
-            var service = new RemoteForensicsConfigurationService(httpClient);
+            private readonly string _json;
 
-            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            public StubHandler(string json)
             {
-                _ = await service.LoadConfigurationAsync("/path/to/config.json", new CancellationTokenSource().Token);
-            });
-        }
+                _json = json;
+            }
 
-        [Fact]
-        public async Task LoadConfigurationAsync_WithDifferentPaths_AlwaysThrows()
-        {
-            var httpClient = new HttpClient() { BaseAddress = new Uri("https://example.test") };
-            var service = new RemoteForensicsConfigurationService(httpClient);
-
-            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                _ = await service.LoadConfigurationAsync(string.Empty, CancellationToken.None);
-            });
-
-            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
-            {
-                _ = await service.LoadConfigurationAsync("C:\\config.json", CancellationToken.None);
-            });
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(_json, System.Text.Encoding.UTF8, "application/json")
+                });
+            }
         }
 
         [Fact]

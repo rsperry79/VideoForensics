@@ -85,6 +85,7 @@ namespace VideoForensics.Client.WebApp.Api
                 // If no file was created, return the result summary
                 return Results.Ok(result.ToDto());
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
@@ -143,6 +144,7 @@ namespace VideoForensics.Client.WebApp.Api
                     }
                 }
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")

@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error placing legal hold on media item {MediaItemId}", mediaItemId);
+                _logger.LogError("Error placing legal hold on media item {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -95,7 +95,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error releasing legal hold {LegalHoldId}", legalHoldId);
+                _logger.LogError("Error releasing legal hold {LegalHoldId}: {Message} ({ErrorType})", legalHoldId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

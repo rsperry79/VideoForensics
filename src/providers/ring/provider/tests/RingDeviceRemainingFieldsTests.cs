@@ -8,6 +8,8 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>Maps the device fields the earlier audit left unstored: doorbot settings, zones, PIR and object settings, and the remaining device scalars.</summary>
@@ -129,24 +131,6 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(12.5m, f.BatteryVoltage);
             Assert.Equal(3.3m, f.BatteryVoltage2);
             Assert.Equal(1, f.NightMode);
-        }
-
-        [Fact]
-        public void ToDeviceFields_StickupCamLedStatusString_StoredAsText()
-        {
-            DeviceDetailFields? f = StickupFields(Parse<StickupCam>("{\"id\":9,\"led_status\":\"on\"}"));
-
-            Assert.NotNull(f);
-            Assert.Equal("on", f!.LedStatus);
-        }
-
-        [Fact]
-        public void ToDeviceFields_StickupCamLedStatusObject_StoredAsRawJson()
-        {
-            DeviceDetailFields? f = StickupFields(Parse<StickupCam>("{\"id\":9,\"led_status\":{\"seconds_remaining\":0}}"));
-
-            Assert.NotNull(f);
-            Assert.Equal("{\"seconds_remaining\":0}", f!.LedStatus);
         }
 
         [Fact]

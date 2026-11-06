@@ -54,8 +54,7 @@ namespace VideoForensics.Data.Database.Tests
                 Name = "Front Door",
                 Type = "doorbot",
                 LastSyncedUtc = DateTime.UtcNow,
-                SyncStatus = SyncStatus.Synced,
-                ApiResponseHash = "abc123"
+                SyncStatus = SyncStatus.Synced
             };
 
             _ = db.Devices.Add(device);
@@ -65,7 +64,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(retrieved);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
             _ = Assert.NotNull(retrieved.LastSyncedUtc);
-            Assert.NotNull(retrieved.ApiResponseHash);
         }
 
         [Fact]

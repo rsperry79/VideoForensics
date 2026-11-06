@@ -82,7 +82,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to create case for jamming incident {IncidentId}; incident saved but case not linked", incident.Id);
+                        _logger.LogError("Failed to create case for jamming incident {IncidentId}; incident saved but case not linked: {Message} ({ErrorType})", incident.Id, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -90,7 +90,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting jamming incident: {IncidentId}", incident.Id);
+                _logger.LogError("Error upserting jamming incident: {IncidentId}: {Message} ({ErrorType})", incident.Id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -167,7 +167,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recomputing jamming stats for device: {DeviceId}", deviceId);
+                _logger.LogError("Error recomputing jamming stats for device: {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

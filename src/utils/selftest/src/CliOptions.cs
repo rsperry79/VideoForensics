@@ -42,6 +42,11 @@ namespace VideoForensics.Utils.SelfTest
         public bool Quiet;
         public bool VerifyDb;
         public string? DbPath;
+        public string? CheckDir;
+        public bool ListUnknown;
+        public bool StripRawPayload;
+        public string? DumpFile;
+        public bool Yes;
         public Uri? ClientsApiBaseUrl;
         public Uri? AppApiBaseUrl;
         public Uri? ModeApiBaseUrl;
@@ -393,6 +398,36 @@ namespace VideoForensics.Utils.SelfTest
                         options.VerifyDb = true;
                         break;
 
+                    case "--check-dir":
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --check-dir");
+                        }
+
+                        options.CheckDir = args[++i];
+                        break;
+
+                    case "--list-unknown":
+                        options.ListUnknown = true;
+                        break;
+
+                    case "--strip-raw-payload":
+                        options.StripRawPayload = true;
+                        break;
+
+                    case "--dump-file":
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --dump-file");
+                        }
+
+                        options.DumpFile = args[++i];
+                        break;
+
+                    case "--yes":
+                        options.Yes = true;
+                        break;
+
                     case "--db-path":
                         if (i + 1 >= args.Length)
                         {
@@ -592,6 +627,8 @@ namespace VideoForensics.Utils.SelfTest
 
         USAGE:
           Ring.Api.SelfTester --auth
+          Ring.Api.SelfTester --list-unknown [--db-path <path>] [--output-dir <path>]
+          Ring.Api.SelfTester --strip-raw-payload --db-path <file> --dump-file <ndjson> --yes
           Ring.Api.SelfTester [--list | --list-endpoints-json] [--endpoints <csv>] [--output-dir <path>]
                      [--location-id <guid>] [--doorbot-id <id>] [--chime-id <id>]
                      [--history-limit <n>] [--destructive [--no-physical] [destructive-endpoint options]]
@@ -662,14 +699,48 @@ namespace VideoForensics.Utils.SelfTest
                                      from the Ring API and cross-check each one against the
                                      VideoForensics app's own SQLite database (matched by provider
                                      device/location id) - flags anything Ring reports that never
-                                     got persisted locally. Writes db-completeness.json alongside
+                                     got persisted locally. Also checks every leaf path of the run's
+                                     saved responses against the explicit path map
+                                     src/utils/selftest/src/field-map.json (endpoint:json.path ->
+                                     Table.Column, Rows:Table or NotData:reason; array indexes are
+                                     written []). Failed calls are skipped. Reports (a) unmapped paths
+                                     per endpoint, (b) stale map entries whose Table.Column is not in
+                                     the EF model (or is a *Json column), (c) endpoints that returned
+                                     data but have no map entry and (d) paths that were null in every
+                                     sample (type unverified). Writes db-completeness.json alongside
                                      index.json; does not affect the exit code (a device/location
                                      that simply hasn't been downloaded yet is expected, not a
                                      failure - this is a completeness report, not a pass/fail gate).
+          --check-dir <path>        Run only that check, offline, on a saved run directory: no Ring
+                                     calls, no credentials. Reads the saved devices/locations files
+                                     for the presence check and every response file for the path
+                                     check. Uses --db-path (or the default database). Writes
+                                     db-completeness.json into --output-dir if given, else into
+                                     <path>. Exit code 0 unless the directory or database is missing.
           --db-path <path>          SQLite database file to use. Default:
                                      %ProgramData%\VideoForensics\Database\videoforensics.db (same file the
                                      main VideoForensics app uses). Applies to credential storage and
                                      --verify-db alike.
+
+        STRIP RAW PAYLOAD (opt-in maintenance, never automatic):
+          --strip-raw-payload       Rewrites Events.MetadataJson and MediaItems.MetadataJson so a raw Ring event payload
+                                     keeps only its keys with no structured home (null when none). App markers such as
+                                     {"type":"snapshot"} are left as they are. Needs all three: --db-path <file>,
+                                     --dump-file <existing non-empty ndjson of the current raw payloads> and --yes.
+                                     Copies the database to <name>.pre-strip-<utc time>.db first, then updates in one
+                                     transaction. Prints counts only. Stop the app first.
+
+        UNKNOWN KEY LIST:
+          --list-unknown            Read-only and offline: no Ring calls, no credentials. Lists every leaf
+                                     JSON path held in the Ring-data JSON columns (Devices, DeviceCapabilities,
+                                     Events, MediaItems, LocationMetadata, RingAccounts, DeviceConfigSnapshots,
+                                     RingLocationModeNotYetParticipating) with its row count and value kinds.
+                                     Values are never printed or written. ActionLogEntries.DetailsJson is
+                                     skipped by design. Events and MediaItems paths are marked covered when
+                                     field-map.json has the same path under any endpoint. Writes
+                                     unknown-keys.json and unknown-keys.md into --output-dir (default: a
+                                     UTC-timestamped folder under SelfTesterResults). Uses --db-path (or the
+                                     default database), opened read-only. Exit 2 if the database is missing.
 
         HOST OVERRIDES (probe a different Ring host without a code change; each takes an absolute
         http/https URL, unset flags keep the production defaults):

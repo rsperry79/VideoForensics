@@ -64,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Download progress broadcast tick failed");
+                    _logger.LogError("Download progress broadcast tick failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             } while (await timer.WaitForNextTickAsync(stoppingToken));
         }

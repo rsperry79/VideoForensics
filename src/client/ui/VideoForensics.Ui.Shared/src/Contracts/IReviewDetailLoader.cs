@@ -31,7 +31,25 @@ public interface IReviewDetailLoader
     /// <param name="toUtc">End of the range (UTC).</param>
     /// <param name="ct">Cancellation token.</param>
     Task<IReadOnlyList<ReviewAnomaly>> LoadAnomaliesAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+    /// <summary>
+    /// Returns the bit-rate flags (collapse and deviation) for <paramref name="deviceIds"/> in the range, newest first.
+    /// </summary>
+    /// <param name="deviceIds">Cameras to query. Duplicates are ignored.</param>
+    /// <param name="fromUtc">Start of the range (UTC).</param>
+    /// <param name="toUtc">End of the range (UTC).</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<IReadOnlyList<ReviewBitRateFlag>> LoadBitRateFlagsAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 }
+
+/// <summary>One bit-rate flag on a camera, spanning its flagged window.</summary>
+/// <param name="FlagId">The flag's id.</param>
+/// <param name="DeviceId">The camera.</param>
+/// <param name="StartUtc">Start of the flagged window (UTC).</param>
+/// <param name="EndUtc">End of the flagged window (UTC).</param>
+/// <param name="FlagType">Which bit-rate flag it is.</param>
+/// <param name="MediaItemId">The clip the flag is on, or null when it covers a window with no clip.</param>
+public sealed record ReviewBitRateFlag(Guid FlagId, Guid DeviceId, DateTime StartUtc, DateTime EndUtc, MediaFlagType FlagType, Guid? MediaItemId);
 
 /// <summary>One notable signal deviation on a camera, spanning the hour it was flagged in.</summary>
 /// <param name="DeviceId">The camera.</param>

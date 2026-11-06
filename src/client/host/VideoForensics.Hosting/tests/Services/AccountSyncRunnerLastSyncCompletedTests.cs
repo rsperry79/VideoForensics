@@ -28,7 +28,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private AccountSyncRunner CreateSut()
         {
             return new(
-            new ServiceCollection().AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
+            new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
             _mockAccounts.Object,
             _mockRuns.Object,
             Mock.Of<ISnapshotSyncService>(),

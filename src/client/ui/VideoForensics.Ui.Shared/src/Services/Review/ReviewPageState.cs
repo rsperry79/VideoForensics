@@ -62,6 +62,13 @@ public sealed class ReviewPageState
     /// <summary>Location filter, or null for all locations.</summary>
     public Guid? LocationFilter { get; private set; }
 
+    private IReadOnlyList<string> _eventTypes = [];
+
+    /// <summary>
+    /// The Event Filter selection: provider types and system types, in display order. Empty means everything.
+    /// </summary>
+    public IReadOnlyList<string> EventTypes => _eventTypes;
+
     /// <summary>The event the user selected, or null.</summary>
     public Guid? SelectedEventId { get; private set; }
 
@@ -119,6 +126,22 @@ public sealed class ReviewPageState
         {
             OnChange?.Invoke();
         }
+    }
+
+    /// <summary>
+    /// Sets the Event Filter selection. Unknown types are dropped and the rest are kept once each, in display order.
+    /// An empty selection shows every type.
+    /// </summary>
+    public void SetEventTypes(IEnumerable<string> types)
+    {
+        IReadOnlyList<string> next = ReviewEventFilters.Normalize(types);
+        if (_eventTypes.SequenceEqual(next))
+        {
+            return;
+        }
+
+        _eventTypes = next;
+        OnChange?.Invoke();
     }
 
     /// <summary>Selects an event. Selecting never moves the cursor; the caller seeks when it wants to.</summary>

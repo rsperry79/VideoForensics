@@ -320,6 +320,7 @@ namespace VideoForensics.Client.WebApp.Api
                     ?? new ExportJobDto(jobId, id, ExportJobState.Queued.ToString(), null, null, request.PurgeAfterExport, DateTime.UtcNow, null);
                 return Results.Accepted($"/api/v1/accounts/exports/{jobId}", dto);
             })
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .RequireRateLimiting("media")
                 .WithSummary("Export a provider account")
@@ -362,6 +363,7 @@ namespace VideoForensics.Client.WebApp.Api
                 _ = Task.Run(() => RunInitialSyncAsync(scopeFactory, id), CancellationToken.None);
                 return Results.Accepted();
             })
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireRateLimiting("media")
                 .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Start the first full sync of a newly added account")
@@ -433,6 +435,7 @@ namespace VideoForensics.Client.WebApp.Api
                     )
                 );
             })
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireRateLimiting("media")
                 .AddEndpointFilter<ProviderAccountEditFilter>()
                 .WithSummary("Queue manual sync of events and device configuration")

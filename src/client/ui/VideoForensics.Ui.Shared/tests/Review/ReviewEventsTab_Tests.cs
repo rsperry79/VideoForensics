@@ -129,6 +129,40 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewEventsTab_MotionRowWithAPerson_ShowsPersonInsteadOfMotion()
+    {
+        // Arrange
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base);
+        ServeFrom([evt]);
+        var detection = new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "human", PersonDetected = true };
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
+            new Dictionary<Guid, EventDetail> { [evt.Id] = new EventDetail(evt.Id, detection, [], [], [], []) });
+        ReviewState.SetCameras([Devices[0].Id]);
+
+        // Act
+        IRenderedComponent<ReviewEventsTab> cut = RenderTab();
+
+        // Assert: the real detection type replaces the generic motion label once the row's detail is read.
+        cut.WaitForAssertion(() => Assert.Contains(L["DetectionType_human"].Value, cut.Find(RowSelector).TextContent));
+    }
+
+    [Fact]
+    public void ReviewEventsTab_TimelapseRow_ShowsTimeLapse()
+    {
+        // Arrange
+        AddDevices(1);
+        ServeFrom([EventAt(Devices[0].Id, Base, "timelapse")]);
+        ReviewState.SetCameras([Devices[0].Id]);
+
+        // Act
+        IRenderedComponent<ReviewEventsTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Contains(L["EventType_timelapse"].Value, cut.Find(RowSelector).TextContent));
+    }
+
+    [Fact]
     public void ReviewEventsTab_UnmappedEventType_ShowsTheRawTypeString()
     {
         // Arrange

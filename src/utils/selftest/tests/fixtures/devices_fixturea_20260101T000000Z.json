@@ -1,0 +1,992 @@
+{
+  "doorbots": [
+    {
+      "id": 1,
+      "kind": "x",
+      "description": "x",
+      "location_id": "x",
+      "schema_id": "x",
+      "is_sidewalk_gateway": false,
+      "deactivated_at": null,
+      "encryption_group": {
+        "id": null,
+        "account_group_revision_id": null
+      },
+      "device_resource_id": "x",
+      "owner": {
+        "id": 1,
+        "first_name": "x",
+        "last_name": "x",
+        "email": "x"
+      },
+      "device_id": "x",
+      "time_zone": "x",
+      "firmware_version": "x",
+      "latitude": 1.5,
+      "longitude": 1.5,
+      "address": "x",
+      "owned": true,
+      "stolen": false,
+      "ring_id": null,
+      "shared_at": null,
+      "health": {
+        "battery_percentage_category": "x",
+        "battery_voltage_category": "x",
+        "connected": true,
+        "device_type": "x",
+        "external_connection": false,
+        "firmware_version": "x",
+        "floodlight_on": false,
+        "last_update_time": 1,
+        "network_connection_value": "x",
+        "night_mode_on": false,
+        "ota_status": "x",
+        "rss_connected": true,
+        "rssi": 1.5,
+        "rssi_category": "x",
+        "second_battery_percentage_category": "x",
+        "second_battery_voltage_category": "x",
+        "sidewalk_connection": false,
+        "transformer_voltage": 1.5,
+        "transformer_voltage_category": "x",
+        "white_led_on": false,
+        "firmware_version_status": "x",
+        "packet_loss": 1.5,
+        "packet_loss_category": "x",
+        "hatch_open": false,
+        "battery_temp": 1.5,
+        "bandwidth": 1,
+        "transformer_score": "x",
+        "siren_on": false,
+        "status_time": 1,
+        "vod_enabled": true,
+        "battery_error": false,
+        "bandwidth_last_time": 1,
+        "firmware_avg_bitrate": "x",
+        "stream_resolution": 1,
+        "video_packets_total": "x",
+        "wifi_is_ring_network": false,
+        "wifi_name": "x",
+        "uptime_sec": 1,
+        "current_bandwidth": 1,
+        "current_bandwidth_mb": 1.5,
+        "package_warning_active": true,
+        "batteries": [
+          {
+            "battery_number": 1,
+            "battery_id": null,
+            "battery_percentage": null,
+            "battery_present": null,
+            "battery_charging": null,
+            "battery_voltage": null,
+            "battery_percentage_category": "x",
+            "battery_voltage_category": "x",
+            "battery_temp": 1.5,
+            "battery_auth_status": null,
+            "battery_family": null,
+            "battery_fw_version": null,
+            "battery_ota_status": null
+          }
+        ]
+      },
+      "subscribed": true,
+      "subscribed_motions": true,
+      "battery_life": null,
+      "external_connection": true,
+      "ring_net_id": null,
+      "active_schedule_uuid": null,
+      "alerts": {
+        "connection": "x"
+      },
+      "flick_elim_recommended_mode": null,
+      "settings": {
+        "doorbell_volume": 1,
+        "chime_settings": {
+          "enable": true,
+          "type": 1,
+          "duration": 1
+        },
+        "motion_detection_enabled": true,
+        "offline_motion_event_settings": {
+          "subscribed": true,
+          "enabled": false,
+          "max_upload_kb": 1,
+          "resolution_p": 1,
+          "frequency_after_secs": 1,
+          "period_after_secs": 1
+        },
+        "cv_settings": {
+          "detection_types": {
+            "human": {
+              "enabled": true,
+              "mode": "x",
+              "record": false,
+              "notification": true
+            },
+            "loitering": {
+              "enabled": false,
+              "mode": "x",
+              "record": false,
+              "notification": false
+            },
+            "motion": {
+              "enabled": true,
+              "mode": "x",
+              "record": false,
+              "notification": false
+            },
+            "moving_vehicle": {
+              "enabled": false,
+              "mode": "x",
+              "record": false,
+              "notification": false
+            },
+            "other_motion": {
+              "enabled": true,
+              "mode": "x",
+              "record": false,
+              "notification": true
+            },
+            "package_delivery": {
+              "enabled": true,
+              "mode": "x",
+              "record": false,
+              "notification": true
+            },
+            "package_pickup": {
+              "enabled": false,
+              "mode": "x",
+              "record": false,
+              "notification": false
+            },
+            "vehicle": {
+              "enabled": true,
+              "mode": "x",
+              "record": false,
+              "notification": false
+            }
+          },
+          "threshold": {
+            "loitering": 1.5,
+            "package_delivery": 1.5
+          }
+        }
+      },
+      "features": {
+        "cfes_eligible": true,
+        "package_warning": null,
+        "smart_video_search": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "smart_video_description": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "auto_zoom_track": null,
+        "auto_track": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          }
+        },
+        "live_view_audio_privacy_controls": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          }
+        },
+        "video_rendering": {
+          "max_digital_zoom_level": 1.5
+        },
+        "person_identification": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "retinal_tuning": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          },
+          "rt_max_digital_zoom_level": 1.5
+        },
+        "original_video_quality_download_offer": {
+          "is_enabled": false
+        },
+        "single_alert": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "chime_settings": {
+          "is_eligible": false
+        },
+        "unusual_alert": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          },
+          "learning": null
+        },
+        "transformer_score": {
+          "score": "x",
+          "affected_features": null
+        },
+        "video_donation": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          }
+        },
+        "ai_automated_warnings": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "automated_siren": null,
+        "alexa_plus_greetings": null,
+        "remote_access_control": null,
+        "ai_labs_daily_clip": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "ai_labs_memorable_moments": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "network_backup": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "network_backup_host": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          }
+        },
+        "property_view": {
+          "enablement": {
+            "enabled": false
+          }
+        },
+        "auto_shutoff_device": null,
+        "short_on_long_off": null,
+        "tracklight": null,
+        "motion_zone_recommendation": false,
+        "motion_message_enabled": true,
+        "motions_enabled": true,
+        "show_recordings": true,
+        "show_vod_settings": true,
+        "rich_notifications_eligible": true,
+        "show_offline_motion_events": false,
+        "sheila_camera_eligible": true,
+        "sheila_camera_processing_eligible": true,
+        "dynamic_network_switching_eligible": false,
+        "video_recording": {
+          "recording_mode": "x",
+          "recording_enabled": true,
+          "recording_state": "x",
+          "recording_mode_availability": {
+            "continuous": {
+              "supported": false,
+              "available": null,
+              "unavailability_reason": null
+            }
+          }
+        },
+        "vehicle_detection_eligible": true,
+        "animal_detection_eligible": null,
+        "show_24x7_lite": true,
+        "recording_24x7_eligible": null
+      },
+      "ext_power_state": null
+    }
+  ],
+  "authorized_doorbots": [],
+  "chimes": [
+    {
+      "id": 1,
+      "kind": "x",
+      "description": "x",
+      "location_id": "x",
+      "schema_id": "x",
+      "is_sidewalk_gateway": false,
+      "deactivated_at": null,
+      "encryption_group": null,
+      "device_resource_id": "x",
+      "owner": {
+        "id": 1,
+        "first_name": "x",
+        "last_name": "x",
+        "email": "x"
+      },
+      "device_id": "x",
+      "time_zone": "x",
+      "firmware_version": "x",
+      "latitude": 1.5,
+      "longitude": 1.5,
+      "address": "x",
+      "owned": true,
+      "stolen": false,
+      "ring_id": null,
+      "shared_at": null,
+      "health": {
+        "battery_percentage_category": "x",
+        "battery_voltage_category": "x",
+        "connected": true,
+        "device_type": "x",
+        "external_connection": false,
+        "firmware_version": "x",
+        "floodlight_on": false,
+        "last_update_time": 1,
+        "network_connection_value": "x",
+        "ota_status": "x",
+        "rss_connected": true,
+        "rssi": 1.5,
+        "rssi_category": "x",
+        "second_battery_percentage_category": "x",
+        "second_battery_voltage_category": "x",
+        "sidewalk_connection": false,
+        "white_led_on": false,
+        "firmware_version_status": "x",
+        "packet_loss_category": "x",
+        "status_time": 1,
+        "battery_error": false,
+        "wifi_is_ring_network": false,
+        "wifi_name": "x"
+      },
+      "ring_net_id": null,
+      "settings": {
+        "volume": 1,
+        "ding_audio_user_id": "x",
+        "ding_audio_id": "x",
+        "motion_audio_user_id": "x",
+        "motion_audio_id": "x"
+      },
+      "features": {
+        "cfes_eligible": false,
+        "package_warning": null,
+        "smart_video_search": null,
+        "smart_video_description": null,
+        "auto_zoom_track": null,
+        "auto_track": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          }
+        },
+        "live_view_audio_privacy_controls": null,
+        "video_rendering": {
+          "max_digital_zoom_level": 1.5
+        },
+        "person_identification": null,
+        "retinal_tuning": null,
+        "original_video_quality_download_offer": null,
+        "single_alert": null,
+        "chime_settings": null,
+        "unusual_alert": null,
+        "transformer_score": null,
+        "video_donation": null,
+        "ai_automated_warnings": null,
+        "automated_siren": null,
+        "alexa_plus_greetings": null,
+        "remote_access_control": null,
+        "ai_labs_daily_clip": null,
+        "ai_labs_memorable_moments": null,
+        "network_backup": null,
+        "network_backup_host": null,
+        "property_view": null,
+        "auto_shutoff_device": null,
+        "short_on_long_off": null,
+        "tracklight": null,
+        "ringtones_enabled": true
+      },
+      "alerts": {
+        "connection": "x"
+      },
+      "do_not_disturb": {
+        "seconds_left": 1.5
+      }
+    }
+  ],
+  "stickup_cams": [
+    {
+      "id": 1,
+      "kind": "x",
+      "description": "x",
+      "location_id": "x",
+      "schema_id": "x",
+      "is_sidewalk_gateway": false,
+      "deactivated_at": null,
+      "encryption_group": {
+        "id": null,
+        "account_group_revision_id": null
+      },
+      "device_resource_id": "x",
+      "owner": {
+        "id": 1,
+        "first_name": "x",
+        "last_name": "x",
+        "email": "x"
+      },
+      "device_id": "x",
+      "time_zone": "x",
+      "firmware_version": null,
+      "latitude": 1.5,
+      "longitude": 1.5,
+      "address": "x",
+      "owned": true,
+      "stolen": false,
+      "ring_id": null,
+      "shared_at": null,
+      "health": {},
+      "subscribed": false,
+      "subscribed_motions": true,
+      "external_connection": false,
+      "ring_net_id": null,
+      "active_schedule_uuid": null,
+      "alerts": {
+        "connection": "x"
+      },
+      "battery_life": null,
+      "settings": {
+        "motion_snooze_preset_profile": "x",
+        "motion_snooze_presets": [
+          "x"
+        ],
+        "live_view_preset_profile": "x",
+        "live_view_presets": [
+          "x"
+        ],
+        "doorbell_volume": 1,
+        "advanced_motion_detection_enabled": true,
+        "advanced_motion_detection_human_only_mode": true,
+        "enable_audio_recording": true,
+        "motion_detection_enabled": true,
+        "offline_motion_event_settings": {
+          "subscribed": true,
+          "enabled": false,
+          "max_upload_kb": 1,
+          "resolution_p": 1,
+          "frequency_after_secs": 1,
+          "period_after_secs": 1
+        },
+        "cv_settings": {
+          "detection_types": {
+            "human": {
+              "enabled": true,
+              "mode": "x",
+              "record": null,
+              "notification": true
+            },
+            "loitering": {
+              "enabled": false,
+              "mode": "x",
+              "record": null,
+              "notification": false
+            },
+            "motion": {
+              "enabled": true,
+              "mode": "x",
+              "record": null,
+              "notification": false
+            },
+            "moving_vehicle": {
+              "enabled": false,
+              "mode": "x",
+              "record": null,
+              "notification": false
+            },
+            "other_motion": {
+              "enabled": false,
+              "mode": "x",
+              "record": null,
+              "notification": false
+            },
+            "package_delivery": {
+              "enabled": false,
+              "mode": "x",
+              "record": null,
+              "notification": false
+            },
+            "package_pickup": {
+              "enabled": false,
+              "mode": "x",
+              "record": null,
+              "notification": false
+            }
+          },
+          "threshold": {
+            "loitering": 1.5,
+            "package_delivery": 1.5
+          }
+        },
+        "enable_vod": 1,
+        "exposure_control": 1,
+        "vod_suspended": 1,
+        "vod_status": "x",
+        "advanced_motion_zones": {
+          "zone1": {
+            "name": "x",
+            "state": 1,
+            "vertex1": {
+              "x": 1,
+              "y": 1.5
+            },
+            "vertex2": {
+              "x": 1.5,
+              "y": 1.5
+            },
+            "vertex3": {
+              "x": 1.5,
+              "y": 1.5
+            },
+            "vertex4": {
+              "x": 1,
+              "y": 1.5
+            },
+            "vertex5": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex6": {
+              "x": 1.5,
+              "y": 1
+            },
+            "vertex7": {
+              "x": 1.5,
+              "y": 1
+            },
+            "vertex8": {
+              "x": 1,
+              "y": 1
+            }
+          },
+          "zone2": {
+            "name": "x",
+            "state": 1,
+            "vertex1": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex2": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex3": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex4": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex5": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex6": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex7": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex8": {
+              "x": 1,
+              "y": 1
+            }
+          },
+          "zone3": {
+            "name": "x",
+            "state": 1,
+            "vertex1": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex2": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex3": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex4": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex5": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex6": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex7": {
+              "x": 1,
+              "y": 1
+            },
+            "vertex8": {
+              "x": 1,
+              "y": 1
+            }
+          }
+        },
+        "enable_white_leds": 1,
+        "light_settings": {
+          "brightness": 1
+        },
+        "pir_sensitivity_1": 1
+      },
+      "battery_voltage": null,
+      "led_status": {
+        "seconds_remaining": 1
+      },
+      "night_mode": 1,
+      "siren_status": {
+        "seconds_remaining": 1
+      },
+      "ext_power_state": null,
+      "features": {
+        "cfes_eligible": true,
+        "package_warning": null,
+        "smart_video_search": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "smart_video_description": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "auto_zoom_track": null,
+        "auto_track": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          }
+        },
+        "live_view_audio_privacy_controls": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          }
+        },
+        "video_rendering": {
+          "max_digital_zoom_level": 1.5
+        },
+        "person_identification": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "retinal_tuning": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": true,
+            "enabled": false,
+            "disallow_reasons": []
+          },
+          "rt_max_digital_zoom_level": 1.5
+        },
+        "original_video_quality_download_offer": {
+          "is_enabled": false
+        },
+        "single_alert": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "chime_settings": {
+          "is_eligible": false
+        },
+        "unusual_alert": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          },
+          "learning": null
+        },
+        "transformer_score": null,
+        "video_donation": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": []
+          }
+        },
+        "ai_automated_warnings": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "automated_siren": null,
+        "alexa_plus_greetings": null,
+        "remote_access_control": null,
+        "ai_labs_daily_clip": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "ai_labs_memorable_moments": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "enabled": false
+          },
+          "allows_no_location": false
+        },
+        "network_backup": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          },
+          "enablement": {
+            "allowed": false,
+            "enabled": false,
+            "disallow_reasons": [
+              "x"
+            ]
+          }
+        },
+        "network_backup_host": {
+          "eligibility": {
+            "eligible": false,
+            "ineligibility_reasons": [
+              "x"
+            ]
+          }
+        },
+        "property_view": null,
+        "auto_shutoff_device": null,
+        "short_on_long_off": null,
+        "tracklight": null,
+        "motion_zone_recommendation": false,
+        "motion_message_enabled": true,
+        "motions_enabled": true,
+        "show_recordings": true,
+        "show_vod_settings": true,
+        "rich_notifications_eligible": true,
+        "show_offline_motion_events": false,
+        "sheila_camera_eligible": true,
+        "sheila_camera_processing_eligible": true,
+        "dynamic_network_switching_eligible": false,
+        "video_recording": {
+          "recording_mode": "x",
+          "recording_enabled": true,
+          "recording_state": "x",
+          "recording_mode_availability": {
+            "continuous": {
+              "supported": false,
+              "available": null,
+              "unavailability_reason": null
+            }
+          }
+        },
+        "show_24x7_lite": true,
+        "recording_24x7_eligible": null
+      },
+      "battery_voltage_2": null,
+      "battery_life_2": null
+    }
+  ],
+  "base_stations": [],
+  "beams": [],
+  "beams_bridges": [],
+  "other": []
+}

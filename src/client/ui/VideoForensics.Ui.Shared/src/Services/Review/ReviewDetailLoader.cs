@@ -17,13 +17,15 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
     private readonly IEventDetailRepository _details;
     private readonly IJammingRepository _jamming;
     private readonly ISignalAnalysisService _signals;
+    private readonly IMediaFlagRepository _flags;
 
-    /// <summary>Creates the loader over the detail repository, the jamming repository, and the signal analysis service.</summary>
-    public ReviewDetailLoader(IEventDetailRepository details, IJammingRepository jamming, ISignalAnalysisService signals)
+    /// <summary>Creates the loader over the detail, jamming and flag repositories and the signal analysis service.</summary>
+    public ReviewDetailLoader(IEventDetailRepository details, IJammingRepository jamming, ISignalAnalysisService signals, IMediaFlagRepository flags)
     {
         _details = details;
         _jamming = jamming;
         _signals = signals;
+        _flags = flags;
     }
 
     /// <inheritdoc />
@@ -78,4 +80,31 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
             .OrderByDescending(anomaly => anomaly.StartUtc)
             .ToList();
     }
+
+    /// <inheritdoc />
+    /// <remarks>Reads the bit-rate flags over the cameras and range, newest first. Each page is one flag query.</remarks>
+    public async Task<IReadOnlyList<ReviewBitRateFlag>> LoadBitRateFlagsAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        List<Guid> devices = deviceIds.Distinct().ToList();
+        if (devices.Count == 0)
+        {
+            return [];
+        }
+
+        var filter = new MediaFlagFilter
+        {
+            Types = [MediaFlagType.BitrateCollapse, MediaFlagType.BitrateDeviation],
+            DeviceIds = devices,
+            FromUtc = fromUtc,
+            ToUtc = toUtc,
+        };
+        MediaFlagPage page = await _flags.ListPageAsync(filter, 0, BitRateFlagPageSize, ct);
+        return page.Items
+            .OrderByDescending(flag => flag.WindowStartUtc)
+            .Select(flag => new ReviewBitRateFlag(flag.Id, flag.DeviceId, flag.WindowStartUtc, flag.WindowEndUtc, flag.FlagType, flag.MediaItemId))
+            .ToList();
+    }
+
+    /// <summary>Most bit-rate flags the Detail section reads. The section shows the newest of them.</summary>
+    private const int BitRateFlagPageSize = 500;
 }

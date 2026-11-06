@@ -1,0 +1,31 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
+
+<div class="flag-review-shell" data-testid="flag-review-shell">
+    <div class="flag-review-breadcrumb" data-testid="flag-review-breadcrumb">
+        @Breadcrumb
+    </div>
+
+    <section class="flag-review-media" data-testid="flag-review-media" aria-label="@L["FlagReviewMediaLabel"]">
+        @Media
+    </section>
+
+    <section class="flag-review-timeline" data-testid="flag-review-timeline" aria-label="@L["FlagReviewTimelineLabel"]">
+        @Timeline
+    </section>
+</div>
+
+@code {
+    /// <summary>The breadcrumb trail above the media, already built by the caller.</summary>
+    [Parameter]
+    public RenderFragment? Breadcrumb { get; set; }
+
+    /// <summary>The clip, or the media fit that shows it. Fills the middle window at full width and height.</summary>
+    [Parameter]
+    public RenderFragment? Media { get; set; }
+
+    /// <summary>The playback timeline pinned to the bottom of the shell.</summary>
+    [Parameter]
+    public RenderFragment? Timeline { get; set; }
+}

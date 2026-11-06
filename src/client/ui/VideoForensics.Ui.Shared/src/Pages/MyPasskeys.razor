@@ -288,7 +288,7 @@ else
 
     private async Task SignOutAfterPendingAsync()
     {
-        await SessionState.ClearAsync();
+        await SessionState.SignOutAsync();
         NavigationManager.NavigateTo("/signin");
     }
 

@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Serilog;
@@ -58,6 +60,7 @@ using VideoForensics.Client.WebApp.Components;
 // Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
 VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
@@ -72,49 +75,89 @@ NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocat
 // Configure Serilog for structured audit logging BEFORE creating the host.
 // Dual-write: file sinks (primary/truth) + IActionLogRepository (secondary/searchable).
 var storageProvider = new StorageLocationProvider();
+// The saved storage locations come from the database. They are read before the logs folder, the Keys reconcile and the key ring load.
+VideoForensics.Client.Hosting.SavedStorageSettings savedStorage = new VideoForensics.Client.Hosting.StorageSettingsBootstrap(storageProvider).Read();
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.KeysRoot = savedStorage.KeysRoot;
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.LogsRoot = savedStorage.LogsRoot;
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.DefaultRoot = savedStorage.DefaultRoot;
+// Once the database was read, its null values mean default and legacy pointer files are ignored.
+VideoForensics.Core.Helpers.Platform.StorageLocationStore.SavedSettingsRead = savedStorage.DatabaseRead;
 string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
+// Finishes a Logs move from the previous run: appends what the old audit file gained after its copy, then removes it.
+// Must run before the logger below opens the folder, so appended lines stay in order.
+VideoForensics.Data.Core.Services.LogRelocationManifest.Reconcile(logsDir);
+// Verifies each copied key against its recorded hash, then removes the original. Keys must not load before this runs.
+VideoForensics.Data.Core.Services.KeyRelocationManifest.Reconcile(storageProvider.GetDefaultRoot(StorageCategory.Keys));
+
+// The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
+ServerLogLevel serverLogLevel = new();
+// Framework noise logged at Debug, shown only at Trace and only in live outputs (console, named pipe). Never stored.
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
+// EF Core (all of its categories) and our own database classes are chatty: Trace-only. Warnings and errors still pass (see LogLevelSource).
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
+serverLogLevel.BufferLevel.TraceOnlyCategories.Add("VideoForensics.Data.Database");
+
+static string SourceOf(Serilog.Events.LogEvent e) =>
+    e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
 
 // The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
 ServerLogLevel serverLogLevel = new();
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.ControlledBy(serverLogLevel.Switch)
-    // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
-    // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
-    .MinimumLevel.Override("VideoForensics.Providers.Ring.Api", Serilog.Events.LogEventLevel.Debug)
+    // No per-category overrides: an override bypasses the level switch, so EF SQL and Ring API Debug lines would be
+    // written to the audit files at any saved level. The saved level alone decides what the files hold.
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.Client.WebApp")
-    // Text format: human-readable with structured properties appended
-    .WriteTo.File(
-        path: Path.Combine(logsDir, "audit-.txt"),
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
-        rollingInterval: RollingInterval.Day,
-        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
-        rollOnFileSizeLimit: true,
-        fileSizeLimitBytes: 256L * 1024 * 1024,
-        retainedFileCountLimit: 30,
-        shared: true)
-    // JSON format: structured output with all properties
-    .WriteTo.File(
-        path: Path.Combine(logsDir, "audit-.json"),
-        outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
-        rollingInterval: RollingInterval.Day,
-        // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
-        rollOnFileSizeLimit: true,
-        fileSizeLimitBytes: 256L * 1024 * 1024,
-        retainedFileCountLimit: 30,
-        shared: true)
-    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .Filter.ByExcluding(e => !serverLogLevel.BufferLevel.AdmitsLive(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
+    // CloudflaredKit logs its process dying as a warning; CloudflaredTunnelService logs the same event at Error with the exit code,
+    // so the package's warning is dropped to avoid a duplicate line.
+    .Filter.ByExcluding(e => e.Level == Serilog.Events.LogEventLevel.Warning
+        && e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source)
+        && source.ToString().Trim('"') == "CloudflaredKit.CloudflaredProcess"
+        && e.MessageTemplate.Text.Contains("exited unexpectedly", StringComparison.Ordinal))
+    // Audit files hold stored entries only: Trace-only framework noise never reaches them, and Trace and Debug are never
+    // written to the files at all (they stay on the console and the named pipe).
+    .WriteTo.Logger(files => files
+        .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
+        // Text format: human-readable with structured properties appended
+        .WriteTo.File(
+            new VideoForensics.Core.Logging.Providers.UtcConsoleFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"),
+            path: Path.Combine(logsDir, "audit-.txt"),
+            rollingInterval: RollingInterval.Day,
+            // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+            rollOnFileSizeLimit: true,
+            fileSizeLimitBytes: 256L * 1024 * 1024,
+            retainedFileCountLimit: 30,
+            shared: true)
+        // JSON format: structured output with all properties
+        .WriteTo.File(
+            path: Path.Combine(logsDir, "audit-.json"),
+            outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
+            rollingInterval: RollingInterval.Day,
+            // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
+            rollOnFileSizeLimit: true,
+            fileSizeLimitBytes: 256L * 1024 * 1024,
+            retainedFileCountLimit: 30,
+            shared: true))
+    // Console only: UTC time, the category on its own line above the message, the structured properties left out, and the level tag and message coloured by level.
+    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console())
     .CreateLogger();
+
+// A fatal exception off the request path (async void, timer, thread pool) only reaches stderr, which a service or container
+// discards. These lines are the last record of why the process ended; a missing "Process exiting" line means it was killed from outside.
+_ = new ProcessCrashLogger(
+    new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("VideoForensics.Process"),
+    Log.CloseAndFlush).Attach();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // In-place updates are off by default (Updates:Enabled). Apply a staged package before the host starts. Only as a real
 // Windows service: a debug run from Visual Studio must never rewrite its own build output.
 bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuration.GetValue<bool>("Updates:Enabled");
-string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "Updates");
 bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
 bool updatesActiveAsService = inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
 if (OperatingSystem.IsWindows() && updatesActiveAsService)
@@ -189,6 +232,8 @@ VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 // dotnet run/debugging unchanged (UseWindowsService is a no-op on non-Windows platforms and when
 // not running under the SCM, so no conditional is needed).
 builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics");
+// Stopping from services.msc runs the shutdown path; a stop past the default 30 seconds crashes the process (see HostShutdownOptions).
+HostShutdownOptions.Apply(builder.Services);
 
 // systemd integration on Linux - enables running under systemd while keeping dotnet run/debugging
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
@@ -251,12 +296,17 @@ builder.Logging.SetMinimumLevel(LogLevel.Trace);
 // The Server Logs history reads the daily audit files in logsDir, which hold the levels the saved setting allows.
 builder.Services.AddSingleton(new LogFileDirectory(logsDir));
 builder.Services.AddSingleton(serverLogLevel);
+// Startup init runs in the background after the host starts; the gate tells the request pipeline when it has finished.
+StartupInitializationGate startupInitGate = new();
+builder.Services.AddSingleton(startupInitGate);
+builder.Services.AddHostedService<StartupInitializationService>();
+builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
 // The named pipe feeds VideoForensics.Utils.LogViewer. The gate starts closed; the saved Infrastructure setting opens it after build.
-var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate();
+var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate { Level = serverLogLevel.BufferLevel };
 builder.Services.AddSingleton(namedPipeGate);
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
     enableNamedPipeLogger: true,
@@ -349,12 +399,25 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // Access to the key directory is still restricted by its filesystem ACL.
 // When the TPM is usable, the key ring is encrypted to a TPM-held certificate, so only this machine's TPM can
 // decrypt it. Otherwise DPAPI (machine scope) protects it.
+string dataProtectionWrapping = "not Windows";
 if (OperatingSystem.IsWindows())
 {
-    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate();
+    // A machine that already has the TPM key never falls back to DPAPI: the start is retried with waits, then refused.
+    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.ResolveTpmCertificate(
+        VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate,
+        VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.KeyExists,
+        wait => System.Threading.Thread.Sleep(wait),
+        [TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)]);
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
         : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+
+    // Logged at startup: a restart that falls back to DPAPI cannot later read keys wrapped by the TPM certificate.
+    bool elevated = new System.Security.Principal.WindowsPrincipal(System.Security.Principal.WindowsIdentity.GetCurrent())
+        .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    bool tpmProbeAvailable = new VideoForensics.Client.Platform.Windows.KeyManagement.TpmKeyStorageProvider().IsAvailable;
+    dataProtectionWrapping = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.Describe(
+        tpmCertificate is not null, tpmProbeAvailable, elevated);
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -372,8 +435,10 @@ builder.Services.Configure<BrowserLiveViewOptions>(
     builder.Configuration.GetSection(BrowserLiveViewOptions.SectionName));
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
+builder.Services.AddHostedService<MaintenanceBroadcastService>();
 // Per-circuit, so each circuit samples the sync activity log itself. Replaces the Razor panel's polling timer.
 builder.Services.AddScoped<IDownloadProgressSource, LocalDownloadProgressSource>();
+builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMaintenanceStatusSource, VideoForensics.Client.WebApp.Services.LocalMaintenanceStatusSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
 builder.Services.AddScoped<ISelfTestStatusSource, LocalSelfTestStatusSource>();
 // The LiveView page resolves this in both hosts. The WebApp has no live push channel, so it reports disconnected and the page polls.
@@ -481,12 +546,26 @@ else if (OperatingSystem.IsWindows())
     _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
 }
 
+// One maintenance gate for the process. Scheduled sync, the update drain and the Database coordinator all share it.
+_ = builder.Services.AddServerMaintenance();
+
+// cloudflared children are tied to this process, so an update restart or a crash cannot orphan them. Orphans each hold four
+// connections and Cloudflare caps a tunnel at 25 replicas, after which every new tunnel start exits.
+if (OperatingSystem.IsWindows())
+{
+    _ = builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.IChildProcessReaper, VideoForensics.Client.Platform.Windows.WindowsJobChildProcessReaper>();
+}
+else
+{
+    builder.Services.TryAddSingleton<VideoForensics.Client.Common.Contracts.IChildProcessReaper, VideoForensics.Client.Common.Contracts.NoOpChildProcessReaper>();
+}
+
 if (updatesActiveAsService)
 {
     // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,
     // and the service then exits so the service manager restarts it on the new version.
-    // NoOpUpdateDrain is replaced by the scheduler's drain when that lands.
-    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.NoOpUpdateDrain>();
+    // The drain holds back new work through the maintenance gate and waits for in-flight work to finish before applying.
+    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.MaintenanceUpdateDrain>();
     _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
         updatesRoot,
         new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
@@ -511,12 +590,17 @@ else
 builder.Services.AddSingleton<ThumbnailReadyBus>();
 builder.Services.AddSingleton<EvidenceChangedBus>();
 builder.Services.AddSingleton<DeviceHealthChangedBus>();
+builder.Services.AddSingleton<ClientConfigChangedBus>();
+builder.Services.AddSingleton<IConfigurationChangeNotifier, LiveConfigNotifier>();
+builder.Services.AddScoped<IConfigChangedSource, LocalConfigChangedSource>();
 builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, LiveThumbnailNotifier>());
 builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
 builder.Services.Replace(ServiceDescriptor.Singleton<IDeviceHealthChangeNotifier, LiveDeviceHealthNotifier>());
 builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
 builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
 builder.Services.AddScoped<IDeviceHealthChangedSource, LocalDeviceHealthChangedSource>();
+// Media-flag review changes: the flag endpoints publish, open review pages subscribe (in-process and over LiveHub).
+builder.Services.AddMediaFlagChangeServices();
 // The dispatcher runs in this process, so each raised notice is published to open Notices pages directly.
 builder.Services.AddSingleton<LocalNoticeFeed>();
 builder.Services.AddSingleton<INoticeFeed>(sp => sp.GetRequiredService<LocalNoticeFeed>());
@@ -675,6 +759,7 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ScopeState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSettingsStore>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
@@ -686,6 +771,8 @@ builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.Revie
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
 builder.Services.AddScoped<DeviceOwnershipService>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, VideoForensics.Client.Hosting.Signal.BitrateAnalysisService>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IMediaBitrateSeriesSource, VideoForensics.Client.Hosting.Signal.LocalMediaBitrateSeriesSource>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
@@ -696,6 +783,7 @@ builder.Services.AddScoped<SimpleHomeBuilder>(sp => new SimpleHomeBuilder(
     sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IMediaContentUrlProvider>(),
     sp.GetRequiredService<IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources>>()));
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
+builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
 
@@ -724,9 +812,67 @@ builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
 // Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
 // they wrap, so each decorator wraps the final registration.
 builder.Services.AddCircuitOperatorGuards();
+// Every storage move, from the pages or the HTTP endpoints, runs under maintenance (see MaintainedStorageSettingsService).
+builder.Services.AddSingleton<IAppRestarter>(sp => AppRestarter.ForCurrentProcess(sp.GetRequiredService<IHostApplicationLifetime>(), Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService));
+builder.Services.AddMaintainedStorageSettings();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
+// Holds every background service back until the startup init has finished, so none touches an unmigrated database.
+// Wrapped after all registrations so every AddHostedService above is covered. Kestrel's host service and the init
+// service are not gated: the first is not a BackgroundService and the second is excluded by type.
+for (int i = 0; i < builder.Services.Count; i++)
+{
+    ServiceDescriptor descriptor = builder.Services[i];
+    if (descriptor.ServiceType != typeof(IHostedService) || descriptor.Lifetime != ServiceLifetime.Singleton
+        || descriptor.ImplementationInstance is not null
+        || (descriptor.ImplementationType is not null && !typeof(BackgroundService).IsAssignableFrom(descriptor.ImplementationType))
+        || descriptor.ImplementationType == typeof(StartupInitializationService))
+    {
+        continue;
+    }
+
+    ServiceDescriptor original = descriptor;
+    builder.Services[i] = ServiceDescriptor.Singleton<IHostedService>(sp =>
+    {
+        IHostedService service = original.ImplementationFactory is { } factory
+            ? (IHostedService)factory(sp)
+            : (IHostedService)ActivatorUtilities.CreateInstance(sp, original.ImplementationType!);
+        return service is BackgroundService and not StartupInitializationService
+            ? new GatedHostedService(service, startupInitGate)
+            : service;
+    });
+}
+
 WebApplication app = builder.Build();
+app.Logger.LogInformation("Data protection key ring wrapped by {Wrapping}", dataProtectionWrapping);
+
+// Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
+using (IServiceScope levelScope = app.Services.CreateScope())
+{
+    try
+    {
+        IForensicsConfiguration savedConfig = await levelScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
+        serverLogLevel.Apply(savedConfig.LogLevel);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
+
+// Open the LogViewer pipe only if the Infrastructure setting says so. A failure keeps it closed.
+using (IServiceScope pipeScope = app.Services.CreateScope())
+{
+    try
+    {
+        string? storedPipe = await pipeScope.ServiceProvider.GetRequiredService<IAppSettingRepository>().GetAsync(LogPipeEndpoints.SettingKey, CancellationToken.None);
+        namedPipeGate.SetOpen(LogPipeEndpoints.IsEnabled(storedPipe));
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not read the saved log pipe setting, keeping it closed: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
 
 // Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
 using (IServiceScope levelScope = app.Services.CreateScope())
@@ -783,21 +929,22 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// DB init + Events backfill + persisted-config load, in that order - see
-// VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync. Unlike the MCP server, a Web
-// app has no "must respond immediately" constraint, so this is awaited directly before app.Run().
-// A transient DB issue is logged critically but does not crash the whole web server - matching this
-// project's existing philosophy of graceful degradation over hard crashes where reasonable.
-ILogger<Program> initLogger = app.Services.GetRequiredService<ILogger<Program>>();
-try
+// DB init + Events backfill + persisted-config load run in StartupInitializationService, not before app.Run():
+// awaiting them here kept the Windows service from reporting Running until they finished (about a minute), so
+// services.msc reported a failed start. Until the gate opens, requests get a 503 with Retry-After.
+StartupInitializationGate startupGate = app.Services.GetRequiredService<StartupInitializationGate>();
+app.Use(async (context, next) =>
 {
-    await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(app.Services, initLogger, CancellationToken.None);
-    initLogger.LogInformation("Database initialization (DB, Events backfill, config) completed.");
-}
-catch (Exception ex)
-{
-    initLogger.LogCritical(ex, "Database initialization failed. Continuing startup in a degraded state.");
-}
+    if (startupGate.IsReady || context.Request.Path.StartsWithSegments("/_framework") || context.Request.Path.StartsWithSegments("/favicon.ico"))
+    {
+        await next();
+        return;
+    }
+
+    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+    context.Response.Headers.RetryAfter = "5";
+    await context.Response.WriteAsync("Starting up. Try again in a moment.");
+});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -822,6 +969,8 @@ app.MapSystemVersionEndpoints();
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
+app.MapMediaFlagEndpoints();
+app.MapSnapshotCaptureEndpoints();
 app.MapReportEndpoints();
 app.MapLiveViewEndpoints();
 app.MapAuthEndpoints();
@@ -850,6 +999,7 @@ app.MapDeviceConfigEndpoints();
 app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
+app.MapNoteEndpoints();
 app.MapJammingEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
@@ -862,6 +1012,7 @@ app.MapPushEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
 app.MapLogPipeEndpoints();
+app.MapDatabaseEndpoints();
 app.MapSnapshotProbeEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)

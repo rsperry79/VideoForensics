@@ -35,7 +35,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
         <PackageReference Include="NodaTime" Version="3.3.7" />
         <PackageReference Include="SharpZipLib" Version="1.4.2" />
-        <PackageReference Include="Syncfusion.Licensing" Version="35.1.42" />
+        <PackageReference Include="Syncfusion.Licensing" Version="35.1.43" />
     </ItemGroup>
 
     <ItemGroup>

@@ -79,7 +79,7 @@
             <div style="max-height: 400px; overflow-y: auto;">
                 @if (_noticesList.Count == 0)
                 {
-                    <div style="padding: 16px; text-align: center; color: #666;">@L["NoNotices"]</div>
+                    <div style="padding: 16px; text-align: center; color: var(--bs-secondary-color);">@L["NoNotices"]</div>
                 }
                 else
                 {
@@ -93,22 +93,27 @@
                                     </span>
                                     <strong style="font-size: 13px;">@NoticeActions.Title(notice.EventType)</strong>
                                 </div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 4px;" title="@notice.Details">
+                                <div style="font-size: 12px; color: var(--bs-secondary-color); margin-bottom: 4px;" title="@notice.Details">
                                     @(notice.Details?.Length > 80 ? notice.Details.Substring(0, 80) + "..." : notice.Details ?? "")
                                 </div>
-                                <div style="font-size: 11px; color: #999;">
+                                <div style="font-size: 11px; color: var(--bs-secondary-color);">
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
                                 @{
                                     string? settingsLink = NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath);
                                     string? reviewLink = NoticeActions.ReviewLink(notice.EventType, notice.ActionPath);
+                                    string? reauthLink = NoticeActions.ReauthenticateLink(notice.EventType, notice.ActionPath);
                                 }
-                                @if (settingsLink is not null || reviewLink is not null)
+                                @if (settingsLink is not null || reviewLink is not null || reauthLink is not null)
                                 {
                                     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
                                         @if (reviewLink is not null)
                                         {
                                             <a href="@reviewLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
+                                        }
+                                        @if (reauthLink is not null)
+                                        {
+                                            <a href="@reauthLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-reauth">@L["NoticeReauthenticate"]</a>
                                         }
                                         @if (settingsLink is not null)
                                         {
@@ -123,7 +128,7 @@
                 }
             </div>
             <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; text-align: center;">
-                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">@L["ViewAll"]</a>
+                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: var(--bs-link-color); text-decoration: none; font-size: 12px; cursor: pointer;">@L["ViewAll"]</a>
             </div>
         </div>
     }
@@ -155,6 +160,7 @@
                 </SplitterPane>
                 <SplitterPane CssClass="splitter-content-wrapper">
                     <div class="content-wrapper">
+                        <MaintenanceBanner />
                         <div class="page-body">
                             @Body
                         </div>

@@ -95,6 +95,52 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task UpsertAsync_ListOnlyRebuildWithoutZoneSource_KeepsStoredAdvancedMotionZones()
+        {
+            // The download path rebuilds from the device list, which carries no advanced-motion zones. A null list means
+            // the caller did not supply them, so the stored zones must survive the rebuild.
+            var advancedZone = new DeviceAdvancedMotionZone
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = _device.Id,
+                ZoneKey = "zone_1",
+                Name = "Driveway",
+                State = 1,
+                Vertices = [new DeviceAdvancedMotionZoneVertex { Id = Guid.NewGuid(), Position = 1, X = 0.1, Y = 0.2 }]
+            };
+            await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,
+                new DeviceSettingsChildren([], [], [advancedZone]));
+
+            await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,
+                new DeviceSettingsChildren([], [], AdvancedMotionZones: null));
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
+            DeviceAdvancedMotionZone zone = await db.DeviceAdvancedMotionZones.Include(z => z.Vertices).SingleAsync(z => z.DeviceId == _device.Id);
+            Assert.Equal("zone_1", zone.ZoneKey);
+            Assert.Equal("Driveway", zone.Name);
+            _ = Assert.Single(zone.Vertices);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_ListOnlyRebuildWithNullPresets_KeepsStoredPresets()
+        {
+            // The download path rebuilds from the device list, which may carry no presets. Null means the caller did not
+            // supply them, so the stored snooze and live-view presets must survive the rebuild.
+            await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,
+                new DeviceSettingsChildren(
+                    [new DeviceMotionSnoozePreset { Id = Guid.NewGuid(), DeviceId = _device.Id, Position = 1, Preset = "snooze-1" }],
+                    [new DeviceLiveViewPreset { Id = Guid.NewGuid(), DeviceId = _device.Id, Position = 1, Preset = "live-1" }],
+                    []));
+
+            await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,
+                new DeviceSettingsChildren(null, null, AdvancedMotionZones: null));
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
+            Assert.Equal("snooze-1", (await db.DeviceMotionSnoozePresets.SingleAsync(p => p.DeviceId == _device.Id)).Preset);
+            Assert.Equal("live-1", (await db.DeviceLiveViewPresets.SingleAsync(p => p.DeviceId == _device.Id)).Preset);
+        }
+
+        [Fact]
         public async Task UpsertAsync_ZonesSecondCallWithEmptyList_RemovesStaleZoneAndChildRows()
         {
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, ChildrenWithZone());

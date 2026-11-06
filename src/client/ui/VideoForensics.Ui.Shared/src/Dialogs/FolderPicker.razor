@@ -11,7 +11,7 @@
         <FileManagerAjaxSettings HttpClientInstance="Endpoint.Client" Url="@Endpoint.Url" />
         <FileManagerToolbarSettings ToolbarItems="@_toolbarItems" />
         <FileManagerContextMenuSettings Visible="false" />
-        <FileManagerEvents TValue="FileManagerDirectoryContent" FileSelected="OnFileSelected" />
+        <FileManagerEvents TValue="FileManagerDirectoryContent" FileSelected="OnFileSelected" OnSuccess="OnReadSucceeded" />
     </SfFileManager>
 
     <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
@@ -38,6 +38,18 @@
     {
         // The server puts each folder's absolute path in Id, so the picker never builds paths itself.
         _selectedPath = args.Action == "select" && args.FileDetails is { IsFile: false } item ? item.Id : null;
+        return Task.CompletedTask;
+    }
+
+    private Task OnReadSucceeded(SuccessEventArgs<FileManagerDirectoryContent> args)
+    {
+        // A read response's CWD is the folder now on screen. Selecting it lets an empty folder be chosen, since
+        // there is no item to click. The virtual root has no path, so Select stays disabled there.
+        if (args.Action == "read")
+        {
+            _selectedPath = args.Result?.CWD?.Id is { Length: > 0 } path ? path : null;
+        }
+
         return Task.CompletedTask;
     }
 }

@@ -26,7 +26,9 @@ namespace VideoForensics.Client.Ui.Shared.Services.Inspector
     public sealed record EvidenceActionState(Guid? MediaItemId, Guid DeviceId, Guid? ActiveHoldId);
 
     /// <summary>
-    /// Data displayed in the Inspector panel for a selected item.
+    /// Data displayed in the Inspector panel for a selected item. <paramref name="RawJsonIsRemainder"/> is true when
+    /// <paramref name="RawJson"/> is not the provider's raw payload (which is not stored) but only the keys with no
+    /// structured home plus app markers; the Raw tab then says so.
     /// </summary>
     public sealed record InspectorModel(
         string Title,
@@ -35,7 +37,8 @@ namespace VideoForensics.Client.Ui.Shared.Services.Inspector
         IReadOnlyList<InspectorLink>? Related = null,
         IReadOnlyList<KeyValuePair<string, string>>? Provenance = null,
         PinTarget? Pin = null,
-        EvidenceActionState? Actions = null);
+        EvidenceActionState? Actions = null,
+        bool RawJsonIsRemainder = false);
 
     /// <summary>
     /// Circuit-scoped state for the Inspector panel. Tracks the currently-inspected item

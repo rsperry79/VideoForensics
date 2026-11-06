@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding notice: {EventType}", notice.EventType);
+                _logger.LogError("Error adding notice: {EventType}: {Message} ({ErrorType})", notice.EventType, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error listing notices for operator: {OperatorId}", operatorId);
+                _logger.LogError("Error listing notices for operator: {OperatorId}: {Message} ({ErrorType})", operatorId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -96,7 +96,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error counting undismissed notices for operator: {OperatorId}", operatorId);
+                _logger.LogError("Error counting undismissed notices for operator: {OperatorId}: {Message} ({ErrorType})", operatorId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

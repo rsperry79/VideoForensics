@@ -54,6 +54,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithDescription("Inserts or updates a jamming incident. DetectedAtUtc and CaseId are server-controlled; Source (optional, new incidents only) defaults to ManuallyRecorded.");
 
             _ = group.MapPost("/stats/{deviceId:guid}/recompute", RecomputeStatsAsync)
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
                 .RequireRateLimiting("default")
                 .WithSummary("Recompute device jamming stats")

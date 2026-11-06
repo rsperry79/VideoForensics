@@ -19,6 +19,7 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 
 ## Implementation
 - Haiku 5.5 subagents (`model: "haiku"`) write implementation files, one file or small related batch each. Verify their output yourself: build, test, read the diff.
+- A request that becomes a multi-step plan (it touches several files or components, or the task list runs to four or more steps): write the plan as the task list, then hand each independent step to a Haiku subagent as above instead of implementing it yourself. Each brief names the files, the failing test the step must satisfy, and the localization rule. Single-file fixes stay with you.
 - Blocked or confused subagent: resolve the ambiguity in the brief and re-dispatch.
 - Briefs for a Ui.Shared page must name the localization rule (`rules/ui-shared.md`) and list the page's existing literals to convert.
 - Escalation rules: `~/.claude/docs/subagent-model-selection.md`.

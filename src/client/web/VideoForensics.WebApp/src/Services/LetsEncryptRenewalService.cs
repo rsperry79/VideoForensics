@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Services
                 catch (Exception ex)
                 {
                     // Keep the loop alive: a failed issuance is retried on the next interval.
-                    _logger.LogError(ex, "Certificate renewal failed; retrying in {Hours} hours", CheckInterval.TotalHours);
+                    _logger.LogError("Certificate renewal failed; retrying in {Hours} hours: {Message} ({ErrorType})", CheckInterval.TotalHours, ex.Message, ex.GetType().Name);
                 }
 
                 await Task.Delay(CheckInterval, stoppingToken).ConfigureAwait(false);

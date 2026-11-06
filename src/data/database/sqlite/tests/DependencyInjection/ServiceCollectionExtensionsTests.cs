@@ -173,7 +173,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
             var services = new ServiceCollection();
             _ = services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Debug);
+                builder.SetMinimumLevel(LogLevel.Trace);
                 builder.AddProvider(captured);
             });
             _ = services.AddVideoForensicsSqlite(dbPath);
@@ -193,7 +193,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                     .Select(entry => entry.Level)
                     .ToList();
                 Assert.NotEmpty(commandLevels);
-                Assert.All(commandLevels, level => Assert.Equal(LogLevel.Debug, level));
+                Assert.All(commandLevels, level => Assert.Equal(LogLevel.Trace, level));
             }
             finally
             {

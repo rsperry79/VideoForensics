@@ -6,6 +6,9 @@ namespace VideoForensics.Client.WebApp.Hubs
     /// </summary>
     public static class LiveHubMethods
     {
+        /// <summary>Server maintenance state push. Broadcast on every change, and sent to each connection on connect.</summary>
+        public const string MaintenanceState = "MaintenanceState";
+
         /// <summary>Download progress push. Sent to every connection on connect and broadcast on change.</summary>
         public const string DownloadProgress = "DownloadProgress";
 
@@ -18,6 +21,12 @@ namespace VideoForensics.Client.WebApp.Hubs
         /// <summary>Evidence-changed push. Sent to every connection; the payload carries the device whose evidence changed.</summary>
         public const string EvidenceChanged = "EvidenceChanged";
         public const string DeviceHealthChanged = "DeviceHealthChanged";
+
+        /// <summary>Media-flag review push. Sent to every connection; the payload names the flag and its device.</summary>
+        public const string MediaFlagChanged = "MediaFlagChanged";
+
+        /// <summary>Settings-saved push. Sent to every connection; the payload is the client-safe settings snapshot.</summary>
+        public const string ClientConfigChanged = "ClientConfigChanged";
 
         /// <summary>Live-view session state push. Sent only to connections subscribed to that session's group.</summary>
         public const string LiveViewSessionChanged = "LiveViewSessionChanged";

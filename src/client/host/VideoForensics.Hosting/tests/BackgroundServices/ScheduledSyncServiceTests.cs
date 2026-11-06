@@ -6,7 +6,9 @@ using System.Collections.Concurrent;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Tests.Services;
@@ -215,6 +217,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
                 _ = _services.AddScoped(_ => SnapshotSync.Object);
                 _ = _services.AddScoped(_ => SnapshotRollup.Object);
+                _ = _services.AddSingleton<IReferenceDataCache, ReferenceDataCache>();
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
                 _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders, InitialSyncEnabled = InitialSyncEnabled });

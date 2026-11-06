@@ -97,7 +97,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retiring provider account: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError("Error retiring provider account: {ProviderAccountId} ({ProviderName}): {Message} ({ErrorType})", accountId, SanitizeForLog(account?.ProviderName ?? "unknown"), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -115,7 +115,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding provider account: {ProviderName}", SanitizeForLog(account.ProviderName));
+                _logger.LogError("Error adding provider account: {ProviderName}: {Message} ({ErrorType})", SanitizeForLog(account.ProviderName), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -132,7 +132,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider account: {ProviderName}", SanitizeForLog(account.ProviderName));
+                _logger.LogError("Error updating provider account: {ProviderName}: {Message} ({ErrorType})", SanitizeForLog(account.ProviderName), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -162,7 +162,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider account: {ProviderName}", SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError("Error deleting provider account: {ProviderName}: {Message} ({ErrorType})", SanitizeForLog(account?.ProviderName ?? "unknown"), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -186,7 +186,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording error for provider account: {ProviderName}", SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError("Error recording error for provider account: {ProviderName}: {Message} ({ErrorType})", SanitizeForLog(account?.ProviderName ?? "unknown"), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -211,7 +211,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording success for provider account: {ProviderName}", SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError("Error recording success for provider account: {ProviderName}: {Message} ({ErrorType})", SanitizeForLog(account?.ProviderName ?? "unknown"), ex.Message, ex.GetType().Name);
                 throw;
             }
         }

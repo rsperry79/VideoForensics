@@ -99,9 +99,9 @@ namespace VideoForensics.Client.Core.Services
                         string errorMsg = $"Device {device.Id} ({device.Name}): {ex.Message}";
                         result.ErrorsByDevice.Add(errorMsg);
 
-                        _logger.LogError(ex,
-                            "Error validating device {DeviceId} ({DeviceName})",
-                            device.Id, device.Name);
+                        _logger.LogError(
+                            "Error validating device {DeviceId} ({DeviceName}): {Message} ({ErrorType})",
+                            device.Id, device.Name, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -118,7 +118,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error during bulk validation");
+                _logger.LogError("Unexpected error during bulk validation: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
