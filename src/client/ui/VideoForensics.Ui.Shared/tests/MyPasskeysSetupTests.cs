@@ -54,7 +54,7 @@ public class MyPasskeysSetupTests : BunitContext
         component.Find("input[type='text']").Change("Phone");
 
         // Act
-        await component.Find("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        await component.WaitForElement("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         // Assert - the server has ended the limited session, so the client drops it and signs in again
         component.WaitForAssertion(() => Assert.Equal("/signin", new Uri(nav.Uri).AbsolutePath));
@@ -76,7 +76,7 @@ public class MyPasskeysSetupTests : BunitContext
         component.Find("input[type='text']").Change("Phone");
 
         // Act
-        await component.Find("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        await component.WaitForElement("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         // Assert - the page explains the wait and keeps the session; it does not navigate away
         IElement pending = component.Find("[data-testid='passkey-setup-pending']");
@@ -98,7 +98,7 @@ public class MyPasskeysSetupTests : BunitContext
         nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
         IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
         component.Find("input[type='text']").Change("Phone");
-        await component.Find("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        await component.WaitForElement("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         // Act
         await component.Find("button.passkey-setup-pending-signout").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
