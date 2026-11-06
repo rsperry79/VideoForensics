@@ -56,6 +56,21 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         private readonly ThreadHeartbeats? _heartbeats;
 
+        /// <summary>Most time-lapse segments built in one tick, across all accounts. Keeps a long encode from blocking event pulls.</summary>
+        internal const int MaxSegmentsPerTick = 5;
+
+        /// <summary>Per account: when this process last finished a clean event pull. Unset after a restart until the next clean pull.</summary>
+        private readonly Dictionary<Guid, DateTime> _cleanPullUtc = [];
+
+        /// <summary>Per account: when this process last finished a snapshot sync without errors.</summary>
+        private readonly Dictionary<Guid, DateTime> _snapshotSyncUtc = [];
+
+        /// <summary>Per account: the next time-lapse check. Set from the services check interval.</summary>
+        private readonly Dictionary<Guid, DateTime> _nextTimelapseCheckUtc = [];
+
+        /// <summary>Segments still allowed in the current tick.</summary>
+        private int _segmentsLeftThisTick;
+
         /// <summary>Tick period for a configured value: seconds, floored at 5.</summary>
         internal static TimeSpan ResolveTickInterval(int tickSeconds)
         {
@@ -132,6 +147,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            _segmentsLeftThisTick = MaxSegmentsPerTick;
             string[] enabledProviders = _options.CurrentValue.EnabledProviders ?? [];
 
             foreach (SyncSchedule schedule in schedules)
@@ -190,12 +206,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, ct);
                     }
 
-                    if (!ScheduleCalculator.IsEventDue(schedule, nowUtc))
+                    if (ScheduleCalculator.IsEventDue(schedule, nowUtc))
                     {
-                        continue;
+                        await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
                     }
 
-                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
+                    await RunTimelapseCheckAsync(sp, account, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -209,6 +225,110 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
         }
 
+        /// <summary>
+        /// Runs the event-gap time-lapse check for one account when its check interval has passed. Plans each device's gaps up to
+        /// the horizon and builds the segments, within the tick's budget. Needs a clean event pull and a snapshot sync in this process.
+        /// </summary>
+        private async Task RunTimelapseCheckAsync(IServiceProvider sp, ProviderAccount account, CancellationToken ct)
+        {
+            DateTime now = _time.GetUtcNow().UtcDateTime;
+            if (_nextTimelapseCheckUtc.TryGetValue(account.Id, out DateTime next) && now < next)
+            {
+                return;
+            }
+
+            (int checkMinutes, int maxSegmentMinutes) = await ResolveTimelapseSettingsAsync(sp, ct);
+            _nextTimelapseCheckUtc[account.Id] = now.AddMinutes(checkMinutes);
+
+            DateTime? horizon = TimelapseHorizon.Compute(
+                _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
+                _snapshotSyncUtc.TryGetValue(account.Id, out DateTime synced) ? synced : null,
+                PullOverlap);
+            if (horizon is null || _segmentsLeftThisTick <= 0)
+            {
+                return;
+            }
+
+            ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
+            IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
+            foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, ct))
+            {
+                foreach (VideoForensics.Data.Common.Entities.Device device in await devices.GetByLocationIdAsync(location.Id, ct))
+                {
+                    if (_segmentsLeftThisTick <= 0)
+                    {
+                        return;
+                    }
+
+                    // One device failing must not stop the others; its cursor is unchanged, so it retries on the next check.
+                    try
+                    {
+                        await RunDeviceTimelapseAsync(sp, account.Id, device.Id, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Time-lapse check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Plans and builds one device's segments from its cursor up to the horizon, within the tick's budget.</summary>
+        private async Task RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
+        {
+            ITimelapseGapQueries queries = sp.GetRequiredService<ITimelapseGapQueries>();
+            DateTimeOffset? earliest = await queries.GetEarliestCaptureAtUtcAsync(deviceId, ct);
+            DateTime? cursor = TimelapseCursor.Resolve(
+                await queries.GetLatestTimelapseEndUtcAsync(deviceId, ct),
+                await queries.GetLatestEventTimeUtcAsync(deviceId, horizon, ct),
+                earliest?.UtcDateTime);
+            if (cursor is null || cursor.Value >= horizon)
+            {
+                return;
+            }
+
+            IReadOnlyList<DateTime> events = await queries.ListEventTimesForGapsAsync(deviceId, cursor.Value, horizon, ct);
+            IReadOnlyList<SnapshotCapture> attempts = await sp.GetRequiredService<ISnapshotCaptureRepository>()
+                .GetAttemptsForDeviceAsync(deviceId, new DateTimeOffset(cursor.Value, TimeSpan.Zero), new DateTimeOffset(horizon, TimeSpan.Zero), ct);
+
+            // Only attempts that produced an image count as snapshots; failed attempts leave a gap, not a frame.
+            IReadOnlyList<DateTime> usable = attempts.Where(a => a.HttpStatus == 200).Select(a => a.CapturedAtUtc.UtcDateTime).ToList();
+
+            GapPlanResult plan = GapPlanner.Plan(cursor.Value, horizon, events, usable, maxSegment);
+            ISnapshotRollupService rollup = sp.GetRequiredService<ISnapshotRollupService>();
+            foreach (GapSegment segment in plan.Segments)
+            {
+                if (_segmentsLeftThisTick <= 0)
+                {
+                    break;
+                }
+
+                _segmentsLeftThisTick--;
+                SnapshotRollupResult result = await rollup.RollUpSegmentAsync(accountId, deviceId, segment.StartUtc, segment.EndUtc, ct);
+                if (result.ErrorMessage is not null)
+                {
+                    _logger.LogWarning("Time-lapse segment not built: {Error}", result.ErrorMessage);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>The services-page check interval and max segment, or the defaults when no configuration service is registered.</summary>
+        private static async Task<(int CheckMinutes, int MaxSegmentMinutes)> ResolveTimelapseSettingsAsync(IServiceProvider sp, CancellationToken ct)
+        {
+            IForensicsConfigurationService? config = sp.GetService<IForensicsConfigurationService>();
+            if (config is null)
+            {
+                return (15, 60);
+            }
+
+            IForensicsConfiguration c = await config.LoadConfigurationAsync(string.Empty, ct);
+            return (c.TimelapseCheckIntervalMinutes, c.TimelapseMaxSegmentMinutes);
+        }
         /// <summary>
         /// Pulls the latest snapshot for each device of a due account and records the next snapshot run. The provider
         /// session is restored first, as the event pull does; a failed restore still records the run so it is not retried every tick.
@@ -231,6 +351,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     if (result.ErrorMessage is not null)
                     {
                         _logger.LogWarning("Scheduled snapshot sync for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
+                    }
+                    else
+                    {
+                        _snapshotSyncUtc[account.Id] = _time.GetUtcNow().UtcDateTime;
                     }
                 }
                 else
@@ -407,6 +531,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             if (outcome is null && !backfillInProgress)
             {
                 await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct);
+                _cleanPullUtc[accountId] = _time.GetUtcNow().UtcDateTime;
             }
 
             await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome, syncType, counts);
