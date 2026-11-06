@@ -32,6 +32,24 @@ namespace VideoForensics.Client.Core.Contracts
 
         Task<(bool Success, string Message)> SetServiceIntervalHoursAsync(IForensicsConfiguration config, string service, int hours, CancellationToken ct = default);
 
+        /// <summary>
+        /// Sets how often a time lapse is built from the window's snapshots. Valid range is 1 to 1440 minutes.
+        /// </summary>
+        /// <param name="config">The configuration to update and save.</param>
+        /// <param name="minutes">The rollup interval in minutes.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>Success flag and a message. Out-of-range values return failure and are not saved.</returns>
+        Task<(bool Success, string Message)> SetTimelapseRollupMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default);
+
+        /// <summary>
+        /// Sets how long each finished time lapse plays. Valid range is 1 to 600 seconds.
+        /// </summary>
+        /// <param name="config">The configuration to update and save.</param>
+        /// <param name="seconds">The playback length in seconds.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>Success flag and a message. Out-of-range values return failure and are not saved.</returns>
+        Task<(bool Success, string Message)> SetTimelapsePlaybackSecondsAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default);
+
         Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default);
 
         Task<(bool Success, string Message)> FactoryResetAsync(CancellationToken ct = default, string? downloadDirOverride = null, string? dbPathOverride = null);

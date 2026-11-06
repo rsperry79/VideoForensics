@@ -219,6 +219,38 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"{service} will run every {hours} hours");
         }
 
+        public async Task<(bool Success, string Message)> SetTimelapseRollupMinutesAsync(
+            IForensicsConfiguration config,
+            int minutes,
+            CancellationToken ct = default)
+        {
+            if (minutes is < 1 or > 1440)
+            {
+                return (false, "Time-lapse interval must be between 1 and 1440 minutes");
+            }
+
+            config.TimelapseRollupIntervalMinutes = minutes;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Time-lapse rollup interval set to {minutes} minutes", minutes);
+            return (true, $"Time-lapses will be built every {minutes} minutes");
+        }
+
+        public async Task<(bool Success, string Message)> SetTimelapsePlaybackSecondsAsync(
+            IForensicsConfiguration config,
+            int seconds,
+            CancellationToken ct = default)
+        {
+            if (seconds is < 1 or > 600)
+            {
+                return (false, "Time-lapse playback length must be between 1 and 600 seconds");
+            }
+
+            config.TimelapsePlaybackSeconds = seconds;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Time-lapse playback length set to {seconds} seconds", seconds);
+            return (true, $"Time-lapses will play for {seconds} seconds");
+        }
+
         public async Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(
             IForensicsConfiguration config,
             bool enabled,

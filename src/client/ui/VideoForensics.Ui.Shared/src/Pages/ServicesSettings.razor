@@ -92,6 +92,31 @@ else
             }
         </div>
     </div>
+
+    <div class="card p-4 mb-4">
+        <div class="card-body d-flex flex-column gap-3">
+            <div>
+                <label class="form-label fw-semibold" for="timelapse-rollup">@L["TimelapseRollupLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["TimelapseRollupHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="timelapse-rollup" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_timelapseRollupMinutes" />
+                    <button type="button" class="btn btn-primary" @onclick="SaveTimelapseRollupAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label fw-semibold" for="timelapse-playback">@L["TimelapsePlaybackLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["TimelapsePlaybackHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="timelapse-playback" type="number" class="form-control" style="max-width: 160px;" min="1" max="600" @bind="_timelapsePlaybackSeconds" />
+                    <button type="button" class="btn btn-primary" @onclick="SaveTimelapsePlaybackAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            @if (_timelapseMessage is not null)
+            {
+                <span style="@(_timelapseSuccess ? "color: green;" : "color: red;")">@_timelapseMessage</span>
+            }
+        </div>
+    </div>
 }
 
 @code {
@@ -111,6 +136,12 @@ else
     private int _pruneInterval;
     private int _updateInterval;
     private int _backfillInterval;
+
+    private bool _timelapseSuccess;
+    private string? _timelapseMessage;
+
+    private int _timelapseRollupMinutes;
+    private int _timelapsePlaybackSeconds;
 
     protected override async Task OnInitializedAsync()
     {
@@ -222,11 +253,51 @@ else
         }
     }
 
+    private async Task SaveTimelapseRollupAsync()
+    {
+        try
+        {
+            (bool applied, string message) = await ConfigTools.SetTimelapseRollupMinutesAsync(Config, _timelapseRollupMinutes, CancellationToken.None);
+            _timelapseSuccess = applied;
+            _timelapseMessage = message;
+            if (!applied)
+            {
+                ResetIntervalInputs();
+            }
+        }
+        catch (Exception ex)
+        {
+            _timelapseSuccess = false;
+            _timelapseMessage = L["IntervalError", ex.Message].Value;
+        }
+    }
+
+    private async Task SaveTimelapsePlaybackAsync()
+    {
+        try
+        {
+            (bool applied, string message) = await ConfigTools.SetTimelapsePlaybackSecondsAsync(Config, _timelapsePlaybackSeconds, CancellationToken.None);
+            _timelapseSuccess = applied;
+            _timelapseMessage = message;
+            if (!applied)
+            {
+                ResetIntervalInputs();
+            }
+        }
+        catch (Exception ex)
+        {
+            _timelapseSuccess = false;
+            _timelapseMessage = L["IntervalError", ex.Message].Value;
+        }
+    }
+
     private void ResetIntervalInputs()
     {
         _reportInterval = Config.ScheduledReportIntervalHours;
         _pruneInterval = Config.LogPruneIntervalHours;
         _updateInterval = Config.UpdateCheckIntervalHours;
         _backfillInterval = Config.MediaBackfillIntervalHours;
+        _timelapseRollupMinutes = Config.TimelapseRollupIntervalMinutes;
+        _timelapsePlaybackSeconds = Config.TimelapsePlaybackSeconds;
     }
 }
