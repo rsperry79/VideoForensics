@@ -4,9 +4,9 @@ using Moq;
 
 using System.Threading.RateLimiting;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.RateLimiting;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

@@ -1,9 +1,7 @@
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring.Implementations;
 
-using Xunit;
-
-namespace VideoForensics.Providers.Ring.Auth.Tests
+namespace VideoForensics.Providers.Ring.Auth.Tests.Implementations
 {
     /// <summary>
     /// Tests that <see cref="AesEncryption"/> derives its key from the injected machine GUID source.
@@ -20,7 +18,10 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 _guid = guid;
             }
 
-            public string? ReadMachineGuid() => _guid;
+            public string? ReadMachineGuid()
+            {
+                return _guid;
+            }
         }
 
         /// <summary>Verifies that ciphertext round-trips when the same machine GUID source is used for encrypt and decrypt.</summary>

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {
@@ -52,7 +52,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 try
                 {
                     // Drains the sync log here, the single consumer, so each line is broadcast exactly once.
-                    DownloadProgressDto payload = _syncActivity.ToDownloadProgressDto(_progress);
+                    var payload = _syncActivity.ToDownloadProgressDto(_progress);
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {

@@ -52,7 +52,7 @@ public readonly record struct BitrateScale(double LowKbps, double HighKbps)
     public double MapY(double kbps)
     {
         double clamped = Math.Clamp(kbps, LowKbps, HighKbps);
-        return SignalChartModel.PlotTop + (HighKbps - clamped) / (HighKbps - LowKbps) * SignalChartModel.PlotHeight;
+        return SignalChartModel.PlotTop + ((HighKbps - clamped) / (HighKbps - LowKbps) * SignalChartModel.PlotHeight);
     }
 
     /// <summary>

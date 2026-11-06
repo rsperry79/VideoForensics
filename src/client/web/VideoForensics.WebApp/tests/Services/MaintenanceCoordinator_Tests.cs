@@ -29,9 +29,11 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = _scopes.Setup(f => f.CreateScope()).Returns(scope.Object);
         }
 
-        private MaintenanceCoordinator CreateCoordinator(MaintenanceHoldTimer? holdTimer = null, TimeSpan? drainTimeout = null) =>
-            new(_gate.Object, _lifecycle.Object, _scopes.Object, Mock.Of<ILogger<MaintenanceCoordinator>>(),
+        private MaintenanceCoordinator CreateCoordinator(MaintenanceHoldTimer? holdTimer = null, TimeSpan? drainTimeout = null)
+        {
+            return new(_gate.Object, _lifecycle.Object, _scopes.Object, Mock.Of<ILogger<MaintenanceCoordinator>>(),
                 holdTimer ?? new MaintenanceHoldTimer(MaintenanceHoldTimer.DefaultTimeout), drainTimeout);
+        }
 
         [Fact]
         public async Task RunAsync_Default_EndsMaintenanceAfterSuccess()
@@ -52,7 +54,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         [Fact]
         public async Task RunAsync_HoldOnSuccess_EndsMaintenanceWhenOperationFails()
         {
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 CreateCoordinator().RunAsync<int>("Moving the database", (sp, ct) => throw new InvalidOperationException("boom"), CancellationToken.None, holdOnSuccess: true));
 
             _gate.Verify(g => g.End(), Times.Once);
@@ -312,7 +314,10 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             public DateTimeOffset Now { get; set; } = start;
 
-            public override DateTimeOffset GetUtcNow() => Now;
+            public override DateTimeOffset GetUtcNow()
+            {
+                return Now;
+            }
         }
     }
 }

@@ -2,8 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-using System;
-
 using VideoForensics.Client.WebApp.Services;
 
 using Xunit;

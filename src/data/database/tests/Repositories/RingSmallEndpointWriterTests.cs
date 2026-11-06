@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
     /// Round trips the shared users, linked chime doorbots and snapshot timestamp writers on a real SQLite database:
@@ -234,7 +234,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RingLocationSharedUsersWriter_LocationDeleted_CascadesToDevicesAndPermissions()
         {
-            Guid doomedLocationId = Guid.NewGuid();
+            var doomedLocationId = Guid.NewGuid();
             await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
             {
                 _ = seed.Locations.Add(new Location { Id = doomedLocationId, ProviderLocationId = "loc-doomed", Name = "Cabin" });
@@ -372,7 +372,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RingSnapshotTimestampsWriter_SecondWrite_ReplacesAccountRowsOnly()
         {
-            Guid otherAccountId = Guid.NewGuid();
+            var otherAccountId = Guid.NewGuid();
             await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
             {
                 _ = seed.RingAccounts.Add(new RingAccount { Id = otherAccountId, ProviderAccountId = Guid.NewGuid(), SubscriptionLevel = "unknown" });
@@ -405,7 +405,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RingSnapshotTimestampsWriter_RingAccountDeleted_CascadesRows()
         {
-            Guid doomedAccountId = Guid.NewGuid();
+            var doomedAccountId = Guid.NewGuid();
             await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
             {
                 _ = seed.RingAccounts.Add(new RingAccount { Id = doomedAccountId, ProviderAccountId = Guid.NewGuid(), SubscriptionLevel = "unknown" });

@@ -26,8 +26,8 @@ namespace VideoForensics.Data.Database.DbContext
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.ApplyConfiguration(new ProviderApiErrorLogConfiguration());
-            modelBuilder.ApplyConfiguration(new ProviderApiCallRecordConfiguration());
+            _ = modelBuilder.ApplyConfiguration(new ProviderApiErrorLogConfiguration());
+            _ = modelBuilder.ApplyConfiguration(new ProviderApiCallRecordConfiguration());
 
             // The main configuration adds a foreign key to LiveViewSession, which is not part of this model.
             _ = modelBuilder.Entity<LiveViewTelemetrySample>(builder =>

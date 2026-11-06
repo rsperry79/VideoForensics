@@ -1,11 +1,10 @@
-using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+
+using System.Globalization;
+
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
@@ -20,7 +19,7 @@ public class SignalDeviationAlertsTests
     public async Task Check_RaisesAnAlertForAReadingMoreThanTwoStdDevsFromTheMean()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
 
         int raised = await CheckAsync(notices.Object, dispatcher.Object);
@@ -39,10 +38,10 @@ public class SignalDeviationAlertsTests
     public async Task Check_ActionPathDrillsToTheAlertedHourPlusOrMinusOneHour()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
-        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+        _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
 
@@ -61,7 +60,7 @@ public class SignalDeviationAlertsTests
     public async Task Check_DoesNotRaiseTheSameAlertTwice()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
 
         int raised = await CheckAsync(notices.Object, dispatcher.Object);
@@ -74,10 +73,10 @@ public class SignalDeviationAlertsTests
     public async Task Check_NoticeStatesTheHourAverageAndCameraMean_InLocalTime()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
-        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+        _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
 
@@ -97,15 +96,15 @@ public class SignalDeviationAlertsTests
     public async Task CheckAsync_TwoSigmaHour_WritesRssiFlagLinkedToNotice()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
-        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+        _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
         var flags = new Mock<IMediaFlagRepository>();
         var written = new List<MediaFlag>();
-        flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
+        _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
             .ReturnsAsync((MediaFlag f, CancellationToken _) => f);
 
@@ -114,7 +113,7 @@ public class SignalDeviationAlertsTests
         DateTime alertedHourUtc = DateTime.UtcNow.AddHours(-1);
         alertedHourUtc = new DateTime(alertedHourUtc.Year, alertedHourUtc.Month, alertedHourUtc.Day, alertedHourUtc.Hour, 0, 0, DateTimeKind.Utc);
         Assert.NotNull(sent);
-        Assert.NotNull(sent!.NoticeId);
+        _ = Assert.NotNull(sent!.NoticeId);
         MediaFlag flag = Assert.Single(written);
         Assert.Equal(MediaFlagType.RssiDeviation, flag.FlagType);
         Assert.Null(flag.MediaItemId);
@@ -128,7 +127,7 @@ public class SignalDeviationAlertsTests
     public async Task CheckAsync_RepeatCheckOfSameHour_WritesNoSecondFlag()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagRepository>();
 
@@ -141,20 +140,20 @@ public class SignalDeviationAlertsTests
     public async Task Check_DispatchFails_StillWritesRssiFlag()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
-        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+        _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .ThrowsAsync(new InvalidOperationException("boom"));
         var flags = new Mock<IMediaFlagRepository>();
         var written = new List<MediaFlag>();
-        flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
+        _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
             .ReturnsAsync((MediaFlag f, CancellationToken _) => f);
 
         // The dispatch failure propagates, but the flag was already written, so the next poll does not lose this hour.
-        await Assert.ThrowsAsync<InvalidOperationException>(() => CheckAsync(notices.Object, dispatcher.Object, flags.Object));
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() => CheckAsync(notices.Object, dispatcher.Object, flags.Object));
 
         DateTime alertedHourUtc = DateTime.UtcNow.AddHours(-1);
         alertedHourUtc = new DateTime(alertedHourUtc.Year, alertedHourUtc.Month, alertedHourUtc.Day, alertedHourUtc.Hour, 0, 0, DateTimeKind.Utc);
@@ -183,7 +182,7 @@ public class SignalDeviationAlertsTests
         rows.Add(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = _device.Id, CapturedAtUtc = now.AddHours(-1), WifiSignalRssi = -95 });
 
         var health = new Mock<IDeviceHealthRepository>();
-        health.Setup(h => h.GetHistoryAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _ = health.Setup(h => h.GetHistoryAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
         var checker = new SignalDeviationAlerts(
             health.Object,

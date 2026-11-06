@@ -13,8 +13,10 @@ namespace VideoForensics.Data.Core.Contracts
         Task<bool> IsMediaAlreadyDownloadedAsync(Guid deviceId, string providerEventId, CancellationToken ct);
 
         /// <summary>Distinct video resolutions this device has produced; the fallback when no official spec is known. Default: none.</summary>
-        Task<IReadOnlyList<string>> GetObservedVideoResolutionsAsync(Guid deviceId, CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        Task<IReadOnlyList<string>> GetObservedVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
 
         /// <summary>Gets the download event record (if any) for a device/provider event ID, including failed attempts.</summary>
         Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct);

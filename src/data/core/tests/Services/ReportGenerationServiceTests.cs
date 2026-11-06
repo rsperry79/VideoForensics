@@ -15,7 +15,7 @@ using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeve
 using NotificationAudience = VideoForensics.Core.Providers.Common.Contracts.NotificationAudience;
 using NotificationEvent = VideoForensics.Core.Providers.Common.Contracts.NotificationEvent;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     public class ReportGenerationServiceTests
     {
@@ -398,7 +398,7 @@ namespace VideoForensics.Data.Core.Tests
             var failedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
             _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ActionLogEntry>());
+                .ReturnsAsync([]);
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChainIntegrityResult(false, 4, ChainBreakKind.PreviousHashMismatch, failedId, failedAt));

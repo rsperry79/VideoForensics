@@ -55,14 +55,11 @@ namespace VideoForensics.Core.Providers.Core
         public static (double PtsSeconds, long SizeBytes)? ParsePacketLine(string line)
         {
             string[] fields = line.Trim().Split(',');
-            if (fields.Length != 2
+            return fields.Length != 2
                 || !double.TryParse(fields[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double pts)
-                || !long.TryParse(fields[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long size))
-            {
-                return null;
-            }
-
-            return (pts, size);
+                || !long.TryParse(fields[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long size)
+                ? null
+                : (pts, size);
         }
     }
 }

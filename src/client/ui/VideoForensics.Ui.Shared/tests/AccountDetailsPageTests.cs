@@ -14,14 +14,14 @@ using System.Reactive.Subjects;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Layout.RightPanel;
-using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
@@ -134,7 +134,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
             .ReturnsAsync([account]);
         _ = accountRepository
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ProviderAccountEntity> { account });
+            .ReturnsAsync([account]);
 
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository

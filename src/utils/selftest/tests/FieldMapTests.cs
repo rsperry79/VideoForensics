@@ -28,13 +28,13 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [InlineData("A.B.C")]
         public void Parse_MalformedTarget_Throws(string value)
         {
-            Assert.Throws<FormatException>(() => Map(("e:a", value)));
+            _ = Assert.Throws<FormatException>(() => Map(("e:a", value)));
         }
 
         [Fact]
         public void Parse_KeyWithoutEndpointSeparator_Throws()
         {
-            Assert.Throws<FormatException>(() => FieldMap.Parse("""{"nokey":"Devices.Name"}"""));
+            _ = Assert.Throws<FormatException>(() => FieldMap.Parse("""{"nokey":"Devices.Name"}"""));
         }
 
         [Fact]
@@ -112,7 +112,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void LoadEmbedded_CheckedInMap_ParsesWithoutJsonColumns()
         {
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
 
             Assert.NotEmpty(map.Entries);
             Assert.DoesNotContain(map.Entries.Values, t => t.Column != null && t.Column.EndsWith("Json", StringComparison.Ordinal));

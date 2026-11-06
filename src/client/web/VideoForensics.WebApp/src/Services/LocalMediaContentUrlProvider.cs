@@ -1,7 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services
 {

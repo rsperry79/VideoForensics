@@ -9,7 +9,6 @@ namespace VideoForensics.Client.Hosting.Services
     public sealed class SyncProgressStore : ISyncProgressStore
     {
         private readonly object _gate = new();
-        private SyncProgress _current = SyncProgress.Idle;
 
         /// <inheritdoc />
         public SyncProgress Current
@@ -18,17 +17,19 @@ namespace VideoForensics.Client.Hosting.Services
             {
                 lock (_gate)
                 {
-                    return _current;
+                    return field;
                 }
             }
-        }
+
+            private set;
+        } = SyncProgress.Idle;
 
         /// <inheritdoc />
         public void Set(SyncProgress progress)
         {
             lock (_gate)
             {
-                _current = progress;
+                Current = progress;
             }
         }
 

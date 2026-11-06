@@ -2,9 +2,9 @@ using Moq.Protected;
 
 using System.Net;
 
+using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Remote;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {

@@ -1,8 +1,8 @@
 using Moq;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

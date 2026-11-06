@@ -31,12 +31,7 @@ public static class SignalChartModel
     public static double MapX(DateTime utc, DateTime from, DateTime to)
     {
         double span = (to - from).TotalSeconds;
-        if (span <= 0)
-        {
-            return PlotLeft;
-        }
-
-        return PlotLeft + (utc - from).TotalSeconds / span * PlotWidth;
+        return span <= 0 ? PlotLeft : PlotLeft + ((utc - from).TotalSeconds / span * PlotWidth);
     }
 
     /// <summary>
@@ -68,12 +63,9 @@ public static class SignalChartModel
     /// </summary>
     public static IReadOnlyList<SignalPeriod> Periods(IEnumerable<SignalSample> samples, DateTime from, DateTime to, TimeSpan expectedInterval)
     {
-        if (expectedInterval <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(expectedInterval), "The expected check interval must be positive.");
-        }
-
-        return Periods(samples, from, to, _ => expectedInterval);
+        return expectedInterval <= TimeSpan.Zero
+            ? throw new ArgumentOutOfRangeException(nameof(expectedInterval), "The expected check interval must be positive.")
+            : Periods(samples, from, to, _ => expectedInterval);
     }
 
     /// <summary>
@@ -85,7 +77,7 @@ public static class SignalChartModel
         ArgumentNullException.ThrowIfNull(samples);
         ArgumentNullException.ThrowIfNull(expectedIntervalAt);
 
-        List<SignalSample> ordered = samples
+        var ordered = samples
             .Where(s => s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
             .OrderBy(s => s.CapturedAtUtc)
             .ToList();
@@ -166,7 +158,10 @@ public static class SignalChartModel
         return interval > TimeSpan.Zero ? interval : TimeSpan.FromSeconds(1);
     }
 
-    private static DateTime Earlier(DateTime a, DateTime b) => a < b ? a : b;
+    private static DateTime Earlier(DateTime a, DateTime b)
+    {
+        return a < b ? a : b;
+    }
 
     private static IEnumerable<SignalPeriod> MergeAdjacent(IEnumerable<SignalPeriod> ordered)
     {
@@ -202,7 +197,7 @@ public static class SignalChartModel
         }
 
         TimeSpan step = (to - from) / (count - 1);
-        return Enumerable.Range(0, count).Select(i => from + step * i).ToList();
+        return Enumerable.Range(0, count).Select(i => from + (step * i)).ToList();
     }
 
     /// <summary>
@@ -228,12 +223,7 @@ public static class SignalChartModel
     /// </summary>
     public static double FractionFromPixel(double offsetPixels, double elementWidthPixels)
     {
-        if (elementWidthPixels <= 0)
-        {
-            return 0;
-        }
-
-        return Math.Clamp(offsetPixels / elementWidthPixels, 0, 1);
+        return elementWidthPixels <= 0 ? 0 : Math.Clamp(offsetPixels / elementWidthPixels, 0, 1);
     }
 
     /// <summary>
@@ -243,7 +233,7 @@ public static class SignalChartModel
     public static double FractionFromCanvasOffset(double offsetPixels, double canvasWidthPixels)
     {
         double scale = canvasWidthPixels / ViewWidth;
-        return FractionFromPixel(offsetPixels - PlotLeft * scale, PlotWidth * scale);
+        return FractionFromPixel(offsetPixels - (PlotLeft * scale), PlotWidth * scale);
     }
 
     /// <summary>The time under a 0..1 fraction of the plot width, the inverse of <see cref="MapX"/>.</summary>

@@ -1,7 +1,7 @@
 using Microsoft.JSInterop;
 
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services

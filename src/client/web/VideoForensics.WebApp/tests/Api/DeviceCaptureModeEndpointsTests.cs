@@ -1,5 +1,6 @@
-using Moq;
 using Microsoft.AspNetCore.Http;
+
+using Moq;
 
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Data.Common.Contracts;
@@ -16,8 +17,13 @@ public class DeviceCaptureModeEndpointsTests
 
     private static Device Dev(string providerId, string name, DeviceCaptureMode mode, string type = "doorbell")
     {
-        var device = new Device { ProviderDeviceId = providerId, Name = name, Type = type };
-        device.CaptureMode = mode;
+        var device = new Device
+        {
+            ProviderDeviceId = providerId,
+            Name = name,
+            Type = type,
+            CaptureMode = mode
+        };
         return device;
     }
 
@@ -80,7 +86,7 @@ public class DeviceCaptureModeEndpointsTests
         var devices = new Mock<IDeviceRepository>();
         _ = devices.Setup(d => d.GetAsync(device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
-        await DeviceCaptureModeEndpoints.SetModeAsync(device.Id, new SetDeviceCaptureModeRequest("off"), devices.Object, CancellationToken.None);
+        _ = await DeviceCaptureModeEndpoints.SetModeAsync(device.Id, new SetDeviceCaptureModeRequest("off"), devices.Object, CancellationToken.None);
 
         Assert.Equal(DeviceCaptureMode.Off, device.CaptureMode);
         devices.Verify(d => d.UpdateAsync(device, It.IsAny<CancellationToken>()), Times.Once);
@@ -107,6 +113,6 @@ public class DeviceCaptureModeEndpointsTests
 
         IResult result = await DeviceCaptureModeEndpoints.SetModeAsync(Guid.NewGuid(), new SetDeviceCaptureModeRequest("Off"), devices.Object, CancellationToken.None);
 
-        Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(result);
+        _ = Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(result);
     }
 }

@@ -1,8 +1,8 @@
-using System.Text.Json;
-
 using Microsoft.Extensions.Logging;
 
 using Moq;
+
+using System.Text.Json;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
@@ -12,7 +12,7 @@ using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>led_status is mapped to the observed light seconds that become a light event, never to a Devices column.</summary>
     public class RingDeviceLightStatusTests

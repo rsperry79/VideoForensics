@@ -1,11 +1,11 @@
 using System.Text;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Infrastructure;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -303,7 +303,7 @@ namespace VideoForensics.Client.WebApp.Api
                 }
 
                 // The public chain lists the server certificate first, then its intermediates.
-                List<string> blocks = LetsEncryptCertificateManager.PublicChainPem(issued.PemBundle)
+                var blocks = LetsEncryptCertificateManager.PublicChainPem(issued.PemBundle)
                     .Split("-----END CERTIFICATE-----", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Select(block => block + "\n-----END CERTIFICATE-----\n")
                     .ToList();

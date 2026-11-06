@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var logger = new Mock<ILogger<CloudflaredTunnelService>>();
             var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, logger.Object);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
 
             TunnelState state = service.GetState();
             Assert.Equal(TunnelStatus.Failed, state.Status);
@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var reaper = new Mock<IChildProcessReaper>();
             var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object, new Mock<ILogger<CloudflaredTunnelService>>().Object, reaper.Object);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
 
             reaper.Verify(r => r.AdoptChildren(It.IsAny<string>()), Times.Never);
         }

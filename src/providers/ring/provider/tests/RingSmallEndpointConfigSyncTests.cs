@@ -10,7 +10,6 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -229,7 +228,7 @@ namespace VideoForensics.Providers.Ring.Tests
             await SyncAsync(rig);
 
             rig.Clock.Advance(TimeSpan.FromHours(1));
-            rig.RunOptions.Setup(o => o.Current).Returns(new SyncRunOptions(Kind: SyncRunKind.Config));
+            _ = rig.RunOptions.Setup(o => o.Current).Returns(new SyncRunOptions(Kind: SyncRunKind.Config));
             await SyncAsync(rig);
 
             Assert.Equal(2, rig.Handler.CountRequests(SharedUsersUrl));
@@ -240,7 +239,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingSmallEndpointConfigSync_EventsOnlySync_RunsNoSmallEndpointCalls()
         {
             var rig = new SyncRig();
-            rig.RunOptions.Setup(o => o.Current).Returns(new SyncRunOptions(Kind: SyncRunKind.Events));
+            _ = rig.RunOptions.Setup(o => o.Current).Returns(new SyncRunOptions(Kind: SyncRunKind.Events));
 
             await SyncAsync(rig);
 
@@ -254,7 +253,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingSmallEndpointConfigSync_LocationRowNotStored_SkipsSharedUsersWithoutCallingRing()
         {
             var rig = new SyncRig();
-            rig.Locations.Setup(r => r.GetByProviderLocationIdAsync(LocationId, It.IsAny<CancellationToken>()))
+            _ = rig.Locations.Setup(r => r.GetByProviderLocationIdAsync(LocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((DbLocation?)null);
 
             await SyncAsync(rig);

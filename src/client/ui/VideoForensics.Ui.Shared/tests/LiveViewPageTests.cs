@@ -107,7 +107,7 @@ public class LiveViewPageTests : BunitContext
         _ = _deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(Array.Empty<Device>());
-        var deviceRepository = _deviceRepository;
+        Mock<IDeviceRepository> deviceRepository = _deviceRepository;
 
         _mediaItems = new Mock<IMediaItemRepository>();
         _contentUrls = new Mock<IMediaContentUrlProvider>();

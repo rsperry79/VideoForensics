@@ -9,7 +9,6 @@ using System.Reactive.Subjects;
 using VideoForensics.Client.Ui.Shared.Components;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Resources;
-using VideoForensics.Client.Ui.Shared.Tests;
 
 using Xunit;
 

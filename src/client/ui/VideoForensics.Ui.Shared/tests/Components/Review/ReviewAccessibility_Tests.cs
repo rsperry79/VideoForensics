@@ -2,9 +2,7 @@ using AngleSharp.Dom;
 
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 
 using Moq;
 
@@ -42,7 +40,7 @@ public class ReviewAccessibility_Tests : BunitContext
             .ReturnsAsync(17);
         _ = _repository
             .Setup(r => r.GetPositionAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((int?)3);
+            .ReturnsAsync(3);
     }
 
     private static MediaFlag Flag(MediaFlagType type, DateTime windowStartUtc)
@@ -89,11 +87,11 @@ public class ReviewAccessibility_Tests : BunitContext
             .Add(c => c.Player, player.Instance)
             .Add(c => c.WindowStartUtc, WindowStart)
             .Add(c => c.WindowEndUtc, WindowEnd)
-            .Add(c => c.Markers, new List<MediaFlag>
-            {
+            .Add(c => c.Markers,
+            [
                 Flag(MediaFlagType.RssiDeviation, WindowStart.AddSeconds(60)),
                 Flag(MediaFlagType.BitrateCollapse, WindowStart.AddSeconds(120)),
-            }));
+            ]));
 
         IReadOnlyList<IElement> markers = cut.FindAll("[data-testid=timeline-marker]");
         Assert.NotEmpty(markers);
@@ -108,9 +106,9 @@ public class ReviewAccessibility_Tests : BunitContext
     public void ReviewAccessibility_FlagReviewShell_RegionsAreLabelled()
     {
         IRenderedComponent<FlagReviewShell> cut = Render<FlagReviewShell>(p => p
-            .Add(c => c.Breadcrumb, (RenderFragment)(b => b.AddMarkupContent(0, "<span>crumb</span>")))
-            .Add(c => c.Media, (RenderFragment)(b => b.AddMarkupContent(0, "<span>media</span>")))
-            .Add(c => c.Timeline, (RenderFragment)(b => b.AddMarkupContent(0, "<span>timeline</span>"))));
+            .Add(c => c.Breadcrumb, b => b.AddMarkupContent(0, "<span>crumb</span>"))
+            .Add(c => c.Media, b => b.AddMarkupContent(0, "<span>media</span>"))
+            .Add(c => c.Timeline, b => b.AddMarkupContent(0, "<span>timeline</span>")));
 
         // The shell labels media and timeline. The breadcrumb region is not labelled, so it is not asserted here.
         foreach (string testId in new[] { "flag-review-media", "flag-review-timeline" })

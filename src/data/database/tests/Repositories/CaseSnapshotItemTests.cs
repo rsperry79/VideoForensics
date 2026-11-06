@@ -8,7 +8,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>A snapshot capture can be pinned to a case like an event or a media item.</summary>
     public class CaseSnapshotItem_Tests : IAsyncLifetime

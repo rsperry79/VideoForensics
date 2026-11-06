@@ -29,8 +29,8 @@ public class BitrateHistory_Tests : ScopeRailTestContext
     {
         DateTime from = DateTime.UtcNow.AddDays(-30);
         DateTime to = DateTime.UtcNow.AddDays(1);
-        List<SignalSample> samples = readings.Select(r => r.ToSignalSample()).ToList();
-        SignalStats allTime = SignalStats.Compute(samples);
+        var samples = readings.Select(r => r.ToSignalSample()).ToList();
+        var allTime = SignalStats.Compute(samples);
         return new BitrateDeviceAnalysis(
             device.Id,
             device.Name,
@@ -76,7 +76,7 @@ public class BitrateHistory_Tests : ScopeRailTestContext
     {
         IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(6)));
 
-        Assert.Single(page.FindAll("[data-testid='bitrate-device']"));
+        _ = Assert.Single(page.FindAll("[data-testid='bitrate-device']"));
         Assert.Contains("Front door", page.Markup);
         Assert.Contains("2000 kbps", page.Find("[data-testid='bitrate-stats']").TextContent);
         Assert.Empty(page.FindAll("[data-testid='signal-device']"));
@@ -116,7 +116,7 @@ public class BitrateHistory_Tests : ScopeRailTestContext
     {
         // Eight readings every 12 hours cover several days inside one or two weeks.
         DateTime start = DateTime.UtcNow.AddDays(-4);
-        List<BitrateSample> readings = Enumerable.Range(0, 8)
+        var readings = Enumerable.Range(0, 8)
             .Select(i => new BitrateSample(start.AddHours(i * 12), 2000 + i, "Day", false))
             .ToList();
         BitrateDeviceAnalysis analysis = Analysis(_device, readings);
@@ -140,7 +140,7 @@ public class BitrateHistory_Tests : ScopeRailTestContext
         readings.Add(new BitrateSample(DateTime.UtcNow.AddHours(-1), 9000, "Day", false));
         IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, readings));
 
-        Assert.Single(page.FindAll("[data-testid='bitrate-alert']"));
+        _ = Assert.Single(page.FindAll("[data-testid='bitrate-alert']"));
         Assert.NotEmpty(page.FindAll("rect.bitrate-deviation[data-level='TwoSigma']"));
 
         page.Find("[data-testid='bitrate-alert-close']").Click();

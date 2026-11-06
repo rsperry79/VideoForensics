@@ -9,7 +9,7 @@ using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Maps the paid-feature, network-settings and network-diagnosis groups (sanitized fixture) onto the settings child rows.</summary>
     public class RingDeviceNetworkMapperTests

@@ -31,17 +31,11 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
         public ILogger CreateLogger(string categoryName)
         {
             ILogger logger = _inner.CreateLogger(categoryName);
-            if (string.Equals(categoryName, CommandCategory, StringComparison.Ordinal))
-            {
-                return new EventRemappingLogger(logger, _ => true);
-            }
-
-            if (string.Equals(categoryName, ChangeTrackingCategory, StringComparison.Ordinal))
-            {
-                return new EventRemappingLogger(logger, eventId => eventId.Id == CoreEventId.StartedTracking.Id);
-            }
-
-            return logger;
+            return string.Equals(categoryName, CommandCategory, StringComparison.Ordinal)
+                ? new EventRemappingLogger(logger, _ => true)
+                : string.Equals(categoryName, ChangeTrackingCategory, StringComparison.Ordinal)
+                ? new EventRemappingLogger(logger, eventId => eventId.Id == CoreEventId.StartedTracking.Id)
+                : logger;
         }
 
         // The application's factory is owned by the service provider, so it is not disposed here.

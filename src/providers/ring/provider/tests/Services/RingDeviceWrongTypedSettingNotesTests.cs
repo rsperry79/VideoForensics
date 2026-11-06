@@ -5,7 +5,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// A wrong JSON type for one of the typed settings paths that are removed from the settings remainder is noted (key and JSON type only, never
@@ -79,7 +79,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             List<string> notes = NotesFor(JsonSerializer.Deserialize<Doorbot>("""{"id": 6002, "settings": {"pir_settings": "SECRET-GROUP"}}""")!);
 
-            Assert.Single(notes, n => n.StartsWith("pir_settings", StringComparison.Ordinal));
+            _ = Assert.Single(notes, n => n.StartsWith("pir_settings", StringComparison.Ordinal));
             Assert.Contains("pir_settings not stored: expected an object (String)", notes);
             Assert.DoesNotContain(notes, n => n.Contains("SECRET", StringComparison.Ordinal));
         }

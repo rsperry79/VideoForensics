@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,25 +10,25 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
+            _ = migrationBuilder.AddColumn<DateTime>(
                 name: "DeactivatedAtUtc",
                 table: "Devices",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "LedSecondsRemaining",
                 table: "Devices",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateTime>(
+            _ = migrationBuilder.AddColumn<DateTime>(
                 name: "SharedAtUtc",
                 table: "Devices",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceReportedBatteries",
                 columns: table => new
                 {
@@ -52,10 +51,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceReportedBatteries", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceReportedBatteries", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceReportedHealths",
                 columns: table => new
                 {
@@ -81,10 +80,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceReportedHealths", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceReportedHealths", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceDetails",
                 columns: table => new
                 {
@@ -103,10 +102,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceDetails", x => x.Id);
+                    _ = table.PrimaryKey("PK_RingDeviceDetails", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceHealthExtras",
                 columns: table => new
                 {
@@ -146,28 +145,28 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceHealthExtras", x => x.Id);
+                    _ = table.PrimaryKey("PK_RingDeviceHealthExtras", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceReportedBatteries_DeviceId_Position",
                 table: "DeviceReportedBatteries",
                 columns: new[] { "DeviceId", "Position" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceReportedHealths_DeviceId",
                 table: "DeviceReportedHealths",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceDetails_DeviceId",
                 table: "RingDeviceDetails",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceHealthExtras_DeviceId",
                 table: "RingDeviceHealthExtras",
                 column: "DeviceId",
@@ -177,27 +176,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceReportedBatteries");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceReportedHealths");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceDetails");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceHealthExtras");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "DeactivatedAtUtc",
                 table: "Devices");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LedSecondsRemaining",
                 table: "Devices");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SharedAtUtc",
                 table: "Devices");
         }

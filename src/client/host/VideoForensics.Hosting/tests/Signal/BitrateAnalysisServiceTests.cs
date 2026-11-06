@@ -1,10 +1,6 @@
-using Moq;
-
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using Xunit;
 
 namespace VideoForensics.Client.Hosting.Tests.Signal;
 
@@ -91,7 +87,7 @@ public class BitrateAnalysisServiceTests
             [new BitrateSample(From.AddHours(9), 1_000, "Day", false), new BitrateSample(From.AddHours(10), 2_000, "Ir", true), new BitrateSample(From.AddHours(11), 3_000, "Day", true)],
             device.Readings);
         Assert.Equal(3, device.Hourly.Count);
-        Assert.Single(device.Daily);
+        _ = Assert.Single(device.Daily);
         Assert.Equal(3, device.Calendar.DayOfWeek(0).Count);
     }
 

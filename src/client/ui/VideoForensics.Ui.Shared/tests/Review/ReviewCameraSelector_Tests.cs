@@ -8,7 +8,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The camera selector: its button label, the popup toggles, the nine-camera cap, and the debounced auto-apply to both states.</summary>
 public class ReviewCameraSelector_Tests : ReviewTestContext

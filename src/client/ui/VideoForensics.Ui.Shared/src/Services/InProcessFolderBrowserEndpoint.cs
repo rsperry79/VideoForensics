@@ -1,8 +1,10 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+
 using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services
@@ -14,26 +16,28 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// </summary>
     public sealed class InProcessFolderBrowserEndpoint : IFolderBrowserEndpoint, IDisposable
     {
-        private readonly HttpClient _client;
 
         /// <param name="browser">The local filesystem browser the protocol reads from and creates folders in.</param>
         /// <param name="logger">Records failed browse requests. Optional so callers that do not log can omit it.</param>
         public InProcessFolderBrowserEndpoint(IDirectoryBrowserService browser, ILogger<InProcessFolderBrowserEndpoint>? logger = null)
         {
-            _client = new HttpClient(new InProcessFolderBrowserHandler(browser, logger ?? NullLogger<InProcessFolderBrowserEndpoint>.Instance))
+            Client = new HttpClient(new InProcessFolderBrowserHandler(browser, logger ?? NullLogger<InProcessFolderBrowserEndpoint>.Instance))
             {
                 BaseAddress = new Uri("http://in-process/"),
             };
         }
 
         /// <inheritdoc/>
-        public HttpClient Client => _client;
+        public HttpClient Client { get; }
 
         /// <inheritdoc/>
         public string Url => FolderBrowseProtocol.Route;
 
         /// <inheritdoc/>
-        public void Dispose() => _client.Dispose();
+        public void Dispose()
+        {
+            Client.Dispose();
+        }
 
         private sealed class InProcessFolderBrowserHandler : HttpMessageHandler
         {

@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 using Microsoft.Extensions.Hosting;
 
 using VideoForensics.Client.WebApp.Services;
@@ -22,11 +19,14 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             public Task StartAsync(CancellationToken cancellationToken)
             {
                 StartCount++;
-                _started.TrySetResult();
+                _ = _started.TrySetResult();
                 return Task.CompletedTask;
             }
 
-            public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
         }
 
         [Fact]

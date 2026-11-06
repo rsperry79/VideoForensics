@@ -21,7 +21,7 @@ public sealed record SignalStats(int Count, int? Min, int? Max, double Average, 
     {
         ArgumentNullException.ThrowIfNull(samples);
 
-        List<SignalSample> withSignal = samples.Where(s => s.RssiDbm is not null).OrderBy(s => s.CapturedAtUtc).ToList();
+        var withSignal = samples.Where(s => s.RssiDbm is not null).OrderBy(s => s.CapturedAtUtc).ToList();
         if (withSignal.Count == 0)
         {
             return new SignalStats(0, null, null, 0, null, 0);

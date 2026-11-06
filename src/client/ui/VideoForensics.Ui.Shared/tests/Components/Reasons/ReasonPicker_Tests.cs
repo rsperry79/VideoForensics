@@ -3,7 +3,6 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.JSInterop;
 
 using Syncfusion.Blazor.DropDowns;
 

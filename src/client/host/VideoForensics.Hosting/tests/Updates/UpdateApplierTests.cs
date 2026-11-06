@@ -8,13 +8,20 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
     {
         private static readonly string[] KeepList = ["Desktop", "ffmpeg.exe"];
 
-        private static UpdateApplier NewApplier() => new(NullLogger<UpdateApplier>.Instance);
+        private static UpdateApplier NewApplier()
+        {
+            return new(NullLogger<UpdateApplier>.Instance);
+        }
 
-        private static string Read(string dir, string relative) =>
-            File.ReadAllText(Path.Combine(dir, relative.Replace('/', Path.DirectorySeparatorChar)));
+        private static string Read(string dir, string relative)
+        {
+            return File.ReadAllText(Path.Combine(dir, relative.Replace('/', Path.DirectorySeparatorChar)));
+        }
 
-        private static bool Exists(string dir, string relative) =>
-            File.Exists(Path.Combine(dir, relative.Replace('/', Path.DirectorySeparatorChar)));
+        private static bool Exists(string dir, string relative)
+        {
+            return File.Exists(Path.Combine(dir, relative.Replace('/', Path.DirectorySeparatorChar)));
+        }
 
         [Fact]
         public async Task UpdateApplier_Apply_NewPackage_ReplacesChangedAddsNewAndRemovesDropped()
@@ -165,7 +172,7 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
 
             // The overwritten file cannot be replaced in place, so it is renamed aside. The dropped file is deletable
             // while open with FileShare.Delete (a mapped image would not be; SetAside falls back to the same rename).
-            Assert.Single(Directory.GetFiles(install, "app.exe.old-*"));
+            _ = Assert.Single(Directory.GetFiles(install, "app.exe.old-*"));
         }
 
         [Fact]

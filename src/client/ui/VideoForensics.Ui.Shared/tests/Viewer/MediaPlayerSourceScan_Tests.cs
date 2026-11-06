@@ -31,7 +31,7 @@ public class MediaPlayerSourceScan_Tests
         string[] skipped = [$"{sep}bin{sep}", $"{sep}obj{sep}"];
 
         // Act
-        List<string> offenders = Directory.EnumerateFiles(root, "*.razor", SearchOption.AllDirectories)
+        var offenders = Directory.EnumerateFiles(root, "*.razor", SearchOption.AllDirectories)
             .Where(path => !skipped.Any(s => path.Contains(s, StringComparison.OrdinalIgnoreCase)))
             .Where(path => !string.Equals(Path.GetFileName(path), "MediaPlayer.razor", StringComparison.Ordinal))
             .Where(path => VideoTag.IsMatch(File.ReadAllText(path)))

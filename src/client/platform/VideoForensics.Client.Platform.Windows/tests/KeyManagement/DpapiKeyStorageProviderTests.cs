@@ -1,11 +1,11 @@
-using Xunit;
-using VideoForensics.Client.Platform.Windows.KeyManagement;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
-
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
+using VideoForensics.Client.Platform.Windows.KeyManagement;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
+
+using Xunit;
 
 namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
 {

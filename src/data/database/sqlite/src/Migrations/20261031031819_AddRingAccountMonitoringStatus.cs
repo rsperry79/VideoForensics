@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingAccountMonitoringStatuses",
                 columns: table => new
                 {
@@ -42,10 +41,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingAccountMonitoringStatuses", x => x.Id);
+                    _ = table.PrimaryKey("PK_RingAccountMonitoringStatuses", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingAccountMonitoringPlans",
                 columns: table => new
                 {
@@ -56,8 +55,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingAccountMonitoringPlans", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingAccountMonitoringPlans", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingAccountMonitoringPlans_RingAccountMonitoringStatuses_RingAccountMonitoringStatusId",
                         column: x => x.RingAccountMonitoringStatusId,
                         principalTable: "RingAccountMonitoringStatuses",
@@ -65,12 +64,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingAccountMonitoringPlans_RingAccountMonitoringStatusId",
                 table: "RingAccountMonitoringPlans",
                 column: "RingAccountMonitoringStatusId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingAccountMonitoringStatuses_ProviderLocationId",
                 table: "RingAccountMonitoringStatuses",
                 column: "ProviderLocationId",
@@ -80,10 +79,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingAccountMonitoringPlans");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingAccountMonitoringStatuses");
         }
     }

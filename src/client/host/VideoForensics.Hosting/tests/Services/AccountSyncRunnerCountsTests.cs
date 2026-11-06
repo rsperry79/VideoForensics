@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
@@ -256,7 +256,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = wyzeAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             // Mirrors AddVideoForensicsMultiProviderServices: keyed per provider, with the unkeyed default being whichever registered last.
-            var services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>());
+            IServiceCollection services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>());
             _ = services.AddKeyedScoped("Wyze", (_, _) => wyzeAuth.Object);
             _ = services.AddKeyedScoped("Wyze", (_, _) => wyzePull.Object);
             _ = services.AddKeyedScoped("Ring", (_, _) => ringAuth.Object);

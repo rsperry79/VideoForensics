@@ -8,7 +8,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     public class DatabaseAdministrationServiceTests
     {
@@ -52,7 +52,7 @@ namespace VideoForensics.Data.Core.Tests
             DatabaseValidationResult result = await service.ValidateAsync(CancellationToken.None);
 
             // Assert
-            Assert.Single(result.MissingMedia);
+            _ = Assert.Single(result.MissingMedia);
             Assert.Equal(missing.Id, result.MissingMedia[0].MediaItemId);
             Assert.False(result.IsClean);
         }

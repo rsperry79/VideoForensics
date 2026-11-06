@@ -12,14 +12,14 @@ public class SignalStatsTests
     [Fact]
     public void Compute_ReportsMinMaxAverageAndLatest()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(T0, -50),
             new SignalSample(T0.AddMinutes(15), -70),
             new SignalSample(T0.AddMinutes(30), -60),
         };
 
-        SignalStats stats = SignalStats.Compute(samples);
+        var stats = SignalStats.Compute(samples);
 
         Assert.Equal(3, stats.Count);
         Assert.Equal(-70, stats.Min);
@@ -31,14 +31,14 @@ public class SignalStatsTests
     [Fact]
     public void Delta_IsTheDisplayedMaxMinusMin()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(T0, -50),
             new SignalSample(T0.AddMinutes(15), -70),
             new SignalSample(T0.AddMinutes(30), -60),
         };
 
-        SignalStats stats = SignalStats.Compute(samples);
+        var stats = SignalStats.Compute(samples);
 
         // Strongest -50 minus weakest -70.
         Assert.Equal(20, stats.Delta);
@@ -48,7 +48,7 @@ public class SignalStatsTests
     public void StdDev_IsTheSampleStandardDeviationOfTheReadings()
     {
         // Mean -60; squared deviations 100 + 100 + 0 = 200; sample variance 200 / (3 - 1) = 100; deviation 10.
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(T0, -50),
             new SignalSample(T0.AddMinutes(15), -70),
@@ -74,13 +74,13 @@ public class SignalStatsTests
     [Fact]
     public void Compute_IgnoresReadingsWithoutASignal()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(T0, -55),
             new SignalSample(T0.AddMinutes(15), null),
         };
 
-        SignalStats stats = SignalStats.Compute(samples);
+        var stats = SignalStats.Compute(samples);
 
         Assert.Equal(1, stats.Count);
         Assert.Equal(-55, stats.Latest);
@@ -89,7 +89,7 @@ public class SignalStatsTests
     [Fact]
     public void Compute_CountsWeakReadingsBelowMinus75()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(T0, -80),
             new SignalSample(T0.AddMinutes(15), -75),
@@ -97,7 +97,7 @@ public class SignalStatsTests
             new SignalSample(T0.AddMinutes(45), -90),
         };
 
-        SignalStats stats = SignalStats.Compute(samples);
+        var stats = SignalStats.Compute(samples);
 
         // -75 is not weaker than -75; only -80 and -90 are.
         Assert.Equal(50.0, stats.PercentWeak, precision: 6);
@@ -106,7 +106,7 @@ public class SignalStatsTests
     [Fact]
     public void Compute_NoReadings_ReturnsEmptyStats()
     {
-        SignalStats stats = SignalStats.Compute([]);
+        var stats = SignalStats.Compute([]);
 
         Assert.Equal(0, stats.Count);
         Assert.Null(stats.Latest);

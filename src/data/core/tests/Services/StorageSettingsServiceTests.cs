@@ -9,7 +9,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     [Collection("StorageLocationStore")]
     public class StorageSettingsServiceTests
@@ -111,7 +111,7 @@ namespace VideoForensics.Data.Core.Tests
                     .Setup(x => x.GetEffectiveRoot(StorageCategory.Database, It.IsAny<string?>()))
                     .Returns(sourceDir);
 
-                _mockMaintenance
+                _ = _mockMaintenance
                     .Setup(x => x.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()))
                     .Callback(() => Assert.True(File.Exists(Path.Combine(sourceDir, "videoforensics.db")), "file must still be in place when connections are released"))
                     .Returns(Task.CompletedTask);
@@ -669,17 +669,20 @@ namespace VideoForensics.Data.Core.Tests
                 catch { }
             }
         }
-    
+
         private sealed class RecordingPointerStore : IDatabaseLocationPointerStore
         {
             public string? Written { get; private set; }
 
-            public string? Read() => Written;
+            public string? Read()
+            {
+                return Written;
+            }
 
             public void Write(string databaseRoot)
             {
                 Written = databaseRoot;
             }
         }
-}
+    }
 }

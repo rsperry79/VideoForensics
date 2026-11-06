@@ -10,12 +10,12 @@ using Syncfusion.Blazor.DropDowns;
 
 using System.Reactive.Subjects;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 

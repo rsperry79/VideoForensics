@@ -4,7 +4,6 @@ using System.Text.Json;
 
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote;
@@ -182,7 +181,7 @@ public class RemoteMediaFlagRepositoryTests
         Assert.Equal(HttpMethod.Post, req.Method);
         Assert.Equal("/api/v1/media-flags/" + FlagId.ToString("D") + "/status", req.RequestUri!.AbsolutePath);
         string body = Assert.Single(handler.Bodies)!;
-        using JsonDocument doc = JsonDocument.Parse(body);
+        using var doc = JsonDocument.Parse(body);
         Assert.Equal("Unreviewed", doc.RootElement.GetProperty("expectedStatus").GetString());
         Assert.Equal("Dismissed", doc.RootElement.GetProperty("newStatus").GetString());
         Assert.Equal("false positive", doc.RootElement.GetProperty("reason").GetString());
@@ -192,7 +191,7 @@ public class RemoteMediaFlagRepositoryTests
     [Fact]
     public async Task UpdateStatusAsync_Conflict_ThrowsFlagStatusConflictException()
     {
-        var reviewedAt = From.AddHours(3);
+        DateTime reviewedAt = From.AddHours(3);
         (RemoteMediaFlagRepository repo, _) = Create(_ => Json(
             new FlagStatusConflictDto("Unreviewed", "Kept", "reviewer-7", reviewedAt), HttpStatusCode.Conflict));
 
@@ -233,7 +232,7 @@ public class RemoteMediaFlagRepositoryTests
 
         HttpRequestMessage req = Assert.Single(handler.Seen);
         Assert.Equal("/api/v1/media-flags/" + FlagId.ToString("D") + "/reopen", req.RequestUri!.AbsolutePath);
-        using JsonDocument doc = JsonDocument.Parse(Assert.Single(handler.Bodies)!);
+        using var doc = JsonDocument.Parse(Assert.Single(handler.Bodies)!);
         Assert.Equal("new evidence", doc.RootElement.GetProperty("reason").GetString());
     }
 

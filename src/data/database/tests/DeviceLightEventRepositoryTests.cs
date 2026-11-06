@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -42,7 +42,10 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private Task<bool> Observe(int? seconds, DateTime at) => _events.RecordObservedAsync(_device.Id, seconds, at, CancellationToken.None);
+        private Task<bool> Observe(int? seconds, DateTime at)
+        {
+            return _events.RecordObservedAsync(_device.Id, seconds, at, CancellationToken.None);
+        }
 
         [Fact]
         public async Task RecordObservedAsync_OffToOn_InsertsObservedEvent()
@@ -74,7 +77,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.False(await Observe(40, T0.AddSeconds(20)));
             Assert.False(await Observe(10, T0.AddSeconds(50)));
 
-            Assert.Single(await _events.ListByDeviceAsync(_device.Id, CancellationToken.None));
+            _ = Assert.Single(await _events.ListByDeviceAsync(_device.Id, CancellationToken.None));
         }
 
         [Fact]
@@ -95,7 +98,10 @@ namespace VideoForensics.Data.Database.Tests
             Assert.True(await Observe(30, T0.AddSeconds(5)));
         }
 
-        private Task<bool> ObserveState(bool on, DateTime at) => _events.RecordObservedStateAsync(_device.Id, on, at, CancellationToken.None);
+        private Task<bool> ObserveState(bool on, DateTime at)
+        {
+            return _events.RecordObservedStateAsync(_device.Id, on, at, CancellationToken.None);
+        }
 
         [Fact]
         public async Task RecordObservedStateAsync_OffToOn_InsertsOneEventWithNullSeconds()
@@ -114,7 +120,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.True(await ObserveState(true, T0));
             Assert.False(await ObserveState(true, T0.AddMinutes(5)));
 
-            Assert.Single(await _events.ListByDeviceAsync(_device.Id, CancellationToken.None));
+            _ = Assert.Single(await _events.ListByDeviceAsync(_device.Id, CancellationToken.None));
         }
 
         [Fact]
@@ -150,7 +156,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UpsertAsync_LightIsOnInChildren_FollowsTransitionRules()
         {
-            DeviceSettingsChildren With(bool on) => new([], [], [], LightIsOn: on);
+            static DeviceSettingsChildren With(bool on)
+            {
+                return new([], [], [], LightIsOn: on);
+            }
 
             await _details.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, With(true));
             await _details.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, With(true));
@@ -173,7 +182,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UpsertAsync_LightSecondsInChildren_FollowTransitionRules()
         {
-            DeviceSettingsChildren With(int seconds) => new([], [], [], LightSecondsRemaining: seconds);
+            static DeviceSettingsChildren With(int seconds)
+            {
+                return new([], [], [], LightSecondsRemaining: seconds);
+            }
 
             await _details.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, With(0));
             await _details.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, With(20));

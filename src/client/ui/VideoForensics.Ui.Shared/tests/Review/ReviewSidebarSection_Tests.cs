@@ -1,12 +1,10 @@
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
-
 using VideoForensics.Client.Ui.Shared.Components.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>A right-sidebar section: a heading button that collapses and expands its content.</summary>
 public class ReviewSidebarSection_Tests : ReviewTestContext
@@ -15,7 +13,7 @@ public class ReviewSidebarSection_Tests : ReviewTestContext
     {
         return Render<ReviewSidebarSection>(parameters => parameters
             .Add(p => p.Title, "Filters")
-            .Add(p => p.ChildContent, (RenderFragment)(builder => builder.AddMarkupContent(0, "<p data-testid='body'>Body</p>"))));
+            .Add(p => p.ChildContent, builder => builder.AddMarkupContent(0, "<p data-testid='body'>Body</p>")));
     }
 
     [Fact]
@@ -27,7 +25,7 @@ public class ReviewSidebarSection_Tests : ReviewTestContext
         // Assert
         Assert.Equal("Filters", cut.Find("button[aria-expanded] .fw-semibold").TextContent);
         Assert.Equal("true", cut.Find("button[aria-expanded]").GetAttribute("aria-expanded"));
-        Assert.Single(cut.FindAll("[data-testid='body']"));
+        _ = Assert.Single(cut.FindAll("[data-testid='body']"));
     }
 
     [Fact]
@@ -55,6 +53,6 @@ public class ReviewSidebarSection_Tests : ReviewTestContext
         cut.Find("button[aria-expanded]").Click();
 
         // Assert
-        Assert.Single(cut.FindAll("[data-testid='body']"));
+        _ = Assert.Single(cut.FindAll("[data-testid='body']"));
     }
 }

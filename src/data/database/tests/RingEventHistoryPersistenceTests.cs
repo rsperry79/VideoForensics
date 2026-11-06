@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -557,6 +557,5 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync()).LinkedEventId);
         }
-
     }
 }

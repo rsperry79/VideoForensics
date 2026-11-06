@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
@@ -247,7 +247,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
         }
-
 
         [Fact]
         public async Task RunOneTickAsync_ReadingForUnknownDevice_IsSkipped()

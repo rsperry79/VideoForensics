@@ -83,7 +83,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             // Validated at the API boundary. Storing anything else would silently fall back to SuperAdmin on read.
             string level = request.Access;
-            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            if (level is not ProviderEditAccessLevels.Admin and not ProviderEditAccessLevels.SuperAdmin)
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -117,7 +117,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             // Validated at the API boundary. Storing anything else would silently fall back to Admin on read.
             string level = request.ProviderAccountEditAccess;
-            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            if (level is not ProviderEditAccessLevels.Admin and not ProviderEditAccessLevels.SuperAdmin)
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {

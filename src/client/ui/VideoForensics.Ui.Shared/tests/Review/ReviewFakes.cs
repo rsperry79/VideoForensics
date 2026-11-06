@@ -2,12 +2,11 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>Clip loader double. Records each call; <see cref="Responder"/> decides the result, so a test can hold a call open.</summary>
 public sealed class FakeReviewClipLoader : IReviewClipLoader
@@ -48,7 +47,7 @@ public sealed class FakeMediaContentUrlProvider : IMediaContentUrlProvider
     {
         _requests.Add(mediaItemIds.ToList());
         int batch = _requests.Count;
-        Dictionary<Guid, string> urls = mediaItemIds
+        var urls = mediaItemIds
             .Where(id => !Omitted.Contains(id))
             .ToDictionary(id => id, id => $"/api/v1/media/{id:D}/content?ticket=ticket-{batch}");
         return Task.FromResult<IReadOnlyDictionary<Guid, string>>(urls);

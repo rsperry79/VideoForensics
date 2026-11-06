@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.Versioning;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;

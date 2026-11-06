@@ -2,7 +2,6 @@ using Bunit;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using Moq;
@@ -47,7 +46,7 @@ public class SignInRememberMeTests : BunitContext
     public void SignIn_RememberedUserWithPasskey_TriesPasskeyOnceOnLoad()
     {
         // Arrange
-        JSInterop.Setup<string?>("localStorage.getItem", RememberedLogin.StorageKey).SetResult("alice");
+        _ = JSInterop.Setup<string?>("localStorage.getItem", RememberedLogin.StorageKey).SetResult("alice");
 
         // Act
         _ = Render<SignIn>();
@@ -70,7 +69,7 @@ public class SignInRememberMeTests : BunitContext
     public void SignIn_PasskeyFailsForRememberedUser_ShowsThePasswordBox()
     {
         // Arrange
-        JSInterop.Setup<string?>("localStorage.getItem", RememberedLogin.StorageKey).SetResult("alice");
+        _ = JSInterop.Setup<string?>("localStorage.getItem", RememberedLogin.StorageKey).SetResult("alice");
 
         // Act
         IRenderedComponent<SignIn> cut = Render<SignIn>();
@@ -83,7 +82,7 @@ public class SignInRememberMeTests : BunitContext
     public void SignIn_BrowserWithoutPasskeys_ShowsThePasswordBoxWithoutAClick()
     {
         // Arrange
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(false);
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(false);
 
         // Act
         IRenderedComponent<SignIn> cut = Render<SignIn>();

@@ -2,9 +2,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Client.Hosting.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {

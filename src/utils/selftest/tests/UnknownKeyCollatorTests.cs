@@ -1,7 +1,5 @@
 using Microsoft.Data.Sqlite;
 
-using VideoForensics.Utils.SelfTest;
-
 using Xunit;
 
 namespace VideoForensics.Utils.SelfTest.Tests
@@ -61,7 +59,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
             string[] expected = ["a", "b", "c[].d", "e[]", "f{}", "g.h[]"];
             Assert.Equal(expected, agg.Paths.Select(p => p.Path).OrderBy(p => p, StringComparer.Ordinal));
 
-            Dictionary<string, LeafStats> byPath = agg.Paths.ToDictionary(p => p.Path, StringComparer.Ordinal);
+            var byPath = agg.Paths.ToDictionary(p => p.Path, StringComparer.Ordinal);
             Assert.Equal(new[] { "number" }, byPath["a"].Kinds);
             Assert.Equal(new[] { "null" }, byPath["b"].Kinds);
             Assert.Equal(new[] { "number", "string" }, byPath["c[].d"].Kinds);
@@ -79,7 +77,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
             agg.AddRow("""{"list":[]}""");
             agg.AddRow("not json {");
 
-            Dictionary<string, LeafStats> byPath = agg.Paths.ToDictionary(p => p.Path, StringComparer.Ordinal);
+            var byPath = agg.Paths.ToDictionary(p => p.Path, StringComparer.Ordinal);
             Assert.Equal(4, agg.NonNullRows);
             Assert.Equal(1, agg.InvalidJsonRows);
             Assert.Equal(2, byPath["k"].Rows);
@@ -110,7 +108,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void UnknownKeyCollator_CoveredFlag_MatchesFieldMapPathsWithoutEndpoint()
         {
-            FieldMap map = FieldMap.Parse("""{"ep-one:doorbot.id":"Devices.Id","ep-two:media.type[]":"Rows:MediaItems"}""");
+            var map = FieldMap.Parse("""{"ep-one:doorbot.id":"Devices.Id","ep-two:media.type[]":"Rows:MediaItems"}""");
             IReadOnlySet<string> covered = UnknownKeyCollator.FieldMapPaths(map);
             Assert.Contains("doorbot.id", covered);
             Assert.Contains("media.type[]", covered);
@@ -120,7 +118,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
             agg.AddRow("""{"doorbot":{"id":1,"name":"n"},"media":{"type":["a"]}}""");
 
             IReadOnlyList<UnknownKeyPath> paths = UnknownKeyCollator.ToUnknownPaths("Events.MetadataJson", agg.Paths, covered);
-            Dictionary<string, UnknownKeyPath> byPath = paths.ToDictionary(p => p.Path, StringComparer.Ordinal);
+            var byPath = paths.ToDictionary(p => p.Path, StringComparer.Ordinal);
             Assert.True(byPath["doorbot.id"].CoveredByFieldMap == true);
             Assert.True(byPath["doorbot.name"].CoveredByFieldMap == false);
             Assert.True(byPath["media.type[]"].CoveredByFieldMap == true);

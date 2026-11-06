@@ -19,14 +19,14 @@ namespace VideoForensics.Utils.SelfTest.Tests
 
         private static JsonElement[] FixtureEvents()
         {
-            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(FixturePath));
+            using var doc = JsonDocument.Parse(File.ReadAllText(FixturePath));
             return doc.RootElement.EnumerateArray().Select(e => e.Clone()).ToArray();
         }
 
         [Fact]
         public void KnownPaths_EveryPathHasAStoredDoorbotHistoryFieldMapEntryOrAReasonedExemption()
         {
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
             var problems = new List<string>();
             foreach (string path in RingEventPayloadRemainder.KnownPaths)
             {
@@ -63,7 +63,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         public void KnownPaths_EveryStoredDoorbotHistoryFieldMapEntryIsKnown()
         {
             // The other direction: a structured doorbot-history field must not stay in MetadataJson as an "unknown" key.
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
             string[] stored = map.Entries
                 .Where(e => e.Key.StartsWith(FieldMapPrefix, StringComparison.Ordinal) && e.Value.Kind != FieldTargetKind.NotData)
                 .Select(e => e.Key[FieldMapPrefix.Length..])

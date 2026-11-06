@@ -1,16 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
-using Moq;
-
+using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;

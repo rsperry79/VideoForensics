@@ -13,14 +13,12 @@ public sealed class DefaultMediaPlaybackPolicy : IMediaPlaybackPolicy
     public double ResolveRate(double requestedRate)
     {
         // Browsers reject zero, negative and non-finite rates; fall back to normal speed rather than throw.
-        if (!double.IsFinite(requestedRate) || requestedRate <= 0)
-        {
-            return 1.0;
-        }
-
-        return Math.Min(requestedRate, MaxRate);
+        return !double.IsFinite(requestedRate) || requestedRate <= 0 ? 1.0 : Math.Min(requestedRate, MaxRate);
     }
 
     /// <inheritdoc />
-    public bool ShouldMute(double effectiveRate) => effectiveRate > MuteAboveRate;
+    public bool ShouldMute(double effectiveRate)
+    {
+        return effectiveRate > MuteAboveRate;
+    }
 }

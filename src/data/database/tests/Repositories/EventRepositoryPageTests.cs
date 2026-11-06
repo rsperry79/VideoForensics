@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 
-using VideoForensics.Utils.Testing;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -58,7 +59,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(cameraB, 5, "evt-5"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(other, 2, "evt-2"), CancellationToken.None);
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { cameraA, cameraB }, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
@@ -75,7 +76,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 61, "after"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(device, -1, "before"), CancellationToken.None);
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddMinutes(60), null, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
@@ -91,7 +92,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), new[] { "person" }, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
@@ -107,7 +108,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, new[] { "person", "ring" }, skip: 0, take: 1, CancellationToken.None);
 
             Assert.Equal(2, page.TotalCount);
@@ -123,7 +124,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), new[] { "ring" }, new[] { "person", "ring" }, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(1, page.TotalCount);
@@ -139,7 +140,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 2, "person"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(device, 3, "ring"), CancellationToken.None);
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, Array.Empty<string>(), skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(3, page.TotalCount);
@@ -154,9 +155,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.CreateAsync(Ev(device, 4, "tie-b"), CancellationToken.None);
             _ = await _repository.CreateAsync(Ev(device, 9, "newest"), CancellationToken.None);
 
-            var first = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage first = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None);
-            var second = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage second = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal("newest", first.Items[0].EventType);
@@ -173,7 +174,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 _ = await _repository.CreateAsync(Ev(device, minute, $"evt-{minute}"), CancellationToken.None);
             }
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, null, skip: 5, take: 3, CancellationToken.None);
 
             Assert.Equal(7, page.TotalCount);
@@ -186,7 +187,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [InlineData(501)]
         public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_TakeOutOfRange_ThrowsArgumentOutOfRange(int take)
         {
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
                     new[] { Guid.NewGuid() }, Start, Start.AddHours(1), null, null, skip: 0, take: take, CancellationToken.None));
         }
@@ -195,7 +196,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_NegativeSkip_ThrowsArgumentOutOfRange()
         {
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
                     new[] { Guid.NewGuid() }, Start, Start.AddHours(1), null, null, skip: -1, take: 10, CancellationToken.None));
         }
@@ -204,12 +205,12 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task EventRepository_ListPageByDevicesAndDateRangeAsync_DeviceCountOutOfRange_ThrowsArgumentOutOfRange()
         {
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
                     Array.Empty<Guid>(), Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None));
 
             Guid[] tooMany = Enumerable.Range(0, 65).Select(_ => Guid.NewGuid()).ToArray();
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.ListPageByDevicesAndDateRangeAsync(
                     tooMany, Start, Start.AddHours(1), null, null, skip: 0, take: 10, CancellationToken.None));
         }
@@ -233,9 +234,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 _ = await db.SaveChangesAsync();
             }
 
-            var motionPage = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage motionPage = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, new[] { "motion" }, skip: 0, take: 10, CancellationToken.None);
-            var humanPage = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage humanPage = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, new[] { "human" }, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(plainMotion.Id, Assert.Single(motionPage.Items).Id);
@@ -257,7 +258,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 _ = await db.SaveChangesAsync();
             }
 
-            var page = await _repository.ListPageByDevicesAndDateRangeAsync(
+            EventPage page = await _repository.ListPageByDevicesAndDateRangeAsync(
                 new[] { device }, Start, Start.AddHours(1), null, new[] { "vehicle" }, skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(1, page.TotalCount);

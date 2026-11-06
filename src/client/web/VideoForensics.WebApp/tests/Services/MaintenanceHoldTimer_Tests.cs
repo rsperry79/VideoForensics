@@ -13,7 +13,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
 
             Guid? token = timer.TryStart(() => { });
 
-            Assert.NotNull(token);
+            _ = Assert.NotNull(token);
             Assert.NotEqual(Guid.Empty, token.Value);
         }
 
@@ -50,7 +50,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
 
             Assert.True(ended);
             Assert.True(released);
-            Assert.NotNull(timer.TryStart(() => { }));
+            _ = Assert.NotNull(timer.TryStart(() => { }));
         }
 
         [Fact]
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = timer.TryStart(() =>
             {
                 calls++;
-                expired.TrySetResult();
+                _ = expired.TrySetResult();
             });
 
             await expired.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -171,7 +171,10 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             public DateTimeOffset Now { get; set; } = start;
 
-            public override DateTimeOffset GetUtcNow() => Now;
+            public override DateTimeOffset GetUtcNow()
+            {
+                return Now;
+            }
         }
     }
 }

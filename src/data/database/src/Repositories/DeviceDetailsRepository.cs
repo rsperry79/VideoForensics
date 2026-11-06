@@ -229,7 +229,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             List<RingDeviceFeatureState> stored = await db.RingDeviceFeatureStates.Where(s => s.DeviceId == deviceId).ToListAsync(ct);
-            List<Guid> storedIds = stored.Select(s => s.Id).ToList();
+            var storedIds = stored.Select(s => s.Id).ToList();
             db.RingDeviceFeatureReasons.RemoveRange(await db.RingDeviceFeatureReasons.Where(r => storedIds.Contains(r.FeatureStateId)).ToListAsync(ct));
             db.RingDeviceFeatureStates.RemoveRange(stored);
             // EF orders the deletes ahead of the inserts, so re-adding a replaced (DeviceId, FeatureKey) does not hit the unique index.
@@ -501,6 +501,7 @@ namespace VideoForensics.Data.Database.Repositories
                 row.UpdatedAtUtc = DateTime.UtcNow;
                 _ = db.RingDeviceVodSettings.Add(row);
             }
+
             if (g.MotionSnoozeProfiles != null)
             {
                 db.RingDeviceMotionSnoozeProfiles.RemoveRange(await db.RingDeviceMotionSnoozeProfiles.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
@@ -511,6 +512,7 @@ namespace VideoForensics.Data.Database.Repositories
                     _ = db.RingDeviceMotionSnoozeProfiles.Add(row);
                 }
             }
+
             if (g.CvThresholdVersions != null)
             {
                 db.RingDeviceCvThresholdOverrideVersions.RemoveRange(await db.RingDeviceCvThresholdOverrideVersions.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
@@ -521,6 +523,7 @@ namespace VideoForensics.Data.Database.Repositories
                     _ = db.RingDeviceCvThresholdOverrideVersions.Add(row);
                 }
             }
+
             if (g.CvThresholdValues != null)
             {
                 db.RingDeviceCvThresholdOverrideValues.RemoveRange(await db.RingDeviceCvThresholdOverrideValues.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
@@ -640,6 +643,7 @@ namespace VideoForensics.Data.Database.Repositories
                     ToMap(storedLive, p => PositionKey(p.Position), p => p.Preset),
                     ToMap(settings.LiveViewPresets, p => PositionKey(p.Position), p => p.Preset));
             }
+
             if (settings.AdvancedMotionZones != null)
             {
                 AddWholeItemChanges(changes, deviceId, changedAtUtc, "AdvancedMotionZone",

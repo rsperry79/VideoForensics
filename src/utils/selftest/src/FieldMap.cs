@@ -71,7 +71,7 @@ namespace VideoForensics.Utils.SelfTest
         public static FieldMap Parse(string json)
         {
             var map = new FieldMap();
-            using JsonDocument doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.ValueKind != JsonValueKind.Object)
             {
                 throw new FormatException("The field map must be a JSON object.");
@@ -194,12 +194,9 @@ namespace VideoForensics.Utils.SelfTest
                 segment = StripMarker(segment);
             }
 
-            if (!text.Contains('*', StringComparison.Ordinal))
-            {
-                return string.Equals(text, segment, StringComparison.Ordinal);
-            }
-
-            return stripMarkers ? Regex.IsMatch(segment, WildcardToRegex(text)) : pattern.Regexes[index]!.IsMatch(segment);
+            return !text.Contains('*', StringComparison.Ordinal)
+                ? string.Equals(text, segment, StringComparison.Ordinal)
+                : stripMarkers ? Regex.IsMatch(segment, WildcardToRegex(text)) : pattern.Regexes[index]!.IsMatch(segment);
         }
 
         private static bool Matches(Pattern pattern, string[] segments)

@@ -7,7 +7,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Tests that RingDeviceIdentityResolver stores the device's real kind and online state,
@@ -77,7 +77,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
+                .ReturnsAsync(new Data.Common.Entities.Location
                 {
                     Id = Guid.NewGuid(),
                     ProviderLocationId = "loc-1",
@@ -86,7 +86,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                .ReturnsAsync(new Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),

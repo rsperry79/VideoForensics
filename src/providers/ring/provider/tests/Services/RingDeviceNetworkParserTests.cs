@@ -5,7 +5,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Typed parsing of the cv_paid_features, other_paid_features and network_settings groups of a device settings object.</summary>
     public class RingDeviceNetworkParserTests

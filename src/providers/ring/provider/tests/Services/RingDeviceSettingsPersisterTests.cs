@@ -14,7 +14,7 @@ using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetai
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     public class RingDeviceSettingsPersisterTests
     {

@@ -2,8 +2,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Client.Hosting.ServerDiscovery;
 
-using Xunit;
-
 namespace VideoForensics.Client.Hosting.Tests.ServerDiscovery
 {
     public class ServerLocationResolverLoopbackTests
@@ -70,12 +68,7 @@ namespace VideoForensics.Client.Hosting.Tests.ServerDiscovery
             public Task<bool> IsServerRunningAsync(Uri baseUri, CancellationToken ct)
             {
                 Calls++;
-                if (_throwOnProbe)
-                {
-                    throw new InvalidOperationException("probe failed");
-                }
-
-                return Task.FromResult(_running);
+                return _throwOnProbe ? throw new InvalidOperationException("probe failed") : Task.FromResult(_running);
             }
         }
 
@@ -88,7 +81,10 @@ namespace VideoForensics.Client.Hosting.Tests.ServerDiscovery
                 _cached = cached;
             }
 
-            public string? GetCachedInternetServerUrl() => _cached;
+            public string? GetCachedInternetServerUrl()
+            {
+                return _cached;
+            }
 
             public void SetCachedInternetServerUrl(string url)
             {

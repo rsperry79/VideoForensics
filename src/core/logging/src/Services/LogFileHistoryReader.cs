@@ -112,7 +112,7 @@ namespace VideoForensics.Core.Logging.Services
             record = default;
             try
             {
-                using JsonDocument doc = JsonDocument.Parse(line);
+                using var doc = JsonDocument.Parse(line);
                 JsonElement root = doc.RootElement;
                 if (!root.TryGetProperty("Timestamp", out JsonElement ts)
                     || !DateTimeOffset.TryParse(ts.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset timestamp)
@@ -140,14 +140,9 @@ namespace VideoForensics.Core.Logging.Services
 
         private static bool PassesFilters(LogRecord record, string? minLevel, string? search)
         {
-            if (!string.IsNullOrEmpty(minLevel) && Priority(record.Level) < Priority(minLevel))
-            {
-                return false;
-            }
-
-            return string.IsNullOrEmpty(search)
+            return (string.IsNullOrEmpty(minLevel) || Priority(record.Level) >= Priority(minLevel)) && (string.IsNullOrEmpty(search)
                 || record.Message.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || record.Category.Contains(search, StringComparison.OrdinalIgnoreCase);
+                || record.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
 
         // Same ordering as InMemoryLogBuffer: unknown levels count as Information.

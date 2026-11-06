@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Maintenance;
-using VideoForensics.Client.Hosting.Services;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -428,6 +428,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     {
                         await budgetGuard.RecordCallAsync(providerName, ct);
                     }
+
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
                     // Same rule as the manual sync: the pull reports failures by recording them on the account.

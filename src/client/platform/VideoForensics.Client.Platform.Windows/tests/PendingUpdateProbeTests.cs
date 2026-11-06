@@ -4,7 +4,10 @@ namespace VideoForensics.Client.Platform.Windows.Tests
 {
     public class PendingUpdateProbeTests
     {
-        private static string NewRoot() => Path.Combine(Path.GetTempPath(), "vf-pending-tests", Guid.NewGuid().ToString("N"));
+        private static string NewRoot()
+        {
+            return Path.Combine(Path.GetTempPath(), "vf-pending-tests", Guid.NewGuid().ToString("N"));
+        }
 
         private static void Package(string root, string folder)
         {

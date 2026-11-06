@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.WebApp.Services;
 

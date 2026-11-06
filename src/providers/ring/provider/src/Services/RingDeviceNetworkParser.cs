@@ -218,22 +218,38 @@ namespace VideoForensics.Providers.Ring.Services
         {
             switch (key)
             {
-                case "baby_cry": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidBabyCry = r; return ok; }
-                case "car_alarm": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidCarAlarm = r; return ok; }
-                case "co2_smoke_alarm": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidCo2SmokeAlarm = r; return ok; }
-                case "dog_bark": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidDogBark = r; return ok; }
-                case "general_sound": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidGeneralSound = r; return ok; }
-                case "glass_break": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidGlassBreak = r; return ok; }
-                case "human": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidHuman = r; return ok; }
-                case "loitering": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidLoitering = r; return ok; }
-                case "motion": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidMotion = r; return ok; }
-                case "other_motion": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidOtherMotion = r; return ok; }
-                case "package_delivery": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidPackageDelivery = r; return ok; }
-                case "package_pickup": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidPackagePickup = r; return ok; }
-                case "cv_triggers": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidCvTriggers = r; return ok; }
-                case "vehicle": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidVehicle = r; return ok; }
-                case "animal": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidAnimal = r; return ok; }
-                default: return false;
+                case "baby_cry":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidBabyCry = r; return ok; }
+                case "car_alarm":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidCarAlarm = r; return ok; }
+                case "co2_smoke_alarm":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidCo2SmokeAlarm = r; return ok; }
+                case "dog_bark":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidDogBark = r; return ok; }
+                case "general_sound":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidGeneralSound = r; return ok; }
+                case "glass_break":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidGlassBreak = r; return ok; }
+                case "human":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidHuman = r; return ok; }
+                case "loitering":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidLoitering = r; return ok; }
+                case "motion":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidMotion = r; return ok; }
+                case "other_motion":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidOtherMotion = r; return ok; }
+                case "package_delivery":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidPackageDelivery = r; return ok; }
+                case "package_pickup":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidPackagePickup = r; return ok; }
+                case "cv_triggers":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidCvTriggers = r; return ok; }
+                case "vehicle":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidVehicle = r; return ok; }
+                case "animal":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.CvPaidAnimal = r; return ok; }
+                default:
+                    return false;
             }
         }
 
@@ -242,23 +258,40 @@ namespace VideoForensics.Providers.Ring.Services
         {
             switch (key)
             {
-                case "alexa_concierge": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidAlexaConcierge = r; return ok; }
-                case "sheila_cv": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSheilaCv = r; return ok; }
-                case "sheila_recording": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSheilaRecording = r; return ok; }
-                case "critical_alerts": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidCriticalAlerts = r; return ok; }
-                case "system_level_pip": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSystemLevelPip = r; return ok; }
-                case "extended_live_view": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidExtendedLiveView = r; return ok; }
-                case "snapshot_capture_plus": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSnapshotCapturePlus = r; return ok; }
-                case "live_speak": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidLiveSpeak = r; return ok; }
-                case "closed_caption": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidClosedCaption = r; return ok; }
-                case "daily_digest": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidDailyDigest = r; return ok; }
-                case "ding_call": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidDingCall = r; return ok; }
-                case "natural_language_search": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidNaturalLanguageSearch = r; return ok; }
-                case "multicam_live_view": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidMulticamLiveView = r; return ok; }
-                case "package_protection": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidPackageProtection = r; return ok; }
-                case "alarm_triggered_recording": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidAlarmTriggeredRecording = r; return ok; }
-                case "recording_24x7": { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidRecording24x7 = r; return ok; }
-                default: return false;
+                case "alexa_concierge":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidAlexaConcierge = r; return ok; }
+                case "sheila_cv":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSheilaCv = r; return ok; }
+                case "sheila_recording":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSheilaRecording = r; return ok; }
+                case "critical_alerts":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidCriticalAlerts = r; return ok; }
+                case "system_level_pip":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSystemLevelPip = r; return ok; }
+                case "extended_live_view":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidExtendedLiveView = r; return ok; }
+                case "snapshot_capture_plus":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidSnapshotCapturePlus = r; return ok; }
+                case "live_speak":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidLiveSpeak = r; return ok; }
+                case "closed_caption":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidClosedCaption = r; return ok; }
+                case "daily_digest":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidDailyDigest = r; return ok; }
+                case "ding_call":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidDingCall = r; return ok; }
+                case "natural_language_search":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidNaturalLanguageSearch = r; return ok; }
+                case "multicam_live_view":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidMulticamLiveView = r; return ok; }
+                case "package_protection":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidPackageProtection = r; return ok; }
+                case "alarm_triggered_recording":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidAlarmTriggeredRecording = r; return ok; }
+                case "recording_24x7":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); p.OtherPaidRecording24x7 = r; return ok; }
+                default:
+                    return false;
             }
         }
 
@@ -267,13 +300,20 @@ namespace VideoForensics.Providers.Ring.Services
         {
             switch (key)
             {
-                case "mac_address_ble": { bool ok = RingJsonValue.TryText(v, out string? r); n.MacAddressBle = r; return ok; }
-                case "mac_address_wifi_24": { bool ok = RingJsonValue.TryText(v, out string? r); n.MacAddressWifi24 = r; return ok; }
-                case "mac_address_wifi_5": { bool ok = RingJsonValue.TryText(v, out string? r); n.MacAddressWifi5 = r; return ok; }
-                case "max_dynamic_listen_interval": { bool ok = RingJsonValue.TryText(v, out string? r); n.MaxDynamicListenInterval = r; return ok; }
-                case "multi_net_pref": { bool ok = RingJsonValue.TryInt(v, out int? r); n.MultiNetPref = r; return ok; }
-                case "data_restriction_enabled": { bool ok = RingJsonValue.TryBool(v, out bool? r); n.DataRestrictionEnabled = r; return ok; }
-                default: return false;
+                case "mac_address_ble":
+                { bool ok = RingJsonValue.TryText(v, out string? r); n.MacAddressBle = r; return ok; }
+                case "mac_address_wifi_24":
+                { bool ok = RingJsonValue.TryText(v, out string? r); n.MacAddressWifi24 = r; return ok; }
+                case "mac_address_wifi_5":
+                { bool ok = RingJsonValue.TryText(v, out string? r); n.MacAddressWifi5 = r; return ok; }
+                case "max_dynamic_listen_interval":
+                { bool ok = RingJsonValue.TryText(v, out string? r); n.MaxDynamicListenInterval = r; return ok; }
+                case "multi_net_pref":
+                { bool ok = RingJsonValue.TryInt(v, out int? r); n.MultiNetPref = r; return ok; }
+                case "data_restriction_enabled":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); n.DataRestrictionEnabled = r; return ok; }
+                default:
+                    return false;
             }
         }
 
@@ -282,17 +322,28 @@ namespace VideoForensics.Providers.Ring.Services
         {
             switch (key)
             {
-                case "channel_analysis": { bool ok = RingJsonValue.TryBool(v, out bool? r); d.ChannelAnalysis = r; return ok; }
-                case "periodic_diagnosis": { bool ok = RingJsonValue.TryBool(v, out bool? r); d.PeriodicDiagnosis = r; return ok; }
-                case "lan_performance": { bool ok = RingJsonValue.TryBool(v, out bool? r); d.LanPerformance = r; return ok; }
-                case "tcp_iperf": { bool ok = RingJsonValue.TryBool(v, out bool? r); d.TcpIperf = r; return ok; }
-                case "udp_iperf": { bool ok = RingJsonValue.TryBool(v, out bool? r); d.UdpIperf = r; return ok; }
-                case "tcp_host": { bool ok = RingJsonValue.TryText(v, out string? r); d.TcpHost = r; return ok; }
-                case "udp_host": { bool ok = RingJsonValue.TryText(v, out string? r); d.UdpHost = r; return ok; }
-                case "tcp_port": { bool ok = RingJsonValue.TryInt(v, out int? r); d.TcpPort = r; return ok; }
-                case "udp_port": { bool ok = RingJsonValue.TryInt(v, out int? r); d.UdpPort = r; return ok; }
-                case "udp_bandwidth": { bool ok = RingJsonValue.TryLong(v, out long? r); d.UdpBandwidth = r; return ok; }
-                default: return false;
+                case "channel_analysis":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); d.ChannelAnalysis = r; return ok; }
+                case "periodic_diagnosis":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); d.PeriodicDiagnosis = r; return ok; }
+                case "lan_performance":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); d.LanPerformance = r; return ok; }
+                case "tcp_iperf":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); d.TcpIperf = r; return ok; }
+                case "udp_iperf":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); d.UdpIperf = r; return ok; }
+                case "tcp_host":
+                { bool ok = RingJsonValue.TryText(v, out string? r); d.TcpHost = r; return ok; }
+                case "udp_host":
+                { bool ok = RingJsonValue.TryText(v, out string? r); d.UdpHost = r; return ok; }
+                case "tcp_port":
+                { bool ok = RingJsonValue.TryInt(v, out int? r); d.TcpPort = r; return ok; }
+                case "udp_port":
+                { bool ok = RingJsonValue.TryInt(v, out int? r); d.UdpPort = r; return ok; }
+                case "udp_bandwidth":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); d.UdpBandwidth = r; return ok; }
+                default:
+                    return false;
             }
         }
     }

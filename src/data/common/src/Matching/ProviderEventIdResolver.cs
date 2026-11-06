@@ -1,7 +1,7 @@
 using System.Globalization;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Common.Matching
 {
@@ -42,12 +42,9 @@ namespace VideoForensics.Data.Common.Matching
         {
             ArgumentNullException.ThrowIfNull(links);
 
-            if (device is null || !long.TryParse(device.ProviderDeviceId, NumberStyles.None, CultureInfo.InvariantCulture, out long doorbotId))
-            {
-                return Array.Empty<string>();
-            }
-
-            return await links.GetCandidateDingIdsAsync(doorbotId, ct);
+            return device is null || !long.TryParse(device.ProviderDeviceId, NumberStyles.None, CultureInfo.InvariantCulture, out long doorbotId)
+                ? Array.Empty<string>()
+                : await links.GetCandidateDingIdsAsync(doorbotId, ct);
         }
     }
 }

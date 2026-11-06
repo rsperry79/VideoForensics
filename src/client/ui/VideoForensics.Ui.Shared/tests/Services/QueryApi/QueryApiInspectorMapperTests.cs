@@ -1,7 +1,7 @@
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

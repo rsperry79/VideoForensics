@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services
 {

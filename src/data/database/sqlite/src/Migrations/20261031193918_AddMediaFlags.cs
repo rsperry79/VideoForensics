@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "MediaFlags",
                 columns: table => new
                 {
@@ -32,9 +31,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_MediaFlags", x => x.Id);
-                    table.CheckConstraint("CK_MediaFlags_Window", "\"WindowEndUtc\" >= \"WindowStartUtc\"");
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_MediaFlags", x => x.Id);
+                    _ = table.CheckConstraint("CK_MediaFlags_Window", "\"WindowEndUtc\" >= \"WindowStartUtc\"");
+                    _ = table.ForeignKey(
                         name: "FK_MediaFlags_MediaItems_MediaItemId",
                         column: x => x.MediaItemId,
                         principalTable: "MediaItems",
@@ -42,18 +41,18 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.SetNull);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_MediaFlags_Status_DeviceId_RaisedAtUtc",
                 table: "MediaFlags",
                 columns: new[] { "Status", "DeviceId", "RaisedAtUtc" });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "UX_MediaFlags_DeviceId_FlagType_WindowStartUtc",
                 table: "MediaFlags",
                 columns: new[] { "DeviceId", "FlagType", "WindowStartUtc" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "UX_MediaFlags_MediaItemId_FlagType",
                 table: "MediaFlags",
                 columns: new[] { "MediaItemId", "FlagType" },
@@ -63,7 +62,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "MediaFlags");
         }
     }

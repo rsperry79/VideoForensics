@@ -7,12 +7,12 @@ using System.Net.ServerSentEvents;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {

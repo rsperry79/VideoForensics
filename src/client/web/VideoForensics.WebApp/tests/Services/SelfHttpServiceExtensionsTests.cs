@@ -4,9 +4,9 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 

@@ -87,18 +87,15 @@ namespace VideoForensics.Core.Providers.Core
             double? frameRate = null)
         {
             MediaBitrateAnalysis? analysis = FromProbeBitrate(duration, videoStreamBitrate, fileSizeBytes);
-            if (analysis is null)
-            {
-                return null;
-            }
-
-            return analysis with
-            {
-                VideoCodec = videoCodec,
-                AudioCodec = audioCodec,
-                Resolution = width is > 0 && height is > 0 ? $"{width}x{height}" : null,
-                FrameRate = frameRate is > 0 ? Math.Round((decimal)frameRate.Value, 2) : null
-            };
+            return analysis is null
+                ? null
+                : (analysis with
+                {
+                    VideoCodec = videoCodec,
+                    AudioCodec = audioCodec,
+                    Resolution = width is > 0 && height is > 0 ? $"{width}x{height}" : null,
+                    FrameRate = frameRate is > 0 ? Math.Round((decimal)frameRate.Value, 2) : null
+                });
         }
 
         private static MediaBitrateAnalysis? FromProbeBitrate(TimeSpan duration, long? videoStreamBitrate, long fileSizeBytes)
@@ -109,17 +106,11 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             double seconds = duration.TotalSeconds;
-            if (videoStreamBitrate is > 0)
-            {
-                return new MediaBitrateAnalysis(videoStreamBitrate.Value, seconds, BitrateEstimated: false);
-            }
-
-            if (fileSizeBytes <= 0)
-            {
-                return null;
-            }
-
-            return new MediaBitrateAnalysis((long)Math.Round(fileSizeBytes * 8.0 / seconds), seconds, BitrateEstimated: true);
+            return videoStreamBitrate is > 0
+                ? new MediaBitrateAnalysis(videoStreamBitrate.Value, seconds, BitrateEstimated: false)
+                : fileSizeBytes <= 0
+                ? null
+                : new MediaBitrateAnalysis((long)Math.Round(fileSizeBytes * 8.0 / seconds), seconds, BitrateEstimated: true);
         }
 
         /// <summary>ffprobe writes numbers as strings, so accept either form.</summary>

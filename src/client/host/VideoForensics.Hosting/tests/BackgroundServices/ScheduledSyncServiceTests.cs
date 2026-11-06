@@ -468,7 +468,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            Assert.Single(windows);
+            _ = Assert.Single(windows);
             Assert.Equal(last.AddMinutes(-10), windows[0].Start);
             h.Media["Ring"].Verify(Harness.Pulled(account.Id, last.AddMinutes(-10)), Times.Once);
             h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);

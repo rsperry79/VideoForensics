@@ -7,7 +7,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>Enforces cache freshness logic: staleness detection, TTL tracking.</summary>
     public class CacheFreshnessServiceTests

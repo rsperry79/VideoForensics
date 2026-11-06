@@ -1,6 +1,5 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests
@@ -13,7 +12,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var log = new Mock<ISyncActivityLog>();
             _ = log.Setup(l => l.Drain()).Returns(["sync started", "discovered 3 devices"]);
 
-            DownloadProgressDto dto = log.Object.ToDownloadProgressDto();
+            var dto = log.Object.ToDownloadProgressDto();
 
             Assert.Equal(new[] { "sync started", "discovered 3 devices" }, dto.Activity);
             Assert.Equal(new DownloadStatusDto(false, 0, 0, 0L, null, 0, 0, 0L, 0, 0.0), dto.Progress);
@@ -59,7 +58,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var store = new SyncProgressStore();
             store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 2, 4, "Garage"));
 
-            DownloadProgressDto dto = log.Object.ToDownloadProgressDto(store);
+            var dto = log.Object.ToDownloadProgressDto(store);
 
             Assert.Equal(new DownloadStatusDto(true, 3, 5, 2048L, "a.mp4", 0, 0, 0L, 2, 0.0), dto.Progress);
             Assert.Equal(2, dto.CurrentDeviceIndex);

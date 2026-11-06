@@ -11,7 +11,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Feeds the sanitized captures through the persister into a mocked writer, and checks the mapped graph that

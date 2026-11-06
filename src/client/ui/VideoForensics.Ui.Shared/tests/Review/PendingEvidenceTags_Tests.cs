@@ -1,12 +1,15 @@
-using Moq;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Moq;
+
+using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The in-memory pending evidence tags: add and remove, change notices, concurrency, and attaching to an open case.</summary>
 public class PendingEvidenceTags_Tests
@@ -48,7 +51,7 @@ public class PendingEvidenceTags_Tests
     {
         // Arrange
         PendingEvidenceTags tags = CreateTags();
-        Guid targetId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
         _ = tags.Add(CreateTag(targetId));
 
         // Act
@@ -64,7 +67,7 @@ public class PendingEvidenceTags_Tests
     {
         // Arrange
         PendingEvidenceTags tags = CreateTags();
-        Guid targetId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
         _ = tags.Add(CreateTag(targetId, CaseItemKind.Media));
 
         // Act
@@ -128,7 +131,7 @@ public class PendingEvidenceTags_Tests
         PendingEvidenceTags tags = CreateTags();
         int changes = 0;
         tags.OnChange += () => changes++;
-        Guid targetId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
 
         // Act and Assert
         _ = tags.Add(CreateTag(targetId));
@@ -152,7 +155,7 @@ public class PendingEvidenceTags_Tests
         const int count = 500;
 
         // Act
-        await Task.WhenAll(Enumerable.Range(0, count).Select(_ => Task.Run(() => tags.Add(CreateTag()))));
+        _ = await Task.WhenAll(Enumerable.Range(0, count).Select(_ => Task.Run(() => tags.Add(CreateTag()))));
 
         // Assert
         Assert.Equal(count, tags.Count);
@@ -164,7 +167,7 @@ public class PendingEvidenceTags_Tests
         // Arrange
         PendingEvidenceTags tags = CreateTags();
         _ = tags.Add(CreateTag());
-        var caseState = PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(PendingTagFakes.CreateOpenCase()));
+        CaseState caseState = PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(PendingTagFakes.CreateOpenCase()));
 
         // Act
         AttachResult result = await tags.AttachToActiveCaseAsync(caseState, CancellationToken.None);
@@ -187,8 +190,8 @@ public class PendingEvidenceTags_Tests
         _ = tags.Add(third);
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
         var pinned = new List<Guid>();
-        var repository = PendingTagFakes.CreateRepository(openCase, pinnedTargets: pinned);
-        var caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, pinnedTargets: pinned);
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
 
         // Act
         AttachResult result = await tags.AttachToActiveCaseAsync(caseState, CancellationToken.None);
@@ -212,8 +215,8 @@ public class PendingEvidenceTags_Tests
         _ = tags.Add(refused);
         _ = tags.Add(alsoOk);
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var repository = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { refused.TargetId });
-        var caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { refused.TargetId });
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
 
         // Act
         AttachResult result = await tags.AttachToActiveCaseAsync(caseState, CancellationToken.None);
@@ -242,8 +245,8 @@ public class PendingEvidenceTags_Tests
             Reason = "earlier",
             AddedBy = "actor-0",
         };
-        var repository = PendingTagFakes.CreateRepository(openCase, existingItems: [existing]);
-        var caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, existingItems: [existing]);
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
 
         // Act
         AttachResult result = await tags.AttachToActiveCaseAsync(caseState, CancellationToken.None);
@@ -264,7 +267,7 @@ public class PendingEvidenceTags_Tests
         _ = tags.Add(CreateTag());
         _ = tags.Add(CreateTag());
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var caseState = await PendingTagFakes.ActivateAsync(PendingTagFakes.CreateRepository(openCase), openCase);
+        CaseState caseState = await PendingTagFakes.ActivateAsync(PendingTagFakes.CreateRepository(openCase), openCase);
         int changes = 0;
         var announced = new List<AttachResult>();
         tags.OnChange += () => changes++;
@@ -278,7 +281,7 @@ public class PendingEvidenceTags_Tests
         AttachResult announcedResult = Assert.Single(announced);
         Assert.Equal(result, announcedResult);
         Assert.Same(announcedResult, tags.LastAttach);
-        Assert.NotNull(tags.LastAttach?.AtUtc);
+        _ = Assert.NotNull(tags.LastAttach?.AtUtc);
     }
 
     [Fact]
@@ -288,7 +291,7 @@ public class PendingEvidenceTags_Tests
         PendingEvidenceTags tags = CreateTags();
         _ = tags.Add(CreateTag());
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var unactivated = PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase));
+        CaseState unactivated = PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase));
 
         // Act and Assert
         _ = await tags.AttachToActiveCaseAsync(unactivated, CancellationToken.None);

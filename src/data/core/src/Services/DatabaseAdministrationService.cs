@@ -191,18 +191,15 @@ namespace VideoForensics.Data.Core.Services
         private async Task<ChainRepairRecord.Bridge?> BridgeFor(Guid failedEntryId, CancellationToken ct)
         {
             // Same order the verifier walks the chain, so the entry before the break is the last one it verified.
-            List<ActionLogEntry> ordered = (await _actionLog.ListAsync(ct))
+            var ordered = (await _actionLog.ListAsync(ct))
                 .OrderBy(e => e.TimestampUtc)
                 .ThenBy(e => e.Id)
                 .ToList();
 
             int index = ordered.FindIndex(e => e.Id == failedEntryId);
-            if (index <= 0)
-            {
-                return null;
-            }
-
-            return new ChainRepairRecord.Bridge(ordered[index - 1].EntryHash, ordered[index].PreviousEntryHash ?? string.Empty);
+            return index <= 0
+                ? null
+                : new ChainRepairRecord.Bridge(ordered[index - 1].EntryHash, ordered[index].PreviousEntryHash ?? string.Empty);
         }
     }
 }

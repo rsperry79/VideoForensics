@@ -1,6 +1,5 @@
 using Bogus;
 
-using VideoForensics.Core.Helpers.Forensics.Models;
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Testing.Fixtures

@@ -1,5 +1,3 @@
-using System.Runtime.Versioning;
-
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement

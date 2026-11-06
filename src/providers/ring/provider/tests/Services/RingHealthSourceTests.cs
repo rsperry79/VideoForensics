@@ -8,7 +8,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Tests for RingHealthSource implementation.
@@ -576,7 +576,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var accountId2 = Guid.NewGuid();
 
             // Account 1 account object
-            var account1 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            var account1 = new Data.Common.Entities.ProviderAccount
             {
                 Id = accountId1,
                 ProviderName = "Ring",
@@ -584,7 +584,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             // Account 2 account object
-            var account2 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            var account2 = new Data.Common.Entities.ProviderAccount
             {
                 Id = accountId2,
                 ProviderName = "Ring",
@@ -622,14 +622,14 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(session2.Object);
 
-            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account1, account2]);
 
             ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
 
             // Create the health source with the optional parameters
-            var authServiceMock = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
+            var authServiceMock = new Mock<IProviderAuthService>();
             var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authServiceMock.Object);
 
             // Act
@@ -647,7 +647,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange - one account, first GetSession returns null, AuthService restores it
             var accountId = Guid.NewGuid();
-            var account = new VideoForensics.Data.Common.Entities.ProviderAccount
+            var account = new Data.Common.Entities.ProviderAccount
             {
                 Id = accountId,
                 ProviderName = "Ring",
@@ -677,11 +677,11 @@ namespace VideoForensics.Providers.Ring.Tests
                     return callCount == 1 ? null : session.Object;
                 });
 
-            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account]);
 
-            var authService = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
+            var authService = new Mock<IProviderAuthService>();
             _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
@@ -703,7 +703,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange - one account, GetSession returns null, RestoreFromSavedCredentialsAsync returns false
             var accountId = Guid.NewGuid();
-            var account = new VideoForensics.Data.Common.Entities.ProviderAccount
+            var account = new Data.Common.Entities.ProviderAccount
             {
                 Id = accountId,
                 ProviderName = "Ring",
@@ -713,11 +713,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
 
-            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account]);
 
-            var authService = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
+            var authService = new Mock<IProviderAuthService>();
             _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false); // Restore failed
 
@@ -739,14 +739,14 @@ namespace VideoForensics.Providers.Ring.Tests
             var accountId1 = Guid.NewGuid();
             var accountId2 = Guid.NewGuid();
 
-            var account1 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            var account1 = new Data.Common.Entities.ProviderAccount
             {
                 Id = accountId1,
                 ProviderName = "Ring",
                 LastSuccessfulAuthUtc = DateTime.UtcNow.AddHours(-1)
             };
 
-            var account2 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            var account2 = new Data.Common.Entities.ProviderAccount
             {
                 Id = accountId2,
                 ProviderName = "Ring",
@@ -772,12 +772,12 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(session2.Object);
 
-            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account1, account2]);
 
             ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
-            var authServiceMock = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
+            var authServiceMock = new Mock<IProviderAuthService>();
             var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authServiceMock.Object);
 
             // Act

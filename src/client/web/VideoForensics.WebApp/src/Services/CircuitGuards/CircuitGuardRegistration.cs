@@ -5,7 +5,6 @@ using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Client.WebApp.Services.CircuitGuards;
 
 namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {

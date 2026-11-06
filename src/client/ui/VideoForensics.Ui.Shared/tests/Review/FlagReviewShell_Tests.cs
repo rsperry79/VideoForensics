@@ -1,6 +1,5 @@
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
@@ -23,9 +22,9 @@ public class FlagReviewShell_Tests : BunitContext
         {
             if (withEveryRegion)
             {
-                _ = p.Add(c => c.Breadcrumb, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"crumb\">crumb</span>")))
-                    .Add(c => c.Media, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"media\">media</span>")))
-                    .Add(c => c.Timeline, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"timeline\">timeline</span>")));
+                _ = p.Add(c => c.Breadcrumb, b => b.AddMarkupContent(0, "<span id=\"crumb\">crumb</span>"))
+                    .Add(c => c.Media, b => b.AddMarkupContent(0, "<span id=\"media\">media</span>"))
+                    .Add(c => c.Timeline, b => b.AddMarkupContent(0, "<span id=\"timeline\">timeline</span>"));
             }
         });
     }
@@ -68,8 +67,8 @@ public class FlagReviewShell_Tests : BunitContext
     public void Render_WithoutNavigator_StillRendersTheOtherRegions()
     {
         IRenderedComponent<FlagReviewShell> cut = Render<FlagReviewShell>(p => p
-            .Add(c => c.Media, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"media\">media</span>")))
-            .Add(c => c.Timeline, (RenderFragment)(b => b.AddMarkupContent(0, "<span id=\"timeline\">timeline</span>"))));
+            .Add(c => c.Media, b => b.AddMarkupContent(0, "<span id=\"media\">media</span>"))
+            .Add(c => c.Timeline, b => b.AddMarkupContent(0, "<span id=\"timeline\">timeline</span>")));
 
         Assert.NotEmpty(cut.FindAll("#media"));
         Assert.NotEmpty(cut.FindAll("#timeline"));

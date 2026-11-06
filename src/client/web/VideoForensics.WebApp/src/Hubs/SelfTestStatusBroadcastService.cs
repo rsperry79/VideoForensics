@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {

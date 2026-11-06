@@ -19,7 +19,10 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
                 _value = value;
             }
 
-            public string? GetOverride(StorageCategory category) => _value;
+            public string? GetOverride(StorageCategory category)
+            {
+                return _value;
+            }
         }
 
         /// <summary>Verifies that a non-empty override from the source is returned as the category root.</summary>

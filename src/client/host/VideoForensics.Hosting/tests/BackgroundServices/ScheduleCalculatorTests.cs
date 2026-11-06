@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 {

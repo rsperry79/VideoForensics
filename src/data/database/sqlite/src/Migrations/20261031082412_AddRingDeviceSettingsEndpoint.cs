@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceAdvancedMotionSettings",
                 columns: table => new
                 {
@@ -75,8 +74,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceAdvancedMotionSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceAdvancedMotionSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceAdvancedMotionSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -84,7 +83,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceBackendSettings",
                 columns: table => new
                 {
@@ -146,8 +145,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceBackendSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceBackendSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceBackendSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -155,7 +154,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceClientDeviceSettings",
                 columns: table => new
                 {
@@ -184,8 +183,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceClientDeviceSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceClientDeviceSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceClientDeviceSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -193,7 +192,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceCvSettings",
                 columns: table => new
                 {
@@ -204,8 +203,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceCvSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceCvSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceCvSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -213,7 +212,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceCvThresholdOverrideValues",
                 columns: table => new
                 {
@@ -225,8 +224,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceCvThresholdOverrideValues", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceCvThresholdOverrideValues", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceCvThresholdOverrideValues_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -234,7 +233,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceCvThresholdOverrideVersions",
                 columns: table => new
                 {
@@ -245,8 +244,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceCvThresholdOverrideVersions", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceCvThresholdOverrideVersions", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceCvThresholdOverrideVersions_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -254,7 +253,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceGeneralSettings",
                 columns: table => new
                 {
@@ -278,8 +277,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceGeneralSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceGeneralSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceGeneralSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -287,7 +286,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceMiscSettings",
                 columns: table => new
                 {
@@ -310,8 +309,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceMiscSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceMiscSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceMiscSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -319,7 +318,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceMotionSettings",
                 columns: table => new
                 {
@@ -352,8 +351,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceMotionSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceMotionSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceMotionSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -361,7 +360,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceMotionSnoozeProfiles",
                 columns: table => new
                 {
@@ -372,8 +371,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceMotionSnoozeProfiles", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceMotionSnoozeProfiles", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceMotionSnoozeProfiles_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -381,7 +380,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceSnapshotSettings",
                 columns: table => new
                 {
@@ -398,8 +397,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceSnapshotSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceSnapshotSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceSnapshotSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -407,7 +406,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceStreamSettings",
                 columns: table => new
                 {
@@ -421,8 +420,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceStreamSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceStreamSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceStreamSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -430,7 +429,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceVideoSettings",
                 columns: table => new
                 {
@@ -480,8 +479,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceVideoSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceVideoSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceVideoSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -489,7 +488,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceVodSettings",
                 columns: table => new
                 {
@@ -504,8 +503,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceVodSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceVodSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceVodSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -513,82 +512,82 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceAdvancedMotionSettings_DeviceId",
                 table: "RingDeviceAdvancedMotionSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceBackendSettings_DeviceId",
                 table: "RingDeviceBackendSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceClientDeviceSettings_DeviceId",
                 table: "RingDeviceClientDeviceSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceCvSettings_DeviceId",
                 table: "RingDeviceCvSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceCvThresholdOverrideValues_DeviceId",
                 table: "RingDeviceCvThresholdOverrideValues",
                 column: "DeviceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceCvThresholdOverrideVersions_DeviceId",
                 table: "RingDeviceCvThresholdOverrideVersions",
                 column: "DeviceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceGeneralSettings_DeviceId",
                 table: "RingDeviceGeneralSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceMiscSettings_DeviceId",
                 table: "RingDeviceMiscSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceMotionSettings_DeviceId",
                 table: "RingDeviceMotionSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceMotionSnoozeProfiles_DeviceId",
                 table: "RingDeviceMotionSnoozeProfiles",
                 column: "DeviceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceSnapshotSettings_DeviceId",
                 table: "RingDeviceSnapshotSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceStreamSettings_DeviceId",
                 table: "RingDeviceStreamSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceVideoSettings_DeviceId",
                 table: "RingDeviceVideoSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceVodSettings_DeviceId",
                 table: "RingDeviceVodSettings",
                 column: "DeviceId",
@@ -598,46 +597,46 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceAdvancedMotionSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceBackendSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceClientDeviceSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceCvSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceCvThresholdOverrideValues");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceCvThresholdOverrideVersions");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceGeneralSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceMiscSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceMotionSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceMotionSnoozeProfiles");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceSnapshotSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceStreamSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceVideoSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceVodSettings");
         }
     }

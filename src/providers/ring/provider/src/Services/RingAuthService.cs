@@ -620,13 +620,10 @@ namespace VideoForensics.Providers.Ring.Services
         /// </remarks>
         public ProviderAuthStatus? GetAuthStatusDetails()
         {
-            var token = _sessionProvider.GetSession()?.OAuthToken;
-            if (token is null)
-            {
-                return new ProviderAuthStatus(IsAuthenticated: false, TokenType: null, ExpiresAtUtc: null, Scope: null);
-            }
-
-            return new ProviderAuthStatus(
+            Entities.OAutToken? token = _sessionProvider.GetSession()?.OAuthToken;
+            return token is null
+                ? new ProviderAuthStatus(IsAuthenticated: false, TokenType: null, ExpiresAtUtc: null, Scope: null)
+                : new ProviderAuthStatus(
                 IsAuthenticated: true,
                 TokenType: token.TokenType,
                 ExpiresAtUtc: token.ExpiresAt.ToUniversalTime(),

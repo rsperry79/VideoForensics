@@ -41,5 +41,8 @@ public class TextColorTokens_Tests
         Assert.Empty(hits);
     }
 
-    private static string TestDirectory([CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
+    private static string TestDirectory([CallerFilePath] string path = "")
+    {
+        return Path.GetDirectoryName(path)!;
+    }
 }

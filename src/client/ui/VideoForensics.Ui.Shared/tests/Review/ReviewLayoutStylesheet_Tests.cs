@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>
 /// The review and viewer layout rules. The components have no browser test, so these read the scoped stylesheets and assert

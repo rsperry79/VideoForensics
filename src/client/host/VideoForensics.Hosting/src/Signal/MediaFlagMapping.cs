@@ -113,12 +113,9 @@ namespace VideoForensics.Client.Hosting.Signal
 
         private static T ParseEnum<T>(string value) where T : struct, Enum
         {
-            if (!Enum.TryParse(value, ignoreCase: false, out T parsed) || !Enum.IsDefined(parsed))
-            {
-                throw new ArgumentException($"Unknown {typeof(T).Name} value '{value}'.");
-            }
-
-            return parsed;
+            return !Enum.TryParse(value, ignoreCase: false, out T parsed) || !Enum.IsDefined(parsed)
+                ? throw new ArgumentException($"Unknown {typeof(T).Name} value '{value}'.")
+                : parsed;
         }
     }
 }

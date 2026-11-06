@@ -1,6 +1,6 @@
-using System.Net.Http.Json;
-
 using Moq;
+
+using System.Net.Http.Json;
 
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
@@ -20,7 +20,7 @@ public class InProcessFolderBrowserEndpoint_Tests
 
         HttpResponseMessage http = await endpoint.Client.PostAsJsonAsync(endpoint.Url, new FolderBrowseRequestDto("read", "/", null));
 
-        http.EnsureSuccessStatusCode();
+        _ = http.EnsureSuccessStatusCode();
         FolderBrowseResponseDto? body = await http.Content.ReadFromJsonAsync<FolderBrowseResponseDto>();
         Assert.NotNull(body);
         Assert.Equal("C:\\", Assert.Single(body!.Files).Name);
@@ -36,7 +36,7 @@ public class InProcessFolderBrowserEndpoint_Tests
 
         HttpResponseMessage http = await endpoint.Client.PostAsJsonAsync(endpoint.Url, new FolderBrowseRequestDto("read", "/C:/", null));
 
-        http.EnsureSuccessStatusCode();
+        _ = http.EnsureSuccessStatusCode();
         FolderBrowseResponseDto? body = await http.Content.ReadFromJsonAsync<FolderBrowseResponseDto>();
         Assert.Equal("browse-failed", body?.Error?.Code);
     }

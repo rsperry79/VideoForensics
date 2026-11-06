@@ -19,12 +19,12 @@ paths:
 - `Routes.razor` uses `ResponsiveLayout`, which swaps to `MobileLayout` below 600px.
 - Mobile logic goes in `MobileLayout` or `ResponsiveLayout`, never `MainLayout`.
 
+## Syncfusion gotchas
+
+- `SfTextBox` binds on change: tests use `Change()`, not `Input()`.
+- Qualify `Microsoft.AspNetCore.Components.ChangeEventArgs` in Razor files. `Syncfusion.Blazor.QueryBuilder` clashes (CS0104).
+- A Syncfusion dropdown renders its own `role="alert"`. Narrow test selectors with a `data-testid`.
+
 ## Reusable controls
 
-Use these before writing a new control. Feed data in through parameters; do not copy a control into a page.
-
-- `Components/Review/HistogramTimeline.razor`: scrub timeline (transport, speed, scrub bar, flag and time markers) above, any histogram below it via the `Histogram` render fragment. Use for any chart tied to playback.
-- `Components/Review/BitrateSeriesChart.razor`: bar histogram of per-second bitrate with dip marks and a playhead. Seeks on click when given a start time.
-- `Components/Viewer/MediaPlayer.razor`: the only video element. Playback, seek and rate go through it.
-- `Components/Viewer/TimelineStrip.razor`: horizontal timeline strip over a time window.
-- `Components/IntervalSecondsInput.razor`, `Components/LocalTimeText.razor`: shared input and time display; use them instead of local copies.
+Before writing a new control, read `.claude/reference/ui-shared-controls.md` and reuse what exists.

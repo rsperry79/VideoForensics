@@ -34,12 +34,14 @@ namespace VideoForensics.Client.Platform.Windows
             new DirectoryInfo(path).SetAccessControl(security);
         }
 
-        private static void AddRule(DirectorySecurity security, SecurityIdentifier sid, FileSystemRights rights) =>
+        private static void AddRule(DirectorySecurity security, SecurityIdentifier sid, FileSystemRights rights)
+        {
             security.AddAccessRule(new FileSystemAccessRule(
                 sid,
                 rights,
                 InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
                 PropagationFlags.None,
                 AccessControlType.Allow));
+        }
     }
 }

@@ -1,28 +1,24 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
-using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -441,6 +437,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     {
                         _logger.LogError("Snapshot capture for {DeviceName} on {AccountName} got HTTP 404 while Ring reports the device connected; this is a bug", device.Name, accountName);
                     }
+
                     counts.Failed++;
                     break;
                 case 429:

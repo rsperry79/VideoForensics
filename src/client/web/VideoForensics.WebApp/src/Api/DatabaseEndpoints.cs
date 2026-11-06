@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Routing;
-
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
@@ -69,15 +67,12 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapPost("/purge-missing", (PurgeMissingRequest request, MaintenanceCoordinator coordinator, CancellationToken ct) =>
                     {
-                        if (request.MediaItemIds.Count == 0 || request.MediaItemIds.Count > MaxPurgeBatch)
-                        {
-                            return Task.FromResult(Results.ValidationProblem(new Dictionary<string, string[]>
+                        return request.MediaItemIds.Count is 0 or > MaxPurgeBatch
+                            ? Task.FromResult(Results.ValidationProblem(new Dictionary<string, string[]>
                             {
                                 [nameof(request.MediaItemIds)] = [$"Send between 1 and {MaxPurgeBatch} ids."],
-                            }));
-                        }
-
-                        return RunMaintenanceAsync(coordinator, "Purging missing media records", async (sp, token) =>
+                            }))
+                            : RunMaintenanceAsync(coordinator, "Purging missing media records", async (sp, token) =>
                             Results.Ok(new PurgeMissingResultDto(await sp.GetRequiredService<IDatabaseAdministrationService>().PurgeMissingMediaAsync(request.MediaItemIds, token))), ct);
                     })
                 .AddEndpointFilter<StepUpEndpointFilter>()
@@ -129,12 +124,15 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         // Why: a hold past its maximum age gets 409 with the reason, so the tool stops renewing instead of retrying a token that will never be extended.
-        internal static IResult RenewHoldResponse(HoldRenewResult outcome) => outcome switch
+        internal static IResult RenewHoldResponse(HoldRenewResult outcome)
         {
-            HoldRenewResult.Renewed => Results.NoContent(),
-            HoldRenewResult.MaxAgeReached => Results.Conflict("The maintenance hold reached its 4-hour maximum and was not renewed. It ends at that limit."),
-            _ => Results.NotFound(),
-        };
+            return outcome switch
+            {
+                HoldRenewResult.Renewed => Results.NoContent(),
+                HoldRenewResult.MaxAgeReached => Results.Conflict("The maintenance hold reached its 4-hour maximum and was not renewed. It ends at that limit."),
+                _ => Results.NotFound(),
+            };
+        }
 
         // Turns an overlapping run into 409 Conflict. Other failures are not caught here, so they surface as server errors.
         private static async Task<IResult> RunMaintenanceAsync(

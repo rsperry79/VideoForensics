@@ -7,7 +7,6 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Ui.Shared.Pages;
 
 using RingDeviceSettings = VideoForensics.Client.Ui.Shared.Pages.RingDeviceSettings;
 

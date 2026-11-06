@@ -60,7 +60,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             Assert.Equal(EvidenceValidationJobState.Succeeded, done.State);
             Assert.NotNull(done.IntegrityResults);
-            Assert.Single(done.IntegrityResults!);
+            _ = Assert.Single(done.IntegrityResults!);
             validation.Verify(v => v.VerifyLocalIntegrityForMediaItemAsync(item, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()), Times.Once);
             validation.Verify(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()), Times.Never);
         }

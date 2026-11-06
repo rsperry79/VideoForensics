@@ -8,13 +8,13 @@ using Moq;
 using System.Security.Claims;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 
@@ -29,7 +29,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     {
         private const int FileLength = 100;
 
-        private readonly List<string> _tempFiles = new();
+        private readonly List<string> _tempFiles = [];
 
         public void Dispose()
         {
@@ -46,7 +46,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaContent_RangeBytes10To19_Returns206WithContentRange()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
             context.Request.Headers["Range"] = "bytes=10-19";
 
             IResult result = await InvokeGetContentAsync(context, path);
@@ -64,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaContent_RangeStartsPastEnd_Returns416()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
             context.Request.Headers["Range"] = "bytes=500-600";
 
             IResult result = await InvokeGetContentAsync(context, path);
@@ -79,7 +79,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaContent_NoRangeHeader_Returns200WithWholeFile()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
 
             IResult result = await InvokeGetContentAsync(context, path);
             _ = Assert.IsType<FileStreamHttpResult>(result);
@@ -118,7 +118,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private static async Task<IResult> InvokeGetContentAsync(HttpContext context, string filePath)
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
 
             var mediaItems = new Mock<IMediaItemRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))

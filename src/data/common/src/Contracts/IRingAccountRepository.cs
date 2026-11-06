@@ -11,7 +11,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets Ring account by provider account ID.</summary>
         Task<RingAccount?> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct);
 
-
         /// <summary>Adds a new Ring account.</summary>
         Task AddAsync(RingAccount account, CancellationToken ct);
 

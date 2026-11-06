@@ -2,7 +2,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>The still-image rule recognises JPEG and PNG file names, in any letter case, and nothing else.</summary>
     public class MediaStillRules_Tests

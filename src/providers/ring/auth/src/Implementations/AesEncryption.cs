@@ -168,10 +168,8 @@ namespace VideoForensics.Providers.Ring.Implementations
                     _ = Directory.CreateDirectory(directory);
                 }
 
-                using (FileStream stream = new(saltPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                {
-                    stream.Write(randomSalt, 0, randomSalt.Length);
-                }
+                using FileStream stream = new(saltPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                stream.Write(randomSalt, 0, randomSalt.Length);
             }
             catch (IOException) when (File.Exists(saltPath))
             {
@@ -217,6 +215,5 @@ namespace VideoForensics.Providers.Ring.Implementations
                 return "unknown";
             }
         }
-
     }
 }

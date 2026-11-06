@@ -9,7 +9,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>Tests for MediaFlagRepository: idempotent writes, reconcile, SQL paging, keyset neighbours, compare-and-set review and audit.</summary>
     public class MediaFlagRepositoryTests : IAsyncLifetime
@@ -263,7 +263,7 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.Equal(5, page1.TotalCount);
             Assert.Equal(new[] { T0.AddMinutes(4), T0.AddMinutes(3) }, page1.Items.Select(f => f.RaisedAtUtc).ToArray());
-            Assert.Single(page3.Items);
+            _ = Assert.Single(page3.Items);
             Assert.DoesNotContain(page1.Items, f => f.Id == audio.Id);
         }
 
@@ -397,7 +397,7 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.Equal(MediaFlagStatus.Kept, updated.Status);
             Assert.Equal("alice", updated.ReviewedBy);
-            Assert.NotNull(updated.ReviewedAtUtc);
+            _ = Assert.NotNull(updated.ReviewedAtUtc);
             Assert.Equal("looks real", updated.ReviewNote);
             Assert.True(updated.RowVersion > flag.RowVersion);
 

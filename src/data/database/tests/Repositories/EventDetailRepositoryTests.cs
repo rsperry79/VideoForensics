@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -37,8 +37,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         /// <summary>Writes an event with a full set of detail rows: detection, two occurrences (inserted out of order), a zone, a person and an alert.</summary>
         private async Task<Guid> SeedEventWithDetailsAsync(string tag)
         {
-            Guid eventId = Guid.NewGuid();
-            Guid detectionId = Guid.NewGuid();
+            var eventId = Guid.NewGuid();
+            var detectionId = Guid.NewGuid();
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
             _ = db.Events.Add(new Event
@@ -132,7 +132,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task EventDetailRepository_GetDetailsAsync_EventWithoutRows_IsOmitted()
         {
             Guid withRows = await SeedEventWithDetailsAsync("present");
-            Guid withoutRows = Guid.NewGuid();
+            var withoutRows = Guid.NewGuid();
 
             IReadOnlyList<EventDetail> details = await _repository.GetDetailsAsync(new[] { withRows, withoutRows }, CancellationToken.None);
 
@@ -155,7 +155,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             Guid[] ids = Enumerable.Range(0, 201).Select(_ => Guid.NewGuid()).ToArray();
 
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.GetDetailsAsync(ids, CancellationToken.None));
         }
 

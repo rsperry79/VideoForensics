@@ -10,7 +10,7 @@ using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
     /// Concurrent standalone appends on a file-backed, pooled SQLite database, as production runs. The shared in-memory
@@ -26,7 +26,7 @@ namespace VideoForensics.Data.Database.Tests
         public async ValueTask InitializeAsync()
         {
             _databasePath = Path.Combine(Path.GetTempPath(), $"actionlog-{Guid.NewGuid():N}.db");
-            var options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+            DbContextOptions<VideoForensicsDbContext> options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
                 .UseSqlite($"Data Source={_databasePath};Pooling=true;Default Timeout=5")
                 .Options;
             _factory = new PooledDbContextFactory(options);
@@ -126,7 +126,10 @@ namespace VideoForensics.Data.Database.Tests
                 _options = options;
             }
 
-            public VideoForensicsDbContext CreateDbContext() => new(_options);
+            public VideoForensicsDbContext CreateDbContext()
+            {
+                return new(_options);
+            }
         }
     }
 }

@@ -241,16 +241,22 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        private static Location BuildLocation(Guid id) => new() { Id = id, ProviderLocationId = "loc-1", Name = "Home" };
-
-        private static Device BuildRingDevice(Guid deviceId, Guid locationId) => new()
+        private static Location BuildLocation(Guid id)
         {
-            Id = deviceId,
-            LocationId = locationId,
-            ProviderDeviceId = "86401464",
-            Name = "Front Door",
-            Type = "doorbell",
-        };
+            return new() { Id = id, ProviderLocationId = "loc-1", Name = "Home" };
+        }
+
+        private static Device BuildRingDevice(Guid deviceId, Guid locationId)
+        {
+            return new()
+            {
+                Id = deviceId,
+                LocationId = locationId,
+                ProviderDeviceId = "86401464",
+                Name = "Front Door",
+                Type = "doorbell",
+            };
+        }
 
         [Fact]
         public async Task ImportBackupAsync_NumericEventIdEqualsOneCandidate_WritesDingId()
@@ -258,8 +264,8 @@ namespace VideoForensics.Providers.Ring.Tests
             string tempDir = CreateTempDirectory();
             try
             {
-                Guid locationId = Guid.NewGuid();
-                Guid deviceId = Guid.NewGuid();
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
                 var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456789", EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
                     locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], events: [evt]);
@@ -285,8 +291,8 @@ namespace VideoForensics.Providers.Ring.Tests
             string tempDir = CreateTempDirectory();
             try
             {
-                Guid locationId = Guid.NewGuid();
-                Guid deviceId = Guid.NewGuid();
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
                 var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456", EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
                     locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], events: [evt]);
@@ -306,15 +312,14 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-
         [Fact]
         public async Task ImportBackupAsync_NumericDownloadEventOnlyPrefixOfCandidate_SkipsRow()
         {
             string tempDir = CreateTempDirectory();
             try
             {
-                Guid locationId = Guid.NewGuid();
-                Guid deviceId = Guid.NewGuid();
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
                 var download = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456", EventType = "motion", AppVersion = "test", EventOccurredAtUtc = DateTime.UtcNow, DownloadStartedUtc = DateTime.UtcNow };
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
                     locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], downloadEvents: [download]);
@@ -339,8 +344,8 @@ namespace VideoForensics.Providers.Ring.Tests
             string tempDir = CreateTempDirectory();
             try
             {
-                Guid locationId = Guid.NewGuid();
-                Guid deviceId = Guid.NewGuid();
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
                 var download = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456789", EventType = "motion", AppVersion = "test", EventOccurredAtUtc = DateTime.UtcNow, DownloadStartedUtc = DateTime.UtcNow };
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
                     locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], downloadEvents: [download]);

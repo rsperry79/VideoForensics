@@ -6,13 +6,12 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
-using RingDeviceDetailsRow = VideoForensics.Data.Common.Entities.RingDeviceDetails;
-
 using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+using RingDeviceDetailsRow = VideoForensics.Data.Common.Entities.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Maps the top-level scalars, led/siren/do-not-disturb seconds and the health object (sanitized fixture) onto typed rows.</summary>
     public class RingDeviceTopLevelHealthMapperTests
@@ -167,7 +166,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Parse_UnknownHealthKeyAndWrongShape_AreNotedNotStored()
         {
-            var health = JsonSerializer.Deserialize<Entities.DeviceHealth>("{\"connected\":true,\"mystery_key\":{\"a\":1},\"bandwidth\":\"abc\",\"batteries\":[5]}")!;
+            Entities.DeviceHealth health = JsonSerializer.Deserialize<Entities.DeviceHealth>("{\"connected\":true,\"mystery_key\":{\"a\":1},\"bandwidth\":\"abc\",\"batteries\":[5]}")!;
 
             RingReportedHealth parsed = RingDeviceHealthParser.Parse(health)!;
 

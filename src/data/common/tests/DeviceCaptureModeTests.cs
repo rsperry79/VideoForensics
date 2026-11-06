@@ -7,19 +7,22 @@ namespace VideoForensics.Data.Common.Tests;
 /// <summary>The schedule page's three choices map onto the snapshot and health switches on each device.</summary>
 public class DeviceCaptureModeTests
 {
-    private static Device NewDevice(bool snapshot = true, bool health = true) => new()
+    private static Device NewDevice(bool snapshot = true, bool health = true)
     {
-        ProviderDeviceId = "12345",
-        Name = "Porch",
-        Type = "doorbell",
-        SnapshotCaptureEnabled = snapshot,
-        HealthCaptureEnabled = health,
-    };
+        return new()
+        {
+            ProviderDeviceId = "12345",
+            Name = "Porch",
+            Type = "doorbell",
+            SnapshotCaptureEnabled = snapshot,
+            HealthCaptureEnabled = health,
+        };
+    }
 
     [Fact]
     public void NewDevice_IsCapture()
     {
-        var device = NewDevice();
+        Device device = NewDevice();
 
         Assert.Equal(DeviceCaptureMode.Capture, device.CaptureMode);
     }
@@ -27,7 +30,7 @@ public class DeviceCaptureModeTests
     [Fact]
     public void SettingHealthOnly_KeepsHealthAndStopsSnapshots()
     {
-        var device = NewDevice();
+        Device device = NewDevice();
 
         device.CaptureMode = DeviceCaptureMode.HealthOnly;
 
@@ -39,7 +42,7 @@ public class DeviceCaptureModeTests
     [Fact]
     public void SettingOff_StopsSnapshotsAndHealth()
     {
-        var device = NewDevice();
+        Device device = NewDevice();
 
         device.CaptureMode = DeviceCaptureMode.Off;
 
@@ -51,7 +54,7 @@ public class DeviceCaptureModeTests
     [Fact]
     public void SettingCapture_TurnsBothOn()
     {
-        var device = NewDevice(snapshot: false, health: false);
+        Device device = NewDevice(snapshot: false, health: false);
 
         device.CaptureMode = DeviceCaptureMode.Capture;
 
@@ -63,7 +66,7 @@ public class DeviceCaptureModeTests
     public void SnapshotsOnWithoutHealth_ReadsAsOff()
     {
         // Snapshots without health is not one of the three choices, so it reads as off rather than as capture.
-        var device = NewDevice(snapshot: true, health: false);
+        Device device = NewDevice(snapshot: true, health: false);
 
         Assert.Equal(DeviceCaptureMode.Off, device.CaptureMode);
     }

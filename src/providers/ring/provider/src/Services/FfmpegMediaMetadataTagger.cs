@@ -1,7 +1,6 @@
 using FFMpegCore;
-using Microsoft.Extensions.Logging;
 
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
@@ -73,7 +72,6 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-
         private static bool IsJpeg(string mediaFilePath)
         {
             string ext = Path.GetExtension(mediaFilePath);
@@ -135,12 +133,9 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), ct);
-                if (analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment))
-                {
-                    return null;
-                }
-
-                return comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
+                return analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment)
+                    ? null
+                    : comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
                     Guid.TryParse(comment[CommentPrefix.Length..], out Guid id)
                     ? id
                     : null;
@@ -163,7 +158,6 @@ namespace VideoForensics.Providers.Ring.Services
             return string.IsNullOrEmpty(folder) ? null : new FFOptions { BinaryFolder = folder };
         }
 
-
         private async Task<Guid?> ReadJpegEventIdAsync(string mediaFilePath, CancellationToken ct)
         {
             try
@@ -183,6 +177,5 @@ namespace VideoForensics.Providers.Ring.Services
                 return null;
             }
         }
-
     }
 }

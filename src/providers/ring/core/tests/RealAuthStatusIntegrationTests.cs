@@ -39,7 +39,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.NotNull(status);
             Assert.True(status!.IsAuthenticated, "Ring restored the saved credentials but the status reports not authenticated.");
             Assert.False(string.IsNullOrWhiteSpace(status.TokenType), "Ring returned a token without a token type.");
-            Assert.NotNull(status.ExpiresAtUtc);
+            _ = Assert.NotNull(status.ExpiresAtUtc);
             Assert.True(status.ExpiresAtUtc > DateTime.UtcNow, "Ring issued a token that is already expired.");
         }
     }

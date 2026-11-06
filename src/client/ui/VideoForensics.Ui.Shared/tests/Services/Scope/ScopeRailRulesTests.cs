@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -76,9 +76,9 @@ public class ScopeRailRulesTests
     {
         Device porchDevice = MakeDevice();
         Device garageDevice = MakeDevice();
-        Guid account = Guid.NewGuid();
-        Guid porch = Guid.NewGuid();
-        Guid garage = Guid.NewGuid();
+        var account = Guid.NewGuid();
+        var porch = Guid.NewGuid();
+        var garage = Guid.NewGuid();
         DeviceOwnership[] ownership = new[]
         {
             new DeviceOwnership(porchDevice.Id, account, "Ring", porch),

@@ -1,6 +1,6 @@
 #if WINDOWS
 using Microsoft.AspNetCore.Components.WebView;
-using VideoForensics.Client.Common.Contracts;
+
 using VideoForensics.Client.Platform.Windows;
 #endif
 

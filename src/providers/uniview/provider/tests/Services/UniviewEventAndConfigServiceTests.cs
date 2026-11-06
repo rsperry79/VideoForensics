@@ -7,7 +7,7 @@ using VideoForensics.Providers.Uniview.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Uniview.Tests
+namespace VideoForensics.Providers.Uniview.Tests.Services
 {
     /// <summary>
     /// Tests for UniviewEventAndConfigService. Tests the "not authenticated" and unsupported event type paths.

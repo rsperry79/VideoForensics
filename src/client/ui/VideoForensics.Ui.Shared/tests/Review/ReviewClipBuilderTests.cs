@@ -38,36 +38,36 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_TimeLapse_Included()
     {
         // Arrange: a roll-up is a playable mp4 loop, so it is a clip the timeline shows.
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"snapshot-rollup\"}") };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"snapshot-rollup\"}") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
 
         // Assert
-        Assert.Single(clips);
+        _ = Assert.Single(clips);
     }
 
     [Fact]
     public void BuildClips_TimeLapseMarkerDifferentCase_Included()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"Snapshot-Rollup\"}") };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"Snapshot-Rollup\"}") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
 
         // Assert
-        Assert.Single(clips);
+        _ = Assert.Single(clips);
     }
 
     [Fact]
     public void BuildClips_TimerStill_Excluded()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, 1, metadata: "{\"type\":\"snapshot\",\"source\":\"capture\"}") };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, 1, metadata: "{\"type\":\"snapshot\",\"source\":\"capture\"}") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -80,8 +80,8 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_Purged_Excluded()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, 60, purged: true) };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, 60, purged: true) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -94,8 +94,8 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_NonVideo_Excluded()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, 60, format: "image/jpeg") };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, 60, format: "image/jpeg") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -108,8 +108,8 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_OtherDevice_Excluded()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(Guid.NewGuid(), Start, 60) };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(Guid.NewGuid(), Start, 60) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -122,10 +122,10 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_UnsortedItems_SortedByStart()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem late = Item(device, Start.AddMinutes(5), 30);
         MediaItem early = Item(device, Start, 30);
-        var items = new[] { late, early };
+        MediaItem[] items = new[] { late, early };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -140,8 +140,8 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_NoOrZeroDuration_Skipped()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, null), Item(device, Start, 0) };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, null), Item(device, Start, 0) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -154,8 +154,8 @@ public class ReviewClipBuilder_Tests
     public void BuildClips_NullOrMalformedMetadata_Included()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        var items = new[] { Item(device, Start, 60, metadata: null), Item(device, Start.AddMinutes(1), 60, metadata: "{not json") };
+        var device = Guid.NewGuid();
+        MediaItem[] items = new[] { Item(device, Start, 60, metadata: null), Item(device, Start.AddMinutes(1), 60, metadata: "{not json") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -168,8 +168,8 @@ public class ReviewClipBuilder_Tests
     public void BuildTiles_OneTilePerCameraInRequestedOrder()
     {
         // Arrange
-        Guid a = Guid.NewGuid();
-        Guid b = Guid.NewGuid();
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
         var names = new Dictionary<Guid, string> { [a] = "Front", [b] = "Back" };
 
         // Act
@@ -184,7 +184,7 @@ public class ReviewClipBuilder_Tests
     public void BuildTiles_Camera_TileHoldsAllItsClipsOldestFirst()
     {
         // Arrange: the player picks the clip covering the cursor from the full list, so the tile must carry every clip.
-        Guid camera = Guid.NewGuid();
+        var camera = Guid.NewGuid();
         MediaItem later = Item(camera, Start.AddMinutes(10), 60);
         MediaItem earlier = Item(camera, Start, 60);
         MediaItem otherCamera = Item(Guid.NewGuid(), Start, 60);
@@ -194,7 +194,7 @@ public class ReviewClipBuilder_Tests
             [later, earlier, otherCamera], [camera], new Dictionary<Guid, string>(), _ => null, _ => null);
 
         // Assert
-        Assert.Single(tiles);
+        _ = Assert.Single(tiles);
         Assert.Equal([earlier.Id.ToString("D"), later.Id.ToString("D")], tiles[0].Clips.Select(c => c.Id));
     }
 
@@ -202,14 +202,14 @@ public class ReviewClipBuilder_Tests
     public void BuildTiles_CameraWithNoClips_TileKeptEmpty()
     {
         // Arrange
-        Guid camera = Guid.NewGuid();
+        var camera = Guid.NewGuid();
 
         // Act
         IReadOnlyList<CameraTile> tiles = ReviewClipBuilder.BuildTiles(
             [], [camera], new Dictionary<Guid, string>(), _ => null, _ => null);
 
         // Assert
-        Assert.Single(tiles);
+        _ = Assert.Single(tiles);
         Assert.Empty(tiles[0].Clips);
     }
 
@@ -217,7 +217,7 @@ public class ReviewClipBuilder_Tests
     public void BuildTiles_UnnamedCamera_LabelIsDeviceId()
     {
         // Arrange
-        Guid camera = Guid.NewGuid();
+        var camera = Guid.NewGuid();
 
         // Act
         IReadOnlyList<CameraTile> tiles = ReviewClipBuilder.BuildTiles(
@@ -231,7 +231,7 @@ public class ReviewClipBuilder_Tests
     public void BuildTiles_ContentAndPreviewUrls_ResolvedByClipId()
     {
         // Arrange
-        Guid camera = Guid.NewGuid();
+        var camera = Guid.NewGuid();
         MediaItem clip = Item(camera, Start, 60);
         string id = clip.Id.ToString("D");
 

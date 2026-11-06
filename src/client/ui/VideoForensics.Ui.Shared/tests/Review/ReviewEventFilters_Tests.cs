@@ -2,7 +2,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The rules that turn the Event Filter selection into what each list shows.</summary>
 public class ReviewEventFilters_Tests

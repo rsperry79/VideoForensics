@@ -1,6 +1,6 @@
-using System.IO.Compression;
-
 using Microsoft.Extensions.Logging.Abstractions;
+
+using System.IO.Compression;
 
 using VideoForensics.Client.Hosting.Updates;
 
@@ -14,8 +14,10 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
             ["lib/core.dll"] = "binary-two",
         };
 
-        private static UpdateStager NewStager(string updatesRoot, string currentVersion = "1.0.0") =>
-            new(updatesRoot, new UpdatePackageVerifier(), allowDevPackages: true, () => currentVersion, NullLogger<UpdateStager>.Instance);
+        private static UpdateStager NewStager(string updatesRoot, string currentVersion = "1.0.0")
+        {
+            return new(updatesRoot, new UpdatePackageVerifier(), allowDevPackages: true, () => currentVersion, NullLogger<UpdateStager>.Instance);
+        }
 
         private static string ZipPackage(UpdateTestFolder temp, string version, Action<string>? tamper = null)
         {

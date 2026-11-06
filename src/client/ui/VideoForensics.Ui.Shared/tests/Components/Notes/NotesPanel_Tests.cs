@@ -1,8 +1,6 @@
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
 
 using VideoForensics.Client.Ui.Shared.Components.Notes;
 
@@ -54,7 +52,7 @@ public class NotesPanel_Tests : BunitContext
     public void NotesPanel_WithNotes_ShowsAuthorAndBody()
     {
         // Arrange
-        var notes = new[] { new NoteItem(Guid.NewGuid(), "op-alpha", FixedUtc, "first line\nsecond line") };
+        NoteItem[] notes = new[] { new NoteItem(Guid.NewGuid(), "op-alpha", FixedUtc, "first line\nsecond line") };
 
         // Act
         IRenderedComponent<NotesPanel> cut = RenderPanel(notes);
@@ -110,7 +108,7 @@ public class NotesPanel_Tests : BunitContext
     public void NotesPanel_ClosedList_ShowsNotesButNoForm()
     {
         // Arrange
-        var notes = new[] { new NoteItem(Guid.NewGuid(), "op-alpha", FixedUtc, "closing remark") };
+        NoteItem[] notes = new[] { new NoteItem(Guid.NewGuid(), "op-alpha", FixedUtc, "closing remark") };
 
         // Act
         IRenderedComponent<NotesPanel> cut = RenderPanel(notes, canAdd: true, isOpen: false);

@@ -19,12 +19,24 @@ using Syncfusion.Blazor;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.Platform.Windows;
+using VideoForensics.Client.Ui.Shared;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Chat;
+using VideoForensics.Client.WebApp.Components;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Client.WebApp.Discovery;
 using VideoForensics.Client.WebApp.Hubs;
@@ -34,28 +46,15 @@ using VideoForensics.Client.WebApp.Mcp.Tools;
 using VideoForensics.Client.WebApp.RateLimiting;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.WebApp.Services.CircuitGuards;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Database.Repositories;
-using VideoForensics.Client.Hosting;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Remote;
-using VideoForensics.Client.Hosting.Services;
-using VideoForensics.Client.Ui.Shared;
-using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Client.Ui.Shared.Formatting;
-using VideoForensics.Client.Ui.Shared.Services;
-using VideoForensics.Client.Ui.Shared.Services.Cases;
-using VideoForensics.Client.Ui.Shared.Services.Inspector;
-using VideoForensics.Client.Ui.Shared.Services.QueryApi;
-using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Client.WebApp.Components;
 
 // Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
@@ -99,8 +98,10 @@ serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.Extensions.Localiz
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
 serverLogLevel.BufferLevel.TraceOnlyCategories.Add("VideoForensics.Data.Database");
 
-static string SourceOf(Serilog.Events.LogEvent e) =>
-    e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
+static string SourceOf(Serilog.Events.LogEvent e)
+{
+    return e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
+}
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.ControlledBy(serverLogLevel.Switch)
@@ -307,7 +308,7 @@ var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate {
 builder.Services.AddSingleton(namedPipeGate);
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
     enableNamedPipeLogger: true,
-    eventLogProvider: OperatingSystem.IsWindows() ? (Action<ILoggingBuilder>?)VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null,
+    eventLogProvider: OperatingSystem.IsWindows() ? VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null,
     namedPipeGate: namedPipeGate);
 
 // Add services to the container.
@@ -403,7 +404,7 @@ if (OperatingSystem.IsWindows())
     X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.ResolveTpmCertificate(
         VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate,
         VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.KeyExists,
-        wait => System.Threading.Thread.Sleep(wait),
+        Thread.Sleep,
         [TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)]);
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)

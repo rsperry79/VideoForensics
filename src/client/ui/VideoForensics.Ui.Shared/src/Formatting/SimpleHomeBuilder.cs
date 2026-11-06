@@ -3,11 +3,11 @@ using Microsoft.Extensions.Localization;
 using System.Globalization;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Ui.Shared.Resources;
-using VideoForensics.Client.Ui.Shared.Services;
 
 namespace VideoForensics.Client.Ui.Shared.Formatting;
 

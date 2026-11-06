@@ -187,12 +187,7 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <remarks>Derived from the last status fetched by <see cref="GetAuthStatusDetailsAsync"/>.</remarks>
         public string GetAuthStatus()
         {
-            if (!_statusFetched)
-            {
-                return "Not checked yet";
-            }
-
-            return _lastStatus?.IsAuthenticated == true ? "Authenticated" : "Not authenticated";
+            return !_statusFetched ? "Not checked yet" : _lastStatus?.IsAuthenticated == true ? "Authenticated" : "Not authenticated";
         }
 
         /// <summary>

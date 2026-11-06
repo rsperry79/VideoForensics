@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.ReferenceData;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.ReferenceData
 {
     /// <summary>Versioned reference-data seeding: loads on first run, re-applies only when a source's version moves.</summary>
     public class ReferenceDataSeederTests : IAsyncLifetime, IDisposable

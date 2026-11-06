@@ -2,8 +2,6 @@ using Microsoft.Data.Sqlite;
 
 using VideoForensics.Core.Helpers.Platform;
 
-using Xunit;
-
 namespace VideoForensics.Client.Hosting.Tests
 {
     public class StorageSettingsBootstrap_Tests : IDisposable
@@ -59,7 +57,10 @@ namespace VideoForensics.Client.Hosting.Tests
 
         private sealed class FixedPointerStore(string root) : IDatabaseLocationPointerStore
         {
-            public string? Read() => root;
+            public string? Read()
+            {
+                return root;
+            }
 
             public void Write(string databaseRoot)
             {

@@ -1,5 +1,3 @@
-using VideoForensics.Client.WebApp.Services;
-
 namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>

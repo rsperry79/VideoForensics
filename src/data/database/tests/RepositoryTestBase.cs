@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 
-using Xunit;
-
 using VideoForensics.Utils.Testing;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {

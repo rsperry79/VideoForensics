@@ -1,14 +1,14 @@
-using System.Collections.Concurrent;
-
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
+using System.Collections.Concurrent;
+
 using VideoForensics.Data.Common.Diagnostics;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>Every unit of work logs its timing at Debug; one that runs past the threshold logs a Warning naming its caller.</summary>
     public class UnitOfWorkTimingTests : IAsyncLifetime
@@ -23,8 +23,8 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b =>
             {
-                b.SetMinimumLevel(LogLevel.Debug);
-                b.AddProvider(new EntryCollector(_entries));
+                _ = b.SetMinimumLevel(LogLevel.Debug);
+                _ = b.AddProvider(new EntryCollector(_entries));
             });
         }
 
@@ -82,12 +82,12 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await unitOfWork.ExecuteAsync<object?>(_ => Task.FromResult<object?>(null), CancellationToken.None);
 
-            (LogLevel Level, string Message) warning = Assert.Single(UnitOfWorkEntries(), e => e.Level == LogLevel.Warning);
-            Assert.Contains("UnitOfWorkTimingTests.ExecuteAsync_SlowTransaction_LogsWarningNamingCallerAndPhases", warning.Message);
-            Assert.Contains("committed", warning.Message);
-            Assert.Contains("begin", warning.Message);
-            Assert.Contains("work", warning.Message);
-            Assert.Contains("commit", warning.Message);
+            (LogLevel Level, string Message) = Assert.Single(UnitOfWorkEntries(), e => e.Level == LogLevel.Warning);
+            Assert.Contains("UnitOfWorkTimingTests.ExecuteAsync_SlowTransaction_LogsWarningNamingCallerAndPhases", Message);
+            Assert.Contains("committed", Message);
+            Assert.Contains("begin", Message);
+            Assert.Contains("work", Message);
+            Assert.Contains("commit", Message);
         }
 
         [Fact]
@@ -103,7 +103,10 @@ namespace VideoForensics.Data.Database.Tests
 
         private sealed class EntryCollector(ConcurrentQueue<(LogLevel Level, string Message)> entries) : ILoggerProvider
         {
-            public ILogger CreateLogger(string categoryName) => new Collector(entries);
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new Collector(entries);
+            }
 
             public void Dispose()
             {
@@ -111,9 +114,15 @@ namespace VideoForensics.Data.Database.Tests
 
             private sealed class Collector(ConcurrentQueue<(LogLevel Level, string Message)> entries) : ILogger
             {
-                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+                {
+                    return null;
+                }
 
-                public bool IsEnabled(LogLevel logLevel) => true;
+                public bool IsEnabled(LogLevel logLevel)
+                {
+                    return true;
+                }
 
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {

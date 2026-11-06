@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "CaseNotes",
                 columns: table => new
                 {
@@ -23,8 +22,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CaseNotes", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_CaseNotes", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_CaseNotes_Cases_CaseId",
                         column: x => x.CaseId,
                         principalTable: "Cases",
@@ -32,7 +31,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_CaseNotes_CaseId_AddedAtUtc",
                 table: "CaseNotes",
                 columns: new[] { "CaseId", "AddedAtUtc" });
@@ -41,7 +40,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "CaseNotes");
         }
     }

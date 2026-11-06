@@ -9,6 +9,9 @@ namespace VideoForensics.Client.Hosting.Updates
     public sealed class MaintenanceUpdateDrain(IMaintenanceGate gate) : IUpdateDrain
     {
         /// <inheritdoc />
-        public Task DrainAsync(CancellationToken ct) => gate.BeginDrainAsync("Applying a server update", ct);
+        public Task DrainAsync(CancellationToken ct)
+        {
+            return gate.BeginDrainAsync("Applying a server update", ct);
+        }
     }
 }

@@ -25,18 +25,16 @@ namespace VideoForensics.Client.Platform.Windows
         /// <param name="fileExists">File existence check, injectable for tests.</param>
         public static string? Resolve(string folder, Func<string, bool> fileExists)
         {
-            if (string.IsNullOrWhiteSpace(folder))
-            {
-                return null;
-            }
-
-            return fileExists(Path.Combine(folder, RuntimeExecutableName)) ? folder : null;
+            return string.IsNullOrWhiteSpace(folder) ? null : fileExists(Path.Combine(folder, RuntimeExecutableName)) ? folder : null;
         }
 
         /// <summary>
         /// Returns the folder when it contains the runtime executable, otherwise null so the caller falls back to the installed Evergreen runtime.
         /// </summary>
         /// <param name="folder">Candidate Fixed Version runtime folder.</param>
-        public static string? Resolve(string folder) => Resolve(folder, File.Exists);
+        public static string? Resolve(string folder)
+        {
+            return Resolve(folder, File.Exists);
+        }
     }
 }

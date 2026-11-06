@@ -760,7 +760,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             // Doorbots and stickup cams both answer for their own id. A device listed twice is asked once.
-            var targets = (devices.Doorbots ?? []).Concat(devices.AuthorizedDoorbots ?? [])
+            IEnumerable<(long Id, string Name)> targets = (devices.Doorbots ?? []).Concat(devices.AuthorizedDoorbots ?? [])
                 .Select(d => (Id: (long)d.Id, Name: d.Description))
                 .Concat((devices.StickupCams ?? []).Where(c => c.Id.HasValue).Select(c => (Id: c.Id!.Value, Name: c.Description)))
                 .DistinctBy(t => t.Id);
@@ -770,7 +770,7 @@ namespace VideoForensics.Providers.Ring.Services
             foreach ((long doorbotId, string? name) in targets)
             {
                 string deviceName = name ?? "Unknown Device";
-                if (doorbotId < int.MinValue || doorbotId > int.MaxValue)
+                if (doorbotId is < int.MinValue or > int.MaxValue)
                 {
                     // The snapshot endpoint takes an int id. A Ring id this large is not expected; the account set is kept rather than replaced without it.
                     _logger.LogWarning("Ring snapshot timestamps not requested for {DeviceName}: device id is out of range; stored rows left unchanged", deviceName);
@@ -1566,7 +1566,7 @@ namespace VideoForensics.Providers.Ring.Services
                     metadata.PostalCode = MetadataValue(location, "zip_code");
                     metadata.TimeZoneId = MetadataValue(location, "timezone");
                     metadata.IsOwner = bool.TryParse(MetadataValue(location, "is_owner"), out bool isOwner) ? isOwner : null;
-                    RingLocationDetailsMapper.ApplyGenericFields(metadata, location.Metadata ?? new Dictionary<string, string>());
+                    RingLocationDetailsMapper.ApplyGenericFields(metadata, location.Metadata ?? []);
                     metadata.LastSyncedUtc = DateTime.UtcNow;
                     metadata.SyncStatus = SyncStatus.Pending;
 
@@ -1582,7 +1582,7 @@ namespace VideoForensics.Providers.Ring.Services
                     if (_settingsPersister != null)
                     {
                         await _settingsPersister.PersistLocationDetailsAsync(
-                            RingLocationDetailsMapper.Map(locationGuid, location.Metadata ?? new Dictionary<string, string>()), ct);
+                            RingLocationDetailsMapper.Map(locationGuid, location.Metadata ?? []), ct);
                     }
 
                     _logger.LogDebug("Captured metadata for location {LocationName}", location.Name);

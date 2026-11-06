@@ -1,6 +1,6 @@
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Client.Hosting.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {

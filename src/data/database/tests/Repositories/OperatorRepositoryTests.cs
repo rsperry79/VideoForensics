@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
-using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Tests.Repositories
 {

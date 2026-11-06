@@ -1,9 +1,9 @@
 using System.Reflection;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -55,7 +55,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>(), minusFive);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), [], minusFive);
 
         // Assert
         Assert.Contains("2024-01-15 05:30:00", result.Title);

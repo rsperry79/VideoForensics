@@ -5,7 +5,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The Event Filter section of the review right panel: a multi-select of event types and system types.</summary>
 public class ReviewEventFilter_Tests : ReviewTestContext
@@ -50,7 +50,7 @@ public class ReviewEventFilter_Tests : ReviewTestContext
         cut.Find("[data-testid='review-event-button']").Click();
 
         // Assert
-        List<string?> toggles = cut.FindAll("[data-testid^='review-event-toggle-']").Select(e => e.GetAttribute("data-testid")).ToList();
+        var toggles = cut.FindAll("[data-testid^='review-event-toggle-']").Select(e => e.GetAttribute("data-testid")).ToList();
         Assert.Equal(ReviewEventFilters.SelectableEventTypes.Select(t => "review-event-toggle-" + t).Cast<string?>().ToList(), toggles);
         Assert.Contains("Signal anomalies", cut.Markup);
     }
@@ -110,7 +110,7 @@ public class ReviewEventFilter_Tests : ReviewTestContext
         string one = cut.Find("[data-testid='review-event-button']").TextContent.Trim();
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetEventTypes(["jamming", "motion"]));
+        _ = cut.InvokeAsync(() => ReviewState.SetEventTypes(["jamming", "motion"]));
 
         // Assert
         Assert.Equal(L["EventType_jamming"].Value, one);

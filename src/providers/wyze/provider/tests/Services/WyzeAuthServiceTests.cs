@@ -7,7 +7,7 @@ using VideoForensics.Providers.Wyze.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Wyze.Tests
+namespace VideoForensics.Providers.Wyze.Tests.Services
 {
     /// <summary>
     /// Tests for WyzeAuthService stub implementation.
@@ -79,7 +79,7 @@ namespace VideoForensics.Providers.Wyze.Tests
         {
             var service = new WyzeAuthService(new Mock<ILogger>().Object);
 
-            var details = service.GetAuthStatusDetails();
+            ProviderAuthStatus? details = service.GetAuthStatusDetails();
 
             Assert.NotNull(details);
             Assert.False(details!.IsAuthenticated);

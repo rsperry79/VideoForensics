@@ -271,13 +271,18 @@ namespace VideoForensics.Providers.Ring.Services
         /// <summary>
         /// Reads the latest frame once. Virtual so tests can script the status sequence, because <see cref="Session"/> cannot be mocked for this call.
         /// </summary>
-        protected virtual Task<HttpUtility.DownloadResult> ReadLatestSnapshotAsync(Session session, int doorbotId, CancellationToken cancellationToken) =>
-            session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+        protected virtual Task<HttpUtility.DownloadResult> ReadLatestSnapshotAsync(Session session, int doorbotId, CancellationToken cancellationToken)
+        {
+            return session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+        }
 
         /// <summary>
         /// Waits before a latest-snapshot re-read. Virtual so tests run without real waits.
         /// </summary>
-        protected virtual Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.Delay(delay, cancellationToken);
+        protected virtual Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            return Task.Delay(delay, cancellationToken);
+        }
 
         /// <summary>
         /// Maps the real HTTP status and body of a latest-snapshot read to an attempt. Only a 200 with a JPEG body carries an image;
@@ -1175,6 +1180,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     _logger.LogError("Error downloading videos for device {DeviceName}: {Message} ({ErrorType})", deviceName, ex.Message, ex.GetType().Name);
                 }
+
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -1187,7 +1193,10 @@ namespace VideoForensics.Providers.Ring.Services
         /// Asks Ring to capture a fresh snapshot. Virtual so tests can simulate a refresh failure,
         /// because <see cref="Session.UpdateSnapshot"/> is not overridable and cannot be mocked.
         /// </summary>
-        protected virtual Task RequestFreshSnapshotAsync(Session session, int doorbotId) => session.UpdateSnapshot(doorbotId);
+        protected virtual Task RequestFreshSnapshotAsync(Session session, int doorbotId)
+        {
+            return session.UpdateSnapshot(doorbotId);
+        }
 
         /// <summary>
         /// Downloads the single latest available snapshot for a device. Ring does not expose historical,

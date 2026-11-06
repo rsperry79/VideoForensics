@@ -87,9 +87,9 @@ public class NavPathMatcher_Tests
 
     [Fact]
     public void NavPathMatcher_Specificity_ItemWithQueryOutranksPlainItemOnSamePath()
-        {
-            Assert.True(NavPathMatcher.Specificity("/media?tab=Events") > NavPathMatcher.Specificity("/media"));
-        }
+    {
+        Assert.True(NavPathMatcher.Specificity("/media?tab=Events") > NavPathMatcher.Specificity("/media"));
+    }
 
     [Fact]
     public void NavPathMatcher_BestMatch_PicksTheMostSpecificOwner()
@@ -108,4 +108,4 @@ public class NavPathMatcher_Tests
     {
         Assert.Null(NavPathMatcher.BestMatch(["/cases"], "/settings", null));
     }
-    }
+}

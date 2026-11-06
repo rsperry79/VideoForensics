@@ -1,11 +1,10 @@
 using System.Text.Json;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Converted siblings of the raw Ring health values: status_time (32768 Hz ticks) and battery_temp (assumed deci-kelvin).</summary>
     public class RingHealthUnitsTests
@@ -23,7 +22,7 @@ namespace VideoForensics.Providers.Ring.Tests
             RingReportedHealth parsed = Parse($"{{\"status_time\":{ticks}}}");
 
             Assert.Equal(ticks, parsed.Health.StatusTime);
-            Assert.NotNull(parsed.Health.StatusAtUtc);
+            _ = Assert.NotNull(parsed.Health.StatusAtUtc);
             Assert.Equal(DateTimeKind.Utc, parsed.Health.StatusAtUtc!.Value.Kind);
             double diffMs = Math.Abs((parsed.Health.StatusAtUtc.Value - DateTime.Parse(expected, null, System.Globalization.DateTimeStyles.AdjustToUniversal)).TotalMilliseconds);
             Assert.True(diffMs <= 1, $"off by {diffMs} ms");

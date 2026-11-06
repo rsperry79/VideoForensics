@@ -8,7 +8,6 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -18,25 +17,28 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review timeline tab: layout by camera count, loading, default cursor, reloads, stale results, errors, and disposal.</summary>
 public class ReviewTimelineTab_Tests : ReviewTestContext
 {
     private static readonly DateTime ClipStart = FixedNowUtc.AddHours(-1);
 
-    private static MediaItem Clip(Guid device, DateTime startUtc, bool withPreview = false) => new()
+    private static MediaItem Clip(Guid device, DateTime startUtc, bool withPreview = false)
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        FileName = "clip.mp4",
-        FilePath = "clip.mp4",
-        MediaFormat = "mp4",
-        RecordedAtUtc = startUtc,
-        DurationSeconds = 120,
-        Sha256Hash = "hash",
-        PreviewPath = withPreview ? "preview.mp4" : null,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            RecordedAtUtc = startUtc,
+            DurationSeconds = 120,
+            Sha256Hash = "hash",
+            PreviewPath = withPreview ? "preview.mp4" : null,
+        };
+    }
 
     /// <summary>Gives every requested camera one clip at <see cref="ClipStart"/>.</summary>
     private void ServeOneClipPerCamera()
@@ -47,9 +49,8 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 
     // The Grab still button lives in the right sidebar, so it is read from its own render. The sidebar starts the
     // capture this tab publishes, so it is created on first use, after the tab has rendered.
-    private IRenderedComponent<ReviewActionsPanel>? _sidebar;
 
-    private IRenderedComponent<ReviewActionsPanel> Sidebar => _sidebar ??= OpenSidebar();
+    private IRenderedComponent<ReviewActionsPanel> Sidebar => field ??= OpenSidebar();
 
     // The actions live in a dropdown, so it is opened once after rendering.
     private IRenderedComponent<ReviewActionsPanel> OpenSidebar()
@@ -81,7 +82,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         // Assert
         cut.WaitForAssertion(() =>
         {
-            Assert.Single(cut.FindComponents<SingleCameraView>());
+            _ = Assert.Single(cut.FindComponents<SingleCameraView>());
         });
         SingleCameraView view = cut.FindComponent<SingleCameraView>().Instance;
         Assert.Equal(3, view.Cameras.Count);
@@ -106,7 +107,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         {
             Assert.Equal(3, cut.FindAll("[data-testid='camera-tile']").Count);
         });
-        Assert.Single(cut.FindComponents<CameraGrid>());
+        _ = Assert.Single(cut.FindComponents<CameraGrid>());
         Assert.Empty(cut.FindComponents<SingleCameraView>());
         Assert.Equal(3, ClipLoader.Calls.Single().DeviceIds.Count);
     }
@@ -171,7 +172,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(ClipLoader.Calls));
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Equal(2, ClipLoader.Calls.Count));
@@ -189,10 +190,10 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(ClipLoader.Calls));
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCursor(FixedNowUtc.AddMinutes(-20)));
+        _ = cut.InvokeAsync(() => ReviewState.SetCursor(FixedNowUtc.AddMinutes(-20)));
 
         // Assert
-        Assert.Single(ClipLoader.Calls);
+        _ = Assert.Single(ClipLoader.Calls);
     }
 
     [Fact]
@@ -232,7 +233,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         Thread.Sleep(1200);
 
         // Assert: a related change still reloads, so the subscription is live
-        Assert.Single(ClipLoader.Calls);
+        _ = Assert.Single(ClipLoader.Calls);
         EvidenceSource.Changes.OnNext(new EvidenceChangedDto(Devices[0].Id));
         cut.WaitForAssertion(() => Assert.Equal(2, ClipLoader.Calls.Count), TimeSpan.FromSeconds(5));
     }
@@ -254,7 +255,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(ClipLoader.Calls));
 
         // Act: the newer load finishes first with no clips, then the slow one completes with a clip
-        cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='review-timeline-no-clips']")));
         slow.SetResult(new ReviewClipSet([Clip(Devices[0].Id, ClipStart)], false));
         Thread.Sleep(200);
@@ -341,11 +342,11 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         TimelineModel.OnChange += () => changes++;
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCameras([]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([]));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-timeline-no-cameras']")));
-        Assert.Single(TimelineModel.Clips);
+        _ = Assert.Single(TimelineModel.Clips);
         Assert.Equal(0, changes);
     }
 
@@ -364,11 +365,11 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         TimelineModel.OnChange += () => changes++;
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-timeline-error']")));
-        Assert.Single(TimelineModel.Clips);
+        _ = Assert.Single(TimelineModel.Clips);
         Assert.Equal(0, changes);
     }
 
@@ -389,7 +390,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         ((IDisposable)cut.Instance).Dispose();
 
         // Assert
-        Assert.Single(TimelineModel.Clips);
+        _ = Assert.Single(TimelineModel.Clips);
         Assert.Equal(0, changes);
     }
 
@@ -417,22 +418,25 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 
         // Assert
         Assert.True(captured.IsCancellationRequested);
-        Assert.Single(ClipLoader.Calls);
+        _ = Assert.Single(ClipLoader.Calls);
     }
 
     private const string MediaPlayerModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js";
 
     /// <summary>A still the capture service returns on success, with a hash whose first twelve characters are known.</summary>
-    private static MediaStillInfo StillInfo(Guid id) => new()
+    private static MediaStillInfo StillInfo(Guid id)
     {
-        Id = id,
-        SourceMediaItemId = Guid.NewGuid(),
-        FrameOffsetMs = 4200,
-        Sha256Hash = "abcdef1234567890ff",
-        SourceSha256AtCapture = "source",
-        CapturedByOperator = "operator",
-        CaptureMethod = "Server",
-    };
+        return new()
+        {
+            Id = id,
+            SourceMediaItemId = Guid.NewGuid(),
+            FrameOffsetMs = 4200,
+            Sha256Hash = "abcdef1234567890ff",
+            SourceSha256AtCapture = "source",
+            CapturedByOperator = "operator",
+            CaptureMethod = "Server",
+        };
+    }
 
     /// <summary>Serves and publishes one clip for the single primary camera, so the selection sees a clip at the cursor.</summary>
     private MediaItem ServeAndPublishOneClip()
@@ -586,7 +590,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         // Arrange
         _ = ServeAndPublishOneClip();
         SetupPlayerPosition(4200.0);
-        Guid stillId = Guid.NewGuid();
+        var stillId = Guid.NewGuid();
         SetupCaptureReturns(MediaStillCaptureResult.Ok(StillInfo(stillId)));
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<SingleCameraView>()));
@@ -690,7 +694,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Contains("abcdef123456", cut.Find("[data-testid='review-grab-still-status']").TextContent, StringComparison.Ordinal));
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCursor(ClipStart.AddMinutes(10).AddSeconds(5)));
+        _ = cut.InvokeAsync(() => ReviewState.SetCursor(ClipStart.AddMinutes(10).AddSeconds(5)));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='review-grab-still-status']")));

@@ -47,12 +47,9 @@ namespace VideoForensics.Providers.Ring.Services
         /// <summary>Converts a raw battery_temp (assumed deci-kelvin) to Celsius rounded to 2 dp. Null when outside the accepted raw range.</summary>
         public static decimal? BatteryTempToCelsius(double raw)
         {
-            if (double.IsNaN(raw) || raw < BatteryTempRawMin || raw > BatteryTempRawMax)
-            {
-                return null;
-            }
-
-            return Math.Round((decimal)raw / BatteryTempDivisor - KelvinOffset, 2, MidpointRounding.AwayFromZero);
+            return double.IsNaN(raw) || raw < BatteryTempRawMin || raw > BatteryTempRawMax
+                ? null
+                : Math.Round(((decimal)raw / BatteryTempDivisor) - KelvinOffset, 2, MidpointRounding.AwayFromZero);
         }
     }
 }

@@ -10,7 +10,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>The per-second bitrate series is read from the clip when saved, otherwise computed from its packets and saved on the clip.</summary>
     public class MediaBitrateSeriesServiceTests
@@ -37,8 +37,8 @@ namespace VideoForensics.Data.Core.Tests
                 RecordedAtUtc = new DateTime(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc),
                 BitrateSeriesJson = savedSeries,
             };
-            _items.Setup(r => r.GetAsync(clip.Id, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
-            _paths.Setup(p => p.ToAbsoluteAsync("clip.mp4", It.IsAny<CancellationToken>())).ReturnsAsync("/media/clip.mp4");
+            _ = _items.Setup(r => r.GetAsync(clip.Id, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+            _ = _paths.Setup(p => p.ToAbsoluteAsync("clip.mp4", It.IsAny<CancellationToken>())).ReturnsAsync("/media/clip.mp4");
             return clip;
         }
 
@@ -59,7 +59,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task MediaBitrateSeriesService_NotSaved_ComputesAndSavesOnTheClip()
         {
             MediaItem clip = Clip();
-            _reader.Setup(r => r.ReadVideoPacketsAsync("/media/clip.mp4", It.IsAny<CancellationToken>()))
+            _ = _reader.Setup(r => r.ReadVideoPacketsAsync("/media/clip.mp4", It.IsAny<CancellationToken>()))
                 .ReturnsAsync([(0.2, 1000L), (1.4, 500L)]);
 
             IReadOnlyList<BitrateSecond>? series = await Sut().GetAsync(clip.Id, CancellationToken.None);
@@ -74,7 +74,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task MediaBitrateSeriesService_UnreadableFile_ReturnsNullAndSavesNothing()
         {
             MediaItem clip = Clip();
-            _reader.Setup(r => r.ReadVideoPacketsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((IReadOnlyList<(double PtsSeconds, long SizeBytes)>?)null);
+            _ = _reader.Setup(r => r.ReadVideoPacketsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((IReadOnlyList<(double PtsSeconds, long SizeBytes)>?)null);
 
             IReadOnlyList<BitrateSecond>? series = await Sut().GetAsync(clip.Id, CancellationToken.None);
 

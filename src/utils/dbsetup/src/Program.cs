@@ -3,12 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Client.Hosting;
 
 // Windows host: read install-time storage overrides from the registry, as the server does.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
@@ -72,7 +72,12 @@ if (resolvedDbPath is null && dataRootArg is not null)
 }
 
 // Why: the service caches settings and holds the database open; stop it for the write and start it again after.
-using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+if (!OperatingSystem.IsWindows())
+{
+    Console.Error.WriteLine("Stopping the VideoForensics service needs Windows.");
+    return 1;
+}
+using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
 if (serviceGuard is null)
 {
     Console.Error.WriteLine(stopError);

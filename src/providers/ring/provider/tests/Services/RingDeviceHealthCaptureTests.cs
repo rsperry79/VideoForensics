@@ -8,7 +8,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Tests that RingDeviceHealthCapture writes Ring's health detail fields onto the DeviceHealths row it records.</summary>
     public class RingDeviceHealthCaptureTests
@@ -32,11 +32,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Devices { Doorbots = [new Doorbot { Id = 100, Health = health }] });
 
-            VideoForensics.Data.Common.Entities.DeviceHealth? captured = null;
+            Data.Common.Entities.DeviceHealth? captured = null;
             var dataClient = new Mock<IVideoForensicsDataClient>();
-            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<VideoForensics.Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
-                .Callback<VideoForensics.Data.Common.Entities.DeviceHealth, CancellationToken>((h, _) => captured = h)
-                .ReturnsAsync((VideoForensics.Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .Callback<Data.Common.Entities.DeviceHealth, CancellationToken>((h, _) => captured = h)
+                .ReturnsAsync((Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
             var capture = new RingDeviceHealthCapture(dataClient.Object, new Mock<ILogger>().Object);
 
             // Act
@@ -62,11 +62,11 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(new Devices { Doorbots = [new Doorbot { Id = 100, Health = new DeviceHealth { Connected = true } }] });
 
-            VideoForensics.Data.Common.Entities.DeviceHealth? captured = null;
+            Data.Common.Entities.DeviceHealth? captured = null;
             var dataClient = new Mock<IVideoForensicsDataClient>();
-            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<VideoForensics.Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
-                .Callback<VideoForensics.Data.Common.Entities.DeviceHealth, CancellationToken>((h, _) => captured = h)
-                .ReturnsAsync((VideoForensics.Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .Callback<Data.Common.Entities.DeviceHealth, CancellationToken>((h, _) => captured = h)
+                .ReturnsAsync((Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
             var capture = new RingDeviceHealthCapture(dataClient.Object, new Mock<ILogger>().Object);
 
             // Act

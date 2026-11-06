@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Api
 {

@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceNetworkSettings",
                 columns: table => new
                 {
@@ -27,8 +26,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceNetworkSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_DeviceNetworkSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_DeviceNetworkSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -36,7 +35,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceNetworkDiagnosis",
                 columns: table => new
                 {
@@ -56,8 +55,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceNetworkDiagnosis", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceNetworkDiagnosis", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceNetworkDiagnosis_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -65,7 +64,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDevicePaidFeatures",
                 columns: table => new
                 {
@@ -106,8 +105,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDevicePaidFeatures", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDevicePaidFeatures", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDevicePaidFeatures_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -115,19 +114,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceNetworkSettings_DeviceId",
                 table: "DeviceNetworkSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceNetworkDiagnosis_DeviceId",
                 table: "RingDeviceNetworkDiagnosis",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDevicePaidFeatures_DeviceId",
                 table: "RingDevicePaidFeatures",
                 column: "DeviceId",
@@ -137,13 +136,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceNetworkSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceNetworkDiagnosis");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDevicePaidFeatures");
         }
     }

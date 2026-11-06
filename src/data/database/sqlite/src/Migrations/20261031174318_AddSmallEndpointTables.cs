@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,88 +10,88 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "SecurityStatusInitiatingEntityId",
                 table: "RingLocationModes",
                 type: "TEXT",
                 maxLength: 128,
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "CekTransferRecipientResponse",
                 table: "RingLocationHistoryPages",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "CekTransferRecipientResponse",
                 table: "RingLocationHistoryEvents",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "MapVisualization",
                 table: "RingLocationHistoryEvents",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "PotentialGapVisualization",
                 table: "RingLocationHistoryEvents",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "RadarVisualization",
                 table: "RingLocationHistoryEvents",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "KeyMoments",
                 table: "RingEventCvProperties",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "ObjectsPerLens",
                 table: "RingEventCvDetectionDetails",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "BatteryHatchOpen",
                 table: "RingDeviceHealthExtras",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "BatteryPercentage2",
                 table: "RingDeviceHealthExtras",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "BatteryVoltage2",
                 table: "RingDeviceHealthExtras",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "CrossStreet",
                 table: "LocationMetadata",
                 type: "TEXT",
                 maxLength: 256,
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "StreetAddress2",
                 table: "LocationMetadata",
                 type: "TEXT",
                 maxLength: 512,
                 nullable: true);
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingChimeLinkedDoorbots",
                 columns: table => new
                 {
@@ -108,8 +107,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingChimeLinkedDoorbots", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingChimeLinkedDoorbots", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingChimeLinkedDoorbots_Devices_ChimeDeviceId",
                         column: x => x.ChimeDeviceId,
                         principalTable: "Devices",
@@ -117,7 +116,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingLocationDetails",
                 columns: table => new
                 {
@@ -139,8 +138,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingLocationDetails", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingLocationDetails", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingLocationDetails_Locations_LocationId",
                         column: x => x.LocationId,
                         principalTable: "Locations",
@@ -148,7 +147,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingLocationSharedUsers",
                 columns: table => new
                 {
@@ -164,8 +163,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingLocationSharedUsers", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingLocationSharedUsers", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingLocationSharedUsers_Locations_LocationId",
                         column: x => x.LocationId,
                         principalTable: "Locations",
@@ -173,7 +172,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingSnapshotTimestamps",
                 columns: table => new
                 {
@@ -186,8 +185,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingSnapshotTimestamps", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingSnapshotTimestamps", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingSnapshotTimestamps_RingAccounts_RingAccountId",
                         column: x => x.RingAccountId,
                         principalTable: "RingAccounts",
@@ -195,7 +194,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingLocationSharedUserDevices",
                 columns: table => new
                 {
@@ -208,8 +207,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingLocationSharedUserDevices", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingLocationSharedUserDevices", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingLocationSharedUserDevices_RingLocationSharedUsers_RingLocationSharedUserId",
                         column: x => x.RingLocationSharedUserId,
                         principalTable: "RingLocationSharedUsers",
@@ -217,7 +216,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingLocationSharedUserDevicePermissions",
                 columns: table => new
                 {
@@ -228,8 +227,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingLocationSharedUserDevicePermissions", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingLocationSharedUserDevicePermissions", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingLocationSharedUserDevicePermissions_RingLocationSharedUserDevices_RingLocationSharedUserDeviceId",
                         column: x => x.RingLocationSharedUserDeviceId,
                         principalTable: "RingLocationSharedUserDevices",
@@ -237,37 +236,37 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingChimeLinkedDoorbots_ChimeDeviceId_LinkedDoorbotId",
                 table: "RingChimeLinkedDoorbots",
                 columns: new[] { "ChimeDeviceId", "LinkedDoorbotId" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingLocationDetails_LocationId",
                 table: "RingLocationDetails",
                 column: "LocationId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingLocationSharedUserDevicePermissions_RingLocationSharedUserDeviceId_Position",
                 table: "RingLocationSharedUserDevicePermissions",
                 columns: new[] { "RingLocationSharedUserDeviceId", "Position" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingLocationSharedUserDevices_RingLocationSharedUserId_Position",
                 table: "RingLocationSharedUserDevices",
                 columns: new[] { "RingLocationSharedUserId", "Position" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingLocationSharedUsers_LocationId_ProviderUserId",
                 table: "RingLocationSharedUsers",
                 columns: new[] { "LocationId", "ProviderUserId" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingSnapshotTimestamps_RingAccountId_DoorbotId",
                 table: "RingSnapshotTimestamps",
                 columns: new[] { "RingAccountId", "DoorbotId" },
@@ -277,73 +276,73 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingChimeLinkedDoorbots");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingLocationDetails");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingLocationSharedUserDevicePermissions");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingSnapshotTimestamps");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingLocationSharedUserDevices");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingLocationSharedUsers");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SecurityStatusInitiatingEntityId",
                 table: "RingLocationModes");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "CekTransferRecipientResponse",
                 table: "RingLocationHistoryPages");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "CekTransferRecipientResponse",
                 table: "RingLocationHistoryEvents");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "MapVisualization",
                 table: "RingLocationHistoryEvents");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "PotentialGapVisualization",
                 table: "RingLocationHistoryEvents");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "RadarVisualization",
                 table: "RingLocationHistoryEvents");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "KeyMoments",
                 table: "RingEventCvProperties");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "ObjectsPerLens",
                 table: "RingEventCvDetectionDetails");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "BatteryHatchOpen",
                 table: "RingDeviceHealthExtras");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "BatteryPercentage2",
                 table: "RingDeviceHealthExtras");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "BatteryVoltage2",
                 table: "RingDeviceHealthExtras");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "CrossStreet",
                 table: "LocationMetadata");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "StreetAddress2",
                 table: "LocationMetadata");
         }

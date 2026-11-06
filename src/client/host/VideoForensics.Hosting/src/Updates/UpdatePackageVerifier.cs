@@ -77,7 +77,7 @@ namespace VideoForensics.Client.Hosting.Updates
                 return Fail(UpdatePackageStatus.ManifestMissing, "manifest.json not found", null);
             }
 
-            UpdateManifest? manifest = UpdateManifest.TryParse(await File.ReadAllTextAsync(manifestPath, ct));
+            var manifest = UpdateManifest.TryParse(await File.ReadAllTextAsync(manifestPath, ct));
             if (manifest is null || manifest.Files.Count == 0)
             {
                 return Fail(UpdatePackageStatus.ManifestInvalid, "manifest.json is not a valid manifest", null);
@@ -157,7 +157,9 @@ namespace VideoForensics.Client.Hosting.Updates
             return cut < 0 ? trimmed : trimmed[..cut];
         }
 
-        private static UpdatePackageVerification Fail(UpdatePackageStatus status, string message, UpdateManifest? manifest) =>
-            new(status, message, manifest);
+        private static UpdatePackageVerification Fail(UpdatePackageStatus status, string message, UpdateManifest? manifest)
+        {
+            return new(status, message, manifest);
+        }
     }
 }

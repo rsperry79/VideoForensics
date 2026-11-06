@@ -6,7 +6,6 @@ using Moq;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -27,7 +26,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IMediaItemRepository>();
             _ = repository
                 .Setup(r => r.GetPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, 10, 25, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
-                .ReturnsAsync(new MediaItemPage(new List<MediaItem>(), 42));
+                .ReturnsAsync(new MediaItemPage([], 42));
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 new[] { Guid.NewGuid(), Guid.NewGuid() }, From, To, skip: 10, take: 25, videoOnly: null, repository.Object, CancellationToken.None);
@@ -43,7 +42,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IMediaItemRepository>();
             _ = repository
                 .Setup(r => r.GetPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, 0, 100, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
-                .ReturnsAsync(new MediaItemPage(new List<MediaItem>(), 0));
+                .ReturnsAsync(new MediaItemPage([], 0));
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 new[] { Guid.NewGuid() }, From, To, skip: null, take: null, videoOnly: null, repository.Object, CancellationToken.None);

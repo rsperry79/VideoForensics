@@ -41,12 +41,9 @@ namespace VideoForensics.Data.Database.Repositories
             MediaFlag? pending = mediaItemId is not null
                 ? db.MediaFlags.Local.FirstOrDefault(f => f.MediaItemId == mediaItemId && f.FlagType == type)
                 : db.MediaFlags.Local.FirstOrDefault(f => f.MediaItemId == null && f.DeviceId == deviceId && f.FlagType == type && f.WindowStartUtc == start);
-            if (pending is not null)
-            {
-                return pending;
-            }
-
-            return mediaItemId is not null
+            return pending is not null
+                ? pending
+                : mediaItemId is not null
                 ? await db.MediaFlags.FirstOrDefaultAsync(f => f.MediaItemId == mediaItemId && f.FlagType == type, ct)
                 : await db.MediaFlags.FirstOrDefaultAsync(f => f.DeviceId == deviceId && f.FlagType == type && f.WindowStartUtc == start, ct);
         }
@@ -97,7 +94,7 @@ namespace VideoForensics.Data.Database.Repositories
         public static async Task<int> ReconcileAsync(VideoForensicsDbContext db, Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(raised);
-            List<MediaFlagType> keep = raised.ToList();
+            var keep = raised.ToList();
             return await db.MediaFlags
                 .Where(f => f.MediaItemId == mediaItemId && f.Status == MediaFlagStatus.Unreviewed && !keep.Contains(f.FlagType))
                 .ExecuteDeleteAsync(ct);
@@ -108,19 +105,19 @@ namespace VideoForensics.Data.Database.Repositories
             ArgumentNullException.ThrowIfNull(filter);
             if (filter.Types is { Count: > 0 } types)
             {
-                List<MediaFlagType> list = types.ToList();
+                var list = types.ToList();
                 query = query.Where(f => list.Contains(f.FlagType));
             }
 
             if (filter.Statuses is { Count: > 0 } statuses)
             {
-                List<MediaFlagStatus> list = statuses.ToList();
+                var list = statuses.ToList();
                 query = query.Where(f => list.Contains(f.Status));
             }
 
             if (filter.DeviceIds is { Count: > 0 } devices)
             {
-                List<Guid> list = devices.ToList();
+                var list = devices.ToList();
                 query = query.Where(f => list.Contains(f.DeviceId));
             }
 
@@ -170,15 +167,12 @@ namespace VideoForensics.Data.Database.Repositories
             DateTime at = anchor.RaisedAtUtc;
             Guid id = anchor.Id;
             IQueryable<MediaFlag> query = ApplyFilter(db.MediaFlags.AsNoTracking(), filter);
-            if (direction == MediaFlagNeighbour.Next)
-            {
-                return await query
+            return direction == MediaFlagNeighbour.Next
+                ? await query
                     .Where(f => f.RaisedAtUtc < at || (f.RaisedAtUtc == at && f.Id.CompareTo(id) < 0))
                     .OrderByDescending(f => f.RaisedAtUtc).ThenByDescending(f => f.Id)
-                    .FirstOrDefaultAsync(ct);
-            }
-
-            return await query
+                    .FirstOrDefaultAsync(ct)
+                : await query
                 .Where(f => f.RaisedAtUtc > at || (f.RaisedAtUtc == at && f.Id.CompareTo(id) > 0))
                 .OrderBy(f => f.RaisedAtUtc).ThenBy(f => f.Id)
                 .FirstOrDefaultAsync(ct);

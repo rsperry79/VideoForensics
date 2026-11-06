@@ -24,7 +24,7 @@ public sealed class ReviewUrlCache
 
     private readonly IMediaContentUrlProvider _urls;
     private readonly TimeProvider _time;
-    private readonly Dictionary<Guid, Entry> _entries = new();
+    private readonly Dictionary<Guid, Entry> _entries = [];
 
     /// <summary>Creates the cache over the URL provider and the clock that ages its entries.</summary>
     public ReviewUrlCache(IMediaContentUrlProvider urls, TimeProvider time)
@@ -62,7 +62,7 @@ public sealed class ReviewUrlCache
             }
         }
 
-        List<Guid> ids = wanted.Keys.ToList();
+        var ids = wanted.Keys.ToList();
         for (int start = 0; start < ids.Count; start += BatchSize)
         {
             List<Guid> batch = ids.GetRange(start, Math.Min(BatchSize, ids.Count - start));
@@ -94,12 +94,7 @@ public sealed class ReviewUrlCache
 
     private bool NeedsRequest(Guid id, bool hasPreview, DateTimeOffset now)
     {
-        if (!_entries.TryGetValue(id, out Entry? entry))
-        {
-            return true;
-        }
-
-        return now - entry.FetchedAt > Lifetime || (hasPreview && entry.PreviewUrl is null);
+        return !_entries.TryGetValue(id, out Entry? entry) || now - entry.FetchedAt > Lifetime || (hasPreview && entry.PreviewUrl is null);
     }
 
     /// <summary>Swaps the content route for the preview route. Returns null when the URL is not a content URL.</summary>

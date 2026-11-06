@@ -1,9 +1,8 @@
-using System;
-using System.Globalization;
-using System.IO;
-
 using Serilog.Core;
 using Serilog.Events;
+
+using System;
+using System.Globalization;
 
 namespace VideoForensics.Core.Logging.Providers
 {
@@ -31,24 +30,33 @@ namespace VideoForensics.Core.Logging.Providers
         }
 
         /// <summary>The ANSI colour for a level, or null for Debug and Verbose, which stay uncoloured.</summary>
-        public static string? ColourFor(LogEventLevel level) => level switch
+        public static string? ColourFor(LogEventLevel level)
         {
-            LogEventLevel.Information => Green,
-            LogEventLevel.Warning => Orange,
-            LogEventLevel.Error or LogEventLevel.Fatal => Red,
-            _ => null,
-        };
+            return level switch
+            {
+                LogEventLevel.Information => Green,
+                LogEventLevel.Warning => Orange,
+                LogEventLevel.Error or LogEventLevel.Fatal => Red,
+                _ => null,
+            };
+        }
 
-        private static string TagFor(LogEventLevel level) => level switch
+        private static string TagFor(LogEventLevel level)
         {
-            LogEventLevel.Verbose => "VRB",
-            LogEventLevel.Debug => "DBG",
-            LogEventLevel.Information => "INF",
-            LogEventLevel.Warning => "WRN",
-            LogEventLevel.Error => "ERR",
-            _ => "FTL",
-        };
+            return level switch
+            {
+                LogEventLevel.Verbose => "VRB",
+                LogEventLevel.Debug => "DBG",
+                LogEventLevel.Information => "INF",
+                LogEventLevel.Warning => "WRN",
+                LogEventLevel.Error => "ERR",
+                _ => "FTL",
+            };
+        }
 
-        private static string Paint(string? colour, string text) => colour is null ? text : colour + text + Reset;
+        private static string Paint(string? colour, string text)
+        {
+            return colour is null ? text : colour + text + Reset;
+        }
     }
 }

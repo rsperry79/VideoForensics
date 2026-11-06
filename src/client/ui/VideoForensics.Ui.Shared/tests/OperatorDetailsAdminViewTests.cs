@@ -14,9 +14,9 @@ using System.Net.Sockets;
 using System.Text;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

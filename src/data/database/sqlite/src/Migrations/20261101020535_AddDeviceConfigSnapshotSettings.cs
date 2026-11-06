@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,11 +10,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "CustomSettingsJson",
                 table: "DeviceConfigSnapshots");
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceConfigSnapshotSettings",
                 columns: table => new
                 {
@@ -26,8 +25,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceConfigSnapshotSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_DeviceConfigSnapshotSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_DeviceConfigSnapshotSettings_DeviceConfigSnapshots_SnapshotId",
                         column: x => x.SnapshotId,
                         principalTable: "DeviceConfigSnapshots",
@@ -35,7 +34,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceConfigSnapshotSettings_SnapshotId_Key",
                 table: "DeviceConfigSnapshotSettings",
                 columns: new[] { "SnapshotId", "Key" },
@@ -45,10 +44,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceConfigSnapshotSettings");
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "CustomSettingsJson",
                 table: "DeviceConfigSnapshots",
                 type: "TEXT",

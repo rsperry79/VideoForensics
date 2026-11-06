@@ -1,7 +1,7 @@
-using System.Security.Cryptography;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using System.Security.Cryptography;
 
 using VideoForensics.Data.Common.Contracts;
 

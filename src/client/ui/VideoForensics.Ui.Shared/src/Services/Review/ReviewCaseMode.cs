@@ -96,14 +96,14 @@ public sealed class ReviewCaseMode
         }
 
         IReadOnlyList<CaseItem> pins = await _cases.ListItemsAsync(caseId, false, ct);
-        List<CaseItem> activePins = pins.Where(pin => pin.RemovedAtUtc is null).ToList();
+        var activePins = pins.Where(pin => pin.RemovedAtUtc is null).ToList();
 
-        List<CaseItem> mediaPins = activePins.Where(pin => pin.Kind == CaseItemKind.Media && pin.MediaItemId is not null).ToList();
-        List<CaseItem> eventPins = activePins.Where(pin => pin.Kind == CaseItemKind.Event && pin.EventId is not null).ToList();
+        var mediaPins = activePins.Where(pin => pin.Kind == CaseItemKind.Media && pin.MediaItemId is not null).ToList();
+        var eventPins = activePins.Where(pin => pin.Kind == CaseItemKind.Event && pin.EventId is not null).ToList();
         bool truncated = mediaPins.Count > MaxItemsPerKind || eventPins.Count > MaxItemsPerKind;
 
-        HashSet<Guid> keptMedia = mediaPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.MediaItemId!.Value).ToHashSet();
-        HashSet<Guid> keptEvents = eventPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.EventId!.Value).ToHashSet();
+        var keptMedia = mediaPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.MediaItemId!.Value).ToHashSet();
+        var keptEvents = eventPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.EventId!.Value).ToHashSet();
 
         var mediaById = new Dictionary<Guid, MediaItem>();
         foreach (Guid id in mediaPins.Select(pin => pin.MediaItemId!.Value).Where(keptMedia.Contains))
@@ -206,7 +206,7 @@ public sealed class ReviewCaseMode
         }
 
         // A clip with no recorded duration is treated as ending where it starts, so the window never shrinks below its start.
-        var ends = _mediaList.Select(item => item.RecordedAtUtc.AddSeconds(item.DurationSeconds ?? 0))
+        IEnumerable<DateTime> ends = _mediaList.Select(item => item.RecordedAtUtc.AddSeconds(item.DurationSeconds ?? 0))
             .Concat(_eventList.Select(evt => evt.OccurredAtUtc));
 
         DateTime earliest = starts.Min();

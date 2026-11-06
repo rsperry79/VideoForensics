@@ -23,7 +23,7 @@ public class StorageCategoryTotals_Tests
     [Fact]
     public void Ordered_SortsByCategoryNameAlphabetically()
     {
-        var rows = new[]
+        StorageCategoryStatus[] rows = new[]
         {
             Status(StorageCategory.Logs, 0),
             Status(StorageCategory.Database, 0),
@@ -31,7 +31,7 @@ public class StorageCategoryTotals_Tests
             Status(StorageCategory.Media, 0),
         };
 
-        List<StorageCategory> ordered = StorageCategoryTotals.Ordered(rows).Select(r => r.Category).ToList();
+        var ordered = StorageCategoryTotals.Ordered(rows).Select(r => r.Category).ToList();
 
         Assert.Equal(new[] { StorageCategory.Database, StorageCategory.Logs, StorageCategory.Media, StorageCategory.TempDownload }, ordered);
     }
@@ -39,7 +39,7 @@ public class StorageCategoryTotals_Tests
     [Fact]
     public void TotalUsed_SumsUsedBytesAcrossCategories()
     {
-        var rows = new[]
+        StorageCategoryStatus[] rows = new[]
         {
             Status(StorageCategory.Database, 100),
             Status(StorageCategory.Media, 250),

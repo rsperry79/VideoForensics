@@ -1,12 +1,12 @@
+using FFMpegCore;
+
+using Microsoft.Extensions.DependencyInjection;
+
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading;
 
-using FFMpegCore;
-using Microsoft.Extensions.DependencyInjection;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Providers.Core;

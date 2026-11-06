@@ -1,4 +1,5 @@
 using AngleSharp.Dom;
+
 using Bunit;
 
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review events tab: rows for the selected cameras, paging, states, row clicks, reloads, refreshes, and disposal.</summary>
 public class ReviewEventsTab_Tests : ReviewTestContext
@@ -23,14 +24,17 @@ public class ReviewEventsTab_Tests : ReviewTestContext
 
     private static readonly DateTime Base = FixedNowUtc.AddHours(-2);
 
-    private static Event EventAt(Guid device, DateTime utc, string type = "motion") => new()
+    private static Event EventAt(Guid device, DateTime utc, string type = "motion")
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        ProviderEventId = Guid.NewGuid().ToString("N"),
-        EventType = type,
-        OccurredAtUtc = utc,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            ProviderEventId = Guid.NewGuid().ToString("N"),
+            EventType = type,
+            OccurredAtUtc = utc,
+        };
+    }
 
     /// <summary>
     /// Serves events from one list (given newest first), keeping only the requested cameras and applying skip and take.
@@ -40,7 +44,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         EventLoader.Responder = (call, _) =>
         {
-            List<Event> matching = all.Where(e => call.DeviceIds.Contains(e.DeviceId)).ToList();
+            var matching = all.Where(e => call.DeviceIds.Contains(e.DeviceId)).ToList();
             return Task.FromResult(new EventPage(matching.Skip(call.Skip).Take(call.Take).ToList(), matching.Count));
         };
     }
@@ -93,14 +97,14 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(RowSelector)));
         IElement row = cut.Find(RowSelector);
         Assert.Contains(NameOf(Devices[0]), row.TextContent);
-        Assert.Single(row.QuerySelectorAll("time"));
+        _ = Assert.Single(row.QuerySelectorAll("time"));
     }
 
     [Fact]
     public void ReviewEventsTab_UnknownCamera_ShowsTheDeviceIdText()
     {
         // Arrange
-        Guid unknown = Guid.NewGuid();
+        var unknown = Guid.NewGuid();
         ServeFrom([EventAt(unknown, Base)]);
         ReviewState.SetCameras([unknown]);
 
@@ -203,7 +207,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewEventsTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Equal(ReviewEventFilters.PageSize, cut.FindAll(RowSelector).Count));
-        Assert.Single(cut.FindAll(LoadMoreSelector));
+        _ = Assert.Single(cut.FindAll(LoadMoreSelector));
 
         // Act
         cut.Find(LoadMoreSelector).Click();
@@ -324,7 +328,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.True(cut.Find($"{RowSelector}[data-event-id='{target.Id:D}']").ClassList.Contains("active")));
-        Assert.Single(cut.FindAll($"{RowSelector}.active"));
+        _ = Assert.Single(cut.FindAll($"{RowSelector}.active"));
     }
 
     [Fact]
@@ -342,7 +346,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
 
         // Assert
         Assert.Equal(new[] { Devices[0].Id }, ReviewState.CameraIds);
-        Assert.Single(EventLoader.Calls);
+        _ = Assert.Single(EventLoader.Calls);
     }
 
     [Fact]
@@ -403,7 +407,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         });
 
         // Assert
-        Assert.Single(EventLoader.Calls);
+        _ = Assert.Single(EventLoader.Calls);
     }
 
     [Fact]
@@ -448,7 +452,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         await Task.Delay(1000);
 
         // Assert: a related change still re-queries, so the subscription is live
-        Assert.Single(EventLoader.Calls);
+        _ = Assert.Single(EventLoader.Calls);
         EvidenceSource.Changes.OnNext(new EvidenceChangedDto(Devices[0].Id));
         cut.WaitForAssertion(() => Assert.Equal(2, EventLoader.Calls.Count), TimeSpan.FromSeconds(5));
     }
@@ -500,6 +504,6 @@ public class ReviewEventsTab_Tests : ReviewTestContext
 
         // Assert
         Assert.True(captured.IsCancellationRequested);
-        Assert.Single(EventLoader.Calls);
+        _ = Assert.Single(EventLoader.Calls);
     }
 }

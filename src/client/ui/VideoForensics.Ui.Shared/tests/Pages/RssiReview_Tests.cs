@@ -209,7 +209,7 @@ public class RssiReview_Tests : BunitContext
         RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
         Assert.NotNull(panelContent);
         IRenderedComponent<ContainerFragment> panel = Render(panelContent);
-        Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
-        Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
+        _ = Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
+        _ = Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
     }
 }

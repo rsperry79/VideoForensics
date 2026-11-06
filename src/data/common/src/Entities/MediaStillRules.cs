@@ -11,14 +11,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <returns>True for a still image; false for video or when there is no name.</returns>
         public static bool IsStill(string? fileName)
         {
-            if (string.IsNullOrEmpty(fileName))
-            {
-                return false;
-            }
-
-            return fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+            return !string.IsNullOrEmpty(fileName) && (fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
                 || fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
+                || fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

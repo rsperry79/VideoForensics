@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -80,7 +80,7 @@ namespace VideoForensics.Data.Database.Tests
                 new[] { device }, Start, Start.AddHours(1), skip: 0, take: 10, CancellationToken.None);
 
             Assert.Equal(1, page.TotalCount);
-            Assert.Single(page.Items);
+            _ = Assert.Single(page.Items);
         }
 
         /// <summary>Verifies that the total counts every matching clip, while the page returns only the requested slice.</summary>
@@ -123,7 +123,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetPageByDevicesAndDateRangeAsync_TakeZero_ThrowsArgumentOutOfRange()
         {
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _repository.GetPageByDevicesAndDateRangeAsync(
                     new[] { Guid.NewGuid() }, Start, Start.AddHours(1), skip: 0, take: 0, CancellationToken.None));
         }

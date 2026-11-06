@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             // "stills" subfolder. Separators become '/'. A path that is not rooted is already converted, so a rerun changes nothing.
             foreach ((string table, string column) in new[] { ("MediaItems", "FilePath"), ("MediaItems", "PreviewPath"), ("SnapshotCaptures", "MediaFilePath") })
             {
-                migrationBuilder.Sql($@"
+                _ = migrationBuilder.Sql($@"
 WITH RECURSIVE t(id, rest, keep) AS (
     SELECT Id, replace({column}, char(92), '/'),
            CASE WHEN instr(replace({column}, char(92), '/'), '/stills/') > 0 THEN 4 ELSE 3 END

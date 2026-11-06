@@ -1,11 +1,11 @@
+using Serilog.Core;
+using Serilog.Events;
+using Serilog.Parsing;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
-using Serilog.Core;
-using Serilog.Events;
-using Serilog.Parsing;
 
 using VideoForensics.Core.Logging.Providers;
 
@@ -23,14 +23,17 @@ namespace VideoForensics.Core.Logging.Tests.Providers
 
         private sealed class CapturingSink : ILogEventSink
         {
-            public List<LogEvent> Events { get; } = new();
+            public List<LogEvent> Events { get; } = [];
 
-            public void Emit(LogEvent logEvent) => Events.Add(logEvent);
+            public void Emit(LogEvent logEvent)
+            {
+                Events.Add(logEvent);
+            }
         }
 
         private static LogEvent Event(DateTimeOffset timestamp, LogEventLevel level)
         {
-            var template = new MessageTemplateParser().Parse("hello");
+            MessageTemplate template = new MessageTemplateParser().Parse("hello");
             return new LogEvent(timestamp, level, null, template, Enumerable.Empty<LogEventProperty>());
         }
 
@@ -71,7 +74,7 @@ namespace VideoForensics.Core.Logging.Tests.Providers
         [InlineData(LogEventLevel.Error, Red, "[ERR]")]
         public void Emit_Entry_ColoursOnlyTheLevelTagAndMessage(LogEventLevel level, string colour, string tag)
         {
-            var original = Console.Out;
+            TextWriter original = Console.Out;
             var captured = new StringWriter();
             try
             {

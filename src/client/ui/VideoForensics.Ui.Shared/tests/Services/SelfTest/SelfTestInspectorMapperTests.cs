@@ -1,6 +1,6 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.SelfTest;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 

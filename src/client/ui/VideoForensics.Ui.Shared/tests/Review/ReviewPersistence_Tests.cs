@@ -5,7 +5,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>
 /// The review view survives a reload: its URL state and selected event are kept in localStorage, a bare /media
@@ -40,7 +40,7 @@ public class ReviewPersistence_Tests : ReviewTestContext
         // Arrange
         AddDevices(2);
         NavigateToReview();
-        JSInterop.Setup<string?>("localStorage.getItem", StorageKey)
+        _ = JSInterop.Setup<string?>("localStorage.getItem", StorageKey)
             .SetResult("{\"query\":\"tab=Events\",\"eventId\":null}");
 
         // Act
@@ -56,8 +56,8 @@ public class ReviewPersistence_Tests : ReviewTestContext
         // Arrange
         AddDevices(2);
         NavigateToReview();
-        Guid eventId = Guid.NewGuid();
-        JSInterop.Setup<string?>("localStorage.getItem", StorageKey)
+        var eventId = Guid.NewGuid();
+        _ = JSInterop.Setup<string?>("localStorage.getItem", StorageKey)
             .SetResult($"{{\"query\":\"\",\"eventId\":\"{eventId:D}\"}}");
 
         // Act
@@ -73,7 +73,7 @@ public class ReviewPersistence_Tests : ReviewTestContext
         // Arrange
         AddDevices(2);
         NavigateToReview("tab=detail");
-        JSInterop.Setup<string?>("localStorage.getItem", StorageKey)
+        _ = JSInterop.Setup<string?>("localStorage.getItem", StorageKey)
             .SetResult("{\"query\":\"tab=Events\",\"eventId\":null}");
 
         // Act
@@ -88,7 +88,7 @@ public class ReviewPersistence_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Guid caseId = ArrangePinnedCase("Driveway", Array.Empty<VideoForensics.Data.Common.Entities.MediaItem>());
+        Guid caseId = ArrangePinnedCase("Driveway", Array.Empty<Data.Common.Entities.MediaItem>());
         NavigateToReview();
         _ = Render<ReviewPage>();
 

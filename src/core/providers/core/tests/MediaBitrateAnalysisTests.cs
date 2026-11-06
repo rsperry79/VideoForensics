@@ -60,7 +60,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FromProbe_StreamBitrateReported_UsesIt()
         {
-            MediaBitrateAnalysis? analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(10), 2_000_000, fileSizeBytes: 1_000_000);
+            var analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(10), 2_000_000, fileSizeBytes: 1_000_000);
 
             Assert.NotNull(analysis);
             Assert.Equal(2_000_000, analysis!.VideoBitrateBps);
@@ -70,7 +70,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FromProbe_NoStreamBitrate_EstimatesFromFileSizeAndDuration()
         {
-            MediaBitrateAnalysis? analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(10), null, fileSizeBytes: 1_000_000);
+            var analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(10), null, fileSizeBytes: 1_000_000);
 
             Assert.NotNull(analysis);
             Assert.Equal(800_000, analysis!.VideoBitrateBps);

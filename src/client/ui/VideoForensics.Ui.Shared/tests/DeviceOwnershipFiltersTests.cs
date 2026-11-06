@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

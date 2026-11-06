@@ -22,7 +22,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
 
             restarter.Restart();
 
-            Assert.Single(launched);
+            _ = Assert.Single(launched);
             Assert.Equal(new[] { Environment.ProcessId }, waitedFor);
             Assert.Contains(@"C:\VideoForensics\WebApp.exe", launched[0]);
             Assert.Contains("--urls", launched[0]);

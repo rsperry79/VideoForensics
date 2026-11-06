@@ -13,14 +13,26 @@ internal sealed class MediaPlayerJsBridge(
     Func<string, Task> onError)
 {
     [JSInvokable]
-    public Task OnProgress(double positionSeconds, double? durationSeconds) => onProgress(positionSeconds, durationSeconds);
+    public Task OnProgress(double positionSeconds, double? durationSeconds)
+    {
+        return onProgress(positionSeconds, durationSeconds);
+    }
 
     [JSInvokable]
-    public Task OnReady(double? durationSeconds) => onReady(durationSeconds);
+    public Task OnReady(double? durationSeconds)
+    {
+        return onReady(durationSeconds);
+    }
 
     [JSInvokable]
-    public Task OnEnded() => onEnded();
+    public Task OnEnded()
+    {
+        return onEnded();
+    }
 
     [JSInvokable]
-    public Task OnError(string code) => onError(code);
+    public Task OnError(string code)
+    {
+        return onError(code);
+    }
 }

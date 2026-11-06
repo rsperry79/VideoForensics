@@ -1,11 +1,10 @@
-using Xunit;
-using VideoForensics.Client.Platform.Windows.KeyManagement;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
-
 using System.Runtime.Versioning;
 using System.Text;
 
+using VideoForensics.Client.Platform.Windows.KeyManagement;
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
+
+using Xunit;
 
 namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
 {

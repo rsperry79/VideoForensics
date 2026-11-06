@@ -6,7 +6,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests;
+namespace VideoForensics.Data.Core.Tests.Services;
 
 public class MediaPathResolverTests
 {
@@ -44,5 +44,4 @@ public class MediaPathResolverTests
 
         Assert.Equal(Path.Combine(Root, "ring", "home", "front_door", "clip.mp4"), full);
     }
-
 }

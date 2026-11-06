@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 using System.Data;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 

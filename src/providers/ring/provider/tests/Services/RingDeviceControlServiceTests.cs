@@ -12,7 +12,7 @@ using CommonContracts = VideoForensics.Core.Providers.Common.Contracts;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Tests for RingDeviceControlService: each control resolves the device's Ring account from its location links

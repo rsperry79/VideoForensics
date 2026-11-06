@@ -16,12 +16,9 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
         /// <param name="elevated">Whether this process is running elevated. The probe's key creation needs it.</param>
         public static string Describe(bool tpmCertificateUsed, bool tpmProbeAvailable, bool elevated)
         {
-            if (tpmCertificateUsed)
-            {
-                return "TPM-held certificate";
-            }
-
-            return $"DPAPI (machine scope): TPM certificate not used (TPM available: {tpmProbeAvailable}, elevated: {elevated})";
+            return tpmCertificateUsed
+                ? "TPM-held certificate"
+                : $"DPAPI (machine scope): TPM certificate not used (TPM available: {tpmProbeAvailable}, elevated: {elevated})";
         }
 
         /// <summary>
@@ -56,12 +53,9 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
                 wait(delays[attempt]);
             }
 
-            if (tpmKeyExists())
-            {
-                throw new InvalidOperationException("The TPM data-protection key exists but could not be used after retries. Refusing to start rather than wrap keys with DPAPI. Check the TPM and the service account, then restart.");
-            }
-
-            return null;
+            return tpmKeyExists()
+                ? throw new InvalidOperationException("The TPM data-protection key exists but could not be used after retries. Refusing to start rather than wrap keys with DPAPI. Check the TPM and the service account, then restart.")
+                : null;
         }
     }
 }

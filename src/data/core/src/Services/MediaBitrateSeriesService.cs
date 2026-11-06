@@ -1,6 +1,6 @@
-using System.Text.Json;
-
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
 
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;

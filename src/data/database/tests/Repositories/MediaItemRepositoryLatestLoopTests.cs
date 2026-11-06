@@ -6,7 +6,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
     /// The Devices tab's loop is the device's newest roll-up loop even when snapshots arrive faster than the recent-media window.

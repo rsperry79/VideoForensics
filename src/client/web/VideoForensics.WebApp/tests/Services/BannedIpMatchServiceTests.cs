@@ -2,9 +2,9 @@ using Moq;
 
 using System.Net;
 
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 

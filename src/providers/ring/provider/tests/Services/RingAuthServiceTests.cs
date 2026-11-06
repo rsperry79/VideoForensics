@@ -9,7 +9,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Tests for RingAuthService implementation.
@@ -150,7 +150,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void GetAuthStatusDetails_WhenAuthenticated_ReportsTypeExpiryAndScopeWithoutSecrets()
         {
             var session = new Session("user@example.com", "password");
-            var token = new VideoForensics.Providers.Ring.Entities.OAutToken
+            var token = new Entities.OAutToken
             {
                 AccessToken = "SECRET-ACCESS-VALUE",
                 RefreshToken = "SECRET-REFRESH-VALUE",

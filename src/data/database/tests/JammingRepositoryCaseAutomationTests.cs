@@ -4,12 +4,12 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 

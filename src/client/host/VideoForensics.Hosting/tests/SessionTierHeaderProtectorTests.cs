@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Utils.Testing;
 
 namespace VideoForensics.Client.Hosting.Tests
 {

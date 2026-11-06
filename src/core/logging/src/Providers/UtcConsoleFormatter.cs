@@ -1,9 +1,9 @@
-using System.IO;
-using System.Linq;
-
 using Serilog.Events;
 using Serilog.Formatting;
 using Serilog.Formatting.Display;
+
+using System.IO;
+using System.Linq;
 
 namespace VideoForensics.Core.Logging.Providers
 {

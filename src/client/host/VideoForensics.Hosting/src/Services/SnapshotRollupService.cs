@@ -1,16 +1,15 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using System.Security.Cryptography;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
@@ -173,7 +172,6 @@ namespace VideoForensics.Client.Hosting.Services
             {
                 return await LoadStillsFromCapturesAsync(deviceId, deviceName, fromUtc, toUtc, cancellationToken);
             }
-
 
             // Format, marker and time window are filtered in SQL. Only the file-on-disk check stays here: the file system is not queryable.
             IReadOnlyList<MediaItem> rows = await _mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cancellationToken);

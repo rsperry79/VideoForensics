@@ -1,7 +1,7 @@
+using Microsoft.Data.Sqlite;
+
 using System.Globalization;
 using System.Text.Json;
-
-using Microsoft.Data.Sqlite;
 
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Providers.Ring.Services;
@@ -187,7 +187,7 @@ namespace VideoForensics.Utils.SelfTest
 
             try
             {
-                using JsonDocument document = JsonDocument.Parse(json);
+                using var document = JsonDocument.Parse(json);
                 return RingEventPayloadRemainder.IsRawEventPayload(document.RootElement);
             }
             catch (JsonException)

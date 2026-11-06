@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,19 +10,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<decimal>(
+            _ = migrationBuilder.AddColumn<decimal>(
                 name: "BatteryTempCelsius",
                 table: "DeviceReportedHealths",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateTime>(
+            _ = migrationBuilder.AddColumn<DateTime>(
                 name: "StatusAtUtc",
                 table: "DeviceReportedHealths",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<decimal>(
+            _ = migrationBuilder.AddColumn<decimal>(
                 name: "BatteryTempCelsius",
                 table: "DeviceReportedBatteries",
                 type: "TEXT",
@@ -33,15 +32,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "BatteryTempCelsius",
                 table: "DeviceReportedHealths");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "StatusAtUtc",
                 table: "DeviceReportedHealths");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "BatteryTempCelsius",
                 table: "DeviceReportedBatteries");
         }

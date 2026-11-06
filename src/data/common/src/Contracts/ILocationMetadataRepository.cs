@@ -11,7 +11,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets metadata for a location.</summary>
         Task<LocationMetadata?> GetByLocationIdAsync(Guid locationId, CancellationToken ct);
 
-
         /// <summary>Adds new metadata record.</summary>
         Task AddAsync(LocationMetadata metadata, CancellationToken ct);
 

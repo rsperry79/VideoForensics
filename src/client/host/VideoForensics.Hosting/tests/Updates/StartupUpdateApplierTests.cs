@@ -6,12 +6,18 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
 {
     public class StartupUpdateApplierTests
     {
-        private static StartupUpdateApplier NewApplier() => new(
+        private static StartupUpdateApplier NewApplier()
+        {
+            return new(
             new UpdatePackageVerifier(),
             new UpdateApplier(NullLogger<UpdateApplier>.Instance),
             NullLogger<StartupUpdateApplier>.Instance);
+        }
 
-        private static string Read(string dir, string relative) => File.ReadAllText(Path.Combine(dir, relative));
+        private static string Read(string dir, string relative)
+        {
+            return File.ReadAllText(Path.Combine(dir, relative));
+        }
 
         [Fact]
         public async Task StartupUpdateApplier_NoUpdatesFolder_ReturnsNone()

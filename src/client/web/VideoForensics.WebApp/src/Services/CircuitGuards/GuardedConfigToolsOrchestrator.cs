@@ -1,7 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
-using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services.CircuitGuards

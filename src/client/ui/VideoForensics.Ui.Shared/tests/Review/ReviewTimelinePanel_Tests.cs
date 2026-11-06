@@ -8,7 +8,7 @@ using VideoForensics.Client.Ui.Shared.Components.Viewer;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The right-panel timeline: draws the published clips, seeks the cursor on click, and follows model and state changes.</summary>
 public class ReviewTimelinePanel_Tests : ReviewTestContext
@@ -83,7 +83,7 @@ public class ReviewTimelinePanel_Tests : ReviewTestContext
         IRenderedComponent<ReviewTimelinePanel> cut = Render<ReviewTimelinePanel>();
 
         // Act
-        cut.InvokeAsync(() => PublishWindow(new ClipWindow("a", WindowStart.AddMinutes(1), 60)));
+        _ = cut.InvokeAsync(() => PublishWindow(new ClipWindow("a", WindowStart.AddMinutes(1), 60)));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='timeline-segment']")));
@@ -98,7 +98,7 @@ public class ReviewTimelinePanel_Tests : ReviewTestContext
         Assert.Empty(cut.FindAll("[data-testid='timeline-cursor']"));
 
         // Act: 5 minutes into a 10 minute window is halfway, 300px from the top of a 600px strip
-        cut.InvokeAsync(() => ReviewState.SetCursor(FixedNowUtc.AddMinutes(-5)));
+        _ = cut.InvokeAsync(() => ReviewState.SetCursor(FixedNowUtc.AddMinutes(-5)));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='timeline-cursor']")));

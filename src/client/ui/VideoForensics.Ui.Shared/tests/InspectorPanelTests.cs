@@ -12,15 +12,14 @@ using Moq;
 using Syncfusion.Blazor.DropDowns;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
 using VideoForensics.Client.Ui.Shared.Components.Reasons;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
-using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Client.Ui.Shared.Tests.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Scope;using VideoForensics.Client.Ui.Shared.Tests.Services.Cases;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

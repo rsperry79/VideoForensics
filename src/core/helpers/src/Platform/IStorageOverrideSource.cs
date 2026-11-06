@@ -14,7 +14,10 @@ namespace VideoForensics.Core.Helpers.Platform
     public sealed class NullStorageOverrideSource : IStorageOverrideSource
     {
         /// <inheritdoc />
-        public string? GetOverride(StorageCategory category) => null;
+        public string? GetOverride(StorageCategory category)
+        {
+            return null;
+        }
     }
 
     /// <summary>

@@ -1,17 +1,15 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using System.Globalization;
 
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
-using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
@@ -122,9 +120,15 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             public List<string> Errors { get; } = [];
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
@@ -225,7 +229,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_HealthOnAttempt_StoresHealthIdAndSetsDeviceOnline()
         {
             Device device = AddDevice("12345", isOnline: false);
-            Guid healthId = Guid.NewGuid();
+            var healthId = Guid.NewGuid();
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, healthId, true));
 
@@ -281,7 +285,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
             Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
         }
-
 
         [Fact]
         public async Task RunOneTickAsync_OfflineDevice_ProbesOnStartupAndMarksOnlineWhenHealthSaysConnected()
@@ -540,7 +543,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await RunTickAsync(logs);
 
-            Assert.Single(logs.Errors, m => m.Contains("404") && m.Contains("bug"));
+            _ = Assert.Single(logs.Errors, m => m.Contains("404") && m.Contains("bug"));
         }
 
         [Fact]

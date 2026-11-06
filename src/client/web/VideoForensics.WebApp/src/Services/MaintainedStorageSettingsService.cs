@@ -1,7 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Platform;
 
@@ -18,7 +15,10 @@ namespace VideoForensics.Client.WebApp.Services
         IAppRestarter restarter) : IStorageSettingsService
     {
 
-        public Task<StorageSettings> GetStatusAsync(CancellationToken cancellationToken) => inner.GetStatusAsync(cancellationToken);
+        public Task<StorageSettings> GetStatusAsync(CancellationToken cancellationToken)
+        {
+            return inner.GetStatusAsync(cancellationToken);
+        }
 
         public Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
         {

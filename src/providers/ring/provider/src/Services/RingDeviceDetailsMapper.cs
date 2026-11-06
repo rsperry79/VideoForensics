@@ -463,23 +463,20 @@ namespace VideoForensics.Providers.Ring.Services
         public static DeviceSettingsChildren? ToDeviceListSettingsChildren(RingDeviceDetails details, Guid deviceId)
         {
             DeviceSettingsChildren? children = ToSettingsChildrenWithFeatures(details, deviceId);
-            if (children == null)
-            {
-                return null;
-            }
-
-            return children with
-            {
-                MotionSnoozePresets = null,
-                LiveViewPresets = null,
-                AdvancedMotionZones = null,
-                RingSettings = null,
-                GeneralSettings = null,
-                RingSettingGroups = null,
-                PaidFeatures = null,
-                NetworkSettings = null,
-                NetworkDiagnosis = null
-            };
+            return children == null
+                ? null
+                : (children with
+                {
+                    MotionSnoozePresets = null,
+                    LiveViewPresets = null,
+                    AdvancedMotionZones = null,
+                    RingSettings = null,
+                    GeneralSettings = null,
+                    RingSettingGroups = null,
+                    PaidFeatures = null,
+                    NetworkSettings = null,
+                    NetworkDiagnosis = null
+                });
         }
 
         /// <summary>Copies the endpoint setting group rows onto fresh rows with their own Ids and the device id; each child list is copied element by element.</summary>
@@ -521,7 +518,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         private static RingDeviceFeatureState CopyState(RingDeviceFeatureState s, Guid deviceId)
         {
-            Guid id = Guid.NewGuid();
+            var id = Guid.NewGuid();
             return new RingDeviceFeatureState
             {
                 Id = id,
@@ -946,7 +943,7 @@ namespace VideoForensics.Providers.Ring.Services
                 return null;
             }
 
-            Dictionary<string, JsonElement> rest = extra.Where(p => p.Key != LightBrightnessKey).ToDictionary(p => p.Key, p => p.Value);
+            var rest = extra.Where(p => p.Key != LightBrightnessKey).ToDictionary(p => p.Key, p => p.Value);
             return rest.Count > 0 ? JsonSerializer.Serialize(rest) : null;
         }
 

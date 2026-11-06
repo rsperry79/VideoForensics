@@ -37,7 +37,7 @@ public class SignalDeviationTests
     [Fact]
     public void Windows_MarksEachHourWithAReadingMoreThanOneStdDevAway()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(new DateTime(2026, 10, 24, 9, 5, 0, DateTimeKind.Utc), -70),  // exactly 1 std dev: not flagged
             new SignalSample(new DateTime(2026, 10, 24, 9, 10, 0, DateTimeKind.Utc), -75), // 1.5 std devs
@@ -59,8 +59,8 @@ public class SignalDeviationTests
     [Fact]
     public void Windows_IsEmptyWithoutABaselineSpread()
     {
-        var samples = new[] { new SignalSample(From.AddHours(1), -95) };
-        var flat = Baseline with { StdDev = null };
+        SignalSample[] samples = new[] { new SignalSample(From.AddHours(1), -95) };
+        SignalStats flat = Baseline with { StdDev = null };
 
         Assert.Empty(SignalDeviation.Windows(samples, From, To, flat));
     }

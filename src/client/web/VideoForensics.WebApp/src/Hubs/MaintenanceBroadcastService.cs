@@ -1,6 +1,6 @@
-using System.Threading.Channels;
-
 using Microsoft.AspNetCore.SignalR;
+
+using System.Threading.Channels;
 
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Core.Api.Contracts;
@@ -36,11 +36,20 @@ namespace VideoForensics.Client.WebApp.Hubs
 
         private sealed class ChannelObserver(ChannelWriter<MaintenanceStatusDto> writer) : IObserver<MaintenanceStatusDto>
         {
-            public void OnNext(MaintenanceStatusDto value) => _ = writer.TryWrite(value);
+            public void OnNext(MaintenanceStatusDto value)
+            {
+                _ = writer.TryWrite(value);
+            }
 
-            public void OnError(Exception error) => writer.TryComplete(error);
+            public void OnError(Exception error)
+            {
+                _ = writer.TryComplete(error);
+            }
 
-            public void OnCompleted() => writer.TryComplete();
+            public void OnCompleted()
+            {
+                _ = writer.TryComplete();
+            }
         }
     }
 }

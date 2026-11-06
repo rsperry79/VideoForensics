@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -128,7 +127,10 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             return req;
         }
 
-        private static string StatusBody(string newStatus) => $"{{\"expectedStatus\":\"Unreviewed\",\"newStatus\":\"{newStatus}\",\"reason\":\"checked\"}}";
+        private static string StatusBody(string newStatus)
+        {
+            return $"{{\"expectedStatus\":\"Unreviewed\",\"newStatus\":\"{newStatus}\",\"reason\":\"checked\"}}";
+        }
 
         [Theory]
         [InlineData("ReadOnly")]

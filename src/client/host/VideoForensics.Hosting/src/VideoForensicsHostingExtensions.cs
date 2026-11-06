@@ -1,6 +1,5 @@
 
 using Microsoft.EntityFrameworkCore;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +11,10 @@ using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Licensing;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Implementations;
 using VideoForensics.Core.Helpers.Platform;
@@ -26,10 +29,6 @@ using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Client.Hosting.BackgroundServices;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Remote;
-using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;

@@ -1,6 +1,5 @@
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Signal;
@@ -81,7 +80,7 @@ public class MediaFlagMappingTests
         var dto = new MediaFlagDto(
             Guid.NewGuid(), "BitrateCollapse", Guid.NewGuid(), null, From, From, From, "Warn", "Archived", null, null, null, null, 0);
 
-        _ = Assert.Throws<ArgumentException>(() => dto.ToDomain());
+        _ = Assert.Throws<ArgumentException>(dto.ToDomain);
     }
 
     [Fact]
@@ -131,13 +130,13 @@ public class MediaFlagMappingTests
     {
         var dto = new MediaFlagFilterDto(["NotAType"], null, null, null, null);
 
-        _ = Assert.Throws<ArgumentException>(() => dto.ToDomain());
+        _ = Assert.Throws<ArgumentException>(dto.ToDomain);
     }
 
     [Fact]
     public void FlagStatusConflict_RoundTrip_KeepsExpectedActualAndReviewer()
     {
-        var reviewedAt = From.AddHours(2);
+        DateTime reviewedAt = From.AddHours(2);
         var ex = new FlagStatusConflictException(Guid.NewGuid(), MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, "reviewer-7", reviewedAt);
 
         FlagStatusConflictDto body = ex.ToDto();

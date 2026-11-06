@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace VideoForensics.Client.WebApp.Services;
 
 /// <summary>
@@ -16,8 +13,14 @@ public sealed class StartupInitializationGate
     public bool IsReady => _ready.Task.IsCompleted;
 
     /// <summary>Marks the initialization finished. Calling it again does nothing.</summary>
-    public void MarkReady() => _ = _ready.TrySetResult();
+    public void MarkReady()
+    {
+        _ = _ready.TrySetResult();
+    }
 
     /// <summary>Completes once <see cref="MarkReady"/> has been called.</summary>
-    public Task WhenReadyAsync(CancellationToken ct) => _ready.Task.WaitAsync(ct);
+    public Task WhenReadyAsync(CancellationToken ct)
+    {
+        return _ready.Task.WaitAsync(ct);
+    }
 }

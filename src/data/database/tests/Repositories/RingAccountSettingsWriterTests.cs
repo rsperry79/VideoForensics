@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
     /// Each writer replaces its parent's graph in one transaction: the second write leaves only the new children,
@@ -229,7 +229,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.False(stored.SharedUsersEnabled);
             Assert.Equal(2, stored.LastUpdateTimeMs);
         }
-    
 
         [Fact]
         public async Task RingAccountSettingsWriter_ReplaceAccountMonitoringStatusAsync_StoresEveryFieldAndPlans()

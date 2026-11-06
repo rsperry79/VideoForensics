@@ -1,7 +1,6 @@
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using Moq;
@@ -61,7 +60,9 @@ public class MediaPlayerDispose_Tests : BunitContext
             return default;
         }
 
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) =>
-            InvokeAsync<TValue>(identifier, args);
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+        {
+            return InvokeAsync<TValue>(identifier, args);
+        }
     }
 }

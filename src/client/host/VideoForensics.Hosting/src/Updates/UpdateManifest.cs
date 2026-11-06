@@ -14,7 +14,10 @@ namespace VideoForensics.Client.Hosting.Updates
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
         /// <summary>Serializes the manifest to JSON.</summary>
-        public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
+        public string ToJson()
+        {
+            return JsonSerializer.Serialize(this, JsonOptions);
+        }
 
         /// <summary>Parses manifest JSON. Returns null when the text is not a well-formed manifest.</summary>
         public static UpdateManifest? TryParse(string json)

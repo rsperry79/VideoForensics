@@ -8,10 +8,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {

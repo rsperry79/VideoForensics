@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>Paging, the safety cap, and device chunking of the review clip loader.</summary>
 public class ReviewClipLoader_Tests
@@ -18,17 +18,20 @@ public class ReviewClipLoader_Tests
 
     private readonly List<(int DeviceCount, int Skip, int Take)> _pageCalls = [];
 
-    private static MediaItem Item(Guid device, int index) => new()
+    private static MediaItem Item(Guid device, int index)
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        FileName = "clip-" + index + ".mp4",
-        FilePath = "clip.mp4",
-        MediaFormat = "mp4",
-        RecordedAtUtc = FromUtc.AddSeconds(index),
-        DurationSeconds = 60,
-        Sha256Hash = "hash",
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            FileName = "clip-" + index + ".mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            RecordedAtUtc = FromUtc.AddSeconds(index),
+            DurationSeconds = 60,
+            Sha256Hash = "hash",
+        };
+    }
 
     /// <summary>A repository double that answers pages from <paramref name="items"/>, filtered by device as the SQL query does.</summary>
     private Mock<IMediaItemRepository> RepositoryServing(IReadOnlyList<MediaItem> items)
@@ -40,7 +43,7 @@ public class ReviewClipLoader_Tests
             .Returns((IReadOnlyCollection<Guid> devices, DateTime from, DateTime to, int skip, int take, CancellationToken ct, bool videoOnly) =>
             {
                 _pageCalls.Add((devices.Count, skip, take));
-                List<MediaItem> matching = items
+                var matching = items
                     .Where(item => devices.Contains(item.DeviceId))
                     .Where(item => !videoOnly || MediaFormatHelper.IsVideo(item.MediaFormat))
                     .ToList();
@@ -54,8 +57,8 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_TwoPages_ReadsEveryPageAndReturnsEveryItem()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        List<MediaItem> items = Enumerable.Range(0, 600).Select(i => Item(device, i)).ToList();
+        var device = Guid.NewGuid();
+        var items = Enumerable.Range(0, 600).Select(i => Item(device, i)).ToList();
         var loader = new ReviewClipLoader(RepositoryServing(items).Object);
 
         // Act
@@ -71,8 +74,8 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_MoreItemsThanTheSafetyCap_StopsAtTheCapAndSetsTruncated()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        List<MediaItem> items = Enumerable.Range(0, ReviewClipLoader.MaxItems + 1).Select(i => Item(device, i)).ToList();
+        var device = Guid.NewGuid();
+        var items = Enumerable.Range(0, ReviewClipLoader.MaxItems + 1).Select(i => Item(device, i)).ToList();
         var loader = new ReviewClipLoader(RepositoryServing(items).Object);
 
         // Act
@@ -91,8 +94,8 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_StillsBeyondTheCap_DoNotCountTowardIt()
     {
         // Arrange: 6000 rows, one in ten a video. Only the videos are playable, so 600 fit under the cap.
-        Guid device = Guid.NewGuid();
-        List<MediaItem> items = Enumerable.Range(0, 6000)
+        var device = Guid.NewGuid();
+        var items = Enumerable.Range(0, 6000)
             .Select(i =>
             {
                 MediaItem item = Item(device, i);
@@ -115,8 +118,8 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_ExactlyTheSafetyCap_IsNotTruncated()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        List<MediaItem> items = Enumerable.Range(0, ReviewClipLoader.MaxItems).Select(i => Item(device, i)).ToList();
+        var device = Guid.NewGuid();
+        var items = Enumerable.Range(0, ReviewClipLoader.MaxItems).Select(i => Item(device, i)).ToList();
         var loader = new ReviewClipLoader(RepositoryServing(items).Object);
 
         // Act
@@ -146,7 +149,7 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_NoDevices_ReturnsEmptyWithoutQuerying()
     {
         // Arrange
-        var repository = RepositoryServing([]);
+        Mock<IMediaItemRepository> repository = RepositoryServing([]);
         var loader = new ReviewClipLoader(repository.Object);
 
         // Act
@@ -168,10 +171,10 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_CaseMode_ReturnsOnlyPinnedItemsWithoutPagingTheRepository()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        List<MediaItem> pinned = Enumerable.Range(0, 3).Select(i => Item(device, i)).ToList();
-        List<MediaItem> other = Enumerable.Range(10, 5).Select(i => Item(device, i)).ToList();
-        var repository = RepositoryServing(pinned.Concat(other).ToList());
+        var device = Guid.NewGuid();
+        var pinned = Enumerable.Range(0, 3).Select(i => Item(device, i)).ToList();
+        var other = Enumerable.Range(10, 5).Select(i => Item(device, i)).ToList();
+        Mock<IMediaItemRepository> repository = RepositoryServing(pinned.Concat(other).ToList());
         ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync(pinned);
         var loader = new ReviewClipLoader(repository.Object, caseMode);
 
@@ -188,8 +191,8 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_CaseMode_RestrictsToTheRequestedDevices()
     {
         // Arrange
-        Guid kept = Guid.NewGuid();
-        Guid dropped = Guid.NewGuid();
+        var kept = Guid.NewGuid();
+        var dropped = Guid.NewGuid();
         MediaItem keep = Item(kept, 0);
         MediaItem drop = Item(dropped, 1);
         ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([keep, drop]);
@@ -206,7 +209,7 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_CaseMode_RestrictsToTheRequestedRange()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem inside = Item(device, 0);
         MediaItem outside = Item(device, 1);
         outside.RecordedAtUtc = FromUtc.AddDays(-3);
@@ -224,8 +227,8 @@ public class ReviewClipLoader_Tests
     public async Task ReviewClipLoader_InactiveCaseMode_PagesTheRepositoryAsBefore()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        List<MediaItem> items = Enumerable.Range(0, 3).Select(i => Item(device, i)).ToList();
+        var device = Guid.NewGuid();
+        var items = Enumerable.Range(0, 3).Select(i => Item(device, i)).ToList();
         var loader = new ReviewClipLoader(RepositoryServing(items).Object, NoCase());
 
         // Act

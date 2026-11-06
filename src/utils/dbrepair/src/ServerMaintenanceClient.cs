@@ -108,7 +108,7 @@ public sealed class ServerMaintenanceClient
             return await ConfirmNoHoldAsync(ct) ? ServerMaintenanceSession.WithoutHold() : null;
         }
 
-        var pairing = await SignInAsync(server, ct);
+        (string ApiKey, string DeviceCode)? pairing = await SignInAsync(server, ct);
         if (pairing is null)
         {
             return await ConfirmNoHoldAsync(ct) ? ServerMaintenanceSession.WithoutHold() : null;
@@ -131,7 +131,10 @@ public sealed class ServerMaintenanceClient
         }
     }
 
-    private static bool IsLoopbackHost(string host) => host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
+    private static bool IsLoopbackHost(string host)
+    {
+        return host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
+    }
 
     // Why: asked after every failure to hold. Non-interactive runs get no, so a scripted run never touches the database unheld.
     private async Task<bool> ConfirmNoHoldAsync(CancellationToken ct)
@@ -178,7 +181,7 @@ public sealed class ServerMaintenanceClient
                 return null;
             }
 
-            using JsonDocument startBody = JsonDocument.Parse(await start.Content.ReadAsStringAsync(ct));
+            using var startBody = JsonDocument.Parse(await start.Content.ReadAsStringAsync(ct));
             string deviceCode = startBody.RootElement.GetProperty("deviceCode").GetString() ?? throw new InvalidDataException("Missing device code.");
             string userCode = startBody.RootElement.GetProperty("userCode").GetString() ?? throw new InvalidDataException("Missing user code.");
             TimeSpan pollInterval = PollIntervalFrom(startBody.RootElement);
@@ -205,12 +208,9 @@ public sealed class ServerMaintenanceClient
     // and falls back to the server's usual 5 seconds when the field is missing.
     private static TimeSpan PollIntervalFrom(JsonElement root)
     {
-        if (!root.TryGetProperty("intervalSeconds", out JsonElement interval) || !interval.TryGetInt32(out int seconds))
-        {
-            return DefaultPollInterval;
-        }
-
-        return TimeSpan.FromSeconds(Math.Max(seconds, MinPollInterval.TotalSeconds));
+        return !root.TryGetProperty("intervalSeconds", out JsonElement interval) || !interval.TryGetInt32(out int seconds)
+            ? DefaultPollInterval
+            : TimeSpan.FromSeconds(Math.Max(seconds, MinPollInterval.TotalSeconds));
     }
 
     private async Task<string?> PollForApiKeyAsync(Uri server, string deviceCode, TimeSpan pollInterval, CancellationToken ct)
@@ -264,7 +264,7 @@ public sealed class ServerMaintenanceClient
                 return null;
             }
 
-            using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
             string status = body.RootElement.GetProperty("status").GetString() ?? string.Empty;
             switch (status)
             {
@@ -288,10 +288,15 @@ public sealed class ServerMaintenanceClient
     }
 
     // Why: every request that carries the key uses a client that does not follow redirects, so a 3xx is reported and never followed.
-    private static bool IsRedirect(HttpStatusCode status) => (int)status is >= 300 and < 400;
+    private static bool IsRedirect(HttpStatusCode status)
+    {
+        return (int)status is >= 300 and < 400;
+    }
 
-    private static string RedirectMessage(HttpStatusCode status) =>
-        $"The server answered with a redirect (HTTP {(int)status}). Redirects are not followed, so the API key is not sent to another address.";
+    private static string RedirectMessage(HttpStatusCode status)
+    {
+        return $"The server answered with a redirect (HTTP {(int)status}). Redirects are not followed, so the API key is not sent to another address.";
+    }
 
     private async Task<(BeginOutcome Outcome, Guid? HoldToken)> BeginHoldAsync(Uri server, string apiKey, CancellationToken ct)
     {
@@ -325,7 +330,7 @@ public sealed class ServerMaintenanceClient
             }
 
             // Why: a begin that succeeded without a token cannot be ended or renewed by this run. Treat it as a failure, and let the server timer recover it.
-            using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
             if (!body.RootElement.TryGetProperty("holdToken", out JsonElement tokenElement) || !tokenElement.TryGetGuid(out Guid token))
             {
                 _console.Write("The server started maintenance but returned no hold token. It ends on its own safety timeout.");
@@ -399,7 +404,10 @@ public sealed class ServerMaintenanceClient
         public bool HoldLost => _holdLost;
 
         /// <summary>A session that holds nothing. Used when the operator accepted running without maintenance.</summary>
-        public static ServerMaintenanceSession WithoutHold() => new();
+        public static ServerMaintenanceSession WithoutHold()
+        {
+            return new();
+        }
 
         /// <summary>
         /// Renews the hold once, right before the repair commits. Returns true only when the server accepted that renew.
@@ -606,11 +614,16 @@ public sealed class ServerMaintenanceClient
         }
 
         // Why: with renews every 10 minutes, 25 minutes tolerates two failed renews and fails on the third, before the server's 30-minute safety timeout ends the hold on its own.
-        internal static bool IsRenewStale(TimeSpan sinceLastRenew) => sinceLastRenew >= RenewStaleAfter;
+        internal static bool IsRenewStale(TimeSpan sinceLastRenew)
+        {
+            return sinceLastRenew >= RenewStaleAfter;
+        }
 
         // Why: 401 or 403 means the pairing was revoked mid-run, so the key no longer renews the hold. Treat it like the other lost-hold answers.
-        private static bool EndsHold(HttpStatusCode status) =>
-            status is HttpStatusCode.NotFound or HttpStatusCode.Conflict or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden || IsRedirect(status);
+        private static bool EndsHold(HttpStatusCode status)
+        {
+            return status is HttpStatusCode.NotFound or HttpStatusCode.Conflict or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden || IsRedirect(status);
+        }
 
         private async Task<HttpResponseMessage> PostWithTokenAsync(string path, CancellationToken ct)
         {

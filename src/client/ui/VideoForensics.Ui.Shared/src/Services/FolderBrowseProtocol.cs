@@ -69,12 +69,9 @@ namespace VideoForensics.Client.Ui.Shared.Services
             }
 
             string? created = browser.CreateSubdirectory(parent, request.Name ?? string.Empty);
-            if (created is null)
-            {
-                return Reject("create-failed", "The folder could not be created. The name may be invalid or access may be denied.");
-            }
-
-            return new FolderBrowseResponseDto(null, new[] { ToEntry(Path.GetFileName(created), FilterPathFor(segments), created) }, null);
+            return created is null
+                ? Reject("create-failed", "The folder could not be created. The name may be invalid or access may be denied.")
+                : new FolderBrowseResponseDto(null, new[] { ToEntry(Path.GetFileName(created), FilterPathFor(segments), created) }, null);
         }
 
         /// <summary>

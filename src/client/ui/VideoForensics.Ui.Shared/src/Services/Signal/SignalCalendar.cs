@@ -13,10 +13,6 @@ public sealed class SignalCalendar
     /// <summary>Hours in each day.</summary>
     public const int Hours = 24;
 
-    private readonly IReadOnlyList<SignalStats> _cells;
-    private readonly IReadOnlyList<SignalStats> _hourOfDay;
-    private readonly IReadOnlyList<SignalStats> _dayOfWeek;
-
     /// <summary>Builds the grid from precomputed stats. Lists must hold 168 cells (day-major, Monday first), 24 hours and 7 days.</summary>
     public SignalCalendar(IReadOnlyList<SignalStats> cells, IReadOnlyList<SignalStats> hourOfDay, IReadOnlyList<SignalStats> dayOfWeek)
     {
@@ -28,19 +24,19 @@ public sealed class SignalCalendar
             throw new ArgumentException("A calendar needs 168 cells, 24 hour profiles and 7 day profiles.");
         }
 
-        _cells = cells;
-        _hourOfDay = hourOfDay;
-        _dayOfWeek = dayOfWeek;
+        CellList = cells;
+        HourOfDayList = hourOfDay;
+        DayOfWeekList = dayOfWeek;
     }
 
     /// <summary>All 168 cells, day-major: index is day * 24 + hour.</summary>
-    public IReadOnlyList<SignalStats> CellList => _cells;
+    public IReadOnlyList<SignalStats> CellList { get; }
 
     /// <summary>The 24 hour-of-day profiles.</summary>
-    public IReadOnlyList<SignalStats> HourOfDayList => _hourOfDay;
+    public IReadOnlyList<SignalStats> HourOfDayList { get; }
 
     /// <summary>The 7 day-of-week profiles.</summary>
-    public IReadOnlyList<SignalStats> DayOfWeekList => _dayOfWeek;
+    public IReadOnlyList<SignalStats> DayOfWeekList { get; }
 
     /// <summary>Monday is 0 and Sunday is 6.</summary>
     public static int DayIndex(DateTime utc)
@@ -53,7 +49,7 @@ public sealed class SignalCalendar
     {
         ArgumentNullException.ThrowIfNull(samples);
 
-        List<SignalSample> inWindow = samples
+        var inWindow = samples
             .Where(s => s.RssiDbm is not null && s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
             .ToList();
 
@@ -80,11 +76,20 @@ public sealed class SignalCalendar
     }
 
     /// <summary>The stats for one weekday (0 = Monday) and hour (0-23).</summary>
-    public SignalStats Cell(int day, int hour) => _cells[(day * Hours) + hour];
+    public SignalStats Cell(int day, int hour)
+    {
+        return CellList[(day * Hours) + hour];
+    }
 
     /// <summary>The stats for one hour of the day across every day in the window.</summary>
-    public SignalStats HourOfDay(int hour) => _hourOfDay[hour];
+    public SignalStats HourOfDay(int hour)
+    {
+        return HourOfDayList[hour];
+    }
 
     /// <summary>The stats for one weekday (0 = Monday) across every hour in the window.</summary>
-    public SignalStats DayOfWeek(int day) => _dayOfWeek[day];
+    public SignalStats DayOfWeek(int day)
+    {
+        return DayOfWeekList[day];
+    }
 }

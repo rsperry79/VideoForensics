@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Services
 {

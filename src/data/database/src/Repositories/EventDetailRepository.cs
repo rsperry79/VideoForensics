@@ -68,10 +68,10 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
 
             // Group the child rows in memory by their parent key. This is a join over rows already filtered in SQL, not paging.
-            Dictionary<Guid, EventDetection> detectionByEvent = detections
+            var detectionByEvent = detections
                 .GroupBy(d => d.EventId)
                 .ToDictionary(g => g.Key, g => g.First());
-            Dictionary<Guid, Guid> eventByDetection = detections.ToDictionary(d => d.Id, d => d.EventId);
+            var eventByDetection = detections.ToDictionary(d => d.Id, d => d.EventId);
             Dictionary<Guid, List<EventDetectionTypeOccurrence>> occurrencesByEvent = GroupByEvent(occurrences, o => eventByDetection[o.EventDetectionId]);
             Dictionary<Guid, List<EventDetectionZone>> zonesByEvent = GroupByEvent(zones, z => eventByDetection[z.EventDetectionId]);
             Dictionary<Guid, List<EventDetectedPerson>> peopleByEvent = GroupByEvent(people, p => p.EventId);
