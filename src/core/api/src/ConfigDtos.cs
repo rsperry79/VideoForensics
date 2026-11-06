@@ -74,7 +74,9 @@ namespace VideoForensics.Core.Api.Contracts
         bool EnableScheduledReports = true,
         int ScheduledReportIntervalHours = 24,
         int LogPruneIntervalHours = 24,
-        int MediaBackfillIntervalHours = 6
+        int MediaBackfillIntervalHours = 6,
+        int TimelapseCheckIntervalMinutes = 15,
+        int TimelapseMaxSegmentMinutes = 60
     );
 
     /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
@@ -103,6 +105,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ScheduledReportIntervalHours: config.ScheduledReportIntervalHours,
                 LogPruneIntervalHours: config.LogPruneIntervalHours,
                 MediaBackfillIntervalHours: config.MediaBackfillIntervalHours,
+                TimelapseCheckIntervalMinutes: config.TimelapseCheckIntervalMinutes,
+                TimelapseMaxSegmentMinutes: config.TimelapseMaxSegmentMinutes,
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,
                 ConfiguredNetworkTier: config.ConfiguredNetworkTier,
@@ -147,6 +151,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ScheduledReportIntervalHours = dto.ScheduledReportIntervalHours,
                 LogPruneIntervalHours = dto.LogPruneIntervalHours,
                 MediaBackfillIntervalHours = dto.MediaBackfillIntervalHours,
+                TimelapseCheckIntervalMinutes = dto.TimelapseCheckIntervalMinutes,
+                TimelapseMaxSegmentMinutes = dto.TimelapseMaxSegmentMinutes,
                 EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
                 EnableEmailNotifications = dto.EnableEmailNotifications,
                 ConfiguredNetworkTier = dto.ConfiguredNetworkTier,
