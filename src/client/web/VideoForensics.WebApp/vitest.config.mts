@@ -8,6 +8,7 @@ export default defineConfig({
     root: fileURLToPath(new URL("../../../..", import.meta.url)),
     test: {
         environment: "jsdom",
+        setupFiles: ["src/client/web/VideoForensics.WebApp/tests/js/setup.ts"],
         include: ["src/client/web/VideoForensics.WebApp/tests/js/**/*.test.ts"],
     },
 });
