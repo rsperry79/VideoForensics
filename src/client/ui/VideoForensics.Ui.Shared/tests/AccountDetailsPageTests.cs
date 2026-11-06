@@ -104,9 +104,6 @@ public abstract class AccountDetailsPageTestBase : BunitContext
     /// <summary>Edit-access double; gating tests set <see cref="ProviderAccountEditAccessDouble.CanEdit"/> before rendering.</summary>
     protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
 
-    /// <summary>The paired session the pages under test read. A test class overrides it to model a session that never loads.</summary>
-    protected virtual PairedSessionState CreateSession(IServiceProvider sp) => new(sp.GetRequiredService<IJSRuntime>());
-
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -164,7 +161,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         _ = Services.AddScoped(_ => MediaUrlProviderMock.Object);
         _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
-        _ = Services.AddScoped(CreateSession);
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped(sp => new WebAuthnClient(sp.GetRequiredService<IJSRuntime>(), new Mock<ISelfApiHttpClientFactory>().Object));
         _ = Services.AddScoped<StepUpService>();
         _ = Services.AddScoped(_ => Handler);
