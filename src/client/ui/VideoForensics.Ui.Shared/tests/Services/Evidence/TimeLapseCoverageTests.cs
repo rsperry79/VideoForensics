@@ -5,10 +5,13 @@ using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
-/// <summary>A Time Lapse hides the snapshots of its device inside its window, and only in the view.</summary>
+/// <summary>
+/// A time lapse hides the snapshots of its device that fall inside its own span, [its start, its start + its duration).
+/// Spans vary in length, so the span comes from the row, not from a fixed window. Nothing is deleted.
+/// </summary>
 public class TimeLapseCoverageTests
 {
-    private static readonly DateTime End = new(2026, 10, 20, 12, 15, 0, DateTimeKind.Utc);
+    private static readonly DateTime Start = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
     private static readonly Guid Device = Guid.NewGuid();
 
     private static EvidenceItem Snapshot(Guid device, DateTime at)
@@ -23,7 +26,7 @@ public class TimeLapseCoverageTests
         };
     }
 
-    private static EvidenceItem Lapse(Guid device, DateTime recordedAt)
+    private static EvidenceItem Lapse(Guid device, DateTime recordedAt, TimeSpan span)
     {
         return new()
         {
@@ -41,6 +44,7 @@ public class TimeLapseCoverageTests
                 MediaFormat = "mp4",
                 Sha256Hash = "h",
                 RecordedAtUtc = recordedAt,
+                DurationSeconds = span.TotalSeconds,
                 DownloadedAtUtc = recordedAt,
                 MetadataJson = "{\"type\":\"snapshot-rollup\"}",
             },
@@ -48,24 +52,37 @@ public class TimeLapseCoverageTests
     }
 
     [Fact]
-    public void SnapshotsInsideTheLapseWindow_AreHidden()
+    public void SnapshotsInsideAVariableLengthSpan_AreHidden()
     {
-        EvidenceItem inside = Snapshot(Device, End.AddMinutes(-5));
-        EvidenceItem lapse = Lapse(Device, End);
+        // A 43-minute time lapse covers 12:00 to 12:43, so a snapshot at 12:30 is hidden.
+        EvidenceItem inside = Snapshot(Device, Start.AddMinutes(30));
+        EvidenceItem lapse = Lapse(Device, Start, TimeSpan.FromMinutes(43));
 
-        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { inside, lapse }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { inside, lapse });
 
         Assert.DoesNotContain(inside, shown);
         Assert.Contains(lapse, shown);
     }
 
     [Fact]
-    public void SnapshotsOutsideTheLapseWindow_StayVisible()
+    public void SnapshotAfterTheSpanEnd_StaysVisible()
     {
-        EvidenceItem before = Snapshot(Device, End.AddMinutes(-20));
-        EvidenceItem lapse = Lapse(Device, End);
+        // The same 43-minute time lapse does not cover 12:50.
+        EvidenceItem after = Snapshot(Device, Start.AddMinutes(50));
+        EvidenceItem lapse = Lapse(Device, Start, TimeSpan.FromMinutes(43));
 
-        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { before, lapse }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { after, lapse });
+
+        Assert.Contains(after, shown);
+    }
+
+    [Fact]
+    public void SnapshotBeforeTheSpanStart_StaysVisible()
+    {
+        EvidenceItem before = Snapshot(Device, Start.AddMinutes(-5));
+        EvidenceItem lapse = Lapse(Device, Start, TimeSpan.FromMinutes(43));
+
+        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { before, lapse });
 
         Assert.Contains(before, shown);
     }
@@ -73,10 +90,10 @@ public class TimeLapseCoverageTests
     [Fact]
     public void OtherDevicesSnapshots_StayVisible()
     {
-        EvidenceItem other = Snapshot(Guid.NewGuid(), End.AddMinutes(-5));
-        EvidenceItem lapse = Lapse(Device, End);
+        EvidenceItem other = Snapshot(Guid.NewGuid(), Start.AddMinutes(30));
+        EvidenceItem lapse = Lapse(Device, Start, TimeSpan.FromMinutes(43));
 
-        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { other, lapse }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { other, lapse });
 
         Assert.Contains(other, shown);
     }
@@ -84,9 +101,9 @@ public class TimeLapseCoverageTests
     [Fact]
     public void NoTimeLapse_ChangesNothing()
     {
-        EvidenceItem snap = Snapshot(Device, End.AddMinutes(-5));
+        EvidenceItem snap = Snapshot(Device, Start.AddMinutes(30));
 
-        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { snap }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(new[] { snap });
 
         _ = Assert.Single(shown);
     }
