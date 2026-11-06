@@ -20,5 +20,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// of a device's first time lapse.
         /// </summary>
         Task<DateTimeOffset?> GetEarliestCaptureAtUtcAsync(Guid deviceId, CancellationToken ct);
+
+        /// <summary>
+        /// The device's latest event occurrence at or before <paramref name="upToUtc"/>, excluding its own time lapses. Null when
+        /// there is none.
+        /// </summary>
+        Task<DateTime?> GetLatestEventTimeUtcAsync(Guid deviceId, DateTime upToUtc, CancellationToken ct);
     }
 }
