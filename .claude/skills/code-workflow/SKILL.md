@@ -43,4 +43,4 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 - Follow the global skill `git-worktree-workflow` (no `git clean -X`, build output by explicit path, no bulk process kills).
 
 ## Failure log
-- Log every failure in `.claude/task_failure_log.md` at the time. Format, baseline rule, and review: `.claude/failure-log.md`.
+- Log every failure in `.claude/task_failure_log.md` at the time. Format, baseline rule, and phase review: global skill `failure-log`.

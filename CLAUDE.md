@@ -12,7 +12,7 @@ On demand: `.claude/rules/` (path-scoped, e.g. `csharp.md`), `.claude/skills/` (
 - All edits, builds and tests happen in a worktree, never the main checkout.
 - Failing test first (record the red run). Verify subagent results. Log failures in `.claude/task_failure_log.md` when they happen. Detail: code-workflow skill.
 - Never push `dev` or `main`: skill `pr-promotion`.
-- Keep the file's existing line endings (CRLF files stay CRLF).
+- Line endings: GitHub convention. Git stores LF (`* text=auto`). Write LF; never convert a file to CRLF.
 - Ask before writing backwards-compat code (fallbacks, legacy-path handling, migration shims): ask whether to fix or add the data/code instead. Ask one push question, never two.
 - Output terse. No trailing summaries, no recaps of what the user already saw.
 - Breaking change: update this file and the commit message.
