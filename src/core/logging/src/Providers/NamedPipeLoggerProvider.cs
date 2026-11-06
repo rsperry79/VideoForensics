@@ -120,21 +120,6 @@ namespace VideoForensics.Core.Logging.Providers
             }
         }
 
-        // Releases the pipe the moment the gate closes, so a closed gate leaves no pipe for clients to connect to.
-        private void OnGateChanged(object? sender, EventArgs e)
-        {
-            if (_gate is { IsOpen: true })
-            {
-                return;
-            }
-
-            lock (_syncRoot)
-            {
-                _pipeServer?.Dispose();
-                _pipeServer = null;
-            }
-        }
-
         /// <summary>Internal: writes a log entry to the pipe and circular buffer.</summary>
         internal void WriteLog(LogEntry entry)
         {
