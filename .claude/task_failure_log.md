@@ -33,6 +33,7 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - Don't use `--logger console`, `-p:DefaultItemExcludes`, or a build while a dev server holds the WebApp DLLs. Build to a scratch OutDir.
 - Register every service an endpoint or component injects in its test base (test hosts, ScopeRail, QueryApi page base).
 - Briefs for subagents must require a recorded failing run before implementation (TDD order).
+- Shell is PowerShell 7 (`pwsh`), not Bash. Delete with `Remove-Item -LiteralPath -Recurse -Force`; run chained steps as separate calls and check each (global `powershell` skill).
 - Never `git clean -X`. Match worktrees by `refs/heads/<branch>` after stripping `\r`, and run `git worktree list --porcelain` before removing one.
 - Never kill processes in bulk (`taskkill /F` on dotnet.exe). Report a hung test host instead.
 - Line endings are GitHub convention: git stores LF (`* text=auto`). Write LF; never convert a file to CRLF. The CRLF working copy on Windows is checkout only.
