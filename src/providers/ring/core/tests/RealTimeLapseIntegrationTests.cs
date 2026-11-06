@@ -9,6 +9,8 @@ using System.Threading;
 
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Core.Providers.Core;
+using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;

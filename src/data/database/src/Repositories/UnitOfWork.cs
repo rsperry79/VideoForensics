@@ -1632,7 +1632,10 @@ namespace VideoForensics.Data.Database.Repositories
         {
             // Tracked entity: the unit of work saves the change when the transaction commits.
             RingDoorbotHistoryEvent? row = _db.RingDoorbotHistoryEvents.FirstOrDefault(e => e.ProviderEventId == doorbotHistoryProviderEventId);
-            row?.LinkedEventId = eventId;
+            if (row is not null)
+            {
+                row.LinkedEventId = eventId;
+            }
 
             return Task.CompletedTask;
         }

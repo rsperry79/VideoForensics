@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Data.Core.Services;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {

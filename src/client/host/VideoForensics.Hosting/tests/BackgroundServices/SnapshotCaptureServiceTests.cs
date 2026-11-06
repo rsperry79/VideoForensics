@@ -8,6 +8,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
@@ -72,7 +73,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     _rows.Where(r => r.DeviceId == deviceId && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).ToList());
             _ = _captureRows.Setup(r => r.GetDeviceIdsWithAttemptsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((IReadOnlyCollection<Guid> ids, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
-                    _rows.Where(r => ids.Contains(r.DeviceId) && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).Select(r => r.DeviceId).ToHashSet());
+                    (IReadOnlySet<Guid>)_rows.Where(r => ids.Contains(r.DeviceId) && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).Select(r => r.DeviceId).ToHashSet());
         }
 
         public void Dispose()

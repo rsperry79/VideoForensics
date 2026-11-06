@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.Hosting.Tests
 {

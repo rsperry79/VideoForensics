@@ -245,6 +245,7 @@ namespace VideoForensics.Core.Logging.Providers
                     // Console failsafe; don't crash the logger. Reported once: another process may own the pipe name.
                     if (!acceptErrorReported)
                     {
+                        acceptErrorReported = true;
                         Console.Error.WriteLine($"[NamedPipeLogger] Error accepting pipe client ({ex.GetType().Name}): {ex.Message}");
                     }
 

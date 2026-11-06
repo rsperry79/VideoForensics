@@ -3,6 +3,7 @@ using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.WebApp.Api
 {

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
