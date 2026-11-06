@@ -170,7 +170,18 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             IProviderAccountRepository accounts = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
             ICredentialRepository credentials = scope.ServiceProvider.GetRequiredService<ICredentialRepository>();
 
-            IReadOnlyList<ProviderAccount> ringAccounts = accounts.ListAsync(CancellationToken.None).GetAwaiter().GetResult();
+            IReadOnlyList<ProviderAccount> ringAccounts;
+            try
+            {
+                ringAccounts = accounts.ListAsync(CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+            {
+                // The registered database has no schema (a fresh machine, or a file made by this probe). No saved
+                // credentials exist there, so the live tests skip rather than fail the class fixture.
+                return CredentialState.None;
+            }
+
             bool hasRefreshToken = false;
             foreach (ProviderAccount account in ringAccounts.Where(a => a.ProviderName == "Ring"))
             {
