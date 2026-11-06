@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 
 using VideoForensics.Core.Helpers.Platform;
@@ -35,6 +36,7 @@ namespace VideoForensics.Client.Platform.Windows
         }
 
         /// <inheritdoc />
+        [SupportedOSPlatform("windows")]
         public void Write(string databaseRoot)
         {
             using RegistryKey key = Registry.LocalMachine.CreateSubKey(StorageLocationProvider.RegistryKey);

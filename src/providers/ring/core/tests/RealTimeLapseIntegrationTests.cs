@@ -12,11 +12,9 @@ using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
-using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;

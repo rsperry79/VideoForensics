@@ -10,7 +10,6 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;

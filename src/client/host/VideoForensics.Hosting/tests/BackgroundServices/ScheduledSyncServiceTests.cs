@@ -12,9 +12,6 @@ using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Tests.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;

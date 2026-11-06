@@ -9,7 +9,6 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Matching;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Common.Matching;
 
 namespace VideoForensics.Client.Core.Services
 {

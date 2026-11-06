@@ -11,9 +11,6 @@ using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Maintenance;
-using VideoForensics.Client.Hosting.Services;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {

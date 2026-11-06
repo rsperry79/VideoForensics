@@ -72,6 +72,11 @@ if (resolvedDbPath is null && dataRootArg is not null)
 }
 
 // Why: the service caches settings and holds the database open; stop it for the write and start it again after.
+if (!OperatingSystem.IsWindows())
+{
+    Console.Error.WriteLine("Stopping the VideoForensics service needs Windows.");
+    return 1;
+}
 using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
 if (serviceGuard is null)
 {

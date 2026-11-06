@@ -2,17 +2,12 @@ using System.Threading;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
-using System.Threading;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Providers.Ring.Core.Tests.Mocks

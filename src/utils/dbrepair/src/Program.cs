@@ -1,6 +1,5 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -277,6 +276,11 @@ try
     }
 
     // Why: the service holds the database open and caches what it read; stop it for the deletes and start it again after.
+    if (!OperatingSystem.IsWindows())
+    {
+        Console.Error.WriteLine("Stopping the VideoForensics service needs Windows.");
+        return 1;
+    }
     using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
     if (serviceGuard is null)
     {
@@ -465,6 +469,11 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     try
     {
         // Why: the service caches operator and session state; stop it for the reset and start it again after.
+        if (!OperatingSystem.IsWindows())
+        {
+            Console.Error.WriteLine("Stopping the VideoForensics service needs Windows.");
+            return 1;
+        }
         using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
         if (serviceGuard is null)
         {

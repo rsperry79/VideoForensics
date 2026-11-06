@@ -58,7 +58,7 @@ namespace VideoForensics.Client.WebApp.Services
                 ? cli.ToList()
                 : cli.Skip(1).ToList();
 
-            return new AppRestarter(lifetime, LaunchDetached, isWindowsService, name => ServiceRestartScheduler.TrySchedule(name), exe, args);
+            return new AppRestarter(lifetime, LaunchDetached, isWindowsService, name => OperatingSystem.IsWindows() && ServiceRestartScheduler.TrySchedule(name), exe, args);
         }
 
         /// <summary>Starts a shell that waits for the process to exit, then runs the command. Gives up waiting after two minutes.</summary>

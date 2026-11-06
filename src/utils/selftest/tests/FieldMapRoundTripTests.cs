@@ -286,7 +286,14 @@ namespace VideoForensics.Utils.SelfTest.Tests
                 for (int attempt = 0; attempt < 100; attempt++)
                 {
                     await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+                    // Why: table names are test-owned and cannot be parameters; they are checked as plain identifiers first.
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(table, "^[A-Za-z_][A-Za-z0-9_]*$"))
+                    {
+                        throw new ArgumentException("Table name must be a plain identifier.", nameof(table));
+                    }
+#pragma warning disable EF1003 // table is validated above
                     int count = await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM " + table).SingleAsync(ct);
+#pragma warning restore EF1003
                     if (count > 0)
                     {
                         return;
