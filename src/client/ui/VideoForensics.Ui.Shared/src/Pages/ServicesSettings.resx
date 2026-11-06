@@ -122,16 +122,16 @@
   <data name="IntervalError" xml:space="preserve">
     <value>Failed to update the interval: {0}</value>
   </data>
-  <data name="TimelapseRollupLabel" xml:space="preserve">
+  <data name="TimelapseCheckIntervalLabel" xml:space="preserve">
     <value>Time-lapse interval (minutes)</value>
   </data>
-  <data name="TimelapseRollupHelp" xml:space="preserve">
-    <value>How often a time lapse is built from the window's snapshots. Default 15.</value>
+  <data name="TimelapseCheckIntervalHelp" xml:space="preserve">
+    <value>How often the service checks for time-lapse gaps. Default 15.</value>
   </data>
-  <data name="TimelapsePlaybackLabel" xml:space="preserve">
-    <value>Time-lapse playback length (seconds)</value>
+  <data name="TimelapseMaxSegmentLabel" xml:space="preserve">
+    <value>Longest time-lapse segment (minutes)</value>
   </data>
-  <data name="TimelapsePlaybackHelp" xml:space="preserve">
-    <value>How long each finished time lapse plays.</value>
+  <data name="TimelapseMaxSegmentHelp" xml:space="preserve">
+    <value>Gaps longer than this are split into segments of this length. Default 60.</value>
   </data>
 </root>

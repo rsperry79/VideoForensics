@@ -96,19 +96,19 @@ else
     <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-3">
             <div>
-                <label class="form-label fw-semibold" for="timelapse-rollup">@L["TimelapseRollupLabel"]</label>
-                <small class="d-block text-body-secondary mb-2">@L["TimelapseRollupHelp"]</small>
+                <label class="form-label fw-semibold" for="timelapse-check">@L["TimelapseCheckIntervalLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["TimelapseCheckIntervalHelp"]</small>
                 <div class="d-flex flex-row gap-2 align-items-center">
-                    <input id="timelapse-rollup" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_timelapseRollupMinutes" />
-                    <button type="button" class="btn btn-primary" @onclick="SaveTimelapseRollupAsync">@L["SaveButton"]</button>
+                    <input id="timelapse-check" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_timelapseCheckMinutes" />
+                    <button type="button" class="btn btn-primary" @onclick="SaveTimelapseCheckAsync">@L["SaveButton"]</button>
                 </div>
             </div>
             <div>
-                <label class="form-label fw-semibold" for="timelapse-playback">@L["TimelapsePlaybackLabel"]</label>
-                <small class="d-block text-body-secondary mb-2">@L["TimelapsePlaybackHelp"]</small>
+                <label class="form-label fw-semibold" for="timelapse-max-segment">@L["TimelapseMaxSegmentLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["TimelapseMaxSegmentHelp"]</small>
                 <div class="d-flex flex-row gap-2 align-items-center">
-                    <input id="timelapse-playback" type="number" class="form-control" style="max-width: 160px;" min="1" max="600" @bind="_timelapsePlaybackSeconds" />
-                    <button type="button" class="btn btn-primary" @onclick="SaveTimelapsePlaybackAsync">@L["SaveButton"]</button>
+                    <input id="timelapse-max-segment" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_timelapseMaxSegmentMinutes" />
+                    <button type="button" class="btn btn-primary" @onclick="SaveTimelapseMaxSegmentAsync">@L["SaveButton"]</button>
                 </div>
             </div>
             @if (_timelapseMessage is not null)
@@ -140,8 +140,8 @@ else
     private bool _timelapseSuccess;
     private string? _timelapseMessage;
 
-    private int _timelapseRollupMinutes;
-    private int _timelapsePlaybackSeconds;
+    private int _timelapseCheckMinutes;
+    private int _timelapseMaxSegmentMinutes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -253,11 +253,11 @@ else
         }
     }
 
-    private async Task SaveTimelapseRollupAsync()
+    private async Task SaveTimelapseCheckAsync()
     {
         try
         {
-            (bool applied, string message) = await ConfigTools.SetTimelapseRollupMinutesAsync(Config, _timelapseRollupMinutes, CancellationToken.None);
+            (bool applied, string message) = await ConfigTools.SetTimelapseCheckIntervalMinutesAsync(Config, _timelapseCheckMinutes, CancellationToken.None);
             _timelapseSuccess = applied;
             _timelapseMessage = message;
             if (!applied)
@@ -272,11 +272,11 @@ else
         }
     }
 
-    private async Task SaveTimelapsePlaybackAsync()
+    private async Task SaveTimelapseMaxSegmentAsync()
     {
         try
         {
-            (bool applied, string message) = await ConfigTools.SetTimelapsePlaybackSecondsAsync(Config, _timelapsePlaybackSeconds, CancellationToken.None);
+            (bool applied, string message) = await ConfigTools.SetTimelapseMaxSegmentMinutesAsync(Config, _timelapseMaxSegmentMinutes, CancellationToken.None);
             _timelapseSuccess = applied;
             _timelapseMessage = message;
             if (!applied)
@@ -297,7 +297,7 @@ else
         _pruneInterval = Config.LogPruneIntervalHours;
         _updateInterval = Config.UpdateCheckIntervalHours;
         _backfillInterval = Config.MediaBackfillIntervalHours;
-        _timelapseRollupMinutes = Config.TimelapseRollupIntervalMinutes;
-        _timelapsePlaybackSeconds = Config.TimelapsePlaybackSeconds;
+        _timelapseCheckMinutes = Config.TimelapseCheckIntervalMinutes;
+        _timelapseMaxSegmentMinutes = Config.TimelapseMaxSegmentMinutes;
     }
 }

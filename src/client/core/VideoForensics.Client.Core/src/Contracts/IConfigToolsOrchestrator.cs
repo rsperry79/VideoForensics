@@ -39,16 +39,16 @@ namespace VideoForensics.Client.Core.Contracts
         /// <param name="minutes">The rollup interval in minutes.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>Success flag and a message. Out-of-range values return failure and are not saved.</returns>
-        Task<(bool Success, string Message)> SetTimelapseRollupMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default);
+        Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default);
 
         /// <summary>
-        /// Sets how long each finished time lapse plays. Valid range is 1 to 600 seconds.
+        /// Sets the longest time-lapse segment. Valid range is 1 to 1440 minutes.
         /// </summary>
         /// <param name="config">The configuration to update and save.</param>
-        /// <param name="seconds">The playback length in seconds.</param>
+        /// <param name="minutes">The longest segment in minutes.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>Success flag and a message. Out-of-range values return failure and are not saved.</returns>
-        Task<(bool Success, string Message)> SetTimelapsePlaybackSecondsAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default);
+        Task<(bool Success, string Message)> SetTimelapseMaxSegmentMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default);
 
         Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default);
 

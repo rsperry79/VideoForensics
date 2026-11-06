@@ -219,7 +219,7 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"{service} will run every {hours} hours");
         }
 
-        public async Task<(bool Success, string Message)> SetTimelapseRollupMinutesAsync(
+        public async Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(
             IForensicsConfiguration config,
             int minutes,
             CancellationToken ct = default)
@@ -229,26 +229,26 @@ namespace VideoForensics.Client.Core.Tools
                 return (false, "Time-lapse interval must be between 1 and 1440 minutes");
             }
 
-            config.TimelapseRollupIntervalMinutes = minutes;
+            config.TimelapseCheckIntervalMinutes = minutes;
             await _configService.SaveConfigurationAsync(config, ct);
-            _logger.LogInformation("Time-lapse rollup interval set to {minutes} minutes", minutes);
+            _logger.LogInformation("Time-lapse check interval set to {minutes} minutes", minutes);
             return (true, $"Time-lapses will be built every {minutes} minutes");
         }
 
-        public async Task<(bool Success, string Message)> SetTimelapsePlaybackSecondsAsync(
+        public async Task<(bool Success, string Message)> SetTimelapseMaxSegmentMinutesAsync(
             IForensicsConfiguration config,
-            int seconds,
+            int minutes,
             CancellationToken ct = default)
         {
-            if (seconds is < 1 or > 600)
+            if (minutes is < 1 or > 1440)
             {
-                return (false, "Time-lapse playback length must be between 1 and 600 seconds");
+                return (false, "Time-lapse maximum segment must be between 1 and 1440 minutes");
             }
 
-            config.TimelapsePlaybackSeconds = seconds;
+            config.TimelapseMaxSegmentMinutes = minutes;
             await _configService.SaveConfigurationAsync(config, ct);
-            _logger.LogInformation("Time-lapse playback length set to {seconds} seconds", seconds);
-            return (true, $"Time-lapses will play for {seconds} seconds");
+            _logger.LogInformation("Time-lapse max segment set to {minutes} minutes", minutes);
+            return (true, $"Time-lapse segments will be at most {minutes} minutes");
         }
 
         public async Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(

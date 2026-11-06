@@ -145,8 +145,8 @@ namespace VideoForensics.Client.Core.Services
                 config.EnableScheduledReports = await GetBoolSetting("EnableScheduledReports", config.EnableScheduledReports, cancellationToken);
                 config.ScheduledReportIntervalHours = await GetIntSetting("ScheduledReportIntervalHours", config.ScheduledReportIntervalHours, cancellationToken);
                 config.LogPruneIntervalHours = await GetIntSetting("LogPruneIntervalHours", config.LogPruneIntervalHours, cancellationToken);
-                config.TimelapseRollupIntervalMinutes = await GetIntSetting("TimelapseRollupIntervalMinutes", config.TimelapseRollupIntervalMinutes, cancellationToken);
-                config.TimelapsePlaybackSeconds = await GetIntSetting("TimelapsePlaybackSeconds", config.TimelapsePlaybackSeconds, cancellationToken);
+                config.TimelapseCheckIntervalMinutes = await GetIntSetting("TimelapseCheckIntervalMinutes", config.TimelapseCheckIntervalMinutes, cancellationToken);
+                config.TimelapseMaxSegmentMinutes = await GetIntSetting("TimelapseMaxSegmentMinutes", config.TimelapseMaxSegmentMinutes, cancellationToken);
                 config.MediaBackfillIntervalHours = await GetIntSetting("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
@@ -225,8 +225,8 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("EnableScheduledReports", config.EnableScheduledReports.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("ScheduledReportIntervalHours", config.ScheduledReportIntervalHours.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LogPruneIntervalHours", config.LogPruneIntervalHours.ToString(), cancellationToken);
-                await _settingRepository!.SetAsync("TimelapseRollupIntervalMinutes", config.TimelapseRollupIntervalMinutes.ToString(), cancellationToken);
-                await _settingRepository!.SetAsync("TimelapsePlaybackSeconds", config.TimelapsePlaybackSeconds.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("TimelapseCheckIntervalMinutes", config.TimelapseCheckIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("TimelapseMaxSegmentMinutes", config.TimelapseMaxSegmentMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);

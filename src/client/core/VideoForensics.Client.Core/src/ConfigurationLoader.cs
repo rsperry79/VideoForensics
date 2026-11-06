@@ -47,8 +47,8 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.EnableScheduledReports = loadedConfig.EnableScheduledReports;
                 runtimeConfig.ScheduledReportIntervalHours = loadedConfig.ScheduledReportIntervalHours;
                 runtimeConfig.LogPruneIntervalHours = loadedConfig.LogPruneIntervalHours;
-                runtimeConfig.TimelapseRollupIntervalMinutes = loadedConfig.TimelapseRollupIntervalMinutes;
-                runtimeConfig.TimelapsePlaybackSeconds = loadedConfig.TimelapsePlaybackSeconds;
+                runtimeConfig.TimelapseCheckIntervalMinutes = loadedConfig.TimelapseCheckIntervalMinutes;
+                runtimeConfig.TimelapseMaxSegmentMinutes = loadedConfig.TimelapseMaxSegmentMinutes;
                 runtimeConfig.MediaBackfillIntervalHours = loadedConfig.MediaBackfillIntervalHours;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;

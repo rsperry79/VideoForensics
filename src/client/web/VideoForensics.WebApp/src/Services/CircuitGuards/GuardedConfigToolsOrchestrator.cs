@@ -81,14 +81,14 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             return RunServicesSetting(() => inner.SetServiceIntervalHoursAsync(config, service, hours, ct), ct);
         }
 
-        public Task<(bool Success, string Message)> SetTimelapseRollupMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default)
+        public Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default)
         {
-            return RunServicesSetting(() => inner.SetTimelapseRollupMinutesAsync(config, minutes, ct), ct);
+            return RunServicesSetting(() => inner.SetTimelapseCheckIntervalMinutesAsync(config, minutes, ct), ct);
         }
 
-        public Task<(bool Success, string Message)> SetTimelapsePlaybackSecondsAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default)
+        public Task<(bool Success, string Message)> SetTimelapseMaxSegmentMinutesAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default)
         {
-            return RunServicesSetting(() => inner.SetTimelapsePlaybackSecondsAsync(config, seconds, ct), ct);
+            return RunServicesSetting(() => inner.SetTimelapseMaxSegmentMinutesAsync(config, seconds, ct), ct);
         }
 
         public Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default)
