@@ -72,7 +72,7 @@ namespace VideoForensics.Client.Hosting.Tests
             // A key ring that lost the key used for the stored value makes Unprotect throw. The token is then
             // unrecoverable, so the store must report "not configured" rather than fail the status endpoint.
             _rows["Cloudflare.EncryptedApiToken"] = "stale-ciphertext";
-            _encryption.Setup(e => e.DecryptAsync("stale-ciphertext", It.IsAny<CancellationToken>()))
+            _ = _encryption.Setup(e => e.DecryptAsync("stale-ciphertext", It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new CryptographicException("The key was not found in the key ring."));
 
             Assert.Null(await _store.GetDecryptedApiTokenAsync(CancellationToken.None));
@@ -82,7 +82,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public async Task GetDecryptedTunnelTokenAsync_UndecryptableValue_ReturnsNullInsteadOfThrowing()
         {
             _rows["Cloudflare.EncryptedTunnelToken"] = "stale-ciphertext";
-            _encryption.Setup(e => e.DecryptAsync("stale-ciphertext", It.IsAny<CancellationToken>()))
+            _ = _encryption.Setup(e => e.DecryptAsync("stale-ciphertext", It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new CryptographicException("The key was not found in the key ring."));
 
             Assert.Null(await _store.GetDecryptedTunnelTokenAsync(CancellationToken.None));

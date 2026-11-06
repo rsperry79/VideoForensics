@@ -57,7 +57,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             DiscoveryStub.Wire(_accountId, location, new[] { device }, _discovery, _locations, _devices);
 
             _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent> { new("e1", "dev-a", "motion", DateTime.UtcNow.AddMinutes(-5)) });
+                .ReturnsAsync([new("e1", "dev-a", "motion", DateTime.UtcNow.AddMinutes(-5))]);
             _ = _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-a", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DeviceConfig("dev-a", true, 50, "motion"));
 
@@ -88,7 +88,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         {
             DeviceEntity device = WireOneDevice();
             _ = _mediaItems.Setup(m => m.GetByDeviceAndDateRangeAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItemEntity> { Clip(device.Id, "a.mp4"), Clip(device.Id, "b.mp4"), Clip(device.Id, "gone.mp4", purged: true) });
+                .ReturnsAsync([Clip(device.Id, "a.mp4"), Clip(device.Id, "b.mp4"), Clip(device.Id, "gone.mp4", purged: true)]);
             _ = _previews.Setup(p => p.EnsurePreviewAsync(It.IsAny<MediaItemEntity>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             _ = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
@@ -101,14 +101,14 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         {
             DeviceEntity device = WireOneDevice();
             _ = _mediaItems.Setup(m => m.GetByDeviceAndDateRangeAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItemEntity> { Clip(device.Id, "a.mp4") });
+                .ReturnsAsync([Clip(device.Id, "a.mp4")]);
             _ = _previews.Setup(p => p.EnsurePreviewAsync(It.IsAny<MediaItemEntity>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("ffmpeg exploded"));
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
             Assert.Equal(new EventPullResult(DevicesSynced: 1, LocationsSynced: 1, EventsSynced: 1, ConfigAreasSynced: 0, FeedsFailed: 0), result);
-            Assert.NotNull(device.LastSuccessfulPullAtUtc);
+            _ = Assert.NotNull(device.LastSuccessfulPullAtUtc);
         }
 
         [Fact]
@@ -119,7 +119,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                     "dev-a", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DownloadResult(Success: false, ErrorMessage: "provider down"));
             _ = _mediaItems.Setup(m => m.GetByDeviceAndDateRangeAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItemEntity> { Clip(device.Id, "a.mp4") });
+                .ReturnsAsync([Clip(device.Id, "a.mp4")]);
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 

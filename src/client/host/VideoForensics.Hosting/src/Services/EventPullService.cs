@@ -1,8 +1,5 @@
 using Microsoft.Extensions.Logging;
 
-using System.Globalization;
-using System.Text.Json;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
@@ -12,9 +9,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
-using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
-using Location = VideoForensics.Core.Providers.Common.Contracts.Location;
 using LocationEntity = VideoForensics.Data.Common.Entities.Location;
 
 namespace VideoForensics.Client.Hosting.Services
@@ -467,14 +462,7 @@ namespace VideoForensics.Client.Hosting.Services
                     try
                     {
                         bool ok = await _previewService!.EnsurePreviewAsync(clip, cancellationToken);
-                        if (ok)
-                        {
-                            _ = Interlocked.Increment(ref generated);
-                        }
-                        else
-                        {
-                            _ = Interlocked.Increment(ref failed);
-                        }
+                        _ = ok ? Interlocked.Increment(ref generated) : Interlocked.Increment(ref failed);
                     }
                     catch (OperationCanceledException)
                     {

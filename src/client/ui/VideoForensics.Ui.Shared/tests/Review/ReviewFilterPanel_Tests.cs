@@ -1,5 +1,4 @@
 using AngleSharp.Dom;
-
 using AngleSharp.Html.Dom;
 
 using Bunit;
@@ -7,16 +6,15 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
-using VideoForensics.Client.Ui.Shared.Resources;
-
 using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review filter panel: provider, account and location choices, the account reset on a provider change, the debounced auto-apply, the camera selector below the location select, and the matching-camera note.</summary>
 public class ReviewFilterPanel_Tests : ReviewTestContext
@@ -64,7 +62,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
             .Add(p => p.AllDeviceIds, Devices.Select(d => d.Id).ToList())
             .Add(p => p.Ownership, Snapshot()));
     }
-
 
     [Fact]
     public void ReviewFilterPanel_Rendered_ListsAllProvidersAndTheProvidersThatExist()
@@ -222,7 +219,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
 
         // Act - something else sets the filters before the debounce fires
-        cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
+        _ = cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
         Thread.Sleep(400);
 
         // Assert
@@ -355,7 +352,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
 
         // Act - another control sets the filters
-        cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
+        _ = cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
 
         // Assert
         Assert.Equal("Wyze", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
@@ -371,7 +368,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
 
         // Act - an unrelated state change (the tab) must not discard the pending pick
-        cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
+        _ = cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
 
         // Assert
         Assert.Equal("Ring", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);

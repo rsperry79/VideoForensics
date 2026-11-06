@@ -15,14 +15,20 @@ namespace VideoForensics.Data.Common.Contracts
         /// Distinct resolutions ("WIDTHxHEIGHT") of this device's video files. Used only as a fallback when no official spec is known.
         /// Default: no rows, for implementations that have no database behind them (the remote client).
         /// </summary>
-        Task<IReadOnlyList<string>> GetDistinctVideoResolutionsAsync(Guid deviceId, CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        Task<IReadOnlyList<string>> GetDistinctVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
 
         /// <summary>
         /// The device's newest roll-up loop, or null when it has none. Read by marker in SQL, so an older loop still shows once
         /// snapshots have filled the recent-media window. Default: none, for implementations with no database behind them.
         /// </summary>
-        Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct) => Task.FromResult<MediaItem?>(null);
+        Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult<MediaItem?>(null);
+        }
+
         /// <summary>Gets a device's newest media items by recording time, at most <paramref name="limit"/>.</summary>
         Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct);
 

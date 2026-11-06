@@ -62,7 +62,7 @@ namespace VideoForensics.Client.Hosting.Maintenance
                 _current = draining;
                 if (_inFlight == 0)
                 {
-                    _drained.TrySetResult();
+                    _ = _drained.TrySetResult();
                 }
 
                 drainedTask = _drained.Task;
@@ -100,10 +100,16 @@ namespace VideoForensics.Client.Hosting.Maintenance
         }
 
         /// <inheritdoc />
-        public IDisposable Subscribe(IObserver<MaintenanceStatusDto> observer) => _status.Subscribe(observer);
+        public IDisposable Subscribe(IObserver<MaintenanceStatusDto> observer)
+        {
+            return _status.Subscribe(observer);
+        }
 
         /// <inheritdoc />
-        public void Dispose() => _status.Dispose();
+        public void Dispose()
+        {
+            _status.Dispose();
+        }
 
         private void Release()
         {
@@ -112,17 +118,22 @@ namespace VideoForensics.Client.Hosting.Maintenance
                 _inFlight--;
                 if (_current.Phase == MaintenancePhases.Draining && _inFlight == 0)
                 {
-                    _drained.TrySetResult();
+                    _ = _drained.TrySetResult();
                 }
             }
         }
 
         // Called under _lock. Subscribers in this codebase only queue or forward the value and never call back into the gate,
         // so publishing under the lock cannot deadlock, and it keeps a racing End and Begin from publishing out of order.
-        private void Publish(MaintenanceStatusDto status) => _status.OnNext(status);
+        private void Publish(MaintenanceStatusDto status)
+        {
+            _status.OnNext(status);
+        }
 
-        private static TaskCompletionSource NewDrainSignal() =>
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private static TaskCompletionSource NewDrainSignal()
+        {
+            return new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
 
         private sealed class Lease(MaintenanceGate gate) : IDisposable
         {

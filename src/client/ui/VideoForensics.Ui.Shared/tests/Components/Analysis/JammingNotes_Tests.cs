@@ -1,13 +1,10 @@
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
 
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Components.Analysis;
-using VideoForensics.Client.Ui.Shared.Components.Notes;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;

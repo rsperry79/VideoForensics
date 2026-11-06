@@ -1,6 +1,6 @@
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting.Remote
 {

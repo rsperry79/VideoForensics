@@ -9,7 +9,7 @@ using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Maps the full ring_devices <c>features</c> object (sanitized fixture) onto DeviceFeatures scalars and RingDeviceFeatureState rows.</summary>
     public class RingDeviceFeatureStateMapperTests

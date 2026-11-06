@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Web;
+
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Time;
@@ -62,6 +63,7 @@ public sealed record ReviewUrlState(
         {
             hash.Add(type);
         }
+
         return hash.ToHashCode();
     }
 }

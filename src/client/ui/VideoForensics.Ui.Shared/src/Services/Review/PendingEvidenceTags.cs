@@ -43,7 +43,6 @@ public class PendingEvidenceTags
     private readonly object _gate = new();
     private readonly List<PendingTag> _items = [];
     private readonly ILogger<PendingEvidenceTags>? _logger;
-    private AttachResult? _lastAttach;
 
     /// <summary>Creates an empty list. The logger is optional so DI can omit it.</summary>
     public PendingEvidenceTags(ILogger<PendingEvidenceTags>? logger = null)
@@ -88,9 +87,11 @@ public class PendingEvidenceTags
         {
             lock (_gate)
             {
-                return _lastAttach;
+                return field;
             }
         }
+
+        private set;
     }
 
     /// <summary>
@@ -204,7 +205,7 @@ public class PendingEvidenceTags
         var result = new AttachResult(attachedTags.Count, failed, DateTime.UtcNow);
         lock (_gate)
         {
-            _lastAttach = result;
+            LastAttach = result;
         }
 
         OnChange?.Invoke();

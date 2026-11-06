@@ -1,13 +1,15 @@
 using Bunit;
+using Bunit.Rendering;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Moq;
-using VideoForensics.Client.Ui.Shared.Layout.RightPanel;
+
+using Syncfusion.Blazor.DropDowns;
+
 using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
+
 using Xunit;
-using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
@@ -65,9 +67,9 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
         RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
         Assert.NotNull(slot.Content);
 
-        var panel = Render(slot.Content!);
+        IRenderedComponent<ContainerFragment> panel = Render(slot.Content!);
 
-        var providers = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
+        IRenderedComponent<SfMultiSelect<string[], string>> providers = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
         Assert.NotNull(providers.Instance.Value);
         Assert.Contains("Ring", providers.Instance.Value!);
         _ = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfDropDownList<string, KeyValuePair<string, string>>>();

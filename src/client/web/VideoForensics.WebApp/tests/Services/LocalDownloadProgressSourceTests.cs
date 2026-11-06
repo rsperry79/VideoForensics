@@ -1,14 +1,10 @@
-using Microsoft.Extensions.Logging.Abstractions;
-
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Client.WebApp.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

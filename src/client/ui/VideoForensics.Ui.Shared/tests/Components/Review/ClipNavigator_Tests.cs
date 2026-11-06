@@ -1,10 +1,9 @@
+using AngleSharp.Dom;
+
 using Bunit;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-
-using AngleSharp.Dom;
 
 using Moq;
 
@@ -140,7 +139,7 @@ public class ClipNavigator_Tests : BunitContext
             .ReturnsAsync(17);
         _ = _repository
             .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((int?)3);
+            .ReturnsAsync(3);
 
         IRenderedComponent<ClipNavigator> cut = Render();
 
@@ -177,10 +176,10 @@ public class ClipNavigator_Tests : BunitContext
         MediaFlag target = Flag();
         _ = _repository
             .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((int?)3);
+            .ReturnsAsync(3);
         _ = _repository
             .Setup(r => r.GetPositionAsync(target.Id, _filter, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((int?)4);
+            .ReturnsAsync(4);
         _ = _repository
             .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);

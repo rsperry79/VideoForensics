@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Services
             NoteIfPresent(notes, "packet_loss_strength", h.PacketLossStrength != null);
             NoteIfPresent(notes, "supported_rpc_commands", h.SupportedRpcCommands != null);
 
-            foreach (KeyValuePair<string, JsonElement> entry in h.AdditionalFields ?? new Dictionary<string, JsonElement>())
+            foreach (KeyValuePair<string, JsonElement> entry in h.AdditionalFields ?? [])
             {
                 if (entry.Key == "batteries")
                 {
@@ -129,38 +129,70 @@ namespace VideoForensics.Providers.Ring.Services
         {
             switch (key)
             {
-                case "floodlight_on": { bool ok = RingJsonValue.TryBool(v, out bool? r); g.FloodlightOn = r; return ok; }
-                case "white_led_on": { bool ok = RingJsonValue.TryBool(v, out bool? r); g.WhiteLedOn = r; return ok; }
-                case "siren_on": { bool ok = RingJsonValue.TryBool(v, out bool? r); g.SirenOn = r; return ok; }
-                case "battery_error": { bool ok = RingJsonValue.TryBool(v, out bool? r); g.BatteryError = r; return ok; }
-                case "battery_temp": { bool ok = RingJsonValue.TryDouble(v, out double? r); g.BatteryTemp = r; return ok; }
-                case "status_time": { bool ok = RingJsonValue.TryLong(v, out long? r); g.StatusTime = r; return ok; }
-                case "uptime_sec": { bool ok = RingJsonValue.TryLong(v, out long? r); g.UptimeSec = r; return ok; }
-                case "bandwidth": { bool ok = RingJsonValue.TryLong(v, out long? r); g.Bandwidth = r; return ok; }
-                case "current_bandwidth": { bool ok = RingJsonValue.TryLong(v, out long? r); g.CurrentBandwidth = r; return ok; }
-                case "current_bandwidth_mb": { bool ok = RingJsonValue.TryDecimal(v, out decimal? r); g.CurrentBandwidthMb = r; return ok; }
-                case "stream_resolution": { bool ok = RingJsonValue.TryInt(v, out int? r); g.StreamResolution = r; return ok; }
-                case "video_packets_total": { bool ok = RingJsonValue.TryLong(v, out long? r); g.VideoPacketsTotal = r; return ok; }
-                case "firmware_avg_bitrate": { bool ok = RingJsonValue.TryLong(v, out long? r); g.FirmwareAvgBitrate = r; return ok; }
-                case "sidewalk_connection": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.SidewalkConnection = r; return ok; }
-                case "transformer_voltage": { bool ok = RingJsonValue.TryDecimal(v, out decimal? r); x.TransformerVoltage = r; return ok; }
-                case "transformer_voltage_category": { bool ok = RingJsonValue.TryText(v, out string? r); x.TransformerVoltageCategory = r; return ok; }
-                case "transformer_score": { bool ok = RingJsonValue.TryText(v, out string? r); x.TransformerScore = r; return ok; }
-                case "hatch_open": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.HatchOpen = r; return ok; }
-                case "package_warning_active": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.PackageWarningActive = r; return ok; }
-                case "rss_connected": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.RssConnected = r; return ok; }
-                case "second_battery_percentage_category": { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryPercentageCategory = r; return ok; }
-                case "second_battery_voltage_category": { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryVoltageCategory = r; return ok; }
-                case "bandwidth_last_time": { bool ok = RingJsonValue.TryLong(v, out long? r); x.BandwidthLastTime = r; return ok; }
-                case "night_mode_on": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.NightModeOn = r; return ok; }
-                case "vod_enabled": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.VodEnabled = r; return ok; }
-                case "external_connection": { bool ok = RingJsonValue.TryBool(v, out bool? r); x.ExternalConnection = r; return ok; }
-                case "battery_hatch_open": { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryHatchOpen = ok ? v.GetString() : null; return ok; }
-                case "battery_percentage_2": { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryPercentage2 = ok ? v.GetString() : null; return ok; }
-                case "battery_voltage_2": { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryVoltage2 = ok ? v.GetString() : null; return ok; }
-                case "battery_percentage_category_2": { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryPercentageCategory = r; return ok; }
-                case "battery_voltage_category_2": { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryVoltageCategory = r; return ok; }
-                default: return false;
+                case "floodlight_on":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); g.FloodlightOn = r; return ok; }
+                case "white_led_on":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); g.WhiteLedOn = r; return ok; }
+                case "siren_on":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); g.SirenOn = r; return ok; }
+                case "battery_error":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); g.BatteryError = r; return ok; }
+                case "battery_temp":
+                { bool ok = RingJsonValue.TryDouble(v, out double? r); g.BatteryTemp = r; return ok; }
+                case "status_time":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); g.StatusTime = r; return ok; }
+                case "uptime_sec":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); g.UptimeSec = r; return ok; }
+                case "bandwidth":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); g.Bandwidth = r; return ok; }
+                case "current_bandwidth":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); g.CurrentBandwidth = r; return ok; }
+                case "current_bandwidth_mb":
+                { bool ok = RingJsonValue.TryDecimal(v, out decimal? r); g.CurrentBandwidthMb = r; return ok; }
+                case "stream_resolution":
+                { bool ok = RingJsonValue.TryInt(v, out int? r); g.StreamResolution = r; return ok; }
+                case "video_packets_total":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); g.VideoPacketsTotal = r; return ok; }
+                case "firmware_avg_bitrate":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); g.FirmwareAvgBitrate = r; return ok; }
+                case "sidewalk_connection":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.SidewalkConnection = r; return ok; }
+                case "transformer_voltage":
+                { bool ok = RingJsonValue.TryDecimal(v, out decimal? r); x.TransformerVoltage = r; return ok; }
+                case "transformer_voltage_category":
+                { bool ok = RingJsonValue.TryText(v, out string? r); x.TransformerVoltageCategory = r; return ok; }
+                case "transformer_score":
+                { bool ok = RingJsonValue.TryText(v, out string? r); x.TransformerScore = r; return ok; }
+                case "hatch_open":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.HatchOpen = r; return ok; }
+                case "package_warning_active":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.PackageWarningActive = r; return ok; }
+                case "rss_connected":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.RssConnected = r; return ok; }
+                case "second_battery_percentage_category":
+                { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryPercentageCategory = r; return ok; }
+                case "second_battery_voltage_category":
+                { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryVoltageCategory = r; return ok; }
+                case "bandwidth_last_time":
+                { bool ok = RingJsonValue.TryLong(v, out long? r); x.BandwidthLastTime = r; return ok; }
+                case "night_mode_on":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.NightModeOn = r; return ok; }
+                case "vod_enabled":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.VodEnabled = r; return ok; }
+                case "external_connection":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); x.ExternalConnection = r; return ok; }
+                case "battery_hatch_open":
+                { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryHatchOpen = ok ? v.GetString() : null; return ok; }
+                case "battery_percentage_2":
+                { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryPercentage2 = ok ? v.GetString() : null; return ok; }
+                case "battery_voltage_2":
+                { bool ok = v.ValueKind is JsonValueKind.String or JsonValueKind.Null; x.BatteryVoltage2 = ok ? v.GetString() : null; return ok; }
+                case "battery_percentage_category_2":
+                { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryPercentageCategory = r; return ok; }
+                case "battery_voltage_category_2":
+                { bool ok = RingJsonValue.TryText(v, out string? r); x.SecondBatteryVoltageCategory = r; return ok; }
+                default:
+                    return false;
             }
         }
 
@@ -213,20 +245,34 @@ namespace VideoForensics.Providers.Ring.Services
         {
             switch (key)
             {
-                case "battery_number": { bool ok = RingJsonValue.TryInt(v, out int? r); b.BatteryNumber = r; return ok; }
-                case "battery_id": { bool ok = RingJsonValue.TryText(v, out string? r); b.BatteryId = r; return ok; }
-                case "battery_percentage": { bool ok = RingJsonValue.TryInt(v, out int? r); b.Percentage = r; return ok; }
-                case "battery_present": { bool ok = RingJsonValue.TryBool(v, out bool? r); b.Present = r; return ok; }
-                case "battery_charging": { bool ok = RingJsonValue.TryBool(v, out bool? r); b.Charging = r; return ok; }
-                case "battery_voltage": { bool ok = RingJsonValue.TryDecimal(v, out decimal? r); b.Voltage = r; return ok; }
-                case "battery_percentage_category": { bool ok = RingJsonValue.TryText(v, out string? r); b.PercentageCategory = r; return ok; }
-                case "battery_voltage_category": { bool ok = RingJsonValue.TryText(v, out string? r); b.VoltageCategory = r; return ok; }
-                case "battery_temp": { bool ok = RingJsonValue.TryDouble(v, out double? r); b.Temp = r; return ok; }
-                case "battery_auth_status": { bool ok = RingJsonValue.TryText(v, out string? r); b.AuthStatus = r; return ok; }
-                case "battery_family": { bool ok = RingJsonValue.TryText(v, out string? r); b.Family = r; return ok; }
-                case "battery_fw_version": { bool ok = RingJsonValue.TryText(v, out string? r); b.FwVersion = r; return ok; }
-                case "battery_ota_status": { bool ok = RingJsonValue.TryText(v, out string? r); b.OtaStatus = r; return ok; }
-                default: return false;
+                case "battery_number":
+                { bool ok = RingJsonValue.TryInt(v, out int? r); b.BatteryNumber = r; return ok; }
+                case "battery_id":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.BatteryId = r; return ok; }
+                case "battery_percentage":
+                { bool ok = RingJsonValue.TryInt(v, out int? r); b.Percentage = r; return ok; }
+                case "battery_present":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); b.Present = r; return ok; }
+                case "battery_charging":
+                { bool ok = RingJsonValue.TryBool(v, out bool? r); b.Charging = r; return ok; }
+                case "battery_voltage":
+                { bool ok = RingJsonValue.TryDecimal(v, out decimal? r); b.Voltage = r; return ok; }
+                case "battery_percentage_category":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.PercentageCategory = r; return ok; }
+                case "battery_voltage_category":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.VoltageCategory = r; return ok; }
+                case "battery_temp":
+                { bool ok = RingJsonValue.TryDouble(v, out double? r); b.Temp = r; return ok; }
+                case "battery_auth_status":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.AuthStatus = r; return ok; }
+                case "battery_family":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.Family = r; return ok; }
+                case "battery_fw_version":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.FwVersion = r; return ok; }
+                case "battery_ota_status":
+                { bool ok = RingJsonValue.TryText(v, out string? r); b.OtaStatus = r; return ok; }
+                default:
+                    return false;
             }
         }
     }

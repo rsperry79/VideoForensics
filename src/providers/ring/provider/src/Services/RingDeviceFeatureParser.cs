@@ -76,27 +76,68 @@ namespace VideoForensics.Providers.Ring.Services
 
             switch (key)
             {
-                case "cfes_eligible": f.CfesEligible = flag; break;
-                case "package_warning": f.PackageWarning = flag; break;
-                case "auto_zoom_track": f.AutoZoomTrack = flag; break;
-                case "automated_siren": f.AutomatedSiren = flag; break;
-                case "alexa_plus_greetings": f.AlexaPlusGreetings = flag; break;
-                case "remote_access_control": f.RemoteAccessControl = flag; break;
-                case "auto_shutoff_device": f.AutoShutoffDevice = flag; break;
-                case "short_on_long_off": f.ShortOnLongOff = flag; break;
-                case "tracklight": f.Tracklight = flag; break;
-                case "motion_zone_recommendation": f.MotionZoneRecommendation = flag; break;
-                case "rich_notifications_eligible": f.RichNotificationsEligible = flag; break;
-                case "show_offline_motion_events": f.ShowOfflineMotionEvents = flag; break;
-                case "sheila_camera_eligible": f.SheilaCameraEligible = flag; break;
-                case "sheila_camera_processing_eligible": f.SheilaCameraProcessingEligible = flag; break;
-                case "dynamic_network_switching_eligible": f.DynamicNetworkSwitchingEligible = flag; break;
-                case "vehicle_detection_eligible": f.VehicleDetectionEligible = flag; break;
-                case "animal_detection_eligible": f.AnimalDetectionEligible = flag; break;
-                case "show_24x7_lite": f.Show24x7Lite = flag; break;
-                case "recording_24x7_eligible": f.Recording24x7Eligible = flag; break;
-                case "property_view": f.PropertyView = flag; break;
-                default: break;
+                case "cfes_eligible":
+                    f.CfesEligible = flag;
+                    break;
+                case "package_warning":
+                    f.PackageWarning = flag;
+                    break;
+                case "auto_zoom_track":
+                    f.AutoZoomTrack = flag;
+                    break;
+                case "automated_siren":
+                    f.AutomatedSiren = flag;
+                    break;
+                case "alexa_plus_greetings":
+                    f.AlexaPlusGreetings = flag;
+                    break;
+                case "remote_access_control":
+                    f.RemoteAccessControl = flag;
+                    break;
+                case "auto_shutoff_device":
+                    f.AutoShutoffDevice = flag;
+                    break;
+                case "short_on_long_off":
+                    f.ShortOnLongOff = flag;
+                    break;
+                case "tracklight":
+                    f.Tracklight = flag;
+                    break;
+                case "motion_zone_recommendation":
+                    f.MotionZoneRecommendation = flag;
+                    break;
+                case "rich_notifications_eligible":
+                    f.RichNotificationsEligible = flag;
+                    break;
+                case "show_offline_motion_events":
+                    f.ShowOfflineMotionEvents = flag;
+                    break;
+                case "sheila_camera_eligible":
+                    f.SheilaCameraEligible = flag;
+                    break;
+                case "sheila_camera_processing_eligible":
+                    f.SheilaCameraProcessingEligible = flag;
+                    break;
+                case "dynamic_network_switching_eligible":
+                    f.DynamicNetworkSwitchingEligible = flag;
+                    break;
+                case "vehicle_detection_eligible":
+                    f.VehicleDetectionEligible = flag;
+                    break;
+                case "animal_detection_eligible":
+                    f.AnimalDetectionEligible = flag;
+                    break;
+                case "show_24x7_lite":
+                    f.Show24x7Lite = flag;
+                    break;
+                case "recording_24x7_eligible":
+                    f.Recording24x7Eligible = flag;
+                    break;
+                case "property_view":
+                    f.PropertyView = flag;
+                    break;
+                default:
+                    break;
             }
         }
 

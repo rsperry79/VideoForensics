@@ -7,7 +7,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The localStorage copy of the shared review settings that Media and the Review pages both read and write.</summary>
 public class ReviewSettingsStore_Tests : BunitContext
@@ -24,7 +24,7 @@ public class ReviewSettingsStore_Tests : BunitContext
         // Arrange
         ReviewSettingsStore store = CreateStore();
         var eventId = Guid.NewGuid();
-        JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey)
+        _ = JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey)
             .SetResult($"{{\"query\":\"tab=Events\",\"eventId\":\"{eventId:D}\"}}");
 
         // Act
@@ -44,7 +44,7 @@ public class ReviewSettingsStore_Tests : BunitContext
     {
         // Arrange
         ReviewSettingsStore store = CreateStore();
-        JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey).SetResult(stored);
+        _ = JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey).SetResult(stored);
 
         // Act
         SavedReviewSettings? saved = await store.LoadAsync();
@@ -75,7 +75,7 @@ public class ReviewSettingsStore_Tests : BunitContext
         // Arrange
         ReviewSettingsStore store = CreateStore();
         var eventId = Guid.NewGuid();
-        JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey)
+        _ = JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey)
             .SetResult($"{{\"query\":\"tab=Events\",\"eventId\":\"{eventId:D}\"}}");
 
         // Act

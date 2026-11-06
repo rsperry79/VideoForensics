@@ -181,12 +181,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             // An async state machine's type is "<Name>d__N" and its method is MoveNext; a lambda's method is "<Name>b__N".
             string name = method.Name == "MoveNext" && declared.Name.StartsWith('<') ? declared.Name : method.Name;
-            if (name.StartsWith('<') && name.IndexOf('>') > 1)
-            {
-                return name[1..name.IndexOf('>')];
-            }
-
-            return name;
+            return name.StartsWith('<') && name.IndexOf('>') > 1 ? name[1..name.IndexOf('>')] : name;
         }
     }
 
@@ -549,7 +544,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             int total = matches.Count();
-            List<MediaItem> items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
+            var items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
             return Task.FromResult(new MediaItemPage(items, total));
         }
 
@@ -1042,7 +1037,7 @@ namespace VideoForensics.Data.Database.Repositories
                         || _db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && included.Contains(d.DetectionType))));
 
             int total = matches.Count();
-            List<Event> items = matches
+            var items = matches
                 .OrderByDescending(e => e.OccurredAtUtc)
                 .ThenBy(e => e.Id)
                 .Skip(skip)
@@ -1427,19 +1422,40 @@ namespace VideoForensics.Data.Database.Repositories
 
         public UnitOfWorkMediaFlagRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
 
-        public Task<MediaFlag> UpsertRaisedAsync(MediaFlag raised, CancellationToken ct) => MediaFlagOperations.StageUpsertAsync(_db, raised, ct);
+        public Task<MediaFlag> UpsertRaisedAsync(MediaFlag raised, CancellationToken ct)
+        {
+            return MediaFlagOperations.StageUpsertAsync(_db, raised, ct);
+        }
 
-        public Task<int> ReconcileForMediaAsync(Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct) => MediaFlagOperations.ReconcileAsync(_db, mediaItemId, raised, ct);
+        public Task<int> ReconcileForMediaAsync(Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct)
+        {
+            return MediaFlagOperations.ReconcileAsync(_db, mediaItemId, raised, ct);
+        }
 
-        public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct) => _db.MediaFlags.AsNoTracking().FirstOrDefaultAsync(f => f.Id == flagId, ct);
+        public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
+        {
+            return _db.MediaFlags.AsNoTracking().FirstOrDefaultAsync(f => f.Id == flagId, ct);
+        }
 
-        public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct) => MediaFlagOperations.ListPageAsync(_db, filter, skip, take, ct);
+        public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct)
+        {
+            return MediaFlagOperations.ListPageAsync(_db, filter, skip, take, ct);
+        }
 
-        public Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct) => MediaFlagOperations.CountAsync(_db, filter, ct);
+        public Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct)
+        {
+            return MediaFlagOperations.CountAsync(_db, filter, ct);
+        }
 
-        public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct) => MediaFlagOperations.GetNeighbourAsync(_db, flagId, filter, direction, ct);
+        public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct)
+        {
+            return MediaFlagOperations.GetNeighbourAsync(_db, flagId, filter, direction, ct);
+        }
 
-        public Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct) => MediaFlagOperations.GetPositionAsync(_db, flagId, filter, ct);
+        public Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
+        {
+            return MediaFlagOperations.GetPositionAsync(_db, flagId, filter, ct);
+        }
 
         public Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
         {
@@ -1616,10 +1632,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             // Tracked entity: the unit of work saves the change when the transaction commits.
             RingDoorbotHistoryEvent? row = _db.RingDoorbotHistoryEvents.FirstOrDefault(e => e.ProviderEventId == doorbotHistoryProviderEventId);
-            if (row is not null)
-            {
-                row.LinkedEventId = eventId;
-            }
+            row?.LinkedEventId = eventId;
 
             return Task.CompletedTask;
         }

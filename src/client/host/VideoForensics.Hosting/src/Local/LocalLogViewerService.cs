@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting.Local
             ct.ThrowIfCancellationRequested();
 
             int clampedLimit = ClampLimit(query.Limit);
-            List<LogRecord> inRange = _buffer
+            var inRange = _buffer
                 .GetSnapshot(NullIfEmpty(query.MinLevel), NullIfEmpty(query.Search), null, int.MaxValue)
                 .Where(r => r.TimestampUtc >= query.FromUtc && r.TimestampUtc <= query.ToUtc)
                 .ToList();

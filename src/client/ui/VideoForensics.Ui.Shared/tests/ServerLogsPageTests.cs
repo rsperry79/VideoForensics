@@ -4,19 +4,19 @@ using AngleSharp.Html.Dom;
 
 using Bunit;
 
-using Moq;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+
+using Moq;
 
 using System.Net;
 using System.Threading.Channels;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

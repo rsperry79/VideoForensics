@@ -1,6 +1,4 @@
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -35,7 +33,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             DiscoveryStub.Wire(_accountId, _location, new[] { _device }, _discovery, _locationRepository, _deviceRepository);
 
             _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>());
+                .ReturnsAsync([]);
         }
 
         public void Dispose()

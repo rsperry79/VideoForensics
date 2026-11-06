@@ -10,7 +10,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The Case section at the top of the media right sidebar: pick an open case to enter it, or leave it.</summary>
 public class ReviewCaseSection_Tests : ReviewTestContext
@@ -24,7 +24,7 @@ public class ReviewCaseSection_Tests : ReviewTestContext
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(_openCase);
         _ = repository
             .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ForensicCase> { _openCase });
+            .ReturnsAsync([_openCase]);
         CaseRepositoryDouble = repository.Object;
     }
 
@@ -72,7 +72,7 @@ public class ReviewCaseSection_Tests : ReviewTestContext
     {
         // Arrange
         ArrangeOpenCase();
-        CaseMode.EnterAsync(_openCase.Id, CancellationToken.None).GetAwaiter().GetResult();
+        _ = CaseMode.EnterAsync(_openCase.Id, CancellationToken.None).GetAwaiter().GetResult();
         IRenderedComponent<ReviewCaseSection> cut = RenderSection();
 
         // Act
@@ -87,7 +87,7 @@ public class ReviewCaseSection_Tests : ReviewTestContext
     {
         // Arrange
         ArrangeOpenCase();
-        CaseMode.EnterAsync(_openCase.Id, CancellationToken.None).GetAwaiter().GetResult();
+        _ = CaseMode.EnterAsync(_openCase.Id, CancellationToken.None).GetAwaiter().GetResult();
 
         // Act
         IRenderedComponent<ReviewCaseSection> cut = RenderSection();

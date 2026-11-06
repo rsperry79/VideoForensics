@@ -1,5 +1,4 @@
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
-using VideoForensics.Providers.Ring.Testing.Mocks;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
@@ -60,6 +59,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 await Task.Delay(TimeSpan.FromSeconds(2 * (attempt - 1)));
                 result = await session.GetLatestSnapshotWithStatus(doorbot.Id);
             }
+
             string preview = System.Text.Encoding.UTF8.GetString(result.Bytes, 0, Math.Min(result.Bytes.Length, 200));
 
             Assert.True(result.Status == System.Net.HttpStatusCode.OK,

@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Logging;
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-
-using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Logging.Services;
 
@@ -16,12 +16,20 @@ namespace VideoForensics.Core.Logging.Tests.Services
         {
             public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-                => Entries.Add((logLevel, formatter(state, exception), exception));
+            {
+                Entries.Add((logLevel, formatter(state, exception), exception));
+            }
         }
 
         [Fact]
@@ -93,7 +101,7 @@ namespace VideoForensics.Core.Logging.Tests.Services
             IDisposable subscription = sut.Attach();
             subscription.Dispose();
 
-            Assert.Single(logger.Entries);
+            _ = Assert.Single(logger.Entries);
             Assert.Contains("started", logger.Entries[0].Message, StringComparison.OrdinalIgnoreCase);
         }
     }

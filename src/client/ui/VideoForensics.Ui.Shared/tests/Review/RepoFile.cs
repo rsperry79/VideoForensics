@@ -1,4 +1,4 @@
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>Reads a file from the repository by its path relative to the solution's Ui.Shared source folder.</summary>
 internal static class RepoFile
@@ -14,11 +14,8 @@ internal static class RepoFile
             directory = directory.Parent;
         }
 
-        if (directory is null)
-        {
-            throw new DirectoryNotFoundException($"Repository root with {Anchor} not found above {AppContext.BaseDirectory}.");
-        }
-
-        return File.ReadAllText(Path.Combine(directory.FullName, Anchor, relativePath));
+        return directory is null
+            ? throw new DirectoryNotFoundException($"Repository root with {Anchor} not found above {AppContext.BaseDirectory}.")
+            : File.ReadAllText(Path.Combine(directory.FullName, Anchor, relativePath));
     }
 }

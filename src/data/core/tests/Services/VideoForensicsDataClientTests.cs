@@ -10,7 +10,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     public class VideoForensicsDataClientTests
     {
@@ -140,11 +140,11 @@ namespace VideoForensics.Data.Core.Tests
                 .ReturnsAsync(downloadEvent);
             _ = _mockMediaItemRepository
                 .Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem>
-                {
+                .ReturnsAsync(
+                [
                     new() { Id = Guid.NewGuid(), DeviceId = deviceId, FileName = "a.jpg", FilePath = "ring/a.jpg", MediaFormat = "jpg", Sha256Hash = "h1" },
                     new() { Id = Guid.NewGuid(), DeviceId = deviceId, FileName = "a_motion-person.mp4", FilePath = "ring/a_motion-person.mp4", MediaFormat = "mp4", Sha256Hash = "h2" },
-                });
+                ]);
 
             string? path = await _dataClient.GetDownloadedMediaPathAsync(deviceId, "evt-1", CancellationToken.None);
 
@@ -172,10 +172,10 @@ namespace VideoForensics.Data.Core.Tests
                 .ReturnsAsync(downloadEvent);
             _ = _mockMediaItemRepository
                 .Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem>
-                {
+                .ReturnsAsync(
+                [
                     new() { Id = Guid.NewGuid(), DeviceId = downloadEvent.DeviceId, FileName = "p.mp4", FilePath = "ring/p.mp4", MediaFormat = "mp4", Sha256Hash = "h", IsPurged = true },
-                });
+                ]);
 
             string? path = await _dataClient.GetDownloadedMediaPathAsync(downloadEvent.DeviceId, "evt-2", CancellationToken.None);
 
@@ -227,7 +227,7 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange: the file was lost but the clip row remains, so a re-download must update it. An insert would
             // violate the (DeviceId, RecordedAtUtc) index and roll back the event.
             var deviceId = Guid.NewGuid();
-            var recordedAt = DateTime.UtcNow;
+            DateTime recordedAt = DateTime.UtcNow;
             var existingClip = new MediaItem { Id = Guid.NewGuid(), DeviceId = deviceId, RecordedAtUtc = recordedAt, FileName = "old.mp4", FilePath = "/path/to/old.mp4", MediaFormat = "video/mp4", Sha256Hash = "old123" };
             var downloadEvent = new DownloadEvent
             {
@@ -263,7 +263,7 @@ namespace VideoForensics.Data.Core.Tests
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepo.Object);
             _ = mockMediaItemRepo
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, recordedAt, recordedAt, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { existingClip });
+                .ReturnsAsync([existingClip]);
             _ = mockDeviceRepo
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
@@ -322,7 +322,7 @@ namespace VideoForensics.Data.Core.Tests
             // No existing clip for this recording, so the media item is added rather than updated.
             _ = mockMediaItemRepoInContext
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, mediaItem.RecordedAtUtc, mediaItem.RecordedAtUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem>());
+                .ReturnsAsync([]);
             _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);

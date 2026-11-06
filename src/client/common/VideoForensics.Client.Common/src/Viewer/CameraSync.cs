@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Common.Viewer
         /// <summary>True when the tile count is between one and <see cref="MaxTiles"/>.</summary>
         public static bool IsTileCountAllowed(int count)
         {
-            return count >= 1 && count <= MaxTiles;
+            return count is >= 1 and <= MaxTiles;
         }
     }
 }

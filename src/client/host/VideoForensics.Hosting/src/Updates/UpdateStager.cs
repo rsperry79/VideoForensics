@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Logging;
+
 using System.IO.Compression;
 using System.Text.RegularExpressions;
-
-using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.Client.Hosting.Updates
 {
@@ -98,7 +98,7 @@ namespace VideoForensics.Client.Hosting.Updates
             using ZipArchive archive = ZipFile.OpenRead(zipPath);
 
             // The manifest is the "package is complete" marker, so it is written after everything it describes.
-            List<ZipArchiveEntry> entries = archive.Entries
+            var entries = archive.Entries
                 .Where(e => e.FullName.Length > 0 && !e.FullName.EndsWith('/'))
                 .OrderBy(e => string.Equals(e.FullName, UpdateManifest.FileName, StringComparison.OrdinalIgnoreCase) ? 1 : 0)
                 .ToList();

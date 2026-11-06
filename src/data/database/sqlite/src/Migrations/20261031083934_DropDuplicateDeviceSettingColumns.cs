@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,39 +10,39 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "AdvancedMotionDetectionEnabled",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "AdvancedMotionDetectionHumanOnlyMode",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "EnableAudioRecording",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "EnableVod",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "ExposureControl",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LiveViewPresetProfile",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "MotionSnoozePresetProfile",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "PirSensitivity1",
                 table: "RingDeviceSettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "VodSuspended",
                 table: "RingDeviceSettings");
         }
@@ -50,57 +50,57 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "AdvancedMotionDetectionEnabled",
                 table: "RingDeviceSettings",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "AdvancedMotionDetectionHumanOnlyMode",
                 table: "RingDeviceSettings",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "EnableAudioRecording",
                 table: "RingDeviceSettings",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "EnableVod",
                 table: "RingDeviceSettings",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "ExposureControl",
                 table: "RingDeviceSettings",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "LiveViewPresetProfile",
                 table: "RingDeviceSettings",
                 type: "TEXT",
                 maxLength: 64,
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "MotionSnoozePresetProfile",
                 table: "RingDeviceSettings",
                 type: "TEXT",
                 maxLength: 64,
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "PirSensitivity1",
                 table: "RingDeviceSettings",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "VodSuspended",
                 table: "RingDeviceSettings",
                 type: "INTEGER",

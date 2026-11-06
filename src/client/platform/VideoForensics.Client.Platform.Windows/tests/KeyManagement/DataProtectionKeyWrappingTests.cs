@@ -1,8 +1,9 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
-using Xunit;
 using VideoForensics.Client.Platform.Windows.KeyManagement;
+
+using Xunit;
 
 namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
 {
@@ -12,7 +13,7 @@ namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
 
         private static X509Certificate2 SelfSigned()
         {
-            using RSA rsa = RSA.Create(2048);
+            using var rsa = RSA.Create(2048);
             var request = new CertificateRequest("CN=test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             return request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
         }
@@ -25,7 +26,7 @@ namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
             var waits = new List<TimeSpan>();
 
             X509Certificate2? resolved = DataProtectionKeyWrapping.ResolveTpmCertificate(
-                () => results.Dequeue(), () => true, waits.Add, Delays);
+                results.Dequeue, () => true, waits.Add, Delays);
 
             Assert.Same(cert, resolved);
             Assert.Equal(Delays[..2], waits);
@@ -36,7 +37,7 @@ namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
         {
             var waits = new List<TimeSpan>();
 
-            Assert.Throws<InvalidOperationException>(() => DataProtectionKeyWrapping.ResolveTpmCertificate(
+            _ = Assert.Throws<InvalidOperationException>(() => DataProtectionKeyWrapping.ResolveTpmCertificate(
                 () => null, () => true, waits.Add, Delays));
             Assert.Equal(Delays, waits);
         }

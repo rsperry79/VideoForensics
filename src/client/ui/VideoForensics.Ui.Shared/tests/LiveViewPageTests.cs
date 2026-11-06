@@ -8,12 +8,12 @@ using Moq;
 using System.Reactive.Subjects;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -107,7 +107,7 @@ public class LiveViewPageTests : BunitContext
         _ = _deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(Array.Empty<Device>());
-        var deviceRepository = _deviceRepository;
+        Mock<IDeviceRepository> deviceRepository = _deviceRepository;
 
         _mediaItems = new Mock<IMediaItemRepository>();
         _contentUrls = new Mock<IMediaContentUrlProvider>();

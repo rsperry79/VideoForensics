@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 
 using System;
-using System.Runtime.Versioning;
 
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Core.Logging.Providers;

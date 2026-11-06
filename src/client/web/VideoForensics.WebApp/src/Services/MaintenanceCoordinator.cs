@@ -158,10 +158,16 @@ namespace VideoForensics.Client.WebApp.Services
         }
 
         /// <summary>Restarts the safety timeout of the active hold. Returns false when the token does not match an active hold or the hold reached its maximum age.</summary>
-        public bool RenewHold(Guid token) => RenewHoldOutcome(token) == HoldRenewResult.Renewed;
+        public bool RenewHold(Guid token)
+        {
+            return RenewHoldOutcome(token) == HoldRenewResult.Renewed;
+        }
 
         /// <summary>Restarts the safety timeout of the active hold and reports why it was not renewed, when it was not.</summary>
-        public HoldRenewResult RenewHoldOutcome(Guid token) => holdTimer.RenewOutcome(token);
+        public HoldRenewResult RenewHoldOutcome(Guid token)
+        {
+            return holdTimer.RenewOutcome(token);
+        }
 
         // Why: a drain that never finishes must not block the caller forever. Only the timeout raises the distinct exception; a caller cancel passes through.
         private async Task WaitForDrainAsync(Task drained, CancellationToken ct)

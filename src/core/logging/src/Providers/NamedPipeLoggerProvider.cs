@@ -28,7 +28,7 @@ namespace VideoForensics.Core.Logging.Providers
 
         private readonly object _syncRoot = new();
         private readonly Queue<string> _circularBuffer = new();
-        private readonly List<NamedPipeServerStream> _clients = new();
+        private readonly List<NamedPipeServerStream> _clients = [];
 
         // One queue and one writer keep lines in order; oldest lines drop if no client drains fast enough.
         private readonly Channel<string> _queue = Channel.CreateBounded<string>(
@@ -40,17 +40,16 @@ namespace VideoForensics.Core.Logging.Providers
 
         /// <summary>Whether the live pipe shows the entry, per the gate's level source.</summary>
         // The saved Recording level gates the pipe too, so it matches the console and the audit files.
-        internal bool AdmitsLive(LogLevel logLevel, string category) =>
-            logLevel >= (_gate?.Level?.Minimum ?? LogLevel.Trace) && (_gate?.Level?.AdmitsLive(category, logLevel >= LogLevel.Warning) ?? true);
+        internal bool AdmitsLive(LogLevel logLevel, string category)
+        {
+            return logLevel >= (_gate?.Level?.Minimum ?? LogLevel.Trace) && (_gate?.Level?.AdmitsLive(category, logLevel >= LogLevel.Warning) ?? true);
+        }
 
         /// <param name="gate">Optional runtime switch. Null leaves the pipe always open, as before.</param>
         public NamedPipeLoggerProvider(NamedPipeLogGate? gate = null)
         {
             _gate = gate;
-            if (_gate is not null)
-            {
-                _gate.Changed += OnGateChanged;
-            }
+            _gate?.Changed += OnGateChanged;
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -65,10 +64,7 @@ namespace VideoForensics.Core.Logging.Providers
                 return;
             }
 
-            if (_gate is not null)
-            {
-                _gate.Changed -= OnGateChanged;
-            }
+            _gate?.Changed -= OnGateChanged;
 
             lock (_syncRoot)
             {
@@ -249,7 +245,6 @@ namespace VideoForensics.Core.Logging.Providers
                     // Console failsafe; don't crash the logger. Reported once: another process may own the pipe name.
                     if (!acceptErrorReported)
                     {
-                        acceptErrorReported = true;
                         Console.Error.WriteLine($"[NamedPipeLogger] Error accepting pipe client ({ex.GetType().Name}): {ex.Message}");
                     }
 

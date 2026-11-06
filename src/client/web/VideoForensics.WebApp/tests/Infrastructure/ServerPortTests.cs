@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Configuration;
+
 using System.Net;
 using System.Net.Sockets;
-
-using Microsoft.Extensions.Configuration;
 
 using VideoForensics.Client.WebApp.Infrastructure;
 
@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Tests.Infrastructure
                 })
                 .Build();
 
-            var endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
+            IReadOnlyList<ListenEndpoint> endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
 
             Assert.Equal(6001, endpoints.Single(e => e.Scheme == "http").Port);
             Assert.Equal(7004, endpoints.Single(e => e.Scheme == "https").Port);
@@ -57,7 +57,7 @@ namespace VideoForensics.Client.WebApp.Tests.Infrastructure
                 })
                 .Build();
 
-            var endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
+            IReadOnlyList<ListenEndpoint> endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
 
             Assert.Equal(5162, endpoints.Single(e => e.Scheme == "http").Port);
             Assert.Equal(7443, endpoints.Single(e => e.Scheme == "https").Port);
@@ -70,7 +70,7 @@ namespace VideoForensics.Client.WebApp.Tests.Infrastructure
                 .AddInMemoryCollection(new Dictionary<string, string?> { ["ServerHttpsPort"] = "7443" })
                 .Build();
 
-            var endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
+            IReadOnlyList<ListenEndpoint> endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
 
             Assert.Equal(5162, endpoints.Single(e => e.Scheme == "http").Port);
             Assert.Equal(7443, endpoints.Single(e => e.Scheme == "https").Port);
@@ -87,7 +87,7 @@ namespace VideoForensics.Client.WebApp.Tests.Infrastructure
                 })
                 .Build();
 
-            var endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
+            IReadOnlyList<ListenEndpoint> endpoints = ServerAddressResolver.ResolveListenEndpoints(configuration);
 
             Assert.Equal(5162, endpoints.Single(e => e.Scheme == "http").Port);
             Assert.Equal(7004, endpoints.Single(e => e.Scheme == "https").Port);

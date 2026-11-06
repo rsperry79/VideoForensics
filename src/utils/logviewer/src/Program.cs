@@ -1,11 +1,14 @@
-using System.Globalization;
-using System.IO.Pipes;
-using System.Text.Json;
 using CommandLine;
+
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Parsing;
+
+using System.Globalization;
+using System.IO.Pipes;
+using System.Text.Json;
+
 using VideoForensics.Utils.LogViewer;
 
 // VideoForensics.Utils.LogViewer: displays the VideoForensics named pipe logger output in this console.
@@ -162,15 +165,18 @@ static string Text(JsonElement root, string property)
 }
 
 // Maps the logger's level names to Serilog's, so the sink colours each line the way the WebApp's console does.
-static LogEventLevel ToSerilogLevel(string level) => level switch
+static LogEventLevel ToSerilogLevel(string level)
 {
-    "Trace" => LogEventLevel.Verbose,
-    "Debug" => LogEventLevel.Debug,
-    "Warning" => LogEventLevel.Warning,
-    "Error" => LogEventLevel.Error,
-    "Critical" => LogEventLevel.Fatal,
-    _ => LogEventLevel.Information,
-};
+    return level switch
+    {
+        "Trace" => LogEventLevel.Verbose,
+        "Debug" => LogEventLevel.Debug,
+        "Warning" => LogEventLevel.Warning,
+        "Error" => LogEventLevel.Error,
+        "Critical" => LogEventLevel.Fatal,
+        _ => LogEventLevel.Information,
+    };
+}
 
 // Reads the --level value, ignoring case. Returns false for a name that is not a logger level.
 static bool TryParseLevel(string name, out LogEventLevel level)

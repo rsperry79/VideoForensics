@@ -5,9 +5,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Remote;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {

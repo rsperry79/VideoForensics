@@ -43,7 +43,10 @@ namespace VideoForensics.Data.Database.Tests
 
         private sealed class LogsTestFactory(DbContextOptions<VideoForensicsLogsDbContext> options) : IDbContextFactory<VideoForensicsLogsDbContext>
         {
-            public VideoForensicsLogsDbContext CreateDbContext() => new(options);
+            public VideoForensicsLogsDbContext CreateDbContext()
+            {
+                return new(options);
+            }
         }
     }
 }

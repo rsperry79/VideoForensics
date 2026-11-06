@@ -1,9 +1,9 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
+
+using System.Security.Claims;
 
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
@@ -54,7 +54,10 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             };
         }
 
-        private static int StatusOf(IResult result) => Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode ?? 200;
+        private static int StatusOf(IResult result)
+        {
+            return Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode ?? 200;
+        }
 
         [Fact]
         public async Task ListAsync_ValidQuery_PassesFilterAndPagingAndReturnsPage()
@@ -242,7 +245,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var flags = new Mock<IMediaFlagRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
-            var reviewedAt = From.AddHours(2);
+            DateTime reviewedAt = From.AddHours(2);
             _ = flags.Setup(f => f.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagStatus>(), It.IsAny<MediaFlagStatus>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new FlagStatusConflictException(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "reviewer-2", reviewedAt));
 

@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Text.Json;
 
-using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -230,7 +229,7 @@ namespace VideoForensics.Client.Hosting.Services
 
         private static bool SameSettings(IEnumerable<DeviceConfigSnapshotSetting> stored, Dictionary<string, string> current)
         {
-            Dictionary<string, string> storedByKey = stored.ToDictionary(s => s.Key, s => s.ValueJson, StringComparer.Ordinal);
+            var storedByKey = stored.ToDictionary(s => s.Key, s => s.ValueJson, StringComparer.Ordinal);
             return storedByKey.Count == current.Count &&
                 current.All(kv => storedByKey.TryGetValue(kv.Key, out string? value) && value == kv.Value);
         }

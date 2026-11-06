@@ -21,7 +21,7 @@ public class SignalChartModelTests
     [Fact]
     public void Polyline_SkipsReadingsWithoutSignalAndOutsideTheRange()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(From.AddHours(1), -50),
             new SignalSample(From.AddHours(2), null),
@@ -53,7 +53,7 @@ public class SignalChartModelTests
         (DateTime start, DateTime end)? forward = SignalChartModel.SelectionRange(0.25, 0.5, From, To);
         (DateTime start, DateTime end)? backward = SignalChartModel.SelectionRange(0.5, 0.25, From, To);
 
-        Assert.NotNull(forward);
+        _ = Assert.NotNull(forward);
         Assert.Equal(From.AddHours(24), forward!.Value.start);
         Assert.Equal(From.AddHours(48), forward.Value.end);
         Assert.Equal(forward, backward);
@@ -82,7 +82,7 @@ public class SignalChartModelTests
         double plotStart = SignalChartModel.PlotLeft * 2;
 
         Assert.Equal(0, SignalChartModel.FractionFromCanvasOffset(plotStart, canvas), precision: 6);
-        Assert.Equal(1, SignalChartModel.FractionFromCanvasOffset(plotStart + SignalChartModel.PlotWidth * 2, canvas), precision: 6);
+        Assert.Equal(1, SignalChartModel.FractionFromCanvasOffset(plotStart + (SignalChartModel.PlotWidth * 2), canvas), precision: 6);
         Assert.Equal(0, SignalChartModel.FractionFromCanvasOffset(10, canvas));
     }
 

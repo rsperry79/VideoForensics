@@ -1,6 +1,6 @@
-using System.Text.Json;
-
 using Microsoft.Data.Sqlite;
+
+using System.Text.Json;
 
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 
@@ -104,7 +104,7 @@ namespace VideoForensics.Utils.SelfTest
         public static IReadOnlyList<UnknownKeyPath> ToUnknownPaths(string column, IEnumerable<LeafStats> leaves, IReadOnlySet<string>? covered)
         {
             return leaves
-                .Select(l => new UnknownKeyPath(column, l.Path, l.Rows, l.Kinds, covered is null ? null : covered.Contains(l.Path)))
+                .Select(l => new UnknownKeyPath(column, l.Path, l.Rows, l.Kinds, covered?.Contains(l.Path)))
                 .OrderBy(p => p.CoveredByFieldMap == true ? 1 : 0)
                 .ThenBy(p => p.Path, StringComparer.Ordinal)
                 .ToList();
@@ -160,7 +160,7 @@ namespace VideoForensics.Utils.SelfTest
         {
             _ = Directory.CreateDirectory(outputDir);
 
-            List<UnknownKeyPath> allPaths = report.Columns.SelectMany(c => c.Paths).ToList();
+            var allPaths = report.Columns.SelectMany(c => c.Paths).ToList();
             File.WriteAllText(Path.Combine(outputDir, JsonFileName), JsonSerializer.Serialize(allPaths, JsonOptions));
             File.WriteAllText(Path.Combine(outputDir, MarkdownFileName), BuildMarkdown(report));
         }

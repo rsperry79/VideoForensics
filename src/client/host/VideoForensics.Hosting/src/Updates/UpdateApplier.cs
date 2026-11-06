@@ -1,6 +1,6 @@
-using System.Text.Json;
-
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
 
 namespace VideoForensics.Client.Hosting.Updates
 {
@@ -63,11 +63,11 @@ namespace VideoForensics.Client.Hosting.Updates
                 _ = destination;
             }
 
-            Directory.CreateDirectory(installDir);
+            _ = Directory.CreateDirectory(installDir);
             List<string> existing = ListInstalledFiles(installDir, keepList);
-            List<string> toRemove = existing.Where(e => !packageFiles.ContainsKey(e)).ToList();
-            List<string> toRestore = existing.ToList();
-            List<string> toAdd = packageFiles.Keys.Where(k => !existing.Contains(k, StringComparer.OrdinalIgnoreCase)).ToList();
+            var toRemove = existing.Where(e => !packageFiles.ContainsKey(e)).ToList();
+            var toRestore = existing.ToList();
+            var toAdd = packageFiles.Keys.Where(k => !existing.Contains(k, StringComparer.OrdinalIgnoreCase)).ToList();
 
             try
             {
@@ -76,7 +76,7 @@ namespace VideoForensics.Client.Hosting.Updates
                     Directory.Delete(backupDir, recursive: true);
                 }
 
-                Directory.CreateDirectory(backupDir);
+                _ = Directory.CreateDirectory(backupDir);
 
                 foreach (string relative in toRestore)
                 {
@@ -253,15 +253,20 @@ namespace VideoForensics.Client.Hosting.Updates
         }
 
         // A keep entry names a file or a top-level folder; matching on whole path segments stops "Desktop" keeping "DesktopTools".
-        private static bool IsKept(string relative, IReadOnlyCollection<string> keepList) =>
-            keepList.Any(k =>
+        private static bool IsKept(string relative, IReadOnlyCollection<string> keepList)
+        {
+            return keepList.Any(k =>
             {
                 string keep = Normalize(k);
                 return relative.Equals(keep, StringComparison.OrdinalIgnoreCase)
                     || relative.StartsWith(keep + "/", StringComparison.OrdinalIgnoreCase);
             });
+        }
 
-        private static string Normalize(string path) => path.Replace('\\', '/');
+        private static string Normalize(string path)
+        {
+            return path.Replace('\\', '/');
+        }
 
         private static void RemoveEmptyDirectories(string installDir, IReadOnlyCollection<string> keepList)
         {

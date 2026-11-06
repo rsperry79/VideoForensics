@@ -2,7 +2,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The debounce helper: the last Schedule wins, Cancel and Dispose drop a pending run.</summary>
 public class DebouncedAction_Tests

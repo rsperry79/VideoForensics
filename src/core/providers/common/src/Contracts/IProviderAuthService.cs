@@ -27,7 +27,9 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// Providers that keep no such session cache fall back to the restore.
         /// </summary>
         Task<bool> ValidateStoredCredentialAsync(Guid providerAccountId, CancellationToken cancellationToken = default)
-            => RestoreFromSavedCredentialsAsync(providerAccountId, cancellationToken);
+        {
+            return RestoreFromSavedCredentialsAsync(providerAccountId, cancellationToken);
+        }
 
         /// <summary>Gets current authentication status</summary>
         string GetAuthStatus();
@@ -36,13 +38,19 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// Gets the non-secret session details shown as a raw payload. Null when the provider does not report them,
         /// so callers can say so instead of showing an empty payload.
         /// </summary>
-        ProviderAuthStatus? GetAuthStatusDetails() => null;
+        ProviderAuthStatus? GetAuthStatusDetails()
+        {
+            return null;
+        }
 
         /// <summary>
         /// Gets the status details, fetching them from the server when this is a remote client. The default reads
         /// them locally, so server-side providers need no change.
         /// </summary>
-        Task<ProviderAuthStatus?> GetAuthStatusDetailsAsync(CancellationToken cancellationToken = default) => Task.FromResult(GetAuthStatusDetails());
+        Task<ProviderAuthStatus?> GetAuthStatusDetailsAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(GetAuthStatusDetails());
+        }
     }
 
     /// <summary>Result of authentication attempt</summary>

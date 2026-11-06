@@ -180,34 +180,34 @@ namespace VideoForensics.Providers.Ring.Services
             switch (node)
             {
                 case JsonObject obj:
+                {
+                    var kept = new JsonObject();
+                    foreach (KeyValuePair<string, JsonNode?> property in obj)
                     {
-                        var kept = new JsonObject();
-                        foreach (KeyValuePair<string, JsonNode?> property in obj)
+                        JsonNode? child = Prune(property.Value, path.Length == 0 ? property.Key : path + "." + property.Key);
+                        if (child is not null)
                         {
-                            JsonNode? child = Prune(property.Value, path.Length == 0 ? property.Key : path + "." + property.Key);
-                            if (child is not null)
-                            {
-                                kept.Add(property.Key, child);
-                            }
+                            kept.Add(property.Key, child);
                         }
-
-                        return kept.Count == 0 ? null : kept;
                     }
+
+                    return kept.Count == 0 ? null : kept;
+                }
 
                 case JsonArray array:
+                {
+                    var kept = new JsonArray();
+                    foreach (JsonNode? item in array)
                     {
-                        var kept = new JsonArray();
-                        foreach (JsonNode? item in array)
+                        JsonNode? child = Prune(item, path + "[]");
+                        if (child is not null)
                         {
-                            JsonNode? child = Prune(item, path + "[]");
-                            if (child is not null)
-                            {
-                                kept.Add(child);
-                            }
+                            kept.Add(child);
                         }
-
-                        return kept.Count == 0 ? null : kept;
                     }
+
+                    return kept.Count == 0 ? null : kept;
+                }
 
                 case null:
                     return null;

@@ -1,8 +1,8 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
@@ -36,7 +36,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task RemoteNoteRepository_Add_MapsCreatedNote()
         {
-            Guid flagId = Guid.NewGuid();
+            var flagId = Guid.NewGuid();
             var dto = new NoteDto(Guid.NewGuid(), NoteTargetKind.MediaFlag, flagId, "Checked the clip.", "operator-1", DateTime.UtcNow);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
 
@@ -103,7 +103,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task RemoteNoteRepository_List_MapsOkNotes()
         {
-            Guid incidentId = Guid.NewGuid();
+            var incidentId = Guid.NewGuid();
             var dto = new NoteDto(Guid.NewGuid(), NoteTargetKind.JammingIncident, incidentId, "First note.", "operator-1", DateTime.UtcNow);
             string json = JsonSerializer.Serialize(new List<NoteDto> { dto }, JsonOptions);
 

@@ -3,8 +3,6 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Data.Common.Diagnostics;
 
-using Xunit;
-
 namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>A background loop that stops ticking is reported once, so a hung service does not go unnoticed.</summary>
@@ -119,7 +117,7 @@ namespace VideoForensics.Client.Hosting.Tests
             watchdog.Check();
 
             Assert.Equal(1, CountErrors(logger));
-            var alert = logger.Invocations.Single(i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
+            IInvocation alert = logger.Invocations.Single(i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
             // The state argument is the formatted message, so the caller shows up in the text an operator reads.
             Assert.Contains("UpsertEventAsync", alert.Arguments[2].ToString(), StringComparison.Ordinal);
         }
@@ -138,9 +136,15 @@ namespace VideoForensics.Client.Hosting.Tests
                 _now = start;
             }
 
-            public override DateTimeOffset GetUtcNow() => _now;
+            public override DateTimeOffset GetUtcNow()
+            {
+                return _now;
+            }
 
-            public void Advance(TimeSpan by) => _now = _now.Add(by);
+            public void Advance(TimeSpan by)
+            {
+                _now = _now.Add(by);
+            }
         }
     }
 }

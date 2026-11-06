@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -230,7 +230,7 @@ namespace VideoForensics.Data.Core.Services
                     RaisedAtUtc = DateTime.UtcNow,
                     Severity = MediaFlagSeverity.Warn
                 }, ct);
-                raisedTypes.Add(MediaFlagType.BitrateCollapse);
+                _ = raisedTypes.Add(MediaFlagType.BitrateCollapse);
             }
 
             _ = await _flags.ReconcileForMediaAsync(media.Id, raisedTypes, ct);

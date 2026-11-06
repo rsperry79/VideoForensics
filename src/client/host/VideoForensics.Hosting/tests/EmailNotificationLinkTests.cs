@@ -1,14 +1,14 @@
 using VideoForensics.Core.Providers.Common.Contracts;
 
-using Xunit;
-
 namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>Email cannot open a relative link, so the email body gets the tunnel's absolute address when there is one.</summary>
     public class EmailNotificationLinkTests
     {
-        private static NotificationEvent Event(string? actionPath) =>
-            new("DeviceOffline", DateTime.UtcNow, null, null, null, "Front Door went offline", ActionPath: actionPath);
+        private static NotificationEvent Event(string? actionPath)
+        {
+            return new("DeviceOffline", DateTime.UtcNow, null, null, null, "Front Door went offline", ActionPath: actionPath);
+        }
 
         [Fact]
         public void BuildBody_ActionPathAndTunnel_AddsAbsoluteTunnelLink()

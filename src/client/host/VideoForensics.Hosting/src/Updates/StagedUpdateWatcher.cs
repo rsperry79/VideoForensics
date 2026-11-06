@@ -17,7 +17,10 @@ namespace VideoForensics.Client.Hosting.Updates
     public sealed class NoOpUpdateDrain : IUpdateDrain
     {
         /// <inheritdoc />
-        public Task DrainAsync(CancellationToken ct) => Task.CompletedTask;
+        public Task DrainAsync(CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>

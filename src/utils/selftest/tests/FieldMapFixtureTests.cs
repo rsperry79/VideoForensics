@@ -16,7 +16,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
 
         private static DbSchema CurrentSchema()
         {
-            var options = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite("Data Source=:memory:").Options;
+            DbContextOptions<VideoForensicsDbContext> options = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite("Data Source=:memory:").Options;
             using var db = new VideoForensicsDbContext(options);
             return DbSchema.FromModel(db.Model);
         }
@@ -34,7 +34,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void Fixtures_CoverTheEndpointsTheMapDescribes()
         {
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
             string[] fixtureEndpoints = Directory.EnumerateFiles(FixtureDir, "*.json")
                 .Select(f => Path.GetFileName(f)[..Path.GetFileName(f).IndexOf('_', StringComparison.Ordinal)])
                 .Distinct(StringComparer.Ordinal)

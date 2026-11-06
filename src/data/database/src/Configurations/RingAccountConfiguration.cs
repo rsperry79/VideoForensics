@@ -22,7 +22,6 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(ra => ra.AccountEmail)
                 .HasMaxLength(256);
 
-
             _ = builder.Property(ra => ra.ConfigSyncIntervalHours)
                 .IsRequired()
                 .HasDefaultValue(24);

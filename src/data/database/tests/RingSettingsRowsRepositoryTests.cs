@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -121,7 +121,7 @@ namespace VideoForensics.Data.Database.Tests
                 new() { AlertType = "ota_status", AlertValue = "successful" }
             };
             await _repository.UpsertAsync(_device.Id, null, null, null, alerts, CancellationToken.None);
-            await _repository.UpsertAsync(_device.Id, null, null, null, new List<DeviceAlerts> { new() { AlertType = "ota_status", AlertValue = "failed" } }, CancellationToken.None);
+            await _repository.UpsertAsync(_device.Id, null, null, null, [new() { AlertType = "ota_status", AlertValue = "failed" }], CancellationToken.None);
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
             Assert.Equal(2, await db.DeviceAlerts.CountAsync(a => a.DeviceId == _device.Id));

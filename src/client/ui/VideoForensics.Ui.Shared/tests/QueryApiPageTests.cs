@@ -9,15 +9,14 @@ using Moq;
 
 using System.Reactive.Subjects;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Client.Ui.Shared.Services.SelfTest;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

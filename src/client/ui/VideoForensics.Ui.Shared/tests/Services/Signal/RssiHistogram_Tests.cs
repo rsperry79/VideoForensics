@@ -13,7 +13,7 @@ public class RssiHistogram_Tests
     [Fact]
     public void RssiHistogram_Skips_Readings_With_No_Signal_And_Readings_Outside_The_Window()
     {
-        var readings = new[]
+        SignalSample[] readings = new[]
         {
             new SignalSample(WindowStart.AddSeconds(1), -60),
             new SignalSample(WindowStart.AddSeconds(2), null),
@@ -23,14 +23,14 @@ public class RssiHistogram_Tests
 
         IReadOnlyList<RssiBar> bars = RssiHistogram.Bars(readings, WindowStart, WindowEnd);
 
-        Assert.Single(bars);
+        _ = Assert.Single(bars);
         Assert.Equal(WindowStart.AddSeconds(1), bars[0].CapturedAtUtc);
     }
 
     [Fact]
     public void RssiHistogram_Places_Each_Bar_By_Its_Time_In_The_Window()
     {
-        var readings = new[] { new SignalSample(WindowStart.AddSeconds(5), -60) };
+        SignalSample[] readings = new[] { new SignalSample(WindowStart.AddSeconds(5), -60) };
 
         IReadOnlyList<RssiBar> bars = RssiHistogram.Bars(readings, WindowStart, WindowEnd);
 
@@ -40,7 +40,7 @@ public class RssiHistogram_Tests
     [Fact]
     public void RssiHistogram_Makes_A_Weaker_Signal_A_Taller_Bar()
     {
-        var readings = new[]
+        SignalSample[] readings = new[]
         {
             new SignalSample(WindowStart.AddSeconds(1), -40),
             new SignalSample(WindowStart.AddSeconds(2), -85),

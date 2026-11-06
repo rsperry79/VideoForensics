@@ -1,6 +1,5 @@
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
@@ -12,7 +11,6 @@ using VideoForensics.Client.Ui.Shared.Components.Analysis;
 using VideoForensics.Client.Ui.Shared.Components.Notes;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Models;
 
 using Xunit;
 
@@ -68,7 +66,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
     {
         // Arrange
         Device device = CreateTestDevice("Porch");
-        JammingRepositoryMock
+        _ = JammingRepositoryMock
             .Setup(m => m.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((JammingIncidentRecord r, CancellationToken _) => r);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);
@@ -99,7 +97,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
             Confidence = JammingConfidenceLevel.Medium,
             Source = JammingIncidentSource.AutoDetected,
         };
-        JammingRepositoryMock
+        _ = JammingRepositoryMock
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([incident]);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);
@@ -112,6 +110,6 @@ public class JammingPanel_Tests : AnalyzePageTestBase
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<JammingNotes>()));
-        Assert.Single(cut.FindComponents<NotesPanel>());
+        _ = Assert.Single(cut.FindComponents<NotesPanel>());
     }
 }

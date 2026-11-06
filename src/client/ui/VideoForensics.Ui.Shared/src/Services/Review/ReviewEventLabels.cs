@@ -41,11 +41,8 @@ public static class ReviewEventLabels
     /// <summary>The row's label: the detection type when the detail names one, else the event's own type.</summary>
     public static string RowLabel(IStringLocalizer localizer, Event evt, EventDetail? detail)
     {
-        if (detail?.Detection is { DetectionType: { } detectionType } && !string.IsNullOrWhiteSpace(detectionType))
-        {
-            return DetectionLabel(localizer, detectionType, evt.EventType);
-        }
-
-        return TypeLabel(localizer, evt.EventType);
+        return detail?.Detection is { DetectionType: { } detectionType } && !string.IsNullOrWhiteSpace(detectionType)
+            ? DetectionLabel(localizer, detectionType, evt.EventType)
+            : TypeLabel(localizer, evt.EventType);
     }
 }

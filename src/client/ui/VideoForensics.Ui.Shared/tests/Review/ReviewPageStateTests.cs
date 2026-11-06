@@ -77,7 +77,7 @@ public class ReviewPageState_Tests
         ReviewPageState state = NewState();
 
         // Act and Assert
-        Assert.Throws<ArgumentException>(() => state.SetCameras(NewIds(CameraSync.MaxTiles + 1)));
+        _ = Assert.Throws<ArgumentException>(() => state.SetCameras(NewIds(CameraSync.MaxTiles + 1)));
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class ReviewPageState_Tests
         state.OnChange += () => raised++;
 
         // Act
-        Assert.Throws<ArgumentException>(() => state.SetCameras(NewIds(CameraSync.MaxTiles + 1)));
+        _ = Assert.Throws<ArgumentException>(() => state.SetCameras(NewIds(CameraSync.MaxTiles + 1)));
 
         // Assert
         Assert.Equal(nine, state.CameraIds);
@@ -117,8 +117,8 @@ public class ReviewPageState_Tests
     {
         // Arrange
         ReviewPageState state = NewState();
-        Guid first = Guid.NewGuid();
-        Guid second = Guid.NewGuid();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
 
         // Act
         state.SetCameras([second, first, second, first]);
@@ -239,7 +239,7 @@ public class ReviewPageState_Tests
         ReviewPageState state = NewState();
 
         // Act and Assert
-        Assert.Throws<ArgumentException>(() => state.SetRange(Now, Now));
+        _ = Assert.Throws<ArgumentException>(() => state.SetRange(Now, Now));
     }
 
     [Fact]
@@ -412,7 +412,7 @@ public class ReviewPageState_Tests
     {
         // Arrange
         ReviewPageState state = NewState();
-        Guid account = Guid.NewGuid();
+        var account = Guid.NewGuid();
 
         // Act
         state.SetFilters("Ring", account);
@@ -458,7 +458,7 @@ public class ReviewPageState_Tests
     {
         // Arrange
         ReviewPageState state = NewState();
-        Guid location = Guid.NewGuid();
+        var location = Guid.NewGuid();
 
         // Act
         state.SetFilters(null, null, location);
@@ -472,7 +472,7 @@ public class ReviewPageState_Tests
     {
         // Arrange
         ReviewPageState state = NewState();
-        Guid location = Guid.NewGuid();
+        var location = Guid.NewGuid();
         int raised = 0;
         state.OnChange += () => raised++;
 
@@ -504,7 +504,7 @@ public class ReviewPageState_Tests
     {
         // Arrange
         ReviewPageState state = NewState();
-        Guid id = Guid.NewGuid();
+        var id = Guid.NewGuid();
         state.SelectEvent(id);
         int raised = 0;
         state.OnChange += () => raised++;

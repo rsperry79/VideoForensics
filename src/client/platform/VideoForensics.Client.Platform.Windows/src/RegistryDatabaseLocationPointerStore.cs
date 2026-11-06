@@ -1,5 +1,3 @@
-using System;
-
 using Microsoft.Win32;
 
 using VideoForensics.Core.Helpers.Platform;

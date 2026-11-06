@@ -294,7 +294,7 @@ namespace VideoForensics.Client.Core.Tests
                 File.WriteAllText(path, "jpeg-bytes");
             }
 
-            SnapshotCapture capture = SnapshotCapture.Create(deviceId, new DateTimeOffset(2026, 1, 10, 9, 30, 15, TimeSpan.Zero), "fresh", 200, path, null);
+            var capture = SnapshotCapture.Create(deviceId, new DateTimeOffset(2026, 1, 10, 9, 30, 15, TimeSpan.Zero), "fresh", 200, path, null);
             _ = _snapshots.Setup(s => s.GetAsync(capture.Id, It.IsAny<CancellationToken>())).ReturnsAsync(capture);
             return capture;
         }

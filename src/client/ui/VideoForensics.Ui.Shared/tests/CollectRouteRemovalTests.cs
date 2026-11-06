@@ -14,7 +14,7 @@ public class Collect_Routes_Tests
     [Fact]
     public void AnyPage_CollectRoute_NotRegistered()
     {
-        List<string> registered = typeof(Routes).Assembly
+        var registered = typeof(Routes).Assembly
             .GetTypes()
             .SelectMany(type => type.GetCustomAttributes(typeof(RouteAttribute), inherit: false).Cast<RouteAttribute>())
             .Select(attribute => attribute.Template)

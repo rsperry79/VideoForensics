@@ -89,7 +89,7 @@ namespace VideoForensics.Data.Database.Repositories
                         .Where(d => d.ProviderDeviceId == providerDeviceId)
                         .Select(d => (Guid?)d.Id)
                         .FirstOrDefaultAsync(ct);
-                    resolved = (deviceId, deviceId is null ? new List<string>() : DingIdCandidates.ForDoorbot(db, doorbotId.Value));
+                    resolved = (deviceId, deviceId is null ? [] : DingIdCandidates.ForDoorbot(db, doorbotId.Value));
                     deviceByDoorbot[doorbotId.Value] = resolved;
                 }
 

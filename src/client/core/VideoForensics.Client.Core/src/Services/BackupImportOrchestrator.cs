@@ -7,8 +7,8 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Matching;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Matching;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -142,7 +142,7 @@ namespace VideoForensics.Client.Core.Services
 
                     // Why: the candidate lookup reads devices from the database, so devices added by this import are written first.
                     await ctx.SaveChangesAsync(ct);
-                    Dictionary<Guid, Device> backupDevices = devices.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+                    var backupDevices = devices.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
                     var candidatesByDevice = new Dictionary<Guid, IReadOnlyList<string>>();
 
                     var importedEventIds = new HashSet<Guid>();

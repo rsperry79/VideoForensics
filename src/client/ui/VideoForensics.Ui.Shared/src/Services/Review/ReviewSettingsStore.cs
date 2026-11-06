@@ -1,6 +1,6 @@
-using System.Text.Json;
-
 using Microsoft.JSInterop;
+
+using System.Text.Json;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 

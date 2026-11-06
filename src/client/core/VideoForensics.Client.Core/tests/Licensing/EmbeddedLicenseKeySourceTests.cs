@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Core.Tests.Licensing
         [Fact]
         public void Constructor_NullAssembly_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new EmbeddedLicenseKeySource(null!));
+            _ = Assert.Throws<ArgumentNullException>(() => new EmbeddedLicenseKeySource(null!));
         }
     }
 }

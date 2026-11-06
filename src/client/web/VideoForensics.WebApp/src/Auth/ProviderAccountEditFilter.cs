@@ -1,9 +1,7 @@
 using System.Security.Claims;
 
-using Microsoft.AspNetCore.Http;
-
-using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Auth
@@ -21,12 +19,9 @@ namespace VideoForensics.Client.WebApp.Auth
             OperatorRole? role = RoleOf(context.HttpContext.User);
 
             // A caller with no readable role is denied rather than treated as Admin.
-            if (role is not { } operatorRole || !ProviderAccountEditRules.IsAllowed(required, operatorRole))
-            {
-                return Results.StatusCode(StatusCodes.Status403Forbidden);
-            }
-
-            return await next(context);
+            return role is not { } operatorRole || !ProviderAccountEditRules.IsAllowed(required, operatorRole)
+                ? Results.StatusCode(StatusCodes.Status403Forbidden)
+                : await next(context);
         }
 
         private static OperatorRole? RoleOf(ClaimsPrincipal user)

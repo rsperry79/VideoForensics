@@ -35,12 +35,12 @@ namespace VideoForensics.Client.Hosting
 
             // Attach the paired-device session token as a Bearer credential if available.
             if (!string.IsNullOrEmpty(_sessionState.SessionToken))
-            {   
+            {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _sessionState.SessionToken);
                 tokenWasAttached = true;
             }
 
-                    HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
+            HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
 
             // If we sent a token and the server rejected it, clear the stale credential and notify listeners.
             if (tokenWasAttached && response.StatusCode == System.Net.HttpStatusCode.Unauthorized)

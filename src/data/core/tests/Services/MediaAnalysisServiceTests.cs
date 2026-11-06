@@ -3,15 +3,15 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     public class MediaAnalysisServiceTests
     {

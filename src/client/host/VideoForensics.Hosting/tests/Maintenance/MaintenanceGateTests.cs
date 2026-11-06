@@ -3,8 +3,6 @@ using System.Collections.Concurrent;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Core.Api.Contracts;
 
-using Xunit;
-
 namespace VideoForensics.Client.Hosting.Tests.Maintenance
 {
     public class MaintenanceGateTests
@@ -88,7 +86,9 @@ namespace VideoForensics.Client.Hosting.Tests.Maintenance
                 using var gate = new MaintenanceGate();
                 using var start = new Barrier(2);
 
-                Task<bool> Attempt() => Task.Run(() =>
+                Task<bool> Attempt()
+                {
+                    return Task.Run(() =>
                 {
                     start.SignalAndWait();
                     try
@@ -101,6 +101,7 @@ namespace VideoForensics.Client.Hosting.Tests.Maintenance
                         return false;
                     }
                 });
+                }
 
                 bool[] results = await Task.WhenAll(Attempt(), Attempt());
 
@@ -139,9 +140,9 @@ namespace VideoForensics.Client.Hosting.Tests.Maintenance
                 phases.Enqueue(status.Phase);
             }));
 
-            Task drain = Task.Run(async () => await gate.BeginDrainAsync("race", CancellationToken.None));
+            var drain = Task.Run(async () => await gate.BeginDrainAsync("race", CancellationToken.None));
             Assert.True(draining.Wait(TimeSpan.FromSeconds(5)));
-            Task end = Task.Run(() => gate.End());
+            var end = Task.Run(gate.End);
             await Task.Delay(200);
             release.Set();
             await Task.WhenAll(drain, end).WaitAsync(TimeSpan.FromSeconds(10));
@@ -152,7 +153,10 @@ namespace VideoForensics.Client.Hosting.Tests.Maintenance
 
         private sealed class Observer(Action<MaintenanceStatusDto> onNext) : IObserver<MaintenanceStatusDto>
         {
-            public void OnNext(MaintenanceStatusDto value) => onNext(value);
+            public void OnNext(MaintenanceStatusDto value)
+            {
+                onNext(value);
+            }
 
             public void OnError(Exception error)
             {

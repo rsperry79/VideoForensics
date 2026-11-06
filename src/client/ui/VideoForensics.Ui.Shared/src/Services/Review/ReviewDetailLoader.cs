@@ -32,7 +32,7 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
     public async Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
     {
         var result = new Dictionary<Guid, EventDetail>();
-        List<Guid> distinct = eventIds.Distinct().ToList();
+        var distinct = eventIds.Distinct().ToList();
         for (int start = 0; start < distinct.Count; start += DetailChunkSize)
         {
             List<Guid> chunk = distinct.GetRange(start, Math.Min(DetailChunkSize, distinct.Count - start));
@@ -66,7 +66,7 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
     /// </remarks>
     public async Task<IReadOnlyList<ReviewAnomaly>> LoadAnomaliesAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
-        List<Guid> devices = deviceIds.Distinct().ToList();
+        var devices = deviceIds.Distinct().ToList();
         if (devices.Count == 0)
         {
             return [];
@@ -85,7 +85,7 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
     /// <remarks>Reads the bit-rate flags over the cameras and range, newest first. Each page is one flag query.</remarks>
     public async Task<IReadOnlyList<ReviewBitRateFlag>> LoadBitRateFlagsAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
-        List<Guid> devices = deviceIds.Distinct().ToList();
+        var devices = deviceIds.Distinct().ToList();
         if (devices.Count == 0)
         {
             return [];

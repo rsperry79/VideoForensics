@@ -1,7 +1,7 @@
 using System.Text.Json;
+
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
-using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
@@ -48,7 +48,7 @@ public static class ReviewClipBuilder
         Func<MediaItem, string?> contentUrl,
         Func<MediaItem, string?> previewUrl)
     {
-        List<MediaItem> all = items.ToList();
+        var all = items.ToList();
         var byClipId = new Dictionary<string, MediaItem>(StringComparer.Ordinal);
         foreach (MediaItem item in all)
         {
@@ -94,7 +94,7 @@ public static class ReviewClipBuilder
 
         try
         {
-            using JsonDocument document = JsonDocument.Parse(metadataJson);
+            using var document = JsonDocument.Parse(metadataJson);
             JsonElement root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {

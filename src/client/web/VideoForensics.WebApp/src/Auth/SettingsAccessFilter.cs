@@ -1,9 +1,7 @@
 using System.Security.Claims;
 
-using Microsoft.AspNetCore.Http;
-
-using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 

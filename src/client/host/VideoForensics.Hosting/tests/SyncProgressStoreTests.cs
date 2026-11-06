@@ -1,5 +1,4 @@
 using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 
 namespace VideoForensics.Client.Hosting.Tests
 {
@@ -53,7 +52,7 @@ namespace VideoForensics.Client.Hosting.Tests
             ISyncProgressStore store = new SyncProgressStore();
 
             // Each written value is internally consistent (FilesCompleted == DeviceIndex). A torn read would break that.
-            Parallel.For(0, 2000, i =>
+            _ = Parallel.For(0, 2000, i =>
             {
                 if (i % 2 == 0)
                 {

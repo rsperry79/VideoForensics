@@ -1,8 +1,7 @@
 using FFMpegCore;
 using FFMpegCore.Pipes;
-using Microsoft.Extensions.Logging;
 
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.Core.Providers.Core
 {

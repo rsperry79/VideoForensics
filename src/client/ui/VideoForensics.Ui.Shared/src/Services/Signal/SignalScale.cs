@@ -42,7 +42,7 @@ public readonly record struct SignalScale(double WeakestDbm, double StrongestDbm
     public double MapY(double dbm)
     {
         double clamped = Math.Clamp(dbm, WeakestDbm, StrongestDbm);
-        return SignalChartModel.PlotTop + (StrongestDbm - clamped) / (StrongestDbm - WeakestDbm) * SignalChartModel.PlotHeight;
+        return SignalChartModel.PlotTop + ((StrongestDbm - clamped) / (StrongestDbm - WeakestDbm) * SignalChartModel.PlotHeight);
     }
 
     /// <summary>

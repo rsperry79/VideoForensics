@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Hosting;
+
 using VideoForensics.Client.Platform.Windows;
 
 namespace VideoForensics.Client.WebApp.Services
@@ -64,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Services
         /// <summary>Starts a shell that waits for the process to exit, then runs the command. Gives up waiting after two minutes.</summary>
         private static void LaunchDetached(int processId, string command)
         {
-            var info = OperatingSystem.IsWindows()
+            ProcessStartInfo info = OperatingSystem.IsWindows()
                 ? new ProcessStartInfo("cmd.exe") { Arguments = $"/c \"powershell -NoProfile -WindowStyle Hidden -Command \"Wait-Process -Id {processId} -Timeout {WaitSeconds} -ErrorAction SilentlyContinue\" & {command}\"" }
                 : new ProcessStartInfo("/bin/sh") { ArgumentList = { "-c", $"while kill -0 {processId} 2>/dev/null; do sleep 1; done; {command}" } };
 
@@ -73,6 +73,9 @@ namespace VideoForensics.Client.WebApp.Services
             _ = Process.Start(info);
         }
 
-        private static string Quote(string value) => "\"" + value + "\"";
+        private static string Quote(string value)
+        {
+            return "\"" + value + "\"";
+        }
     }
 }

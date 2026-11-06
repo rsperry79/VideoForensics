@@ -23,12 +23,9 @@ namespace VideoForensics.Client.WebApp.Api
         /// <param name="isDirectLocal">True for a direct local request, as opposed to the tunnel.</param>
         public static LocalPasswordOutcome Decide(bool passkeyRequired, bool isDirectLocal)
         {
-            if (!isDirectLocal)
-            {
-                return LocalPasswordOutcome.Normal;
-            }
-
-            return passkeyRequired ? LocalPasswordOutcome.AddPasskey : LocalPasswordOutcome.Complete;
+            return !isDirectLocal
+                ? LocalPasswordOutcome.Normal
+                : passkeyRequired ? LocalPasswordOutcome.AddPasskey : LocalPasswordOutcome.Complete;
         }
     }
 }

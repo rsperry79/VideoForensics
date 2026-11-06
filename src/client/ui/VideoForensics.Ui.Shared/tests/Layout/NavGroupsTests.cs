@@ -1,9 +1,8 @@
-using VideoForensics.Core.Api.Contracts;
-
 using System.Reflection;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -86,7 +85,7 @@ public class NavGroups_Tests
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         var sourceItems = group.Items.Where(i => i.Section == "Sources").ToList();
         Assert.Equal(new[] { "/accounts", "/accounts/manual-sync", "/query" }, sourceItems.Select(i => i.Path).ToList());
-        Assert.DoesNotContain(group.Items, i => i.Path == "/query/api-tester" || i.Path == "/tools/ring-selftest" || i.Path == "/devices/config");
+        Assert.DoesNotContain(group.Items, i => i.Path is "/query/api-tester" or "/tools/ring-selftest" or "/devices/config");
     }
 
     [Fact]

@@ -22,7 +22,7 @@ public class SignalHoverTests
     [Fact]
     public void NearestReading_ReturnsTheClosestReadingInTime()
     {
-        var readings = new[]
+        SignalSample[] readings = new[]
         {
             new SignalSample(From.AddHours(1), -50),
             new SignalSample(From.AddHours(2), -70),

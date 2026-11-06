@@ -273,7 +273,7 @@ namespace VideoForensics.Core.Logging.Tests.Providers
         public void TraceOnlyCategory_IsNeverStoredInBuffer()
         {
             var source = new LogLevelSource { Minimum = LogLevel.Trace };
-            source.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
+            _ = source.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
             using var provider = new InMemoryLogBufferProvider(_buffer, source);
             ILogger logger = provider.CreateLogger("Microsoft.AspNetCore.Components.RenderTree.Renderer");
 
@@ -286,7 +286,7 @@ namespace VideoForensics.Core.Logging.Tests.Providers
         public void TraceOnlyCategory_IsLiveOnlyAtTrace()
         {
             var source = new LogLevelSource { Minimum = LogLevel.Debug };
-            source.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
+            _ = source.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
 
             Assert.False(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer", isWarningOrAbove: false));
             source.Minimum = LogLevel.Trace;
@@ -298,8 +298,8 @@ namespace VideoForensics.Core.Logging.Tests.Providers
         public void TraceOnlyCategory_WarningsAndErrorsAreNeverDemoted()
         {
             var source = new LogLevelSource { Minimum = LogLevel.Information };
-            source.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
-            source.TraceOnlyCategories.Add("VideoForensics.Data.Database");
+            _ = source.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
+            _ = source.TraceOnlyCategories.Add("VideoForensics.Data.Database");
             const string category = "Microsoft.EntityFrameworkCore.Database.Transaction";
 
             Assert.False(source.AdmitsLive(category, isWarningOrAbove: false));

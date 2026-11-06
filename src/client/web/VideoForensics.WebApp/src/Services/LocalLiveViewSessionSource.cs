@@ -1,7 +1,7 @@
 using System.Reactive.Linq;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Services
 {

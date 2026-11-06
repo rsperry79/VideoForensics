@@ -48,7 +48,7 @@ public static class ReviewEventFilters
     /// <summary>Keeps the known types, once each, in display order. Anything else is dropped.</summary>
     public static IReadOnlyList<string> Normalize(IEnumerable<string>? types)
     {
-        HashSet<string> wanted = (types ?? []).ToHashSet();
+        var wanted = (types ?? []).ToHashSet();
         return SelectableEventTypes.Where(wanted.Contains).ToList();
     }
 

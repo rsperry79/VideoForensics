@@ -6,7 +6,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Mapping of the small endpoints (locations, location mode, health 2nd battery keys, event CV and location history
@@ -86,7 +86,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 """;
             UserLocationsResponse response = JsonSerializer.Deserialize<UserLocationsResponse>(json)!;
 
-            var location = RingDeviceDiscoveryService.ToContractLocation(response.UserLocations[0]);
+            Core.Providers.Common.Contracts.Location location = RingDeviceDiscoveryService.ToContractLocation(response.UserLocations[0]);
             Dictionary<string, string> metadata = location.Metadata!;
 
             Assert.Equal("Apt 2", metadata["address2"]);
@@ -228,7 +228,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void MapChimeLinkedDoorbots_LinkedRows_AreMapped()
         {
-            using JsonDocument doc = JsonDocument.Parse("""{"linked_doorbots":[{"id":12,"device_id":"12","kind":"doorbot","call_alerts":true,"motion_alerts":false}]}""");
+            using var doc = JsonDocument.Parse("""{"linked_doorbots":[{"id":12,"device_id":"12","kind":"doorbot","call_alerts":true,"motion_alerts":false}]}""");
 
             IReadOnlyList<RingChimeLinkedDoorbot>? rows = RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid);
 
@@ -244,7 +244,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void MapChimeLinkedDoorbots_EmptyArray_MapsToNoRows()
         {
-            using JsonDocument doc = JsonDocument.Parse("""{"linked_doorbots":[]}""");
+            using var doc = JsonDocument.Parse("""{"linked_doorbots":[]}""");
 
             IReadOnlyList<RingChimeLinkedDoorbot>? rows = RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid);
 
@@ -259,7 +259,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [InlineData("""[]""")]
         public void MapChimeLinkedDoorbots_NoLinkedDoorbotsArray_IsNullNotEmpty(string json)
         {
-            using JsonDocument doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
 
             // Null tells the caller the answer is unusable; an empty list would clear the chime's stored rows.
             Assert.Null(RingSmallEndpointMapper.MapChimeLinkedDoorbots(doc.RootElement.Clone(), ChimeGuid));

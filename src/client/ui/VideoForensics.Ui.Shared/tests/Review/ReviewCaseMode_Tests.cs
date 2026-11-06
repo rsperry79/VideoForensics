@@ -6,7 +6,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The case view the review page shows: entering a case loads its pinned items, and exiting clears them.</summary>
 public class ReviewCaseMode_Tests
@@ -70,7 +70,7 @@ public class ReviewCaseMode_Tests
 
     private Guid SetCase(string title, IReadOnlyList<CaseItem> pins)
     {
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         _ = _cases
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = title, CreatedBy = "op" });
@@ -84,7 +84,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_LoadsPinnedItemsAndTheCaseName()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem clip = AddMedia(device, Now.AddHours(-3), 60);
         Event evt = AddEvent(device, Now.AddHours(-2));
         Guid caseId = SetCase("Driveway", [MediaPin(Guid.Empty, clip.Id, Now), EventPin(Guid.Empty, evt.Id, Now)]);
@@ -107,8 +107,8 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_DerivesDevicesInFirstSeenOrder()
     {
         // Arrange
-        Guid first = Guid.NewGuid();
-        Guid second = Guid.NewGuid();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
         MediaItem a = AddMedia(first, Now.AddHours(-3), 60);
         MediaItem b = AddMedia(second, Now.AddHours(-2), 60);
         MediaItem c = AddMedia(first, Now.AddHours(-1), 60);
@@ -126,7 +126,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_PadsTheRangeByOneMinuteEachSide()
     {
         // Arrange: the earliest pinned start is 3 hours back; the latest end is 1 hour back plus 120 seconds
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem early = AddMedia(device, Now.AddHours(-3), 60);
         MediaItem late = AddMedia(device, Now.AddHours(-1), 120);
         Guid caseId = SetCase("Case", [MediaPin(Guid.Empty, early.Id, Now), MediaPin(Guid.Empty, late.Id, Now)]);
@@ -145,7 +145,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_MediaWithoutDurationEndsAtItsStart()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem clip = AddMedia(device, Now.AddHours(-2), 0);
         clip.DurationSeconds = null;
         Guid caseId = SetCase("Case", [MediaPin(Guid.Empty, clip.Id, Now)]);
@@ -162,7 +162,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_EventsAreNewestFirst()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         Event older = AddEvent(device, Now.AddHours(-5));
         Event newer = AddEvent(device, Now.AddHours(-1));
         Event middle = AddEvent(device, Now.AddHours(-3));
@@ -180,7 +180,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_SkipsPinsWhoseItemIsGone()
     {
         // Arrange: the pinned media row no longer exists (for example, purged)
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem kept = AddMedia(device, Now.AddHours(-1), 60);
         Guid caseId = SetCase("Case", [MediaPin(Guid.Empty, Guid.NewGuid(), Now), MediaPin(Guid.Empty, kept.Id, Now)]);
         ReviewCaseMode mode = Create();
@@ -196,7 +196,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_UnknownCase_ReturnsFalseAndStaysInactive()
     {
         // Arrange
-        Guid unknown = Guid.NewGuid();
+        var unknown = Guid.NewGuid();
         _ = _cases.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
         ReviewCaseMode mode = Create();
 
@@ -236,9 +236,9 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_MoreThanTheCap_KeepsTheNewestPinsAndSetsTruncated()
     {
         // Arrange: pins are added one minute apart, so pin 0 is the oldest
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         var pins = new List<CaseItem>();
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         for (int i = 0; i <= ReviewCaseMode.MaxItemsPerKind; i++)
         {
             MediaItem clip = AddMedia(device, Now.AddMinutes(i), 10);
@@ -267,8 +267,8 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_ExactlyTheCap_IsNotTruncated()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        Guid caseId = Guid.NewGuid();
+        var device = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         var pins = new List<CaseItem>();
         for (int i = 0; i < ReviewCaseMode.MaxItemsPerKind; i++)
         {
@@ -296,7 +296,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_Exit_ClearsTheCaseAndRaisesOnChange()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem clip = AddMedia(device, Now.AddHours(-1), 60);
         Guid caseId = SetCase("Case", [MediaPin(Guid.Empty, clip.Id, Now)]);
         ReviewCaseMode mode = Create();
@@ -322,7 +322,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsync_RaisesOnChangeOnce()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem clip = AddMedia(device, Now.AddHours(-1), 60);
         Guid caseId = SetCase("Case", [MediaPin(Guid.Empty, clip.Id, Now)]);
         ReviewCaseMode mode = Create();
@@ -340,7 +340,7 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsyncTwice_ReplacesTheFirstCase()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem firstClip = AddMedia(device, Now.AddHours(-4), 60);
         MediaItem secondClip = AddMedia(device, Now.AddHours(-1), 60);
         Guid first = SetCase("First", [MediaPin(Guid.Empty, firstClip.Id, Now)]);
@@ -362,10 +362,10 @@ public class ReviewCaseMode_Tests
     public async Task ReviewCaseMode_EnterAsyncUnknownAfterActive_ExitsTheOldCase()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         MediaItem clip = AddMedia(device, Now.AddHours(-1), 60);
         Guid known = SetCase("Known", [MediaPin(Guid.Empty, clip.Id, Now)]);
-        Guid unknown = Guid.NewGuid();
+        var unknown = Guid.NewGuid();
         _ = _cases.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
         ReviewCaseMode mode = Create();
         _ = await mode.EnterAsync(known, CancellationToken.None);

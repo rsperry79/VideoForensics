@@ -63,7 +63,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             // A loop that is no longer stale can alert again the next time it goes stale.
-            _alerted.RemoveWhere(name => !stale.Contains(name, StringComparer.Ordinal));
+            _ = _alerted.RemoveWhere(name => !stale.Contains(name, StringComparer.Ordinal));
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return "no unit of work in flight";
             }
 
-            var parts = open.Take(MaxNamedTransactions)
+            IEnumerable<string> parts = open.Take(MaxNamedTransactions)
                 .Select(t => $"{t.Caller} for {(long)(now - t.StartedUtc).TotalSeconds} s");
             string named = string.Join(", ", parts);
             int more = open.Count - MaxNamedTransactions;

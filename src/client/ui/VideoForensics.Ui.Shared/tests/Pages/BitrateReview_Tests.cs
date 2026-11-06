@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 using Bunit;
 using Bunit.Rendering;
 
@@ -10,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 using Moq;
+
+using System.Text.RegularExpressions;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components.Review;
@@ -108,7 +108,7 @@ public class BitrateReview_Tests : BunitContext
     [Fact]
     public void BitrateReview_MissingFlag_ShowsOneMessage()
     {
-        Guid flagId = Guid.NewGuid();
+        var flagId = Guid.NewGuid();
         _ = _flags.Setup(r => r.GetAsync(flagId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaFlag?)null);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flagId);
@@ -127,7 +127,7 @@ public class BitrateReview_Tests : BunitContext
     [Fact]
     public void BitrateReview_UnknownFlag_ShowsNotFound()
     {
-        Guid flagId = Guid.NewGuid();
+        var flagId = Guid.NewGuid();
         _ = _flags.Setup(r => r.GetAsync(flagId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaFlag?)null);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flagId);
@@ -185,8 +185,8 @@ public class BitrateReview_Tests : BunitContext
         RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
         Assert.NotNull(panelContent);
         IRenderedComponent<ContainerFragment> panel = Render(panelContent);
-        Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
-        Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
+        _ = Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
+        _ = Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
     }
 
     [Fact]

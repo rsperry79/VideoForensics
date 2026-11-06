@@ -25,7 +25,7 @@ namespace VideoForensics.Client.Platform.Windows
 
             try
             {
-                using Process? process = Process.Start(startInfo);
+                using var process = Process.Start(startInfo);
                 if (process is null)
                 {
                     return null;

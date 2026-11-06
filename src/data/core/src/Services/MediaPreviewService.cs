@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 using Microsoft.Extensions.Logging;
+
+using System.Diagnostics;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;

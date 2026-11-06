@@ -1,7 +1,7 @@
+using SIPSorcery.Net;
+
 using System.Text.Json;
 using System.Threading;
-
-using SIPSorcery.Net;
 
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 using VideoForensics.Providers.Ring.Sockets;
@@ -51,8 +51,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 .Concat(devices.StickupCams.Where(c => c.Id is not null).Select(c => (Name: c.Description, Id: c.Id!.Value)))
                 .ToList();
             string wantedName = Environment.GetEnvironmentVariable("RING_TEST_DOORBOT") ?? "Front Door";
-            var camera = cameras.FirstOrDefault(c => string.Equals(c.Name, wantedName, StringComparison.OrdinalIgnoreCase));
-            if (camera.Id == 0)
+            (string Name, long Id) = cameras.FirstOrDefault(c => string.Equals(c.Name, wantedName, StringComparison.OrdinalIgnoreCase));
+            if (Id == 0)
             {
                 string available = string.Join(", ", cameras.Select(c => c.Name));
                 Assert.Skip($"No camera named '{wantedName}' on this account (set RING_TEST_DOORBOT). Available: {available}");
@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // surfaces here with the HTTP status and correlation id.
             using var startCts = new CancellationTokenSource(StartTimeout);
             var transport = new RecordingTransport(new ClientWebSocketTransport());
-            RingLiveViewSession liveView = await session.StartLiveView(camera.Id, transport, startCts.Token);
+            RingLiveViewSession liveView = await session.StartLiveView(Id, transport, startCts.Token);
             using (liveView)
             {
                 var up = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -105,14 +105,14 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 _inner = inner;
             }
 
-            public List<string> ReceivedMethods { get; } = new();
+            public List<string> ReceivedMethods { get; } = [];
 
             /// <summary>Per ICE message: the candidate's type and transport, and its media index. No addresses or ports.</summary>
-            public List<string> SentIceShapes { get; } = new();
+            public List<string> SentIceShapes { get; } = [];
 
             private static string IceShapeOf(string message)
             {
-                using JsonDocument document = JsonDocument.Parse(message);
+                using var document = JsonDocument.Parse(message);
                 JsonElement body = document.RootElement.GetProperty("body");
                 string candidate = body.GetProperty("ice").GetString() ?? string.Empty;
                 string[] parts = candidate.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -121,11 +121,15 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 return $"m{body.GetProperty("mlineindex").GetInt32()}:{transport}:typ={typ}:fields={parts.Length}";
             }
 
-            public Task ConnectAsync(Uri uri, CancellationToken cancellationToken) => _inner.ConnectAsync(uri, cancellationToken);
+            public Task ConnectAsync(Uri uri, CancellationToken cancellationToken)
+            {
+                return _inner.ConnectAsync(uri, cancellationToken);
+            }
 
             public Task SendAsync(string message, CancellationToken cancellationToken)
             {
-                SentMethods.Add(SentMethodOf(message));                if (message.Contains("\"live_view\"", StringComparison.Ordinal))
+                SentMethods.Add(SentMethodOf(message));
+                if (message.Contains("\"live_view\"", StringComparison.Ordinal))
                 {
                     SentOfferLines = OfferMediaLines(message);
                 }
@@ -139,20 +143,20 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             /// <summary>The method of each message we sent, in order.</summary>
-            public List<string> SentMethods { get; } = new();
+            public List<string> SentMethods { get; } = [];
 
             /// <summary>The media description lines of the offer we sent, without ICE credentials or fingerprints.</summary>
-            public List<string> SentOfferLines { get; private set; } = new();
+            public List<string> SentOfferLines { get; private set; } = [];
 
             private static string SentMethodOf(string message)
             {
-                using JsonDocument document = JsonDocument.Parse(message);
+                using var document = JsonDocument.Parse(message);
                 return document.RootElement.TryGetProperty("method", out JsonElement method) ? method.GetString() ?? "null" : "no-method";
             }
 
             private static List<string> OfferMediaLines(string message)
             {
-                using JsonDocument document = JsonDocument.Parse(message);
+                using var document = JsonDocument.Parse(message);
                 string sdp = document.RootElement.GetProperty("body").GetProperty("sdp").GetString() ?? string.Empty;
 
                 // Every line except credentials and addresses, so the offer's structure can be compared with the reference's.
@@ -176,15 +180,21 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 return message;
             }
 
-            public Task CloseAsync(CancellationToken cancellationToken) => _inner.CloseAsync(cancellationToken);
+            public Task CloseAsync(CancellationToken cancellationToken)
+            {
+                return _inner.CloseAsync(cancellationToken);
+            }
 
-            public void Dispose() => _inner.Dispose();
+            public void Dispose()
+            {
+                _inner.Dispose();
+            }
 
             private static string MethodOf(string message)
             {
                 try
                 {
-                    using JsonDocument document = JsonDocument.Parse(message);
+                    using var document = JsonDocument.Parse(message);
                     if (!document.RootElement.TryGetProperty("method", out JsonElement method))
                     {
                         return "no-method";

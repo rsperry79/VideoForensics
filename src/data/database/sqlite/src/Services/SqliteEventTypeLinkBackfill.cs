@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
@@ -62,7 +63,7 @@ namespace VideoForensics.Data.Database.Sqlite.Services
                 Guid first = ids[0];
                 Guid last = ids[^1];
 
-                await using var tx = await db.Database.BeginTransactionAsync(ct);
+                await using IDbContextTransaction tx = await db.Database.BeginTransactionAsync(ct);
 
                 // a. Detection links from CV data (EventDetections.DetectionType and occurrence rows).
                 inserted += await db.Database.ExecuteSqlInterpolatedAsync($"""

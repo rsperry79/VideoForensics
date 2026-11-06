@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,34 +10,34 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropCheckConstraint(
+            _ = migrationBuilder.DropCheckConstraint(
                 name: "CK_CaseItems_ExactlyOneTarget",
                 table: "CaseItems");
 
-            migrationBuilder.AddColumn<Guid>(
+            _ = migrationBuilder.AddColumn<Guid>(
                 name: "SnapshotCaptureId",
                 table: "CaseItems",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_CaseItems_CaseId_SnapshotCaptureId_Active",
                 table: "CaseItems",
                 columns: new[] { "CaseId", "SnapshotCaptureId" },
                 unique: true,
                 filter: "\"SnapshotCaptureId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_CaseItems_SnapshotCaptureId",
                 table: "CaseItems",
                 column: "SnapshotCaptureId");
 
-            migrationBuilder.AddCheckConstraint(
+            _ = migrationBuilder.AddCheckConstraint(
                 name: "CK_CaseItems_ExactlyOneTarget",
                 table: "CaseItems",
                 sql: "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL AND \"SnapshotCaptureId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL AND \"SnapshotCaptureId\" IS NULL) OR (\"Kind\" = 'Snapshot' AND \"SnapshotCaptureId\" IS NOT NULL AND \"EventId\" IS NULL AND \"MediaItemId\" IS NULL)");
 
-            migrationBuilder.AddForeignKey(
+            _ = migrationBuilder.AddForeignKey(
                 name: "FK_CaseItems_SnapshotCaptures_SnapshotCaptureId",
                 table: "CaseItems",
                 column: "SnapshotCaptureId",
@@ -50,27 +49,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
+            _ = migrationBuilder.DropForeignKey(
                 name: "FK_CaseItems_SnapshotCaptures_SnapshotCaptureId",
                 table: "CaseItems");
 
-            migrationBuilder.DropIndex(
+            _ = migrationBuilder.DropIndex(
                 name: "IX_CaseItems_CaseId_SnapshotCaptureId_Active",
                 table: "CaseItems");
 
-            migrationBuilder.DropIndex(
+            _ = migrationBuilder.DropIndex(
                 name: "IX_CaseItems_SnapshotCaptureId",
                 table: "CaseItems");
 
-            migrationBuilder.DropCheckConstraint(
+            _ = migrationBuilder.DropCheckConstraint(
                 name: "CK_CaseItems_ExactlyOneTarget",
                 table: "CaseItems");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SnapshotCaptureId",
                 table: "CaseItems");
 
-            migrationBuilder.AddCheckConstraint(
+            _ = migrationBuilder.AddCheckConstraint(
                 name: "CK_CaseItems_ExactlyOneTarget",
                 table: "CaseItems",
                 sql: "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL)");

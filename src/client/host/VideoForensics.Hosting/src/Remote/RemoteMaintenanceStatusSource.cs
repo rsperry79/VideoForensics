@@ -15,6 +15,9 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         public IObservable<MaintenanceStatusSnapshot> Status => store.Maintenance.Select(ToSnapshot);
 
-        private static MaintenanceStatusSnapshot ToSnapshot(MaintenanceStatusDto status) => new(status.Phase, status.Message);
+        private static MaintenanceStatusSnapshot ToSnapshot(MaintenanceStatusDto status)
+        {
+            return new(status.Phase, status.Message);
+        }
     }
 }

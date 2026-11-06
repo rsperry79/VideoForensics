@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Localization;
 
-using VideoForensics.Client.WebApp.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Ui.Shared.Layout;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {

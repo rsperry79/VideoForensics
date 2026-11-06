@@ -1,8 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-
-using System;
-
 namespace VideoForensics.Client.WebApp.Services;
 
 /// <summary>

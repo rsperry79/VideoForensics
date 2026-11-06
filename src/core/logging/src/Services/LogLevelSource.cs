@@ -25,7 +25,7 @@ namespace VideoForensics.Core.Logging.Services
         /// They show only in the live outputs (console and named pipe) and only when <see cref="Minimum"/> is Trace.
         /// They are never stored in files or in the in-memory buffer.
         /// </summary>
-        public HashSet<string> TraceOnlyCategories { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> TraceOnlyCategories { get; } = [with(StringComparer.Ordinal)];
 
         /// <summary>True when the category is in <see cref="TraceOnlyCategories"/>.</summary>
         public bool IsTraceOnly(string category)

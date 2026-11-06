@@ -3,12 +3,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
-using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
-using VideoForensics.Client.Hosting;
+using VideoForensics.Data.Core.Contracts;
 
 using Xunit;
 

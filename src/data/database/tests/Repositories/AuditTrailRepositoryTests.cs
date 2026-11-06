@@ -4,7 +4,7 @@ using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     public class AuditTrailRepositoryTests : RepositoryTestBase
     {

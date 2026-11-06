@@ -26,7 +26,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets a location by provider location ID. Overload for backward compatibility (accountId is ignored).</summary>
         Task<Location?> GetByProviderLocationIdAsync(Guid accountId, string providerLocationId, CancellationToken ct);
 
-
         /// <summary>Lists all locations.</summary>
         Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct);
 

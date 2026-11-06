@@ -1,7 +1,7 @@
-using System.Text.Json;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+
+using System.Text.Json;
 
 namespace VideoForensics.Utils.SelfTest
 {
@@ -268,7 +268,7 @@ namespace VideoForensics.Utils.SelfTest
 
                 try
                 {
-                    using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(file));
+                    using var doc = JsonDocument.Parse(File.ReadAllText(file));
                     string endpoint = name[..underscore];
                     if (!byEndpoint.TryGetValue(endpoint, out EndpointLeafSet? set))
                     {
@@ -380,7 +380,7 @@ namespace VideoForensics.Utils.SelfTest
 
             try
             {
-                using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(indexPath));
+                using var doc = JsonDocument.Parse(File.ReadAllText(indexPath));
                 if (!doc.RootElement.TryGetProperty("Calls", out JsonElement calls) || calls.ValueKind != JsonValueKind.Array)
                 {
                     return failed;

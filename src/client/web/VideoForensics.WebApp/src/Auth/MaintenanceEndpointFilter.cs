@@ -13,15 +13,12 @@ namespace VideoForensics.Client.WebApp.Auth
         {
             IMaintenanceGate gate = MaintenanceWork.GateFrom(services);
             using IDisposable? lease = gate.TryEnterWork();
-            if (lease is null)
-            {
-                return Results.Problem(
+            return lease is null
+                ? Results.Problem(
                     title: "Server maintenance",
                     detail: gate.Current.Message,
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-
-            return await next(context);
+                    statusCode: StatusCodes.Status503ServiceUnavailable)
+                : await next(context);
         }
     }
 }

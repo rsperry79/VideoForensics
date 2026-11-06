@@ -1,10 +1,7 @@
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-
 using Microsoft.Extensions.Logging;
 
-using Xunit;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests
 {

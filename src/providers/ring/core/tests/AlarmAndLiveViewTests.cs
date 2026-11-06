@@ -3,8 +3,8 @@ using System.Net.Http;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Alarm;
-using VideoForensics.Providers.Ring.Testing.Mocks;
 using VideoForensics.Providers.Ring.Streaming;
+using VideoForensics.Providers.Ring.Testing.Mocks;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
@@ -289,7 +289,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Local candidates are gathered asynchronously, so give them time to fire before reading the order.
             await Task.Delay(TimeSpan.FromSeconds(1));
 
-            List<string> methods = transport.SentMessages
+            var methods = transport.SentMessages
                 .Select(m => JsonDocument.Parse(m).RootElement.GetProperty("method").GetString()!)
                 .ToList();
             int offer = methods.IndexOf("live_view");

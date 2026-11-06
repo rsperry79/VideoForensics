@@ -81,7 +81,10 @@ namespace VideoForensics.Utils.SelfTest.Tests
             return value is null or DBNull ? null : (string)value;
         }
 
-        private string[] Backups() => Directory.GetFiles(_folder, "vf*pre-strip*");
+        private string[] Backups()
+        {
+            return Directory.GetFiles(_folder, "vf*pre-strip*");
+        }
 
         [Fact]
         public void Parse_StripFlags_AreRead()

@@ -1,20 +1,23 @@
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Moq;
-
 using VideoForensics.Client.Hosting.Updates;
 
 namespace VideoForensics.Client.Hosting.Tests.Updates
 {
     public class StagedUpdateWatcherTests
     {
-        private static StartupUpdateApplier NewApplier(IUpdatePackageVerifier? verifier = null) => new(
+        private static StartupUpdateApplier NewApplier(IUpdatePackageVerifier? verifier = null)
+        {
+            return new(
             verifier ?? new UpdatePackageVerifier(),
             new UpdateApplier(NullLogger<UpdateApplier>.Instance),
             NullLogger<StartupUpdateApplier>.Instance);
+        }
 
         private static StagedUpdateWatcher NewWatcher(
-            string updates, string install, Action<int> exit, IUpdateDrain? drain = null, IUpdatePackageVerifier? verifier = null) => new(
+            string updates, string install, Action<int> exit, IUpdateDrain? drain = null, IUpdatePackageVerifier? verifier = null)
+        {
+            return new(
             updates,
             verifier ?? new UpdatePackageVerifier(),
             drain ?? new NoOpUpdateDrain(),
@@ -25,6 +28,7 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
             exit,
             TimeSpan.FromMilliseconds(10),
             NullLogger<StagedUpdateWatcher>.Instance);
+        }
 
         [Fact]
         public async Task StagedUpdateWatcher_NothingStaged_DoesNotExit()

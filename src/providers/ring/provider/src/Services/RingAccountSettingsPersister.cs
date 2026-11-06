@@ -99,12 +99,7 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<bool> PersistChimeLinkedDoorbotsAsync(JsonElement response, Guid chimeDeviceId, CancellationToken ct = default)
         {
             IReadOnlyList<RingChimeLinkedDoorbot>? links = RingSmallEndpointMapper.MapChimeLinkedDoorbots(response, chimeDeviceId);
-            if (links is null)
-            {
-                return false;
-            }
-
-            return await TryWriteAsync("linked chime doorbots", () => _writer.ReplaceChimeLinkedDoorbotsAsync(chimeDeviceId, links, ct), ct);
+            return links is not null && await TryWriteAsync("linked chime doorbots", () => _writer.ReplaceChimeLinkedDoorbotsAsync(chimeDeviceId, links, ct), ct);
         }
 
         /// <summary>

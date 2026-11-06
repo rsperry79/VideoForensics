@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Forensics.Tests
+namespace VideoForensics.Providers.Ring.Forensics.Tests.Implementations
 {
     public class SignalAnomalyDetectorTests
     {

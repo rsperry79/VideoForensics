@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
@@ -248,13 +247,13 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .ReturnsAsync(CreateIncident(incidentId));
             Note stored = CreateNote(NoteTargetKind.JammingIncident, incidentId, "First note.");
             _ = notes.Setup(n => n.ListAsync(NoteTargetKind.JammingIncident, incidentId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Note> { stored });
+                .ReturnsAsync([stored]);
 
             IResult result = await NoteEndpoints.ListNotesAsync(
                 "JammingIncident", incidentId, cases.Object, jamming.Object, flags.Object, notes.Object, CancellationToken.None);
 
-            var ok = Assert.IsAssignableFrom<IValueHttpResult>(result);
-            var dtos = Assert.IsAssignableFrom<IEnumerable<NoteDto>>(ok.Value);
+            IValueHttpResult ok = Assert.IsAssignableFrom<IValueHttpResult>(result);
+            IEnumerable<NoteDto> dtos = Assert.IsAssignableFrom<IEnumerable<NoteDto>>(ok.Value);
             NoteDto dto = Assert.Single(dtos);
             Assert.Equal(stored.Id, dto.Id);
             Assert.Equal(NoteTargetKind.JammingIncident, dto.TargetKind);

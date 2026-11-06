@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote;
@@ -75,7 +74,7 @@ public class RemoteSnapshotCaptureRepositoryTests
     public async Task RemoteSnapshotCaptureRepository_AddAsync_ThrowsNotSupported()
     {
         (RemoteSnapshotCaptureRepository repo, FakeHandler handler) = Create(_ => Json(0));
-        SnapshotCapture capture = SnapshotCapture.Create(DeviceId, From, "fresh", 503, null, null);
+        var capture = SnapshotCapture.Create(DeviceId, From, "fresh", 503, null, null);
 
         _ = await Assert.ThrowsAsync<NotSupportedException>(() => repo.AddAsync(capture, CancellationToken.None));
         Assert.Empty(handler.Seen);

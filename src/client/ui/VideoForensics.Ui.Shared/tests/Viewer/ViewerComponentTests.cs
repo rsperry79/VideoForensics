@@ -31,12 +31,13 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             _player = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js");
         }
 
-        private static List<ClipWindow> TwoClips() =>
-            new()
-            {
+        private static List<ClipWindow> TwoClips()
+        {
+            return [
                 new("a", Start, 60),
                 new("b", Start.AddSeconds(120), 60),
-            };
+            ];
+        }
 
         /// <summary>Verifies that the timeline draws one segment per clip, in the window.</summary>
         [Fact]
@@ -187,12 +188,13 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             }
         }
 
-        private static List<CameraTile> TwoTiles() =>
-            new()
-            {
+        private static List<CameraTile> TwoTiles()
+        {
+            return [
                 new("Front", TwoClips(), id => $"/media/{id}/content"),
                 new("Back", TwoClips(), id => $"/media/{id}/content"),
-            };
+            ];
+        }
 
         /// <summary>Verifies that a tile drifting past the tolerance is seeked to the master clock's absolute time.</summary>
         [Fact]
@@ -205,7 +207,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             int before = _player.Invocations.Count(i => i.Identifier == "seek");
             SetupPlaybackReads(10.0, 12.0);
 
-            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
 
             Assert.Equal(1, _player.Invocations.Count(i => i.Identifier == "seek") - before);
         }
@@ -221,7 +223,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             int before = _player.Invocations.Count(i => i.Identifier == "seek");
             SetupPlaybackReads(10.0, 10.2);
 
-            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
 
             Assert.Equal(0, _player.Invocations.Count(i => i.Identifier == "seek") - before);
         }
@@ -237,7 +239,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
 
             int before = _player.Invocations.Count(i => i.Identifier == "seek");
 
-            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
 
             Assert.Equal(0, _player.Invocations.Count(i => i.Identifier == "seek") - before);
         }
@@ -257,9 +259,9 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.SelectedIndex, 0)
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            Assert.Single(cut.FindAll("video.review-player"));
-            Assert.Single(cut.FindAll("[data-testid='single-camera-preview'] [data-testid='media-player']"));
-            Assert.Single(cut.FindAll("[data-testid='single-camera-preview']"));
+            _ = Assert.Single(cut.FindAll("video.review-player"));
+            _ = Assert.Single(cut.FindAll("[data-testid='single-camera-preview'] [data-testid='media-player']"));
+            _ = Assert.Single(cut.FindAll("[data-testid='single-camera-preview']"));
         }
 
         /// <summary>Verifies that clicking a preview tile reports that camera's index in the full list.</summary>
@@ -348,7 +350,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
         public void SingleCameraView_EmptyCameras_RendersNoMainPlayer()
         {
             IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
-                .Add(x => x.Cameras, new List<CameraTile>())
+                .Add(x => x.Cameras, [])
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
             Assert.Empty(cut.FindAll("[data-testid='media-player']"));

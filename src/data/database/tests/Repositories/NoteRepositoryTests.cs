@@ -6,7 +6,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>Notes are append-only multi-line text on a target (case, jamming incident or media flag), each with its author and write time.</summary>
     public class NoteRepository_Tests : IAsyncLifetime
@@ -104,8 +104,8 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task NoteRepository_List_JammingIncidentNotesOnlyUnderOwnTarget()
         {
-            Guid incidentId = Guid.NewGuid();
-            Guid otherIncidentId = Guid.NewGuid();
+            var incidentId = Guid.NewGuid();
+            var otherIncidentId = Guid.NewGuid();
 
             _ = await _notes.AddAsync(NoteTargetKind.JammingIncident, incidentId, "incident note", "user@example.com", CancellationToken.None);
 

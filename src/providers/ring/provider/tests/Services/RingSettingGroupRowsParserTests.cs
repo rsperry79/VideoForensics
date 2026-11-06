@@ -1,12 +1,12 @@
 using System.Text.Json;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Typed parsing of the settings keys that become the endpoint group rows: the RingDevice group tables, the misc table, and the snooze and threshold child rows.</summary>
     public class RingSettingGroupRowsParserTests

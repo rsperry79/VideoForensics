@@ -9,7 +9,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>The codec backfill fills codec fields from ffprobe and skips an item ffprobe cannot read, without re-probing it.</summary>
     public class MediaCodecBackfillTests
@@ -25,18 +25,21 @@ namespace VideoForensics.Data.Core.Tests
             return new(_items.Object, _bitrate.Object, _paths.Object, NullLogger<MediaCodecBackfill>.Instance);
         }
 
-        private static MediaItem Item(string name) => new()
+        private static MediaItem Item(string name)
         {
-            Id = Guid.NewGuid(),
-            DeviceId = Guid.NewGuid(),
-            FileName = name,
-            FilePath = name,
-            MediaFormat = "mp4",
-            Sha256Hash = "h",
-            FileSizeBytes = 1000,
-            RecordedAtUtc = DateTime.UtcNow,
-            DownloadedAtUtc = DateTime.UtcNow,
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                FileName = name,
+                FilePath = name,
+                MediaFormat = "mp4",
+                Sha256Hash = "h",
+                FileSizeBytes = 1000,
+                RecordedAtUtc = DateTime.UtcNow,
+                DownloadedAtUtc = DateTime.UtcNow,
+            };
+        }
 
         [Fact]
         public async Task BackfillAsync_FillsCodecFieldsAndSkipsAnItemFfprobeCannotRead()

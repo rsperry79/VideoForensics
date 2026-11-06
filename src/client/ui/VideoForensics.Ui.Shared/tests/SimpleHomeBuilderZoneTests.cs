@@ -1,10 +1,9 @@
 using Moq;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Formatting;
-using VideoForensics.Client.Ui.Shared.Tests;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 

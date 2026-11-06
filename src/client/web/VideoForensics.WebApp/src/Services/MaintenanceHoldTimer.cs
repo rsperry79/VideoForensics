@@ -124,7 +124,10 @@ namespace VideoForensics.Client.WebApp.Services
         }
 
         /// <summary>Restarts the safety timer for the active hold. Returns false when the hold is not active or has reached its maximum age.</summary>
-        public bool Renew(Guid token) => RenewOutcome(token) == HoldRenewResult.Renewed;
+        public bool Renew(Guid token)
+        {
+            return RenewOutcome(token) == HoldRenewResult.Renewed;
+        }
 
         /// <summary>
         /// Restarts the safety timer for the active hold and reports why it could not, if it could not. The timer never runs
@@ -172,7 +175,10 @@ namespace VideoForensics.Client.WebApp.Services
         }
 
         // Why: the timer waits the renew window, but never past the maximum age, so the cap ends the hold even if nobody renews.
-        private TimeSpan RemainingAgeLocked() => _startedAt!.Value + _maxAge - _clock.GetUtcNow();
+        private TimeSpan RemainingAgeLocked()
+        {
+            return _startedAt!.Value + _maxAge - _clock.GetUtcNow();
+        }
 
         // Why: each arm gets a new generation, so a callback queued by an earlier arm does nothing when it fires.
         private void Arm(Guid token)

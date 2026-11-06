@@ -29,7 +29,7 @@ public class ReviewUrl_Tests
     public void Parse_GarbageGuidDateAndTab_AreIgnoredAndNeverThrow()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         string query = $"devices=not-a-guid,{device:D}&from=garbage&to=2026-13-45&t=yesterday&tab=sideways&account=nope";
 
         // Act
@@ -48,7 +48,7 @@ public class ReviewUrl_Tests
     public void Parse_LocationParameter_IsRead_AndGarbageIsIgnored()
     {
         // Arrange
-        Guid location = Guid.NewGuid();
+        var location = Guid.NewGuid();
 
         // Act
         ReviewUrlState good = ReviewUrl.Parse($"location={location:D}");
@@ -63,7 +63,7 @@ public class ReviewUrl_Tests
     public void Build_Location_RoundTripsAndIsOmittedWhenNull()
     {
         // Arrange
-        Guid location = Guid.NewGuid();
+        var location = Guid.NewGuid();
         ReviewUrlState withLocation = DefaultState() with { Location = location };
 
         // Act
@@ -79,7 +79,7 @@ public class ReviewUrl_Tests
     public void Parse_UnknownParameters_AreIgnored()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
 
         // Act
         ReviewUrlState state = ReviewUrl.Parse($"foo=bar&q=search&devices={device:D}");
@@ -92,7 +92,7 @@ public class ReviewUrl_Tests
     public void Parse_TwelveDevices_TruncatesToNine()
     {
         // Arrange
-        List<Guid> ids = Enumerable.Range(0, 12).Select(_ => Guid.NewGuid()).ToList();
+        var ids = Enumerable.Range(0, 12).Select(_ => Guid.NewGuid()).ToList();
         string query = "devices=" + string.Join(",", ids.Select(id => id.ToString("D")));
 
         // Act
@@ -236,7 +236,7 @@ public class ReviewUrl_Tests
     public void Parse_CaseParam_ReadsTheCaseGuid()
     {
         // Arrange
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
 
         // Act
         ReviewUrlState state = ReviewUrl.Parse("reviewcase=" + caseId.ToString("D"));
@@ -259,7 +259,7 @@ public class ReviewUrl_Tests
     public void ReviewUrl_ActiveCaseContextParameter_IsNotTheCaseView()
     {
         // "case" is the app-wide active-case context (CaseUrl); only "reviewcase" opens the case view.
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
 
         ReviewUrlState state = ReviewUrl.Parse("case=" + caseId.ToString("D"));
 
@@ -269,7 +269,7 @@ public class ReviewUrl_Tests
     [Fact]
     public void ReviewUrl_WithoutCaseView_RemovesOnlyTheReviewCaseParameter()
     {
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         string uri = "http://localhost/media?case=" + caseId.ToString("D") + "&reviewcase=" + caseId.ToString("D") + "&tab=Events";
 
         string result = ReviewUrl.WithoutCaseView(uri);
@@ -283,7 +283,7 @@ public class ReviewUrl_Tests
     public void Build_CaseId_WritesTheCaseParam()
     {
         // Arrange
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
 
         // Act
         string query = ReviewUrl.Build(DefaultState() with { CaseId = caseId });

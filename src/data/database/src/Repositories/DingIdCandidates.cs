@@ -1,6 +1,6 @@
-using System.Globalization;
-
 using Microsoft.EntityFrameworkCore;
+
+using System.Globalization;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -28,14 +28,14 @@ namespace VideoForensics.Data.Database.Repositories
             string providerDeviceId = doorbotId.ToString(CultureInfo.InvariantCulture);
             if (!db.Devices.AsNoTracking().Any(d => d.ProviderDeviceId == providerDeviceId))
             {
-                return new List<string>();
+                return [];
             }
 
-            List<string> locationDings = db.RingLocationEvents.AsNoTracking()
+            var locationDings = db.RingLocationEvents.AsNoTracking()
                 .Where(e => e.DoorbotId == doorbotId && e.DingIdString != null)
                 .Select(e => e.DingIdString!)
                 .ToList();
-            List<string> searchDings = db.RingVideoSearchEvents.AsNoTracking()
+            var searchDings = db.RingVideoSearchEvents.AsNoTracking()
                 .Where(v => v.ProviderEventId != null && db.RingEventDoorbots.Any(x => x.Source == RingEventSources.VideoSearch && x.SourceRowId == v.Id && x.DoorbotId == doorbotId))
                 .Select(v => v.ProviderEventId!)
                 .ToList();

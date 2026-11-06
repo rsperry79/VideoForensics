@@ -11,13 +11,13 @@ using Moq;
 
 using Syncfusion.Blazor.Inputs;
 
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

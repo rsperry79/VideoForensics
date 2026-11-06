@@ -1,11 +1,9 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
-using VideoForensics.Client.Common.Contracts;
+using System.Security.Claims;
+
 using VideoForensics.Client.Ui.Shared.Layout;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Services;

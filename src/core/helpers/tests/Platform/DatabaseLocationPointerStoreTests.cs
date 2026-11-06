@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+
 using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
@@ -43,7 +44,10 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
 
         private sealed class FixedPointerStore(string? root) : IDatabaseLocationPointerStore
         {
-            public string? Read() => root;
+            public string? Read()
+            {
+                return root;
+            }
 
             public void Write(string databaseRoot)
             {

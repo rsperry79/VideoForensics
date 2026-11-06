@@ -29,7 +29,7 @@ public class ScopeRail_SharedSettings_Tests : ScopeRailTestContext
 
     private void Saved(string json)
     {
-        JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey).SetResult(json);
+        _ = JSInterop.Setup<string?>("localStorage.getItem", ReviewSettingsStore.StorageKey).SetResult(json);
     }
 
     [Fact]

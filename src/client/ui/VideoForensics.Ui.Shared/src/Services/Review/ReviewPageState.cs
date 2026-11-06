@@ -16,7 +16,6 @@ namespace VideoForensics.Client.Ui.Shared.Services.Review;
 public sealed class ReviewPageState
 {
     private readonly TimeProvider _timeProvider;
-    private IReadOnlyList<Guid> _cameraIds = [];
 
     /// <summary>Raised once after a mutation changes state.</summary>
     public event Action? OnChange;
@@ -33,7 +32,7 @@ public sealed class ReviewPageState
     public TimeSpan DebounceDelay { get; set; } = DebouncedAction.DefaultDelay;
 
     /// <summary>Cameras shown on the page, in display order. At most <see cref="CameraSync.MaxTiles"/>.</summary>
-    public IReadOnlyList<Guid> CameraIds => _cameraIds;
+    public IReadOnlyList<Guid> CameraIds { get; private set; } = [];
 
     /// <summary>
     /// The first camera of the most recent non-empty camera set. It outlives a later empty selection, so the Live link still
@@ -62,12 +61,10 @@ public sealed class ReviewPageState
     /// <summary>Location filter, or null for all locations.</summary>
     public Guid? LocationFilter { get; private set; }
 
-    private IReadOnlyList<string> _eventTypes = [];
-
     /// <summary>
     /// The Event Filter selection: provider types and system types, in display order. Empty means everything.
     /// </summary>
-    public IReadOnlyList<string> EventTypes => _eventTypes;
+    public IReadOnlyList<string> EventTypes { get; private set; } = [];
 
     /// <summary>The event the user selected, or null.</summary>
     public Guid? SelectedEventId { get; private set; }
@@ -135,12 +132,12 @@ public sealed class ReviewPageState
     public void SetEventTypes(IEnumerable<string> types)
     {
         IReadOnlyList<string> next = ReviewEventFilters.Normalize(types);
-        if (_eventTypes.SequenceEqual(next))
+        if (EventTypes.SequenceEqual(next))
         {
             return;
         }
 
-        _eventTypes = next;
+        EventTypes = next;
         OnChange?.Invoke();
     }
 
@@ -179,18 +176,18 @@ public sealed class ReviewPageState
 
     private bool SetCamerasCore(IEnumerable<Guid> cameraIds)
     {
-        List<Guid> distinct = cameraIds.Distinct().ToList();
+        var distinct = cameraIds.Distinct().ToList();
         if (distinct.Count > CameraSync.MaxTiles)
         {
             throw new ArgumentException($"At most {CameraSync.MaxTiles} cameras can be shown at once.", nameof(cameraIds));
         }
 
-        if (_cameraIds.SequenceEqual(distinct))
+        if (CameraIds.SequenceEqual(distinct))
         {
             return false;
         }
 
-        _cameraIds = distinct;
+        CameraIds = distinct;
         if (distinct.Count > 0)
         {
             LastShownCameraId = distinct[0];

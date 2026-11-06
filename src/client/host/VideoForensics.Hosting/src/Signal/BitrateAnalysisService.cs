@@ -50,7 +50,7 @@ namespace VideoForensics.Client.Hosting.Signal
                     0,
                     MaxFlagsPerCamera,
                     ct);
-                Dictionary<Guid, Guid> flagByMedia = flagPage.Items
+                var flagByMedia = flagPage.Items
                     .Where(f => f.MediaItemId is not null)
                     .GroupBy(f => f.MediaItemId!.Value)
                     .ToDictionary(g => g.Key, g => g.First().Id);

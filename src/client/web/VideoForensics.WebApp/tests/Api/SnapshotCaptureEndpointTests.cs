@@ -19,14 +19,17 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         private static readonly Guid CaptureId = Guid.Parse("44444444-4444-4444-4444-444444444444");
         private static readonly DateTimeOffset From = new(2026, 10, 19, 0, 0, 0, TimeSpan.Zero);
 
-        private static int StatusOf(IResult result) => Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode ?? 200;
+        private static int StatusOf(IResult result)
+        {
+            return Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode ?? 200;
+        }
 
         [Fact]
         public async Task ListAsync_DefaultAttemptsOnly_QueriesCurrentCaptures()
         {
             var captures = new Mock<ISnapshotCaptureRepository>();
             _ = captures.Setup(c => c.GetCurrentForDeviceAsync(DeviceId, From, From.AddHours(1), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<SnapshotCapture>());
+                .ReturnsAsync([]);
 
             IResult result = await SnapshotCaptureEndpoints.ListAsync(DeviceId, From, From.AddHours(1), captures.Object, CancellationToken.None);
 
@@ -40,7 +43,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var captures = new Mock<ISnapshotCaptureRepository>();
             _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(DeviceId, From, From.AddHours(1), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<SnapshotCapture>());
+                .ReturnsAsync([]);
 
             IResult result = await SnapshotCaptureEndpoints.ListAsync(DeviceId, From, From.AddHours(1), captures.Object, CancellationToken.None, attemptsOnly: true);
 

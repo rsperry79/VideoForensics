@@ -4,13 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Client.Hosting;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 

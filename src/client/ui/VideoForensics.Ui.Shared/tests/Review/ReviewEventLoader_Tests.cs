@@ -6,7 +6,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review event loader: excluded event types, paging, and the device cap.</summary>
 public class ReviewEventLoader_Tests
@@ -94,7 +94,7 @@ public class ReviewEventLoader_Tests
         // Arrange
         var capture = new Capture();
         var loader = new ReviewEventLoader(Repository(capture).Object);
-        List<Guid> devices = Enumerable.Range(0, 70).Select(_ => Guid.NewGuid()).ToList();
+        var devices = Enumerable.Range(0, 70).Select(_ => Guid.NewGuid()).ToList();
 
         // Act
         _ = await loader.LoadAsync(devices, From, To, null, 0, 100, CancellationToken.None);
@@ -110,7 +110,7 @@ public class ReviewEventLoader_Tests
         // Arrange
         var capture = new Capture();
         var loader = new ReviewEventLoader(Repository(capture).Object);
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
 
         // Act
         _ = await loader.LoadAsync([device, device], From, To, null, 0, 100, CancellationToken.None);
@@ -133,7 +133,7 @@ public class ReviewEventLoader_Tests
     public async Task ReviewEventLoader_CaseMode_PagesInMemoryNewestFirstWithTheMatchingTotal()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         Event a = Evt(device, From.AddHours(1));
         Event b = Evt(device, From.AddHours(2));
         Event c = Evt(device, From.AddHours(3));
@@ -152,8 +152,8 @@ public class ReviewEventLoader_Tests
     public async Task ReviewEventLoader_CaseMode_RestrictsToTheRequestedDevicesAndRange()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
-        Guid other = Guid.NewGuid();
+        var device = Guid.NewGuid();
+        var other = Guid.NewGuid();
         Event inside = Evt(device, From.AddHours(1));
         Event wrongDevice = Evt(other, From.AddHours(1));
         Event outsideRange = Evt(device, To.AddDays(1));
@@ -172,9 +172,9 @@ public class ReviewEventLoader_Tests
     public async Task ReviewEventLoader_CaseMode_DoesNotQueryTheRepository()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [Evt(device, From.AddHours(1))]);
-        var repository = Repository(new Capture());
+        Mock<IEventRepository> repository = Repository(new Capture());
         var loader = new ReviewEventLoader(repository.Object, caseMode);
 
         // Act
@@ -232,7 +232,7 @@ public class ReviewEventLoader_Tests
     public async Task ReviewEventLoader_CaseMode_EventTypeGiven_ReturnsOnlyThatType()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         Event motion = Evt(device, From.AddHours(1));
         motion.EventType = "motion";
         Event ding = Evt(device, From.AddHours(2));
@@ -252,7 +252,7 @@ public class ReviewEventLoader_Tests
     public async Task ReviewEventLoader_Load_EmptyEventTypes_ReturnsAnEmptyPageWithoutQuerying()
     {
         // Arrange
-        var repository = Repository(new Capture());
+        Mock<IEventRepository> repository = Repository(new Capture());
         var loader = new ReviewEventLoader(repository.Object);
 
         // Act

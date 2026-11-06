@@ -38,7 +38,6 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.Property(lm => lm.IsOwner);
 
-
             _ = builder.HasIndex(lm => lm.LocationId)
                 .IsUnique();
         }

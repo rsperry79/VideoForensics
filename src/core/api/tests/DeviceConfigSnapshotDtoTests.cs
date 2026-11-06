@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;

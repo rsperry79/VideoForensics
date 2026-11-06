@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

@@ -44,12 +44,7 @@ namespace VideoForensics.Client.WebApp.Auth
         public static bool IsLocalHostName(string host)
         {
             string trimmed = host.Trim().TrimStart('[').TrimEnd(']');
-            if (trimmed.Equals("localhost", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return IPAddress.TryParse(trimmed, out IPAddress? address) && IsLocalAddress(address);
+            return trimmed.Equals("localhost", StringComparison.OrdinalIgnoreCase) || (IPAddress.TryParse(trimmed, out IPAddress? address) && IsLocalAddress(address));
         }
     }
 }

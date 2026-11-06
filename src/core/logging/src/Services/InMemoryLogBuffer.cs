@@ -52,7 +52,7 @@ namespace VideoForensics.Core.Logging.Services
             }
 
             _capacity = capacity;
-            _entries = new List<LogRecord>(capacity);
+            _entries = [with(capacity)];
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review detail loader: detail chunking, jamming merged across cameras, and anomaly filtering and ordering.</summary>
 public class ReviewDetailLoader_Tests
@@ -29,17 +29,22 @@ public class ReviewDetailLoader_Tests
             (flags ?? new Mock<IMediaFlagRepository>()).Object);
     }
 
-    private static JammingIncidentRecord Incident(Guid device, DateTime startUtc) => new()
+    private static JammingIncidentRecord Incident(Guid device, DateTime startUtc)
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        StartUtc = startUtc,
-        EndUtc = startUtc.AddMinutes(5),
-        Confidence = JammingConfidenceLevel.High,
-        Source = JammingIncidentSource.AutoDetected,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            StartUtc = startUtc,
+            EndUtc = startUtc.AddMinutes(5),
+            Confidence = JammingConfidenceLevel.High,
+            Source = JammingIncidentSource.AutoDetected,
+        };
+    }
 
-    private static SignalDeviceAnalysis Camera(Guid device, params SignalDeviationWindow[] deviations) => new(
+    private static SignalDeviceAnalysis Camera(Guid device, params SignalDeviationWindow[] deviations)
+    {
+        return new(
         device,
         "Camera",
         "Ring",
@@ -53,12 +58,13 @@ public class ReviewDetailLoader_Tests
         SignalBuckets.Compute([], From, To, SignalBucket.Hour),
         SignalBuckets.Compute([], From, To, SignalBucket.Day),
         SignalBuckets.Compute([], From, To, SignalBucket.Week));
+    }
 
     [Fact]
     public async Task ReviewDetailLoader_BitRateFlags_ReturnsBitRateFlagsNewestFirstForTheCameras()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         var older = new MediaFlag { Id = Guid.NewGuid(), DeviceId = device, FlagType = MediaFlagType.BitrateCollapse, WindowStartUtc = From.AddHours(1), WindowEndUtc = From.AddHours(1).AddMinutes(5) };
         var newer = new MediaFlag { Id = Guid.NewGuid(), DeviceId = device, FlagType = MediaFlagType.BitrateDeviation, WindowStartUtc = From.AddHours(3), WindowEndUtc = From.AddHours(3).AddMinutes(5) };
         MediaFlagFilter? seen = null;
@@ -93,7 +99,7 @@ public class ReviewDetailLoader_Tests
                 IReadOnlyList<EventDetail> rows = ids.Select(id => new EventDetail(id, null, [], [], [], [])).ToList();
                 return Task.FromResult(rows);
             });
-        var loader = CreateLoader(details);
+        ReviewDetailLoader loader = CreateLoader(details);
         Guid[] ids = Enumerable.Range(0, 450).Select(_ => Guid.NewGuid()).ToArray();
 
         // Act
@@ -110,7 +116,7 @@ public class ReviewDetailLoader_Tests
     {
         // Arrange
         var details = new Mock<IEventDetailRepository>();
-        var loader = CreateLoader(details);
+        ReviewDetailLoader loader = CreateLoader(details);
 
         // Act
         IReadOnlyDictionary<Guid, EventDetail> result = await loader.LoadEventDetailsAsync([], CancellationToken.None);
@@ -124,8 +130,8 @@ public class ReviewDetailLoader_Tests
     public async Task ReviewDetailLoader_Jamming_QueriesEachDeviceAndMergesNewestFirst()
     {
         // Arrange
-        Guid first = Guid.NewGuid();
-        Guid second = Guid.NewGuid();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
         var jamming = new Mock<IJammingRepository>();
         var asked = new List<Guid?>();
         _ = jamming
@@ -138,7 +144,7 @@ public class ReviewDetailLoader_Tests
                     : [Incident(second, From.AddHours(4))];
                 return Task.FromResult(rows);
             });
-        var loader = CreateLoader(jamming: jamming);
+        ReviewDetailLoader loader = CreateLoader(jamming: jamming);
 
         // Act
         IReadOnlyList<JammingIncidentRecord> result = await loader.LoadJammingAsync([first, second], From, To, CancellationToken.None);
@@ -153,7 +159,7 @@ public class ReviewDetailLoader_Tests
     {
         // Arrange
         var jamming = new Mock<IJammingRepository>();
-        var loader = CreateLoader(jamming: jamming);
+        ReviewDetailLoader loader = CreateLoader(jamming: jamming);
 
         // Act
         IReadOnlyList<JammingIncidentRecord> result = await loader.LoadJammingAsync([], From, To, CancellationToken.None);
@@ -167,7 +173,7 @@ public class ReviewDetailLoader_Tests
     public async Task ReviewDetailLoader_Anomalies_LeavesOutTheNormalLevel()
     {
         // Arrange
-        Guid device = Guid.NewGuid();
+        var device = Guid.NewGuid();
         var signals = new Mock<ISignalAnalysisService>();
         _ = signals
             .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
@@ -176,7 +182,7 @@ public class ReviewDetailLoader_Tests
                 new SignalDeviationWindow(From.AddHours(1), SignalDeviationLevel.OneSigma, 2, -80),
                 new SignalDeviationWindow(From.AddHours(2), SignalDeviationLevel.None, 0, -50),
                 new SignalDeviationWindow(From.AddHours(3), SignalDeviationLevel.TwoSigma, 1, -95))])));
-        var loader = CreateLoader(signals: signals);
+        ReviewDetailLoader loader = CreateLoader(signals: signals);
 
         // Act
         IReadOnlyList<ReviewAnomaly> result = await loader.LoadAnomaliesAsync([device], From, To, CancellationToken.None);
@@ -190,8 +196,8 @@ public class ReviewDetailLoader_Tests
     public async Task ReviewDetailLoader_Anomalies_OrdersNewestFirstAcrossCamerasAndSpansOneHour()
     {
         // Arrange
-        Guid first = Guid.NewGuid();
-        Guid second = Guid.NewGuid();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
         var signals = new Mock<ISignalAnalysisService>();
         _ = signals
             .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
@@ -202,7 +208,7 @@ public class ReviewDetailLoader_Tests
                     new SignalDeviationWindow(From.AddHours(3), SignalDeviationLevel.TwoSigma, 1, -95)),
                 Camera(second, new SignalDeviationWindow(From.AddHours(4), SignalDeviationLevel.OneSigma, 1, -82)),
             ])));
-        var loader = CreateLoader(signals: signals);
+        ReviewDetailLoader loader = CreateLoader(signals: signals);
 
         // Act
         IReadOnlyList<ReviewAnomaly> result = await loader.LoadAnomaliesAsync([first, second], From, To, CancellationToken.None);

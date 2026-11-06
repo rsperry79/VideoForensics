@@ -4,7 +4,7 @@ using VideoForensics.Providers.Ring.Clients;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Interfaces;
 
-namespace VideoForensics.Providers.Ring.Core.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests.Clients
 {
     public class VideoDownloadClientTests
     {

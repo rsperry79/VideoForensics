@@ -21,7 +21,7 @@ public class SignalCalendarTests
     [Fact]
     public void Cell_HoldsTheReadingsForThatWeekdayAndHour()
     {
-        SignalCalendar calendar = SignalCalendar.Compute(
+        var calendar = SignalCalendar.Compute(
             [
                 new SignalSample(new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), -50),
                 new SignalSample(new DateTime(2026, 10, 19, 9, 30, 0, DateTimeKind.Utc), -70),
@@ -39,7 +39,7 @@ public class SignalCalendarTests
     [Fact]
     public void HourOfDayProfile_IsTheStatsAcrossAllDaysForThatHour()
     {
-        SignalCalendar calendar = SignalCalendar.Compute(
+        var calendar = SignalCalendar.Compute(
             [
                 new SignalSample(new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), -50),
                 new SignalSample(new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc), -70),
@@ -56,7 +56,7 @@ public class SignalCalendarTests
     [Fact]
     public void DayOfWeekProfile_IsTheStatsAcrossAllHoursOfThatWeekday()
     {
-        SignalCalendar calendar = SignalCalendar.Compute(
+        var calendar = SignalCalendar.Compute(
             [
                 new SignalSample(new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), -50),
                 new SignalSample(new DateTime(2026, 10, 19, 21, 0, 0, DateTimeKind.Utc), -70),
@@ -72,7 +72,7 @@ public class SignalCalendarTests
     [Fact]
     public void Constructor_RebuildsTheGridFromItsTransportedStats()
     {
-        SignalCalendar original = SignalCalendar.Compute(
+        var original = SignalCalendar.Compute(
             [new SignalSample(new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc), -60)],
             From,
             To);
@@ -86,13 +86,13 @@ public class SignalCalendarTests
     [Fact]
     public void Constructor_RejectsAGridOfTheWrongSize()
     {
-        Assert.Throws<ArgumentException>(() => new SignalCalendar([], [], []));
+        _ = Assert.Throws<ArgumentException>(() => new SignalCalendar([], [], []));
     }
 
     [Fact]
     public void Compute_IgnoresReadingsOutsideTheWindowAndWithoutASignal()
     {
-        SignalCalendar calendar = SignalCalendar.Compute(
+        var calendar = SignalCalendar.Compute(
             [
                 new SignalSample(From.AddDays(-1), -50),
                 new SignalSample(new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), null),

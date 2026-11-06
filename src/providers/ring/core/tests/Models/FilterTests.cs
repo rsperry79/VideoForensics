@@ -1,7 +1,7 @@
 #nullable disable
 using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Core.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests.Models
 {
     public class FilterTests
     {

@@ -25,7 +25,7 @@ public class ServerMaintenanceClient_Tests
 
         Assert.Null(session);
         Assert.Equal(["GET /healthz"], handler.Requests);
-        Assert.Single(console.Questions);
+        _ = Assert.Single(console.Questions);
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public class ServerMaintenanceClient_Tests
     public async Task StartAsync_PollReturnsTooManyRequestsWithRetryAfter_WaitsRetryAfterSeconds()
     {
         bool throttled = false;
-        var routes = ServerRoutes(pollResponses: ["approved"]);
+        Func<HttpRequestMessage, HttpResponseMessage> routes = ServerRoutes(pollResponses: ["approved"]);
         var handler = new FakeHandler(request =>
         {
             if (!throttled && request.RequestUri!.AbsolutePath.EndsWith("/poll"))
@@ -224,7 +224,7 @@ public class ServerMaintenanceClient_Tests
     public async Task StartAsync_RetryAfterBeyondPairingDeadline_WaitIsBoundedByDeadline()
     {
         bool throttled = false;
-        var routes = ServerRoutes(pollResponses: ["approved"]);
+        Func<HttpRequestMessage, HttpResponseMessage> routes = ServerRoutes(pollResponses: ["approved"]);
         var handler = new FakeHandler(request =>
         {
             if (!throttled && request.RequestUri!.AbsolutePath.EndsWith("/poll"))
@@ -257,7 +257,7 @@ public class ServerMaintenanceClient_Tests
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew"))
             {
-                renewed.TrySetResult();
+                _ = renewed.TrySetResult();
             }
 
             return ServerRoutes(pollResponses: ["approved"])(request);
@@ -322,7 +322,7 @@ public class ServerMaintenanceClient_Tests
     public async Task StartAsync_PollRetryAfterZero_WaitsAtLeastTwoSeconds()
     {
         bool throttled = false;
-        var routes = ServerRoutes(intervalSeconds: 1, pollResponses: ["approved"]);
+        Func<HttpRequestMessage, HttpResponseMessage> routes = ServerRoutes(intervalSeconds: 1, pollResponses: ["approved"]);
         var handler = new FakeHandler(request =>
         {
             if (!throttled && request.RequestUri!.AbsolutePath.EndsWith("/poll"))
@@ -354,12 +354,12 @@ public class ServerMaintenanceClient_Tests
     public async Task StartAsync_RenewStopsHold_CancelsRepairTokenAndReportsHoldLost(HttpStatusCode renewStatus)
     {
         var renewed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var routes = ServerRoutes(pollResponses: ["approved"]);
+        Func<HttpRequestMessage, HttpResponseMessage> routes = ServerRoutes(pollResponses: ["approved"]);
         var handler = new FakeHandler(request =>
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew"))
             {
-                renewed.TrySetResult();
+                _ = renewed.TrySetResult();
                 return new HttpResponseMessage(renewStatus);
             }
 
@@ -377,7 +377,7 @@ public class ServerMaintenanceClient_Tests
 
         Assert.True(repairStop.IsCancellationRequested);
         Assert.True(session.HoldLost);
-        Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
+        _ = Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
         Assert.DoesNotContain("POST /api/v1/database/maintenance/end", handler.Requests);
         Assert.DoesNotContain(console.Messages, m => m.Contains("will retry", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(console.Messages, m => m.Contains("revoke this device on the admin page", StringComparison.OrdinalIgnoreCase));
@@ -389,7 +389,7 @@ public class ServerMaintenanceClient_Tests
     public async Task StartAsync_RenewFailsWithServerError_HoldLostOnlyWhenNoRenewSucceededFor25Minutes(int minutesSinceLastRenew, bool expectLost)
     {
         var clock = new FakeClock(DateTimeOffset.UtcNow);
-        var routes = ServerRoutes(pollResponses: ["approved"]);
+        Func<HttpRequestMessage, HttpResponseMessage> routes = ServerRoutes(pollResponses: ["approved"]);
         var handler = new FakeHandler(request =>
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/maintenance/renew"))
@@ -451,7 +451,7 @@ public class ServerMaintenanceClient_Tests
         Assert.False(confirmed);
         Assert.True(session.HoldLost);
         await session.DisposeAsync();
-        Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
+        _ = Assert.Single(handler.Requests, r => r == "POST /api/v1/database/maintenance/renew");
         Assert.DoesNotContain("POST /api/v1/database/maintenance/end", handler.Requests);
     }
 
@@ -556,8 +556,10 @@ public class ServerMaintenanceClient_Tests
         await session.DisposeAsync();
     }
 
-    private static Task NoBackgroundRenew(TimeSpan wait, CancellationToken ct) =>
-        wait == RenewInterval ? Task.Delay(Timeout.Infinite, ct) : Task.CompletedTask;
+    private static Task NoBackgroundRenew(TimeSpan wait, CancellationToken ct)
+    {
+        return wait == RenewInterval ? Task.Delay(Timeout.Infinite, ct) : Task.CompletedTask;
+    }
 
     // Answers every route, but a renew never completes, like a server that stopped responding.
     private sealed class HangingRenewHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
@@ -574,8 +576,10 @@ public class ServerMaintenanceClient_Tests
     }
 
     // Starts a session with a session-less dispose helper so the poll test can dispose a nullable result.
-    private static void ServerMaintenanceSession_Dispose(ServerMaintenanceClient.ServerMaintenanceSession? session) =>
+    private static void ServerMaintenanceSession_Dispose(ServerMaintenanceClient.ServerMaintenanceSession? session)
+    {
         session?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
 
     // Answers the server routes the client calls. Poll responses are consumed in order; the last one repeats.
     private static Func<HttpRequestMessage, HttpResponseMessage> ServerRoutes(
@@ -608,27 +612,20 @@ public class ServerMaintenanceClient_Tests
                 };
             }
 
-            if (path == "/api/v1/database/maintenance/begin")
-            {
-                return Json(HttpStatusCode.OK, beginBody ?? $"{{\"holdToken\":\"{HoldToken}\"}}");
-            }
-
-            if (path == "/api/v1/database/maintenance/renew")
-            {
-                return new HttpResponseMessage(HttpStatusCode.NoContent);
-            }
-
-            if (path == "/api/v1/database/maintenance/end")
-            {
-                return new HttpResponseMessage(HttpStatusCode.NoContent);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return path == "/api/v1/database/maintenance/begin"
+                ? Json(HttpStatusCode.OK, beginBody ?? $"{{\"holdToken\":\"{HoldToken}\"}}")
+                : path == "/api/v1/database/maintenance/renew"
+                ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                : path == "/api/v1/database/maintenance/end"
+                ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                : new HttpResponseMessage(HttpStatusCode.NotFound);
         };
     }
 
-    private static HttpResponseMessage Json(HttpStatusCode status, string body) =>
-        new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+    private static HttpResponseMessage Json(HttpStatusCode status, string body)
+    {
+        return new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+    }
 
     private static HttpResponseMessage Redirect(string location)
     {
@@ -637,7 +634,10 @@ public class ServerMaintenanceClient_Tests
         return response;
     }
 
-    private static FakeDelay NewDelay() => new();
+    private static FakeDelay NewDelay()
+    {
+        return new();
+    }
 
     private sealed class FakeDelay
     {
@@ -666,9 +666,15 @@ public class ServerMaintenanceClient_Tests
     {
         private DateTimeOffset _now = start;
 
-        public void Advance(TimeSpan by) => _now += by;
+        public void Advance(TimeSpan by)
+        {
+            _now += by;
+        }
 
-        public override DateTimeOffset GetUtcNow() => _now;
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _now;
+        }
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -707,7 +713,10 @@ public class ServerMaintenanceClient_Tests
 
         public bool IsInteractive => interactive;
 
-        public void Write(string message) => Messages.Add(message);
+        public void Write(string message)
+        {
+            Messages.Add(message);
+        }
 
         public Task<bool> ConfirmAsync(string question, CancellationToken ct)
         {
@@ -715,6 +724,9 @@ public class ServerMaintenanceClient_Tests
             return Task.FromResult(answer);
         }
 
-        public bool OpenBrowser(Uri url) => false;
+        public bool OpenBrowser(Uri url)
+        {
+            return false;
+        }
     }
 }

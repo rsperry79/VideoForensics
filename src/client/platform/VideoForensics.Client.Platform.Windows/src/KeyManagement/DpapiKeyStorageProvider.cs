@@ -1,15 +1,9 @@
-using VideoForensics.Core.Helpers.Forensics.Exceptions;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
 
+using VideoForensics.Core.Helpers.Forensics.Exceptions;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Client.Platform.Windows.KeyManagement
 {

@@ -57,7 +57,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 (-1.0, 1000L), (0.5, 1000L),
             ]);
 
-            Assert.Single(series);
+            _ = Assert.Single(series);
             Assert.Equal(8, series[0].Kbps);
         }
     }

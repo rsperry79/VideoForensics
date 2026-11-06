@@ -36,27 +36,8 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>settings.backend_settings.paid_features.ai_labs_memorable_moments.</summary>
         public bool? PaidFeaturesAiLabsMemorableMoments { get; set; }
 
-
-
-
         /// <summary>settings.backend_settings.paid_features.appstore.</summary>
         public bool? PaidFeaturesAppstore { get; set; }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// <summary>settings.backend_settings.paid_features.motion_awareness.</summary>
         public bool? PaidFeaturesMotionAwareness { get; set; }
@@ -64,15 +45,8 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>settings.backend_settings.paid_features.motion_stop.</summary>
         public bool? PaidFeaturesMotionStop { get; set; }
 
-
-
-
-
-
-
         /// <summary>settings.backend_settings.paid_features.person_identification.</summary>
         public bool? PaidFeaturesPersonIdentification { get; set; }
-
 
         /// <summary>settings.backend_settings.paid_features.retinal_tuning.</summary>
         public bool? PaidFeaturesRetinalTuning { get; set; }
@@ -80,16 +54,11 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>settings.backend_settings.paid_features.rogers_vqa.</summary>
         public bool? PaidFeaturesRogersVqa { get; set; }
 
-
-
         /// <summary>settings.backend_settings.paid_features.smart_media_descriptions.</summary>
         public bool? PaidFeaturesSmartMediaDescriptions { get; set; }
 
-
-
         /// <summary>settings.backend_settings.paid_features.unverified_motion.</summary>
         public bool? PaidFeaturesUnverifiedMotion { get; set; }
-
 
         /// <summary>settings.backend_settings.terms_of_service_accepted.autoreply.</summary>
         public bool? TermsOfServiceAcceptedAutoreply { get; set; }

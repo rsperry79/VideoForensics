@@ -20,6 +20,9 @@ namespace VideoForensics.Client.Common.Contracts
     public sealed class NoOpChildProcessReaper : IChildProcessReaper
     {
         /// <inheritdoc />
-        public int AdoptChildren(string executableName) => 0;
+        public int AdoptChildren(string executableName)
+        {
+            return 0;
+        }
     }
 }

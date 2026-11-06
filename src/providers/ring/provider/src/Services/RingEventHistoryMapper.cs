@@ -125,7 +125,7 @@ namespace VideoForensics.Providers.Ring.Services
                 Id = Guid.NewGuid(),
                 ProviderLocationId = providerLocationId,
                 PaginationKey = paginationKey,
-                CekTransferRecipientResponse = KeyText(cekTransferRecipientResponse, "cek_transfer_recipient_response", notes ?? new List<string>()),
+                CekTransferRecipientResponse = KeyText(cekTransferRecipientResponse, "cek_transfer_recipient_response", notes ?? []),
             };
         }
 

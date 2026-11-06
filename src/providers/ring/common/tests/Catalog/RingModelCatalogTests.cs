@@ -4,7 +4,7 @@ using System.Linq;
 using VideoForensics.Providers.Ring.Catalog;
 using VideoForensics.Providers.Ring.Interfaces;
 
-namespace VideoForensics.Providers.Ring.Common.Tests;
+namespace VideoForensics.Providers.Ring.Common.Tests.Catalog;
 
 /// <summary>
 /// Tests for the Ring device kind to model and generation catalog.

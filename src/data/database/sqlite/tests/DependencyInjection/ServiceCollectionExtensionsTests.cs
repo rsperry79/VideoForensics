@@ -1,16 +1,16 @@
-using System.Collections.Concurrent;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+using System.Collections.Concurrent;
 
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Sqlite.Tests
+namespace VideoForensics.Data.Database.Sqlite.Tests.DependencyInjection
 {
     /// <summary>Tests for ServiceCollectionExtensions.AddVideoForensicsSqlite().</summary>
     public class ServiceCollectionExtensionsTests
@@ -173,8 +173,8 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
             var services = new ServiceCollection();
             _ = services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Trace);
-                builder.AddProvider(captured);
+                _ = builder.SetMinimumLevel(LogLevel.Trace);
+                _ = builder.AddProvider(captured);
             });
             _ = services.AddVideoForensicsSqlite(dbPath);
 
@@ -188,7 +188,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _ = await db.ProviderApiCallRecords.CountAsync();
 
                 // Assert
-                List<LogLevel> commandLevels = captured.Entries
+                var commandLevels = captured.Entries
                     .Where(entry => entry.Category == "Microsoft.EntityFrameworkCore.Database.Command")
                     .Select(entry => entry.Level)
                     .ToList();
@@ -213,7 +213,10 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
 
             public IReadOnlyCollection<(string Category, LogLevel Level)> Entries => _entries.ToArray();
 
-            public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, _entries);
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new CapturingLogger(categoryName, _entries);
+            }
 
             public void Dispose()
             {
@@ -230,9 +233,15 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                     _entries = entries;
                 }
 
-                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+                {
+                    return null;
+                }
 
-                public bool IsEnabled(LogLevel logLevel) => true;
+                public bool IsEnabled(LogLevel logLevel)
+                {
+                    return true;
+                }
 
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {

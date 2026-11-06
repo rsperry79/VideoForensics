@@ -1,9 +1,9 @@
-using System.Globalization;
-using System.Text.Json;
-
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+
+using System.Globalization;
+using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Services;
 
@@ -179,7 +179,7 @@ namespace VideoForensics.Utils.SelfTest
                 string? device = endpoint == "device-settings" && parts.Length >= 3 ? parts[1] : null;
                 try
                 {
-                    using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(file));
+                    using var doc = JsonDocument.Parse(File.ReadAllText(file));
                     docs.Add(new FixtureDocument(endpoint, name, doc.RootElement.Clone(), device, ScopeFromTopLevelId: endpoint == "devices"));
                 }
                 catch (JsonException)
@@ -248,7 +248,7 @@ namespace VideoForensics.Utils.SelfTest
                 return;
             }
 
-            var used = new bool[cells.Count];
+            bool[] used = new bool[cells.Count];
             var matched = new List<Instance>();
             var unmatched = new List<Instance>();
             foreach (Instance i in group)
@@ -376,7 +376,7 @@ namespace VideoForensics.Utils.SelfTest
                     return;
                 }
 
-                Expected expected = Expected.FromJson(value);
+                var expected = Expected.FromJson(value);
                 instances.Add(new Instance(doc.Endpoint, path, concrete, target.Table!, target.Column!, device, expected));
 
                 // Columns the app derives from a raw value (RingHealthUnits) are checked beside the raw one.
@@ -486,7 +486,7 @@ namespace VideoForensics.Utils.SelfTest
                     if (actual is long bl && bl is 0 or 1)
                     {
                         viaConversion = true;
-                        return (bl == 1) == want;
+                        return bl == 1 == want;
                     }
 
                     if (actual is string bs && bool.TryParse(bs, out bool parsed))
@@ -516,7 +516,7 @@ namespace VideoForensics.Utils.SelfTest
                     return Math.Abs(d - expected.Number) <= Tolerance(expected.Number);
                 case bool b:
                     viaConversion = true;
-                    return expected.IsIntegral && expected.Integer is 0 or 1 && (expected.Integer == 1) == b;
+                    return expected.IsIntegral && expected.Integer is 0 or 1 && expected.Integer == 1 == b;
                 case string s:
                     viaConversion = true;
                     return string.Equals(s, expected.Text, StringComparison.Ordinal)
@@ -761,28 +761,14 @@ namespace VideoForensics.Utils.SelfTest
 
         private static object? ToCell(object raw, Type? clr)
         {
-            if (raw is DBNull)
-            {
-                return null;
-            }
-
-            if (clr == typeof(bool) && raw is long l)
-            {
-                return l != 0;
-            }
-
-            if ((clr == typeof(DateTime) || clr == typeof(DateTimeOffset)) && raw is string text
-                && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset when))
-            {
-                return when.UtcDateTime;
-            }
-
-            if (clr == typeof(Guid) && raw is string g && Guid.TryParse(g, out Guid guid))
-            {
-                return guid;
-            }
-
-            return raw is byte[] ? "(blob)" : raw;
+            return raw is DBNull
+                ? null
+                : clr == typeof(bool) && raw is long l
+                ? l != 0
+                : (clr == typeof(DateTime) || clr == typeof(DateTimeOffset)) && raw is string text
+                && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset when)
+                ? when.UtcDateTime
+                : clr == typeof(Guid) && raw is string g && Guid.TryParse(g, out Guid guid) ? guid : raw is byte[]? "(blob)" : raw;
         }
     }
 }

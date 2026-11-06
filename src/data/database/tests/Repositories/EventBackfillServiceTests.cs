@@ -2,13 +2,13 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>Tests for EventBackfillService, which reconstructs Events from DownloadEvents and MediaItems history.</summary>
     public class EventBackfillServiceTests : IAsyncLifetime

@@ -88,7 +88,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
                 return mapped;
             }
 
-            JsonNode? root = JsonNode.Parse(remainderJson);
+            var root = JsonNode.Parse(remainderJson);
             foreach (string path in LeafPaths(root, prefix))
             {
                 FieldTarget? target = map.Resolve(SettingsEndpoint, path);
@@ -109,7 +109,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void SettingsRemainder_DoorbotSettings_HoldsNoMappedColumnOrRowPath()
         {
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
             var violations = new List<string>();
             foreach ((string name, JsonObject settings) in SettingsSources())
             {
@@ -124,7 +124,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void SettingsRemainder_StickupCamSettings_HoldsNoMappedColumnOrRowPath()
         {
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
             var violations = new List<string>();
             foreach ((string name, JsonObject settings) in SettingsSources())
             {
@@ -139,7 +139,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void SettingsRemainder_StickupLightSettings_HoldsNoMappedColumnOrRowPath()
         {
-            FieldMap map = FieldMap.LoadEmbedded();
+            var map = FieldMap.LoadEmbedded();
             JsonObject settings = new() { ["light_settings"] = new JsonObject { ["brightness"] = 5, ["schedule_enabled"] = true } };
 
             RingDeviceDetails? details = RingDeviceDetailsMapper.Find(StickupWith(settings), DeviceId);
@@ -151,7 +151,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void SettingsRemainder_InventedUnknownKeys_SurviveInSettingsAndLightRemainders()
         {
-            JsonObject settings = (JsonObject)JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ring-fixtures", "doorbot-settings-sanitized.json")))!;
+            var settings = (JsonObject)JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ring-fixtures", "doorbot-settings-sanitized.json")))!;
             settings["zz_invented_top_key"] = 1;
             settings["motion_settings"]!.AsObject()["zz_invented_nested_key"] = "x";
             settings["pir_settings"] = new JsonObject { ["zz_invented_pir_key"] = true };
@@ -162,14 +162,14 @@ namespace VideoForensics.Utils.SelfTest.Tests
 
             Assert.NotNull(stickup);
             Assert.NotNull(doorbot);
-            List<string> stickupLeaves = RemainderLeaves(stickup!.DeviceFields!.SettingsMetadataJson, string.Empty).ToList();
-            List<string> doorbotLeaves = RemainderLeaves(doorbot!.DeviceFields!.SettingsMetadataJson, string.Empty).ToList();
+            var stickupLeaves = RemainderLeaves(stickup!.DeviceFields!.SettingsMetadataJson, string.Empty).ToList();
+            var doorbotLeaves = RemainderLeaves(doorbot!.DeviceFields!.SettingsMetadataJson, string.Empty).ToList();
             Assert.Contains("zz_invented_top_key", stickupLeaves);
             Assert.Contains("motion_settings.zz_invented_nested_key", stickupLeaves);
             Assert.Contains("zz_invented_top_key", doorbotLeaves);
             Assert.Contains("motion_settings.zz_invented_nested_key", doorbotLeaves);
             Assert.Contains("pir_settings.zz_invented_pir_key", doorbotLeaves);
-            List<string> lightLeaves = RemainderLeaves(stickup.DeviceFields.LightSettingsMetadataJson, string.Empty).ToList();
+            var lightLeaves = RemainderLeaves(stickup.DeviceFields.LightSettingsMetadataJson, string.Empty).ToList();
             Assert.Contains("zz_invented_light_key", lightLeaves);
             Assert.DoesNotContain("brightness", lightLeaves);
         }

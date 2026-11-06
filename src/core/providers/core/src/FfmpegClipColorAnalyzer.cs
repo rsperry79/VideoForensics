@@ -1,5 +1,4 @@
 using FFMpegCore;
-using System.Diagnostics;
 
 namespace VideoForensics.Core.Providers.Core
 {

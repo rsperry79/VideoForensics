@@ -1,6 +1,6 @@
-using System.Text.Json;
-
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
 
 namespace VideoForensics.Client.Hosting.Updates
 {
@@ -92,12 +92,9 @@ namespace VideoForensics.Client.Hosting.Updates
         // Folders starting with '.' (staging) and the backup folder are not packages; rejected ones were already tried.
         internal static string? FindNewestStaged(string updatesRoot)
         {
-            if (!Directory.Exists(updatesRoot))
-            {
-                return null;
-            }
-
-            return Directory.EnumerateDirectories(updatesRoot)
+            return !Directory.Exists(updatesRoot)
+                ? null
+                : Directory.EnumerateDirectories(updatesRoot)
                 .Where(d =>
                 {
                     string name = Path.GetFileName(d);

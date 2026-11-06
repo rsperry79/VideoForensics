@@ -10,16 +10,16 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Blazor;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Local;
 using VideoForensics.Client.Hosting.ServerDiscovery;
-using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.MauiApp.AppLock;
 using VideoForensics.Client.MauiApp.ServerDiscovery;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Logging.DependencyInjection;
 
 namespace VideoForensics.Client.MauiApp
 {

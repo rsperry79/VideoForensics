@@ -8,12 +8,12 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 

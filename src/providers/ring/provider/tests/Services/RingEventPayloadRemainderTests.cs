@@ -5,7 +5,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// The raw Ring event payload is no longer stored in Events/MediaItems.MetadataJson: only keys without a structured
@@ -40,7 +40,6 @@ namespace VideoForensics.Providers.Ring.Tests
               "is_e2ee": false, "had_subscription": true, "owner_id": "1", "riid": "abc"
             }
             """;
-
 
         private static string Serialized(string apiJson)
         {
@@ -97,11 +96,11 @@ namespace VideoForensics.Providers.Ring.Tests
             string? remainder = RingEventPayloadRemainder.Compute(json);
 
             Assert.NotNull(remainder);
-            using JsonDocument doc = JsonDocument.Parse(remainder);
+            using var doc = JsonDocument.Parse(remainder);
             Assert.Equal("hello", doc.RootElement.GetProperty("new_top_level").GetString());
             Assert.True(doc.RootElement.GetProperty("properties").GetProperty("new_flag").GetBoolean());
             Assert.Equal(2, doc.RootElement.EnumerateObject().Count());
-            Assert.Single(doc.RootElement.GetProperty("properties").EnumerateObject());
+            _ = Assert.Single(doc.RootElement.GetProperty("properties").EnumerateObject());
         }
 
         [Fact]
@@ -156,11 +155,11 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void IsRawEventPayload_RawEventTrue_MarkersFalse()
         {
-            using JsonDocument raw = JsonDocument.Parse(Serialized(RealShapedEvent));
-            using JsonDocument snap = JsonDocument.Parse("""{"type":"snapshot","source":"capture"}""");
-            using JsonDocument snapWithEventId = JsonDocument.Parse("""{"deviceId":"1","eventId":"snapshot-1","timestamp":"2026-01-01T00:00:00Z","type":"snapshot"}""");
-            using JsonDocument rollup = JsonDocument.Parse("""{"type":"snapshot-rollup"}""");
-            using JsonDocument array = JsonDocument.Parse("[1]");
+            using var raw = JsonDocument.Parse(Serialized(RealShapedEvent));
+            using var snap = JsonDocument.Parse("""{"type":"snapshot","source":"capture"}""");
+            using var snapWithEventId = JsonDocument.Parse("""{"deviceId":"1","eventId":"snapshot-1","timestamp":"2026-01-01T00:00:00Z","type":"snapshot"}""");
+            using var rollup = JsonDocument.Parse("""{"type":"snapshot-rollup"}""");
+            using var array = JsonDocument.Parse("[1]");
 
             Assert.True(RingEventPayloadRemainder.IsRawEventPayload(raw.RootElement));
             Assert.False(RingEventPayloadRemainder.IsRawEventPayload(snap.RootElement));

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -11,7 +10,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>Device timelines come from stored snapshot attempts only, mapped by the real still mapper into a mocked builder.</summary>
     public class SnapshotTimelineServiceTests : IDisposable

@@ -2,7 +2,6 @@ using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.JSInterop;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
@@ -77,7 +76,7 @@ public class MediaFit_Tests : BunitContext
     [InlineData("NoClipInHour")]
     public void MediaFit_EachNonPlayableState_ShowsItsOwnMessage(string stateName)
     {
-        var state = Enum.Parse<MediaFitState>(stateName);
+        MediaFitState state = Enum.Parse<MediaFitState>(stateName);
 
         IRenderedComponent<MediaFit> cut = Render<MediaFit>(p => p
             .Add(c => c.State, state));

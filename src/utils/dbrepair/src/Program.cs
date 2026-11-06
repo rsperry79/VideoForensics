@@ -1,15 +1,15 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
-using VideoForensics.Client.Hosting;
 using VideoForensics.Utils.DbRepair;
 using VideoForensics.Utils.Diagnostics;
 using VideoForensics.Utils.Diagnostics.Contracts;
@@ -276,7 +276,7 @@ try
     }
 
     // Why: the service holds the database open and caches what it read; stop it for the deletes and start it again after.
-    using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+    using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
     if (serviceGuard is null)
     {
         Console.Error.WriteLine(stopError);
@@ -464,7 +464,7 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     try
     {
         // Why: the service caches operator and session state; stop it for the reset and start it again after.
-        using VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard? serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+        using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
         if (serviceGuard is null)
         {
             Console.Error.WriteLine(stopError);
@@ -508,7 +508,10 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
     var service = new DingIdRepairService();
     // Why: the path is kept so the stop message can name the backup that the repair wrote before it was stopped.
     string? backupPath = null;
-    Func<CancellationToken, Task> backup = async token => backupPath = await BackupDatabaseAsync(dbPath, token);
+    async Task backup(CancellationToken token)
+    {
+        backupPath = await BackupDatabaseAsync(dbPath, token);
+    }
 
     if (!apply)
     {
@@ -526,11 +529,11 @@ static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsD
 
     // Why: Ctrl+C cancels the run instead of killing the process, so the disposal below still ends the server hold.
     using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
-    ConsoleCancelEventHandler onCancel = (_, e) =>
+    void onCancel(object? _, ConsoleCancelEventArgs e)
     {
         e.Cancel = true;
         cancel.Cancel();
-    };
+    }
 
     Console.CancelKeyPress += onCancel;
     try

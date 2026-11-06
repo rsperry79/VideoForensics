@@ -1,9 +1,6 @@
 
 using Bunit;
 
-using System.Net;
-using System.Net.Http;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.JSInterop;
@@ -11,18 +8,20 @@ using Microsoft.JSInterop;
 using Moq;
 using Moq.Protected;
 
+using System.Net;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
 using ExportEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ExportEvidence;
+using ServicesSettingsPage = VideoForensics.Client.Ui.Shared.Pages.ServicesSettings;
 using SettingsInfrastructurePage = VideoForensics.Client.Ui.Shared.Pages.SettingsInfrastructure;
 using SettingsPage = VideoForensics.Client.Ui.Shared.Pages.Settings;
-using ServicesSettingsPage = VideoForensics.Client.Ui.Shared.Pages.ServicesSettings;
 using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;

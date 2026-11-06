@@ -1,10 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
@@ -19,15 +17,15 @@ public class BitrateDeviationAlertsTests
     public async Task BitrateDeviationAlerts_SpikeAboveTwoStdDevs_RaisesOneFlagAndOneNotice()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
-        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+        _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
         var flags = new Mock<IMediaFlagRepository>();
         var written = new List<MediaFlag>();
-        flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
+        _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
             .ReturnsAsync((MediaFlag f, CancellationToken _) => f);
 
@@ -40,7 +38,7 @@ public class BitrateDeviationAlertsTests
         Assert.NotNull(sent);
         Assert.Equal("BitrateDeviation", sent!.EventType);
         Assert.Equal(NoticeSeverity.Alert, sent.Severity);
-        Assert.NotNull(sent.NoticeId);
+        _ = Assert.NotNull(sent.NoticeId);
         Assert.Contains("Rear camera", sent.Details, StringComparison.Ordinal);
         Assert.Contains("sig-dev:bitrate:Ring:1234:", sent.Details, StringComparison.Ordinal);
         Assert.StartsWith($"/bitrate-history?devices={_device.Id:D}&from=", sent.ActionPath, StringComparison.Ordinal);
@@ -58,7 +56,7 @@ public class BitrateDeviationAlertsTests
     public async Task BitrateDeviationAlerts_RepeatCheckOfSameWindow_RaisesNothing()
     {
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagRepository>();
 
@@ -74,7 +72,7 @@ public class BitrateDeviationAlertsTests
     {
         // A camera with signal history but no measured clip bit rates has nothing for this check to read.
         var notices = new Mock<INoticeRepository>();
-        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagRepository>();
 
@@ -109,7 +107,7 @@ public class BitrateDeviationAlertsTests
         List<MeasuredBitrate> rows)
     {
         var mediaItems = new Mock<IMediaItemRepository>();
-        mediaItems.Setup(m => m.GetMeasuredBitrateByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _ = mediaItems.Setup(m => m.GetMeasuredBitrateByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
         var checker = new BitrateDeviationAlerts(
             mediaItems.Object,

@@ -1,7 +1,5 @@
 using VideoForensics.Client.Hosting.BackgroundServices;
 
-using Xunit;
-
 namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 {
     public class ScheduledReportServiceTests

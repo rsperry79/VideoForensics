@@ -10,7 +10,7 @@ using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Maps the RingDeviceSettings, DeviceGeneralSettings, created_at and alerts.ota_status values (sanitized fixture) onto rows.</summary>
     public class RingSettingsRowMapperTests

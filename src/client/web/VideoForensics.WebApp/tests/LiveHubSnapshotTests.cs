@@ -6,7 +6,6 @@ using Moq;
 
 using System.Security.Claims;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.WebApp.Hubs;

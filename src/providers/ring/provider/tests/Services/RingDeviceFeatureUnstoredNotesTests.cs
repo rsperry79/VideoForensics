@@ -1,8 +1,8 @@
-using System.Text.Json;
-
 using Microsoft.Extensions.Logging;
 
 using Moq;
+
+using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
@@ -11,7 +11,7 @@ using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Notes for values under <c>features</c> that were read but not stored (key and JSON type only, never the value).</summary>
     public class RingDeviceFeatureUnstoredNotesTests

@@ -8,7 +8,7 @@ using VideoForensics.Providers.Uniview.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Uniview.Tests
+namespace VideoForensics.Providers.Uniview.Tests.Services
 {
     /// <summary>
     /// Tests for UniviewDeviceDiscoveryService. Tests the "not authenticated" paths and discovery behavior.

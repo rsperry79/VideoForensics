@@ -29,7 +29,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 10, 25, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new EventPage(new List<Event> { evt }, 42));
+                .ReturnsAsync(new EventPage([evt], 42));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { deviceId }, From, To, excludeTypes: null, includeTypes: null, skip: 10, take: 25, repository.Object, CancellationToken.None);
@@ -46,7 +46,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 0, 100, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new EventPage(new List<Event>(), 0));
+                .ReturnsAsync(new EventPage([], 0));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { Guid.NewGuid() }, From, To, excludeTypes: null, includeTypes: null, skip: null, take: null, repository.Object, CancellationToken.None);
@@ -63,7 +63,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Contains("person")), It.IsAny<IReadOnlyCollection<string>?>(), 0, 10, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new EventPage(new List<Event>(), 0));
+                .ReturnsAsync(new EventPage([], 0));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { device }, From, To, excludeTypes: new[] { "person" }, includeTypes: null, skip: 0, take: 10, repository.Object, CancellationToken.None);
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Count == 2 && x.Contains("person") && x.Contains("ring")), 0, 10, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new EventPage(new List<Event>(), 0));
+                .ReturnsAsync(new EventPage([], 0));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { device }, From, To, excludeTypes: null, includeTypes: new[] { "person", "ring" }, skip: 0, take: 10, repository.Object, CancellationToken.None);
@@ -199,14 +199,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var detail = new EventDetail(
                 eventId,
                 new EventDetection { Id = Guid.NewGuid(), EventId = eventId, PersonDetected = true, DetectionType = "Motion" },
-                new List<EventDetectionTypeOccurrence>(),
-                new List<EventDetectionZone>(),
-                new List<EventDetectedPerson>(),
-                new List<EventSecurityAlert>());
+                [],
+                [],
+                [],
+                []);
             var repository = new Mock<IEventDetailRepository>();
             _ = repository
                 .Setup(r => r.GetDetailsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<EventDetail> { detail });
+                .ReturnsAsync([detail]);
 
             IResult result = await EventEndpoints.GetEventDetailsAsync(new[] { eventId }, repository.Object, CancellationToken.None);
 

@@ -1,14 +1,14 @@
-using System.Globalization;
-using System.Net;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+using System.Globalization;
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using VideoForensics.Client.Hosting;
 using VideoForensics.Data.Common.Contracts;
@@ -453,7 +453,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
                     if (device["health"] is JsonObject health)
                     {
                         // 32768 Hz ticks since the epoch for 2026-09; deci-kelvin for about 19 degrees C.
-                        health["status_time"] = 32768L * 1_790_000_000L + extra;
+                        health["status_time"] = (32768L * 1_790_000_000L) + extra;
                         health["battery_temp"] = 2921 + extra;
                         health["last_update_time"] = 1_790_000_000L + extra;
                         if (health["batteries"] is JsonArray batteries)
@@ -519,22 +519,13 @@ namespace VideoForensics.Utils.SelfTest.Tests
                         if (value.TryGetValue(out string? text))
                         {
                             // Values the app parses: zone states arrive as enabled/disabled, health counters as numeric strings.
-                            if (name == "state" && path.Contains("zone_settings", StringComparison.Ordinal))
-                            {
-                                return JsonValue.Create(k % 2 == 0 ? "enabled" : "disabled");
-                            }
-
-                            if (text is not ("x" or "fake-text"))
-                            {
-                                return JsonValue.Create(text);
-                            }
-
-                            if (name is "firmware_avg_bitrate" or "video_packets_total")
-                            {
-                                return JsonValue.Create((100000 + k).ToString(CultureInfo.InvariantCulture));
-                            }
-
-                            return JsonValue.Create(LooksLikeDate(name)
+                            return name == "state" && path.Contains("zone_settings", StringComparison.Ordinal)
+                                ? JsonValue.Create(k % 2 == 0 ? "enabled" : "disabled")
+                                : text is not ("x" or "fake-text")
+                                ? JsonValue.Create(text)
+                                : name is "firmware_avg_bitrate" or "video_packets_total"
+                                ? JsonValue.Create((100000 + k).ToString(CultureInfo.InvariantCulture))
+                                : JsonValue.Create(LooksLikeDate(name)
                                 ? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(k * 7).ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture)
                                 : $"{tag}-{k}");
                         }
@@ -542,23 +533,17 @@ namespace VideoForensics.Utils.SelfTest.Tests
                         if (value.TryGetValue(out long whole))
                         {
                             // Ring sends these switches as 0 and 1.
-                            if (name is "enable_vod" or "vod_suspended" or "enable_white_leds")
-                            {
-                                return JsonValue.Create((long)(k % 2));
-                            }
-
-                            return whole == 1 ? JsonValue.Create(10L + k) : JsonValue.Create(whole);
+                            return name is "enable_vod" or "vod_suspended" or "enable_white_leds"
+                                ? JsonValue.Create((long)(k % 2))
+                                : whole == 1 ? JsonValue.Create(10L + k) : JsonValue.Create(whole);
                         }
 
                         if (value.TryGetValue(out double real))
                         {
                             // Whole seconds that Ring sends as 41.0 and the app rounds on read.
-                            if (name is "duration" or "seconds_left")
-                            {
-                                return JsonValue.Create(10.0 + k);
-                            }
-
-                            return Math.Abs(real - 1.5) < 1e-9 ? JsonValue.Create(0.05 + (k % 90) / 100.0) : JsonValue.Create(real);
+                            return name is "duration" or "seconds_left"
+                                ? JsonValue.Create(10.0 + k)
+                                : Math.Abs(real - 1.5) < 1e-9 ? JsonValue.Create(0.05 + (k % 90 / 100.0)) : JsonValue.Create(real);
                         }
 
                         return value;

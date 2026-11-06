@@ -9,7 +9,7 @@ using VideoForensics.Providers.Uniview.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Uniview.Tests
+namespace VideoForensics.Providers.Uniview.Tests.Services
 {
     /// <summary>
     /// Tests for UniviewMediaDownloadService. Tests the initial state and "not authenticated" paths.

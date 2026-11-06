@@ -25,16 +25,10 @@ public static class LocalTransportPolicy
 {
     public static LocalTransportAction Decide(bool isSecureOrigin, bool isLoopback, bool tunnelRunning, bool httpsAvailable)
     {
-        if (isSecureOrigin || isLoopback)
-        {
-            return LocalTransportAction.Serve;
-        }
-
-        if (tunnelRunning)
-        {
-            return LocalTransportAction.RedirectToTunnel;
-        }
-
-        return httpsAvailable ? LocalTransportAction.RedirectToHttps : LocalTransportAction.PasskeyUnavailable;
+        return isSecureOrigin || isLoopback
+            ? LocalTransportAction.Serve
+            : tunnelRunning
+            ? LocalTransportAction.RedirectToTunnel
+            : httpsAvailable ? LocalTransportAction.RedirectToHttps : LocalTransportAction.PasskeyUnavailable;
     }
 }

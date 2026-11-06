@@ -4,7 +4,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>Batching, caching, five-minute refresh, and preview URL derivation of the review URL cache.</summary>
 public class ReviewUrlCache_Tests
@@ -12,18 +12,24 @@ public class ReviewUrlCache_Tests
     private readonly FakeMediaContentUrlProvider _provider = new();
     private readonly FakeTimeProvider _time = new(new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc));
 
-    private ReviewUrlCache CreateCache() => new(_provider, _time);
-
-    private static MediaItem Item(bool withPreview) => new()
+    private ReviewUrlCache CreateCache()
     {
-        Id = Guid.NewGuid(),
-        DeviceId = Guid.NewGuid(),
-        FileName = "clip.mp4",
-        FilePath = "clip.mp4",
-        MediaFormat = "mp4",
-        Sha256Hash = "hash",
-        PreviewPath = withPreview ? "preview.mp4" : null,
-    };
+        return new(_provider, _time);
+    }
+
+    private static MediaItem Item(bool withPreview)
+    {
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.NewGuid(),
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            Sha256Hash = "hash",
+            PreviewPath = withPreview ? "preview.mp4" : null,
+        };
+    }
 
     [Fact]
     public async Task ReviewUrlCache_TwoHundredFiftyItems_RequestsInBatchesOf200()
@@ -51,7 +57,7 @@ public class ReviewUrlCache_Tests
         await cache.EnsureAsync([item], CancellationToken.None);
 
         // Assert
-        Assert.Single(_provider.Requests);
+        _ = Assert.Single(_provider.Requests);
         Assert.NotNull(cache.ContentUrl(item.Id));
     }
 
@@ -114,7 +120,7 @@ public class ReviewUrlCache_Tests
         // Arrange
         ReviewUrlCache cache = CreateCache();
         MediaItem item = Item(false);
-        _provider.Omitted.Add(item.Id);
+        _ = _provider.Omitted.Add(item.Id);
 
         // Act
         await cache.EnsureAsync([item], CancellationToken.None);

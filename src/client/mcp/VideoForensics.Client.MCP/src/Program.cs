@@ -7,8 +7,8 @@ using ModelContextProtocol.Client;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-using VideoForensics.Client.MCP.ServerDiscovery;
 using VideoForensics.Client.Hosting.ServerDiscovery;
+using VideoForensics.Client.MCP.ServerDiscovery;
 
 namespace VideoForensics.Client.MCP
 {

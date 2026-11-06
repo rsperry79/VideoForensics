@@ -11,7 +11,7 @@ public class BitrateScaleTests
     public void Fit_PadsFifteenPercentOfTheDisplayedDeltaOnEachSide()
     {
         // Delta is 2000 kbps, so 300 kbps of padding on each side.
-        BitrateScale scale = BitrateScale.Fit(min: 3000, max: 5000);
+        var scale = BitrateScale.Fit(min: 3000, max: 5000);
 
         Assert.Equal(2700, scale.LowKbps, precision: 6);
         Assert.Equal(5300, scale.HighKbps, precision: 6);
@@ -20,7 +20,7 @@ public class BitrateScaleTests
     [Fact]
     public void Fit_ExpandsAFlatReadingToTheMinimumSpan()
     {
-        BitrateScale scale = BitrateScale.Fit(min: 500, max: 500);
+        var scale = BitrateScale.Fit(min: 500, max: 500);
 
         Assert.Equal(495, scale.LowKbps, precision: 6);
         Assert.Equal(505, scale.HighKbps, precision: 6);
@@ -29,7 +29,7 @@ public class BitrateScaleTests
     [Fact]
     public void Fit_NeverPutsTheBottomBelowZero()
     {
-        BitrateScale scale = BitrateScale.Fit(min: 2, max: 2);
+        var scale = BitrateScale.Fit(min: 2, max: 2);
 
         Assert.Equal(0, scale.LowKbps, precision: 6);
         Assert.True(scale.HighKbps - scale.LowKbps >= BitrateScale.MinimumSpanKbps);
@@ -45,7 +45,7 @@ public class BitrateScaleTests
     [Fact]
     public void MapY_PutsTheHighestEdgeAtTheTopAndTheLowestAtTheBottom()
     {
-        BitrateScale scale = BitrateScale.Fit(min: 3000, max: 5000);
+        var scale = BitrateScale.Fit(min: 3000, max: 5000);
 
         Assert.Equal(SignalChartModel.PlotTop, scale.MapY(scale.HighKbps), precision: 6);
         Assert.Equal(SignalChartModel.PlotTop + SignalChartModel.PlotHeight, scale.MapY(scale.LowKbps), precision: 6);
@@ -55,7 +55,7 @@ public class BitrateScaleTests
     [Fact]
     public void MapY_ClampsValuesOutsideTheScale()
     {
-        BitrateScale scale = BitrateScale.Fit(min: 3000, max: 5000);
+        var scale = BitrateScale.Fit(min: 3000, max: 5000);
 
         Assert.Equal(SignalChartModel.PlotTop, scale.MapY(1_000_000), precision: 6);
         Assert.Equal(SignalChartModel.PlotTop + SignalChartModel.PlotHeight, scale.MapY(-5), precision: 6);
@@ -70,7 +70,7 @@ public class BitrateScaleTests
     [InlineData(100, 50000)]
     public void Ticks_AreFewNiceAndInsideTheScale_AcrossSpans(int min, int max)
     {
-        BitrateScale scale = BitrateScale.Fit(min, max);
+        var scale = BitrateScale.Fit(min, max);
 
         IReadOnlyList<int> ticks = scale.Ticks();
 
@@ -101,8 +101,8 @@ public class BitrateScaleTests
     {
         var from = new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc);
         DateTime to = from.AddHours(10);
-        BitrateScale scale = BitrateScale.Fit(1000, 2000);
-        var samples = new[]
+        var scale = BitrateScale.Fit(1000, 2000);
+        SignalSample[] samples = new[]
         {
             new SignalSample(from.AddHours(1), 1000),
             new SignalSample(from.AddHours(2), 2000),

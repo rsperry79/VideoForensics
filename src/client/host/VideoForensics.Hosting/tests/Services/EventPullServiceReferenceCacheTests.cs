@@ -1,5 +1,4 @@
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Services;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -51,7 +50,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 Type = "doorbell"
             });
             _ = _eventAndConfig.Setup(s => s.GetEventsAsync(_accountId, "device-123", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>());
+                .ReturnsAsync([]);
             _ = _media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DownloadResult(Success: true));
 

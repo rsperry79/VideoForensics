@@ -1,4 +1,4 @@
-using System.Linq;
+using System.Reflection;
 
 using VideoForensics.Client.Ui.Shared.Services;
 
@@ -13,7 +13,7 @@ public class AccountSwitcherRemovalTests
     [InlineData("AccountSelectionState")]
     public void UiSharedAssembly_RemovedAccountSelectionType_DoesNotExist(string typeName)
     {
-        var assembly = typeof(PairedSessionState).Assembly;
+        Assembly assembly = typeof(PairedSessionState).Assembly;
 
         var matches = assembly.GetTypes().Where(t => t.Name == typeName).ToList();
 

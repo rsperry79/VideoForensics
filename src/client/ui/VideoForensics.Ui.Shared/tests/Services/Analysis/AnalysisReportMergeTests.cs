@@ -1,5 +1,5 @@
-using VideoForensics.Data.Core.Models;
 using VideoForensics.Client.Ui.Shared.Services.Analysis;
+using VideoForensics.Data.Core.Models;
 
 using Xunit;
 

@@ -1,10 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Client.Ui.Shared.Contracts;
 
 using Xunit;
 

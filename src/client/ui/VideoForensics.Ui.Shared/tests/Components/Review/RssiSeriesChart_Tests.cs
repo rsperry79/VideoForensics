@@ -3,7 +3,6 @@ using AngleSharp.Dom;
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
@@ -43,7 +42,7 @@ public class RssiSeriesChart_Tests : BunitContext
     [Fact]
     public void RssiSeriesChart_Draws_One_Bar_Per_Reading_With_A_Signal()
     {
-        var readings = new[]
+        SignalSample[] readings = new[]
         {
             new SignalSample(WindowStart.AddSeconds(1), -60),
             new SignalSample(WindowStart.AddSeconds(2), null),

@@ -21,7 +21,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [InlineData("12", "12", true, true)]
         public void ValueComparer_Equal_FollowsTheDocumentedRules(string json, object stored, bool expectedEqual, bool expectedConversion)
         {
-            using JsonDocument doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             bool equal = ValueComparer.Equal(Expected.FromJson(doc.RootElement), new DbCell(stored), out bool conversion);
 
             Assert.Equal(expectedEqual, equal);
@@ -34,7 +34,7 @@ namespace VideoForensics.Utils.SelfTest.Tests
         [Fact]
         public void ValueComparer_IsoDateString_MatchesUtcDateTime()
         {
-            using JsonDocument doc = JsonDocument.Parse("\"2026-10-16T19:27:46.238Z\"");
+            using var doc = JsonDocument.Parse("\"2026-10-16T19:27:46.238Z\"");
 
             Assert.True(ValueComparer.Equal(Expected.FromJson(doc.RootElement), new DbCell(new DateTime(2026, 10, 16, 19, 27, 46, 238, DateTimeKind.Utc)), out _));
             Assert.False(ValueComparer.Equal(Expected.FromJson(doc.RootElement), new DbCell(new DateTime(2026, 10, 16, 19, 27, 46, 239, DateTimeKind.Utc)), out _));

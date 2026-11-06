@@ -1,9 +1,9 @@
-using System.Diagnostics;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
+
+using System.Diagnostics;
 
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
@@ -12,7 +12,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests;
+namespace VideoForensics.Data.Core.Tests.Services;
 
 public class MediaPreviewServiceTests : IDisposable
 {
@@ -152,7 +152,7 @@ public class MediaPreviewServiceTests : IDisposable
     /// <summary>Records each call and runs a scripted behavior; honours the token the way <see cref="ProcessRunner"/> does.</summary>
     private sealed class FakePreviewRunner : IPreviewProcessRunner
     {
-        public List<ProcessStartInfo> Calls { get; } = new();
+        public List<ProcessStartInfo> Calls { get; } = [];
 
         public Func<ProcessStartInfo, CancellationToken, Task<ProcessResult>> Behavior { get; set; } =
             (_, _) => Task.FromResult(new ProcessResult(0, string.Empty, string.Empty));

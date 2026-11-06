@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -38,7 +38,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task DingIdLinks_CandidatesForDevice_ReturnsOnlyThatDevicesStringDingIds()
         {
-            await SeedDeviceAsync(DoorbotId.ToString());
+            _ = await SeedDeviceAsync(DoorbotId.ToString());
             await SeedLocationEventAsync(DoorbotId, "1234567890123456789");
             await SeedLocationEventAsync(999, "9999999999999999999");
 

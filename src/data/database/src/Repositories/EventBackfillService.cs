@@ -1,5 +1,3 @@
-using System.Globalization;
-
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;

@@ -43,10 +43,16 @@ namespace VideoForensics.Client.Hosting.Maintenance
         public MaintenanceStatusDto Current => MaintenanceStatusDto.Normal;
 
         /// <inheritdoc />
-        public IDisposable? TryEnterWork() => Lease;
+        public IDisposable? TryEnterWork()
+        {
+            return Lease;
+        }
 
         /// <inheritdoc />
-        public Task BeginDrainAsync(string message, CancellationToken ct) => Task.CompletedTask;
+        public Task BeginDrainAsync(string message, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
 
         /// <inheritdoc />
         public void MarkRunning(string message)

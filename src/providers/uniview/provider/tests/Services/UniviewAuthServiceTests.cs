@@ -3,12 +3,13 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Providers.Uniview.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Uniview.Tests
+namespace VideoForensics.Providers.Uniview.Tests.Services
 {
     /// <summary>
     /// Tests for UniviewAuthService. Tests the "not authenticated" paths and state tracking.
@@ -52,7 +53,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 new Mock<IForensicsConfiguration>().Object,
                 new Mock<ICredentialRepository>().Object);
 
-            var details = service.GetAuthStatusDetails();
+            ProviderAuthStatus? details = service.GetAuthStatusDetails();
 
             Assert.NotNull(details);
             Assert.False(details!.IsAuthenticated);
@@ -74,7 +75,7 @@ namespace VideoForensics.Providers.Uniview.Tests
 
             try
             {
-                var details = service.GetAuthStatusDetails();
+                ProviderAuthStatus? details = service.GetAuthStatusDetails();
 
                 Assert.NotNull(details);
                 Assert.True(details!.IsAuthenticated);

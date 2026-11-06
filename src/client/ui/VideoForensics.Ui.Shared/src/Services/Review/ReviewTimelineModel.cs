@@ -12,13 +12,12 @@ namespace VideoForensics.Client.Ui.Shared.Services.Review;
 /// </remarks>
 public sealed class ReviewTimelineModel
 {
-    private IReadOnlyList<ClipWindow> _clips = [];
 
     /// <summary>Raised once after a publish or clear changes the content.</summary>
     public event Action? OnChange;
 
     /// <summary>The clips of the primary camera, oldest first, as last published.</summary>
-    public IReadOnlyList<ClipWindow> Clips => _clips;
+    public IReadOnlyList<ClipWindow> Clips { get; private set; } = [];
 
     /// <summary>Start of the range the clips were loaded for (UTC).</summary>
     public DateTime FromUtc { get; private set; }
@@ -39,14 +38,14 @@ public sealed class ReviewTimelineModel
             throw new ArgumentException("The timeline range must end after it starts.");
         }
 
-        List<ClipWindow> copy = clips.ToList();
-        bool changed = fromUtc != FromUtc || toUtc != ToUtc || !_clips.SequenceEqual(copy);
+        var copy = clips.ToList();
+        bool changed = fromUtc != FromUtc || toUtc != ToUtc || !Clips.SequenceEqual(copy);
         if (!changed)
         {
             return;
         }
 
-        _clips = copy;
+        Clips = copy;
         FromUtc = fromUtc;
         ToUtc = toUtc;
         OnChange?.Invoke();
@@ -55,12 +54,12 @@ public sealed class ReviewTimelineModel
     /// <summary>Removes the published clips. Raises <see cref="OnChange"/> only when there were clips to remove.</summary>
     public void Clear()
     {
-        if (_clips.Count == 0)
+        if (Clips.Count == 0)
         {
             return;
         }
 
-        _clips = [];
+        Clips = [];
         OnChange?.Invoke();
     }
 }

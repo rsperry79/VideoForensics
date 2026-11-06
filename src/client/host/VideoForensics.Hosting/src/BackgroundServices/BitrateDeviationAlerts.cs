@@ -1,5 +1,7 @@
-using System.Globalization;
 using Microsoft.Extensions.Logging;
+
+using System.Globalization;
+
 using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -56,7 +58,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 .ToList();
 
             // The baseline is the camera's all-time mean and std dev; only the look-back window is checked against it.
-            SignalStats baseline = SignalStats.Compute(samples);
+            var baseline = SignalStats.Compute(samples);
             int raised = 0;
             foreach (SignalDeviationWindow window in SignalDeviation
                 .Windows(samples, now - LookBack, now, baseline)
@@ -87,7 +89,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     $"&from={window.HourStartUtc.AddHours(-1):yyyy-MM-dd'T'HH:mm:ss'Z'}" +
                     $"&to={window.HourStartUtc.AddHours(2):yyyy-MM-dd'T'HH:mm:ss'Z'}";
                 // The notice id is fixed here so the review flag can point at the notice the dispatcher writes.
-                Guid noticeId = Guid.NewGuid();
+                var noticeId = Guid.NewGuid();
 
                 // The flag is written before the dispatch. If the dispatch throws, the marker is not in the notice table,
                 // so the next poll retries this hour, and the flag upsert just refreshes the same row. The hour is the flag

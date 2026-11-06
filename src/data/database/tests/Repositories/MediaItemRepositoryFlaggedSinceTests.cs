@@ -6,7 +6,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>The bit rate backfill query returns only clips flagged BitrateCollapse, recorded at or after the cut-off, oldest first.</summary>
     public class MediaItemRepository_FlaggedSince_Tests : IAsyncLifetime

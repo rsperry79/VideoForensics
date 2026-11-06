@@ -1,8 +1,8 @@
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Client.WebApp.Api;
 
 namespace VideoForensics.Client.WebApp.Api
 {

@@ -7,7 +7,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FromProbe_WithStreamInfo_CarriesCodecResolutionAndFrameRate()
         {
-            MediaBitrateAnalysis? analysis = MediaBitrateAnalysis.FromProbe(
+            var analysis = MediaBitrateAnalysis.FromProbe(
                 TimeSpan.FromSeconds(60), 1_200_000, 1000,
                 videoCodec: "h264", audioCodec: "aac", width: 1920, height: 1080, frameRate: 29.97);
 
@@ -21,7 +21,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FromProbe_WithoutStreamInfo_LeavesStreamFieldsNull()
         {
-            MediaBitrateAnalysis? analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(60), 1_200_000, 1000);
+            var analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(60), 1_200_000, 1000);
 
             Assert.NotNull(analysis);
             Assert.Null(analysis.VideoCodec);

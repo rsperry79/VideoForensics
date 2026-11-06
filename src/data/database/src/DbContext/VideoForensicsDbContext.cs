@@ -417,8 +417,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the security audit log entries (plan §5.5).</summary>
         public DbSet<SecurityAuditLogEntry> SecurityAuditLogEntries { get; set; }
 
-
-
         /// <summary>Gets or sets the per-operator UI preferences (theme mode, language).</summary>
         public DbSet<OperatorPreferences> OperatorPreferences { get; set; }
 
@@ -448,7 +446,6 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the live-view sessions.</summary>
         public DbSet<LiveViewSession> LiveViewSessions { get; set; }
-
 
         /// <summary>Gets or sets the camera bitrate baselines.</summary>
         public DbSet<CameraBitrateBaseline> CameraBitrateBaselines { get; set; }

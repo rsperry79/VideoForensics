@@ -5,13 +5,12 @@ using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Tests.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
@@ -468,7 +467,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            Assert.Single(windows);
+            _ = Assert.Single(windows);
             Assert.Equal(last.AddMinutes(-10), windows[0].Start);
             h.Media["Ring"].Verify(Harness.Pulled(account.Id, last.AddMinutes(-10)), Times.Once);
             h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);

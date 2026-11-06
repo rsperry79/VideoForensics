@@ -2,9 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.Maintenance;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {

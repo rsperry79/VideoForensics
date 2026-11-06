@@ -1,8 +1,8 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
@@ -35,7 +35,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task RemoteCaseNoteRepository_Add_MapsCreatedNote()
         {
-            Guid caseId = Guid.NewGuid();
+            var caseId = Guid.NewGuid();
             var dto = new CaseNoteDto(Guid.NewGuid(), caseId, "Observed motion at 14:02.", "operator-1", DateTime.UtcNow);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
 

@@ -44,7 +44,7 @@ public sealed class ReviewClipLoader : IReviewClipLoader
             return new ReviewClipSet(CaseClips(_caseMode, deviceIds, fromUtc, toUtc), false);
         }
 
-        List<Guid> devices = deviceIds.Distinct().ToList();
+        var devices = deviceIds.Distinct().ToList();
         var items = new List<MediaItem>();
 
         // The cap is shared across device chunks, so one chunk can stop the whole load.
@@ -66,7 +66,7 @@ public sealed class ReviewClipLoader : IReviewClipLoader
     /// </summary>
     private static IReadOnlyList<MediaItem> CaseClips(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc)
     {
-        HashSet<Guid> devices = deviceIds.ToHashSet();
+        var devices = deviceIds.ToHashSet();
         return caseMode.MediaItems
             .Where(item => devices.Contains(item.DeviceId) && item.RecordedAtUtc >= fromUtc && item.RecordedAtUtc <= toUtc)
             .ToList();

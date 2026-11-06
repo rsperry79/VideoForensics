@@ -9,7 +9,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>Flag writes made through the unit of work commit, or roll back, together with the unit.</summary>
     public class UnitOfWorkMediaFlagTests : IAsyncLifetime
@@ -36,14 +36,17 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static MediaFlag Raised(Guid device) => new()
+        private static MediaFlag Raised(Guid device)
         {
-            FlagType = MediaFlagType.RssiDeviation,
-            DeviceId = device,
-            WindowStartUtc = T0,
-            WindowEndUtc = T0.AddMinutes(1),
-            RaisedAtUtc = T0,
-        };
+            return new()
+            {
+                FlagType = MediaFlagType.RssiDeviation,
+                DeviceId = device,
+                WindowStartUtc = T0,
+                WindowEndUtc = T0.AddMinutes(1),
+                RaisedAtUtc = T0,
+            };
+        }
 
         [Fact]
         public async Task UnitOfWorkMediaFlagRepository_UpsertThenReview_CommitsFlagAndAuditTogether()

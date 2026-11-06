@@ -6,12 +6,12 @@ using Moq;
 
 using System.Text.RegularExpressions;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Formatting;
 using VideoForensics.Client.Ui.Shared.Layout.Simple;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 

@@ -2,7 +2,7 @@ using VideoForensics.Data.Common.Matching;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Tests for DingIdPrefixMatcher. A Ring doorbot history id is exactly equal to the string ding id it belongs to,
@@ -14,7 +14,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Match_ExactCandidateEqualsId_ReturnsMatchedWithThatDingId()
         {
-            var candidates = new[] { "1234567890123456789", "9999999999999999999" };
+            string[] candidates = new[] { "1234567890123456789", "9999999999999999999" };
 
             DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", candidates);
 
@@ -25,7 +25,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Match_NoEqualCandidate_ReturnsUnmatchedAndNoDingId()
         {
-            var candidates = new[] { "9999999999999999999" };
+            string[] candidates = new[] { "9999999999999999999" };
 
             DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", candidates);
 
@@ -37,7 +37,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void Match_CandidateOnlySharesPrefix_ReturnsUnmatched()
         {
             // A shared prefix is not a match under exact equality.
-            var candidates = new[] { "1234567890123456789" };
+            string[] candidates = new[] { "1234567890123456789" };
 
             DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456", candidates);
 
@@ -48,7 +48,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Match_TwoEqualCandidates_ReturnsAmbiguousAndNoDingId()
         {
-            var candidates = new[] { "1234567890123456789", "1234567890123456789" };
+            string[] candidates = new[] { "1234567890123456789", "1234567890123456789" };
 
             DingIdMatchResult result = DingIdPrefixMatcher.Match("1234567890123456789", candidates);
 
@@ -67,7 +67,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void CountOutcomes_MixedResults_ReportsMatchedUnmatchedAndAmbiguousCounts()
         {
-            var results = new[]
+            DingIdMatchResult[] results = new[]
             {
                 new DingIdMatchResult(DingIdMatchOutcome.Matched, "1234567890123456789"),
                 new DingIdMatchResult(DingIdMatchOutcome.Matched, "1234567890123457111"),

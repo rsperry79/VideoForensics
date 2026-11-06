@@ -3,9 +3,9 @@ using Microsoft.JSInterop;
 
 using System.Collections.Concurrent;
 
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Ui.Shared.Services;
 
 namespace VideoForensics.Client.Hosting.Tests
 {

@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,15 +10,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LedSecondsRemaining",
                 table: "Devices");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LedStatus",
                 table: "Devices");
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceLightEvents",
                 columns: table => new
                 {
@@ -32,8 +31,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceLightEvents", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_DeviceLightEvents", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_DeviceLightEvents_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -41,7 +40,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceLightEvents_DeviceId_OccurredAtUtc",
                 table: "DeviceLightEvents",
                 columns: new[] { "DeviceId", "OccurredAtUtc" });
@@ -50,16 +49,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceLightEvents");
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "LedSecondsRemaining",
                 table: "Devices",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "LedStatus",
                 table: "Devices",
                 type: "TEXT",

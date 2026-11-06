@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -46,8 +46,16 @@ namespace VideoForensics.Data.Database.Tests
 
         private static DeviceReportedHealth Health(bool connected, long updateTime)
         {
-            return new DeviceReportedHealth { Connected = connected, LastUpdateTime = updateTime, Rssi = -60.5, StatusTime = 58766634686231L,
-                StatusAtUtc = new DateTime(2026, 10, 31, 2, 56, 5, 180, DateTimeKind.Utc), BatteryTemp = 2921.0, BatteryTempCelsius = 18.95m };
+            return new DeviceReportedHealth
+            {
+                Connected = connected,
+                LastUpdateTime = updateTime,
+                Rssi = -60.5,
+                StatusTime = 58766634686231L,
+                StatusAtUtc = new DateTime(2026, 10, 31, 2, 56, 5, 180, DateTimeKind.Utc),
+                BatteryTemp = 2921.0,
+                BatteryTempCelsius = 18.95m
+            };
         }
 
         private static DeviceReportedBattery Battery(int position, int number, int? percent)
@@ -141,7 +149,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UpsertAsync_RingDetails_ReplacesRowAndNullLeavesItUntouched()
         {
-            RingDeviceDetails First() => new() { SchemaId = "schema-a", IsSidewalkGateway = true, ExtPowerState = 1, EncryptionGroupId = "g1" };
+            static RingDeviceDetails First()
+            {
+                return new() { SchemaId = "schema-a", IsSidewalkGateway = true, ExtPowerState = 1, EncryptionGroupId = "g1" };
+            }
+
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, new DeviceSettingsChildren([], [], [], RingDetails: First()));
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, new DeviceSettingsChildren([], [], []));
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,

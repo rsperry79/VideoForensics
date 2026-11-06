@@ -11,7 +11,10 @@ public sealed class ConsoleMaintenancePrompts : IMaintenanceConsole
     public bool IsInteractive => !Console.IsInputRedirected;
 
     /// <inheritdoc />
-    public void Write(string message) => Console.WriteLine(message);
+    public void Write(string message)
+    {
+        Console.WriteLine(message);
+    }
 
     /// <inheritdoc />
     public Task<bool> ConfirmAsync(string question, CancellationToken ct)
@@ -27,7 +30,7 @@ public sealed class ConsoleMaintenancePrompts : IMaintenanceConsole
     {
         try
         {
-            using Process? process = Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
+            using var process = Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
             return process is not null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

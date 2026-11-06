@@ -125,7 +125,7 @@ namespace VideoForensics.Utils.SelfTest
 
             if (outputDir is not null)
             {
-                FieldMap map = FieldMap.LoadEmbedded();
+                var map = FieldMap.LoadEmbedded();
                 report.FieldMapEntryCount = map.Entries.Count;
                 report.Fields = FieldCoverageAnalyzer.Analyze(outputDir, map, DbSchema.FromModel(db.Model));
 

@@ -6,7 +6,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The Time Range section in the media right sidebar: the range dropdown, and From/To pickers for a custom range.</summary>
 public class ReviewTimeRange_Tests : ReviewTestContext

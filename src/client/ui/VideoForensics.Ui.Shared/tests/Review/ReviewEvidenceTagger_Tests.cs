@@ -12,7 +12,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review page's tag action: pins straight to an open case, or keeps the tag pending until one opens.</summary>
 public class ReviewEvidenceTagger_Tests : BunitContext
@@ -37,10 +37,10 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     {
         // Arrange
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var repository = PendingTagFakes.CreateRepository(openCase);
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
-        var tagger = CreateTagger(PendingTagFakes.CreateUnactivated(repository), pending, await CreateSessionAsync());
-        Guid targetId = Guid.NewGuid();
+        ReviewEvidenceTagger tagger = CreateTagger(PendingTagFakes.CreateUnactivated(repository), pending, await CreateSessionAsync());
+        var targetId = Guid.NewGuid();
 
         // Act
         TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
@@ -57,11 +57,11 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     {
         // Arrange
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var repository = PendingTagFakes.CreateRepository(openCase);
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
-        var caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
-        var tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
-        Guid targetId = Guid.NewGuid();
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
+        ReviewEvidenceTagger tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
+        var targetId = Guid.NewGuid();
 
         // Act
         TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Event, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
@@ -84,8 +84,8 @@ public class ReviewEvidenceTagger_Tests : BunitContext
         // Arrange
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
-        var tagger = CreateTagger(PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase)), pending, await CreateSessionAsync());
-        Guid targetId = Guid.NewGuid();
+        ReviewEvidenceTagger tagger = CreateTagger(PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase)), pending, await CreateSessionAsync());
+        var targetId = Guid.NewGuid();
         _ = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Act
@@ -101,7 +101,7 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     {
         // Arrange
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        Guid targetId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
         var existing = new CaseItem
         {
             Id = Guid.NewGuid(),
@@ -111,10 +111,10 @@ public class ReviewEvidenceTagger_Tests : BunitContext
             Reason = "earlier",
             AddedBy = "actor-0",
         };
-        var repository = PendingTagFakes.CreateRepository(openCase, existingItems: [existing]);
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, existingItems: [existing]);
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
-        var caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
-        var tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
+        ReviewEvidenceTagger tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
 
         // Act
         TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
@@ -130,11 +130,11 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     {
         // Arrange
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        Guid targetId = Guid.NewGuid();
-        var repository = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { targetId });
+        var targetId = Guid.NewGuid();
+        Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { targetId });
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
-        var caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
-        var tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
+        CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
+        ReviewEvidenceTagger tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
 
         // Act
         TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
@@ -150,8 +150,8 @@ public class ReviewEvidenceTagger_Tests : BunitContext
         // Arrange
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
-        var tagger = CreateTagger(PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase)), pending, await CreateSessionAsync());
-        Guid targetId = Guid.NewGuid();
+        ReviewEvidenceTagger tagger = CreateTagger(PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase)), pending, await CreateSessionAsync());
+        var targetId = Guid.NewGuid();
         Assert.False(tagger.IsPending(CaseItemKind.Media, targetId));
 
         // Act

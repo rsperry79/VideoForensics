@@ -71,6 +71,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     _logger.LogError("Error fetching events for device {DeviceId}: {Message} ({ErrorType})", SanitizeForLog(deviceId), ex.Message, ex.GetType().Name);
                 }
+
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -177,6 +178,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     _logger.LogError("Error fetching events for device {DeviceId} for {ProviderName} account: {Message} ({ErrorType})", SanitizeForLog(deviceId), ProviderName, ex.Message, ex.GetType().Name);
                 }
+
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }

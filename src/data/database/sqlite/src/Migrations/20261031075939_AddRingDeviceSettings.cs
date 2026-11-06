@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceGeneralSettings",
                 columns: table => new
                 {
@@ -29,8 +28,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceGeneralSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_DeviceGeneralSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_DeviceGeneralSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -38,7 +37,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingDeviceSettings",
                 columns: table => new
                 {
@@ -94,8 +93,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingDeviceSettings", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_RingDeviceSettings", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_RingDeviceSettings_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -103,13 +102,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceGeneralSettings_DeviceId",
                 table: "DeviceGeneralSettings",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingDeviceSettings_DeviceId",
                 table: "RingDeviceSettings",
                 column: "DeviceId",
@@ -119,10 +118,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceGeneralSettings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingDeviceSettings");
         }
     }

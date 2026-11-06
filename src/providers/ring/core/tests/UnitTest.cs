@@ -1,5 +1,3 @@
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
-using VideoForensics.Providers.Ring.Testing.Mocks;
 using VideoForensics.Core.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Core.Tests

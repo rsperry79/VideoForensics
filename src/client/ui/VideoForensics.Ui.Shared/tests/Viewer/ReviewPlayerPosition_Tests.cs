@@ -1,9 +1,6 @@
-using AngleSharp.Dom;
-
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using VideoForensics.Client.Common.Viewer;
@@ -26,7 +23,10 @@ public class ReviewPlayerPosition_Tests : BunitContext
         _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
     }
 
-    private static List<ClipWindow> OneClip() => [new("clip-a", Start, 60)];
+    private static List<ClipWindow> OneClip()
+    {
+        return [new("clip-a", Start, 60)];
+    }
 
     /// <summary>Sets up the media-viewer module so the position read returns <paramref name="ms"/>.</summary>
     private Bunit.BunitJSModuleInterop SetupModuleReturning(double ms)
@@ -116,7 +116,7 @@ public class ReviewPlayerPosition_Tests : BunitContext
     {
         // Arrange
         IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
-            .Add(x => x.Cameras, new List<CameraTile>())
+            .Add(x => x.Cameras, [])
             .Add(x => x.SelectedIndex, 0));
 
         // Act

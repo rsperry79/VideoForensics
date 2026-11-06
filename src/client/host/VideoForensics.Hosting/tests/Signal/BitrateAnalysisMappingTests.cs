@@ -1,6 +1,5 @@
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using Xunit;
 
 namespace VideoForensics.Client.Hosting.Tests.Signal;
 
@@ -20,7 +19,7 @@ public class BitrateAnalysisMappingTests
             new(From.AddHours(11), 2_500, "Ir", false),
         ];
         SignalSample[] samples = [.. readings.Select(r => r.ToSignalSample())];
-        SignalCalendar calendar = SignalCalendar.Compute(samples, From, To);
+        var calendar = SignalCalendar.Compute(samples, From, To);
         var device = new BitrateDeviceAnalysis(
             Guid.NewGuid(),
             "Front door",
@@ -67,7 +66,7 @@ public class BitrateAnalysisMappingTests
     [Fact]
     public void ToSignalSample_CarriesKbpsAsTheValue()
     {
-        SignalSample sample = new BitrateSample(From, 1_234, "Day", true).ToSignalSample();
+        var sample = new BitrateSample(From, 1_234, "Day", true).ToSignalSample();
 
         Assert.Equal(new SignalSample(From, 1_234), sample);
     }

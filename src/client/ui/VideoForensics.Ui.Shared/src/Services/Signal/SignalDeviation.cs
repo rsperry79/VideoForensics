@@ -41,12 +41,9 @@ public static class SignalDeviation
         }
 
         double sigmas = Math.Abs(rssiDbm - mean) / stdDev;
-        if (sigmas > AlertSigma)
-        {
-            return SignalDeviationLevel.TwoSigma;
-        }
-
-        return sigmas > FlagSigma ? SignalDeviationLevel.OneSigma : SignalDeviationLevel.None;
+        return sigmas > AlertSigma
+            ? SignalDeviationLevel.TwoSigma
+            : sigmas > FlagSigma ? SignalDeviationLevel.OneSigma : SignalDeviationLevel.None;
     }
 
     /// <summary>
@@ -74,12 +71,12 @@ public static class SignalDeviation
             .OrderBy(group => group.Key)
             .Select(group =>
             {
-                var worst = group.OrderByDescending(f => Math.Abs(f.Sample.RssiDbm!.Value - baseline.Average)).First();
+                (SignalSample Sample, SignalDeviationLevel Level) = group.OrderByDescending(f => Math.Abs(f.Sample.RssiDbm!.Value - baseline.Average)).First();
                 return new SignalDeviationWindow(
                     group.Key,
                     (SignalDeviationLevel)group.Max(f => (int)f.Level),
                     group.Count(),
-                    worst.Sample.RssiDbm!.Value);
+                    Sample.RssiDbm!.Value);
             })
             .ToList();
     }

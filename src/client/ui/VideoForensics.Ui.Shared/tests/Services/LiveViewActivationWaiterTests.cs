@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Reactive.Subjects;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

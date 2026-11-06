@@ -6,7 +6,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Records Ring kinds the catalog does not list, from any path that sees a device's kind.</summary>
     public class RingModelDiscoveryTests

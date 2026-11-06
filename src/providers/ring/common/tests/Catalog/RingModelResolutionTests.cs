@@ -1,7 +1,5 @@
 using VideoForensics.Providers.Ring.Catalog;
 
-using Xunit;
-
 namespace VideoForensics.Providers.Ring.Common.Tests.Catalog
 {
     /// <summary>Checks the official-spec resolution the catalog holds for a kind.</summary>

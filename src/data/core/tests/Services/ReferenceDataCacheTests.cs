@@ -3,7 +3,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests;
+namespace VideoForensics.Data.Core.Tests.Services;
 
 public class ReferenceDataCacheTests
 {
@@ -69,7 +69,7 @@ public class ReferenceDataCacheTests
 
         Assert.NotNull(cache.FindDevice(accountId, "device-1"));
         Assert.NotNull(cache.FindDevice(accountId, "device-2"));
-        Assert.Single(cache.Get(accountId)!.Locations);
+        _ = Assert.Single(cache.Get(accountId)!.Locations);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class ReferenceDataCacheTests
         var accountId = Guid.NewGuid();
         cache.Replace(accountId, Snapshot(Guid.NewGuid(), "device-1"));
 
-        Task writer = Task.Run(() =>
+        var writer = Task.Run(() =>
         {
             for (int i = 0; i < 2000; i++)
             {
@@ -87,7 +87,7 @@ public class ReferenceDataCacheTests
             }
         });
 
-        Task reader = Task.Run(() =>
+        var reader = Task.Run(() =>
         {
             for (int i = 0; i < 2000; i++)
             {
@@ -95,8 +95,8 @@ public class ReferenceDataCacheTests
 
                 // Each snapshot has one location and one device linked to it; a torn read would break that pairing.
                 Assert.NotNull(data);
-                Assert.Single(data.Locations);
-                Assert.Single(data.DevicesByProviderId);
+                _ = Assert.Single(data.Locations);
+                _ = Assert.Single(data.DevicesByProviderId);
                 Assert.Equal(data.Locations[0].Id, data.DevicesByProviderId.Values.Single().LocationId);
             }
         });

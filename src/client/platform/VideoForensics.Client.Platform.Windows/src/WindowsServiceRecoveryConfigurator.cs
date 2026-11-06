@@ -35,25 +35,40 @@ namespace VideoForensics.Client.Platform.Windows
         }
 
         /// <summary>Builds the <c>sc.exe</c> arguments that set three restart actions, same shape as the installer's.</summary>
-        public static string BuildFailureArguments(string serviceName) =>
-            $"failure {serviceName} reset= 86400 actions= restart/5000/restart/5000/restart/5000";
+        public static string BuildFailureArguments(string serviceName)
+        {
+            return $"failure {serviceName} reset= 86400 actions= restart/5000/restart/5000/restart/5000";
+        }
 
         /// <summary>Builds the <c>sc.exe</c> arguments that make a non-zero exit (not only a crash) trigger the recovery actions.</summary>
-        public static string BuildFailureFlagArguments(string serviceName) => $"failureflag {serviceName} 1";
+        public static string BuildFailureFlagArguments(string serviceName)
+        {
+            return $"failureflag {serviceName} 1";
+        }
 
         /// <summary>Builds the <c>sc.exe</c> arguments that read the failure actions.</summary>
-        public static string BuildQueryFailureArguments(string serviceName) => $"qfailure {serviceName}";
+        public static string BuildQueryFailureArguments(string serviceName)
+        {
+            return $"qfailure {serviceName}";
+        }
 
         /// <summary>Builds the <c>sc.exe</c> arguments that read the failure flag.</summary>
-        public static string BuildQueryFailureFlagArguments(string serviceName) => $"qfailureflag {serviceName}";
+        public static string BuildQueryFailureFlagArguments(string serviceName)
+        {
+            return $"qfailureflag {serviceName}";
+        }
 
         /// <summary>True when <c>sc qfailure</c> output lists a restart action.</summary>
-        public static bool HasRestartAction(string qfailureOutput) =>
-            qfailureOutput.Contains("RESTART", StringComparison.OrdinalIgnoreCase);
+        public static bool HasRestartAction(string qfailureOutput)
+        {
+            return qfailureOutput.Contains("RESTART", StringComparison.OrdinalIgnoreCase);
+        }
 
         /// <summary>True when <c>sc qfailureflag</c> output says non-crash failures trigger the actions.</summary>
-        public static bool IsFailureFlagEnabled(string qfailureFlagOutput) =>
-            qfailureFlagOutput.Contains("TRUE", StringComparison.OrdinalIgnoreCase);
+        public static bool IsFailureFlagEnabled(string qfailureFlagOutput)
+        {
+            return qfailureFlagOutput.Contains("TRUE", StringComparison.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// Reads the service's recovery settings and rewrites them when they would not restart it after a non-zero exit.
@@ -90,10 +105,12 @@ namespace VideoForensics.Client.Platform.Windows
             }
         }
 
-        private static Task<BufferedCommandResult> RunScAsync(string arguments, CancellationToken ct) =>
-            Cli.Wrap("sc.exe")
+        private static Task<BufferedCommandResult> RunScAsync(string arguments, CancellationToken ct)
+        {
+            return Cli.Wrap("sc.exe")
                 .WithArguments(arguments)
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync(ct);
+        }
     }
 }

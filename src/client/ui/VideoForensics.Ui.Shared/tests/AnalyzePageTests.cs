@@ -8,16 +8,16 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Client.Ui.Shared.Services;
-using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 

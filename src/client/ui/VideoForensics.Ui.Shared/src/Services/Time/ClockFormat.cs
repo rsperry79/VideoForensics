@@ -43,9 +43,15 @@ public static class ClockFormat
         };
     }
 
-    private static string ShortTime(bool twelveHour) => twelveHour ? "h:mm tt" : "HH:mm";
+    private static string ShortTime(bool twelveHour)
+    {
+        return twelveHour ? "h:mm tt" : "HH:mm";
+    }
 
-    private static string LongTime(bool twelveHour) => twelveHour ? "h:mm:ss tt" : "HH:mm:ss";
+    private static string LongTime(bool twelveHour)
+    {
+        return twelveHour ? "h:mm:ss tt" : "HH:mm:ss";
+    }
 
     /// <summary>
     /// Rewrites a custom format's hour tokens. The "tt" designator is added for 12-hour and removed for 24-hour, so the

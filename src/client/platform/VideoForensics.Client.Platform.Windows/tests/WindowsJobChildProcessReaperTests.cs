@@ -1,7 +1,5 @@
 using System.Diagnostics;
 
-using VideoForensics.Client.Platform.Windows;
-
 using Xunit;
 
 namespace VideoForensics.Client.Platform.Windows.Tests
@@ -98,7 +96,7 @@ namespace VideoForensics.Client.Platform.Windows.Tests
 
             // This process is not its own child, so a name match alone must not adopt it.
             using var reaper = new WindowsJobChildProcessReaper();
-            using Process self = Process.GetCurrentProcess();
+            using var self = Process.GetCurrentProcess();
 
             Assert.Equal(0, reaper.AdoptChildren(self.MainModule!.ModuleName));
         }

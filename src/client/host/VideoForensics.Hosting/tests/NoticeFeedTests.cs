@@ -1,17 +1,16 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-
-using Xunit;
 
 namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>A raised notice reaches the Notices page's feed, so an open page can reload.</summary>
     public class NoticeFeedTests
     {
-        private static NotificationEvent Event() =>
-            new("DeviceOffline", DateTime.UtcNow, null, null, null, "Front Door went offline", Severity: NoticeSeverity.Alert);
+        private static NotificationEvent Event()
+        {
+            return new("DeviceOffline", DateTime.UtcNow, null, null, null, "Front Door went offline", Severity: NoticeSeverity.Alert);
+        }
 
         [Fact]
         public void LocalNoticeFeed_Publish_DeliversToSubscribers()
@@ -22,7 +21,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             feed.Publish(Event());
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
         }
 
         [Fact]
@@ -39,7 +38,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             await dispatcher.DispatchAsync(Event(), CancellationToken.None);
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
         }
     }
 }

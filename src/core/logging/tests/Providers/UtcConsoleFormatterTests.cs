@@ -1,9 +1,8 @@
-using System;
-using System.IO;
-
-using Serilog;
 using Serilog.Events;
 using Serilog.Parsing;
+
+using System;
+using System.IO;
 
 using VideoForensics.Core.Logging.Providers;
 
@@ -17,7 +16,7 @@ namespace VideoForensics.Core.Logging.Tests.Providers
 
         private static LogEvent Event(DateTimeOffset timestamp)
         {
-            var template = new MessageTemplateParser().Parse("hello");
+            MessageTemplate template = new MessageTemplateParser().Parse("hello");
             return new LogEvent(timestamp, LogEventLevel.Information, null, template, Array.Empty<LogEventProperty>());
         }
 

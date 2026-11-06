@@ -26,7 +26,10 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             }
         }
 
-        private static SignalStatsDto Stats(int count) => new(count, null, null, 0, null, 0, null);
+        private static SignalStatsDto Stats(int count)
+        {
+            return new(count, null, null, 0, null, 0, null);
+        }
 
         [Fact]
         public async Task AnalyzeAsync_NoDevices_ReturnsEmptyWithoutCallingServer()

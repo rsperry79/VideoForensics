@@ -1,5 +1,3 @@
-using Moq;
-
 using VideoForensics.Client.Hosting.Updates;
 
 namespace VideoForensics.Client.Hosting.Tests.Updates
@@ -12,7 +10,10 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
             ["lib/core.dll"] = "binary-two",
         };
 
-        private static IUpdatePackageVerifier DevVerifier() => new UpdatePackageVerifier();
+        private static IUpdatePackageVerifier DevVerifier()
+        {
+            return new UpdatePackageVerifier();
+        }
 
         [Fact]
         public async Task UpdatePackageVerifier_ValidDevPackage_IsValid()

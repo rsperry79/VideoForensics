@@ -1,19 +1,18 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Primitives;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Signal;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
-using VideoForensics.Client.Hosting;
-using VideoForensics.Client.Hosting.Signal;
-using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -293,7 +292,7 @@ namespace VideoForensics.Client.WebApp.Api
             try
             {
                 // The device name is read for display only; a clip with no device still gets an alert.
-                var device = await devices.GetAsync(item.DeviceId, ct);
+                Data.Common.Entities.Device? device = await devices.GetAsync(item.DeviceId, ct);
                 string camera = string.IsNullOrWhiteSpace(device?.Name) ? "an unknown camera" : device.Name;
 
                 await dispatcher.DispatchAsync(new NotificationEvent(
@@ -632,12 +631,9 @@ namespace VideoForensics.Client.WebApp.Api
             CancellationToken ct)
         {
             IReadOnlyList<VideoForensics.Core.Providers.Core.BitrateSecond>? points = await series.GetAsync(id, ct);
-            if (points is null)
-            {
-                return TypedResults.NotFound();
-            }
-
-            return TypedResults.Ok<IReadOnlyList<BitrateSecondDto>>(points.Select(p => p.ToDto()).ToList());
+            return points is null
+                ? (Results<Ok<IReadOnlyList<BitrateSecondDto>>, NotFound>)TypedResults.NotFound()
+                : (Results<Ok<IReadOnlyList<BitrateSecondDto>>, NotFound>)TypedResults.Ok<IReadOnlyList<BitrateSecondDto>>(points.Select(p => p.ToDto()).ToList());
         }
 
         public static async Task<IResult> GetBitrateAnalysisAsync(

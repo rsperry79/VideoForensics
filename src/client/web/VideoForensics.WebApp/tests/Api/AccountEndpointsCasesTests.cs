@@ -8,11 +8,11 @@ using Moq;
 
 using System.Text.Json;
 
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 

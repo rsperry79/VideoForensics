@@ -3,9 +3,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            TimeSpan calibrationInterval = TimeSpan.FromMinutes(_config.CalibrationCheckIntervalMinutes);
+            var calibrationInterval = TimeSpan.FromMinutes(_config.CalibrationCheckIntervalMinutes);
             using var timer = new PeriodicTimer(calibrationInterval);
 
             do
@@ -68,7 +68,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 return;
             }
-
 
             ICameraBitrateBaselineRepository baselineRepo = sp.GetRequiredService<ICameraBitrateBaselineRepository>();
             ILiveViewSessionService sessionService = sp.GetRequiredService<ILiveViewSessionService>();

@@ -1,10 +1,10 @@
 using Moq;
 
 using VideoForensics.Client.WebApp.Hubs;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 

@@ -1,6 +1,5 @@
 using System.Text.Json;
 
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
@@ -10,7 +9,7 @@ using Xunit;
 
 using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Ring-only zone rows: ignore zones with vertices, the motion_zones and advanced_motion_detection_types arrays, the two settings
@@ -80,7 +79,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Parse_AdvancedMotionZonesScalars_MapToRingSettingsAndLeaveTheRemainder()
         {
-            var fields = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            Dictionary<string, JsonElement> fields = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
                 "{\"advanced_motion_zones_enabled\":true,\"advanced_motion_zones_type\":\"8vertices\",\"other\":1}")!;
 
             RingSettingsGroups settings = RingDeviceSettingsParser.Parse(true, fields, null);

@@ -5,7 +5,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Maps the Ring model catalog into the reference-data rows the seeder loads.</summary>
     public class RingReferenceDataSourceTests

@@ -1,5 +1,5 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.SelfTest;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
@@ -148,9 +148,9 @@ public class SelfTestEndpointFilterTests
     [Fact]
     public void Filter_AlarmCategory_ReturnsOnlyTheSignallingTicket()
     {
-        var endpoints = new[] { Ep("signalling-ticket", "Ring"), Ep("ring_ro", "Ring") };
+        SelfTestEndpointDto[] endpoints = new[] { Ep("signalling-ticket", "Ring"), Ep("ring_ro", "Ring") };
 
-        var result = SelfTestEndpointFilter.Filter(endpoints, null, SelfTestCategory.Alarm).Select(e => e.Key).ToArray();
+        string[] result = SelfTestEndpointFilter.Filter(endpoints, null, SelfTestCategory.Alarm).Select(e => e.Key).ToArray();
 
         Assert.Equal(["signalling-ticket"], result);
     }

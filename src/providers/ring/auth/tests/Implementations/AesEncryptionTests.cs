@@ -3,7 +3,7 @@ using System.Text;
 
 using VideoForensics.Providers.Ring.Implementations;
 
-namespace VideoForensics.Providers.Ring.Auth.Tests
+namespace VideoForensics.Providers.Ring.Auth.Tests.Implementations
 {
     [Collection("ring-credential-salt")]
     public class AesEncryptionTests : IDisposable
