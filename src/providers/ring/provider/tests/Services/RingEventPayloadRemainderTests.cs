@@ -41,7 +41,6 @@ namespace VideoForensics.Providers.Ring.Tests
             }
             """;
 
-        private const string PinnedHash = "08C4D91307E309B5C0DE8D8B15F5AACF78BFC9B8D9FA0071C63B8C16A34D9A06";
 
         private static string Serialized(string apiJson)
         {
@@ -73,7 +72,8 @@ namespace VideoForensics.Providers.Ring.Tests
             (string? remainder, string hash) = RingEventPayloadRemainder.Split(evt);
 
             Assert.Equal("""{"invented_ring_key":"fake-value"}""", remainder);
-            Assert.NotEqual(PinnedHash, hash);
+            DoorbotHistoryEvent withoutInventedKey = JsonSerializer.Deserialize<DoorbotHistoryEvent>(RealShapedEvent)!;
+            Assert.NotEqual(ExpectedHashFor(withoutInventedKey), hash);
             Assert.Equal(ExpectedHashFor(evt), hash);
         }
 
@@ -177,10 +177,9 @@ namespace VideoForensics.Providers.Ring.Tests
             (string? remainder, string hash) = RingEventPayloadRemainder.Split(evt);
 
             Assert.Null(remainder);
-            // Pinned: SHA-256 (upper-case hex) of the UTF-8 bytes of JsonSerializer.Serialize(evt), exactly as
-            // RingMediaDownloadService.SerializeMetadata computed it before the raw payload stopped being stored.
+            // The hash is SHA-256 (upper-case hex) of the UTF-8 bytes of JsonSerializer.Serialize(evt). It is not pinned to a
+            // constant: CreatedAtDateTime is parsed in local time, so the serialized text depends on the machine's time zone.
             Assert.Equal(ExpectedHashFor(evt), hash);
-            Assert.Equal(PinnedHash, hash);
         }
 
         [Fact]
