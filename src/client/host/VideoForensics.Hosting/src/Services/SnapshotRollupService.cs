@@ -136,6 +136,49 @@ namespace VideoForensics.Client.Hosting.Services
             return new SnapshotRollupResult(devices.Count, rolledUp, error);
         }
 
+        /// <inheritdoc />
+        public async Task<SnapshotRollupResult> RollUpSegmentAsync(Guid accountId, Guid deviceId, DateTime startUtc, DateTime endUtc, CancellationToken cancellationToken)
+        {
+            ProviderAccount? account = await _accounts.GetAsync(accountId, cancellationToken);
+            if (account is null)
+            {
+                return new SnapshotRollupResult(ErrorMessage: "Account not found");
+            }
+
+            string? configuredMediaRoot = _configurationService is null
+                ? null
+                : (await _configurationService.LoadConfigurationAsync(string.Empty, cancellationToken)).DownloadLocation;
+            string mediaRoot = _storage.GetEffectiveRoot(StorageCategory.Media, configuredMediaRoot);
+            foreach (VideoForensics.Data.Common.Entities.Location location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
+            {
+                foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
+                {
+                    if (device.Id != deviceId)
+                    {
+                        continue;
+                    }
+
+                    string deviceFolder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, location.Name, device.Name);
+                    try
+                    {
+                        bool built = await RollUpDeviceAsync(device, deviceFolder, startUtc, endUtc, cancellationToken);
+                        return new SnapshotRollupResult(1, built ? 1 : 0, null);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Time-lapse segment failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                        return new SnapshotRollupResult(1, 0, $"{device.Name}: {ex.Message}");
+                    }
+                }
+            }
+
+            return new SnapshotRollupResult(ErrorMessage: "Device not found for this account");
+        }
+
         /// <summary>Builds and registers one device's loop. Returns false when the window has no usable snapshots.</summary>
         private async Task<bool> RollUpDeviceAsync(DeviceEntity device, string deviceFolder, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
@@ -150,16 +193,48 @@ namespace VideoForensics.Client.Hosting.Services
             string outputPath = Path.Combine(deviceFolder, MediaFileNamer.FormatMediaFileName(device.Name, toUtc, "snapshot-loop", "mp4"));
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-            TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);
+            // Build into a partial file and move it into place only when the build succeeded. A crash or failure leaves no
+            // half-written MP4 under the final name, and the rerun rebuilds the same segment from the same name.
+            string buildingPath = Path.Combine(Path.GetDirectoryName(outputPath)!, Path.GetFileNameWithoutExtension(outputPath) + ".building.mp4");
+            TimelineVideoResult result;
+            try
+            {
+                result = await _builder.BuildAsync(new TimelineVideoRequest(stills, buildingPath, MaxHeight: CameraLoopHeight), cancellationToken);
+            }
+            catch
+            {
+                DeletePartialQuietly(buildingPath);
+                throw;
+            }
+
             if (!result.Success)
             {
+                DeletePartialQuietly(buildingPath);
                 throw new InvalidOperationException(result.ErrorMessage ?? "the timeline build failed");
             }
+
+            File.Move(buildingPath, outputPath, overwrite: true);
 
             await RecordLoopAsync(device, outputPath, fromUtc, toUtc, cancellationToken);
             // Success is logged so a roll-up that builds a loop leaves a trace. Only the file name is logged, not the full path.
             _logger.LogInformation("Time lapse built for {DeviceName}: {SnapshotCount} snapshots, file {FileName}", device.Name, stills.Count, Path.GetFileName(outputPath));
             return true;
+        }
+
+        /// <summary>Removes a partial MP4 left by a failed build. Missing files and I/O errors are ignored: the next run overwrites it.</summary>
+        private static void DeletePartialQuietly(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch (IOException)
+            {
+                // Best effort only. A leftover partial file is replaced by the next build of the same segment.
+            }
         }
 
         /// <summary>

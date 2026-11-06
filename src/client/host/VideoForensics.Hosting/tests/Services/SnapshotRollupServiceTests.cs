@@ -89,6 +89,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             return path;
         }
 
+        /// <summary>The partial file the builder writes before the rename to the final name.</summary>
+        private static string BuildingPathOf(string finalPath)
+        {
+            return Path.Combine(Path.GetDirectoryName(finalPath)!, Path.GetFileNameWithoutExtension(finalPath) + ".building.mp4");
+        }
         private static MediaItem Snapshot(string path, DateTime recordedAt, string metadata = SnapshotMetadata)
         {
             return new()
@@ -169,7 +174,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
-            Assert.Equal(expected, sent!.OutputPath);
+            Assert.Equal(BuildingPathOf(expected), sent!.OutputPath);
         }
 
         [Fact]
@@ -185,7 +190,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
-            Assert.Equal(expected, sent!.OutputPath);
+            Assert.Equal(BuildingPathOf(expected), sent!.OutputPath);
             _media.Verify(m => m.AddAsync(It.Is<MediaItem>(i => i.FilePath == expected), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -345,5 +350,25 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 && i.Arguments[2].ToString()!.Contains("Porch", StringComparison.Ordinal)
                 && i.Arguments[2].ToString()!.Contains("2 snapshots", StringComparison.Ordinal));
         }
-    }
+
+        [Fact]
+        public async Task RollUpSegment_WritesToBuildingFileAndRegistersLoopWithTheSpan()
+        {
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            TimelineVideoRequest? sent = null;
+            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
+                .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 3));
+
+            SnapshotRollupResult result = await Build().RollUpSegmentAsync(_accountId, _device.Id, From, To, CancellationToken.None);
+
+            Assert.Equal(1, result.DevicesRolledUp);
+            Assert.Null(result.ErrorMessage);
+            Assert.NotNull(sent);
+            Assert.Contains(".building.mp4", sent!.OutputPath, StringComparison.Ordinal);
+            Assert.Empty(Directory.GetFiles(_root, "*.building.mp4", SearchOption.AllDirectories));
+            _media.Verify(m => m.AddAsync(It.Is<MediaItem>(i => i.RecordedAtUtc == From
+                && i.DurationSeconds == (To - From).TotalSeconds
+                && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker), It.IsAny<CancellationToken>()), Times.Once);
+        }    }
 }
