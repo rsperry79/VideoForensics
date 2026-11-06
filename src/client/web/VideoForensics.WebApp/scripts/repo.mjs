@@ -17,7 +17,6 @@ export const vitestConfig = "src/client/web/VideoForensics.WebApp/vitest.config.
 export const lintTargets = [
     "src/client/ui/VideoForensics.Ui.Shared/src/ts",
     "src/client/web/VideoForensics.WebApp/src/ts",
-    "tests",
     "src/client/web/VideoForensics.WebApp/tests",
     "src/client/web/VideoForensics.WebApp/scripts",
     "src/client/web/VideoForensics.WebApp/vitest.config.mts",
