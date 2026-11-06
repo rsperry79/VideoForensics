@@ -13,12 +13,6 @@ using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using VideoForensics.Client.WebApp.Api;
-using VideoForensics.Client.WebApp.Auth;
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.WebApp.Api
