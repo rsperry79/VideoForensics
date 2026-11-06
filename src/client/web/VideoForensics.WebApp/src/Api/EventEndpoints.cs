@@ -29,12 +29,14 @@ namespace VideoForensics.Client.WebApp.Api
         /// - skip defaults to 0, must be &gt;= 0
         /// - take defaults to 100, must be 1..500
         /// - excludeTypes optionally drops events whose type exactly matches an entry
+        /// - includeTypes optionally keeps only events whose type exactly matches an entry; omitted or empty means no restriction
         /// </summary>
         public static async Task<IResult> ListEventPageAsync(
             Guid[]? deviceIds,
             DateTime? from,
             DateTime? to,
             string[]? excludeTypes,
+            string[]? includeTypes,
             int? skip,
             int? take,
             IEventRepository events,
@@ -62,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             EventPage page = await events.ListPageByDevicesAndDateRangeAsync(
-                deviceIds, from.Value, to.Value, excludeTypes, effectiveSkip, effectiveTake, ct);
+                deviceIds, from.Value, to.Value, excludeTypes, includeTypes, effectiveSkip, effectiveTake, ct);
 
             return Results.Ok(new EventPageDto([.. page.Items.Select(x => x.ToDto())], page.TotalCount));
         }
@@ -122,7 +124,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapGet("/page", ListEventPageAsync)
                 .RequireRateLimiting("media")
                 .WithSummary("Page events")
-                .WithDescription("Pages events from one or more devices within a UTC range, newest first, for the review page's Events tab. deviceIds (1..64) and from/to (from <= to) are required; skip defaults to 0 (>= 0); take defaults to 100 (1..500); excludeTypes optionally drops event types.");
+                .WithDescription("Pages events from one or more devices within a UTC range, newest first, for the review page's Events tab. deviceIds (1..64) and from/to (from <= to) are required; skip defaults to 0 (>= 0); take defaults to 100 (1..500); excludeTypes optionally drops event types; includeTypes optionally keeps only the listed event types.");
 
             _ = group.MapGet("/details", GetEventDetailsAsync)
                 .RequireRateLimiting("media")

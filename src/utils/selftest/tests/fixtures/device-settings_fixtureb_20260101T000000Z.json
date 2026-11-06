@@ -1,0 +1,94 @@
+{
+  "chime_settings": {
+    "duration": 1,
+    "enable": true,
+    "type": 1
+  },
+  "cv_settings": {
+    "detection_types": {
+      "human": {
+        "enabled": true,
+        "mode": "x",
+        "notification": true
+      },
+      "loitering": {
+        "enabled": false,
+        "mode": "x",
+        "notification": false
+      },
+      "motion": {
+        "enabled": true,
+        "mode": "x",
+        "notification": false
+      },
+      "moving_vehicle": {
+        "enabled": false,
+        "mode": "x",
+        "notification": false
+      },
+      "nearby_pom": {
+        "enabled": false,
+        "mode": "x",
+        "notification": false
+      },
+      "other_motion": {
+        "enabled": true,
+        "mode": "x",
+        "notification": true
+      },
+      "package_delivery": {
+        "enabled": true,
+        "mode": "x",
+        "notification": true
+      },
+      "package_pickup": {
+        "enabled": false,
+        "mode": "x",
+        "notification": false
+      },
+      "vehicle": {
+        "enabled": true,
+        "mode": "x",
+        "notification": false
+      }
+    },
+    "threshold": {
+      "loitering": 1,
+      "package_delivery": 1
+    }
+  },
+  "motion_settings": {
+    "motion_detection_enabled": true
+  },
+  "pir_settings": {
+    "sensitivity_1": 1,
+    "sensitivity_2": 1,
+    "sensitivity_3": 1,
+    "zone_enable": 1,
+    "zone_mask": 1
+  },
+  "volume_settings": {
+    "doorbell_volume": 1
+  },
+  "zone_settings": {
+    "motion": [
+      {
+        "id": "x",
+        "name": "x",
+        "properties": {
+          "detection_types": [
+            "x"
+          ],
+          "style": 1
+        },
+        "state": "x",
+        "vertices": [
+          {
+            "x": 1,
+            "y": 1.5
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "video_search": [
+    {
+      "ding_id": "x",
+      "created_at": 1,
+      "updated_at": 1,
+      "hq_url": "x",
+      "lq_url": "x",
+      "is_e2ee": false,
+      "manifest_id": null,
+      "preroll_duration": 1.5,
+      "thumbnail_url": "x",
+      "untranscoded_url": "x",
+      "kind": "x",
+      "state": "x",
+      "had_subscription": true,
+      "radar_data_url": null,
+      "favorite": false,
+      "duration": 1,
+      "device_placement": null,
+      "cv_properties": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "x",
+        "detection_types": [
+          {
+            "detection_type": "x",
+            "verified_timestamps": [
+              1
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 1,
+        "description": "x",
+        "type": "x"
+      },
+      "owner_id": "x",
+      "riid": "x"
+    }
+  ]
+}

@@ -119,6 +119,9 @@
   <data name="Unavailable" xml:space="preserve">
     <value>Unavailable</value>
   </data>
+  <data name="SnapshotItemLabel" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
   <data name="StatusOpen" xml:space="preserve">
     <value>Open</value>
   </data>

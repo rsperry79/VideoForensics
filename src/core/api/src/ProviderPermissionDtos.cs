@@ -38,6 +38,9 @@ namespace VideoForensics.Core.Api.Contracts
 
         /// <summary>The Infrastructure settings page.</summary>
         Infrastructure = 16,
+
+        /// <summary>The Services page (health sync and scheduled reports).</summary>
+        Services = 32,
     }
 
     /// <summary>Who may change one restricted settings page.</summary>
@@ -54,7 +57,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="NotificationsOpenToAdmin">True when admins may change notification settings.</param>
     /// <param name="LlmOpenToAdmin">True when admins may change LLM settings.</param>
     /// <param name="InfrastructureOpenToAdmin">True when admins may open the Infrastructure settings page.</param>
-    public record SettingsAccessDto(bool ReportsOpenToAdmin, bool EmailOpenToAdmin, bool NotificationsOpenToAdmin, bool LlmOpenToAdmin, bool InfrastructureOpenToAdmin = false);
+    /// <param name="ServicesOpenToAdmin">True when admins may open the Services page.</param>
+    public record SettingsAccessDto(bool ReportsOpenToAdmin, bool EmailOpenToAdmin, bool NotificationsOpenToAdmin, bool LlmOpenToAdmin, bool InfrastructureOpenToAdmin = false, bool ServicesOpenToAdmin = false);
 
     /// <summary>Request to change provider-account permissions.</summary>
     /// <param name="ProviderAccountEditAccess">New lowest operator level for editing provider accounts: "Admin" or "SuperAdmin".</param>

@@ -1,0 +1,372 @@
+@page "/accounts/manual-sync"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Layout
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Providers.Common.Contracts
+@inject PairedSessionState SessionState
+@inject IProviderAccountRepository ProviderAccountRepository
+@inject IUserRepository UserRepository
+@inject IProviderAccountEditAccess EditAccess
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<ManualSync> L
+
+<Breadcrumb Items="@_breadcrumbItems" />
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["FilterProviders"]</small>
+        <SfMultiSelect TValue="string[]" TItem="string" DataSource="@_providerNames"
+            Value="@_selectedProviders" ValueChanged="OnProvidersChanged"
+            Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
+        </SfMultiSelect>
+    </div>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["FilterAccount"]</small>
+        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
+            Placeholder="@L["AllAccounts"]" data-testid="manual-sync-account-filter"
+            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
+            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
+</PageRightPanelContent>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (_loadError is not null)
+    {
+        <p class="text-danger">@_loadError</p>
+    }
+
+    <div class="mb-4">
+        <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+            <div>
+                <label class="form-label" for="sync-type">@L["SyncTypeLabel"]</label>
+                <select id="sync-type" class="form-select" @bind="_syncType">
+                    @foreach (var t in SyncRequestBuilder.SyncTypes)
+                    {
+                        <option value="@t">@SyncTypeChoiceLabel(t)</option>
+                    }
+                </select>
+            </div>
+            @if (!IsConfigSync)
+            {
+                <div>
+                    <label class="form-label" for="sync-range">@L["SyncRangeLabel"]</label>
+                    <select id="sync-range" class="form-select" @onchange="OnRangeChanged">
+                        @foreach (var r in SyncRequestBuilder.RangeOptions)
+                        {
+                            <option value="@r" selected="@(r == _syncRange)">@RangeLabel(r)</option>
+                        }
+                    </select>
+                </div>
+                @if (_syncRange == SyncRequestBuilder.CustomRange)
+                {
+                    <div>
+                        <label class="form-label" for="sync-custom-start">@L["SyncCustomStart"]</label>
+                        <input id="sync-custom-start" type="date" class="form-control" value="@_customStart" @onchange="e => _customStart = e.Value?.ToString() ?? string.Empty" />
+                    </div>
+                    <div>
+                        <label class="form-label" for="sync-custom-end">@L["SyncCustomEnd"]</label>
+                        <input id="sync-custom-end" type="date" class="form-control" value="@_customEnd" @onchange="e => _customEnd = e.Value?.ToString() ?? string.Empty" />
+                        <div id="sync-custom-end-hint" class="form-text">@L["CustomEndHint"]</div>
+                    </div>
+                }
+            }
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if (CanEditAccount)
+            {
+                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@(_isSyncing || TargetRow is null)" />
+            }
+            @if (TargetRow is null)
+            {
+                <span class="form-text">@L["PickAccountHint"]</span>
+            }
+            @if (_isSyncing)
+            {
+                <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
+            }
+            @if (CanEditAccount && TargetRow is { } loginTarget && !string.IsNullOrEmpty(loginTarget.Account.LastErrorMessage))
+            {
+                <SfButton CssClass="e-warning" Content="@L["Login"]" OnClick="() => _reAuthDialogVisible = true" />
+            }
+        </div>
+    </div>
+
+    <div id="sync-progress" class="mb-4">
+        <DownloadProgressPanel IsActive="@_isSyncing" CollectionType="@SyncTypeChoiceLabel(_runningSyncType)" />
+    </div>
+
+    @if (TargetRow is { } reAuthTarget)
+    {
+        <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
+                      ProviderName="@reAuthTarget.Account.ProviderName"
+                      InitialEmail="@reAuthTarget.Email"
+                      OnAuthenticated="HandleReAuthenticatedAsync" />
+    }
+
+    <SfToast @ref="_toastRef" />
+}
+
+@code {
+    private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName, string? Email);
+
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
+    private List<AccountRow> _rows = new();
+    private List<string> _providerNames = new();
+    private string[] _selectedProviders = Array.Empty<string>();
+
+    /// <summary>The Account filter's selected account (its id as text). Empty means no sync target.</summary>
+    private string _accountFilterValue = string.Empty;
+
+    private string? _loadError;
+    private bool _isLoading = true;
+    private bool CanEditAccount { get; set; }
+
+    private string _syncType = "All";
+
+    /// <summary>The sync type the progress panel titles itself with: captured at Sync Now, so changing the dropdown mid-run does not relabel it.</summary>
+    private string _runningSyncType = "All";
+    private string _syncRange = "30";
+    private string _customStart = SyncRequestBuilder.DefaultCustomRange(DateTime.Today).Start;
+    private string _customEnd = SyncRequestBuilder.DefaultCustomRange(DateTime.Today).End;
+    private bool _reAuthDialogVisible;
+    private bool _isSyncing;
+    private SfToast _toastRef = null!;
+
+    /// <summary>The account chosen in the Account filter, or null when none is chosen or it is hidden by the provider filter.</summary>
+    private AccountRow? TargetRow
+    {
+        get
+        {
+            if (!Guid.TryParse(_accountFilterValue, out Guid accountId))
+            {
+                return null;
+            }
+
+            return _rows.FirstOrDefault(r => r.Account.Id == accountId && _selectedProviders.Contains(r.Account.ProviderName));
+        }
+    }
+
+    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _syncRange = e.Value?.ToString() ?? "30";
+        if (_syncRange == SyncRequestBuilder.CustomRange)
+        {
+            (_customStart, _customEnd) = SyncRequestBuilder.DefaultCustomRange(DateTime.Today);
+        }
+    }
+
+    private string SyncTypeChoiceLabel(string type) => type switch
+    {
+        "Events" => L["SyncChoiceEvents"],
+        "Snapshots" => L["SyncChoiceSnapshots"],
+        "Config" => L["SyncChoiceConfig"],
+        _ => L["SyncChoiceAll"],
+    };
+
+    private bool IsConfigSync => _syncType == SyncRequestBuilder.ConfigSyncType;
+
+    private string RangeLabel(string range) => range switch
+    {
+        "30" => L["SyncRange30"],
+        "60" => L["SyncRange60"],
+        "90" => L["SyncRange90"],
+        "365" => L["SyncRange365"],
+        SyncRequestBuilder.AllRange => L["SyncRangeAll"],
+        _ => L["SyncRangeCustom"],
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // The session can finish loading after OnInitializedAsync, so the first edit-access answer may be stale.
+            _ = RefreshEditAccessAsync();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
+        // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
+        _ = RefreshEditAccessAsync();
+        await LoadAccountsAsync();
+    }
+
+    /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>
+    private async Task RefreshEditAccessAsync()
+    {
+        try
+        {
+            bool canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
+            if (canEdit != CanEditAccount)
+            {
+                CanEditAccount = canEdit;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CanEditAccount = false;
+        }
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        _loadError = null;
+        try
+        {
+            var active = await ProviderAccountRepository.ListActiveAsync(CancellationToken.None);
+            var rows = new List<AccountRow>();
+            foreach (var account in active)
+            {
+                string displayName = account.ProviderName;
+                string? email = null;
+                try
+                {
+                    var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
+                    if (user is not null)
+                    {
+                        displayName = user.DisplayName;
+                        // The provider login (email for Ring) is the account's name for re-authentication.
+                        email = user.ProviderUserKey;
+                    }
+                }
+                catch
+                {
+                    // Fall back to ProviderName if the user lookup fails for any reason.
+                }
+
+                rows.Add(new AccountRow(account, displayName, email));
+            }
+
+            _rows = rows;
+            var previous = new HashSet<string>(_providerNames, StringComparer.OrdinalIgnoreCase);
+            _providerNames = _rows.Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
+            // Every provider is selected by default; providers that appear later are selected too.
+            _selectedProviders = _selectedProviders
+                .Where(p => _providerNames.Contains(p))
+                .Concat(_providerNames.Where(p => !previous.Contains(p)))
+                .Distinct()
+                .ToArray();
+
+            // An account that no longer exists can't stay as the filter.
+            if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
+            {
+                _accountFilterValue = string.Empty;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _loadError = L["ErrorLoadingAccount", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnProvidersChanged(string[] selected)
+    {
+        _selectedProviders = selected ?? Array.Empty<string>();
+
+        // An account from a provider that is no longer selected can't stay as the filter.
+        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
+        {
+            _accountFilterValue = string.Empty;
+        }
+    }
+
+    /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
+    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions
+    {
+        get
+        {
+            var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
+            return _rows
+                .Where(r => selected.Contains(r.Account.ProviderName))
+                .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
+        }
+    }
+
+    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    {
+        _accountFilterValue = args.Value ?? string.Empty;
+    }
+
+    private async Task HandleReAuthenticatedAsync(AuthResult result)
+    {
+        if (result.Success)
+        {
+            await LoadAccountsAsync();
+        }
+    }
+
+    private async Task SyncNowAsync()
+    {
+        AccountRow? target = TargetRow;
+        if (target is null)
+        {
+            return;
+        }
+
+        _runningSyncType = _syncType;
+        _isSyncing = true;
+        try
+        {
+            await SessionState.EnsureLoadedAsync();
+            // Session state loads lazily; the token is only populated after this.
+            // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{target.Account.Id}/sync-now"))
+            {
+                Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
+            };
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            using HttpResponseMessage response = await Http.SendAsync(request, CancellationToken.None);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+                {
+                    Title = L["SyncStarted"],
+                    Icon = "e-success"
+                });
+
+                // Reload after a delay to show the updated timestamps
+                await Task.Delay(2000);
+                await LoadAccountsAsync();
+            }
+            else
+            {
+                await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+                {
+                    Title = L["SyncFailed"],
+                    Icon = "e-danger"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+            {
+                Title = L["ErrorTitle"],
+                Content = ex.Message,
+                Icon = "e-danger"
+            });
+        }
+        finally
+        {
+            _isSyncing = false;
+        }
+    }
+}

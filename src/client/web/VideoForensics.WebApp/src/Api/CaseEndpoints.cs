@@ -83,6 +83,17 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Remove case item")
                 .WithDescription("Soft-removes an item from a case.");
 
+            // Case notes (append-only)
+            _ = group.MapGet("/{id:guid}/notes", ListCaseNotesAsync)
+                .RequireRateLimiting("default")
+                .WithSummary("List case notes")
+                .WithDescription("Retrieves all notes on a case, oldest first.");
+
+            _ = group.MapPost("/{id:guid}/notes", AddCaseNoteAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Review)
+                .RequireRateLimiting("default")
+                .WithSummary("Add case note")
+                .WithDescription("Appends a note to a case. Notes cannot be edited or deleted.");
             // Case lifecycle operations
             _ = group.MapPost("/{id:guid}/close", CloseCaseAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
@@ -280,6 +291,10 @@ namespace VideoForensics.Client.WebApp.Api
                 await cases.UpdateDetailsAsync(id, request.Title, request.Description, request.LeadOperatorId, updatedBy, ct);
                 return Results.NoContent();
             }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
             catch (InvalidOperationException ex)
             {
                 return Results.Conflict(ex.Message);
@@ -310,6 +325,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await cases.SetScopeAsync(id, request.ScopeFromUtc, request.ScopeToUtc, request.DeviceIds, updatedBy, ct);
                 return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {
@@ -352,6 +371,10 @@ namespace VideoForensics.Client.WebApp.Api
                 CaseItem item = await cases.AddItemAsync(id, itemKind, request.TargetId, request.Reason, addedBy, ct);
                 return Results.Created($"/api/v1/cases/{id}/items/{item.Id}", item.ToDto());
             }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
             catch (InvalidOperationException ex)
             {
                 return Results.Conflict(ex.Message);
@@ -389,6 +412,49 @@ namespace VideoForensics.Client.WebApp.Api
             }
         }
 
+        /// <summary>Handler for GET /{id:guid}/notes</summary>
+        public static async Task<IResult> ListCaseNotesAsync(
+            Guid id,
+            INoteRepository notes,
+            CancellationToken ct)
+        {
+            IReadOnlyList<Note> result = await notes.ListAsync(NoteTargetKind.Case, id, ct);
+            return Results.Ok(result.Select(n => n.ToDto()));
+        }
+
+        /// <summary>Handler for POST /{id:guid}/notes</summary>
+        public static async Task<IResult> AddCaseNoteAsync(
+            Guid id,
+            AddCaseNoteRequest request,
+            INoteRepository notes,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string? addedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            if (string.IsNullOrWhiteSpace(addedBy))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                // The repository enforces the body rules (non-blank, at most 4000 characters after trimming).
+                Note note = await notes.AddAsync(NoteTargetKind.Case, id, request.Body, addedBy, ct);
+                return Results.Created($"/api/v1/cases/{id}/notes/{note.Id}", note.ToDto());
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
+        }
         /// <summary>Handler for POST /{id:guid}/close</summary>
         public static async Task<IResult> CloseCaseAsync(
             Guid id,
@@ -406,6 +472,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await cases.CloseAsync(id, closedBy, ct);
                 return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {
@@ -430,6 +500,10 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await cases.ReopenAsync(id, reopenedBy, ct);
                 return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {

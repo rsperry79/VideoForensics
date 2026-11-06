@@ -137,7 +137,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error appending action log entry: {Action}", action);
+                _logger.LogError("Error appending action log entry: {Action}: {Message} ({ErrorType})", action, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -176,14 +176,27 @@ namespace VideoForensics.Data.Database.Repositories
                 return ChainIntegrityResult.Valid(0);
             }
 
+            // Logged repairs are read up front, since a repair entry is appended after the gap it covers.
+            var bridges = new HashSet<(string From, string To)>();
+            foreach (ActionLogEntry repair in entries.Where(e => e.Action == ChainRepairRecord.Action))
+            {
+                foreach (ChainRepairRecord.Bridge bridge in ChainRepairRecord.ReadBridges(repair.DetailsJson))
+                {
+                    _ = bridges.Add((bridge.From, bridge.To));
+                }
+            }
+
             // Verify the chain starting from the first entry
             string? expectedPreviousHash = null;
             int checkedCount = 0;
 
             foreach (ActionLogEntry? entry in entries)
             {
-                // Check that PreviousEntryHash matches what we expect
-                if (entry.PreviousEntryHash != expectedPreviousHash)
+                // Check that PreviousEntryHash matches what we expect. A gap is accepted only when a logged repair bridges it.
+                bool bridged = expectedPreviousHash is not null
+                    && entry.PreviousEntryHash is not null
+                    && bridges.Contains((expectedPreviousHash, entry.PreviousEntryHash));
+                if (entry.PreviousEntryHash != expectedPreviousHash && !bridged)
                 {
                     _logger.LogError("Hash chain integrity violation at entry {EntryId}: expected previous hash {ExpectedHash}, got {ActualHash}",
                         entry.Id, expectedPreviousHash, entry.PreviousEntryHash);

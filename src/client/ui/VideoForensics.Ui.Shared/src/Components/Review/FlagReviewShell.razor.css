@@ -1,0 +1,35 @@
+/* Fills the container the caller gives it; the shell never scrolls the page. The container is the middle window inside MainLayout, so no 100dvh here. */
+.flag-review-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "crumb"
+        "media"
+        "timeline";
+    gap: 0.5rem;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.flag-review-breadcrumb {
+    grid-area: crumb;
+    min-width: 0;
+}
+
+/* Flex child that takes the leftover height; the clip inside is sized to it with object-fit: contain. */
+.flag-review-media {
+    grid-area: media;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.flag-review-timeline {
+    grid-area: timeline;
+    min-width: 0;
+}

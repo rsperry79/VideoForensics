@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting event: {ProviderEventId}", SanitizeForLog(@event.ProviderEventId));
+                _logger.LogError("Error upserting event: {ProviderEventId}: {Message} ({ErrorType})", SanitizeForLog(@event.ProviderEventId), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -105,7 +105,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating event: {ProviderEventId}", SanitizeForLog(@event.ProviderEventId));
+                _logger.LogError("Error creating event: {ProviderEventId}: {Message} ({ErrorType})", SanitizeForLog(@event.ProviderEventId), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -129,7 +129,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating event: {EventId}", @event.Id);
+                _logger.LogError("Error updating event: {EventId}: {Message} ({ErrorType})", @event.Id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -269,7 +269,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<EventPage> ListPageByDevicesAndDateRangeAsync(
             IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
-            int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<string>? includeEventTypes, int skip, int take, CancellationToken ct)
         {
             // Bounds are checked here as well as at the endpoint: an unbounded take would turn the page back into a full scan.
             ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
@@ -280,11 +280,15 @@ namespace VideoForensics.Data.Database.Repositories
 
             Guid[] ids = deviceIds.ToArray();
             string[] excluded = excludeEventTypes?.ToArray() ?? [];
+            string[] included = includeEventTypes?.ToArray() ?? [];
 
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             IQueryable<Event> matches = db.Events
                 .AsNoTracking()
-                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType)
+                    && (included.Length == 0
+                        || (included.Contains(e.EventType) && !(e.EventType == "motion" && db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && d.DetectionType != "motion" && d.DetectionType != "other_motion")))
+                        || db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && included.Contains(d.DetectionType))));
 
             int total = await matches.CountAsync(ct);
             List<Event> items = await matches
@@ -315,7 +319,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating event download failure: {EventId}", eventId);
+                _logger.LogError("Error updating event download failure: {EventId}: {Message} ({ErrorType})", eventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -336,7 +340,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting event: {EventId}", eventId);
+                _logger.LogError("Error deleting event: {EventId}: {Message} ({ErrorType})", eventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

@@ -130,7 +130,7 @@ namespace VideoForensics.Core.Providers.Core
                     };
                 }
 
-                _logger.LogWarning(ex, "ffmpeg frame extraction failed for {Path} at {OffsetMs}ms", videoFilePath, frameOffsetMs);
+                _logger.LogWarning("ffmpeg frame extraction failed for {Path} at {OffsetMs}ms: {Message} ({ErrorType})", videoFilePath, frameOffsetMs, ex.Message, ex.GetType().Name);
                 return new FrameExtractionResult { Success = false, ErrorMessage = $"ffmpeg extraction failed: {ex.Message}" };
             }
 

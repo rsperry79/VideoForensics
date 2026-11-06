@@ -59,6 +59,21 @@ public class Breadcrumb_Tests : BunitContext
     }
 
     [Fact]
+    public void Breadcrumb_Colors_UseThemeTokensNotHardCodedHex()
+    {
+        IRenderedComponent<Breadcrumb> cut = Render<Breadcrumb>(p => p.Add(c => c.Items, Trail));
+
+        // Hard-coded hex text colors vanish on the dark theme; Bootstrap text tokens follow data-bs-theme.
+        string current = cut.FindAll("ol > li").Last().GetAttribute("style") ?? string.Empty;
+        string link = cut.FindAll("ol > li > a").First().GetAttribute("style") ?? string.Empty;
+
+        Assert.Contains("var(--bs-emphasis-color)", current);
+        Assert.DoesNotContain("#333", current);
+        Assert.Contains("var(--bs-link-color)", link);
+        Assert.DoesNotContain("#0066cc", link);
+    }
+
+    [Fact]
     public void Breadcrumb_NullItems_RendersNoListItems()
     {
         IRenderedComponent<Breadcrumb> cut = Render<Breadcrumb>(p => p.Add(c => c.Items, null));

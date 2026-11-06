@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Wyze authentication error");
+                _logger.LogError("Wyze authentication error: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 _isAuthenticated = false;
                 return new AuthResult(
                     Success: false,
@@ -91,7 +91,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Wyze token refresh error");
+                _logger.LogError("Wyze token refresh error: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }
         }

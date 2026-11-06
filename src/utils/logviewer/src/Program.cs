@@ -35,10 +35,10 @@ if (!TryParseLevel(options.Level, out LogEventLevel minimumLevel))
     return 1;
 }
 
-// Same output template as the WebApp's console sink (Program.cs there). No theme is set, so the sink's default applies.
+// Same output as the WebApp's console sink (Program.cs there): UTC time, category above the message, no properties, level colours.
 Logger logger = new LoggerConfiguration()
     .MinimumLevel.Is(minimumLevel)
-    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console())
     .CreateLogger();
 
 // Ctrl+C is left to the console: with text selected it copies, as in any console window. Ctrl+D is the exit key.
@@ -63,7 +63,7 @@ if (!Console.IsInputRedirected)
 
 // Where the server setting lives, so a user who sees no output knows what to turn on.
 Console.WriteLine("The server's log pipe is off by default. To turn it on, open the WebApp and go to:");
-Console.WriteLine("  Admin > Devices & Network > Infrastructure > Diagnostics");
+Console.WriteLine("  Admin > System & Network > Infrastructure > Diagnostics");
 Console.WriteLine("  tick \"Open the log pipe for LogViewer\", then press Save.");
 Console.WriteLine();
 
@@ -143,7 +143,8 @@ static LogEvent? ToLogEvent(string line)
             time,
             ToSerilogLevel(Text(root, "level")),
             null,
-            new MessageTemplateParser().Parse("{Message}"),
+            // The literal format keeps the message text as logged. A plain hole would print a string in quotes.
+            new MessageTemplateParser().Parse("{Message:l}"),
             [
                 new LogEventProperty("SourceContext", new ScalarValue(category)),
                 new LogEventProperty("Message", new ScalarValue(message)),

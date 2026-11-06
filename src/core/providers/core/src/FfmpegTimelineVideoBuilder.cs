@@ -550,7 +550,7 @@ namespace VideoForensics.Core.Providers.Core
             catch (Exception ex)
             {
                 // Covers failed encodes and a missing or unstartable ffmpeg binary: report, do not throw.
-                _logger.LogError(ex, "Timeline video build ffmpeg step failed");
+                _logger.LogError("Timeline video build ffmpeg step failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return ex.Message;
             }
         }
@@ -666,12 +666,12 @@ namespace VideoForensics.Core.Providers.Core
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    _logger.LogWarning("Could not delete timeline temp directory: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     return;
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    _logger.LogWarning("Could not delete timeline temp directory: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     return;
                 }
             }

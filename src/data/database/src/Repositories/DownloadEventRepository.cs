@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding download event: {ProviderEventId}", downloadEvent.ProviderEventId);
+                _logger.LogError("Error adding download event: {ProviderEventId}: {Message} ({ErrorType})", downloadEvent.ProviderEventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -98,7 +98,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating download event: {DownloadEventId}", downloadEvent.Id);
+                _logger.LogError("Error updating download event: {DownloadEventId}: {Message} ({ErrorType})", downloadEvent.Id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -119,7 +119,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting download event: {DownloadEventId}", eventId);
+                _logger.LogError("Error deleting download event: {DownloadEventId}: {Message} ({ErrorType})", eventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

@@ -60,7 +60,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Self-test status broadcast tick failed");
+                    _logger.LogError("Self-test status broadcast tick failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             } while (await timer.WaitForNextTickAsync(stoppingToken));
         }

@@ -1,0 +1,10 @@
+/* The note body keeps the operator's line breaks and spacing as typed. */
+.note-body {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.note-author {
+    font-weight: 600;
+    margin-right: 0.5rem;
+}

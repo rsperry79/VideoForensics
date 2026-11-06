@@ -1,0 +1,38 @@
+{
+  "user_locations": [
+    {
+      "address": {
+        "address1": "x",
+        "city": "x",
+        "state": "x",
+        "timezone": "x",
+        "zip_code": "x",
+        "address2": "x",
+        "country": "x",
+        "cross_street": "x"
+      },
+      "is_owner": true,
+      "location_id": "x",
+      "name": "x",
+      "created_at": "x",
+      "entitlements": {
+        "business_command_center": false,
+        "guard_patrol": false,
+        "private_guard_response": false,
+        "vm_video_verification": false,
+        "vm_virtual_security_guard": false
+      },
+      "geo_coordinates": {
+        "latitude": 1.5,
+        "longitude": 1.5
+      },
+      "geo_service_verified": "x",
+      "is_jobsite": false,
+      "location_resource_id": "x",
+      "location_type": "x",
+      "owner_id": 1,
+      "updated_at": "x",
+      "user_verified": false
+    }
+  ]
+}

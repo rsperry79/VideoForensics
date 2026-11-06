@@ -19,7 +19,7 @@ public class RemoteDeviceConfigRepositoryTests
                 MotionDetectionEnabled: true,
                 MotionSensitivity: "high",
                 RecordingMode: "continuous",
-                CustomSettingsJson: """{"vendor": "test"}""",
+                CustomSettings: new Dictionary<string, JsonElement> { ["vendor"] = JsonSerializer.SerializeToElement("test") },
                 CapturedAtUtc: DateTime.UtcNow,
                 Source: "Fetched"
             );
@@ -34,7 +34,7 @@ public class RemoteDeviceConfigRepositoryTests
                 MotionDetectionEnabled = true,
                 MotionSensitivity = "high",
                 RecordingMode = "continuous",
-                CustomSettingsJson = """{"vendor": "test"}""",
+                CustomSettings = [new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = "vendor", ValueJson = "\"test\"" }],
                 CapturedAtUtc = DateTime.UtcNow,
                 Source = DeviceConfigSource.Fetched
             };

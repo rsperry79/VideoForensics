@@ -1,0 +1,8 @@
+/* The navigator fits the narrow sidebar: the buttons may wrap, and the position readout ("1 of 928") stays on one line. */
+.clip-navigator {
+    flex-wrap: wrap;
+}
+
+.clip-navigator > span {
+    white-space: nowrap;
+}

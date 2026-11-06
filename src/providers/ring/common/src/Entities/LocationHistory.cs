@@ -14,6 +14,10 @@ namespace VideoForensics.Providers.Ring.Entities
 
         [JsonPropertyName("pagination_key")]
         public string PaginationKey { get; set; }
+
+        /// <summary>Top-level cek_transfer_recipient_response. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("cek_transfer_recipient_response")]
+        public System.Text.Json.JsonElement? CekTransferRecipientResponse { get; set; }
     }
 
     /// <summary>One entry of the evm location history feed.</summary>
@@ -80,6 +84,10 @@ namespace VideoForensics.Providers.Ring.Entities
 
         [JsonPropertyName("visualizations")]
         public LocationHistoryVisualizations Visualizations { get; set; }
+
+        /// <summary>Per-event cek_transfer_recipient_response. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("cek_transfer_recipient_response")]
+        public System.Text.Json.JsonElement? CekTransferRecipientResponse { get; set; }
 
         /// <summary>The device the entry belongs to (id, description and type).</summary>
         [JsonPropertyName("device")]
@@ -160,6 +168,10 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("detection_details")]
         public List<LocationHistoryDetectionDetail> DetectionDetails { get; set; }
 
+        /// <summary>cv.key_moments. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("key_moments")]
+        public System.Text.Json.JsonElement? KeyMoments { get; set; }
+
         [JsonPropertyName("tags")]
         public List<string> Tags { get; set; }
     }
@@ -167,6 +179,9 @@ namespace VideoForensics.Providers.Ring.Entities
     /// <summary>One entry of cv.detection_details. objects_per_lens is null in every capture and has no known shape.</summary>
     public class LocationHistoryDetectionDetail
     {
+        /// <summary>objects_per_lens of a detection detail. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("objects_per_lens")]
+        public System.Text.Json.JsonElement? ObjectsPerLens { get; set; }
         [JsonPropertyName("timestamp")]
         public long? Timestamp { get; set; }
 
@@ -182,6 +197,18 @@ namespace VideoForensics.Providers.Ring.Entities
 
         [JsonPropertyName("local_media_visualization")]
         public LocationHistoryMediaVisualization LocalMediaVisualization { get; set; }
+
+        /// <summary>map_visualization. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("map_visualization")]
+        public System.Text.Json.JsonElement? MapVisualization { get; set; }
+
+        /// <summary>radar_visualization. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("radar_visualization")]
+        public System.Text.Json.JsonElement? RadarVisualization { get; set; }
+
+        /// <summary>potential_gap_visualization. Shape not captured (null in every sample): stored only if it is a string.</summary>
+        [JsonPropertyName("potential_gap_visualization")]
+        public System.Text.Json.JsonElement? PotentialGapVisualization { get; set; }
     }
 
     /// <summary>A cloud or local media visualization: a schema name and a list of media items.</summary>

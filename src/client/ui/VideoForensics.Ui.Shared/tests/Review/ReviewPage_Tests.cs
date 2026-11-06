@@ -58,11 +58,6 @@ public class ReviewPage_Tests : ReviewTestContext
         string actions = RenderRightPanel().Find("[data-testid='review-actions-panel']").TextContent;
         Assert.Contains(L["ActionsMenuTitle"].Value, actions);
 
-        string nav = cut.Find("[data-testid='review-view-nav']").TextContent;
-        foreach (string key in new[] { "Live", "TabTimeline", "TabEvents", "TabDetail" })
-        {
-            Assert.Contains(L[key].Value, nav);
-        }
     }
 
     [Fact]
@@ -103,21 +98,24 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_TabClick_SwitchesStateTabPlaceholderAndUrl()
+    public void ReviewPage_MenuNavigatesToEventsTab_SwitchesStateTabPlaceholderAndUrl()
     {
         // Arrange
         AddDevices(2);
         NavigateToReview();
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
-        // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
+        // Act - the left menu's Events item navigates to /media?tab=Events
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?tab=Events");
 
         // Assert
-        Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
-        Assert.Single(cut.FindAll("[data-testid='review-tab-events']"));
-        Assert.Empty(cut.FindAll("[data-testid='review-tab-timeline']"));
-        Assert.Contains("tab=Events", CurrentUri);
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
+            Assert.Single(cut.FindAll("[data-testid='review-tab-events']"));
+            Assert.Empty(cut.FindAll("[data-testid='review-tab-timeline']"));
+            Assert.Contains("tab=Events", CurrentUri);
+        });
     }
 
     [Fact]
@@ -208,11 +206,62 @@ public class ReviewPage_Tests : ReviewTestContext
         NavigateToReview();
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
-        // Assert
-        Assert.Single(cut.FindAll("nav[data-testid='review-view-nav'] ul.nav-tabs"));
-        Assert.Single(cut.FindAll("[data-testid='review-tab-button-timeline']"));
-        Assert.Single(cut.FindAll("[data-testid='review-live']"));
+        // Assert - the views live in the main left menu, so the page itself renders no tab bar and registers no left panel
+        Assert.Empty(cut.FindAll("[data-testid='review-view-nav']"));
         Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
+    }
+
+    [Theory]
+    [InlineData("review-case-section")]
+    [InlineData("review-filter-panel")]
+    [InlineData("review-time-range")]
+    [InlineData("review-actions-panel")]
+    public void ReviewPage_RightPanelSection_HasACollapsibleHeading(string testId)
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        IRenderedComponent<IComponent> right = RenderRightPanel();
+
+        // Assert
+        Assert.Single(right.FindAll($"[data-testid='{testId}'] button.review-sidebar-section-header[aria-expanded]"));
+    }
+
+    [Fact]
+    public void ReviewPage_RightPanel_ListsTimeRangeThenFiltersThenCaseThenActions()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        IRenderedComponent<IComponent> right = RenderRightPanel();
+
+        // Assert
+        string[] order = right
+            .FindAll("[data-testid='review-time-range'], [data-testid='review-filter-panel'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
+            .Select(e => e.GetAttribute("data-testid")!)
+            .ToArray();
+        Assert.Equal(new[] { "review-time-range", "review-filter-panel", "review-case-section", "review-actions-panel" }, order);
+    }
+
+    [Fact]
+    public void ReviewPage_TabInTheAddressChanges_SwitchesTheTab()
+    {
+        // Arrange - the left menu navigates to /media?tab=Events; the page is already open, so it is not rebuilt
+        AddDevices(2);
+        NavigateToReview();
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Act
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/media?tab=Events");
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab));
     }
 
     [Theory]
@@ -510,7 +559,7 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
+        _ = cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
 
         // Assert
         Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);
@@ -526,7 +575,7 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
+        _ = cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
 
         // Assert
         Assert.Equal("/media", new Uri(CurrentUri).AbsolutePath);

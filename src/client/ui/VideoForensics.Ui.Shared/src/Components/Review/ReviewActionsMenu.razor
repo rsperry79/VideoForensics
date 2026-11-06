@@ -1,7 +1,9 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Client.Ui.Shared.Components.Reasons
 @using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
@@ -19,6 +21,7 @@
 @inject ReviewTimelineModel TimelineModel
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ReviewPage> L
+@inject IStringLocalizer<SharedResources> SharedL
 @inject ILogger<ReviewActionsMenu> Logger
 
 <div class="review-actions-menu" data-testid="review-actions-menu">
@@ -46,9 +49,18 @@
                 @if (_holdMode != HoldMode.None)
                 {
                     <div class="mt-2" data-testid="review-hold-prompt">
-                        <textarea class="form-control form-control-sm mb-2" rows="2" data-testid="review-hold-reason" aria-label="@HoldPlaceholder" placeholder="@HoldPlaceholder" @bind="_holdReason"></textarea>
+                        <div class="mb-2">
+                            @if (_holdMode == HoldMode.Place)
+                            {
+                                <ReasonPicker TReason="EvidenceHoldReason" OtherValue="EvidenceHoldReason.Other" @bind-Value="_placeHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
+                            }
+                            else
+                            {
+                                <ReasonPicker TReason="EvidenceReleaseReason" OtherValue="EvidenceReleaseReason.Other" @bind-Value="_releaseHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
+                            }
+                        </div>
                         <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-sm btn-primary" data-testid="review-hold-confirm" disabled="@string.IsNullOrWhiteSpace(_holdReason)" @onclick="OnConfirmHoldAsync">@L["HoldConfirm"]</button>
+                            <button type="button" class="btn btn-sm btn-primary" data-testid="review-hold-confirm" disabled="@(!_holdReasonValid)" @onclick="OnConfirmHoldAsync">@L["HoldConfirm"]</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-hold-cancel" @onclick="OnCancelHold">@L["HoldCancel"]</button>
                         </div>
                     </div>
@@ -90,7 +102,10 @@
     }
 
     private HoldMode _holdMode = HoldMode.None;
-    private string _holdReason = string.Empty;
+    private EvidenceHoldReason? _placeHoldReason;
+    private EvidenceReleaseReason? _releaseHoldReason;
+    private string? _holdNote;
+    private bool _holdReasonValid;
     private Guid? _activeHoldId;
 
     // The clip whose hold status was last loaded. The menu reloads it when the covering clip changes while open.
@@ -122,9 +137,6 @@
     /// <summary>The export link for the covering clip, or null while export does not apply.</summary>
     private string? ExportHref =>
         ExportReason is null && Selection.MediaItemId is Guid clipId ? EvidenceActions.BuildExportUrl(new[] { clipId }) : null;
-
-    private string HoldPlaceholder =>
-        _holdMode == HoldMode.Release ? L["HoldReleaseReasonPlaceholder"].Value : L["HoldReasonPlaceholder"].Value;
 
     protected override async Task OnInitializedAsync()
     {
@@ -284,15 +296,15 @@
 
     private void OnBeginPlaceHold()
     {
+        ClearHoldReason();
         _holdMode = HoldMode.Place;
-        _holdReason = string.Empty;
         _message = null;
     }
 
     private void OnBeginRelease()
     {
+        ClearHoldReason();
         _holdMode = HoldMode.Release;
-        _holdReason = string.Empty;
         _message = null;
     }
 
@@ -301,16 +313,42 @@
         ClearHoldPrompt();
     }
 
+    /// <summary>Keeps Confirm disabled until the picker of the open mode reports a complete reason.</summary>
+    private void OnHoldReasonValidityChanged(bool valid)
+    {
+        _holdReasonValid = valid;
+    }
+
+    /// <summary>Clears the place and release reasons, their note, and the validity the picker reported for them.</summary>
+    private void ClearHoldReason()
+    {
+        _placeHoldReason = null;
+        _releaseHoldReason = null;
+        _holdNote = null;
+        _holdReasonValid = false;
+    }
+
     private void ClearHoldPrompt()
     {
         _holdMode = HoldMode.None;
-        _holdReason = string.Empty;
+        ClearHoldReason();
     }
 
-    /// <summary>Places or releases the hold with the typed reason. The actor is the signed-in operator; no operator means no action.</summary>
+    /// <summary>The reason text for the open mode, in the form the server stores, or null when no reason is chosen.</summary>
+    private string? BuildHoldReason()
+    {
+        return _holdMode switch
+        {
+            HoldMode.Place when _placeHoldReason is { } placed => ReasonText.Build(placed, EvidenceHoldReason.Other, _holdNote),
+            HoldMode.Release when _releaseHoldReason is { } released => ReasonText.Build(released, EvidenceReleaseReason.Other, _holdNote),
+            _ => null,
+        };
+    }
+
+    /// <summary>Places or releases the hold with the chosen reason. The actor is the signed-in operator; no operator means no action.</summary>
     private async Task OnConfirmHoldAsync()
     {
-        if (string.IsNullOrWhiteSpace(_holdReason) || HoldReason is not null || _holdMode == HoldMode.None)
+        if (BuildHoldReason() is not { } reason || !_holdReasonValid || HoldReason is not null || _holdMode == HoldMode.None)
         {
             return;
         }
@@ -330,7 +368,6 @@
             return;
         }
 
-        string reason = _holdReason.Trim();
         HoldMode mode = _holdMode;
         await RunAsync("hold", L["HoldFailed"], async () =>
         {

@@ -48,7 +48,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating alert with type {AlertType}", alert.AlertType);
+                _logger.LogError("Error creating alert with type {AlertType}: {Message} ({ErrorType})", alert.AlertType, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

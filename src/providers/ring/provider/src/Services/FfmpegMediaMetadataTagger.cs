@@ -61,7 +61,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception tagging media file {Path}", mediaFilePath);
+                _logger.LogError("Exception tagging media file {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 if (File.Exists(tmpPath))
                 {
                     try
@@ -113,7 +113,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception tagging JPEG {Path}", mediaFilePath);
+                _logger.LogError("Exception tagging JPEG {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 if (File.Exists(tmpPath))
                 {
                     try
@@ -151,7 +151,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception reading tagged metadata from {Path}", mediaFilePath);
+                _logger.LogError("Exception reading tagged metadata from {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -179,7 +179,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception reading JPEG comment from {Path}", mediaFilePath);
+                _logger.LogError("Exception reading JPEG comment from {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 return null;
             }
         }

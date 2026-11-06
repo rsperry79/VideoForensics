@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Hosting.Services
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
                         _ = Update(jobId, j => j with { State = ExportJobState.Failed, FilePath = finalPath, ErrorMessage = "Export file failed verification; account was not deleted: " + ex.Message, CompletedUtc = _time.GetUtcNow().UtcDateTime });
-                        _logger.LogError(ex, "Account export job {JobId} for {ProviderName} account: export file failed verification, account kept", jobId, providerName);
+                        _logger.LogError("Account export job {JobId} for {ProviderName} account: export file failed verification, account kept: {Message} ({ErrorType})", jobId, providerName, ex.Message, ex.GetType().Name);
                         return;
                     }
 
@@ -141,7 +141,7 @@ namespace VideoForensics.Client.Hosting.Services
                     {
                         // The export file is kept and the account stays retired.
                         _ = Update(jobId, j => j with { State = ExportJobState.Failed, FilePath = finalPath, ErrorMessage = ex.Message, CompletedUtc = _time.GetUtcNow().UtcDateTime });
-                        _logger.LogError(ex, "Account export job {JobId} for {ProviderName} account wrote its file but deleting the account failed", jobId, providerName);
+                        _logger.LogError("Account export job {JobId} for {ProviderName} account wrote its file but deleting the account failed: {Message} ({ErrorType})", jobId, providerName, ex.Message, ex.GetType().Name);
                         return;
                     }
                 }
@@ -157,7 +157,7 @@ namespace VideoForensics.Client.Hosting.Services
             catch (Exception ex)
             {
                 Fail(jobId, ex.Message);
-                _logger.LogError(ex, "Account export job {JobId} for {ProviderName} account failed", jobId, providerName);
+                _logger.LogError("Account export job {JobId} for {ProviderName} account failed: {Message} ({ErrorType})", jobId, providerName, ex.Message, ex.GetType().Name);
             }
             finally
             {

@@ -12,15 +12,15 @@ namespace VideoForensics.Client.Ui.Shared.Services.Review;
 /// </summary>
 public static class ReviewClipBuilder
 {
-    // The host writes these markers (SnapshotRollupService, SnapshotCaptureService). Ui.Shared cannot reference the
-    // host, so the values are repeated here and must change together.
-    private const string RollupType = "snapshot-rollup";
+    // The host writes this marker (SnapshotCaptureService). Ui.Shared cannot reference the host, so the value is repeated
+    // here and must change together.
     private const string SnapshotType = "snapshot";
     private const string CaptureSource = "capture";
 
     /// <summary>
-    /// The playable clips of one device, sorted by start. Excludes purged items, non-video items, time-lapses, timer stills,
+    /// The playable clips of one device, sorted by start. Excludes purged items, non-video items, timer stills,
     /// and items with no positive duration (a clip with no length can never cover a time on the timeline).
+    /// Time-lapse roll-ups are video loops and are included.
     /// </summary>
     public static IReadOnlyList<ClipWindow> BuildClips(IEnumerable<MediaItem> items, Guid deviceId)
     {
@@ -79,13 +79,13 @@ public static class ReviewClipBuilder
         return !item.IsPurged
             && MediaFormatHelper.IsVideo(item.MediaFormat)
             && item.DurationSeconds is double duration && duration > 0
-            && !IsTimeLapseOrTimerStill(item.MetadataJson);
+            && !IsTimerStill(item.MetadataJson);
     }
 
     /// <summary>
-    /// True for a roll-up loop or a timer still. Malformed or missing metadata is not a marker, so the item stays playable.
+    /// True for a timer still (a capture snapshot). Malformed or missing metadata is not a marker, so the item stays playable.
     /// </summary>
-    private static bool IsTimeLapseOrTimerStill(string? metadataJson)
+    private static bool IsTimerStill(string? metadataJson)
     {
         if (string.IsNullOrWhiteSpace(metadataJson))
         {
@@ -103,9 +103,8 @@ public static class ReviewClipBuilder
 
             string? type = ReadString(root, "type");
             string? source = ReadString(root, "source");
-            return string.Equals(type, RollupType, StringComparison.OrdinalIgnoreCase)
-                || (string.Equals(type, SnapshotType, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(source, CaptureSource, StringComparison.OrdinalIgnoreCase));
+            return string.Equals(type, SnapshotType, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(source, CaptureSource, StringComparison.OrdinalIgnoreCase);
         }
         catch (JsonException)
         {

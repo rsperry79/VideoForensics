@@ -41,6 +41,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             Guid deviceId = device.Id;
+            RingUnstoredValueLog.Log(_logger, device.Name, details);
             await RecordUnknownKindAsync(device, details, ct);
             await _dataClient.RecordDeviceDetailsAsync(
                 deviceId,
@@ -49,7 +50,7 @@ namespace VideoForensics.Providers.Ring.Services
                 RingDeviceDetailsMapper.ToFeatures(details, deviceId),
                 RingDeviceDetailsMapper.ToAlerts(details, deviceId),
                 ct,
-                RingDeviceDetailsMapper.ToSettingsChildren(details.DeviceFields, deviceId));
+                RingDeviceDetailsMapper.ToSettingsChildrenWithFeatures(details, deviceId));
             // The scalar columns come from the same details the child rows were built from; a null field set writes nothing.
             if (details.DeviceFields != null)
             {
@@ -57,6 +58,16 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Returns the stored Devices row id for a Ring device id, or null when the device is not stored yet. Used by the
+        /// per-chime linked doorbots write, which keys on the Devices row.
+        /// </summary>
+        public async Task<Guid?> FindStoredDeviceIdAsync(string providerDeviceId, CancellationToken ct)
+        {
+            Device? device = (await _deviceRepository.ListAsync(ct)).FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
+            return device?.Id;
         }
 
         /// <summary>

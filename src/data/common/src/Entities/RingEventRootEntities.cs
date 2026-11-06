@@ -103,8 +103,6 @@ namespace VideoForensics.Data.Common.Entities
 
         public long? DoorbotId { get; set; }
 
-        public long? DingId { get; set; }
-
         public string? DingIdString { get; set; }
 
         public string? Kind { get; set; }
@@ -142,5 +140,8 @@ namespace VideoForensics.Data.Common.Entities
         public string? OwnerId { get; set; }
 
         public string? Riid { get; set; }
+
+        /// <summary>Events row this doorbot row is linked to. Null until a string ding id matches it.</summary>
+        public Guid? LinkedEventId { get; set; }
     }
 }

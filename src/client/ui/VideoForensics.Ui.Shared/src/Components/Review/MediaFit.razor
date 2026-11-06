@@ -1,0 +1,85 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
+
+@* Fills the flag review media region. Playable clips play through MediaPlayer; a still shows its image; every other state shows its message in the same box. *@
+<div class="media-fit" data-testid="media-fit">
+    @if (State == MediaFitState.Still)
+    {
+        <img src="@Source" alt="@L["MediaFitStillAlt"].Value" class="media-fit-still" data-testid="media-fit-still" />
+    }
+    else if (State == MediaFitState.Playable)
+    {
+        <MediaPlayer @ref="_player"
+                     Source="@Source"
+                     PlaybackRate="@PlaybackRate"
+                     Cursor="@Cursor"
+                     SourceStartUtc="@SourceStartUtc"
+                     SourceDurationSeconds="@SourceDurationSeconds"
+                     Fit="MediaFitMode.Cover"
+                     OnEnded="OnEnded"
+                     OnError="OnError" />
+    }
+    else
+    {
+        <div class="media-fit-state" role="status" aria-live="polite">@L[MessageKey]</div>
+    }
+</div>
+
+@code {
+    /// <summary>What the region shows. Playable plays <see cref="Source"/>; the other states show their message instead.</summary>
+    [Parameter] public MediaFitState State { get; set; } = MediaFitState.Playable;
+
+    /// <summary>The playable URL of the clip, passed to the media player.</summary>
+    [Parameter] public string? Source { get; set; }
+
+    /// <summary>The playback rate, passed to the media player. The host owns it, since the timeline only reports changes.</summary>
+    [Parameter] public double PlaybackRate { get; set; } = 1.0;
+
+    /// <summary>
+    /// Raised after the media player is shown, with the player. Raised with null when the box stops showing the player,
+    /// so a host never keeps a reference to a player that is no longer rendered.
+    /// </summary>
+    [Parameter] public EventCallback<MediaPlayer?> PlayerChanged { get; set; }
+
+    /// <summary>The shared playback time (UTC), passed to the media player.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>The UTC time of the start of <see cref="Source"/>, passed to the media player.</summary>
+    [Parameter] public DateTime? SourceStartUtc { get; set; }
+
+    /// <summary>Length of <see cref="Source"/> in seconds, passed to the media player.</summary>
+    [Parameter] public double? SourceDurationSeconds { get; set; }
+
+    /// <summary>The source reached its end. Passed to the media player.</summary>
+    [Parameter] public EventCallback OnEnded { get; set; }
+
+    /// <summary>The browser could not load or play the source. Passed to the media player.</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private MediaPlayer? _player;
+    private MediaPlayer? _announcedPlayer;
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ReferenceEquals(_player, _announcedPlayer))
+        {
+            return;
+        }
+
+        _announcedPlayer = _player;
+        await PlayerChanged.InvokeAsync(_player);
+    }
+
+    private string MessageKey => State switch
+    {
+        MediaFitState.Purged => "MediaFitPurged",
+        MediaFitState.FileMissing => "MediaFitFileMissing",
+        MediaFitState.DeviceDeleted => "MediaFitDeviceDeleted",
+        MediaFitState.FlagNotFound => "MediaFitFlagNotFound",
+        MediaFitState.NoClipInHour => "MediaFitNoClipInHour",
+        _ => throw new ArgumentOutOfRangeException(nameof(State), State, "No message for a playable clip."),
+    };
+}

@@ -107,6 +107,15 @@
   <data name="LoadFailed" xml:space="preserve">
     <value>Could not load permissions: {0}</value>
   </data>
+  <data name="ServicesSection" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="ServicesDescription" xml:space="preserve">
+    <value>Services settings include health sync and scheduled report generation. Let admins open the Services page.</value>
+  </data>
+  <data name="ServicesLabel" xml:space="preserve">
+    <value>Who may open Services settings</value>
+  </data>
   <data name="InfrastructureSection" xml:space="preserve">
     <value>Infrastructure</value>
   </data>

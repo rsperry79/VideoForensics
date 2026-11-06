@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Bit rate history</value>
+  </data>
+  <data name="PageIntro" xml:space="preserve">
+    <value>Measured video bit rate (kbps) for each camera, from the stream-reported rate of every clip. Estimated values are left out. A sudden drop is flagged as a bit rate collapse. Choose cameras and dates in the right-hand panel.</value>
+  </data>
+  <data name="ScopeHint" xml:space="preserve">
+    <value>Showing {0} camera(s), {1} to {2}.</value>
+  </data>
+  <data name="NoDevicesInScope" xml:space="preserve">
+    <value>No cameras match the current filters. Adjust the devices in the right-hand panel.</value>
+  </data>
+  <data name="NoReadings" xml:space="preserve">
+    <value>No bit rate readings have been recorded for this camera yet.</value>
+  </data>
+  <data name="NoReadingsInRange" xml:space="preserve">
+    <value>No readings in the selected period.</value>
+  </data>
+  <data name="AxisKbps" xml:space="preserve">
+    <value>kbps</value>
+  </data>
+  <data name="AllTimeAverage" xml:space="preserve">
+    <value>All-time average</value>
+  </data>
+  <data name="AllTimeHighest" xml:space="preserve">
+    <value>All-time highest</value>
+  </data>
+  <data name="AllTimeLowest" xml:space="preserve">
+    <value>All-time lowest</value>
+  </data>
+  <data name="SelectionHint" xml:space="preserve">
+    <value>Drag across the graph to select a period, then right-click it to drill down or create a case.</value>
+  </data>
+  <data name="NoSelection" xml:space="preserve">
+    <value>Drag across the graph to select a period first.</value>
+  </data>
+  <data name="DrillDown" xml:space="preserve">
+    <value>Drill down to this period</value>
+  </data>
+  <data name="CreateCase" xml:space="preserve">
+    <value>Create case from this period</value>
+  </data>
+  <data name="CloseMenu" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="LegendCollapse" xml:space="preserve">
+    <value>Bit rate collapse</value>
+  </data>
+  <data name="LegendOneSigma" xml:space="preserve">
+    <value>Over 1 std dev (amber)</value>
+  </data>
+  <data name="LegendTwoSigma" xml:space="preserve">
+    <value>Over 2 std devs (alert)</value>
+  </data>
+  <data name="AllCamerasLabel" xml:space="preserve">
+    <value>All cameras</value>
+  </data>
+  <data name="NoCamerasLabel" xml:space="preserve">
+    <value>No cameras</value>
+  </data>
+  <data name="CameraCountLabel" xml:space="preserve">
+    <value>{0} cameras</value>
+  </data>
+  <data name="CameraFallbackLabel" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="StatCount" xml:space="preserve">
+    <value>Readings</value>
+  </data>
+  <data name="StatLatest" xml:space="preserve">
+    <value>Latest</value>
+  </data>
+  <data name="StatMin" xml:space="preserve">
+    <value>Lowest</value>
+  </data>
+  <data name="StatMax" xml:space="preserve">
+    <value>Highest</value>
+  </data>
+  <data name="StatDelta" xml:space="preserve">
+    <value>All-time delta (highest - lowest)</value>
+  </data>
+  <data name="StatPeriodDelta" xml:space="preserve">
+    <value>Delta in selected period</value>
+  </data>
+  <data name="StatAverage" xml:space="preserve">
+    <value>Average</value>
+  </data>
+  <data name="StatCollapsed" xml:space="preserve">
+    <value>Collapsed clips</value>
+  </data>
+  <data name="BucketTitle" xml:space="preserve">
+    <value>Over time</value>
+  </data>
+  <data name="BucketHour" xml:space="preserve">
+    <value>Hour</value>
+  </data>
+  <data name="BucketDay" xml:space="preserve">
+    <value>Day</value>
+  </data>
+  <data name="BucketWeek" xml:space="preserve">
+    <value>Week</value>
+  </data>
+  <data name="BucketWeekOf" xml:space="preserve">
+    <value>Week of</value>
+  </data>
+  <data name="BucketColStart" xml:space="preserve">
+    <value>Period</value>
+  </data>
+  <data name="BucketColReadings" xml:space="preserve">
+    <value>Readings</value>
+  </data>
+  <data name="BucketColStdDev" xml:space="preserve">
+    <value>Std dev</value>
+  </data>
+  <data name="BucketColDelta" xml:space="preserve">
+    <value>Delta</value>
+  </data>
+  <data name="CalendarTitle" xml:space="preserve">
+    <value>Week by hour (UTC, mean bit rate in kbps)</value>
+  </data>
+  <data name="CalendarDayStdDev" xml:space="preserve">
+    <value>Day std dev</value>
+  </data>
+  <data name="CalendarHourStdDev" xml:space="preserve">
+    <value>Hour std dev</value>
+  </data>
+  <data name="CalendarCellTitle" xml:space="preserve">
+    <value>{0} readings</value>
+  </data>
+  <data name="AlertTitle" xml:space="preserve">
+    <value>Bit rate alert: readings more than 2 std devs from the camera&apos;s mean</value>
+  </data>
+  <data name="AlertLine" xml:space="preserve">
+    <value>{0}: {1} kbps at {2}</value>
+  </data>
+  <data name="TimelineLabel" xml:space="preserve">
+    <value>Bit rate over time</value>
+  </data>
+  <data name="BitrateFlagsHeading" xml:space="preserve">
+    <value>Bit rate collapse flags</value>
+  </data>
+</root>

@@ -64,13 +64,17 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         /// <summary>Paged clip listing for the media viewer, served by the server's <c>/media-items/page</c> endpoint.</summary>
         public async Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
-            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct, bool videoOnly = false)
         {
             var parameters = deviceIds.Select(id => $"deviceIds={id:D}").ToList();
             parameters.Add($"from={Uri.EscapeDataString(fromUtc.ToString("o"))}");
             parameters.Add($"to={Uri.EscapeDataString(toUtc.ToString("o"))}");
             parameters.Add($"skip={skip}");
             parameters.Add($"take={take}");
+            if (videoOnly)
+            {
+                parameters.Add("videoOnly=true");
+            }
 
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items/page?" + string.Join('&', parameters), ct);
             _ = response.EnsureSuccessStatusCode();
@@ -111,10 +115,23 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>Flag backfill runs on the server only, so a client never lists flagged clips for it.</remarks>
+        public Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
+        {
+            throw new NotSupportedException("Flag backfill runs on the server only.");
+        }
+
+        /// <inheritdoc />
         /// <remarks>Analysis runs on the server only, so a client never lists unanalysed media.</remarks>
         public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
             throw new NotSupportedException("Analysis backfill runs on the server only.");
+        }
+
+        /// <inheritdoc />
+        public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
+        {
+            throw new NotSupportedException("Codec backfill runs on the server only.");
         }
 
         /// <remarks>
@@ -129,6 +146,12 @@ namespace VideoForensics.Client.Hosting.Remote
                     && m.MetadataJson is not null && m.MetadataJson.Contains("\"type\":\"snapshot\"", StringComparison.Ordinal))
                 .OrderBy(m => m.RecordedAtUtc)
                 .ToList();
+        }
+
+        /// <remarks>The bit rate analysis runs on the server only; a client reads it through the analysis endpoint.</remarks>
+        public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            throw new NotSupportedException("Bit rate analysis runs on the server only.");
         }
 
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)

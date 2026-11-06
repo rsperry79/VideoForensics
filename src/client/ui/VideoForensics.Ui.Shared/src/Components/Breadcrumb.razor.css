@@ -2,7 +2,7 @@
 .breadcrumb-trail > li + li::before {
     content: "›";
     padding-right: 0.5rem;
-    color: #999;
+    color: var(--bs-secondary-color);
 }
 
 /* Keep the trail on one row: a crumb wrapping onto a second line strands its separator above the text. */

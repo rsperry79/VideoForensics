@@ -8,6 +8,7 @@ namespace VideoForensics.Data.Common.Entities
         public string? Mode { get; set; }
         public long? LastUpdateTimeMs { get; set; }
         public string? SecurityStatusMode { get; set; }
+        public string? SecurityStatusInitiatingEntityId { get; set; }
         public long? SecurityStatusLastUpdateMs { get; set; }
         public bool? ReadOnly { get; set; }
         public string? ModePanelType { get; set; }

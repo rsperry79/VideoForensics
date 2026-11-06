@@ -77,15 +77,15 @@ public sealed class FakeReviewEventLoader : IReviewEventLoader
     public Func<EventLoadCall, CancellationToken, Task<EventPage>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPage([], 0));
 
     /// <inheritdoc />
-    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
     {
-        var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take);
+        var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take, eventTypes);
         _calls.Add(call);
         return Responder(call, ct);
     }
 
     /// <summary>One recorded page request.</summary>
-    public sealed record EventLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, int Skip, int Take);
+    public sealed record EventLoadCall(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, int Skip, int Take, IReadOnlyCollection<string>? EventTypes = null);
 }
 
 /// <summary>Device health change feed double. Tests push changes through <see cref="Changes"/>.</summary>
@@ -104,6 +104,10 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     private readonly List<IReadOnlyList<Guid>> _detailCalls = [];
     private readonly List<WindowLoadCall> _jammingCalls = [];
     private readonly List<WindowLoadCall> _anomalyCalls = [];
+    private readonly List<WindowLoadCall> _bitRateCalls = [];
+
+    /// <summary>Every bit-rate load, in order.</summary>
+    public IReadOnlyList<WindowLoadCall> BitRateCalls => _bitRateCalls;
 
     /// <summary>The event ids of every detail call, in order.</summary>
     public IReadOnlyList<IReadOnlyList<Guid>> DetailCalls => _detailCalls;
@@ -125,6 +129,18 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     /// <summary>Produces the anomalies for a call. Defaults to none.</summary>
     public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<ReviewAnomaly>>> AnomalyResponder { get; set; } =
         (_, _) => Task.FromResult<IReadOnlyList<ReviewAnomaly>>([]);
+
+    /// <summary>Produces the bit-rate flags for a call. Defaults to none.</summary>
+    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<ReviewBitRateFlag>>> BitRateResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyList<ReviewBitRateFlag>>([]);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ReviewBitRateFlag>> LoadBitRateFlagsAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        var call = new WindowLoadCall(deviceIds.ToList(), fromUtc, toUtc);
+        _bitRateCalls.Add(call);
+        return BitRateResponder(call, ct);
+    }
 
     /// <inheritdoc />
     public Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)

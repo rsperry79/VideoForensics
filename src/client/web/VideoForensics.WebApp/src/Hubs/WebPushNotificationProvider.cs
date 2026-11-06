@@ -129,22 +129,22 @@ namespace VideoForensics.Client.WebApp.Hubs
                         }
                         catch (Exception removeEx)
                         {
-                            _logger.LogError(removeEx,
-                                "Failed to remove expired subscription");
+                            _logger.LogError(
+                                "Failed to remove expired subscription: {Message} ({ErrorType})", removeEx.Message, removeEx.GetType().Name);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex,
-                            "Web push notification failed - EventType={EventType}, OperatorId={OperatorId}",
+                        _logger.LogError(
+                            "Web push notification failed - EventType={EventType}, OperatorId={OperatorId}: {Message} ({ErrorType})",
                             notificationEvent.EventType,
-                            subscription.OperatorId);
+                            subscription.OperatorId, ex.Message, ex.GetType().Name);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Web push provider encountered an error - EventType={EventType}", notificationEvent.EventType);
+                _logger.LogError("Web push provider encountered an error - EventType={EventType}: {Message} ({ErrorType})", notificationEvent.EventType, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

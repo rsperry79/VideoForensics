@@ -86,6 +86,24 @@ namespace VideoForensics.Data.Database.Repositories
             _logger.LogInformation("Paired device revoked: {PairedDeviceName} - {Reason}", device.DeviceName, SanitizeForLog(reason));
         }
 
+        public async Task<bool> DeleteRevokedAsync(Guid pairedDeviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            // The RevokedAtUtc filter is in the query, not checked after load, so an active device
+            // can never match and is never deleted even if a caller skips the revoke step.
+            PairedDevice? device = await db.PairedDevices
+                .FirstOrDefaultAsync(d => d.Id == pairedDeviceId && d.RevokedAtUtc != null, ct);
+            if (device == null)
+            {
+                return false;
+            }
+
+            _ = db.PairedDevices.Remove(device);
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Paired device removed: {PairedDeviceName}", device.DeviceName);
+            return true;
+        }
+
         public async Task<IReadOnlyList<Guid>> RevokeAllForOperatorAsync(Guid operatorId, string reason, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

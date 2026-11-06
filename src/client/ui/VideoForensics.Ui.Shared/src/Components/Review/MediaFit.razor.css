@@ -1,0 +1,28 @@
+/* Fills the media region the shell gives it. The media player or the state message is centred inside. */
+.media-fit {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The player takes the whole media box and fills it (MediaFitMode.Cover): object-fit: cover crops the clip to fit. */
+.media-fit ::deep .media-player {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.media-fit ::deep .media-player-video {
+    height: 100%;
+}
+
+/* A flagged still image fills the media box with object-fit: cover, the same as the video. */
+.media-fit-still {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+}

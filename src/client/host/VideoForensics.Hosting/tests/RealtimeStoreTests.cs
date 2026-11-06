@@ -15,6 +15,7 @@ namespace VideoForensics.Client.Hosting.Tests
             public Subject<DownloadProgressDto> Progress { get; } = new();
             public Subject<NotificationEvent> Urgent { get; } = new();
             public Subject<SelfTestStatusDto> SelfTest { get; } = new();
+            public Subject<MaintenanceStatusDto> MaintenanceStream { get; } = new();
             public Subject<ConnectionState> State { get; } = new();
             public Subject<ThumbnailReadyDto> Thumbnails { get; } = new();
             public Subject<EvidenceChangedDto> Evidence { get; } = new();
@@ -22,11 +23,16 @@ namespace VideoForensics.Client.Hosting.Tests
             public IObservable<DownloadProgressDto> DownloadProgress => Progress;
             public IObservable<NotificationEvent> UrgentEvents => Urgent;
             public IObservable<SelfTestStatusDto> SelfTestStatus => SelfTest;
+            public IObservable<MaintenanceStatusDto> Maintenance => MaintenanceStream;
             public IObservable<ConnectionState> Connection => State;
             public IObservable<ThumbnailReadyDto> ThumbnailReady => Thumbnails;
             public IObservable<EvidenceChangedDto> EvidenceChanged => Evidence;
             public Subject<DeviceHealthChangedDto> Health { get; } = new();
             public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => Health;
+            public Subject<ClientConfigDto> Config { get; } = new();
+            public IObservable<ClientConfigDto> ClientConfigChanged => Config;
+            public Subject<MediaFlagChangedDto> Flags { get; } = new();
+            public IObservable<MediaFlagChangedDto> MediaFlagChanged => Flags;
             public Task StartAsync(CancellationToken cancellationToken)
             {
                 return Task.CompletedTask;
@@ -73,6 +79,39 @@ namespace VideoForensics.Client.Hosting.Tests
             hub.Evidence.OnNext(later);
 
             Assert.Equal(new[] { later }, seen);
+        }
+
+        /// <summary>A media flag change is a live signal: a subscriber hears only the changes made after it subscribed.</summary>
+        [Fact]
+        public void RealtimeStore_MediaFlagChanged_ForwardsEventsWithoutReplay()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            var early = new MediaFlagChangedDto(Guid.NewGuid(), Guid.NewGuid());
+            var later = new MediaFlagChangedDto(Guid.NewGuid(), Guid.NewGuid());
+            hub.Flags.OnNext(early);
+
+            var seen = new List<MediaFlagChangedDto>();
+            using IDisposable subscription = store.MediaFlagChanged.Subscribe(seen.Add);
+            hub.Flags.OnNext(later);
+
+            Assert.Equal(new[] { later }, seen);
+        }
+
+        /// <summary>The MAUI source hands the store's media-flag stream to open review pages unchanged.</summary>
+        [Fact]
+        public void RemoteMediaFlagChangedSource_MediaFlagChanged_ForwardsStoreStream()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            var source = new RemoteMediaFlagChangedSource(store);
+            var change = new MediaFlagChangedDto(Guid.NewGuid(), Guid.NewGuid());
+            var seen = new List<MediaFlagChangedDto>();
+            using IDisposable subscription = source.MediaFlagChanged.Subscribe(seen.Add);
+
+            hub.Flags.OnNext(change);
+
+            Assert.Equal(new[] { change }, seen);
         }
 
         [Fact]

@@ -111,7 +111,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
 
         // Assert: the Ring account is not offered by Wyze, so the account choice reads "All accounts" again
-        Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
+        cut.WaitForAssertion(() => Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value));
         cut.WaitForAssertion(() => Assert.Equal("Wyze", ReviewState.ProviderFilter));
         Assert.Null(ReviewState.AccountFilter);
     }
@@ -300,6 +300,35 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewFilterPanel_Rendered_HasNoLabelsAboveTheDropdowns()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - each dropdown's first option already says what it filters, and it keeps an aria-label
+        Assert.Empty(cut.FindAll("label.form-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-provider']").GetAttribute("aria-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-account']").GetAttribute("aria-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-location']").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_DoesNotHoldTheCaseSection()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - the Case section is its own section above the filters
+        Assert.Empty(cut.FindAll("[data-testid='review-case-section']"));
+    }
+
+    [Fact]
     public void ReviewFilterPanel_Inline_HasNoPopupChrome()
     {
         // Arrange
@@ -314,7 +343,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         Assert.Null(panel.GetAttribute("role"));
         Assert.DoesNotContain("min-width", panel.GetAttribute("style") ?? string.Empty);
         Assert.DoesNotContain("position", panel.GetAttribute("style") ?? string.Empty);
-        Assert.Equal(L["FilterTitle"].Value, cut.Find("[data-testid='review-filter-panel'] .fw-semibold").TextContent);
+        Assert.Contains(L["FilterTitle"].Value, cut.FindAll("[data-testid='review-filter-panel'] .fw-semibold").Select(e => e.TextContent));
     }
 
     [Fact]
@@ -366,5 +395,18 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     private static string[] OptionValues(IElement select)
     {
         return select.QuerySelectorAll("option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray();
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_HasNoEventTypeSelect()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert: the event type choice lives in the Event Filter section
+        Assert.Empty(cut.FindAll("[data-testid='review-event-button']"));
     }
 }

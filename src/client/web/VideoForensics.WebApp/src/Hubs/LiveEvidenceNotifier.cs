@@ -37,7 +37,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // The write has already succeeded; a failed push only means open pages refresh on their next load.
-                _logger.LogWarning(ex, "Could not push an evidence change for device {DeviceId} to live clients", deviceId);
+                _logger.LogWarning("Could not push an evidence change for device {DeviceId} to live clients: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
             }
         }
     }

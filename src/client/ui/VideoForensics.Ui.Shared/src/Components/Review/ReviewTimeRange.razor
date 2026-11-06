@@ -6,29 +6,30 @@
 @inject IStringLocalizer<ReviewPage> L
 
 <div class="review-time-range p-2" data-testid="review-time-range">
-    <div class="small fw-semibold mb-2">@L["RangeLabel"]</div>
+    <ReviewSidebarSection Title="@L["RangeLabel"]">
+        <select class="form-select form-select-sm mb-2" data-testid="review-range" aria-label="@L["RangeLabel"]" @onchange="OnRangeChanged">
+            <option value="hour" selected="@(_choice == RangeChoice.LastHour)">@L["RangeLastHour"]</option>
+            <option value="day" selected="@(_choice == RangeChoice.Last24Hours)">@L["RangeLast24Hours"]</option>
+            <option value="week" selected="@(_choice == RangeChoice.Last7Days)">@L["RangeLast7Days"]</option>
+            <option value="month" selected="@(_choice == RangeChoice.Last30Days)">@L["RangeLast30Days"]</option>
+            <option value="custom" selected="@(_choice == RangeChoice.Custom)">@L["RangeCustom"]</option>
+        </select>
 
-    <select class="form-select form-select-sm mb-2" data-testid="review-range" aria-label="@L["RangeLabel"]" @onchange="OnRangeChanged">
-        <option value="hour" selected="@(_choice == RangeChoice.LastHour)">@L["RangeLastHour"]</option>
-        <option value="day" selected="@(_choice == RangeChoice.Last24Hours)">@L["RangeLast24Hours"]</option>
-        <option value="week" selected="@(_choice == RangeChoice.Last7Days)">@L["RangeLast7Days"]</option>
-        <option value="month" selected="@(_choice == RangeChoice.Last30Days)">@L["RangeLast30Days"]</option>
-        <option value="custom" selected="@(_choice == RangeChoice.Custom)">@L["RangeCustom"]</option>
-    </select>
-
-    @if (_choice == RangeChoice.Custom)
-    {
-        <div class="d-flex gap-2">
-            <label class="form-label small mb-0 flex-fill">
-                @L["RangeFrom"]
-                <input type="date" class="form-control form-control-sm" data-testid="review-range-from" value="@FromDate" @onchange="OnFromChanged" />
-            </label>
-            <label class="form-label small mb-0 flex-fill">
-                @L["RangeTo"]
-                <input type="date" class="form-control form-control-sm" data-testid="review-range-to" value="@ToDate" @onchange="OnToChanged" />
-            </label>
-        </div>
-    }
+        @if (_choice == RangeChoice.Custom)
+        {
+            @* One column: the From label and its picker, then the To label and its picker. *@
+            <div class="review-range-dates d-flex flex-column gap-2">
+                <label class="form-label small mb-0">
+                    @L["RangeFrom"]
+                    <input type="date" class="form-control form-control-sm" data-testid="review-range-from" value="@FromDate" @onchange="OnFromChanged" />
+                </label>
+                <label class="form-label small mb-0">
+                    @L["RangeTo"]
+                    <input type="date" class="form-control form-control-sm" data-testid="review-range-to" value="@ToDate" @onchange="OnToChanged" />
+                </label>
+            </div>
+        }
+    </ReviewSidebarSection>
 </div>
 
 @code {

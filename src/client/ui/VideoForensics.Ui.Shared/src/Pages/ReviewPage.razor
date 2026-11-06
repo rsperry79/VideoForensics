@@ -13,6 +13,7 @@
 @using Device = VideoForensics.Data.Common.Entities.Device
 @using VideoForensics.Client.Common.Viewer
 @implements IDisposable
+@inject ReviewSettingsStore SettingsStore
 @inject IDeviceRepository DeviceRepository
 @inject ReviewPageState State
 @inject ReviewCaseMode CaseMode
@@ -36,8 +37,10 @@ else
     <ReviewTimelineFeeder />
 
     <PageRightPanelContent>
-        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
         <ReviewTimeRange State="State" />
+        <ReviewEventFilter State="State" />
+        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
+        <ReviewCaseSection State="State" Devices="_visibleIds" />
         <ReviewActionsPanel State="State" />
     </PageRightPanelContent>
 
@@ -47,8 +50,6 @@ else
     {
         <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
     }
-
-    <ReviewViewNav Tabs="true" />
 
     <div class="review-body">
         <div class="review-content">
@@ -99,6 +100,11 @@ else
     {
         State.OnChange += OnReviewStateChanged;
         ScopeState.OnChange += OnScopeChanged;
+        CaseMode.OnChange += OnCaseModeChanged;
+        NavigationManager.LocationChanged += OnLocationChanged;
+
+        // Read before anything writes the address bar: a bare /media is the only address that restores the saved state.
+        _arrivedWithoutQuery = CurrentQuery().Length == 0;
 
         await SessionState.EnsureLoadedAsync();
         _isAuthenticated = SessionState.IsSignedIn;
@@ -128,6 +134,39 @@ else
         }
 
         _isLoading = false;
+    }
+
+    /// <summary>
+    /// On the first render of a bare /media, applies the state saved in localStorage. The saved query goes through the same
+    /// path as a URL, so the case, range, cameras and tab come back as they were. The JS call is skipped during prerender.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _restoreChecked)
+        {
+            return;
+        }
+
+        _restoreChecked = true;
+        if (!_isAuthenticated || !_arrivedWithoutQuery)
+        {
+            return;
+        }
+
+        SavedReviewSettings? saved = await SettingsStore.LoadAsync();
+        if (saved is null)
+        {
+            return;
+        }
+
+        ReviewUrlState url = ReviewUrl.Parse(saved.Query);
+        if (url.CaseId is Guid caseId)
+        {
+            await EnterCaseAsync(caseId);
+        }
+
+        ReadUrlOnce(url);
+        State.SelectEvent(saved.EventId);
     }
 
     /// <summary>
@@ -206,10 +245,11 @@ else
     private void ReadUrlOnce(ReviewUrlState url)
     {
         State.SetFilters(url.Provider, url.Account, url.Location);
+        State.SetEventTypes(url.EventTypes ?? []);
         ComputeVisibleCameras();
         HashSet<Guid> visible = _visibleIds.ToHashSet();
 
-        List<Guid> cameras = url.Devices.Where(visible.Contains).ToList();
+        List<Guid> cameras = url.Devices.Where(visible.Contains).Take(CameraSync.MaxTiles).ToList();
         if (cameras.Count == 0 && CaseMode.Active)
         {
             cameras = CaseMode.DeviceIds.Where(visible.Contains).Take(CameraSync.MaxTiles).ToList();
@@ -276,9 +316,12 @@ else
             State.ProviderFilter,
             State.AccountFilter,
             CaseMode.Active ? CaseMode.CaseId : null,
-            State.LocationFilter);
+            State.LocationFilter,
+            State.EventTypes);
 
         string target = ReviewUrl.Build(current);
+        _ = SettingsStore.SaveAsync(new SavedReviewSettings(target, State.SelectedEventId));
+
         string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
         if (target == existing)
         {
@@ -295,10 +338,45 @@ else
         return new Uri(NavigationManager.Uri).Query;
     }
 
+    /// <summary>Entering or leaving a case changes the address bar too, so a reload keeps the case.</summary>
+    /// <summary>
+    /// The left menu switches views by navigating to /media?tab=..., and the page is already open, so it is not rebuilt.
+    /// This follows the tab in the address. Only review routes count: a move to another page must not touch the state.
+    /// </summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        var location = new Uri(e.Location);
+        bool onReviewRoute = location.AbsolutePath.Equals("/media", StringComparison.OrdinalIgnoreCase)
+            || location.AbsolutePath.Equals("/media/review", StringComparison.OrdinalIgnoreCase);
+        if (!_urlParsed || !onReviewRoute)
+        {
+            return;
+        }
+
+        ReviewTab tab = ReviewUrl.Parse(location.Query).Tab;
+        if (tab != State.ActiveTab)
+        {
+            State.SetTab(tab);
+        }
+    }
+
+    private void OnCaseModeChanged()
+    {
+        if (_urlParsed)
+        {
+            WriteBackUrl();
+        }
+    }
+
     public void Dispose()
     {
         State.OnChange -= OnReviewStateChanged;
         ScopeState.OnChange -= OnScopeChanged;
+        CaseMode.OnChange -= OnCaseModeChanged;
+        NavigationManager.LocationChanged -= OnLocationChanged;
         CaseMode.Exit();
     }
+
+    private bool _arrivedWithoutQuery;
+    private bool _restoreChecked;
 }

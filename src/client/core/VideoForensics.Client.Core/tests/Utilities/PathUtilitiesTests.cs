@@ -1,4 +1,5 @@
 using VideoForensics.Client.Core.Utilities;
+using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
 
@@ -14,14 +15,14 @@ namespace VideoForensics.Client.Core.Tests.Utilities
             Assert.NotNull(result);
             Assert.NotEmpty(result);
             Assert.Contains("VideoForensics", result, StringComparison.OrdinalIgnoreCase);
-            Assert.True(result.Contains("media"));
+            Assert.Contains("Media", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
-        public void GetDefaultDownloadLocation_ContainsProgramDataFolder()
+        public void GetDefaultDownloadLocation_IsUnderDefaultStorageRoot()
         {
             string result = PathUtilities.GetDefaultDownloadLocation();
-            string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            string programDataPath = new StorageLocationProvider().GetDefaultStorageRoot();
 
             // On Windows, paths should start with ProgramData; on Linux they should use /var/lib
             if (OperatingSystem.IsWindows())
@@ -48,7 +49,7 @@ namespace VideoForensics.Client.Core.Tests.Utilities
         {
             string result = PathUtilities.GetDefaultDownloadLocation();
 
-            Assert.EndsWith("media", result);
+            Assert.EndsWith("Media", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -59,14 +60,14 @@ namespace VideoForensics.Client.Core.Tests.Utilities
             Assert.NotNull(result);
             Assert.NotEmpty(result);
             Assert.Contains("VideoForensics", result, StringComparison.OrdinalIgnoreCase);
-            Assert.True(result.Contains("backup"));
+            Assert.Contains("Backup", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
-        public void GetDefaultQueryExportLocation_ContainsProgramDataFolder()
+        public void GetDefaultQueryExportLocation_IsUnderDefaultStorageRoot()
         {
             string result = PathUtilities.GetDefaultQueryExportLocation();
-            string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            string programDataPath = new StorageLocationProvider().GetDefaultStorageRoot();
 
             // On Windows, paths should start with ProgramData; on Linux they should use /var/lib
             if (OperatingSystem.IsWindows())
@@ -93,7 +94,7 @@ namespace VideoForensics.Client.Core.Tests.Utilities
         {
             string result = PathUtilities.GetDefaultQueryExportLocation();
 
-            Assert.EndsWith("backup", result);
+            Assert.EndsWith("Backup", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]

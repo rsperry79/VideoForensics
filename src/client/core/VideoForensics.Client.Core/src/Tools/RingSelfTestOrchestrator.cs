@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Core.Tools
                     _completedAtUtc = DateTime.UtcNow;
                 }
 
-                _logger.LogError(ex, "Self-test run failed");
+                _logger.LogError("Self-test run failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

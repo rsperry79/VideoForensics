@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using VideoForensics.Core.Helpers.Json.Converters;
+
 namespace VideoForensics.Providers.Ring.Entities
 {
     /// <summary>The "settings" object of a doorbot in ring_devices. Keys we do not model are kept in AdditionalFields.</summary>
@@ -19,6 +21,46 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? MotionDetectionEnabled { get; set; }
 
+        /// <summary>Ring sends 0 or 1. Also mapped onto Devices for doorbots and stickup cams.</summary>
+        [JsonPropertyName("enable_vod")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonConverter(typeof(FlexibleBooleanConverter))]
+        public bool? EnableVod { get; set; }
+
+        [JsonPropertyName("exposure_control")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long? ExposureControl { get; set; }
+
+        /// <summary>Ring sends 0 or 1.</summary>
+        [JsonPropertyName("vod_suspended")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long? VodSuspended { get; set; }
+
+        [JsonPropertyName("pir_sensitivity_1")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long? PirSensitivity1 { get; set; }
+
+        [JsonPropertyName("enable_audio_recording")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? EnableAudioRecording { get; set; }
+
+        [JsonPropertyName("advanced_motion_detection_enabled")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? AdvancedMotionDetectionEnabled { get; set; }
+
+        [JsonPropertyName("advanced_motion_detection_human_only_mode")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? AdvancedMotionDetectionHumanOnlyMode { get; set; }
+
+        [JsonPropertyName("live_view_preset_profile")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string LiveViewPresetProfile { get; set; }
+
+        /// <summary>The top-level key. When absent, the mapper falls back to settings.motion_settings.motion_snooze_preset_profile.</summary>
+        [JsonPropertyName("motion_snooze_preset_profile")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string MotionSnoozePresetProfile { get; set; }
+
         [JsonPropertyName("chime_settings")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DoorbotChimeSettings ChimeSettings { get; set; }
@@ -26,6 +68,35 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("advanced_object_settings")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public AdvancedObjectSettings AdvancedObjectSettings { get; set; }
+
+        [JsonPropertyName("advanced_motion_zones")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public AdvancedMotionZones AdvancedMotionZones { get; set; }
+
+        [JsonPropertyName("ignore_zones")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IgnoreZones IgnoreZones { get; set; }
+
+        [JsonPropertyName("live_view_presets")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[] LiveViewPresets { get; set; }
+
+        [JsonPropertyName("motion_snooze_presets")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[] MotionSnoozePresets { get; set; }
+
+        [JsonPropertyName("motion_zones")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long?[] MotionZones { get; set; }
+
+        [JsonPropertyName("advanced_motion_detection_types")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[] AdvancedMotionDetectionTypes { get; set; }
+
+        /// <summary>settings.zone_settings: the same motion and package zones the top-level zone_settings key carries.</summary>
+        [JsonPropertyName("zone_settings")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ZoneSettings ZoneSettings { get; set; }
 
         /// <summary>Settings keys this model does not name. Stored as settings metadata JSON so no Ring value is dropped.</summary>
         [JsonExtensionData]

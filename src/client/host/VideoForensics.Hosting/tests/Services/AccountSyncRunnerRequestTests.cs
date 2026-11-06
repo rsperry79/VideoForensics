@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull)
         {
-            return new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+            return new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
         }
 
         private AccountSyncRunner Sut()

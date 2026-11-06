@@ -1,0 +1,126 @@
+{
+  "doorbots": [
+    {
+      "id": 4001,
+      "kind": "doorbell_test",
+      "description": "Test Door",
+      "device_id": "ffeeddccbbaa",
+      "ring_id": "ring-fake-4",
+      "settings": {
+        "doorbell_volume": 3,
+        "cv_paid_features": {
+          "baby_cry": true,
+          "car_alarm": false,
+          "co2_smoke_alarm": true,
+          "dog_bark": false,
+          "general_sound": true,
+          "glass_break": false,
+          "human": true,
+          "loitering": false,
+          "motion": true,
+          "other_motion": false,
+          "package_delivery": true,
+          "package_pickup": false,
+          "cv_triggers": true,
+          "vehicle": false,
+          "animal": null,
+          "future_cv_flag": true
+        },
+        "other_paid_features": {
+          "alexa_concierge": true,
+          "sheila_cv": false,
+          "sheila_recording": true,
+          "critical_alerts": false,
+          "system_level_pip": true,
+          "extended_live_view": false,
+          "snapshot_capture_plus": true,
+          "live_speak": false,
+          "closed_caption": true,
+          "daily_digest": false,
+          "ding_call": true,
+          "natural_language_search": false,
+          "multicam_live_view": true,
+          "package_protection": false,
+          "alarm_triggered_recording": true,
+          "recording_24x7": false
+        },
+        "network_settings": {
+          "mac_address_ble": "02:00:00:00:00:01",
+          "mac_address_wifi_24": "02:00:00:00:00:02",
+          "mac_address_wifi_5": "02:00:00:00:00:03",
+          "max_dynamic_listen_interval": null,
+          "multi_net_pref": 1,
+          "data_restriction_enabled": null,
+          "network_diagnosis": {
+            "channel_analysis": true,
+            "periodic_diagnosis": false,
+            "lan_performance": true,
+            "tcp_iperf": false,
+            "udp_iperf": true,
+            "tcp_host": "diag-host-fake",
+            "udp_host": "diag-host-fake",
+            "tcp_port": 5201,
+            "udp_port": 5202,
+            "udp_bandwidth": 1000000
+          }
+        }
+      }
+    }
+  ],
+  "authorized_doorbots": [
+    {
+      "id": 4002,
+      "kind": "doorbell_test",
+      "description": "Shared Door",
+      "device_id": "112233445599",
+      "encryption_group": null,
+      "settings": {
+        "doorbell_volume": 2
+      }
+    }
+  ],
+  "stickup_cams": [
+    {
+      "id": 5001,
+      "kind": "stickup_cam_test",
+      "description": "Garden",
+      "device_id": "0a0b0c0d0e0f",
+      "ring_id": "ring-fake-5",
+      "settings": {
+        "other_paid_features": {
+          "critical_alerts": "yes",
+          "live_speak": false
+        },
+        "network_settings": {
+          "mac_address_ble": null,
+          "mac_address_wifi_24": null,
+          "mac_address_wifi_5": null,
+          "max_dynamic_listen_interval": null,
+          "multi_net_pref": null,
+          "data_restriction_enabled": null,
+          "network_diagnosis": {
+            "channel_analysis": null,
+            "periodic_diagnosis": null,
+            "lan_performance": null,
+            "tcp_iperf": null,
+            "udp_iperf": null,
+            "tcp_host": null,
+            "udp_host": null,
+            "tcp_port": null,
+            "udp_port": null,
+            "udp_bandwidth": null
+          }
+        }
+      }
+    }
+  ],
+  "chimes": [
+    {
+      "id": 6001,
+      "kind": "chime_test",
+      "description": "Hallway",
+      "device_id": "a1b2c3d4e5f6",
+      "ring_id": "ring-fake-6"
+    }
+  ]
+}

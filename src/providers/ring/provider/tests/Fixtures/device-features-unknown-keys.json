@@ -1,0 +1,31 @@
+{
+  "doorbots": [
+    {
+      "id": 6001,
+      "features": {
+        "cfes_eligible": "SECRETVALUE",
+        "mystery_flag": true,
+        "mystery_list": [1, 2],
+        "mystery_feature": {
+          "mystery_inner": "SECRETVALUE",
+          "enablement": { "enabled": true, "extra_nested": { "a": 1 } }
+        },
+        "smart_video_search": {
+          "eligibility": {
+            "eligible": true,
+            "ineligibility_reasons": ["unsupported_language", { "code": "SECRETVALUE" }, ["SECRETVALUE"], null],
+            "extra_obj": { "a": 1 }
+          },
+          "enablement": "SECRETVALUE",
+          "disallow_reasons_extra": [1],
+          "learning": "SECRETVALUE",
+          "recording_mode_availability": {
+            "continuous": { "supported": true, "available": "SECRETVALUE", "extra": 1 },
+            "other_mode": { "supported": false }
+          }
+        },
+        "unusual_alert": { "learning": null }
+      }
+    }
+  ]
+}

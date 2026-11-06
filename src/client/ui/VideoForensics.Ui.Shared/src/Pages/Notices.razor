@@ -83,6 +83,10 @@ else
                             {
                                 <a href="@reviewLink" class="ms-2" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
                             }
+                            @if (NoticeActions.ReauthenticateLink(notice.EventType, notice.ActionPath) is { } reauthLink)
+                            {
+                                <a href="@reauthLink" class="ms-2" data-testid="notice-reauth">@L["NoticeReauthenticate"]</a>
+                            }
                             @if (NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath) is { } settingsLink)
                             {
                                 <a href="@settingsLink" class="ms-2" data-testid="notice-device-settings">@L["NoticeDeviceSettings"]</a>

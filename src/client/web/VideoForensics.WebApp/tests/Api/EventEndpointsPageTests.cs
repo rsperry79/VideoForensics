@@ -28,11 +28,11 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "p1", EventType = "motion", OccurredAtUtc = From, DiscoveredAtUtc = From };
             var repository = new Mock<IEventRepository>();
             _ = repository
-                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), 10, 25, It.IsAny<CancellationToken>()))
+                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 10, 25, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage(new List<Event> { evt }, 42));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { deviceId }, From, To, excludeTypes: null, skip: 10, take: 25, repository.Object, CancellationToken.None);
+                new[] { deviceId }, From, To, excludeTypes: null, includeTypes: null, skip: 10, take: 25, repository.Object, CancellationToken.None);
 
             Ok<EventPageDto> ok = Assert.IsType<Ok<EventPageDto>>(result);
             Assert.Equal(42, ok.Value!.TotalCount);
@@ -45,14 +45,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var repository = new Mock<IEventRepository>();
             _ = repository
-                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), 0, 100, It.IsAny<CancellationToken>()))
+                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 0, 100, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage(new List<Event>(), 0));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { Guid.NewGuid() }, From, To, excludeTypes: null, skip: null, take: null, repository.Object, CancellationToken.None);
+                new[] { Guid.NewGuid() }, From, To, excludeTypes: null, includeTypes: null, skip: null, take: null, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<Ok<EventPageDto>>(result);
-            repository.Verify(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), 0, 100, It.IsAny<CancellationToken>()), Times.Once);
+            repository.Verify(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 0, 100, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         /// <summary>Verifies that excludeTypes is forwarded to the repository.</summary>
@@ -62,11 +62,28 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var device = Guid.NewGuid();
             var repository = new Mock<IEventRepository>();
             _ = repository
-                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Contains("person")), 0, 10, It.IsAny<CancellationToken>()))
+                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Contains("person")), It.IsAny<IReadOnlyCollection<string>?>(), 0, 10, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage(new List<Event>(), 0));
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { device }, From, To, excludeTypes: new[] { "person" }, skip: 0, take: 10, repository.Object, CancellationToken.None);
+                new[] { device }, From, To, excludeTypes: new[] { "person" }, includeTypes: null, skip: 0, take: 10, repository.Object, CancellationToken.None);
+
+            _ = Assert.IsType<Ok<EventPageDto>>(result);
+            repository.VerifyAll();
+        }
+
+        /// <summary>Verifies that includeTypes is forwarded to the repository.</summary>
+        [Fact]
+        public async Task ListEventPageAsync_IncludeTypes_ForwardsToRepository()
+        {
+            var device = Guid.NewGuid();
+            var repository = new Mock<IEventRepository>();
+            _ = repository
+                .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Count == 2 && x.Contains("person") && x.Contains("ring")), 0, 10, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new EventPage(new List<Event>(), 0));
+
+            IResult result = await EventEndpoints.ListEventPageAsync(
+                new[] { device }, From, To, excludeTypes: null, includeTypes: new[] { "person", "ring" }, skip: 0, take: 10, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<Ok<EventPageDto>>(result);
             repository.VerifyAll();
@@ -79,7 +96,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                Array.Empty<Guid>(), From, To, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
+                Array.Empty<Guid>(), From, To, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<BadRequest>(result);
             repository.VerifyNoOtherCalls();
@@ -93,7 +110,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Guid[] devices = Enumerable.Range(0, 65).Select(_ => Guid.NewGuid()).ToArray();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                devices, From, To, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
+                devices, From, To, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<BadRequest>(result);
             repository.VerifyNoOtherCalls();
@@ -106,7 +123,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { Guid.NewGuid() }, From, to: null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
+                new[] { Guid.NewGuid() }, From, to: null, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<BadRequest>(result);
         }
@@ -118,7 +135,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { Guid.NewGuid() }, To, From, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
+                new[] { Guid.NewGuid() }, To, From, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<BadRequest>(result);
         }
@@ -132,7 +149,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { Guid.NewGuid() }, From, To, null, skip: 0, take: take, repository.Object, CancellationToken.None);
+                new[] { Guid.NewGuid() }, From, To, null, null, skip: 0, take: take, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<BadRequest>(result);
         }
@@ -144,7 +161,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var repository = new Mock<IEventRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
-                new[] { Guid.NewGuid() }, From, To, null, skip: -1, take: 10, repository.Object, CancellationToken.None);
+                new[] { Guid.NewGuid() }, From, To, null, null, skip: -1, take: 10, repository.Object, CancellationToken.None);
 
             _ = Assert.IsType<BadRequest>(result);
         }

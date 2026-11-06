@@ -22,6 +22,9 @@ namespace VideoForensics.Providers.Ring.Services
         private const string DetectionTypesKey = "detection_types";
         private const string ThresholdKey = "threshold";
 
+        // The keys Parse stores from offline_motion_event_settings. Keep in step with Parse.
+        private static readonly string[] OfflineMotionKeys = ["subscribed", "enabled", "max_upload_kb", "resolution_p", "frequency_after_secs", "period_after_secs"];
+
         /// <summary>Builds the typed rows for one device. Null fields (no settings sent) yield empty groups.</summary>
         public static TypedSettingDetails Parse(Dictionary<string, JsonElement>? fields)
         {
@@ -67,8 +70,9 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// The settings JSON left after the typed keys are removed: the offline object, cv_settings.detection_types,
-        /// and the numeric cv_settings.threshold entries. Null when nothing is left.
+        /// The settings JSON left after the typed keys are removed. Only the keys the parsers store are removed from offline_motion_event_settings,
+        /// cv_paid_features, other_paid_features and network_settings (see <see cref="RingDeviceNetworkParser"/>), so an unknown key inside them stays.
+        /// Also removes cv_settings.detection_types and the numeric cv_settings.threshold entries. Null when nothing is left.
         /// </summary>
         public static string? RemainderJson(Dictionary<string, JsonElement>? fields)
         {
@@ -83,7 +87,11 @@ namespace VideoForensics.Providers.Ring.Services
                 root[field.Key] = JsonNode.Parse(field.Value.GetRawText());
             }
 
-            _ = root.Remove(OfflineMotionKey);
+            // Keys the settings-row parser types (RingDeviceSettings, DeviceGeneralSettings) are not stored a second time in the remainder.
+            RingDeviceSettingsParser.RemoveTypedKeys(root);
+            RemoveTypedOfflineKeys(root);
+            // These groups have typed rows (RingDevicePaidFeatures, DeviceNetworkSettings, RingDeviceNetworkDiagnosis), so the keys stored there are not stored twice.
+            RingDeviceNetworkParser.RemoveTypedKeys(root);
             if (root[CvSettingsKey] is JsonObject cv)
             {
                 _ = cv.Remove(DetectionTypesKey);
@@ -110,6 +118,25 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             return root.Count > 0 ? root.ToJsonString() : null;
+        }
+
+        /// <summary>Removes the offline keys Parse stores. The group is removed when that leaves it empty; a group that is not an object is kept, since nothing in it is stored.</summary>
+        private static void RemoveTypedOfflineKeys(JsonObject root)
+        {
+            if (root[OfflineMotionKey] is not JsonObject offline)
+            {
+                return;
+            }
+
+            foreach (string key in OfflineMotionKeys)
+            {
+                _ = offline.Remove(key);
+            }
+
+            if (offline.Count == 0)
+            {
+                _ = root.Remove(OfflineMotionKey);
+            }
         }
 
         private static bool? Bool(JsonElement obj, string name)

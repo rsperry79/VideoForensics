@@ -110,6 +110,15 @@
   <data name="RevokeFailed2" xml:space="preserve">
     <value>Revoke failed: {0}</value>
   </data>
+  <data name="RemoveButton" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="RemoveFailed1" xml:space="preserve">
+    <value>Remove failed: {0}</value>
+  </data>
+  <data name="RemoveFailed2" xml:space="preserve">
+    <value>Remove failed: {0}</value>
+  </data>
   <data name="NotAvailable" xml:space="preserve">
     <value>-</value>
   </data>

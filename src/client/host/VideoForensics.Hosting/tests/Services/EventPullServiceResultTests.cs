@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private EventPullService Sut()
         {
-            return new(_events.Object, _devices.Object, _locations.Object, _accounts.Object, _discovery.Object);
+            return new(_events.Object, _devices.Object, _locations.Object, _accounts.Object);
         }
 
         private void SetupAccount()
@@ -63,7 +63,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
-            Assert.Equal(new EventPullResult(DevicesSynced: 2, LocationsSynced: 1, EventsSynced: 3, ConfigAreasSynced: 2, FeedsFailed: 0), result);
+            Assert.Equal(new EventPullResult(DevicesSynced: 2, LocationsSynced: 1, EventsSynced: 3, ConfigAreasSynced: 0, FeedsFailed: 0), result);
         }
 
         [Fact]
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
-            Assert.Equal(new EventPullResult(DevicesSynced: 2, LocationsSynced: 1, EventsSynced: 2, ConfigAreasSynced: 1, FeedsFailed: 1), result);
+            Assert.Equal(new EventPullResult(DevicesSynced: 2, LocationsSynced: 1, EventsSynced: 2, ConfigAreasSynced: 0, FeedsFailed: 1), result);
         }
 
         [Fact]

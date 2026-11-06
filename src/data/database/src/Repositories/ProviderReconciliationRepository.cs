@@ -44,8 +44,8 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error appending provider reconciliation record for device {DeviceId}",
-                    record.DeviceId);
+                _logger.LogError("Error appending provider reconciliation record for device {DeviceId}: {Message} ({ErrorType})",
+                    record.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

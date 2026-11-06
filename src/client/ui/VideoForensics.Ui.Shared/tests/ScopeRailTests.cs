@@ -33,12 +33,45 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         // Act
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
-        // Assert - default scope is last 7 days from "today", shown inclusively.
-        IReadOnlyList<IElement> dateInputs = component.FindAll("input[type=date]");
-        Assert.Equal(2, dateInputs.Count);
-        Assert.Equal("2026-09-17", dateInputs[0].GetAttribute("value"));
-        Assert.Equal("2026-09-24", dateInputs[1].GetAttribute("value"));
+        // Assert - the default scope is the last 7 days, a preset, so the dropdown shows it and no date pickers appear.
+        Assert.True(component.Find("[data-testid='scope-range'] option[value='week']").HasAttribute("selected"));
+        Assert.Empty(component.FindAll("input[type=date]"));
         Assert.Contains("All devices", component.Markup);
+    }
+
+    [Fact]
+    public void RangeDropdown_Custom_ShowsFromThenToPickersInOneColumn_WithInclusiveDates()
+    {
+        // Arrange
+        var fixedNow = new DateTime(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);
+        _ = RegisterFakeTime(fixedNow);
+        _ = RegisterDeviceRepository(MakeDevice("Front Door"));
+        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
+
+        // Act
+        component.Find("[data-testid='scope-range']").Change("custom");
+
+        // Assert - From label and picker, then To label and picker, stacked
+        IElement dates = component.Find(".scope-range-dates");
+        Assert.Contains("flex-column", dates.ClassName);
+        Assert.Equal(new[] { "scope-range-from", "scope-range-to" }, dates.QuerySelectorAll("input").Select(i => i.GetAttribute("data-testid")).ToArray());
+        Assert.Equal("2026-09-17", component.Find("[data-testid='scope-range-from']").GetAttribute("value"));
+        Assert.Equal("2026-09-24", component.Find("[data-testid='scope-range-to']").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Rail_SectionsAreInTheOrderTimeRangeFiltersCase_EachCollapsible()
+    {
+        // Arrange
+        _ = RegisterDeviceRepository(MakeDevice("Front Door"));
+
+        // Act
+        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
+
+        // Assert
+        string[] titles = component.FindAll(".review-sidebar-section-header .fw-semibold").Select(e => e.TextContent).ToArray();
+        Assert.Equal(new[] { "Time range", "Filters", "Case" }, titles);
+        Assert.Empty(component.FindAll("input.scope-search-input"));
     }
 
     [Fact]
@@ -61,7 +94,8 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         Assert.Equal(new DateTime(2026, 9, 1), state.Current.FromUtc);
         Assert.Equal(new DateTime(2026, 9, 10), state.Current.ToUtc);
 
-        // Assert - controls reflect the loaded scope
+        // Assert - controls reflect the loaded scope (the device list opens from its button)
+        component.Find("[data-testid='scope-device-button']").Click();
         var checkbox = (IHtmlInputElement)component.Find($"input[type=checkbox][data-device-id='{device1.Id}']");
         Assert.True(checkbox.IsChecked);
 
@@ -82,6 +116,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         // Act
+        component.Find("[data-testid='scope-device-button']").Click();
         IElement checkbox = component.Find($"input[type=checkbox][data-device-id='{device1.Id}']");
         checkbox.Change(true);
 
@@ -107,6 +142,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         // Act
+        component.Find("[data-testid='scope-device-button']").Click();
         IElement checkbox1 = component.Find($"input[type=checkbox][data-device-id='{device1.Id}']");
         checkbox1.Change(false);
 
@@ -124,7 +160,8 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         _ = Services.AddScoped(_ => new ScopeState());
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
-        // Act
+        // Act - the date pickers appear once Custom is chosen
+        component.Find("[data-testid='scope-range']").Change("custom");
         IElement fromInput = component.FindAll("input[type=date]")[0];
         fromInput.Change("2026-09-01");
 
@@ -160,26 +197,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
     }
 
     [Fact]
-    public void SearchChanged_UpdatesScopeAndUrl()
-    {
-        // Arrange
-        _ = RegisterDeviceRepository();
-        _ = Services.AddScoped(_ => new ScopeState());
-        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
-
-        // Act
-        IElement searchInput = component.Find("input.scope-search-input");
-        searchInput.Change("front door");
-
-        // Assert
-        ScopeState state = Services.GetRequiredService<ScopeState>();
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
-        Assert.Equal("front door", state.Current.Search);
-        Assert.Contains("q=", nav.Uri);
-    }
-
-    [Fact]
-    public void QuickRangeButton_24h_UsesInjectedTimeProviderInDateGranularity()
+    public void RangeDropdown_24h_UsesInjectedTimeProviderInDateGranularity()
     {
         // Arrange
         var fixedNow = new DateTime(2026, 9, 24, 15, 30, 0, DateTimeKind.Utc);
@@ -189,8 +207,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         // Act
-        IElement button24h = component.FindAll("button").First(b => b.TextContent.Trim() == "24h");
-        button24h.Click();
+        component.Find("[data-testid='scope-range']").Change("day");
 
         // Assert
         ScopeState state = Services.GetRequiredService<ScopeState>();
@@ -199,7 +216,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
     }
 
     [Fact]
-    public void QuickRangeButton_7d_UsesInjectedTimeProvider_ExactDatesAndUrl()
+    public void RangeDropdown_7d_UsesInjectedTimeProvider_ExactDatesAndUrl()
     {
         // Arrange - start from a different, explicit range so the click is a real change.
         var fixedNow = new DateTime(2026, 9, 24, 15, 30, 0, DateTimeKind.Utc);
@@ -212,8 +229,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         // Act
-        IElement button7d = component.FindAll("button").First(b => b.TextContent.Trim() == "7d");
-        button7d.Click();
+        component.Find("[data-testid='scope-range']").Change("week");
 
         // Assert
         ScopeState state = Services.GetRequiredService<ScopeState>();
@@ -228,7 +244,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
     }
 
     [Fact]
-    public void QuickRangeButton_30d_UsesInjectedTimeProvider()
+    public void RangeDropdown_30d_UsesInjectedTimeProvider()
     {
         // Arrange
         var fixedNow = new DateTime(2026, 9, 24, 15, 30, 0, DateTimeKind.Utc);
@@ -238,64 +254,12 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         // Act
-        IElement button30d = component.FindAll("button").First(b => b.TextContent.Trim() == "30d");
-        button30d.Click();
+        component.Find("[data-testid='scope-range']").Change("month");
 
         // Assert
         ScopeState state = Services.GetRequiredService<ScopeState>();
         Assert.Equal(new DateTime(2026, 8, 25), state.Current.FromUtc);
         Assert.Equal(new DateTime(2026, 9, 25), state.Current.ToUtc);
-    }
-
-    [Fact]
-    public void ResetButton_ResetsToDefault()
-    {
-        // Arrange
-        _ = RegisterDeviceRepository();
-        _ = Services.AddScoped(_ => new ScopeState());
-
-        NavigationManager navManager = Services.GetRequiredService<NavigationManager>();
-        var device1 = Guid.NewGuid();
-        navManager.NavigateTo($"/?devices={device1:D}&from=2026-09-01&to=2026-09-10", replace: true);
-
-        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
-        ScopeState state = Services.GetRequiredService<ScopeState>();
-        Assert.NotEmpty(state.Current.DeviceIds); // Verify it's not default
-
-        // Act
-        IElement resetButton = component.FindAll("button").First(b => b.TextContent.Trim() == "Reset");
-        resetButton.Click();
-
-        // Assert
-        Assert.Empty(state.Current.DeviceIds);
-        DateTime now = DateTime.UtcNow.Date;
-        Assert.Equal(now.AddDays(-7), state.Current.FromUtc);
-        Assert.Equal(now.AddDays(1), state.Current.ToUtc);
-    }
-
-    [Fact]
-    public void ResetButton_KeepsUnrelatedQueryKey_RemovesScopeKeys()
-    {
-        // Arrange
-        _ = RegisterDeviceRepository();
-        _ = Services.AddScoped(_ => new ScopeState());
-
-        NavigationManager navManager = Services.GetRequiredService<NavigationManager>();
-        var device1 = Guid.NewGuid();
-        navManager.NavigateTo($"/?tab=raw&devices={device1:D}&from=2026-09-01&to=2026-09-10", replace: true);
-
-        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
-
-        // Act
-        IElement resetButton = component.FindAll("button").First(b => b.TextContent.Trim() == "Reset");
-        resetButton.Click();
-
-        // Assert
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
-        Assert.Contains("tab=raw", nav.Uri);
-        Assert.DoesNotContain("devices=", nav.Uri);
-        Assert.DoesNotContain("from=", nav.Uri);
-        Assert.DoesNotContain("to=", nav.Uri);
     }
 
     [Fact]
@@ -472,7 +436,8 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         var picker = (IHtmlSelectElement)component.Find("[data-testid='case-picker']");
         await component.InvokeAsync(() => picker.Change(testCase.Id.ToString("D")));
 
-        // Act - change a date so scope diverges from the case
+        // Act - change a date so scope diverges from the case (the date pickers appear once Custom is chosen)
+        component.Find("[data-testid='scope-range']").Change("custom");
         IElement fromInput = component.FindAll("input[type=date]")[0];
         fromInput.Change("2026-09-01");
 

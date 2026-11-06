@@ -2,6 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -13,11 +14,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     {
         private readonly AccountExportService _service;
         private readonly ILogger<AccountExportBackgroundService> _logger;
+        private readonly IMaintenanceGate _maintenance;
 
-        public AccountExportBackgroundService(AccountExportService service, ILogger<AccountExportBackgroundService> logger)
+        public AccountExportBackgroundService(AccountExportService service, ILogger<AccountExportBackgroundService> logger, IMaintenanceGate? maintenance = null)
         {
             _service = service;
             _logger = logger;
+            _maintenance = maintenance ?? new NoOpMaintenanceGate();
         }
 
         /// <inheritdoc />
@@ -29,11 +32,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     try
                     {
+                        // Why: the job is already dequeued, so it waits for maintenance to end rather than being dropped.
+                        using IDisposable lease = await MaintenanceWork.EnterWorkWhenOpenAsync(_maintenance, stoppingToken);
                         await _service.RunJobAsync(jobId, stoppingToken);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        _logger.LogError(ex, "Account export job {JobId} crashed", jobId);
+                        _logger.LogError("Account export job {JobId} crashed: {Message} ({ErrorType})", jobId, ex.Message, ex.GetType().Name);
                     }
                 }
             }

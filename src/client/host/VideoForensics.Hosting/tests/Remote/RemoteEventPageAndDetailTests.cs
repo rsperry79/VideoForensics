@@ -84,7 +84,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var repo = new RemoteEventRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
             _ = await repo.ListPageByDevicesAndDateRangeAsync(
-                new[] { deviceA, deviceB }, fromUtc, toUtc, new[] { "person", "ring" }, skip: 5, take: 10, CancellationToken.None);
+                new[] { deviceA, deviceB }, fromUtc, toUtc, new[] { "person", "ring" }, null, skip: 5, take: 10, CancellationToken.None);
 
             Uri uri = handler.CapturedRequest!.RequestUri!;
             Assert.Equal("/api/v1/events/page", uri.AbsolutePath);
@@ -95,6 +95,23 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal(new[] { "person", "ring" }, query["excludeTypes"]);
             Assert.Equal(new[] { "5" }, query["skip"]);
             Assert.Equal(new[] { "10" }, query["take"]);
+        }
+
+        [Fact]
+        public async Task RemoteEventRepository_ListEventPage_IncludeTypes_SendsEscapedIncludeTypesQueryParams()
+        {
+            var handler = new FakeHttpMessageHandler(_ => Task.FromResult(JsonResponse("{}")));
+            var repo = new RemoteEventRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            _ = await repo.ListPageByDevicesAndDateRangeAsync(
+                new[] { Guid.NewGuid() },
+                new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+                null, new[] { "ring doorbell", "person" }, skip: 0, take: 10, CancellationToken.None);
+
+            Dictionary<string, List<string>> query = ParseQuery(handler.CapturedRequest!.RequestUri!);
+            Assert.Equal(new[] { "ring doorbell", "person" }, query["includeTypes"]);
+            Assert.False(query.ContainsKey("excludeTypes"));
         }
 
         [Fact]
@@ -114,7 +131,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 new[] { Guid.NewGuid() },
                 new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
-                null, skip: 0, take: 2, CancellationToken.None);
+                null, null, skip: 0, take: 2, CancellationToken.None);
 
             Assert.Equal(2, page.Items.Count);
             Assert.Equal(idOne, page.Items[0].Id);

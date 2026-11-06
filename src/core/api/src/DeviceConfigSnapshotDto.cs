@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="MotionDetectionEnabled">Whether motion detection is enabled on the device, if known.</param>
     /// <param name="MotionSensitivity">The motion detection sensitivity setting, if applicable (vendor-specific format).</param>
     /// <param name="RecordingMode">The recording mode setting (e.g., "continuous", "motion-triggered"), if applicable.</param>
-    /// <param name="CustomSettingsJson">Additional vendor-specific configuration settings in JSON format.</param>
+    /// <param name="CustomSettings">Additional vendor-specific configuration settings, one JSON value per setting key.</param>
     /// <param name="CapturedAtUtc">Timestamp when this configuration snapshot was captured, in UTC.</param>
     /// <param name="Source">Indicates whether this snapshot was fetched from the device/provider or represents an applied setting.</param>
     public record DeviceConfigSnapshotDto(
@@ -17,7 +19,7 @@ namespace VideoForensics.Core.Api.Contracts
         bool? MotionDetectionEnabled,
         string? MotionSensitivity,
         string? RecordingMode,
-        string? CustomSettingsJson,
+        Dictionary<string, JsonElement>? CustomSettings,
         DateTime CapturedAtUtc,
         string Source
     );
@@ -36,7 +38,7 @@ namespace VideoForensics.Core.Api.Contracts
                 MotionDetectionEnabled: entity.MotionDetectionEnabled,
                 MotionSensitivity: entity.MotionSensitivity,
                 RecordingMode: entity.RecordingMode,
-                CustomSettingsJson: entity.CustomSettingsJson,
+                CustomSettings: entity.ToCustomSettingsDictionary(),
                 CapturedAtUtc: entity.CapturedAtUtc,
                 Source: entity.Source.ToString()
             );
@@ -54,10 +56,30 @@ namespace VideoForensics.Core.Api.Contracts
                 MotionDetectionEnabled = dto.MotionDetectionEnabled,
                 MotionSensitivity = dto.MotionSensitivity,
                 RecordingMode = dto.RecordingMode,
-                CustomSettingsJson = dto.CustomSettingsJson,
+                CustomSettings = ToCustomSettingRows(dto.CustomSettings),
                 CapturedAtUtc = dto.CapturedAtUtc,
                 Source = (VideoForensics.Data.Common.Entities.DeviceConfigSource)Enum.Parse(typeof(VideoForensics.Data.Common.Entities.DeviceConfigSource), dto.Source)
             };
+        }
+
+        /// <summary>Builds the custom settings object for a snapshot. A snapshot with no setting rows gives an empty object.</summary>
+        public static Dictionary<string, JsonElement> ToCustomSettingsDictionary(this VideoForensics.Data.Common.Entities.DeviceConfigSnapshot entity)
+        {
+            return entity.CustomSettings.ToDictionary(
+                s => s.Key,
+                s => JsonSerializer.Deserialize<JsonElement>(s.ValueJson),
+                StringComparer.Ordinal);
+        }
+
+        /// <summary>Builds one setting row per key. A null object gives no rows.</summary>
+        public static List<VideoForensics.Data.Common.Entities.DeviceConfigSnapshotSetting> ToCustomSettingRows(Dictionary<string, JsonElement>? settings)
+        {
+            return (settings ?? []).Select(kv => new VideoForensics.Data.Common.Entities.DeviceConfigSnapshotSetting
+            {
+                Id = Guid.NewGuid(),
+                Key = kv.Key,
+                ValueJson = kv.Value.GetRawText()
+            }).ToList();
         }
     }
 }

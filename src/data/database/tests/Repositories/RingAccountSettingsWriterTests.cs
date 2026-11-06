@@ -229,5 +229,64 @@ namespace VideoForensics.Data.Database.Tests
             Assert.False(stored.SharedUsersEnabled);
             Assert.Equal(2, stored.LastUpdateTimeMs);
         }
+    
+
+        [Fact]
+        public async Task RingAccountSettingsWriter_ReplaceAccountMonitoringStatusAsync_StoresEveryFieldAndPlans()
+        {
+            RingAccountMonitoringStatus status = NewMonitoringStatus("ring_protect_plus", "ring_protect_pro");
+
+            await _writer.ReplaceAccountMonitoringStatusAsync(status, CancellationToken.None);
+
+            await using VideoForensicsDbContext read = _fixture.Factory.CreateDbContext();
+            RingAccountMonitoringStatus stored = await read.RingAccountMonitoringStatuses.Include(s => s.CompatibleMonitoringPlans).SingleAsync();
+            Assert.Equal(LocationId, stored.ProviderLocationId);
+            Assert.True(stored.DispatchSetupComplete);
+            Assert.False(stored.AddressComplete);
+            Assert.Equal("full", stored.CmsMonitoringType);
+            Assert.Equal("HARDWARE", stored.AccountStateReason);
+            Assert.Equal("UNAVAILABLE", stored.AccountState);
+            Assert.Equal("rrms", stored.ExternalServiceConfigType);
+            Assert.Equal("stripe", stored.PlanProvider);
+            Assert.Equal(1787519584857, stored.InstallationDate);
+            Assert.Equal(new[] { "ring_protect_plus", "ring_protect_pro" }, stored.CompatibleMonitoringPlans.OrderBy(p => p.Position).Select(p => p.Plan));
+        }
+
+        [Fact]
+        public async Task RingAccountSettingsWriter_ReplaceAccountMonitoringStatusAsync_SecondWrite_ReplacesRowAndPlans()
+        {
+            await _writer.ReplaceAccountMonitoringStatusAsync(NewMonitoringStatus("ring_protect_plus", "ring_protect_pro"), CancellationToken.None);
+            await _writer.ReplaceAccountMonitoringStatusAsync(NewMonitoringStatus("ring_protect_basic"), CancellationToken.None);
+
+            await using VideoForensicsDbContext read = _fixture.Factory.CreateDbContext();
+            Assert.Equal(1, await read.RingAccountMonitoringStatuses.CountAsync());
+            RingAccountMonitoringPlan plan = await read.RingAccountMonitoringPlans.SingleAsync();
+            Assert.Equal("ring_protect_basic", plan.Plan);
+        }
+
+        private static RingAccountMonitoringStatus NewMonitoringStatus(params string[] plans)
+        {
+            var status = new RingAccountMonitoringStatus
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                AddressComplete = false,
+                DispatchSetupComplete = true,
+                CmsMonitoringType = "full",
+                AccountStateReason = "HARDWARE",
+                AccountUuid = Guid.NewGuid().ToString(),
+                AccountState = "UNAVAILABLE",
+                ExternalServiceConfigType = "rrms",
+                PlanProvider = "stripe",
+                InstallationDate = 1787519584857,
+                SosOnlyFlagOrFalse = false,
+            };
+            for (int i = 0; i < plans.Length; i++)
+            {
+                status.CompatibleMonitoringPlans.Add(new RingAccountMonitoringPlan { Id = Guid.NewGuid(), RingAccountMonitoringStatusId = status.Id, Position = i, Plan = plans[i] });
+            }
+
+            return status;
+        }
     }
 }

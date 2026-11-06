@@ -131,6 +131,58 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task GetDownloadedMediaPathAsync_EventHasDownloadedVideo_ReturnsItsStoredPath()
+        {
+            var deviceId = Guid.NewGuid();
+            var downloadEvent = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "evt-1", AppVersion = "test" };
+            _ = _mockDownloadEventRepository
+                .Setup(r => r.GetByProviderEventIdAsync(deviceId, "evt-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(downloadEvent);
+            _ = _mockMediaItemRepository
+                .Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() { Id = Guid.NewGuid(), DeviceId = deviceId, FileName = "a.jpg", FilePath = "ring/a.jpg", MediaFormat = "jpg", Sha256Hash = "h1" },
+                    new() { Id = Guid.NewGuid(), DeviceId = deviceId, FileName = "a_motion-person.mp4", FilePath = "ring/a_motion-person.mp4", MediaFormat = "mp4", Sha256Hash = "h2" },
+                });
+
+            string? path = await _dataClient.GetDownloadedMediaPathAsync(deviceId, "evt-1", CancellationToken.None);
+
+            Assert.Equal("ring/a_motion-person.mp4", path);
+        }
+
+        [Fact]
+        public async Task GetDownloadedMediaPathAsync_NoDownloadEvent_ReturnsNull()
+        {
+            _ = _mockDownloadEventRepository
+                .Setup(r => r.GetByProviderEventIdAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((DownloadEvent?)null);
+
+            string? path = await _dataClient.GetDownloadedMediaPathAsync(Guid.NewGuid(), "missing", CancellationToken.None);
+
+            Assert.Null(path);
+        }
+
+        [Fact]
+        public async Task GetDownloadedMediaPathAsync_OnlyPurgedVideo_ReturnsNull()
+        {
+            var downloadEvent = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), ProviderEventId = "evt-2", AppVersion = "test" };
+            _ = _mockDownloadEventRepository
+                .Setup(r => r.GetByProviderEventIdAsync(downloadEvent.DeviceId, "evt-2", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(downloadEvent);
+            _ = _mockMediaItemRepository
+                .Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() { Id = Guid.NewGuid(), DeviceId = downloadEvent.DeviceId, FileName = "p.mp4", FilePath = "ring/p.mp4", MediaFormat = "mp4", Sha256Hash = "h", IsPurged = true },
+                });
+
+            string? path = await _dataClient.GetDownloadedMediaPathAsync(downloadEvent.DeviceId, "evt-2", CancellationToken.None);
+
+            Assert.Null(path);
+        }
+
+        [Fact]
         public async Task IsMediaAlreadyDownloadedAsync_DelegatesToDownloadEventRepository()
         {
             // Arrange
@@ -1060,6 +1112,38 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceAsync_DoorbotNineSettingsScalars_StoresOnDevicesOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            // The nine settings scalars a doorbot maps (values as the mapper produces them from sample_doorbots.json).
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                EnableVod: true, ExposureControl: 2, VodSuspended: false, PirSensitivity1: 5, EnableAudioRecording: true,
+                AdvancedMotionDetectionEnabled: true, AdvancedMotionDetectionHumanOnlyMode: true,
+                LiveViewPresetProfile: "middle", MotionSnoozePresetProfile: "low");
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "doorbot-settings", "Front Door", "doorbell", true, details: details, ct: CancellationToken.None);
+
+            Assert.True(result.EnableVod);
+            Assert.Equal(2, result.ExposureControl);
+            Assert.False(result.VodSuspended);
+            Assert.Equal(5, result.PirSensitivity1);
+            Assert.True(result.EnableAudioRecording);
+            Assert.True(result.AdvancedMotionDetectionEnabled);
+            Assert.True(result.AdvancedMotionDetectionHumanOnlyMode);
+            Assert.Equal("middle", result.LiveViewPresetProfile);
+            Assert.Equal("low", result.MotionSnoozePresetProfile);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_WithRemainingScalars_StoresOnCreate()
         {
             var locationId = Guid.NewGuid();
@@ -1073,7 +1157,7 @@ namespace VideoForensics.Data.Core.Tests
                 .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
                 RingType: "doorbot", RingRingId: "abc", BatteryLife2: "55", BatteryVoltage: 12.5m, BatteryVoltage2: 3.3m,
-                LedStatus: "on", SirenSecondsRemaining: 30, NightMode: 1, MotionSnoozeJson: "{\"until\":5}",
+                SirenSecondsRemaining: 30, NightMode: 1, MotionSnoozeJson: "{\"until\":5}",
                 SettingsMetadataJson: "{\"k\":1}", LightSettingsMetadataJson: "{\"s\":1}", PirSettingsSensitivity1: 1,
                 PirSettingsSensitivity2: 2, PirSettingsSensitivity3: 3, PirSettingsZoneEnable: 1, PirSettingsZoneMask: 15,
                 NightModeOn: true, MotionDetectionEnabled: false, SettingsChimeType: 2, SettingsChimeEnabled: true, SettingsChimeDuration: 3);
@@ -1086,7 +1170,6 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal("55", result.BatteryLife2);
             Assert.Equal(12.5m, result.BatteryVoltage);
             Assert.Equal(3.3m, result.BatteryVoltage2);
-            Assert.Equal("on", result.LedStatus);
             Assert.Equal(30, result.SirenSecondsRemaining);
             Assert.Equal(1, result.NightMode);
             Assert.Equal("{\"until\":5}", result.MotionSnoozeJson);
@@ -1178,7 +1261,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange: a device already stored under the same location with an older response hash.
             var locationId = Guid.NewGuid();
-            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash", Name = "Front", Type = "doorbell", ApiResponseHash = "old-hash" };
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash", Name = "Front", Type = "doorbell" };
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
@@ -1189,10 +1272,9 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             Device result = await _dataClient.EnsureDeviceAsync(
-                locationId, "device-hash", "Front", "doorbell", true, apiResponseHash: "new-hash", ct: CancellationToken.None);
+                locationId, "device-hash", "Front", "doorbell", true, ct: CancellationToken.None);
 
             // Assert
-            Assert.Equal("new-hash", result.ApiResponseHash);
         }
 
         [Fact]
@@ -1200,7 +1282,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange: a sync without a response hash must not blank the hash already on record.
             var locationId = Guid.NewGuid();
-            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash2", Name = "Front", Type = "doorbell", ApiResponseHash = "kept-hash" };
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash2", Name = "Front", Type = "doorbell" };
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
@@ -1211,10 +1293,9 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             Device result = await _dataClient.EnsureDeviceAsync(
-                locationId, "device-hash2", "Front", "doorbell", true, apiResponseHash: null, ct: CancellationToken.None);
+                locationId, "device-hash2", "Front", "doorbell", true, ct: CancellationToken.None);
 
             // Assert
-            Assert.Equal("kept-hash", result.ApiResponseHash);
         }
 
         [Fact]
@@ -1324,7 +1405,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange: stored ChimeVolume 1, incoming 2. Identity, name and the response hash must be left alone.
             var deviceId = Guid.NewGuid();
-            var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1, ApiResponseHash = "hash-kept" };
+            var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1 };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
@@ -1354,7 +1435,6 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal(2, existing.ChimeVolume);
             Assert.Equal("device-upd", existing.ProviderDeviceId);
             Assert.Equal("Chime", existing.Name);
-            Assert.Equal("hash-kept", existing.ApiResponseHash);
             mockDeviceRepoInContext.Verify(x => x.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
         }
 

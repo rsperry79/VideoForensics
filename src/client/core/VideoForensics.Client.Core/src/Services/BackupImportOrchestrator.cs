@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Matching;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Core.Services
@@ -15,9 +16,11 @@ namespace VideoForensics.Client.Core.Services
     {
         private readonly ILogger<BackupImportOrchestrator> _logger;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMediaPathResolver _paths;
 
-        public BackupImportOrchestrator(ILogger<BackupImportOrchestrator> logger, IUnitOfWork unitOfWork)
+        public BackupImportOrchestrator(ILogger<BackupImportOrchestrator> logger, IUnitOfWork unitOfWork, IMediaPathResolver? paths = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _unitOfWork = unitOfWork;
         }
@@ -137,6 +140,11 @@ namespace VideoForensics.Client.Core.Services
                         _ = importedDeviceIds.Add(device.Id);
                     }
 
+                    // Why: the candidate lookup reads devices from the database, so devices added by this import are written first.
+                    await ctx.SaveChangesAsync(ct);
+                    Dictionary<Guid, Device> backupDevices = devices.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+                    var candidatesByDevice = new Dictionary<Guid, IReadOnlyList<string>>();
+
                     var importedEventIds = new HashSet<Guid>();
                     foreach (Event evt in events)
                     {
@@ -156,6 +164,14 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
+                        string? resolvedEventId = await ResolveProviderEventIdAsync(evt.ProviderEventId, evt.DeviceId, backupDevices, ctx, candidatesByDevice, ct);
+                        if (resolvedEventId is null)
+                        {
+                            importResult.Details.Add($"Skipped Event {evt.Id}: its id did not resolve to one ding id");
+                            continue;
+                        }
+
+                        evt.ProviderEventId = resolvedEventId;
                         _ = await ctx.Events.UpsertAsync(evt, ct);
                         importResult.Events.Inserted++;
                         _ = importedEventIds.Add(evt.Id);
@@ -180,6 +196,14 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
+                        string? resolvedDownloadId = await ResolveProviderEventIdAsync(de.ProviderEventId, de.DeviceId, backupDevices, ctx, candidatesByDevice, ct);
+                        if (resolvedDownloadId is null)
+                        {
+                            importResult.Details.Add($"Skipped DownloadEvent {de.Id}: its id did not resolve to one ding id");
+                            continue;
+                        }
+
+                        de.ProviderEventId = resolvedDownloadId;
                         await ctx.DownloadEvents.AddAsync(de, ct);
                         importResult.DownloadEvents.Inserted++;
                         _ = importedDownloadEventIds.Add(de.Id);
@@ -208,23 +232,28 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        if (File.Exists(mediaItem.FilePath))
+                        // ToMediaItem builds a full path under the import's media root. The row stores it relative to the
+                        // configured media root when it lies under it.
+                        string mediaPath = mediaItem.FilePath;
+                        mediaItem.FilePath = await _paths.ToStoredAsync(mediaPath, ct);
+
+                        if (File.Exists(mediaPath))
                         {
-                            byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaItem.FilePath), ct);
+                            byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaPath), ct);
                             string actualHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
                             mediaItem.IntegrityVerified = actualHash == mediaItem.Sha256Hash;
                             mediaItem.LastVerifiedAtUtc = DateTime.UtcNow;
                             if (!mediaItem.IntegrityVerified)
                             {
                                 importResult.MediaItems.IntegrityIssues++;
-                                importResult.Details.Add($"Hash mismatch for MediaItem {mediaItem.Id} at {mediaItem.FilePath}");
+                                importResult.Details.Add($"Hash mismatch for MediaItem {mediaItem.Id} at {mediaPath}");
                             }
                         }
                         else
                         {
                             mediaItem.IntegrityVerified = false;
                             importResult.MediaItems.IntegrityIssues++;
-                            importResult.Details.Add($"Media file missing for MediaItem {mediaItem.Id}: {mediaItem.FilePath}");
+                            importResult.Details.Add($"Media file missing for MediaItem {mediaItem.Id}: {mediaPath}");
                         }
 
                         await ctx.MediaItems.AddAsync(mediaItem, ct);
@@ -239,7 +268,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Backup import failed");
+                _logger.LogError("Backup import failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new BackupImportResult { Success = false, ErrorMessage = $"Import failed: {ex.Message}" };
             }
             finally
@@ -266,6 +295,28 @@ namespace VideoForensics.Client.Core.Services
 
             string json = await File.ReadAllTextAsync(path, ct);
             return JsonSerializer.Deserialize<T>(json);
+        }
+
+        /// <summary>Returns the event id to store for a backup row, or null when it does not resolve to one ding id.</summary>
+        private static async Task<string?> ResolveProviderEventIdAsync(
+            string providerEventId,
+            Guid deviceId,
+            IReadOnlyDictionary<Guid, Device> backupDevices,
+            IUnitOfWorkContext ctx,
+            Dictionary<Guid, IReadOnlyList<string>> candidatesByDevice,
+            CancellationToken ct)
+        {
+            if (!candidatesByDevice.TryGetValue(deviceId, out IReadOnlyList<string>? candidates))
+            {
+                // A device in this backup may not be written yet, so its provider id comes from the backup first.
+                Device? device = backupDevices.TryGetValue(deviceId, out Device? fromBackup)
+                    ? fromBackup
+                    : await ctx.Devices.GetAsync(deviceId, ct);
+                candidates = await ProviderEventIdResolver.CandidatesForDeviceAsync(device, ctx.DingIdLinks, ct);
+                candidatesByDevice[deviceId] = candidates;
+            }
+
+            return ProviderEventIdResolver.Resolve(providerEventId, candidates);
         }
     }
 }

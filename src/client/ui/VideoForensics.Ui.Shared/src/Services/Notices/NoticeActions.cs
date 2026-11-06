@@ -12,6 +12,10 @@ public static class NoticeActions
     /// <summary>The event type raised when a camera stops answering. Its action path opens the account's sync page.</summary>
     public const string DeviceOfflineEventType = "DeviceOffline";
 
+    /// <summary>The event type raised when a Ring account's stored credential cannot be decrypted. Its action path opens the
+    /// account page, where the operator can reauthenticate.</summary>
+    public const string CredentialDecryptionFailedEventType = "CredentialDecryptionFailed";
+
     /// <summary>The event type of an audit-trail failure. Its action path opens the chain of custody page to review it.</summary>
     public const string ChainOfCustodyFailedEventType = "ChainOfCustodyIntegrityFailed";
 
@@ -59,7 +63,8 @@ public static class NoticeActions
     {
         return !string.IsNullOrWhiteSpace(actionPath)
             && ReviewLink(eventType, actionPath) is null
-            && DeviceSettingsLink(eventType, actionPath) is null;
+            && DeviceSettingsLink(eventType, actionPath) is null
+            && ReauthenticateLink(eventType, actionPath) is null;
     }
 
     /// <summary>
@@ -69,5 +74,14 @@ public static class NoticeActions
     public static string? DeviceSettingsLink(string eventType, string? actionPath)
     {
         return eventType == DeviceOfflineEventType && !string.IsNullOrWhiteSpace(actionPath) ? actionPath : null;
+    }
+
+    /// <summary>
+    /// The link to the account page where the operator can reauthenticate a Ring account whose stored credential failed to
+    /// decrypt. Its action path is the account page. Null for other notices, or when there is no path to open.
+    /// </summary>
+    public static string? ReauthenticateLink(string eventType, string? actionPath)
+    {
+        return eventType == CredentialDecryptionFailedEventType && !string.IsNullOrWhiteSpace(actionPath) ? actionPath : null;
     }
 }

@@ -45,6 +45,19 @@
     <InternalsVisibleTo Include="VideoForensics.Client.WebApp.Tests" />
   </ItemGroup>
 
+  <!-- Syncfusion key for release builds. CI writes this file from the SYNCFUSION_LICENSE_KEY secret before building.
+       Local builds have no file, so the registrar falls through to Client.Core user secrets. Never committed (.gitignore). -->
+  <ItemGroup>
+    <EmbeddedResource Include="syncfusion-license.key" LogicalName="syncfusion-license.key" Condition="Exists('syncfusion-license.key')" />
+  </ItemGroup>
+
+  <!-- Visual Studio Debug builds stage themselves for the installed service, which applies the package and restarts.
+       Off unless StageDebugBuild=true is set (for example in the user environment), so ordinary builds do not restart the server.
+       Command-line builds, including the test projects, do not stage. -->
+  <Target Name="StageDebugBuildForService" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' == 'true' And '$(StageDebugBuild)' == 'true'">
+    <Exec Command="wscript.exe //B //Nologo &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.vbs&quot; &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.ps1&quot; &quot;$(MSBuildProjectFullPath)&quot; $(Configuration) &quot;$(ProjectDir)$(IntermediateOutputPath)stage-debug-build.log&quot;" />
+  </Target>
+
   <!-- Ui.Shared's src\ts\tsconfig.json is a TypeScript build input, not a runtime file. It reaches the publish
        list through the project reference and collides with this project's own copy at the same relative path
        (NETSDK1152). Dropping it from the list does not delete the file. -->

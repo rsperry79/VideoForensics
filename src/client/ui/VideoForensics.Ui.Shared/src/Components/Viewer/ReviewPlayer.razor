@@ -1,73 +1,16 @@
-@implements IAsyncDisposable
-@using Microsoft.Extensions.Localization
-@inject IJSRuntime JS
-@inject IStringLocalizer<SharedResources> L
-@using Microsoft.AspNetCore.Components.Web
 @using VideoForensics.Client.Common.Viewer
-@using VideoForensics.Client.Ui.Shared.Resources
 
-@if (_url is null)
-{
-    <div class="review-player-gap" data-testid="review-player-gap">@L["ReviewPlayerGap"]</div>
-}
-else
-{
-    <video class="review-player" data-testid="review-player" data-clip-id="@_selection!.ClipId" src="@_url" controls preload="metadata" @ref="_video"></video>
-}
+@* Picks the clip that covers the cursor and hands it to MediaPlayer. A cursor in a gap shows the gap message. *@
+<MediaPlayer @ref="_player"
+             Source="@_url"
+             SourceStartUtc="_selectedClip?.StartUtc"
+             SourceDurationSeconds="_selectedClip?.DurationSeconds"
+             Cursor="Cursor"
+             Gap="true"
+             Class="review-player"
+             data-clip-id="@_selection?.ClipId" />
 
 @code {
-    /// <summary>The media-viewer script that reads the video's playback position. Imported on the first read.</summary>
-    private const string MediaViewerScript = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js";
-
-    private IJSObjectReference? _mediaViewerModule;
-
-    /// <summary>
-    /// Reads the video's current playback position in whole milliseconds. Returns null when no video is rendered (the cursor
-    /// is in a gap) or when the browser call fails, so the caller shows a message rather than a guessed position.
-    /// </summary>
-    public async Task<long?> GetCurrentTimeMsAsync()
-    {
-        if (_url is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            _mediaViewerModule ??= await JS.InvokeAsync<IJSObjectReference>("import", MediaViewerScript);
-            if (_mediaViewerModule is null)
-            {
-                return null;
-            }
-
-            double currentTimeMs = await _mediaViewerModule.InvokeAsync<double>("getCurrentTimeMs", _video);
-            return (long)Math.Round(currentTimeMs);
-        }
-        catch (JSDisconnectedException)
-        {
-            return null;
-        }
-        catch (JSException)
-        {
-            return null;
-        }
-    }
-
-    async ValueTask IAsyncDisposable.DisposeAsync()
-    {
-        if (_mediaViewerModule is not null)
-        {
-            try
-            {
-                await _mediaViewerModule.DisposeAsync();
-            }
-            catch (JSDisconnectedException)
-            {
-                // The circuit is already gone, so there is nothing left to release.
-            }
-        }
-    }
-
     /// <summary>Clips for this camera. The player picks the one covering <see cref="Cursor"/>.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<ClipWindow> Clips { get; set; } = [];
 
@@ -80,58 +23,33 @@ else
     private ClipSelection? _selection;
     private ClipWindow? _selectedClip;
     private string? _url;
-    private ElementReference _video;
-    private bool _seekPending;
+    private MediaPlayer? _player;
+
+    /// <summary>
+    /// Reads the video's current playback position in whole milliseconds. Returns null when no video is rendered (the cursor
+    /// is in a gap) or when the browser call fails, so the caller shows a message rather than a guessed position.
+    /// </summary>
+    public Task<long?> GetCurrentTimeMsAsync() =>
+        _player is null ? Task.FromResult<long?>(null) : _player.GetCurrentTimeMsAsync();
 
     /// <summary>
     /// Reads the playback position as absolute UTC seconds since the Unix epoch: the selected clip's start plus the
     /// video's current offset. Returns null when no clip is selected or no video is rendered.
     /// </summary>
-    public async Task<double?> ReadPlaybackUtcSecondsAsync()
-    {
-        if (_selectedClip is null || _url is null)
-        {
-            return null;
-        }
-
-        double offsetSeconds = await JS.InvokeAsync<double>("vfGetVideoTime", _video);
-        return (_selectedClip.StartUtc - DateTime.UnixEpoch).TotalSeconds + offsetSeconds;
-    }
+    public Task<double?> ReadPlaybackUtcSecondsAsync() =>
+        _player is null ? Task.FromResult<double?>(null) : _player.GetPlaybackUtcSecondsAsync();
 
     /// <summary>
     /// Seeks the video to an absolute UTC time. Does nothing when the time falls outside the selected clip, so a tile
     /// in a gap keeps playing where it is.
     /// </summary>
-    public async Task SeekToUtcAsync(DateTime utc)
-    {
-        if (_selectedClip is null || _url is null)
-        {
-            return;
-        }
-
-        double offsetSeconds = (utc - _selectedClip.StartUtc).TotalSeconds;
-        if (offsetSeconds < 0 || offsetSeconds > _selectedClip.DurationSeconds)
-        {
-            return;
-        }
-
-        await JS.InvokeVoidAsync("vfSetVideoTime", _video, offsetSeconds);
-    }
+    public Task SeekToUtcAsync(DateTime utc) =>
+        _player is null ? Task.CompletedTask : _player.SeekToUtcAsync(utc);
 
     protected override void OnParametersSet()
     {
         _selection = Cursor is DateTime time ? ReviewTimeline.ClipAt(Clips, time) : null;
         _selectedClip = _selection is null ? null : Clips.FirstOrDefault(c => c.Id == _selection.ClipId);
         _url = _selection is null ? null : ContentUrlFor(_selection.ClipId);
-        _seekPending = _url is not null;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_seekPending && _selection is not null && _url is not null)
-        {
-            _seekPending = false;
-            await JS.InvokeVoidAsync("vfSetVideoTime", _video, _selection.OffsetSeconds);
-        }
     }
 }

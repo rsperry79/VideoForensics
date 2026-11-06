@@ -68,14 +68,14 @@
 
             @if (_visibleReadOnly.Count == 0 && _visibleDestructive.Count == 0)
             {
-                <div style="margin-top: 0.5rem; color: #666;">@L["NoEndpointsMatch"]</div>
+                <div style="margin-top: 0.5rem; color: var(--bs-secondary-color);">@L["NoEndpointsMatch"]</div>
             }
 
             <!-- Read-only endpoints -->
             @if (_visibleReadOnly.Count > 0)
             {
                 <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
-                    <small style="color: #666;">@L["ReadOnlyEndpoints"]</small>
+                    <small style="color: var(--bs-secondary-color);">@L["ReadOnlyEndpoints"]</small>
                     <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0.25rem 0;">
                         <button type="button" class="e-btn e-small e-flat" data-testid="readonly-select-all" @onclick="SelectAllReadOnly">@L["SelectAll"]</button>
                         <button type="button" class="e-btn e-small e-flat" data-testid="readonly-unselect-all" @onclick="UnselectAllReadOnly">@L["UnselectAll"]</button>
@@ -162,7 +162,7 @@
                 @if (_hasDestructive)
                 {
                     <div style="border-top: 1px solid #ddd; padding-top: 0.75rem; margin-top: 0.75rem;">
-                        <small style="color: #666;">@L["DestructiveParameters"]</small>
+                        <small style="color: var(--bs-secondary-color);">@L["DestructiveParameters"]</small>
 
                         <!-- Siren Duration -->
                         <div style="margin-top: 0.5rem;">
@@ -237,16 +237,16 @@
         <!-- Summary -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
             <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #0066cc;">@_result.Summary.TotalCalls</div>
-                <div style="color: #666; margin-top: 0.25rem;">@L["TotalCalls"]</div>
+                <div style="font-size: 1.5rem; font-weight: bold; color: var(--bs-link-color);">@_result.Summary.TotalCalls</div>
+                <div style="color: var(--bs-secondary-color); margin-top: 0.25rem;">@L["TotalCalls"]</div>
             </div>
             <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; text-align: center;">
                 <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">@_result.Summary.Succeeded</div>
-                <div style="color: #666; margin-top: 0.25rem;">@L["Succeeded"]</div>
+                <div style="color: var(--bs-secondary-color); margin-top: 0.25rem;">@L["Succeeded"]</div>
             </div>
             <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; text-align: center;">
                 <div style="font-size: 1.5rem; font-weight: bold; color: @(_result.Summary.Failed > 0 ? "#dc3545" : "#999");">@_result.Summary.Failed</div>
-                <div style="color: #666; margin-top: 0.25rem;">@L["Failed"]</div>
+                <div style="color: var(--bs-secondary-color); margin-top: 0.25rem;">@L["Failed"]</div>
             </div>
         </div>
 
@@ -283,12 +283,12 @@
                                     </span>
                                     @if (!string.IsNullOrEmpty(call.RestoreError))
                                     {
-                                        <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">@call.RestoreError</div>
+                                        <div style="font-size: 0.85rem; color: var(--bs-secondary-color); margin-top: 0.25rem;">@call.RestoreError</div>
                                     }
                                 }
                                 else
                                 {
-                                    <span style="color: #999;">@(call.RestoreSkippedReason ?? "-")</span>
+                                    <span style="color: var(--bs-secondary-color);">@(call.RestoreSkippedReason ?? "-")</span>
                                 }
                             }
                         </Template>
@@ -303,7 +303,7 @@
                                 }
                                 else
                                 {
-                                    <span style="color: #999;">-</span>
+                                    <span style="color: var(--bs-secondary-color);">-</span>
                                 }
                             }
                         </Template>
@@ -318,7 +318,7 @@
                                 }
                                 else
                                 {
-                                    <span style="color: #999;">-</span>
+                                    <span style="color: var(--bs-secondary-color);">-</span>
                                 }
                             }
                         </Template>
@@ -364,7 +364,7 @@
                             }
                             @if (httpCall.BodyTruncated)
                             {
-                                <div style="color: #999; font-size: 0.85rem; margin-top: 0.5rem;">
+                                <div style="color: var(--bs-secondary-color); font-size: 0.85rem; margin-top: 0.5rem;">
                                     <em>@string.Format(L["TruncatedBody"].Value, 256, httpCall.ResponseBodyBytes)</em>
                                 </div>
                             }

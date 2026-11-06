@@ -21,6 +21,14 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// <summary>Restores session from saved credentials for a specific account (supports multi-account per-account credential storage)</summary>
         Task<bool> RestoreFromSavedCredentialsAsync(Guid? providerAccountId, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Checks that the account's saved credential still works. Unlike <see cref="RestoreFromSavedCredentialsAsync(Guid?, CancellationToken)"/>,
+        /// it never answers from a session restored moments ago, so a "valid" result has been checked against the provider.
+        /// Providers that keep no such session cache fall back to the restore.
+        /// </summary>
+        Task<bool> ValidateStoredCredentialAsync(Guid providerAccountId, CancellationToken cancellationToken = default)
+            => RestoreFromSavedCredentialsAsync(providerAccountId, cancellationToken);
+
         /// <summary>Gets current authentication status</summary>
         string GetAuthStatus();
 

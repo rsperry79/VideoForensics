@@ -1,0 +1,18 @@
+{
+  "linked_doorbots": [
+    {
+      "id": 1001,
+      "device_id": "1001",
+      "kind": "doorbot",
+      "call_alerts": true,
+      "motion_alerts": false
+    },
+    {
+      "id": 2002,
+      "device_id": "2002",
+      "kind": "stickup_cam",
+      "call_alerts": false,
+      "motion_alerts": true
+    }
+  ]
+}

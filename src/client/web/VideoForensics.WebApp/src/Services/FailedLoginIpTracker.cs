@@ -169,7 +169,7 @@ namespace VideoForensics.Client.WebApp.Services
                     throw;
                 }
 
-                _logger.LogError(ex, "Auto-ban write failed for {ClientIp}", key);
+                _logger.LogError("Auto-ban write failed for {ClientIp}: {Message} ({ErrorType})", key, ex.Message, ex.GetType().Name);
                 return false;
             }
         }

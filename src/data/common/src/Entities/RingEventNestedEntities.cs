@@ -176,6 +176,9 @@ namespace VideoForensics.Data.Common.Entities
         public List<RingEventCvDetectionDetail> DetectionDetails { get; set; } = [];
 
         public List<RingEventCvTag> Tags { get; set; } = [];
+
+        /// <summary>cv_properties.key_moments. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? KeyMoments { get; set; }
     }
 
     /// <summary>One entry of cv_properties.detection_types.</summary>
@@ -262,6 +265,9 @@ namespace VideoForensics.Data.Common.Entities
         public double? Confidence { get; set; }
 
         public string? ModelVersion { get; set; }
+
+        /// <summary>detection_details[].objects_per_lens. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? ObjectsPerLens { get; set; }
 
         public List<RingEventCvDetectionZone> Zones { get; set; } = [];
     }

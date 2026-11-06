@@ -68,6 +68,9 @@
   <data name="RegisterLink" xml:space="preserve">
     <value>Register</value>
   </data>
+  <data name="RememberMe" xml:space="preserve">
+    <value>Remember me</value>
+  </data>
   <data name="TwoFactorRequiredTitle" xml:space="preserve">
     <value>Two-Factor Required</value>
   </data>

@@ -13,6 +13,21 @@ public interface IStorageLocationProvider
     string GetDefaultRoot(StorageCategory category);
 
     /// <summary>
+    /// Gets the platform default root for the specified category, ignoring a relocated Database pointer.
+    /// Used when a category is reset to its default.
+    /// </summary>
+    /// <param name="category">The storage category.</param>
+    /// <returns>An OS-appropriate absolute folder path.</returns>
+    string GetPlatformDefaultRoot(StorageCategory category);
+
+    /// <summary>
+    /// Gets the default storage root that every category's platform default is built from: the root saved by the
+    /// default storage path setting, or the built-in data root when none is saved.
+    /// </summary>
+    /// <returns>An OS-appropriate absolute folder path.</returns>
+    string GetDefaultStorageRoot();
+
+    /// <summary>
     /// Gets the machine-wide data root that holds the root-level app files (license key, credential salt,
     /// cached server URL) and the per-category folders. Windows: %ProgramData%\VideoForensics. Linux: /var/lib/videoforensics.
     /// Ignores install-time and in-app per-category overrides, which apply only to <see cref="GetDefaultRoot"/>.

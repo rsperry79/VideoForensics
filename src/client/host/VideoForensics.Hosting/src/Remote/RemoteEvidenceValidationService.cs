@@ -56,6 +56,19 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <summary>
+        /// Not served over HTTP. The single-item check runs inside the server's integrity job (EvidenceValidationJobService)
+        /// against the local service, so the remote client never reaches this path.
+        /// </summary>
+        /// <inheritdoc />
+        public Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityForMediaItemAsync(
+            Guid mediaItemId,
+            CancellationToken ct,
+            IProgress<string>? progress = null)
+        {
+            throw new NotSupportedException("Single-item integrity verification runs on the server only.");
+        }
+
+        /// <summary>
         /// <paramref name="progress"/> is accepted for interface parity but not used: the HTTP response arrives
         /// only once the whole reconcile finishes, so nothing can stream per discrepancy.
         /// </summary>

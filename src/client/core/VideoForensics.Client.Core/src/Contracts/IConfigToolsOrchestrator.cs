@@ -26,6 +26,12 @@ namespace VideoForensics.Client.Core.Contracts
 
         Task<(bool Success, string Message)> SetHealthSyncAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default);
 
+        Task<(bool Success, string Message)> SetScheduledReportsEnabledAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default);
+
+        Task<(bool Success, string Message)> SetScheduledReportIntervalHoursAsync(IForensicsConfiguration config, int hours, CancellationToken ct = default);
+
+        Task<(bool Success, string Message)> SetServiceIntervalHoursAsync(IForensicsConfiguration config, string service, int hours, CancellationToken ct = default);
+
         Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default);
 
         Task<(bool Success, string Message)> FactoryResetAsync(CancellationToken ct = default, string? downloadDirOverride = null, string? dbPathOverride = null);

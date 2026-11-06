@@ -9,6 +9,11 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Core.Services
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// After a complete analysis, writes a review flag (<see cref="MediaFlag"/>) for each clip flag that applies and removes
+    /// the clip's unreviewed flags that no longer apply. Only BitrateCollapse is written so far. An incomplete analysis
+    /// touches no flags.
+    /// </remarks>
     public sealed class MediaAnalysisService : IMediaAnalysisService
     {
         /// <summary>
@@ -34,6 +39,8 @@ namespace VideoForensics.Data.Core.Services
         private readonly IAudioClipAnalyzer _audio;
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaAnalysisService> _logger;
+        private readonly IMediaPathResolver _paths;
+        private readonly IMediaFlagRepository _flags;
 
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
@@ -44,7 +51,9 @@ namespace VideoForensics.Data.Core.Services
             IAudioClipAnalyzer audio,
             IMediaThumbnailService thumbnails,
             IOptions<MediaAnalysisOptions> options,
-            ILogger<MediaAnalysisService> logger)
+            ILogger<MediaAnalysisService> logger,
+            IMediaFlagRepository flags,
+            IMediaPathResolver? paths = null)
         {
             _items = items;
             _devices = devices;
@@ -54,6 +63,8 @@ namespace VideoForensics.Data.Core.Services
             _audio = audio;
             _thumbnails = thumbnails;
             _logger = logger;
+            _flags = flags;
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
         /// <summary>
         /// False for stills (images) and roll-up loops, which are built from images and carry no audio. Any other clip has audio.
@@ -65,6 +76,12 @@ namespace VideoForensics.Data.Core.Services
             && !string.Equals(media.MediaFormat, "jpeg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "png", StringComparison.OrdinalIgnoreCase)
             && (media.MetadataJson is null || !media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal));
+        }
+
+        /// <summary>True for a roll-up time-lapse loop, whose duration is the window it covers.</summary>
+        private static bool IsRollUpLoop(MediaItem media)
+        {
+            return media.MetadataJson is not null && media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal);
         }
 
         /// <inheritdoc />
@@ -80,18 +97,28 @@ namespace VideoForensics.Data.Core.Services
             // never leaves a video without one. Never fails the analysis: the service reports false instead.
             _ = await _thumbnails.EnsureThumbnailAsync(media, ct);
 
-            MediaBitrateAnalysis? bitrate = await _bitrate.AnalyzeAsync(media.FilePath, media.FileSizeBytes, ct);
-            ClipColorStats? color = await _color.AnalyzeAsync(media.FilePath, ct);
+            string filePath = await _paths.ToAbsoluteAsync(media.FilePath, ct);
+            MediaBitrateAnalysis? bitrate = await _bitrate.AnalyzeAsync(filePath, media.FileSizeBytes, ct);
+            ClipColorStats? color = await _color.AnalyzeAsync(filePath, ct);
             // Stills and roll-up loops have no audio track, so the audio measurement cannot exist for them and is not required.
             bool audioApplicable = HasAudioTrack(media);
-            AudioClipStats? audio = audioApplicable ? await _audio.AnalyzeAsync(media.FilePath, bitrate?.DurationSeconds, ct) : null;
+            AudioClipStats? audio = audioApplicable ? await _audio.AnalyzeAsync(filePath, bitrate?.DurationSeconds, ct) : null;
 
             if (bitrate is not null)
             {
                 media.VideoBitrateBps = bitrate.VideoBitrateBps;
-                media.DurationSeconds = bitrate.DurationSeconds;
+                // A roll-up loop's duration is its real window, set when it is recorded. The MP4's playback length is not that.
+                if (!IsRollUpLoop(media))
+                {
+                    media.DurationSeconds = bitrate.DurationSeconds;
+                }
+
                 media.BitrateEstimated = bitrate.BitrateEstimated;
                 media.BitrateAnalyzedAtUtc = DateTime.UtcNow;
+                media.VideoCodec = bitrate.VideoCodec;
+                media.AudioCodec = bitrate.AudioCodec;
+                media.Resolution = bitrate.Resolution;
+                media.FrameRate = bitrate.FrameRate;
             }
 
             if (color is not null)
@@ -180,6 +207,33 @@ namespace VideoForensics.Data.Core.Services
             media.BaselineVersion = snapshot.Version;
 
             await _items.UpdateAsync(media, ct);
+
+            // Only BitrateCollapse has a review flag so far. Reconcile runs even when nothing is raised, so an unreviewed
+            // flag that no longer applies is removed; reviewed rows are kept by the repository.
+            var raisedTypes = new HashSet<MediaFlagType>();
+            // Bit rate says nothing about a still, so a still never raises the flag; the stored RedFlags text is unchanged.
+            if (report.Flags.Contains(RedFlag.BitrateCollapse) && !MediaStillRules.IsStill(media.FileName))
+            {
+                // A window that ends before it starts is rejected by the repository, so a missing or non-positive duration
+                // collapses the window to the recording instant.
+                DateTime windowEnd = media.DurationSeconds is { } seconds && seconds > 0
+                    ? media.RecordedAtUtc.AddSeconds(seconds)
+                    : media.RecordedAtUtc;
+                _ = await _flags.UpsertRaisedAsync(new MediaFlag
+                {
+                    Id = Guid.NewGuid(),
+                    FlagType = MediaFlagType.BitrateCollapse,
+                    DeviceId = media.DeviceId,
+                    MediaItemId = media.Id,
+                    WindowStartUtc = media.RecordedAtUtc,
+                    WindowEndUtc = windowEnd,
+                    RaisedAtUtc = DateTime.UtcNow,
+                    Severity = MediaFlagSeverity.Warn
+                }, ct);
+                raisedTypes.Add(MediaFlagType.BitrateCollapse);
+            }
+
+            _ = await _flags.ReconcileForMediaAsync(media.Id, raisedTypes, ct);
             _logger.LogDebug("Analysed media {MediaItemId}: {FlagCount} red flag(s), jamming suspected: {Jamming}",
                 media.Id, report.Flags.Count, report.JammingSuspected);
         }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -33,6 +34,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IForensicsConfiguration> _config = new();
+        private readonly Mock<IEventRepository> _events = new();
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         private readonly Device _device;
 
@@ -69,9 +71,18 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _accounts.Object,
             _storage.Object,
             _builder.Object,
-            Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotRollupService>.Instance,
+            _events.Object,
             configurationService: _configuration.Object);
+        }
+
+        /// <summary>Resolver that roots stored (relative) paths at the test folder.</summary>
+        private IMediaPathResolver RootedPaths()
+        {
+            var paths = new Mock<IMediaPathResolver>();
+            _ = paths.Setup(p => p.ToAbsoluteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string stored, CancellationToken _) => Path.Combine(_root, stored));
+            return paths.Object;
         }
 
         private string WriteJpeg(string name)
@@ -141,7 +152,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             Assert.Equal(1, result.DevicesRolledUp);
             _media.Verify(m => m.AddAsync(
-                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == To && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
+                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == From
+                    && i.DurationSeconds == (To - From).TotalSeconds && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -156,7 +168,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
-            string expected = Path.Combine(configuredRoot, "ring", "home", "porch", $"{To:yyyyMMddHHmmss}.mp4");
+            string expected = Path.Combine(configuredRoot, "ring", "home", "porch", $"Porch_{To:yyyyMMdd_HHmmss}_snapshot-loop.mp4");
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
@@ -172,7 +184,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
-            string expected = Path.Combine(MediaRoot, "ring", "home", "porch", $"{To:yyyyMMddHHmmss}.mp4");
+            string expected = Path.Combine(MediaRoot, "ring", "home", "porch", $"Porch_{To:yyyyMMdd_HHmmss}_snapshot-loop.mp4");
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
@@ -224,6 +236,30 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RollUp_WindowWithCapturesButNoUsableStill_LogsWhyNothingWasBuilt()
+        {
+            // Production symptom: roll-ups record success but write no loop. An empty window must say why, not stay silent.
+            var captures = new Mock<ISnapshotCaptureRepository>();
+            _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
+            [
+                SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "gone.jpg", null),
+            ]);
+            var logger = new Mock<ILogger<SnapshotRollupService>>();
+            SnapshotRollupService service = new(
+                _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
+                logger.Object,
+                _events.Object,
+                captures: captures.Object,
+                stillMapper: new SnapshotStillMapper(),
+                mediaPaths: RootedPaths());
+
+            SnapshotRollupResult result = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(0, result.DevicesRolledUp);
+            Assert.Null(result.ErrorMessage);
+            Assert.Contains(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Warning));
+        }
+        [Fact]
         public async Task RollUp_BuildFails_ReportsFailureWithoutRegisteringLoop()
         {
             SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
@@ -258,10 +294,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             SnapshotRollupService service = new(
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
-                Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                 NullLogger<SnapshotRollupService>.Instance,
+                _events.Object,
                 captures: captures.Object,
-                stillMapper: new SnapshotStillMapper());
+                stillMapper: new SnapshotStillMapper(),
+                mediaPaths: RootedPaths());
 
             SnapshotRollupResult result = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
@@ -269,6 +306,47 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             Assert.NotNull(sent);
             Assert.Equal(TimeSpan.FromMinutes(2), sent!.Stills[0].Hold);
             Assert.Equal(TimeSpan.FromMinutes(5), sent.Stills[1].Hold);
+        }
+
+        [Fact]
+        public async Task RollUp_RecordsTimelapseEventForTheDevice_AlreadyDownloaded()
+        {
+            // The Events tab reads the Events table, so each loop also needs an event row. It is marked Downloaded so the
+            // event media puller does not try to fetch it from the provider.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            BuildSucceeds();
+
+            _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            _events.Verify(e => e.UpsertAsync(
+                It.Is<Event>(ev => ev.DeviceId == _device.Id
+                    && ev.EventType == "timelapse"
+                    && ev.OccurredAtUtc == From
+                    && ev.DownloadStatus == EventDownloadStatus.Downloaded
+                    && ev.DownloadedAtUtc.HasValue
+                    && ev.ProviderEventId == $"timelapse-{To:yyyyMMddHHmmss}"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RollUp_SuccessfulLoop_LogsInformationWithDeviceAndFrameCount()
+        {
+            // A successful loop must leave a trace: the device, how many snapshots went in, and the file name.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)), Snapshot(WriteJpeg("b.jpg"), From.AddMinutes(5)));
+            BuildSucceeds();
+            var logger = new Mock<ILogger<SnapshotRollupService>>();
+            SnapshotRollupService service = new(
+                _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
+                logger.Object,
+                _events.Object,
+                configurationService: _configuration.Object);
+
+            _ = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Contains(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log)
+                && Equals(i.Arguments[0], LogLevel.Information)
+                && i.Arguments[2].ToString()!.Contains("Porch", StringComparison.Ordinal)
+                && i.Arguments[2].ToString()!.Contains("2 snapshots", StringComparison.Ordinal));
         }
     }
 

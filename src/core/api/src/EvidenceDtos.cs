@@ -95,6 +95,10 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="DeviceIds">Devices to verify in one job. When present and non-empty it takes precedence over <paramref name="DeviceId"/>.</param>
     public record StartIntegrityJobRequest(Guid? DeviceId, IReadOnlyList<Guid>? DeviceIds = null);
 
+    /// <summary>Request to start a local integrity job over one media item's file.</summary>
+    /// <param name="MediaItemId">Media item whose file to verify. Other items on the same device are not touched.</param>
+    public record StartIntegrityMediaItemJobRequest(Guid MediaItemId);
+
     /// <summary>Request to start a provider reconciliation job.</summary>
     /// <param name="DeviceId">Database device ID.</param>
     /// <param name="ProviderDeviceId">Provider's device identifier.</param>

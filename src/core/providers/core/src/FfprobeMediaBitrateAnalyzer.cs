@@ -29,7 +29,15 @@ namespace VideoForensics.Core.Providers.Core
             try
             {
                 IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildOptions(), ct);
-                return MediaBitrateAnalysis.FromProbe(analysis.Duration, analysis.PrimaryVideoStream?.BitRate, fileSizeBytes);
+                return MediaBitrateAnalysis.FromProbe(
+                    analysis.Duration,
+                    analysis.PrimaryVideoStream?.BitRate,
+                    fileSizeBytes,
+                    videoCodec: analysis.PrimaryVideoStream?.CodecName,
+                    audioCodec: analysis.PrimaryAudioStream?.CodecName,
+                    width: analysis.PrimaryVideoStream?.Width,
+                    height: analysis.PrimaryVideoStream?.Height,
+                    frameRate: analysis.PrimaryVideoStream?.AvgFrameRate);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

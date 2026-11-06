@@ -32,6 +32,21 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
+  <data name="ChangeDefaultPathButton" xml:space="preserve">
+    <value>Change default path</value>
+  </data>
+  <data name="ConfirmDefaultPathMessage" xml:space="preserve">
+    <value>Every category on the default location will be moved into this folder. The app restarts after the change.</value>
+  </data>
+  <data name="ChangeDefaultPathDone" xml:space="preserve">
+    <value>Default storage path changed. The app is restarting to use it.</value>
+  </data>
+  <data name="DefaultPathHeading" xml:space="preserve">
+    <value>Default storage path</value>
+  </data>
+  <data name="DefaultPathHint" xml:space="preserve">
+    <value>Categories on the default location are stored under this folder.</value>
+  </data>
   <data name="Title" xml:space="preserve">
     <value>Storage</value>
   </data>
@@ -53,14 +68,26 @@
   <data name="ColPath" xml:space="preserve">
     <value>Current Path</value>
   </data>
+  <data name="DefaultLocationPrefix" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="ResetToDefaultButton" xml:space="preserve">
+    <value>Reset to default</value>
+  </data>
+  <data name="ResetPendingMessage" xml:space="preserve">
+    <value>Existing files will be moved to the platform default location.</value>
+  </data>
   <data name="ColUsedSpace" xml:space="preserve">
     <value>Used Space</value>
   </data>
   <data name="ColFreeSpace" xml:space="preserve">
     <value>Free Space</value>
   </data>
-  <data name="ChangeButton" xml:space="preserve">
-    <value>Change...</value>
+  <data name="ChangePathButton" xml:space="preserve">
+    <value>Change path...</value>
+  </data>
+  <data name="CategoryNotFound" xml:space="preserve">
+    <value>Storage category not found.</value>
   </data>
   <data name="BrowseFolderTitle" xml:space="preserve">
     <value>Select new folder</value>
@@ -130,5 +157,14 @@
   </data>
   <data name="CategoryKeys" xml:space="preserve">
     <value>Keys</value>
+  </data>
+  <data name="StorageTableHeading" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="StorageTableHint" xml:space="preserve">
+    <value>Click a category for details.</value>
+  </data>
+  <data name="StorageTotalUsed" xml:space="preserve">
+    <value>Total used</value>
   </data>
 </root>

@@ -67,7 +67,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch device info for friendly name; using default");
+                _logger.LogError("Failed to fetch device info for friendly name; using default: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             var location = new Location(
@@ -81,7 +81,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching Uniview locations");
+            _logger.LogError("Error fetching Uniview locations: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             throw;
         }
     }
@@ -141,7 +141,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching devices for location");
+            _logger.LogError("Error fetching devices for location: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             throw;
         }
     }
@@ -194,7 +194,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching device {DeviceId}", deviceId);
+            _logger.LogError("Error fetching device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
             return null;
         }
     }
@@ -237,7 +237,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch device info for {ProviderName} account; using default", ProviderName);
+                _logger.LogError("Failed to fetch device info for {ProviderName} account; using default: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
             }
 
             var location = new Location(
@@ -252,7 +252,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching Uniview locations for {ProviderName} account", ProviderName);
+            _logger.LogError("Error fetching Uniview locations for {ProviderName} account: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
             throw;
         }
     }
@@ -317,8 +317,8 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching devices for {ProviderName} account",
-                ProviderName);
+            _logger.LogError("Error fetching devices for {ProviderName} account: {Message} ({ErrorType})",
+                ProviderName, ex.Message, ex.GetType().Name);
             throw;
         }
     }
@@ -375,8 +375,8 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching device {DeviceId} for {ProviderName} account",
-                deviceId, ProviderName);
+            _logger.LogError("Error fetching device {DeviceId} for {ProviderName} account: {Message} ({ErrorType})",
+                deviceId, ProviderName, ex.Message, ex.GetType().Name);
             return null;
         }
     }

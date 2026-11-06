@@ -83,13 +83,6 @@ namespace VideoForensics.Data.Database.Repositories
             return await GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
-        /// <summary>Gets a location by API response hash for deduplication.</summary>
-        public async Task<Location?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Locations.FirstOrDefaultAsync(l => l.ApiResponseHash == apiResponseHash, ct);
-        }
-
         /// <summary>Lists all locations.</summary>
         public async Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct)
         {
@@ -109,7 +102,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding location: {LocationName}", location.Name);
+                _logger.LogError("Error adding location: {LocationName}: {Message} ({ErrorType})", location.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -126,7 +119,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating location: {LocationName}", location.Name);
+                _logger.LogError("Error updating location: {LocationName}: {Message} ({ErrorType})", location.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -148,7 +141,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting location: {LocationName}", location?.Name ?? "unknown location");
+                _logger.LogError("Error deleting location: {LocationName}: {Message} ({ErrorType})", location?.Name ?? "unknown location", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

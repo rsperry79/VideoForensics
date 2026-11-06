@@ -87,7 +87,10 @@ else
                                     <span class="flex-grow-1">@label</span>
                                     <select class="form-select form-select-sm" style="max-width: 220px;" aria-label="@label" value="@row.Mode" disabled="@_isBusy"
                                             @onchange="e => SetDeviceModeAsync(row, e.Value?.ToString())">
-                                        <option value="Capture">@L["DeviceModeCapture"]</option>
+                                        @if (row.IsCamera)
+                                        {
+                                            <option value="Capture">@L["DeviceModeCapture"]</option>
+                                        }
                                         <option value="HealthOnly">@L["DeviceModeHealthOnly"]</option>
                                         <option value="Off">@L["DeviceModeOff"]</option>
                                     </select>
@@ -276,7 +279,7 @@ else
     /// GET against the account API with the paired-device bearer token.
     /// </summary>
     /// <summary>One device on the schedule page: its capture choice, saved as "Capture", "HealthOnly", or "Off".</summary>
-    private sealed record DeviceModeRow(Guid DeviceId, string Name, string ProviderDeviceId, string Mode);
+    private sealed record DeviceModeRow(Guid DeviceId, string Name, string ProviderDeviceId, string Mode, bool IsCamera);
 
     private List<DeviceModeRow> _deviceModes = new();
 
@@ -284,7 +287,9 @@ else
     {
         try
         {
-            _deviceModes = await GetApiAsync<List<DeviceModeRow>>($"api/v1/device-capture-modes?providerAccountId={Id}") ?? new List<DeviceModeRow>();
+            List<DeviceModeRow> rows = await GetApiAsync<List<DeviceModeRow>>($"api/v1/device-capture-modes?providerAccountId={Id}") ?? new List<DeviceModeRow>();
+            // A non-camera saved as Capture before this rule shows as HealthOnly: snapshots already skip non-cameras, so that is what it runs.
+            _deviceModes = rows.Select(row => row.IsCamera || row.Mode != "Capture" ? row : row with { Mode = "HealthOnly" }).ToList();
         }
         catch (Exception ex)
         {

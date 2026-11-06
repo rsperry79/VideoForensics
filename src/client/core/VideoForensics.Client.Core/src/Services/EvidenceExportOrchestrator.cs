@@ -24,6 +24,8 @@ namespace VideoForensics.Client.Core.Services
         private readonly IReportGenerationService? _reportService;
         private readonly IForensicsConfigurationService? _configurationService;
         private readonly IStorageLocationProvider? _storageLocationProvider;
+        private readonly IMediaPathResolver _paths;
+        private readonly ISnapshotCaptureRepository? _snapshotCaptures;
 
         private static readonly JsonSerializerOptions ReportJsonOptions = new()
         {
@@ -33,6 +35,7 @@ namespace VideoForensics.Client.Core.Services
 
         /// <param name="configurationService">Source of the stored ExportsLocation setting. Required for case export.</param>
         /// <param name="storageLocationProvider">Resolves the exports root from that setting, falling back to the platform default. Required for case export.</param>
+        /// <param name="snapshotCaptures">Resolves pinned snapshot items to their image files. Required for case export.</param>
         public EvidenceExportOrchestrator(
             ILogger<EvidenceExportOrchestrator> logger,
             IMediaItemRepository mediaItemRepository,
@@ -42,8 +45,12 @@ namespace VideoForensics.Client.Core.Services
             ICaseRepository? caseRepository = null,
             IReportGenerationService? reportService = null,
             IForensicsConfigurationService? configurationService = null,
-            IStorageLocationProvider? storageLocationProvider = null)
+            IStorageLocationProvider? storageLocationProvider = null,
+            IMediaPathResolver? paths = null,
+            ISnapshotCaptureRepository? snapshotCaptures = null)
         {
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
+            _snapshotCaptures = snapshotCaptures;
             _caseRepository = caseRepository;
             _reportService = reportService;
             _configurationService = configurationService;
@@ -64,9 +71,9 @@ namespace VideoForensics.Client.Core.Services
             CancellationToken ct,
             string? stepUpToken = null)
         {
-            if (_caseRepository is null || _reportService is null || _configurationService is null || _storageLocationProvider is null)
+            if (_caseRepository is null || _reportService is null || _configurationService is null || _storageLocationProvider is null || _snapshotCaptures is null)
             {
-                throw new InvalidOperationException("Case export requires the case repository, report generation service, configuration service and storage location provider.");
+                throw new InvalidOperationException("Case export requires the case repository, report generation service, configuration service, storage location provider and snapshot capture repository.");
             }
 
             ForensicCase? forensicCase = await _caseRepository.GetAsync(caseId, ct);
@@ -80,6 +87,11 @@ namespace VideoForensics.Client.Core.Services
             var mediaItemIds = pinned
                 .Where(i => i.Kind == CaseItemKind.Media && i.MediaItemId.HasValue)
                 .Select(i => i.MediaItemId!.Value)
+                .Distinct()
+                .ToList();
+            var snapshotCaptureIds = pinned
+                .Where(i => i.Kind == CaseItemKind.Snapshot && i.SnapshotCaptureId.HasValue)
+                .Select(i => i.SnapshotCaptureId!.Value)
                 .Distinct()
                 .ToList();
 
@@ -127,7 +139,7 @@ namespace VideoForensics.Client.Core.Services
             }
 
             string exportsRoot = await ResolveExportsRootAsync(ct);
-            return await ExportCoreAsync(mediaItemIds, exportsRoot, forensicCase.CaseNumber, recipientDescription, passphrase, reportEntries, ct);
+            return await ExportCoreAsync(mediaItemIds, snapshotCaptureIds, exportsRoot, forensicCase.CaseNumber, recipientDescription, passphrase, reportEntries, ct);
         }
 
         /// <summary>Exports an explicit set of media items, not tied to a case. Not part of <see cref="IEvidenceExportService"/>.</summary>
@@ -140,7 +152,7 @@ namespace VideoForensics.Client.Core.Services
             CancellationToken ct,
             string? stepUpToken = null)
         {
-            return await ExportCoreAsync(mediaItemIds, ResolveSafeOutputDirectory(outputDirectory), caseReference, recipientDescription, passphrase, [], ct);
+            return await ExportCoreAsync(mediaItemIds, [], ResolveSafeOutputDirectory(outputDirectory), caseReference, recipientDescription, passphrase, [], ct);
         }
 
         /// <summary>Reads the stored ExportsLocation and resolves it to the effective exports root (default when unset).</summary>
@@ -153,6 +165,7 @@ namespace VideoForensics.Client.Core.Services
         /// <param name="resolvedOutputDirectory">Absolute, already-validated directory the archive is written to.</param>
         private async Task<ExportResult> ExportCoreAsync(
             IReadOnlyList<Guid> mediaItemIds,
+            IReadOnlyList<Guid> snapshotCaptureIds,
             string resolvedOutputDirectory,
             string? caseReference,
             string? recipientDescription,
@@ -208,12 +221,35 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing media item {MediaItemId} for export, skipping", mediaItemId);
+                        _logger.LogError("Error processing media item {MediaItemId} for export, skipping: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
                         excludedItems.Add(mediaItemId);
                     }
                 }
 
-                if (itemsToExport.Count == 0 && extraEntries.Count == 0)
+                // Step 1b: Resolve pinned snapshots to their image files. Missing rows are skipped, as missing media is.
+                var snapshotsToExport = new List<(Guid DeviceId, DateTimeOffset CapturedAtUtc, string FileName, string MediaFilePath)>();
+                foreach (Guid snapshotCaptureId in snapshotCaptureIds)
+                {
+                    try
+                    {
+                        SnapshotCapture? snapshot = _snapshotCaptures is null ? null : await _snapshotCaptures.GetAsync(snapshotCaptureId, ct);
+                        if (snapshot?.MediaFilePath is not string mediaFilePath)
+                        {
+                            _logger.LogWarning("Pinned snapshot not found or has no image file, skipping");
+                            continue;
+                        }
+
+                        // Named by device and UTC capture time, so the file sorts by when it was taken.
+                        string fileName = $"{snapshot.DeviceId}_{snapshot.CapturedAtUtc.UtcDateTime:yyyyMMdd-HHmmss}{Path.GetExtension(mediaFilePath)}";
+                        snapshotsToExport.Add((snapshot.DeviceId, snapshot.CapturedAtUtc, fileName, mediaFilePath));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Error processing pinned snapshot for export ({ExceptionType}: {Message}), skipping", ex.GetType().Name, ex.Message);
+                    }
+                }
+
+                if (itemsToExport.Count == 0 && snapshotsToExport.Count == 0 && extraEntries.Count == 0)
                 {
                     result.ErrorMessage = "No media items were suitable for export (all failed integrity verification or not found)";
                     _logger.LogError(result.ErrorMessage);
@@ -235,6 +271,14 @@ namespace VideoForensics.Client.Core.Services
                         x.Item.RecordedAtUtc,
                         x.Item.DownloadedAtUtc,
                         IntegrityStatus = "Verified"
+                    }).ToList(),
+                    SnapshotCount = snapshotsToExport.Count,
+                    Snapshots = snapshotsToExport.Select(s => new
+                    {
+                        s.DeviceId,
+                        CapturedAtUtc = s.CapturedAtUtc.UtcDateTime,
+                        s.FileName,
+                        ArchivePath = s.FileName
                     }).ToList()
                 };
 
@@ -263,7 +307,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to retrieve action log for media item {MediaItemId}, skipping history", item.Id);
+                        _logger.LogError("Failed to retrieve action log for media item {MediaItemId}, skipping history: {Message} ({ErrorType})", item.Id, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -285,16 +329,17 @@ namespace VideoForensics.Client.Core.Services
                     {
                         try
                         {
-                            if (!File.Exists(item.FilePath))
+                            string itemPath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
+                            if (!File.Exists(itemPath))
                             {
-                                _logger.LogWarning("Media file not found at {FilePath}, skipping", item.FilePath);
+                                _logger.LogWarning("Media file not found at {FilePath}, skipping", itemPath);
                                 continue;
                             }
 
                             var entry = new ZipEntry(item.FileName);
                             zipStream.PutNextEntry(entry);
 
-                            using (FileStream fileStream = File.OpenRead(item.FilePath))
+                            using (FileStream fileStream = File.OpenRead(itemPath))
                             {
                                 await fileStream.CopyToAsync(zipStream, ct);
                             }
@@ -304,7 +349,34 @@ namespace VideoForensics.Client.Core.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to add media file {FileName} to archive", item.FileName);
+                            _logger.LogError("Failed to add media file {FileName} to archive: {Message} ({ErrorType})", item.FileName, ex.Message, ex.GetType().Name);
+                        }
+                    }
+
+                    // Add each pinned snapshot image, at the archive root alongside media files
+                    foreach ((Guid _, DateTimeOffset _, string snapshotFileName, string mediaFilePath) in snapshotsToExport)
+                    {
+                        try
+                        {
+                            string imagePath = await _paths.ToAbsoluteAsync(mediaFilePath, ct);
+                            if (!File.Exists(imagePath))
+                            {
+                                _logger.LogWarning("Snapshot file not found at {FilePath}, skipping", imagePath);
+                                continue;
+                            }
+
+                            zipStream.PutNextEntry(new ZipEntry(snapshotFileName));
+                            using (FileStream imageStream = File.OpenRead(imagePath))
+                            {
+                                await imageStream.CopyToAsync(zipStream, ct);
+                            }
+
+                            zipStream.CloseEntry();
+                            _logger.LogDebug("Added {FileName} to archive", snapshotFileName);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError("Failed to add snapshot image {FileName} to archive ({ExceptionType}: {Message})", snapshotFileName, ex.GetType().Name, ex.Message);
                         }
                     }
 
@@ -375,7 +447,7 @@ namespace VideoForensics.Client.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Evidence export failed");
+                _logger.LogError("Evidence export failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 result.Success = false;
                 result.ErrorMessage = $"Export failed: {ex.Message}";
                 return result;
@@ -410,7 +482,7 @@ namespace VideoForensics.Client.Core.Services
                 throw new InvalidOperationException("Output directory contains invalid parent directory traversal.");
             }
 
-            string baseExportRoot = Path.Combine(AppContext.BaseDirectory, "exports");
+            string baseExportRoot = Path.Combine(AppContext.BaseDirectory, "Exports");
             _ = Directory.CreateDirectory(baseExportRoot);
             string combined = Path.Combine(baseExportRoot, requestedOutputDirectory);
             string safeOutputDirectory = EnsureWithinRoot(baseExportRoot, combined);

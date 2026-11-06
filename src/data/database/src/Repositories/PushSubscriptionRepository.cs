@@ -49,7 +49,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding or updating push subscription");
+                _logger.LogError("Error adding or updating push subscription: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -66,7 +66,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error listing push subscriptions for operator: {OperatorId}", operatorId);
+                _logger.LogError("Error listing push subscriptions for operator: {OperatorId}: {Message} ({ErrorType})", operatorId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -90,7 +90,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error listing push subscriptions for admins");
+                _logger.LogError("Error listing push subscriptions for admins: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -105,7 +105,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error listing push subscriptions for all operators");
+                _logger.LogError("Error listing push subscriptions for all operators: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -128,7 +128,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing push subscription");
+                _logger.LogError("Error removing push subscription: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

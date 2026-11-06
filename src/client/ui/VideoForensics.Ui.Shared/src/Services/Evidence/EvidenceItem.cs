@@ -66,7 +66,8 @@ public sealed class EvidenceItem
     public string Label =>
         Kind switch
         {
-            EvidenceKind.Event => Event?.EventType ?? "Event",
+            // "timelapse" is the event type the roll-up writes for each loop; it reads as Time Lapse, like its media row.
+            EvidenceKind.Event => Event?.EventType == "timelapse" ? "Time Lapse" : Event?.EventType ?? "Event",
             EvidenceKind.Snapshot => "Snapshot",
             EvidenceKind.Video => IsTimeLapse ? "Time Lapse" : "Video",
             EvidenceKind.File => "File",

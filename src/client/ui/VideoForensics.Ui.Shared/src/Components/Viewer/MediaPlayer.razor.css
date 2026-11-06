@@ -1,0 +1,57 @@
+/* The player is a positioned box so overlays (loading, error, ChildContent) sit over the video. */
+
+.media-player {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.media-player ::deep .media-player-video {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    background: #000;
+}
+
+.media-player ::deep .media-player-fit-contain {
+    object-fit: contain;
+}
+
+.media-player ::deep .media-player-fit-cover {
+    object-fit: cover;
+}
+
+/* Never blocks the native controls underneath. */
+.media-player-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    font-size: 0.85rem;
+    text-align: center;
+    pointer-events: none;
+}
+
+.media-player-overlay-error {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.media-player-unavailable {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: 3rem;
+    padding: 0.25rem;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 0.85rem;
+    text-align: center;
+    border-radius: 4px;
+}

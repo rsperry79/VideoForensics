@@ -35,11 +35,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _devices.Object,
                 _locations.Object,
                 _accounts.Object,
-                _discovery.Object,
                 logger: null,
                 mediaDownloadService: _download.Object,
                 mediaRoot: _mediaRoot,
-                deviceConfigRepository: null,
                 previewService: _previews.Object,
                 mediaItems: _mediaItems.Object);
         }
@@ -109,7 +107,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
-            Assert.Equal(new EventPullResult(DevicesSynced: 1, LocationsSynced: 1, EventsSynced: 1, ConfigAreasSynced: 1, FeedsFailed: 0), result);
+            Assert.Equal(new EventPullResult(DevicesSynced: 1, LocationsSynced: 1, EventsSynced: 1, ConfigAreasSynced: 0, FeedsFailed: 0), result);
             Assert.NotNull(device.LastSuccessfulPullAtUtc);
         }
 

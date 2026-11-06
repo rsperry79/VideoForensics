@@ -20,6 +20,10 @@
 .PARAMETER Build
     Run `dotnet publish` first.
 
+.PARAMETER FrameworkDependent
+    Publish without the runtime (framework-dependent). The machine then needs the .NET 10 runtime installed. The default
+    is self-contained.
+
 .PARAMETER UpdatesRoot
     Where packages are staged. Defaults to %ProgramData%\VideoForensics\updates.
 #>
@@ -28,6 +32,9 @@ param(
     [string]$PublishDir,
 
     [switch]$Build,
+
+    # Framework-dependent publish: runs on the machine's installed .NET 10 runtime. Self-contained stays the default.
+    [switch]$FrameworkDependent,
 
     # Debug keeps the PDBs a Visual Studio attach needs.
     [ValidateSet('Debug', 'Release')]
@@ -46,9 +53,11 @@ if (-not $PublishDir) {
 
 try {
     if ($Build) {
-        Write-Host ">>> Publishing VideoForensics.WebApp ($Configuration, win-x64, self-contained)..." -ForegroundColor Cyan
+        $selfContained = if ($FrameworkDependent) { 'false' } else { 'true' }
+        $kind = if ($FrameworkDependent) { 'framework-dependent' } else { 'self-contained' }
+        Write-Host ">>> Publishing VideoForensics.WebApp ($Configuration, win-x64, $kind)..." -ForegroundColor Cyan
         dotnet publish (Join-Path $RepoRoot 'src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj') `
-            -c $Configuration -r win-x64 --self-contained true -o $PublishDir
+            -c $Configuration -r win-x64 --self-contained $selfContained -o $PublishDir
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet publish failed with exit code $LASTEXITCODE"
         }

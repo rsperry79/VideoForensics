@@ -1,0 +1,11 @@
+{
+  "linked_doorbots": [
+    {
+      "id": 1,
+      "device_id": "x",
+      "kind": "x",
+      "call_alerts": false,
+      "motion_alerts": false
+    }
+  ]
+}

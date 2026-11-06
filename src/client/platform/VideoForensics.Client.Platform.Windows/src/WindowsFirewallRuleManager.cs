@@ -90,7 +90,7 @@ namespace VideoForensics.Client.Platform.Windows
             {
                 // Never throw. This is best-effort defense in depth: the network tier change has already
                 // taken effect in Kestrel, so a firewall failure must not undo it or crash the request.
-                _logger.LogError(ex, "Exception while ensuring Windows Firewall rule '{RuleName}' exists", ruleName);
+                _logger.LogError("Exception while ensuring Windows Firewall rule '{RuleName}' exists: {Message} ({ErrorType})", ruleName, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -117,7 +117,7 @@ namespace VideoForensics.Client.Platform.Windows
             catch (Exception ex)
             {
                 // Never throw - same best-effort reasoning as EnsureRuleExistsAsync.
-                _logger.LogError(ex, "Exception while removing Windows Firewall rule '{RuleName}'", ruleName);
+                _logger.LogError("Exception while removing Windows Firewall rule '{RuleName}': {Message} ({ErrorType})", ruleName, ex.Message, ex.GetType().Name);
             }
         }
     }

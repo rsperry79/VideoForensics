@@ -3,6 +3,22 @@
     "local-sdk": {
       "type": "http",
       "url": "http://localhost:3011/sdk"
+    },
+    "sf-maui-mcp": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["dnx", "Syncfusion.MAUI.MCP", "--yes"],
+      "env": {
+        "Syncfusion_API_Key_Path": "C:\\Users\\rsper\\syncfusion-api-key.txt"
+      }
+    },
+    "sf-blazor-mcp": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["dnx", "Syncfusion.Blazor.MCP", "--yes"],
+      "env": {
+        "Syncfusion_API_Key_Path": "C:\\Users\\rsper\\syncfusion-api-key.txt"
+      }
     }
   }
 }

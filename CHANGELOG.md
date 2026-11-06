@@ -19,3 +19,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dependabot automated dependency management and security update pull requests.
 - Dependency Review action enforcing license and security policy on new dependencies.
 - Comprehensive documentation: `README.md` describing the project and installation, `CHANGELOG.md` (this file) tracking version history, `LICENSE` file stating proprietary status, and `CREDITS.md` acknowledging third-party components.
+- Flagged-media review for Signal and Bit Rate reports: a flag table, review pages that play each flagged clip, keep and dismiss actions with a reason, adding a clip or the RSSI window to a case, clip navigation showing the flag's position in the list, and a playback timeline with a marker for each flag. Bit Rate flags are backfilled for the previous 7 days.

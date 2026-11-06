@@ -4,7 +4,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>
     /// Makes provider discovery return one location and its devices, and makes the repositories return the same stored
-    /// entities, so a pull updates those instances. Lets the pull tests describe an account by its stored inventory.
+    /// entities, so a sync or pull updates those instances. Lets the pull tests describe an account by its stored inventory.
+    /// The stored rows are also returned by the list and by-location reads a pull uses when no reference snapshot is cached.
     /// </summary>
     internal static class DiscoveryStub
     {
@@ -25,9 +26,18 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = locations.Setup(r => r.GetByProviderLocationIdAsync(accountId, location.ProviderLocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(location);
 
+            _ = locations.Setup(r => r.ListByProviderAccountIdAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([location]);
+
+            _ = deviceRepository.Setup(r => r.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(devices.ToList());
+
             foreach (DeviceEntity device in devices)
             {
                 _ = deviceRepository.Setup(r => r.GetByProviderDeviceIdAsync(location.Id, device.ProviderDeviceId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(device);
+
+                _ = deviceRepository.Setup(r => r.GetAsync(device.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(device);
             }
         }

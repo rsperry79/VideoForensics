@@ -11,6 +11,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     /// Checks a camera's health history for readings more than two std devs from its all-time mean, and raises one
     /// alert per camera and hour. Runs on the server as part of the base health poll, right after each reading is
     /// recorded, so the calculation and the alert do not depend on any page being open.
+    /// Each raised alert also writes an RssiDeviation <see cref="MediaFlag"/> for review, linked to the alert's notice.
+    /// A repeat check of the same hour finds the notice marker and writes neither notice nor flag.
     /// </summary>
     public sealed class SignalDeviationAlerts
     {
@@ -19,6 +21,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         private readonly IDeviceHealthRepository _health;
         private readonly INoticeRepository _notices;
+        private readonly IMediaFlagRepository _flags;
         private readonly INotificationDispatcher _dispatcher;
         private readonly TimeProvider _time;
         private readonly ILogger<SignalDeviationAlerts> _logger;
@@ -26,12 +29,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public SignalDeviationAlerts(
             IDeviceHealthRepository health,
             INoticeRepository notices,
+            IMediaFlagRepository flags,
             INotificationDispatcher dispatcher,
             TimeProvider time,
             ILogger<SignalDeviationAlerts> logger)
         {
             _health = health;
             _notices = notices;
+            _flags = flags;
             _dispatcher = dispatcher;
             _time = time;
             _logger = logger;
@@ -78,6 +83,26 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 string scope = $"devices={device.Id:D}" +
                     $"&from={window.HourStartUtc.AddHours(-1):yyyy-MM-dd'T'HH:mm:ss'Z'}" +
                     $"&to={window.HourStartUtc.AddHours(2):yyyy-MM-dd'T'HH:mm:ss'Z'}";
+                // The notice id is fixed here so the review flag can point at the notice the dispatcher writes.
+                Guid noticeId = Guid.NewGuid();
+
+                // The flag is written before the dispatch. If the dispatch throws, the marker is not in the notice table,
+                // so the next poll retries this hour, and the flag upsert just refreshes the same row. Writing the flag
+                // after the dispatch would lose the hour on a dispatch failure. The hour is the flag window, and the flag
+                // has no clip, so MediaItemId stays null.
+                _ = await _flags.UpsertRaisedAsync(new MediaFlag
+                {
+                    Id = Guid.NewGuid(),
+                    FlagType = MediaFlagType.RssiDeviation,
+                    DeviceId = device.Id,
+                    MediaItemId = null,
+                    WindowStartUtc = window.HourStartUtc,
+                    WindowEndUtc = window.HourStartUtc.AddHours(1),
+                    RaisedAtUtc = now,
+                    Severity = MediaFlagSeverity.Alert,
+                    NoticeId = noticeId
+                }, ct);
+
                 await _dispatcher.DispatchAsync(new NotificationEvent(
                     EventType: "SignalDeviation",
                     TimestampUtc: now,
@@ -89,7 +114,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         $"More than 2 std devs from the mean. [{marker}]",
                     Audience: NotificationAudience.All,
                     Severity: NoticeSeverity.Alert,
-                    ActionPath: $"/signal-history?{scope}"), ct);
+                    ActionPath: $"/signal-history?{scope}",
+                    NoticeId: noticeId), ct);
 
                 _logger.LogInformation("Raised signal deviation alert for {DeviceName} at {HourUtc} UTC", device.Name, window.HourStartUtc);
                 raised++;

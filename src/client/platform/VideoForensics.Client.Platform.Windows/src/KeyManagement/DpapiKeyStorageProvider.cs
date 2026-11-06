@@ -35,7 +35,7 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
             _keyStorageDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "VideoForensics",
-                "keys");
+                "Keys");
         }
 
         /// <summary>

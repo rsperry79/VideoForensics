@@ -34,6 +34,7 @@
     <ProjectReference Include="../../video/src/VideoForensics.Providers.Ring.Video.csproj" />
     <ProjectReference Include="../../provider/src/VideoForensics.Providers.Ring.csproj" />
     <ProjectReference Include="..\..\..\..\client\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
+    <ProjectReference Include="..\..\..\..\client\platform\VideoForensics.Client.Platform.Windows\src\VideoForensics.Client.Platform.Windows.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Client.Hosting.Maintenance;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -62,6 +63,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+            using IDisposable? lease = sp.TryEnter();
+            if (lease is null)
+            {
+                return;
+            }
+
 
             ICameraBitrateBaselineRepository baselineRepo = sp.GetRequiredService<ICameraBitrateBaselineRepository>();
             ILiveViewSessionService sessionService = sp.GetRequiredService<ILiveViewSessionService>();
@@ -79,7 +86,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick");
+                _logger.LogError("Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 
@@ -96,7 +103,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Bitrate calibration tick: failed to list devices; skipping this tick");
+                _logger.LogError("Bitrate calibration tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return;
             }
 
@@ -157,7 +164,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // One device's failure must not stop others - each device gets its own try/catch
-                    _logger.LogWarning(ex, "Bitrate calibration tick: device {DeviceName} failed (non-critical)", device.Name);
+                    _logger.LogWarning("Bitrate calibration tick: device {DeviceName} failed (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 }
             }
         }

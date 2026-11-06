@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -13,15 +14,18 @@ namespace VideoForensics.Data.Core.Services
     {
         private readonly IStorageLocationProvider _storageLocationProvider;
         private readonly IForensicsConfigurationService _configurationService;
+        private readonly IDatabaseMaintenanceService _maintenance;
         private readonly ILogger<StorageSettingsService> _logger;
 
         public StorageSettingsService(
             IStorageLocationProvider storageLocationProvider,
             IForensicsConfigurationService configurationService,
+            IDatabaseMaintenanceService maintenance,
             ILogger<StorageSettingsService> logger)
         {
             _storageLocationProvider = storageLocationProvider ?? throw new ArgumentNullException(nameof(storageLocationProvider));
             _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+            _maintenance = maintenance ?? throw new ArgumentNullException(nameof(maintenance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -41,13 +45,16 @@ namespace VideoForensics.Data.Core.Services
 
                 long usedBytes = ComputeDirectorySize(effectivePath);
                 long freeBytes = ComputeFreeBytes(effectivePath);
-                bool isRelocatable = category != StorageCategory.Keys;
-                bool requiresRestart = category is StorageCategory.Database or StorageCategory.Logs;
+                bool isRelocatable = true;
+                bool requiresRestart = category is StorageCategory.Database or StorageCategory.Logs or StorageCategory.Keys;
 
                 var status = new StorageCategoryStatus(
                     Category: category,
                     CurrentPath: effectivePath,
-                    IsDefault: string.IsNullOrWhiteSpace(configuredOverride),
+                    // Keys are default until a Keys pointer moves them. They do not follow the default root.
+                    IsDefault: category == StorageCategory.Keys
+                        ? string.IsNullOrWhiteSpace(config.KeysLocation)
+                        : string.IsNullOrWhiteSpace(configuredOverride),
                     UsedBytes: usedBytes,
                     FreeBytes: freeBytes,
                     IsRelocatable: isRelocatable,
@@ -58,77 +65,337 @@ namespace VideoForensics.Data.Core.Services
             }
 
             _logger.LogDebug("Storage settings status retrieved: {CategoryCount} categories", categories.Count);
-            return new StorageSettings(categories);
+            return new StorageSettings(categories, _storageLocationProvider.GetDefaultStorageRoot());
         }
 
         public async Task<RelocateStorageCategoryResult> RelocateAsync(RelocateStorageCategoryRequest request, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Relocating storage category {Category} to {NewPath}", request.Category, request.NewRootPath);
+            _logger.LogInformation("Relocating storage category {Category} to {NewPath}", request.Category, request.NewRootPath ?? "platform default");
 
-            // Keys cannot be relocated
-            if (request.Category == StorageCategory.Keys)
-            {
-                const string errorMessage = "Storage category 'Keys' cannot be relocated";
-                _logger.LogError(errorMessage);
-                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
-            }
-
-            // Validate the new path
-            if (string.IsNullOrWhiteSpace(request.NewRootPath))
+            // A null path resets the category to its platform default. An empty path is rejected.
+            bool reset = request.NewRootPath is null;
+            if (!reset && string.IsNullOrWhiteSpace(request.NewRootPath))
             {
                 const string errorMessage = "New root path cannot be empty";
                 _logger.LogError(errorMessage);
                 return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
             }
 
+            string newRootPath = reset ? _storageLocationProvider.GetPlatformDefaultRoot(request.Category) : request.NewRootPath!;
+
             try
             {
                 // Ensure the destination directory exists
-                _ = Directory.CreateDirectory(request.NewRootPath);
+                _ = Directory.CreateDirectory(newRootPath);
 
                 // Load current configuration to get the current path and override
                 IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync("", cancellationToken);
                 string? currentOverride = GetConfigurationOverride(config, request.Category);
                 string currentPath = _storageLocationProvider.GetEffectiveRoot(request.Category, currentOverride);
 
+                bool isDatabase = request.Category == StorageCategory.Database;
+                bool moveNeeded = Directory.Exists(currentPath) && currentPath != newRootPath;
+
+                if (isDatabase)
+                {
+                    // Saved while the database is still at its current path, so the file that moves carries the new override.
+                    SetConfigurationOverride(config, request.Category, reset ? null : newRootPath);
+                    RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                    if (saveFailure is not null)
+                    {
+                        return saveFailure;
+                    }
+
+                    if (moveNeeded)
+                    {
+                        // Pooled connections keep the file handle open, so release them before the file moves.
+                        await _maintenance.ReleaseAllConnectionsAsync(cancellationToken);
+                    }
+                }
+
                 // Move files from current path to new path if current path exists
-                if (Directory.Exists(currentPath) && currentPath != request.NewRootPath)
+                if (moveNeeded)
                 {
                     try
                     {
-                        await MoveDirectoryContentsAsync(currentPath, request.NewRootPath, cancellationToken);
-                        _logger.LogDebug("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, request.NewRootPath);
+                        if (request.Category == StorageCategory.Logs)
+                        {
+                            // The running server holds its audit file open, so the originals stay until the restart removes them.
+                            CopyLogsForRestart(currentPath, newRootPath);
+                        }
+                        else if (request.Category == StorageCategory.Keys)
+                        {
+                            // Keys are copied and verified by hash on restart; the originals are removed only after a match.
+                            CopyKeysForRestart(currentPath, newRootPath);
+                        }
+                        else
+                        {
+                            await MoveDirectoryContentsAsync(currentPath, newRootPath, cancellationToken);
+                        }
+
+                        _logger.LogDebug("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, newRootPath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to move {Category} contents from {OldPath} to {NewPath}", request.Category, currentPath, request.NewRootPath);
+                        _logger.LogError("Failed to move {Category} contents from {OldPath} to {NewPath}: {ExceptionType} {ErrorMessage}", request.Category, currentPath, newRootPath, ex.GetType().Name, ex.Message);
+                        if (request.Category == StorageCategory.Logs)
+                        {
+                            // The originals are complete, so only the partial copies go.
+                            LogRelocationManifest.Discard(newRootPath);
+                        }
+                        else if (request.Category == StorageCategory.Keys)
+                        {
+                            KeyRelocationManifest.Discard(newRootPath);
+                        }
+
+                        if (isDatabase)
+                        {
+                            // The file did not move, so the saved override must point back at it.
+                            SetConfigurationOverride(config, request.Category, currentOverride);
+                            _ = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                        }
+
                         return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to move storage files: {ex.Message}", RestartRequired: false);
                     }
                 }
 
-                // Persist the new override in configuration
-                SetConfigurationOverride(config, request.Category, request.NewRootPath);
-
-                try
+                if (isDatabase)
                 {
-                    await _configurationService.SaveConfigurationAsync(config, cancellationToken);
-                    _logger.LogDebug("Storage category {Category} configuration persisted to {NewPath}", request.Category, request.NewRootPath);
+                    // The saved override lives inside the database, which startup cannot open to read it. Record a
+                    // Database move in the bootstrap pointer that every startup path reads before opening the database.
+                    try
+                    {
+                        DatabaseLocationPointerStore.Current.Write(newRootPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Failed to write Database location pointer to {NewPath}: {ExceptionType} {ErrorMessage}", newRootPath, ex.GetType().Name, ex.Message);
+                        return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to record new database location: {ex.Message}", RestartRequired: false);
+                    }
                 }
-                catch (Exception ex)
+                else if (request.Category == StorageCategory.Keys)
                 {
-                    _logger.LogError(ex, "Failed to persist storage configuration for {Category}", request.Category);
-                    return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to save configuration: {ex.Message}", RestartRequired: false);
+                    // The saved Keys folder is read from the database at startup, before any key loads.
+                    config.KeysLocation = reset ? null : newRootPath;
+                    RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                    if (saveFailure is not null)
+                    {
+                        return saveFailure;
+                    }
+
+                    StorageLocationStore.KeysRoot = config.KeysLocation;
+                }
+                else
+                {
+                    // Persist the new override in configuration
+                    SetConfigurationOverride(config, request.Category, reset ? null : newRootPath);
+                    RelocateStorageCategoryResult? saveFailure = await TrySaveConfigurationAsync(config, request.Category, cancellationToken);
+                    if (saveFailure is not null)
+                    {
+                        return saveFailure;
+                    }
+
+                    if (request.Category == StorageCategory.Logs)
+                    {
+                        // Startup reads the saved Logs folder from the database before the logger opens.
+                        StorageLocationStore.LogsRoot = reset ? null : newRootPath;
+                    }
                 }
 
-                bool requiresRestart = request.Category is StorageCategory.Database or StorageCategory.Logs;
+                bool requiresRestart = request.Category is StorageCategory.Database or StorageCategory.Logs or StorageCategory.Keys;
                 _logger.LogInformation("Storage category {Category} relocation completed. Restart required: {RestartRequired}", request.Category, requiresRestart);
                 return new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: requiresRestart);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error relocating storage category {Category}", request.Category);
+                _logger.LogError("Unexpected error relocating storage category {Category}: {Message} ({ErrorType})", request.Category, ex.Message, ex.GetType().Name);
                 return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Unexpected error: {ex.Message}", RestartRequired: false);
             }
+        }
+
+        /// <inheritdoc />
+        public async Task<RelocateStorageCategoryResult> ChangeDefaultRootAsync(string newDefaultRoot, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(newDefaultRoot))
+            {
+                const string errorMessage = "New default root cannot be empty";
+                _logger.LogError(errorMessage);
+                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: errorMessage, RestartRequired: false);
+            }
+
+            string oldRoot = Path.GetFullPath(_storageLocationProvider.GetDefaultStorageRoot());
+            string newRoot = Path.GetFullPath(newDefaultRoot);
+            if (string.Equals(oldRoot, newRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: false);
+            }
+
+            try
+            {
+                IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync("", cancellationToken);
+
+                // Only categories sitting on the default root move. An in-app override, an install-time override, or a
+                // relocated Database is not under the root, so it is skipped. Keys never move.
+                var plan = new List<(StorageCategory Category, string OldPath, string NewPath)>();
+                var clearedOverrides = new List<StorageCategory>();
+                foreach (StorageCategory category in Enum.GetValues<StorageCategory>())
+                {
+                    if (category == StorageCategory.Keys)
+                    {
+                        continue;
+                    }
+
+                    // An override under the old root is part of the default-root move. Database and Logs keep their
+                    // overrides because their bootstrap pointers would also need clearing. Those overrides are skipped.
+                    string? overridePath = GetConfigurationOverride(config, category);
+                    bool overrideUnderRoot = !string.IsNullOrWhiteSpace(overridePath) && IsUnderRoot(Path.GetFullPath(overridePath), oldRoot);
+                    if (!string.IsNullOrWhiteSpace(overridePath) && !overrideUnderRoot)
+                    {
+                        continue;
+                    }
+
+                    if (category is StorageCategory.Database or StorageCategory.Logs && !string.IsNullOrWhiteSpace(overridePath))
+                    {
+                        continue;
+                    }
+
+                    string currentPath = Path.GetFullPath(overrideUnderRoot ? overridePath! : _storageLocationProvider.GetDefaultRoot(category));
+                    if (!IsUnderRoot(currentPath, oldRoot))
+                    {
+                        continue;
+                    }
+
+                    plan.Add((category, currentPath, Path.Combine(newRoot, Path.GetRelativePath(oldRoot, currentPath))));
+                    if (overrideUnderRoot)
+                    {
+                        clearedOverrides.Add(category);
+                    }
+                }
+
+                // Saved before anything moves. The database is still at the old path this process has open, and it moves with the saved value.
+                var previousOverrides = clearedOverrides.ToDictionary(c => c, c => GetConfigurationOverride(config, c));
+                string? previousDefaultRoot = config.DefaultStorageRoot;
+                foreach (StorageCategory category in clearedOverrides)
+                {
+                    SetConfigurationOverride(config, category, null);
+                }
+
+                config.DefaultStorageRoot = newRoot;
+                try
+                {
+                    await _configurationService.SaveConfigurationAsync(config, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Failed to persist the default storage root {NewRoot}: {ExceptionType} {ErrorMessage}", newRoot, ex.GetType().Name, ex.Message);
+                    return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to save configuration: {ex.Message}", RestartRequired: false);
+                }
+
+                _ = Directory.CreateDirectory(newRoot);
+                if (plan.Any(p => p.Category == StorageCategory.Database))
+                {
+                    // Pooled connections keep the database file open, so release them before anything moves.
+                    await _maintenance.ReleaseAllConnectionsAsync(cancellationToken);
+                }
+
+                var moved = new List<(string OldPath, string NewPath)>();
+                var copiedLogs = new List<string>();
+                string? movedDatabasePath = null;
+                try
+                {
+                    foreach ((StorageCategory category, string oldPath, string targetPath) in plan)
+                    {
+                        if (!Directory.Exists(oldPath))
+                        {
+                            continue;
+                        }
+
+                        if (category == StorageCategory.Logs)
+                        {
+                            // The running server holds its audit file open, so the originals stay until the restart removes them.
+                            CopyLogsForRestart(oldPath, targetPath);
+                            copiedLogs.Add(targetPath);
+                            continue;
+                        }
+
+                        await MoveDirectoryContentsAsync(oldPath, targetPath, cancellationToken);
+                        moved.Add((oldPath, targetPath));
+                        if (category == StorageCategory.Database)
+                        {
+                            movedDatabasePath = targetPath;
+                        }
+
+                        _logger.LogDebug("Moved {Category} to the new default root", category);
+                    }
+
+                    // Recorded last, so a failed move leaves the old root in place for the next start. The bootstrap pointer
+                    // follows a moved database, because startup has to find the database before it reads the saved root.
+                    if (movedDatabasePath is not null)
+                    {
+                        DatabaseLocationPointerStore.Current.Write(movedDatabasePath);
+                    }
+
+                    StorageLocationStore.DefaultRoot = newRoot;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Failed to change the default storage root to {NewRoot}: {ExceptionType} {ErrorMessage}", newRoot, ex.GetType().Name, ex.Message);
+                    foreach (string copiedLogDir in copiedLogs)
+                    {
+                        LogRelocationManifest.Discard(copiedLogDir);
+                    }
+
+                    await MoveBackAsync(moved, cancellationToken);
+
+                    // The saved root and overrides were written before the move, so put back the values from before it.
+                    config.DefaultStorageRoot = previousDefaultRoot;
+                    foreach (KeyValuePair<StorageCategory, string?> previous in previousOverrides)
+                    {
+                        SetConfigurationOverride(config, previous.Key, previous.Value);
+                    }
+
+                    try
+                    {
+                        await _configurationService.SaveConfigurationAsync(config, cancellationToken);
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        _logger.LogError("Could not restore the saved configuration after a failed default-root move: {ExceptionType} {ErrorMessage}", restoreEx.GetType().Name, restoreEx.Message);
+                    }
+
+                    return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to move storage files: {ex.Message}", RestartRequired: false);
+                }
+
+                // Every process reads the default root and the database location at startup, so the app restarts after a change.
+                _logger.LogInformation("Default storage root changed to {NewRoot}. Categories moved: {MovedCount}", newRoot, moved.Count);
+                return new RelocateStorageCategoryResult(Succeeded: true, ErrorMessage: null, RestartRequired: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Unexpected error changing the default storage root: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Unexpected error: {ex.Message}", RestartRequired: false);
+            }
+        }
+
+        private async Task MoveBackAsync(List<(string OldPath, string NewPath)> moved, CancellationToken cancellationToken)
+        {
+            for (int i = moved.Count - 1; i >= 0; i--)
+            {
+                try
+                {
+                    await MoveDirectoryContentsAsync(moved[i].NewPath, moved[i].OldPath, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Could not move files back to {OldPath}: {ExceptionType} {ErrorMessage}", moved[i].OldPath, ex.GetType().Name, ex.Message);
+                }
+            }
+        }
+
+        private static bool IsUnderRoot(string path, string root)
+        {
+            string withSeparator = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+            return path.StartsWith(withSeparator, StringComparison.OrdinalIgnoreCase);
         }
 
         private string? GetConfigurationOverride(IForensicsConfiguration config, StorageCategory category)
@@ -147,7 +414,22 @@ namespace VideoForensics.Data.Core.Services
             };
         }
 
-        private void SetConfigurationOverride(IForensicsConfiguration config, StorageCategory category, string newPath)
+        private async Task<RelocateStorageCategoryResult?> TrySaveConfigurationAsync(IForensicsConfiguration config, StorageCategory category, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _configurationService.SaveConfigurationAsync(config, cancellationToken);
+                _logger.LogDebug("Storage category {Category} configuration persisted", category);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to persist storage configuration for {Category}: {ExceptionType} {ErrorMessage}", category, ex.GetType().Name, ex.Message);
+                return new RelocateStorageCategoryResult(Succeeded: false, ErrorMessage: $"Failed to save configuration: {ex.Message}", RestartRequired: false);
+            }
+        }
+
+        private void SetConfigurationOverride(IForensicsConfiguration config, StorageCategory category, string? newPath)
         {
             switch (category)
             {
@@ -207,7 +489,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to compute directory size for {Path}", path);
+                _logger.LogError("Failed to compute directory size for {Path}: {Message} ({ErrorType})", path, ex.Message, ex.GetType().Name);
                 return 0;
             }
         }
@@ -227,9 +509,50 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to compute free space for {Path}", path);
+                _logger.LogError("Failed to compute free space for {Path}: {Message} ({ErrorType})", path, ex.Message, ex.GetType().Name);
                 return 0;
             }
+        }
+
+        /// <summary>
+        /// Copies every log file into the new folder and records each copy's length, leaving the originals in place. The
+        /// running server still holds its audit file open, so the originals are removed after the restart by
+        /// <see cref="LogRelocationManifest.Reconcile"/>.
+        /// </summary>
+        private void CopyLogsForRestart(string sourcePath, string destinationPath)
+        {
+            var entries = new List<LogRelocationManifest.Entry>();
+            foreach (FileInfo file in new DirectoryInfo(sourcePath).EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                string relativePath = Path.GetRelativePath(sourcePath, file.FullName);
+                string destFilePath = Path.Combine(destinationPath, relativePath);
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+                File.Copy(file.FullName, destFilePath, overwrite: true);
+
+                // The copy's own length, not the original's, so any bytes the open file gains later are appended on restart.
+                entries.Add(new LogRelocationManifest.Entry(file.FullName, relativePath, new FileInfo(destFilePath).Length));
+            }
+
+            LogRelocationManifest.Write(destinationPath, entries);
+        }
+
+        /// <summary>
+        /// Copies every key file into the new folder and records each copy's SHA-256. The originals stay until the restart
+        /// verifies the copies, so a failed copy never costs the only key.
+        /// </summary>
+        private static void CopyKeysForRestart(string sourcePath, string destinationPath)
+        {
+            var entries = new List<KeyRelocationManifest.Entry>();
+            foreach (FileInfo file in new DirectoryInfo(sourcePath).EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                string relativePath = Path.GetRelativePath(sourcePath, file.FullName);
+                string destFilePath = Path.Combine(destinationPath, relativePath);
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+                File.Copy(file.FullName, destFilePath, overwrite: true);
+                entries.Add(new KeyRelocationManifest.Entry(file.FullName, relativePath, KeyRelocationManifest.HashOf(destFilePath)));
+            }
+
+            KeyRelocationManifest.Write(destinationPath, entries);
         }
 
         private async Task MoveDirectoryContentsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
@@ -273,7 +596,7 @@ namespace VideoForensics.Data.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to delete empty directory {Path}", dir.FullName);
+                    _logger.LogError("Failed to delete empty directory {Path}: {Message} ({ErrorType})", dir.FullName, ex.Message, ex.GetType().Name);
                 }
             }
         }

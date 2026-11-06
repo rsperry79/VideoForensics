@@ -136,6 +136,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);
             _ = services.AddKeyedSingleton<IEventPullService>("Ring", pull);
+            _ = services.AddKeyedSingleton<IInventorySyncService>("Ring", Mock.Of<IInventorySyncService>());
             _ = services.AddSingleton(Mock.Of<ISnapshotSyncService>());
 
             var validation = new Mock<IEvidenceValidationService>();
