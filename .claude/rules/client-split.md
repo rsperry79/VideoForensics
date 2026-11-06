@@ -12,6 +12,6 @@ Applies to MauiApp, Ui.Shared, Client.MCP, and any MCP bridge. Not WebApp (it is
 - Wire calls use `Api.Contracts` DTOs on versioned `/api/v1/...` routes.
 - `Remote*` classes take and forward `CancellationToken`.
 - Every outgoing call carries the paired-device bearer token. Do not add a new auth mechanism per class.
-- Local server address is never a client setting, and is never persisted. Only the cached Internet URL is stored. Local is discovered fresh (e.g. mDNS).
+- Never persist the local server address; only the cached Internet URL is stored. Discover local fresh (e.g. mDNS).
 - No stdio MCP process may call `AddVideoForensicsDataLayer()` or `AddVideoForensicsServerCore()`.
 - DTO mapping: `entity.ToDto()` and `dto.ToDomain()` only.
