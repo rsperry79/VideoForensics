@@ -37,7 +37,7 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 - Stop and report instead when: a gate fails, merges conflict, the main checkout has unrelated changes, or a product decision is needed.
 
 ## Full gate
-- Before opening a PR to `dev` or `main`: use the `full-gate` skill.
+- Before opening a PR to `dev` or `main`: use the `full-gate` skill. Its VideoForensics steps are in `.claude/reference/full-gate.md`.
 
 ## Cleanup
 - Follow the global skill `git-worktree-workflow` (no `git clean -X`, build output by explicit path, no bulk process kills).
