@@ -1,6 +1,4 @@
 using System.Net;
-using System.Net.Http;
-using System.Threading;
 
 namespace VideoForensics.Providers.Ring.Testing.Mocks
 {

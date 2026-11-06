@@ -29,11 +29,15 @@ namespace VideoForensics.Data.Common.Contracts
         DateTime? FailedEntryTimestampUtc)
     {
         /// <summary>A verified chain covering <paramref name="entriesChecked"/> entries.</summary>
-        public static ChainIntegrityResult Valid(int entriesChecked) =>
-            new(true, entriesChecked, ChainBreakKind.None, null, null);
+        public static ChainIntegrityResult Valid(int entriesChecked)
+        {
+            return new(true, entriesChecked, ChainBreakKind.None, null, null);
+        }
 
         /// <summary>A chain that broke at <paramref name="failedEntry"/> after <paramref name="entriesChecked"/> good entries.</summary>
-        public static ChainIntegrityResult Broken(int entriesChecked, ChainBreakKind kind, ActionLogEntry failedEntry) =>
-            new(false, entriesChecked, kind, failedEntry.Id, failedEntry.TimestampUtc);
+        public static ChainIntegrityResult Broken(int entriesChecked, ChainBreakKind kind, ActionLogEntry failedEntry)
+        {
+            return new(false, entriesChecked, kind, failedEntry.Id, failedEntry.TimestampUtc);
+        }
     }
 }

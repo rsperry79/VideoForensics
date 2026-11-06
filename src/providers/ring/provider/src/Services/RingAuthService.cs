@@ -12,6 +12,25 @@ namespace VideoForensics.Providers.Ring.Services
     public class RingAuthService : IProviderAuthService
     {
         private const string ProviderName = "Ring";
+        /// <summary>
+        /// True when this decryption failure is the first since the account last worked. A stored credential that stays
+        /// undecryptable fails on every sync, and each failure would otherwise raise another critical notice until the
+        /// operator reauthenticates. Must run before the failure is recorded, because recording overwrites the last error.
+        /// </summary>
+        private async Task<bool> IsNewCredentialDecryptionFailureAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            if (_providerAccountRepository is null)
+            {
+                return true;
+            }
+
+            ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
+            string? lastError = account?.LastErrorMessage;
+            return lastError is null
+                || (lastError != CredentialDecryptionErrorMessage
+                    && !lastError.StartsWith("Failed to decrypt stored credential", StringComparison.Ordinal));
+        }
+
         private const string CredentialDecryptionErrorMessage = "Stored provider credential could not be decrypted. Reauthentication is required.";
 
         private readonly ILogger _logger;
@@ -115,7 +134,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to save refresh token to database for account {ProviderName}", ProviderName);
+                                    _logger.LogError("Failed to save refresh token to database for account {ProviderName}: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
                                     dbPersistenceSucceeded = false;
                                 }
                             }
@@ -130,13 +149,13 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception recordEx)
                                 {
-                                    _logger.LogError(recordEx, "Failed to record authentication success for account {ProviderName}", ProviderName);
+                                    _logger.LogError("Failed to record authentication success for account {ProviderName}: {Message} ({ErrorType})", ProviderName, recordEx.Message, recordEx.GetType().Name);
                                     // Non-fatal — auth itself succeeded
                                 }
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to persist Ring account metadata for account {ProviderName}", ProviderName);
+                                _logger.LogError("Failed to persist Ring account metadata for account {ProviderName}: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
                                 dbPersistenceSucceeded = false;
                             }
 
@@ -165,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to create provider account record");
+                        _logger.LogError("Failed to create provider account record: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                         return new AuthResult(
                             Success: false,
                             ErrorMessage: $"Failed to persist authentication: {ex.Message}"
@@ -203,7 +222,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exceptions.AuthenticationFailedException ex)
             {
-                _logger.LogError(ex, "Authentication failed");
+                _logger.LogError("Authentication failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: "Invalid email or password"
@@ -211,7 +230,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Authentication error");
+                _logger.LogError("Authentication error: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: ex.Message
@@ -283,7 +302,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Token refresh error");
+                _logger.LogError("Token refresh error: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -298,6 +317,15 @@ namespace VideoForensics.Providers.Ring.Services
             CancellationToken cancellationToken = default)
         {
             return await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task<bool> ValidateStoredCredentialAsync(Guid providerAccountId, CancellationToken cancellationToken = default)
+        {
+            // Validation must reach Ring. A session restored by a sync tick inside the reuse window would otherwise answer
+            // "valid" without decrypting the saved token, so the window entry is dropped first.
+            _ = _lastRestoredUtc.TryRemove(providerAccountId, out _);
+            return RestoreFromSavedCredentialsWithAccountAsync(providerAccountId, cancellationToken);
         }
 
         public async Task<bool> RestoreFromSavedCredentialsWithAccountAsync(
@@ -334,13 +362,14 @@ namespace VideoForensics.Providers.Ring.Services
 
                         if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                         {
-                            _logger.LogDebug("Restoring Ring session from database for account {ProviderName}", ProviderName);
+                            _logger.LogTrace("Restoring Ring session from database for account {ProviderName}", ProviderName);
                             credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to restore credentials from database for account {ProviderName}", ProviderName);
+                        _logger.LogError("Failed to restore credentials from database for account {ProviderName}: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
+                        bool newFailure = providerAccountId.HasValue && await IsNewCredentialDecryptionFailureAsync(providerAccountId.Value, cancellationToken);
                         if (_providerAccountRepository != null && providerAccountId.HasValue)
                         {
                             try
@@ -352,11 +381,11 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             catch (Exception recordEx)
                             {
-                                _logger.LogError(recordEx, "Failed to record error for account {ProviderName}", ProviderName);
+                                _logger.LogError("Failed to record error for account {ProviderName}: {Message} ({ErrorType})", ProviderName, recordEx.Message, recordEx.GetType().Name);
                             }
                         }
 
-                        if (_notificationDispatcher != null)
+                        if (_notificationDispatcher != null && newFailure)
                         {
                             try
                             {
@@ -369,12 +398,13 @@ namespace VideoForensics.Providers.Ring.Services
                                         SourceIp: null,
                                         Details: $"Failed to decrypt stored credential for account {providerAccountId.Value}: {ex.Message}",
                                         Audience: NotificationAudience.AdminsOnly,
-                                        Severity: VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical),
+                                        Severity: VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical,
+                                        ActionPath: $"/accounts/{providerAccountId.Value}"),
                                     cancellationToken);
                             }
                             catch (Exception notifEx)
                             {
-                                _logger.LogWarning(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", ProviderName);
+                                _logger.LogWarning("Failed to dispatch credential decryption failure notification for account {ProviderName}: {Message} ({ErrorType})", ProviderName, notifEx.Message, notifEx.GetType().Name);
                             }
                         }
                     }
@@ -407,7 +437,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                     if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                                     {
-                                        _logger.LogDebug("Restoring Ring session from database for account {ProviderName}", account.ProviderName);
+                                        _logger.LogTrace("Restoring Ring session from database for account {ProviderName}", account.ProviderName);
                                         credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                                         resolvedAccountId = account.Id;
                                         break;
@@ -415,7 +445,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to restore credentials from database for account {ProviderName}", account.ProviderName);
+                                    _logger.LogError("Failed to restore credentials from database for account {ProviderName}: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
+                                    bool newFailure = await IsNewCredentialDecryptionFailureAsync(account.Id, cancellationToken);
                                     if (_providerAccountRepository != null)
                                     {
                                         try
@@ -427,11 +458,11 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception recordEx)
                                         {
-                                            _logger.LogError(recordEx, "Failed to record error for account {ProviderName}", account.ProviderName);
+                                            _logger.LogError("Failed to record error for account {ProviderName}: {Message} ({ErrorType})", account.ProviderName, recordEx.Message, recordEx.GetType().Name);
                                         }
                                     }
 
-                                    if (_notificationDispatcher != null)
+                                    if (_notificationDispatcher != null && newFailure)
                                     {
                                         try
                                         {
@@ -444,12 +475,13 @@ namespace VideoForensics.Providers.Ring.Services
                                                     SourceIp: null,
                                                     Details: $"Failed to decrypt stored credential for account {account.Id}: {ex.Message}",
                                                     Audience: NotificationAudience.AdminsOnly,
-                                                    Severity: VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical),
+                                                    Severity: VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical,
+                                        ActionPath: $"/accounts/{account.Id}"),
                                                 cancellationToken);
                                         }
                                         catch (Exception notifEx)
                                         {
-                                            _logger.LogWarning(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", account.ProviderName);
+                                            _logger.LogWarning("Failed to dispatch credential decryption failure notification for account {ProviderName}: {Message} ({ErrorType})", account.ProviderName, notifEx.Message, notifEx.GetType().Name);
                                         }
                                     }
                                 }
@@ -458,7 +490,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to list Ring provider accounts");
+                        _logger.LogError("Failed to list Ring provider accounts: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -471,7 +503,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     else
                     {
-                        _logger.LogError("Ring account has no stored refresh token. Use --auth to save credentials to database.");
+                        _logger.LogError("Ring account has no stored refresh token. Log in again from the account details page to save credentials.");
                     }
                 }
 
@@ -519,14 +551,14 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to persist restored Ring account data (non-fatal)");
+                    _logger.LogError("Failed to persist restored Ring account data (non-fatal): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to restore session from saved credentials");
+                _logger.LogError("Failed to restore session from saved credentials: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -588,13 +620,10 @@ namespace VideoForensics.Providers.Ring.Services
         /// </remarks>
         public ProviderAuthStatus? GetAuthStatusDetails()
         {
-            var token = _sessionProvider.GetSession()?.OAuthToken;
-            if (token is null)
-            {
-                return new ProviderAuthStatus(IsAuthenticated: false, TokenType: null, ExpiresAtUtc: null, Scope: null);
-            }
-
-            return new ProviderAuthStatus(
+            Entities.OAutToken? token = _sessionProvider.GetSession()?.OAuthToken;
+            return token is null
+                ? new ProviderAuthStatus(IsAuthenticated: false, TokenType: null, ExpiresAtUtc: null, Scope: null)
+                : new ProviderAuthStatus(
                 IsAuthenticated: true,
                 TokenType: token.TokenType,
                 ExpiresAtUtc: token.ExpiresAt.ToUniversalTime(),
@@ -632,7 +661,7 @@ namespace VideoForensics.Providers.Ring.Services
                 await _ringAccountRepository.AddAsync(ringAccount, ct);
             }
 
-            _logger.LogDebug("Persisted Ring authentication for {Username}", MaskForLog(username));
+            _logger.LogTrace("Persisted Ring authentication for {Username}", MaskForLog(username));
         }
     }
 }

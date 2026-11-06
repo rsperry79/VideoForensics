@@ -3,14 +3,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>One backfill pass analyses the unanalysed batch and keeps going past an item that throws.</summary>
     public class JammingAnalysisBackfillTests

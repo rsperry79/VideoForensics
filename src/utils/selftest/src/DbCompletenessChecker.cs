@@ -19,7 +19,7 @@ namespace VideoForensics.Utils.SelfTest
     /// Cross-checks every device/location the Ring API reports for this account against the
     /// VideoForensics app's own SQLite database, so a gap between "what Ring says exists" and
     /// "what actually got persisted" is visible without manually diffing JSON against SQL.
-    /// Also validates metadata capture for forensics audit trail.
+    /// Fields that exist only inside a *Json column are never counted as stored.
     /// </summary>
     internal sealed class DbCompletenessReport
     {
@@ -30,28 +30,15 @@ namespace VideoForensics.Utils.SelfTest
         public int MissingDeviceCount => Devices.Count(d => !d.FoundInDb);
         public int MissingLocationCount => Locations.Count(l => !l.FoundInDb);
 
-        // Metadata capture statistics
-        public int DevicesWithMetadata { get; set; }
-        public int LocationsWithMetadata { get; set; }
-        public int EventsWithMetadata { get; set; }
-        public int MediaItemsWithMetadata { get; set; }
-        public int TotalEvents { get; set; }
-        public int TotalMediaItems { get; set; }
+        /// <summary>Number of entries in the checked-in field map (field-map.json) the response paths were checked against.</summary>
+        public int FieldMapEntryCount { get; set; }
 
-        public string MetadataCompleteness
-        {
-            get
-            {
-                if (TotalEvents == 0 && TotalMediaItems == 0)
-                {
-                    return "No events/media items to verify";
-                }
-
-                int eventPct = TotalEvents > 0 ? EventsWithMetadata * 100 / TotalEvents : 100;
-                int mediaPct = TotalMediaItems > 0 ? MediaItemsWithMetadata * 100 / TotalMediaItems : 100;
-                return $"Events: {eventPct}% ({EventsWithMetadata}/{TotalEvents}), MediaItems: {mediaPct}% ({MediaItemsWithMetadata}/{TotalMediaItems})";
-            }
-        }
+        /// <summary>
+        /// Response paths checked against the explicit field map: unmapped paths, stale map entries, endpoints with no
+        /// entries and paths that were null in every sample. A value kept only in a *Json column does not count as stored.
+        /// Null when no saved responses were checked.
+        /// </summary>
+        public FieldCoverageReport? Fields { get; set; }
     }
 
     internal static class DbCompletenessChecker
@@ -59,7 +46,8 @@ namespace VideoForensics.Utils.SelfTest
         public static async Task<DbCompletenessReport> CheckAsync(
             Devices? devices,
             List<Location>? locations,
-            string dbPath)
+            string dbPath,
+            string? outputDir = null)
         {
             var report = new DbCompletenessReport { DbPath = dbPath, GeneratedAtUtc = DateTime.UtcNow };
 
@@ -135,27 +123,63 @@ namespace VideoForensics.Utils.SelfTest
                 }
             }
 
-            // Verify metadata capture for forensics audit trail
-            try
+            if (outputDir is not null)
             {
-                int devicesWithMeta = await db.Devices.CountAsync(d => d.MetadataJson != null);
-                int eventsWithMeta = await db.Events.CountAsync(e => e.MetadataJson != null);
-                int totalEvents = await db.Events.CountAsync();
-                int mediaItemsWithMeta = await db.MediaItems.CountAsync(m => m.MetadataJson != null);
-                int totalMediaItems = await db.MediaItems.CountAsync();
+                var map = FieldMap.LoadEmbedded();
+                report.FieldMapEntryCount = map.Entries.Count;
+                report.Fields = FieldCoverageAnalyzer.Analyze(outputDir, map, DbSchema.FromModel(db.Model));
 
-                report.DevicesWithMetadata = devicesWithMeta;
-                report.EventsWithMetadata = eventsWithMeta;
-                report.TotalEvents = totalEvents;
-                report.MediaItemsWithMetadata = mediaItemsWithMeta;
-                report.TotalMediaItems = totalMediaItems;
-            }
-            catch
-            {
-                // Metadata columns may not exist in schema yet - silently skip
+                // Extension point: a later step passes an IFieldValueVerifier here to compare each mapped value with its
+                // database row and fill FieldCoverageReport.ValueMismatches. Only the path map is checked today.
             }
 
             return report;
+        }
+
+        /// <summary>Writes the console summary of a completeness report (presence counts, then the field-map counts).</summary>
+        internal static void WriteSummary(DbCompletenessReport report, TextWriter output)
+        {
+            foreach (DbCompletenessRecord? missing in report.Devices.Where(d => !d.FoundInDb))
+            {
+                output.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
+            }
+
+            foreach (DbCompletenessRecord? missing in report.Locations.Where(l => !l.FoundInDb))
+            {
+                output.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
+            }
+
+            output.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
+                $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
+
+            FieldCoverageReport? fields = report.Fields;
+            if (fields is null)
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<string, List<string>> gap in fields.UnmappedByEndpoint.OrderBy(g => g.Key, StringComparer.Ordinal))
+            {
+                output.WriteLine($"   UNMAPPED: {gap.Key} ({gap.Value.Count})");
+            }
+
+            foreach (StaleMapEntry stale in fields.StaleEntries)
+            {
+                output.WriteLine($"   STALE MAP ENTRY: {stale.Key} -> {stale.Target} ({stale.Reason})");
+            }
+
+            foreach (string endpoint in fields.EndpointsWithoutMapEntries)
+            {
+                output.WriteLine($"   NO MAP ENTRIES: {endpoint} returned data but the field map stores nothing for it");
+            }
+
+            foreach (SkippedResponseFile skipped in fields.SkippedFiles)
+            {
+                output.WriteLine($"   SKIPPED: {skipped.File} ({skipped.Reason})");
+            }
+
+            output.WriteLine($"Field map ({report.FieldMapEntryCount} entries): {fields.UnmappedPathCount} unmapped paths, " +
+                $"{fields.StaleEntryCount} stale map entries, {fields.NullInSamplePathCount} null-in-sample paths (type unverified).");
         }
     }
 }

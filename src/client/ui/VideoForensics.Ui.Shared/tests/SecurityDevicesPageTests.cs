@@ -8,9 +8,9 @@ using Microsoft.JSInterop;
 using System.Net;
 using System.Text;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

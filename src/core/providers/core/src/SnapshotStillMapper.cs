@@ -14,11 +14,6 @@ namespace VideoForensics.Core.Providers.Core
         {
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(request.Records);
-            if (string.IsNullOrWhiteSpace(request.SnapshotRoot))
-            {
-                throw new ArgumentException("A snapshot root is required.", nameof(request));
-            }
-
             if (request.LastStillHold <= TimeSpan.Zero)
             {
                 throw new ArgumentException("The last still must have a positive hold.", nameof(request));
@@ -46,7 +41,7 @@ namespace VideoForensics.Core.Providers.Core
                     continue;
                 }
 
-                string imagePath = Path.GetFullPath(Path.Combine(request.SnapshotRoot, record.MediaFilePath));
+                string imagePath = Path.GetFullPath(record.MediaFilePath);
                 if (File.Exists(imagePath))
                 {
                     current.Add((record.CapturedAt, imagePath));

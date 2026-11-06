@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
@@ -27,11 +29,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         /// <summary>Creates the service.</summary>
         private readonly ThreadHeartbeats? _heartbeats;
+        private readonly IForensicsConfiguration? _config;
 
-        public MediaThumbnailBackfillService(IServiceScopeFactory scopeFactory, ILogger<MediaThumbnailBackfillService> logger, ThreadHeartbeats? heartbeats = null)
+        /// <summary>The wait between passes: the Services page setting when present, otherwise the built-in interval.</summary>
+        private TimeSpan CurrentInterval => _config is null ? PassInterval : ScheduledReportService.IntervalFor(_config.MediaBackfillIntervalHours);
+
+        public MediaThumbnailBackfillService(IServiceScopeFactory scopeFactory, ILogger<MediaThumbnailBackfillService> logger, ThreadHeartbeats? heartbeats = null, IForensicsConfiguration? config = null)
         {
             _scopeFactory = scopeFactory;
             _heartbeats = heartbeats;
+            _config = config;
             _logger = logger;
         }
 
@@ -40,13 +47,25 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         {
             await Task.Delay(StartupDelay, stoppingToken);
 
-            using var timer = new PeriodicTimer(PassInterval);
             do
             {
-                _heartbeats?.Beat(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow, PassInterval);
+                _heartbeats?.Beat(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow, CurrentInterval);
                 await RunPassAsync(stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
+            while (await WaitForNextPassAsync(stoppingToken));
+        }
+
+        private async Task<bool> WaitForNextPassAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentInterval, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -58,6 +77,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
+                using IDisposable? lease = scope.ServiceProvider.TryEnter();
+                if (lease is null)
+                {
+                    return;
+                }
+
                 IMediaThumbnailBackfill backfill = scope.ServiceProvider.GetRequiredService<IMediaThumbnailBackfill>();
                 _ = await backfill.BackfillAsync(ct);
             }
@@ -67,7 +92,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Thumbnail backfill pass failed; the next pass will retry");
+                _logger.LogError("Thumbnail backfill pass failed; the next pass will retry: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

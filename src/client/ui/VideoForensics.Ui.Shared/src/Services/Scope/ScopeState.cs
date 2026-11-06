@@ -152,12 +152,7 @@ public class ScopeState
     /// </summary>
     internal static bool TryParseScopeDate(string value, out DateTime date)
     {
-        if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out date))
-        {
-            return true;
-        }
-
-        return DateTime.TryParseExact(
+        return DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out date) || DateTime.TryParseExact(
             value,
             "yyyy-MM-dd'T'HH:mm:ss'Z'",
             System.Globalization.CultureInfo.InvariantCulture,

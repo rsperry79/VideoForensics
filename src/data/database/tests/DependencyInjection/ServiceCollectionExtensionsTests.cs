@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DependencyInjection;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.DependencyInjection
 {
     /// <summary>Tests for ServiceCollectionExtensions.AddVideoForensicsDatabase().</summary>
     public class ServiceCollectionExtensionsTests

@@ -65,7 +65,7 @@ namespace VideoForensics.Client.Hosting
             {
                 // Notification delivery failing must never fail (or roll back) the audit-log write
                 // that triggered it - the event is already durably recorded above.
-                _logger.LogWarning(ex, "Failed to dispatch notifications for security event {EventType}", eventType);
+                _logger.LogWarning("Failed to dispatch notifications for security event {EventType}: {Message} ({ErrorType})", eventType, ex.Message, ex.GetType().Name);
             }
         }
     }

@@ -5,9 +5,9 @@ using Microsoft.JSInterop;
 
 using Syncfusion.Blazor.Layouts;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Extensions;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -141,7 +141,10 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// </summary>
         private static readonly string[] ExpandedLeftNavPaths = ["/media", "/media/review", "/live-view"];
 
-        private static bool IsExpandedLeftNavPath(string path) => ExpandedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+        private static bool IsExpandedLeftNavPath(string path)
+        {
+            return ExpandedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// Brings the left-nav pane in line with the current page. On an auto-collapse page the pane is collapsed;
@@ -305,7 +308,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         private async Task SignOutAsync()
         {
-            await SessionState.ClearAsync();
+            await SessionState.SignOutAsync();
             Nav.NavigateTo("/signin");
         }
 

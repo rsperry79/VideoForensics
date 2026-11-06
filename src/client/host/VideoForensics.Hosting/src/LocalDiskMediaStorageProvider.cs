@@ -8,19 +8,29 @@ namespace VideoForensics.Client.Hosting
     /// </summary>
     public class LocalDiskMediaStorageProvider : IMediaStorageProvider
     {
-        public Task<Stream> OpenReadStreamAsync(string path, CancellationToken ct)
+        private readonly IMediaPathResolver _paths;
+
+        /// <summary>Creates the provider. Stored paths are relative to the media root, so each call resolves its path first.</summary>
+        public LocalDiskMediaStorageProvider(IMediaPathResolver? paths = null)
         {
-            Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
-            return Task.FromResult(stream);
+            _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
 
-        public Task<bool> ExistsAsync(string path, CancellationToken ct)
+        public async Task<Stream> OpenReadStreamAsync(string path, CancellationToken ct)
         {
-            return Task.FromResult(File.Exists(path));
+            path = await _paths.ToAbsoluteAsync(path, ct);
+            Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+            return stream;
+        }
+
+        public async Task<bool> ExistsAsync(string path, CancellationToken ct)
+        {
+            return File.Exists(await _paths.ToAbsoluteAsync(path, ct));
         }
 
         public async Task SaveAsync(string path, Stream content, CancellationToken ct)
         {
+            path = await _paths.ToAbsoluteAsync(path, ct);
             string? directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
@@ -31,14 +41,13 @@ namespace VideoForensics.Client.Hosting
             await content.CopyToAsync(fileStream, ct);
         }
 
-        public Task DeleteAsync(string path, CancellationToken ct)
+        public async Task DeleteAsync(string path, CancellationToken ct)
         {
+            path = await _paths.ToAbsoluteAsync(path, ct);
             if (File.Exists(path))
             {
                 File.Delete(path);
             }
-
-            return Task.CompletedTask;
         }
     }
 }

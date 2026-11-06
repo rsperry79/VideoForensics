@@ -22,7 +22,7 @@ using VideoForensics.Utils.Testing;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>
 /// Shared harness for the review page and its components: the real <see cref="ReviewPage"/> resource strings,
@@ -130,6 +130,10 @@ public abstract class ReviewTestContext : BunitContext
         ReviewState = new ReviewPageState(timeProvider) { DebounceDelay = TimeSpan.FromMilliseconds(20) };
 
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddSingleton<IMediaPlaybackPolicy, DefaultMediaPlaybackPolicy>();
         _ = Services.AddSingleton<TimeProvider>(timeProvider);
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
@@ -158,6 +162,7 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped<ICaseRepository>(_ => CaseRepositoryDouble);
         _ = Services.AddScoped<CaseState>();
         _ = Services.AddScoped<ReviewEvidenceTagger>();
+        _ = Services.AddScoped<ReviewSettingsStore>();
         _ = Services.AddScoped<ReviewSelection>();
         _ = Services.AddScoped<ReviewStillCommand>();
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
@@ -187,10 +192,10 @@ public abstract class ReviewTestContext : BunitContext
             }));
         _ = LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LegalHold>());
+            .ReturnsAsync([]);
         _ = EvidenceValidationMock
             .Setup(m => m.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-            .ReturnsAsync(new List<MediaVerificationResult>());
+            .ReturnsAsync([]);
         Mock<IProviderAccountRepository> accountRepository = ConfigureAccountRepository();
         Mock<ILocationRepository> locationRepository = ConfigureLocationRepository();
         Mock<IUserRepository> userRepository = ConfigureUserRepository();
@@ -212,7 +217,7 @@ public abstract class ReviewTestContext : BunitContext
     /// </summary>
     protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
     {
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         var pins = new List<CaseItem>();
         foreach (MediaItem item in media)
         {
@@ -283,12 +288,9 @@ public abstract class ReviewTestContext : BunitContext
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
             {
-                if (OwnershipFails)
-                {
-                    throw new InvalidOperationException("ownership unavailable");
-                }
-
-                return (IReadOnlyList<ProviderAccount>)Accounts.ToList();
+                return OwnershipFails
+                    ? throw new InvalidOperationException("ownership unavailable")
+                    : (IReadOnlyList<ProviderAccount>)Accounts.ToList();
             });
         return repository;
     }
@@ -304,12 +306,7 @@ public abstract class ReviewTestContext : BunitContext
 
     private IReadOnlyList<Location> LocationsFor(Guid accountId)
     {
-        if (LocationsByAccount.TryGetValue(accountId, out List<Location>? locations))
-        {
-            return locations.ToList();
-        }
-
-        return Array.Empty<Location>();
+        return LocationsByAccount.TryGetValue(accountId, out List<Location>? locations) ? locations.ToList() : Array.Empty<Location>();
     }
 
     private static Mock<IUserRepository> ConfigureUserRepository()
@@ -353,7 +350,7 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>Signs in a paired operator with the given role and returns the operator's id.</summary>
     protected async Task<Guid> SignInOperatorAsAsync(string role)
     {
-        Guid operatorId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid();
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", operatorId, role);
         return operatorId;
     }

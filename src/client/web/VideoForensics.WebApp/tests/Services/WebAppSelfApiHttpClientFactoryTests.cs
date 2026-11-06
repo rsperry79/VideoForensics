@@ -4,10 +4,10 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Client.WebApp.Services;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

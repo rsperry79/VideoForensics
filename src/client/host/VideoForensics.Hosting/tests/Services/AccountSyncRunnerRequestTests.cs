@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull)
         {
-            return new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+            return new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
         }
 
         private AccountSyncRunner Sut()

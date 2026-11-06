@@ -1,0 +1,170 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@implements IDisposable
+@inject IStringLocalizer<SharedResources> L
+@inject IMediaFlagRepository MediaFlagRepository
+
+<div class="clip-navigator d-flex align-items-center gap-2" data-testid="clip-navigator" tabindex="0" role="group" aria-label="@L["ClipNavigatorLabel"].Value" @onkeydown="OnKeyDown">
+    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorPrevious"].Value" Disabled="@_previousDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Previous))" data-testid="clip-nav-prev" />
+    <span class="small" data-testid="clip-nav-total">@Readout</span>
+    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorNext"].Value" Disabled="@_nextDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Next))" data-testid="clip-nav-next" />
+    <div class="visually-hidden" aria-live="polite" data-testid="clip-nav-status">@_status</div>
+</div>
+
+@code {
+    /// <summary>The flag list to move through. Its newest-first order is the order the arrows follow.</summary>
+    [Parameter, EditorRequired]
+    public MediaFlagFilter Filter { get; set; } = new();
+
+    /// <summary>The flag the viewer is on now. Each move looks up its neighbour from this id.</summary>
+    [Parameter, EditorRequired]
+    public Guid CurrentFlagId { get; set; }
+
+    /// <summary>Raised with the flag the viewer moved to. Not raised when there is no neighbour in that direction.</summary>
+    [Parameter]
+    public EventCallback<MediaFlag> OnNavigate { get; set; }
+
+    private int _total;
+    private int? _position;
+    private bool _loadedOnce;
+    private MediaFlagFilter? _loadedFilter;
+    private Guid _loadedFlagId;
+    private bool _previousDisabled;
+    private bool _nextDisabled;
+    private string _status = string.Empty;
+    private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _moveCts;
+
+    /// <summary>The readout: the flag's position among the matching flags, or the total when the flag is not in the list.</summary>
+    private string Readout => _position is int position
+        ? L["ClipNavigatorPosition", position, _total].Value
+        : L["ClipNavigatorTotal", _total].Value;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedOnce && SameFilter(Filter, _loadedFilter) && CurrentFlagId == _loadedFlagId)
+        {
+            return;
+        }
+
+        _loadedOnce = true;
+        _loadedFilter = Snapshot(Filter);
+        _loadedFlagId = CurrentFlagId;
+        _previousDisabled = false;
+        _nextDisabled = false;
+
+        _loadCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _loadCts = cts;
+
+        try
+        {
+            var total = await MediaFlagRepository.CountAsync(Filter, cts.Token);
+            var position = await MediaFlagRepository.GetPositionAsync(CurrentFlagId, Filter, cts.Token);
+            _total = total;
+            _position = position;
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // A newer filter or flag replaced this load before it finished.
+        }
+    }
+
+    private async Task MoveAsync(MediaFlagNeighbour direction)
+    {
+        if (direction == MediaFlagNeighbour.Previous ? _previousDisabled : _nextDisabled)
+        {
+            return;
+        }
+
+        _moveCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _moveCts = cts;
+
+        MediaFlag? neighbour;
+        try
+        {
+            neighbour = await MediaFlagRepository.GetNeighbourAsync(CurrentFlagId, Filter, direction, cts.Token);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // A newer move replaced this lookup before it finished.
+            return;
+        }
+
+        if (neighbour is null)
+        {
+            SetSideDisabled(direction, true);
+            _status = L["ClipNavigatorEnd"].Value;
+            return;
+        }
+
+        // The flag we came from is on the opposite side, so both sides are reachable after a move.
+        _previousDisabled = false;
+        _nextDisabled = false;
+        _status = L["ClipNavigatorMoved"].Value;
+        await OnNavigate.InvokeAsync(neighbour);
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs args)
+    {
+        return args.Key switch
+        {
+            "ArrowLeft" => MoveAsync(MediaFlagNeighbour.Previous),
+            "ArrowRight" => MoveAsync(MediaFlagNeighbour.Next),
+            _ => Task.CompletedTask,
+        };
+    }
+
+    private void SetSideDisabled(MediaFlagNeighbour direction, bool disabled)
+    {
+        if (direction == MediaFlagNeighbour.Previous)
+        {
+            _previousDisabled = disabled;
+        }
+        else
+        {
+            _nextDisabled = disabled;
+        }
+    }
+
+    private static MediaFlagFilter Snapshot(MediaFlagFilter filter)
+    {
+        return filter with
+        {
+            Types = filter.Types is null ? null : [.. filter.Types],
+            Statuses = filter.Statuses is null ? null : [.. filter.Statuses],
+            DeviceIds = filter.DeviceIds is null ? null : [.. filter.DeviceIds],
+        };
+    }
+
+    private static bool SameFilter(MediaFlagFilter current, MediaFlagFilter? loaded)
+    {
+        return loaded is not null
+            && current.FromUtc == loaded.FromUtc
+            && current.ToUtc == loaded.ToUtc
+            && SameSet(current.Types, loaded.Types)
+            && SameSet(current.Statuses, loaded.Statuses)
+            && SameSet(current.DeviceIds, loaded.DeviceIds);
+    }
+
+    private static bool SameSet<T>(IReadOnlyCollection<T>? a, IReadOnlyCollection<T>? b)
+    {
+        if (a is null || b is null)
+        {
+            return a is null && b is null;
+        }
+
+        return new HashSet<T>(a).SetEquals(b);
+    }
+
+    public void Dispose()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _moveCts?.Cancel();
+        _moveCts?.Dispose();
+    }
+}

@@ -3,12 +3,15 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using VideoForensics.Providers.Ring.Entities;
+
 namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Alarm account monitoring status, panic-button style alarm triggering, and location-wide
     /// history. Response shapes are not confirmed against a live capture, so status/history are
-    /// returned as raw JsonElement rather than an invented strongly-typed shape.
+    /// returned as raw JsonElement rather than an invented strongly-typed shape. The account monitoring
+    /// status is the exception: its captured shape is typed so every field can be persisted.
     /// </summary>
     public partial class Session
     {
@@ -29,14 +32,14 @@ namespace VideoForensics.Providers.Ring
         /// Returns the alarm monitoring status for a location's account.
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve monitoring status for</param>
-        public async Task<JsonElement> GetAccountMonitoringStatus(Guid locationId, CancellationToken cancellationToken = default)
+        public async Task<AccountMonitoringStatusResponse> GetAccountMonitoringStatus(Guid locationId, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(MonitoringApiBaseUrl, $"{locationId:D}");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
-            return JsonDocument.Parse(response).RootElement.Clone();
+            return JsonSerializer.Deserialize<AccountMonitoringStatusResponse>(response) ?? new AccountMonitoringStatusResponse();
         }
 
         /// <summary>

@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Primitives;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Infrastructure;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -242,7 +242,10 @@ namespace VideoForensics.Client.WebApp.Api
             return Results.Ok(new { requiresRestartToTakeEffect = true });
         }
 
-        private static bool IsValidPort(int port) => port is >= 1 and <= 65535;
+        private static bool IsValidPort(int port)
+        {
+            return port is >= 1 and <= 65535;
+        }
 
         /// <summary>Windows Firewall rule for the HTTPS port. Separate from the HTTP rule, which keeps its original name.</summary>
         private const string HttpsFirewallRuleName = "VideoForensics-Https";
@@ -261,12 +264,9 @@ namespace VideoForensics.Client.WebApp.Api
         private static string? PortError(string label, int port, string scheme, IConfiguration configuration)
         {
             int? running = ServerAddressResolver.ResolveListenEndpoints(configuration).FirstOrDefault(e => e.Scheme == scheme)?.Port;
-            if (port == running || ServerAddressResolver.IsPortAvailable(port))
-            {
-                return null;
-            }
-
-            return $"Port {port} for {label} is in use by another program. Choose a free port, or keep {running}.";
+            return port == running || ServerAddressResolver.IsPortAvailable(port)
+                ? null
+                : $"Port {port} for {label} is in use by another program. Choose a free port, or keep {running}.";
         }
     }
 

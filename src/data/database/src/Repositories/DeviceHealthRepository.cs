@@ -36,7 +36,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
+                _logger.LogError("Error recording device health metric for device {DeviceId}: {Message} ({ErrorType})", health.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

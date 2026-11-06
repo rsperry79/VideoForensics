@@ -1,13 +1,15 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>
     /// Comprehensive tests for CaseRepository.
@@ -512,32 +514,103 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task AddItemAsync_PinsMediaAndSnapshotsHash()
+        public async Task CaseRepository_UpdateDetails_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.UpdateDetailsAsync(Guid.NewGuid(), "Title", null, null, "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_SetScope_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.SetScopeAsync(Guid.NewGuid(), null, null, [], "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_Close_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.CloseAsync(Guid.NewGuid(), "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_Reopen_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.ReopenAsync(Guid.NewGuid(), "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_AddItem_MissingCase_ThrowsKeyNotFound()
+        {
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.AddItemAsync(
+                    Guid.NewGuid(), CaseItemKind.Event, Guid.NewGuid(), "Reason", "user@example.com", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CaseRepository_AddMediaItem_MissingItem_Throws()
         {
             // Arrange
             ForensicCase forensicCase = await _repository.CreateAsync(
                 "CASE-2026-027", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
-            var mediaItemId = Guid.NewGuid();
+            var missingMediaItemId = Guid.NewGuid();
 
-            // Act & Assert - MediaItem doesn't need to exist for pinning
-            try
-            {
-                CaseItem item = await _repository.AddItemAsync(
-                    forensicCase.Id, CaseItemKind.Media, mediaItemId, "Critical evidence", "user@example.com", CancellationToken.None);
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => _repository.AddItemAsync(
+                    forensicCase.Id, CaseItemKind.Media, missingMediaItemId, "Critical evidence", "user@example.com", CancellationToken.None));
 
-                // If we get here, the FK constraint was not enforced (SQLite may not enforce it)
-                Assert.NotNull(item);
-                Assert.Equal(forensicCase.Id, item.CaseId);
-                Assert.Equal(CaseItemKind.Media, item.Kind);
-                Assert.Equal(mediaItemId, item.MediaItemId);
-                Assert.Null(item.EventId);
-                // Hash snapshot is tested when actual MediaItem exists in DB
-            }
-            catch (Exception ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY") == true || ex.Message.Contains("FOREIGN KEY"))
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.False(await db.CaseItems.AnyAsync(ci => ci.MediaItemId == missingMediaItemId));
+        }
+
+        [Fact]
+        public async Task CaseRepository_AddMediaItem_ExistingItem_StoresHash()
+        {
+            // Arrange
+            const string sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+            ForensicCase forensicCase = await _repository.CreateAsync(
+                "CASE-2026-028", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            Guid mediaItemId = await SeedMediaItemAsync(sha256);
+
+            // Act
+            CaseItem item = await _repository.AddItemAsync(
+                forensicCase.Id, CaseItemKind.Media, mediaItemId, "Critical evidence", "user@example.com", CancellationToken.None);
+
+            // Assert
+            Assert.Equal(mediaItemId, item.MediaItemId);
+            Assert.Equal(sha256, item.MediaSha256AtAdd);
+        }
+
+        private async Task<Guid> SeedMediaItemAsync(string sha256)
+        {
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Location location = TestDataBuilder.BuildLocation(name: "Pin Site");
+            _ = db.Locations.Add(location);
+            Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Pin Camera");
+            _ = db.Devices.Add(device);
+            var mediaItem = new MediaItem
             {
-                // FK constraint is enforced - this is acceptable for unit test
-                Assert.True(true);
-            }
+                Id = Guid.NewGuid(),
+                DeviceId = device.Id,
+                FileName = "clip.mp4",
+                FilePath = "/tmp/clip.mp4",
+                MediaFormat = "mp4",
+                FileSizeBytes = 1024,
+                RecordedAtUtc = DateTime.UtcNow,
+                DownloadedAtUtc = DateTime.UtcNow,
+                Sha256Hash = sha256,
+            };
+            _ = db.MediaItems.Add(mediaItem);
+            _ = await db.SaveChangesAsync();
+            return mediaItem.Id;
         }
 
         [Fact]

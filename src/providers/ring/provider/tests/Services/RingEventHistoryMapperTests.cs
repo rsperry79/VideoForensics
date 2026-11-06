@@ -6,7 +6,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Maps the sanitized captured video search, location events, location history, doorbot history and app location
@@ -73,6 +73,23 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public void RingEventHistoryMapper_MapDoorbotHistoryEvent_NewRow_HasNoEventLink()
+        {
+            // A doorbot row is linked to its Events row only after a string ding id matches it, never at mapping time.
+            MappedRingEvent<RingDoorbotHistoryEvent> mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(new DoorbotHistoryEvent { Id = 1234567890123456 });
+
+            Assert.Equal("1234567890123456", mapped.Event.ProviderEventId);
+            Assert.Null(mapped.Event.LinkedEventId);
+        }
+
+        [Fact]
+        public void RingLocationEvent_NumericDingIdColumn_IsRemoved()
+        {
+            // DingId was the lossy copy of DingIdString; keeping both broke the one-copy rule.
+            Assert.Null(typeof(RingLocationEvent).GetProperty("DingId"));
+        }
+
+        [Fact]
         public void RingEventHistoryMapper_MapLocationEvent_CapturedEvent_MapsEveryField()
         {
             LocationEventsResponse response = JsonSerializer.Deserialize<LocationEventsResponse>(ReadFixture("location-events-sanitized.json"))!;
@@ -95,7 +112,6 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(source.OwnerId, evt.OwnerId);
             Assert.Equal(source.Riid, evt.Riid);
             Assert.Equal(86401464, evt.DoorbotId);
-            Assert.Equal(source.DingId, evt.DingId);
             Assert.Equal(source.DingIdString, evt.DingIdString);
             Assert.Equal("motion", evt.Kind);
             Assert.Null(evt.BatteryPercentage);

@@ -24,8 +24,7 @@ namespace VideoForensics.Providers.Ring
 
         private static string GetOrCreateHardwareId()
         {
-            var directoryService = new PlatformDirectoryService();
-            string folder = directoryService.GetApplicationDataDirectory();
+            string folder = new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys);
             string filePath = Path.Combine(folder, "hardware_id.txt");
             try
             {
@@ -969,25 +968,19 @@ namespace VideoForensics.Providers.Ring
 
             // A non-200 body is an error page (for example "Not Found"), not an image. Throw so no caller
             // stores it as a snapshot file.
-            if (result.Status == System.Net.HttpStatusCode.TooManyRequests)
-            {
-                throw new Exceptions.ThrottledException($"Ring throttled the latest snapshot request for doorbot {doorbotId}.")
+            return result.Status == System.Net.HttpStatusCode.TooManyRequests
+                ? throw new Exceptions.ThrottledException($"Ring throttled the latest snapshot request for doorbot {doorbotId}.")
                 {
                     StatusCode = result.Status,
                     RetryAfter = result.RetryAfter,
-                };
-            }
-
-            if (result.Status != System.Net.HttpStatusCode.OK)
-            {
-                throw new Exceptions.DownloadFailedException($"snapshots/image/{doorbotId}")
+                }
+                : result.Status != System.Net.HttpStatusCode.OK
+                ? throw new Exceptions.DownloadFailedException($"snapshots/image/{doorbotId}")
                 {
                     StatusCode = result.Status,
                     ResponseBody = System.Text.Encoding.UTF8.GetString(result.Bytes, 0, Math.Min(result.Bytes.Length, 200)),
-                };
-            }
-
-            return new MemoryStream(result.Bytes);
+                }
+                : (Stream)new MemoryStream(result.Bytes);
         }
 
         /// <summary>

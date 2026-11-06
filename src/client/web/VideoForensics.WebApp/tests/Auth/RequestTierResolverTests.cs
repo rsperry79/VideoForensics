@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

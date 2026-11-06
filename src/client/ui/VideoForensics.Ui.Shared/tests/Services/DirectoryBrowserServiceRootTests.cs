@@ -17,14 +17,14 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
         public void GetRoots_ProviderReturnsTwoRoots_ReturnsTwoMatchingEntries()
         {
             var provider = new Mock<IFileSystemRootProvider>();
-            provider.Setup(p => p.GetRoots()).Returns(new List<FileSystemRoot>
-            {
+            _ = provider.Setup(p => p.GetRoots()).Returns(
+            [
                 new FileSystemRoot("C:\\", "C:\\"),
                 new FileSystemRoot("D:\\", "D:\\"),
-            });
+            ]);
             var service = new DirectoryBrowserService(provider.Object);
 
-            var entries = service.GetRoots();
+            IReadOnlyList<DirectoryEntry> entries = service.GetRoots();
 
             Assert.Equal(2, entries.Count);
             Assert.Equal(new DirectoryEntry("C:\\", "C:\\"), entries[0]);

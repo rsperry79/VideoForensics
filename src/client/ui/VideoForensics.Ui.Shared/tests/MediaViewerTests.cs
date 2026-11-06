@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -20,6 +20,7 @@ public class MediaViewer_Image_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
     }
 
     private EvidenceItem CreateImageItem()
@@ -384,6 +385,7 @@ public class MediaViewer_NoUrl_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
     }
 
     [Fact]
@@ -466,11 +468,9 @@ public class MediaViewer_Video_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
-        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
-        _ = _module.SetupVoid("setPlaybackRate", _ => true);
-        _ = _module.SetupVoid("stepFrame", _ => true);
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js");
         _ = _module.SetupVoid("togglePlay", _ => true);
-        _ = _module.SetupVoid("focusElement", _ => true);
     }
 
     private EvidenceItem CreateVideoItem(decimal? frameRate = null)
@@ -565,7 +565,7 @@ public class MediaViewer_Video_Tests : BunitContext
     }
 
     [Fact]
-    public void SpeedSelect_ChangedTo2_InvokesSetPlaybackRateWith2()
+    public void SpeedSelect_ChangedTo2_ConfiguresPlayerWithRate2()
     {
         // Arrange
         EvidenceItem item = CreateVideoItem();
@@ -580,8 +580,9 @@ public class MediaViewer_Video_Tests : BunitContext
         select.Change("2");
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("setPlaybackRate");
-        Assert.Equal(2d, Assert.IsType<double>(invocation.Arguments[1]));
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("configure");
+        object options = Assert.IsAssignableFrom<object>(invocation.Arguments[1]);
+        Assert.Equal(2d, Assert.IsType<double>(options.GetType().GetProperty("rate")!.GetValue(options)));
     }
 
     [Fact]
@@ -599,7 +600,7 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-forward']").Click();
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("step");
         double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(1.0 / 25, seconds, precision: 6);
     }
@@ -619,7 +620,7 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-back']").Click();
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("step");
         double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(-1.0 / 30, seconds, precision: 6);
     }
@@ -639,7 +640,7 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-forward']").Click();
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("step");
         double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(1.0 / 30, seconds, precision: 6);
     }
@@ -659,7 +660,7 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-back']").Click();
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("step");
         double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(-1.0 / 30, seconds, precision: 6);
     }
@@ -748,11 +749,9 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
-        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
-        _ = _module.SetupVoid("setPlaybackRate", _ => true);
-        _ = _module.SetupVoid("stepFrame", _ => true);
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js");
         _ = _module.SetupVoid("togglePlay", _ => true);
-        _ = _module.SetupVoid("focusElement", _ => true);
     }
 
     [Fact]
@@ -973,7 +972,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
         component.Find("[data-testid='media-viewer']").KeyDown(".");
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("step");
         double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.True(seconds > 0);
         Assert.Equal(1.0 / 25, seconds, precision: 6);
@@ -994,7 +993,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
         component.Find("[data-testid='media-viewer']").KeyDown(",");
 
         // Assert
-        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("step");
         double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.True(seconds < 0);
         Assert.Equal(-1.0 / 25, seconds, precision: 6);
@@ -1030,8 +1029,8 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
-        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js");
-        _ = _module.SetupVoid("focusElement", _ => true);
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js");
     }
 
     private static EvidenceItem CreateVideoItem()
@@ -1123,6 +1122,7 @@ public class MediaViewer_ItemChange_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
     }
 
     [Fact]

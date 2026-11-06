@@ -1,6 +1,6 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -69,13 +69,20 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            // The Media tab has no sidebar items: its menu is the review view menu in the left panel, which the review page registers.
-            new("media", "Media", "/media", [], Visible: ctx => ctx.IsSignedIn),
+            // The review views are ordinary menu items. The review page follows the ?tab= value, so a click on the same page switches the view.
+            new("media", "Media", "/media",
+            [
+                new("Timeline", "/media"),
+                new("Events", "/media?tab=Events"),
+                new("Detail", "/media?tab=Detail"),
+                new("Live", "/live-view")
+            ], Visible: ctx => ctx.IsSignedIn),
 
             new("cases", "Review", "/cases",
             [
                 new("All Cases", "/cases"),
                 new("Signal history", "/signal-history"),
+                new("Bit rate history", "/bitrate-history"),
                 new("Chat Assistant", "/chat"),
                 new("Analyze", "/analyze",
                     Children:
@@ -98,7 +105,19 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Reports", "/settings/reports", Section: "General"),
 
                 new("Provider Accounts", "/accounts", Section: "Sources"),
+                new("Manual Sync", "/accounts/manual-sync", Section: "Sources"),
                 new("Query API", "/query", Section: "Sources"),
+
+                new("Network Access", "/settings/network", Section: "System & Network"),
+                new("Infrastructure", "/settings/infrastructure", Section: "System & Network"),
+                new("Database", "/settings/database", Section: "System & Network"),
+                new("Services", "/settings/services", Section: "System & Network"),
+
+                new("Storage", "/settings/storage", Section: "Storage & Data"),
+                new("Import / Export", "/tools/import-export", Section: "Storage & Data"),
+
+                new("LLM API", "/settings/llm", Section: "Integrations"),
+                new("Email", "/settings/integrations/email", Section: "Integrations"),
 
                 new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
@@ -110,15 +129,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
                 new("Server Logs", "/settings/logs", Section: "Diagnostics & Updates"),
                 new("App Update", "/settings/update-check", Section: "Diagnostics & Updates"),
-
-                new("Network Access", "/settings/network", Section: "Devices & Network"),
-                new("Infrastructure", "/settings/infrastructure", Section: "Devices & Network"),
-
-                new("Storage", "/settings/storage", Section: "Storage & Data"),
-                new("Import / Export", "/tools/import-export", Section: "Storage & Data"),
-
-                new("LLM API", "/settings/llm", Section: "Integrations"),
-                new("Email", "/settings/integrations/email", Section: "Integrations"),
             ])
         ];
 

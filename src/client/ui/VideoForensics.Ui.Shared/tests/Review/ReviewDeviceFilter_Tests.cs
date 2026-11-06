@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review page's camera visibility rules: which cameras the Provider and Account filters leave, and how selected cameras are clamped.</summary>
 public class ReviewDeviceFilter_Tests

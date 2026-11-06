@@ -4,17 +4,20 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
+    [Collection("StorageLocationStore")]
     public class StorageSettingsServiceTests
     {
         private readonly Mock<IStorageLocationProvider> _mockStorageLocationProvider;
         private readonly Mock<IForensicsConfigurationService> _mockConfigurationService;
         private readonly Mock<ILogger<StorageSettingsService>> _mockLogger;
+        private readonly Mock<IDatabaseMaintenanceService> _mockMaintenance;
         private readonly StorageSettingsService _service;
 
         public StorageSettingsServiceTests()
@@ -35,15 +38,326 @@ namespace VideoForensics.Data.Core.Tests
                         ? Path.Combine(Path.GetTempPath(), cat.ToString())
                         : overridePath);
 
+            // Keep bootstrap pointer writes out of the real ProgramData folder
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetDataRoot())
+                .Returns(Path.Combine(Path.GetTempPath(), "vf-data-" + Guid.NewGuid().ToString("N")));
+
             // Default mock for configuration loads empty config (no overrides)
             _ = _mockConfigurationService
                 .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration());
 
+            _mockMaintenance = new Mock<IDatabaseMaintenanceService>();
+
             _service = new StorageSettingsService(
                 _mockStorageLocationProvider.Object,
                 _mockConfigurationService.Object,
+                _mockMaintenance.Object,
                 _mockLogger.Object);
+        }
+
+        [Fact]
+        public async Task GetStatusAsync_IncludesTheDefaultStorageRoot()
+        {
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetDefaultStorageRoot())
+                .Returns(@"D:\VideoForensics");
+
+            StorageSettings status = await _service.GetStatusAsync(CancellationToken.None);
+
+            Assert.Equal(@"D:\VideoForensics", status.DefaultRoot);
+        }
+
+        [Fact]
+        public async Task RelocateAsync_NullPath_ResetsToPlatformDefaultAndClearsOverride()
+        {
+            // Arrange: Media is on a custom folder that does not exist on disk, so nothing needs to move
+            const string customPath = @"D:\Custom\Media";
+            string platformDefault = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ForensicsConfiguration { DownloadLocation = customPath };
+
+            _ = _mockConfigurationService
+                .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(config);
+
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetPlatformDefaultRoot(StorageCategory.Media))
+                .Returns(platformDefault);
+
+            var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Media, NewRootPath: null);
+
+            // Act
+            RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+            // Assert: the override is cleared, so the category reads as Default again
+            Assert.True(result.Succeeded);
+            Assert.Null(config.DownloadLocation);
+            _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RelocateAsync_DatabaseMove_ReleasesConnectionsThenMovesFile()
+        {
+            // Arrange: a real source folder holding a database file, so the move has something to do
+            string sourceDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "videoforensics.db"), "db");
+
+            try
+            {
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetEffectiveRoot(StorageCategory.Database, It.IsAny<string?>()))
+                    .Returns(sourceDir);
+
+                _ = _mockMaintenance
+                    .Setup(x => x.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()))
+                    .Callback(() => Assert.True(File.Exists(Path.Combine(sourceDir, "videoforensics.db")), "file must still be in place when connections are released"))
+                    .Returns(Task.CompletedTask);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Database, NewRootPath: destDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                _mockMaintenance.Verify(x => x.ReleaseAllConnectionsAsync(It.IsAny<CancellationToken>()), Times.Once);
+                Assert.True(File.Exists(Path.Combine(destDir, "videoforensics.db")));
+                Assert.False(File.Exists(Path.Combine(sourceDir, "videoforensics.db")));
+            }
+            finally
+            {
+                foreach (string dir in new[] { sourceDir, destDir })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task RelocateAsync_LogsMove_CopiesEveryFileAndKeepsOriginalsUntilRestart()
+        {
+            // Arrange: the audit file is open by the running server, so the move must not delete it
+            string sourceDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "audit-20261103.json"), "line1\n");
+
+            try
+            {
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetEffectiveRoot(StorageCategory.Logs, It.IsAny<string?>()))
+                    .Returns(sourceDir);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Logs, NewRootPath: destDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert: copied, original kept, manifest written for the restart to finish the move
+                Assert.True(result.Succeeded);
+                Assert.True(result.RestartRequired);
+                Assert.True(File.Exists(Path.Combine(sourceDir, "audit-20261103.json")));
+                Assert.Equal("line1\n", File.ReadAllText(Path.Combine(destDir, "audit-20261103.json")));
+                Assert.True(File.Exists(Path.Combine(destDir, LogRelocationManifest.FileName)));
+            }
+            finally
+            {
+                foreach (string dir in new[] { sourceDir, destDir })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task ChangeDefaultRootAsync_SavesTheDefaultRootInConfiguration()
+        {
+            // The new default root is saved in configuration, not a pointer file, and the save happens before any move
+            string oldRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ForensicsConfiguration();
+
+            try
+            {
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(config);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultStorageRoot()).Returns(oldRoot);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultRoot(It.IsAny<StorageCategory>())).Returns(Path.Combine(oldRoot, "Nothing"));
+
+                RelocateStorageCategoryResult result = await _service.ChangeDefaultRootAsync(newRoot, CancellationToken.None);
+
+                Assert.True(result.Succeeded);
+                _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(
+                    It.Is<IForensicsConfiguration>(c => c.DefaultStorageRoot == newRoot), It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                foreach (string dir in new[] { oldRoot, newRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task ChangeDefaultRootAsync_WithLogsOnTheDefaultRoot_CopiesLogsAndKeepsOriginals()
+        {
+            // Arrange: the audit file is open by the running server, so the default-root move must not delete it
+            string oldRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string logsDir = Path.Combine(oldRoot, "Logs");
+            _ = Directory.CreateDirectory(logsDir);
+            File.WriteAllText(Path.Combine(logsDir, "audit-20261103.json"), "line1\n");
+
+            try
+            {
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultStorageRoot()).Returns(oldRoot);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultRoot(StorageCategory.Logs)).Returns(logsDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.ChangeDefaultRootAsync(newRoot, CancellationToken.None);
+
+                // Assert: copied, original kept, manifest written in the new Logs folder for the restart to finish
+                Assert.True(result.Succeeded);
+                Assert.True(result.RestartRequired);
+                Assert.True(File.Exists(Path.Combine(logsDir, "audit-20261103.json")));
+                Assert.Equal("line1\n", File.ReadAllText(Path.Combine(newRoot, "Logs", "audit-20261103.json")));
+                Assert.True(File.Exists(Path.Combine(newRoot, "Logs", LogRelocationManifest.FileName)));
+            }
+            finally
+            {
+                foreach (string dir in new[] { oldRoot, newRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task ChangeDefaultRootAsync_MediaOverrideUnderOldRoot_MovesMediaAndClearsOverride()
+        {
+            // Arrange: Media was pointed at a folder under the old default root, so it is part of the default-root move
+            string oldRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string mediaDir = Path.Combine(oldRoot, "Media");
+            _ = Directory.CreateDirectory(mediaDir);
+            File.WriteAllText(Path.Combine(mediaDir, "clip.jpg"), "frame");
+            var config = new ForensicsConfiguration { DownloadLocation = mediaDir };
+
+            try
+            {
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(config);
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDefaultStorageRoot()).Returns(oldRoot);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.ChangeDefaultRootAsync(newRoot, CancellationToken.None);
+
+                // Assert: the file moved under the new root, and the override no longer points at the old folder
+                Assert.True(result.Succeeded);
+                Assert.True(File.Exists(Path.Combine(newRoot, "Media", "clip.jpg")));
+                Assert.False(File.Exists(Path.Combine(mediaDir, "clip.jpg")));
+                Assert.Null(config.DownloadLocation);
+                _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            }
+            finally
+            {
+                foreach (string dir in new[] { oldRoot, newRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task RelocateAsync_KeysMove_CopiesKeysKeepsOriginalsAndSavesTheLocation()
+        {
+            // Arrange: keys are copied, never moved, and the originals stay until the restart verifies the copies
+            string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string sourceDir = Path.Combine(dataRoot, "Keys");
+            string destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "master.key"), "secret");
+
+            try
+            {
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDataRoot()).Returns(dataRoot);
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetEffectiveRoot(StorageCategory.Keys, It.IsAny<string?>()))
+                    .Returns(sourceDir);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Keys, NewRootPath: destDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.True(result.RestartRequired);
+                Assert.True(File.Exists(Path.Combine(sourceDir, "master.key")));
+                Assert.Equal("secret", File.ReadAllText(Path.Combine(destDir, "master.key")));
+                Assert.True(File.Exists(Path.Combine(destDir, KeyRelocationManifest.FileName)));
+                _mockConfigurationService.Verify(x => x.SaveConfigurationAsync(
+                    It.Is<IForensicsConfiguration>(c => c.KeysLocation == destDir), It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                foreach (string dir in new[] { dataRoot, destDir })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task GetStatusAsync_Keys_IsDefaultWhenNotRelocated()
+        {
+            // No Keys pointer means the keys are in the data root's Keys folder, which is the Keys default
+            StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
+
+            StorageCategoryStatus keys = settings.Categories.Single(c => c.Category == StorageCategory.Keys);
+            Assert.True(keys.IsDefault);
+        }
+
+        [Fact]
+        public async Task GetStatusAsync_Keys_IsNotDefaultWhenRelocated()
+        {
+            string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            try
+            {
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new ForensicsConfiguration { KeysLocation = @"D:\Keys" });
+                _ = _mockStorageLocationProvider.Setup(x => x.GetDataRoot()).Returns(dataRoot);
+
+                StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
+
+                StorageCategoryStatus keys = settings.Categories.Single(c => c.Category == StorageCategory.Keys);
+                Assert.False(keys.IsDefault);
+            }
+            finally
+            {
+                try
+                { Directory.Delete(dataRoot, recursive: true); }
+                catch { }
+            }
         }
 
         [Fact]
@@ -117,7 +431,7 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task GetStatusAsync_KeysIsNotRelocatable()
+        public async Task GetStatusAsync_KeysIsRelocatable()
         {
             // Act
             StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
@@ -125,7 +439,7 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             StorageCategoryStatus? keysStatus = settings.Categories.FirstOrDefault(c => c.Category == StorageCategory.Keys);
             Assert.NotNull(keysStatus);
-            Assert.False(keysStatus.IsRelocatable);
+            Assert.True(keysStatus.IsRelocatable);
         }
 
         [Theory]
@@ -160,7 +474,7 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task GetStatusAsync_AllCategoriesAreRelocatableExceptKeys()
+        public async Task GetStatusAsync_AllCategoriesAreRelocatable()
         {
             // Act
             StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
@@ -168,33 +482,8 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             foreach (StorageCategoryStatus status in settings.Categories)
             {
-                if (status.Category == StorageCategory.Keys)
-                {
-                    Assert.False(status.IsRelocatable);
-                }
-                else
-                {
-                    Assert.True(status.IsRelocatable, $"Category {status.Category} should be relocatable");
-                }
+                Assert.True(status.IsRelocatable, $"Category {status.Category} should be relocatable");
             }
-        }
-
-        [Fact]
-        public async Task RelocateAsync_RejectsKeysCategory()
-        {
-            // Arrange
-            var request = new RelocateStorageCategoryRequest(
-                Category: StorageCategory.Keys,
-                NewRootPath: "/some/path");
-
-            // Act
-            RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
-
-            // Assert
-            Assert.False(result.Succeeded);
-            Assert.NotNull(result.ErrorMessage);
-            Assert.Contains("Keys", result.ErrorMessage);
-            Assert.False(result.RestartRequired);
         }
 
         [Fact]
@@ -259,6 +548,44 @@ namespace VideoForensics.Data.Core.Tests
                 try
                 { Directory.Delete(tempDir, recursive: true); }
                 catch { }
+            }
+        }
+
+        [Fact]
+        public async Task RelocateAsync_DatabaseMove_WritesBootstrapPointer()
+        {
+            // Arrange
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dataRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
+            IDatabaseLocationPointerStore previous = DatabaseLocationPointerStore.Current;
+            var recorder = new RecordingPointerStore();
+            DatabaseLocationPointerStore.Current = recorder;
+
+            try
+            {
+                _ = _mockStorageLocationProvider
+                    .Setup(x => x.GetDataRoot())
+                    .Returns(dataRoot);
+
+                var request = new RelocateStorageCategoryRequest(Category: StorageCategory.Database, NewRootPath: tempDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.Equal(tempDir, recorder.Written);
+            }
+            finally
+            {
+                DatabaseLocationPointerStore.Current = previous;
+                foreach (string dir in new[] { tempDir, dataRoot })
+                {
+                    try
+                    { Directory.Delete(dir, recursive: true); }
+                    catch { }
+                }
             }
         }
 
@@ -340,6 +667,21 @@ namespace VideoForensics.Data.Core.Tests
                 try
                 { Directory.Delete(parentDir, recursive: true); }
                 catch { }
+            }
+        }
+
+        private sealed class RecordingPointerStore : IDatabaseLocationPointerStore
+        {
+            public string? Written { get; private set; }
+
+            public string? Read()
+            {
+                return Written;
+            }
+
+            public void Write(string databaseRoot)
+            {
+                Written = databaseRoot;
             }
         }
     }

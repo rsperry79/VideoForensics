@@ -7,7 +7,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Utils.Testing;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>Builders for the pending-tag tests: one open case behind a repository double, and a real <see cref="CaseState"/> over it.</summary>
 internal static class PendingTagFakes
@@ -48,10 +48,10 @@ internal static class PendingTagFakes
             .ReturnsAsync(activeCase);
         _ = repository
             .Setup(r => r.GetDeviceIdsAsync(activeCase.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Guid>());
+            .ReturnsAsync([]);
         _ = repository
             .Setup(r => r.ListItemsAsync(activeCase.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingItems?.ToList() ?? new List<CaseItem>());
+            .ReturnsAsync(existingItems?.ToList() ?? []);
         _ = repository
             .Setup(r => r.AddItemAsync(
                 activeCase.Id,
@@ -63,22 +63,19 @@ internal static class PendingTagFakes
             .Returns((Guid caseId, CaseItemKind kind, Guid targetId, string reason, string actor, CancellationToken _) =>
             {
                 pinnedTargets?.Add(targetId);
-                if (failingTargets is not null && failingTargets.Contains(targetId))
-                {
-                    return Task.FromException<CaseItem>(new InvalidOperationException("Pin refused by the test double."));
-                }
-
-                return Task.FromResult(new CaseItem
-                {
-                    Id = Guid.NewGuid(),
-                    CaseId = caseId,
-                    Kind = kind,
-                    EventId = kind == CaseItemKind.Event ? targetId : null,
-                    MediaItemId = kind == CaseItemKind.Media ? targetId : null,
-                    Reason = reason,
-                    AddedBy = actor,
-                    AddedAtUtc = NowUtc,
-                });
+                return failingTargets is not null && failingTargets.Contains(targetId)
+                    ? Task.FromException<CaseItem>(new InvalidOperationException("Pin refused by the test double."))
+                    : Task.FromResult(new CaseItem
+                    {
+                        Id = Guid.NewGuid(),
+                        CaseId = caseId,
+                        Kind = kind,
+                        EventId = kind == CaseItemKind.Event ? targetId : null,
+                        MediaItemId = kind == CaseItemKind.Media ? targetId : null,
+                        Reason = reason,
+                        AddedBy = actor,
+                        AddedAtUtc = NowUtc,
+                    });
             });
         return repository;
     }

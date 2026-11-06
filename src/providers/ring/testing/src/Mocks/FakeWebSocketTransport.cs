@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Threading;
 
 using VideoForensics.Providers.Ring.Sockets;
 

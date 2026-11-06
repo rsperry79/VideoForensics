@@ -5,10 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -65,6 +65,12 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
 
     private IReadOnlyList<string> VisibleDeviceIds(IRenderedComponent<ScopeRail> component)
     {
+        // The device list opens from its summary button; open it once so the checkboxes can be read.
+        if (component.FindAll("[data-testid='scope-device-list']").Count == 0 && component.FindAll("[data-testid='scope-device-button']").Count > 0)
+        {
+            component.Find("[data-testid='scope-device-button']").Click();
+        }
+
         return component.FindAll("input[data-device-id]").Select(i => i.GetAttribute("data-device-id")!).ToList();
     }
 

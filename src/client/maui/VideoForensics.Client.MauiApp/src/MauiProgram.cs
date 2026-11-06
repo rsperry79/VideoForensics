@@ -10,16 +10,16 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Blazor;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Local;
 using VideoForensics.Client.Hosting.ServerDiscovery;
-using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.MauiApp.AppLock;
 using VideoForensics.Client.MauiApp.ServerDiscovery;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Logging.DependencyInjection;
 
 namespace VideoForensics.Client.MauiApp
 {
@@ -32,6 +32,7 @@ namespace VideoForensics.Client.MauiApp
             // Read install-time storage overrides from the registry before any StorageLocationProvider is created.
             VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
             VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+            VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
             VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
 #if DEBUG
             // During local development, ensure VideoForensics.Client.WebApp is running before continuing.
@@ -71,7 +72,7 @@ namespace VideoForensics.Client.MauiApp
             // (src/client/VideoForensics/Program.cs).
             string configDir = new StorageLocationProvider().GetDataRoot();
             Directory.CreateDirectory(configDir);
-            string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
+            string logFilePath = Path.Combine(configDir, "Logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);
             builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information);
 
@@ -93,7 +94,7 @@ namespace VideoForensics.Client.MauiApp
             // is safe.
             builder.Services.AddSingleton<IHostEnvironment>(new FixedHostEnvironment(configDir));
 
-            string dataProtectionKeyPath = Path.Combine(configDir, "keys");
+            string dataProtectionKeyPath = Path.Combine(configDir, "Keys");
             Directory.CreateDirectory(dataProtectionKeyPath);
             IDataProtectionBuilder mauiDataProtectionBuilder = builder.Services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
@@ -197,6 +198,7 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.ScopeState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSettingsStore>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
@@ -217,6 +219,7 @@ namespace VideoForensics.Client.MauiApp
                 sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<VideoForensics.Client.Common.Contracts.IMediaContentUrlProvider>(),
                 sp.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources>>()));
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.IViewportService, VideoForensics.Client.Ui.Shared.Services.DefaultViewportService>();
+            builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Client.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();
 
@@ -292,7 +295,7 @@ namespace VideoForensics.Client.MauiApp
                     try
                     {
                         ILogger logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("MauiApp");
-                        logger.LogError(ex, "Failed to start live hub connection");
+                        logger.LogError("Failed to start live hub connection: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                     catch
                     {
@@ -357,7 +360,7 @@ namespace VideoForensics.Client.MauiApp
 
                 // The script returns once the package is staged; the service then notices it, restarts and applies it.
                 // Sixty seconds covers the watcher's poll, the restart, and the first health answer.
-                string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+                string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "Updates");
                 var launcher = new DevWebAppLauncher(
                     new WebAppHealthProbe(),
                     new StageScriptRunner(),

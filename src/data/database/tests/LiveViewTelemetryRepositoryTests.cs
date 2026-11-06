@@ -26,15 +26,17 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static LiveViewTelemetrySample Sample(Guid sessionId, DateTime capturedAtUtc) =>
-            new() { Id = Guid.NewGuid(), SessionId = sessionId, CapturedAtUtc = capturedAtUtc };
+        private static LiveViewTelemetrySample Sample(Guid sessionId, DateTime capturedAtUtc)
+        {
+            return new() { Id = Guid.NewGuid(), SessionId = sessionId, CapturedAtUtc = capturedAtUtc };
+        }
 
         [Fact]
         public async Task AddThenGet_ReturnsTheSessionsSamplesInTimeOrder()
         {
             var sessionId = Guid.NewGuid();
-            var later = Sample(sessionId, DateTime.UtcNow.AddMinutes(-1));
-            var earlier = Sample(sessionId, DateTime.UtcNow.AddMinutes(-5));
+            LiveViewTelemetrySample later = Sample(sessionId, DateTime.UtcNow.AddMinutes(-1));
+            LiveViewTelemetrySample earlier = Sample(sessionId, DateTime.UtcNow.AddMinutes(-5));
             await _repository.AddSampleAsync(later, CancellationToken.None);
             await _repository.AddSampleAsync(earlier, CancellationToken.None);
             await _repository.AddSampleAsync(Sample(Guid.NewGuid(), DateTime.UtcNow), CancellationToken.None);
@@ -48,8 +50,8 @@ namespace VideoForensics.Data.Database.Tests
         public async Task PruneOlderThan_DeletesOnlyOldSamples()
         {
             var sessionId = Guid.NewGuid();
-            var old = Sample(sessionId, DateTime.UtcNow.AddDays(-40));
-            var recent = Sample(sessionId, DateTime.UtcNow.AddDays(-1));
+            LiveViewTelemetrySample old = Sample(sessionId, DateTime.UtcNow.AddDays(-40));
+            LiveViewTelemetrySample recent = Sample(sessionId, DateTime.UtcNow.AddDays(-1));
             await _repository.AddSampleAsync(old, CancellationToken.None);
             await _repository.AddSampleAsync(recent, CancellationToken.None);
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.Versioning;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
@@ -72,7 +71,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 
             // Fallback: File-based encrypted storage
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-            string keyStorePath = Path.Combine(appDataPath, "VideoForensics", "keys");
+            string keyStorePath = Path.Combine(appDataPath, "VideoForensics", "Keys");
             try
             {
                 providers.Add(new FileBasedKeyStorageProvider(keyStorePath));

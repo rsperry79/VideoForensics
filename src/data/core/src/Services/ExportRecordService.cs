@@ -102,7 +102,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording export: {ArchiveFileName}", SanitizeForLog(archiveFileName));
+                _logger.LogError("Error recording export: {ArchiveFileName}: {Message} ({ErrorType})", SanitizeForLog(archiveFileName), ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -115,7 +115,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving export history for media item {MediaItemId}", mediaItemId);
+                _logger.LogError("Error retrieving export history for media item {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -128,7 +128,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving export history for device {DeviceId}", deviceId);
+                _logger.LogError("Error retrieving export history for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

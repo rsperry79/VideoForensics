@@ -7,6 +7,7 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.JSInterop
 @using VideoForensics.Client.Ui.Shared.Components.Scope
+@using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
@@ -325,7 +326,19 @@
     </div>
 }
 
+@if (!ScopeState.Current.MatchesNoDevices)
+{
+    <h4 class="mt-4 mb-2" data-testid="signal-flags-heading">@L["SignalFlagsHeading"]</h4>
+    <FlaggedMediaTable Types="@(new[] { VideoForensics.Data.Common.Entities.MediaFlagType.RssiDeviation })" DeviceIds="@FlagDeviceIds" FromUtc="@_from" ToUtc="@_to" DeviceNames="@FlagDeviceNames" />
+}
+
 @code {
+
+    /// <summary>The cameras the flag list shows: every camera when the scope includes all of them.</summary>
+    private IReadOnlyCollection<Guid>? FlagDeviceIds => ScopeState.Current.IncludesAllDevices ? null : ScopeState.Current.DeviceIds;
+
+    /// <summary>Camera names for the flag list, from the devices loaded for this page.</summary>
+    private IReadOnlyDictionary<Guid, string> FlagDeviceNames => _allDevices.ToDictionary(d => d.Id, DeviceName);
     private sealed class DeviceSignal
     {
         public required Guid DeviceId { get; init; }

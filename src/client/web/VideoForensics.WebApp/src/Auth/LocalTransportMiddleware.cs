@@ -1,5 +1,3 @@
-using System.Net;
-
 using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Auth;

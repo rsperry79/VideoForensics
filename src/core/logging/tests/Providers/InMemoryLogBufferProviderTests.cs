@@ -252,5 +252,61 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             _ = Assert.Single(snapshot);
             Assert.Equal("Before dispose", snapshot[0].Message);
         }
+
+        [Fact]
+        public void BelowMinimumLevel_IsNotCaptured_AndFollowsChanges()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Warning };
+            using var provider = new InMemoryLogBufferProvider(_buffer, source);
+            ILogger logger = provider.CreateLogger("LevelCategory");
+
+            logger.LogInformation("hidden");
+            logger.LogWarning("shown");
+            source.Minimum = LogLevel.Debug;
+            logger.LogDebug("now shown");
+
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            Assert.Equal(["shown", "now shown"], snapshot.ConvertAll(r => r.Message));
+        }
+
+        [Fact]
+        public void TraceOnlyCategory_IsNeverStoredInBuffer()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Trace };
+            _ = source.TraceOnlyCategories.Add("Microsoft.AspNetCore.Components.RenderTree");
+            using var provider = new InMemoryLogBufferProvider(_buffer, source);
+            ILogger logger = provider.CreateLogger("Microsoft.AspNetCore.Components.RenderTree.Renderer");
+
+            logger.LogDebug("trace-only");
+
+            Assert.Empty(_buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10));
+        }
+
+        [Fact]
+        public void TraceOnlyCategory_IsLiveOnlyAtTrace()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Debug };
+            _ = source.TraceOnlyCategories.Add("Microsoft.Extensions.Localization");
+
+            Assert.False(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer", isWarningOrAbove: false));
+            source.Minimum = LogLevel.Trace;
+            Assert.True(source.AdmitsLive("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer", isWarningOrAbove: false));
+            Assert.True(source.AdmitsLive("VideoForensics.Something", isWarningOrAbove: false));
+        }
+
+        [Fact]
+        public void TraceOnlyCategory_WarningsAndErrorsAreNeverDemoted()
+        {
+            var source = new LogLevelSource { Minimum = LogLevel.Information };
+            _ = source.TraceOnlyCategories.Add("Microsoft.EntityFrameworkCore");
+            _ = source.TraceOnlyCategories.Add("VideoForensics.Data.Database");
+            const string category = "Microsoft.EntityFrameworkCore.Database.Transaction";
+
+            Assert.False(source.AdmitsLive(category, isWarningOrAbove: false));
+            Assert.False(source.AdmitsStored(category, isWarningOrAbove: false));
+            Assert.True(source.AdmitsLive(category, isWarningOrAbove: true));
+            Assert.True(source.AdmitsStored(category, isWarningOrAbove: true));
+            Assert.False(source.AdmitsLive("VideoForensics.Data.Database.Sqlite.Foo", isWarningOrAbove: false));
+        }
     }
 }

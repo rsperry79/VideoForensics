@@ -92,7 +92,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error registering device {DeviceName}", device.Name);
+                _logger.LogError("Error registering device {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -107,7 +107,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
+                _logger.LogError("Error recording device health metric for device {DeviceId}: {Message} ({ErrorType})", health.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -132,7 +132,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
+                _logger.LogError("Error recording device details for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -167,7 +167,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating detail fields for device {DeviceId}", deviceId);
+                _logger.LogError("Error updating detail fields for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -180,10 +180,15 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording provider API error log for event {EventId}, device {DeviceId}",
-                    entry.EventId, entry.DeviceId);
+                _logger.LogError("Error recording provider API error log for event {EventId}, device {DeviceId}: {Message} ({ErrorType})",
+                    entry.EventId, entry.DeviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
+        }
+
+        public Task<IReadOnlyList<string>> GetObservedVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
+        {
+            return _mediaItemRepository.GetDistinctVideoResolutionsAsync(deviceId, ct);
         }
 
         public async Task<bool> IsMediaAlreadyDownloadedAsync(Guid deviceId, string providerEventId, CancellationToken ct)
@@ -194,6 +199,18 @@ namespace VideoForensics.Data.Core.Services
         public async Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct)
         {
             return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
+        }
+
+        public async Task<string?> GetDownloadedMediaPathAsync(Guid deviceId, string providerEventId, CancellationToken ct)
+        {
+            DownloadEvent? downloadEvent = await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
+            if (downloadEvent is null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<MediaItem> items = await _mediaItemRepository.GetByDownloadEventIdAsync(downloadEvent.Id, ct);
+            return items.FirstOrDefault(i => !i.IsPurged && string.Equals(i.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase))?.FilePath;
         }
 
         /// <summary>
@@ -212,7 +229,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+                _logger.LogError("Media analysis failed for media item {MediaItemId}: {Message} ({ErrorType})", mediaItemId, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -310,10 +327,24 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording download event for device {DeviceId}, provider event {ProviderEventId}",
-                    evt.DeviceId, evt.ProviderEventId);
+                _logger.LogError("Error recording download event for device {DeviceId}, provider event {ProviderEventId}: {Message} ({ErrorType})",
+                    evt.DeviceId, evt.ProviderEventId, ex.Message, ex.GetType().Name);
                 throw;
             }
+        }
+
+        public Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct)
+        {
+            return _unitOfWork.ExecuteAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
+        }
+
+        public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
+        {
+            return _unitOfWork.ExecuteAsync(async context =>
+            {
+                await context.DingIdLinks.LinkDoorbotHistoryEventAsync(doorbotHistoryProviderEventId, eventId, ct);
+                return true;
+            }, ct);
         }
 
         public async Task<Event> UpsertEventAsync(
@@ -397,8 +428,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting event for device {DeviceId}, provider event {ProviderEventId}",
-                    evt.DeviceId, evt.ProviderEventId);
+                _logger.LogError("Error upserting event for device {DeviceId}, provider event {ProviderEventId}: {Message} ({ErrorType})",
+                    evt.DeviceId, evt.ProviderEventId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -485,8 +516,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user {DisplayName}",
-                    providerName, displayName);
+                _logger.LogError("Error ensuring user and account for provider {ProviderName}, user {DisplayName}: {Message} ({ErrorType})",
+                    providerName, displayName, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -497,7 +528,6 @@ namespace VideoForensics.Data.Core.Services
             string name,
             string? address,
             string? metadataJson = null,
-            string? apiResponseHash = null,
             CancellationToken ct = default)
         {
             try
@@ -515,7 +545,6 @@ namespace VideoForensics.Data.Core.Services
                             ProviderLocationId = providerLocationId,
                             Name = name,
                             Address = address,
-                            ApiResponseHash = apiResponseHash,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
                         };
@@ -535,8 +564,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring location {LocationName} for provider account {ProviderAccountId}",
-                    name, providerAccountId);
+                _logger.LogError("Error ensuring location {LocationName} for provider account {ProviderAccountId}: {Message} ({ErrorType})",
+                    name, providerAccountId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -667,8 +696,6 @@ namespace VideoForensics.Data.Core.Services
             device.BatteryVoltage = details.BatteryVoltage;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryVoltage2), device.BatteryVoltage2, details.BatteryVoltage2);
             device.BatteryVoltage2 = details.BatteryVoltage2;
-            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LedStatus), device.LedStatus, details.LedStatus);
-            device.LedStatus = details.LedStatus;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SirenSecondsRemaining), device.SirenSecondsRemaining, details.SirenSecondsRemaining);
             device.SirenSecondsRemaining = details.SirenSecondsRemaining;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.NightMode), device.NightMode, details.NightMode);
@@ -699,6 +726,10 @@ namespace VideoForensics.Data.Core.Services
             device.SettingsChimeEnabled = details.SettingsChimeEnabled;
             TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeDuration), device.SettingsChimeDuration, details.SettingsChimeDuration);
             device.SettingsChimeDuration = details.SettingsChimeDuration;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DeactivatedAtUtc), device.DeactivatedAtUtc, details.DeactivatedAtUtc);
+            device.DeactivatedAtUtc = details.DeactivatedAtUtc;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SharedAtUtc), device.SharedAtUtc, details.SharedAtUtc);
+            device.SharedAtUtc = details.SharedAtUtc;
         }
 
         public async Task<Device> EnsureDeviceAsync(
@@ -707,8 +738,6 @@ namespace VideoForensics.Data.Core.Services
             string name,
             string type,
             bool? isOnline,
-            string? metadataJson = null,
-            string? apiResponseHash = null,
             CancellationToken ct = default,
             string? timeZoneId = null,
             VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null)
@@ -742,8 +771,6 @@ namespace VideoForensics.Data.Core.Services
                             Name = name,
                             Type = type,
                             IsOnline = isOnline,
-                            MetadataJson = metadataJson,
-                            ApiResponseHash = apiResponseHash,
                             TimeZoneId = timeZoneId,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
@@ -779,8 +806,6 @@ namespace VideoForensics.Data.Core.Services
                                 Name = name,
                                 Type = type,
                                 IsOnline = isOnline,
-                                MetadataJson = metadataJson,
-                                ApiResponseHash = apiResponseHash,
                                 TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced,
@@ -821,10 +846,6 @@ namespace VideoForensics.Data.Core.Services
                         }
 
                         // Same guard as TimeZoneId: a sync that carries no response hash keeps the stored one.
-                        if (!string.IsNullOrWhiteSpace(apiResponseHash))
-                        {
-                            existingDevice.ApiResponseHash = apiResponseHash;
-                        }
 
                         var changes = new List<DeviceSettingChange>();
                         ApplyDetailFields(existingDevice, details, changes);
@@ -842,8 +863,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring device {DeviceName} for location {LocationId}",
-                    name, locationId);
+                _logger.LogError("Error ensuring device {DeviceName} for location {LocationId}: {Message} ({ErrorType})",
+                    name, locationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -887,7 +908,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device watermark for device {DeviceId}", deviceId);
+                _logger.LogError("Error updating device watermark for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -909,7 +930,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving account download watermark for account {AccountId}", providerAccountId);
+                _logger.LogError("Error retrieving account download watermark for account {AccountId}: {Message} ({ErrorType})", providerAccountId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -941,7 +962,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating account download watermark for account {AccountId}", providerAccountId);
+                _logger.LogError("Error updating account download watermark for account {AccountId}: {Message} ({ErrorType})", providerAccountId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

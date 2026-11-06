@@ -1,0 +1,95 @@
+@typeparam TReason where TReason : struct, Enum
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Inputs
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
+
+<div class="reason-picker" role="group" aria-label="@LabelText" data-testid="reason-picker">
+    <SfDropDownList TValue="TReason?" TItem="ReasonOption<TReason>" Value="@Value" ValueChanged="@OnDropdownChangedAsync" DataSource="@_options" Placeholder="@L["ReasonPickerPlaceholder"].Value" CssClass="w-100" data-testid="reason-picker-dropdown">
+        <DropDownListFieldSettings Text="Text" Value="Value" />
+    </SfDropDownList>
+
+    @if (IsOther)
+    {
+        <div class="mt-2">
+            <SfTextBox Multiline="true" Value="@(Note ?? string.Empty)" ValueChanged="@OnNoteChangedAsync" Placeholder="@L["ReasonPickerNote"].Value" data-testid="reason-picker-note" />
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The chosen reason, or null when none is chosen yet.</summary>
+    [Parameter]
+    public TReason? Value { get; set; }
+
+    /// <summary>Raised with the new reason when the operator picks one.</summary>
+    [Parameter]
+    public EventCallback<TReason?> ValueChanged { get; set; }
+
+    /// <summary>The reason that needs a note. Choosing it makes the note required.</summary>
+    [Parameter]
+    public TReason OtherValue { get; set; }
+
+    /// <summary>The note typed for the Other reason. Ignored for every other reason.</summary>
+    [Parameter]
+    public string? Note { get; set; }
+
+    /// <summary>Raised with the new note text as the operator types it.</summary>
+    [Parameter]
+    public EventCallback<string?> NoteChanged { get; set; }
+
+    /// <summary>Raised with true when the reason is complete and false when it is not. Reported on the first render and on each change.</summary>
+    [Parameter]
+    public EventCallback<bool> ValidityChanged { get; set; }
+
+    /// <summary>The accessible name of the picker group.</summary>
+    [Parameter, EditorRequired]
+    public string LabelText { get; set; } = string.Empty;
+
+    /// <summary>The dropdown rows, built once from the enum values in declaration order.</summary>
+    private List<ReasonOption<TReason>> _options = [];
+
+    /// <summary>The validity last reported to the parent, or null before the first report.</summary>
+    private bool? _reportedValid;
+
+    /// <summary>True when the chosen reason is the one that needs a note.</summary>
+    private bool IsOther => Value is { } chosen && EqualityComparer<TReason>.Default.Equals(chosen, OtherValue);
+
+    /// <summary>True when a reason is chosen and, for the Other reason, the trimmed note is not empty.</summary>
+    private bool IsComplete => Value is not null && (!IsOther || !string.IsNullOrWhiteSpace(Note));
+
+    protected override void OnInitialized()
+    {
+        _options = Enum.GetValues<TReason>()
+            .Select(value => new ReasonOption<TReason>(value, ResolveText(value)))
+            .ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        bool complete = IsComplete;
+        if (_reportedValid != complete)
+        {
+            _reportedValid = complete;
+            await ValidityChanged.InvokeAsync(complete);
+        }
+    }
+
+    /// <summary>Resolves the localized text of a reason, or its enum name when no resource exists.</summary>
+    private string ResolveText(TReason value)
+    {
+        LocalizedString text = L[$"Reason{typeof(TReason).Name}_{value}"];
+        return text.ResourceNotFound ? value.ToString() : text.Value;
+    }
+
+    private async Task OnDropdownChangedAsync(TReason? value)
+    {
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private Task OnNoteChangedAsync(string? text)
+    {
+        return NoteChanged.InvokeAsync(text);
+    }
+}

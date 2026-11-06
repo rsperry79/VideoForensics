@@ -116,7 +116,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building evidence review report");
+                _logger.LogError("Error building evidence review report: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             return report;
@@ -155,7 +155,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building forensic analysis report");
+                _logger.LogError("Error building forensic analysis report: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             return report;
@@ -223,7 +223,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building signal anomaly report");
+                _logger.LogError("Error building signal anomaly report: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             return report;
@@ -267,7 +267,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building access control report");
+                _logger.LogError("Error building access control report: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             return report;
@@ -319,7 +319,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building chain of custody report");
+                _logger.LogError("Error building chain of custody report: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
 
             return report;
@@ -373,7 +373,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to dispatch chain of custody integrity alert (non-critical)");
+                _logger.LogError("Failed to dispatch chain of custody integrity alert (non-critical): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 
@@ -422,7 +422,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error writing report in format {Format}", format);
+                _logger.LogError("Error writing report in format {Format}: {Message} ({ErrorType})", format, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

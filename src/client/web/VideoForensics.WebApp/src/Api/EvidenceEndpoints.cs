@@ -1,9 +1,9 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -79,6 +79,29 @@ namespace VideoForensics.Client.WebApp.Api
             }
         }
 
+        /// <summary>Starts (or joins the running) local integrity job over one media item's file and returns its snapshot.</summary>
+        public static async Task<IResult> StartIntegrityMediaItemJobAsync(
+            StartIntegrityMediaItemJobRequest request,
+            IEvidenceValidationJobs jobs,
+            CancellationToken ct)
+        {
+            if (request.MediaItemId == Guid.Empty)
+            {
+                return Results.BadRequest("A media item id is required.");
+            }
+
+            try
+            {
+                EvidenceValidationJob job = await jobs.StartIntegrityForMediaItemAsync(request.MediaItemId, ct);
+                return Results.Ok(job.ToDto());
+            }
+            catch (InvalidOperationException ex)
+            {
+                // A different scope is already being verified; the caller retries once that run finishes.
+                return Results.Conflict(ex.Message);
+            }
+        }
+
         /// <summary>Starts (or joins the running) provider reconciliation job and returns its snapshot.</summary>
         public static async Task<IResult> StartReconcileJobAsync(
             StartReconcileJobRequest request,
@@ -126,11 +149,19 @@ namespace VideoForensics.Client.WebApp.Api
             RouteGroupBuilder group = app.MapGroup("/api/v1/evidence").RequireAuthorization();
 
             _ = group.MapPost("/jobs/integrity", StartIntegrityJobAsync)
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Start integrity job")
             .WithDescription("Starts a local file integrity check as an app-lifetime job, or returns the one already running. Poll the latest-job route for progress.");
 
+            _ = group.MapPost("/jobs/integrity/media-item", StartIntegrityMediaItemJobAsync)
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
+            .RequireRateLimiting("media")
+            .WithSummary("Start integrity job for one media item")
+            .WithDescription("Starts a local file integrity check of one media item's file as an app-lifetime job, or returns the integrity job already running for that item. Poll the latest-job route for progress.");
+
             _ = group.MapPost("/jobs/reconcile", StartReconcileJobAsync)
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Start reconcile job")
             .WithDescription("Starts a provider reconciliation as an app-lifetime job, or returns the one already running. Poll the latest-job route for progress.");
@@ -148,6 +179,7 @@ namespace VideoForensics.Client.WebApp.Api
                 IReadOnlyList<MediaVerificationResult> results = await validationService.VerifyLocalIntegrityAsync(request.DeviceId, ct);
                 return Results.Ok(results.Select(r => r.ToDto()).ToList());
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Verify local file integrity")
             .WithDescription("Re-verifies SHA-256 hashes of downloaded files against stored hashes to detect corruption or tampering.");
@@ -165,11 +197,13 @@ namespace VideoForensics.Client.WebApp.Api
                     ct);
                 return Results.Ok(discrepancies.Select(d => d.ToDto()).ToList());
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Reconcile with provider")
             .WithDescription("Compares stored events against the provider's current records to detect changes, deletions, or new events that indicate potential tampering or service issues.");
 
             _ = group.MapPost("/export", ExportAsync)
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
@@ -187,6 +221,7 @@ namespace VideoForensics.Client.WebApp.Api
                     ct);
                 return Results.Ok(result.ToDto());
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Validate all devices")
             .WithDescription("Runs full provider reconciliation with auto-fix across all devices. Detects and fixes missing events, changed metadata, and integrity issues.");

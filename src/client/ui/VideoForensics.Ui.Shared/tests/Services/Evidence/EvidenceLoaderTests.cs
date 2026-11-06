@@ -1,13 +1,13 @@
 
 using Moq;
 
+using VideoForensics.Client.Ui.Shared.Services.Events;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Client.Ui.Shared.Services.Events;
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
-using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
@@ -28,7 +28,6 @@ public class EvidenceLoader_LoadAsync_EventItems_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -107,7 +106,6 @@ public class EvidenceLoader_LoadAsync_MediaItems_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -183,7 +181,6 @@ public class EvidenceLoader_LoadAsync_MediaItems_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -254,7 +251,6 @@ public class EvidenceLoader_LoadAsync_MediaItems_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -326,7 +322,6 @@ public class EvidenceLoader_LoadAsync_Deduplication_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -419,7 +414,6 @@ public class EvidenceLoader_LoadAsync_AllDevices_Tests
             ProviderDeviceId = "provider-id-1",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
         var device2 = new Device
         {
@@ -429,7 +423,6 @@ public class EvidenceLoader_LoadAsync_AllDevices_Tests
             ProviderDeviceId = "provider-id-2",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -516,7 +509,6 @@ public class EvidenceLoader_LoadAsync_Search_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -601,7 +593,6 @@ public class EvidenceLoader_LoadAsync_DeviceErrors_Tests
             ProviderDeviceId = "provider-id-1",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
         var device2 = new Device
         {
@@ -611,7 +602,6 @@ public class EvidenceLoader_LoadAsync_DeviceErrors_Tests
             ProviderDeviceId = "provider-id-2",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(
@@ -807,7 +797,6 @@ public class EvidenceLoader_LoadAsync_SearchFiltering_Tests
             ProviderDeviceId = "provider-id",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var device2 = new Device
@@ -818,7 +807,6 @@ public class EvidenceLoader_LoadAsync_SearchFiltering_Tests
             ProviderDeviceId = "provider-id-2",
             Type = "camera",
             IsOnline = true,
-            MetadataJson = "{}"
         };
 
         var scope = new ForensicScope(

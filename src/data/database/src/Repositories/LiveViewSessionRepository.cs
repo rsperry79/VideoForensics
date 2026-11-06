@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting live-view session: {SessionId}", session.Id);
+                _logger.LogError("Error upserting live-view session: {SessionId}: {Message} ({ErrorType})", session.Id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

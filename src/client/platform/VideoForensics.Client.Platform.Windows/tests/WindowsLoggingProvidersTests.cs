@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Platform.Windows.Tests
         public void AddEventLog_Always_RegistersEventLogProvider()
         {
             var services = new ServiceCollection();
-            _ = services.AddLogging(builder => WindowsLoggingProviders.AddEventLog(builder));
+            _ = services.AddLogging(WindowsLoggingProviders.AddEventLog);
 
             using ServiceProvider provider = services.BuildServiceProvider();
 

@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>
 /// The review and viewer layout rules. The components have no browser test, so these read the scoped stylesheets and assert
@@ -84,6 +84,23 @@ public class ReviewLayoutStylesheet_Tests
 
         // Assert
         Assert.True(backdrop < popup, $"The backdrop z-index ({backdrop}) must be below the popup z-index ({popup}).");
+    }
+
+    [Fact]
+    public void ReviewEventFilterStylesheet_PopupAndOpenControl_SitAboveThePageBackdrop()
+    {
+        // Arrange: the popup styles are scoped per component, so the Event Filter needs its own copy of the camera selector's
+        string css = RepoFile.ReadUiSharedSource("Components/Review/ReviewEventFilter.razor.css");
+        int backdrop = ZIndexOf(RepoFile.ReadUiSharedSource("Components/Review/ReviewTopBar.razor.css"), @"\.review-popup-backdrop\s*\{([^}]*)\}");
+
+        // Act
+        int popup = ZIndexOf(css, @"\.review-event-selector \.review-popup\s*\{([^}]*)\}");
+        int open = ZIndexOf(css, @"\.review-event-selector-open\s*\{([^}]*)\}");
+
+        // Assert: otherwise the backdrop swallows every click in the popup and the rest of the page
+        Assert.True(popup > backdrop, $"The popup z-index ({popup}) must be above the backdrop ({backdrop}).");
+        Assert.True(open > backdrop, $"The open control z-index ({open}) must be above the backdrop ({backdrop}).");
+        Assert.Matches(@"\.review-event-selector \.review-popup\s*\{[^}]*position:\s*absolute", css);
     }
 
     [Fact]

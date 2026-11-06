@@ -58,7 +58,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving system version");
+                _logger.LogError("Error retrieving system version: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Task.FromResult("unknown");
             }
         }
@@ -95,7 +95,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving build timestamp");
+                _logger.LogError("Error retrieving build timestamp: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Task.FromResult<DateTime?>(null);
             }
         }
@@ -116,7 +116,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving release channel");
+                _logger.LogError("Error retrieving release channel: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return Task.FromResult("dev");
             }
         }

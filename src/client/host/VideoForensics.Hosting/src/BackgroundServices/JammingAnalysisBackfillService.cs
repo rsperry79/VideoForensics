@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
@@ -52,6 +53,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
+                using IDisposable? lease = scope.ServiceProvider.TryEnter();
+                if (lease is null)
+                {
+                    return;
+                }
+
                 _ = await scope.ServiceProvider.GetRequiredService<IJammingAnalysisBackfill>().BackfillAsync(ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -60,7 +67,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Analysis backfill pass failed; the next pass will retry");
+                _logger.LogError("Analysis backfill pass failed; the next pass will retry: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

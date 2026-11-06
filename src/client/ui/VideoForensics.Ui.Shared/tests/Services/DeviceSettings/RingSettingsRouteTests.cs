@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 

@@ -8,6 +8,9 @@ namespace VideoForensics.Data.Common.Entities
         public string ProviderLocationId { get; set; } = string.Empty;
 
         public string? PaginationKey { get; set; }
+
+        /// <summary>Top-level cek_transfer_recipient_response. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? CekTransferRecipientResponse { get; set; }
     }
 
     /// <summary>One entry of the evm location history feed. Nested objects are stored in <see cref="RingEventDetails"/>.</summary>
@@ -75,6 +78,18 @@ namespace VideoForensics.Data.Common.Entities
         public string? Mission { get; set; }
 
         public List<RingLocationHistoryVisualization> Visualizations { get; set; } = [];
+
+        /// <summary>Per-event cek_transfer_recipient_response. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? CekTransferRecipientResponse { get; set; }
+
+        /// <summary>visualizations.map_visualization. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? MapVisualization { get; set; }
+
+        /// <summary>visualizations.radar_visualization. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? RadarVisualization { get; set; }
+
+        /// <summary>visualizations.potential_gap_visualization. Null in every sample: stored as text only when Ring sends a string.</summary>
+        public string? PotentialGapVisualization { get; set; }
     }
 
     /// <summary>One visualization of a location history entry (cloud or local media).</summary>

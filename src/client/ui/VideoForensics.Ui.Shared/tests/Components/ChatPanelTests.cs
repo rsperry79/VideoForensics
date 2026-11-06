@@ -7,9 +7,9 @@ using Microsoft.Extensions.Localization;
 
 using System.Runtime.CompilerServices;
 
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components;
 using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Data.Common.Contracts;
 
 using Xunit;
 

@@ -1,4 +1,3 @@
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests

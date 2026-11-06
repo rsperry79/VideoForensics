@@ -3,9 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Services
 {
@@ -169,7 +169,7 @@ namespace VideoForensics.Client.WebApp.Services
                     throw;
                 }
 
-                _logger.LogError(ex, "Auto-ban write failed for {ClientIp}", key);
+                _logger.LogError("Auto-ban write failed for {ClientIp}: {Message} ({ErrorType})", key, ex.Message, ex.GetType().Name);
                 return false;
             }
         }

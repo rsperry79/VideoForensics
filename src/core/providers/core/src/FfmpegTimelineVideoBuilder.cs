@@ -1,7 +1,7 @@
 using FFMpegCore;
+
 using Microsoft.Extensions.Logging;
 
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 
@@ -496,13 +496,11 @@ namespace VideoForensics.Core.Providers.Core
                 string offset = segment.Offset.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
                 input = FFMpegArguments.FromFileInput(segment.SourcePath!, true, o => o.WithCustomArgument($"-ss {offset} -t {seconds}"));
             }
-            else if (segment.SourcePath is null)
-            {
-                input = FFMpegArguments.FromFileInput($"color=c=gray:s={width}x{height}:r=1", false, o => o.ForceFormat("lavfi").WithCustomArgument($"-t {seconds}"));
-            }
             else
             {
-                input = FFMpegArguments.FromFileInput(segment.SourcePath, true, o => o.WithCustomArgument($"-loop 1 -t {seconds}"));
+                input = segment.SourcePath is null
+                    ? FFMpegArguments.FromFileInput($"color=c=gray:s={width}x{height}:r=1", false, o => o.ForceFormat("lavfi").WithCustomArgument($"-t {seconds}"))
+                    : FFMpegArguments.FromFileInput(segment.SourcePath, true, o => o.WithCustomArgument($"-loop 1 -t {seconds}"));
             }
 
             FFMpegArgumentProcessor processor = input.OutputToFile(segmentPath, true, o => o.WithCustomArgument(
@@ -550,11 +548,10 @@ namespace VideoForensics.Core.Providers.Core
             catch (Exception ex)
             {
                 // Covers failed encodes and a missing or unstartable ffmpeg binary: report, do not throw.
-                _logger.LogError(ex, "Timeline video build ffmpeg step failed");
+                _logger.LogError("Timeline video build ffmpeg step failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return ex.Message;
             }
         }
-
 
         /// <summary>
         /// Builds the ffmpeg arguments that join the encoded segments without re-encoding. The segments share one
@@ -581,7 +578,6 @@ namespace VideoForensics.Core.Providers.Core
             return string.Join(",", parts);
         }
 
-
         /// <summary>
         /// The budget for one ffmpeg process: the base timeout plus room for encoding its output. A fixed budget would fail
         /// a build on length alone, since a long clip segment legitimately takes longer than the base timeout.
@@ -593,7 +589,6 @@ namespace VideoForensics.Core.Providers.Core
 
         // Generous: a 4K source can encode at a fraction of real time.
         private const int BudgetSecondsPerOutputSecond = 4;
-
 
         /// <summary>
         /// Builds the concat-demuxer list over the encoded segment files. Each segment is listed once, in timeline order.
@@ -666,12 +661,12 @@ namespace VideoForensics.Core.Providers.Core
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    _logger.LogWarning("Could not delete timeline temp directory: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     return;
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    _logger.LogWarning("Could not delete timeline temp directory: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     return;
                 }
             }

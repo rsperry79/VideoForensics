@@ -60,7 +60,8 @@ namespace VideoForensics.Client.Hosting.Tests
             {
                 IEventPullService pull = provider.GetRequiredKeyedService<IEventPullService>(name);
                 Assert.Same(provider.GetRequiredKeyedService<IEventAndConfigService>(name), GetPrivateField(pull, "_eventAndConfigService"));
-                Assert.Same(provider.GetRequiredKeyedService<IDeviceDiscoveryService>(name), GetPrivateField(pull, "_deviceDiscovery"));
+                IInventorySyncService inventorySync = provider.GetRequiredKeyedService<IInventorySyncService>(name);
+                Assert.Same(provider.GetRequiredKeyedService<IDeviceDiscoveryService>(name), GetPrivateField(inventorySync, "_deviceDiscovery"));
                 Assert.Same(provider.GetRequiredKeyedService<IMediaDownloadService>(name), GetPrivateField(pull, "_mediaDownloadService"));
             }
         }

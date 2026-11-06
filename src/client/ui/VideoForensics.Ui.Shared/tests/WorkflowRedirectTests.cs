@@ -54,7 +54,7 @@ public class Media_Route_Tests
     [Fact]
     public void NoOtherPage_DeclaresMediaRoute()
     {
-        List<Type> owners = typeof(ReviewPage).Assembly
+        var owners = typeof(ReviewPage).Assembly
             .GetTypes()
             .Where(t => RouteTemplates(t).Contains("/media"))
             .ToList();

@@ -19,6 +19,11 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasMaxLength(256);
 
             _ = builder.HasIndex(dcs => dcs.DeviceId);
+
+            _ = builder.HasMany(dcs => dcs.CustomSettings)
+                .WithOne()
+                .HasForeignKey(s => s.SnapshotId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

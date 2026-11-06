@@ -1,9 +1,9 @@
 using System.Threading;
 
-using VideoForensics.Providers.Ring.Testing.Mocks;
 using VideoForensics.Providers.Ring.Sockets;
+using VideoForensics.Providers.Ring.Testing.Mocks;
 
-namespace VideoForensics.Providers.Ring.Core.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests.Sockets
 {
     /// <summary>
     /// Tests for ClientWebSocketTransport behavior through IWebSocketTransport interface contract.

@@ -1,7 +1,3 @@
-using VideoForensics.Core.Helpers.Forensics.Exceptions;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
-
-using System;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -17,6 +13,27 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
     {
         /// <summary>The TPM key id reserved for data protection.</summary>
         public const string KeyId = "DataProtection";
+
+        /// <summary>
+        /// True when the machine already has the data-protection TPM key. A TPM that cannot be read counts as no key, so the
+        /// caller decides the policy.
+        /// </summary>
+        public static bool KeyExists()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
+            try
+            {
+                return new TpmKeyStorageProvider().KeyExists(KeyId);
+            }
+            catch (CryptographicException)
+            {
+                return false;
+            }
+        }
 
         /// <summary>
         /// Returns a certificate backed by the TPM key, creating the key on first use. Returns null when the TPM is

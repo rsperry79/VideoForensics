@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text.Json;
 
+using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Remote;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
@@ -20,13 +20,11 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 Name: "Front Door Camera",
                 Type: "camera",
                 IsOnline: true,
-                MetadataJson: null,
                 LastSuccessfulPullAtUtc: DateTime.UtcNow.AddHours(-1),
                 LastPullAttemptAtUtc: DateTime.UtcNow,
                 TimeZoneId: "America/New_York",
                 LastSyncedUtc: DateTime.UtcNow.AddHours(-1),
-                SyncStatus: SyncStatusDto.Synced,
-                ApiResponseHash: null
+                SyncStatus: SyncStatusDto.Synced
             );
         }
 
@@ -220,24 +218,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
-        public async Task GetByApiHashAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteDeviceRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByApiHashAsync("hash123", CancellationToken.None));
-
-            Assert.Contains("Remote API doesn't yet support", ex.Message);
-        }
-
-        [Fact]
         public async Task AddAsync_Throws_NotSupportedException()
         {
             var handler = new FakeHttpMessageHandler(async _ =>
@@ -323,13 +303,11 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 Name: "Backyard Camera",
                 Type: "camera",
                 IsOnline: false,
-                MetadataJson: "{\"key\":\"value\"}",
                 LastSuccessfulPullAtUtc: new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc),
                 LastPullAttemptAtUtc: new DateTime(2024, 1, 2, 12, 0, 0, DateTimeKind.Utc),
                 TimeZoneId: "America/Los_Angeles",
                 LastSyncedUtc: new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc),
-                SyncStatus: SyncStatusDto.Stale,
-                ApiResponseHash: "hash-123"
+                SyncStatus: SyncStatusDto.Stale
             );
 
             string json = JsonSerializer.Serialize(new List<DeviceDto> { deviceDto }, JsonOptions);
@@ -355,12 +333,10 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal(deviceDto.Name, device.Name);
             Assert.Equal(deviceDto.Type, device.Type);
             Assert.Equal(deviceDto.IsOnline, device.IsOnline);
-            Assert.Equal(deviceDto.MetadataJson, device.MetadataJson);
             Assert.Equal(deviceDto.LastSuccessfulPullAtUtc, device.LastSuccessfulPullAtUtc);
             Assert.Equal(deviceDto.LastPullAttemptAtUtc, device.LastPullAttemptAtUtc);
             Assert.Equal(deviceDto.TimeZoneId, device.TimeZoneId);
             Assert.Equal(deviceDto.LastSyncedUtc, device.LastSyncedUtc);
-            Assert.Equal(deviceDto.ApiResponseHash, device.ApiResponseHash);
         }
     }
 }

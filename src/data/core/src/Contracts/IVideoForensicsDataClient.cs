@@ -12,8 +12,21 @@ namespace VideoForensics.Data.Core.Contracts
         /// <summary>Checks if a media item was already downloaded for a given device and provider event ID.</summary>
         Task<bool> IsMediaAlreadyDownloadedAsync(Guid deviceId, string providerEventId, CancellationToken ct);
 
+        /// <summary>Distinct video resolutions this device has produced; the fallback when no official spec is known. Default: none.</summary>
+        Task<IReadOnlyList<string>> GetObservedVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
+
         /// <summary>Gets the download event record (if any) for a device/provider event ID, including failed attempts.</summary>
         Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct);
+
+        /// <summary>
+        /// Gets the stored path of the video already downloaded for an event, or null when there is none. Callers use this
+        /// instead of recomputing the file name, because the name can change after the download (a detection type is added,
+        /// or the file is renamed).
+        /// </summary>
+        Task<string?> GetDownloadedMediaPathAsync(Guid deviceId, string providerEventId, CancellationToken ct);
 
         /// <summary>
         /// Records a download event and associated media item(s) atomically via IUnitOfWork,
@@ -41,6 +54,12 @@ namespace VideoForensics.Data.Core.Contracts
             List<EventDetectedPerson>? persons = null,
             List<EventDetectionTypeOccurrence>? occurrences = null);
 
+        /// <summary>Returns the string ding ids of one device that a doorbot history id could match, read from the string-id feeds.</summary>
+        Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct);
+
+        /// <summary>Links the doorbot history row with the given numeric id to the Events row for its ding.</summary>
+        Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct);
+
         /// <summary>Resolves the effective start date for a download window, considering the watermark.</summary>
         Task<DateTime> GetWatermarkAsync(Guid deviceId, DateTime requestedStartDate, bool force, CancellationToken ct);
 
@@ -59,7 +78,6 @@ namespace VideoForensics.Data.Core.Contracts
             string name,
             string? address,
             string? metadataJson = null,
-            string? apiResponseHash = null,
             CancellationToken ct = default);
 
         /// <summary>
@@ -72,8 +90,6 @@ namespace VideoForensics.Data.Core.Contracts
             string name,
             string type,
             bool? isOnline,
-            string? metadataJson = null,
-            string? apiResponseHash = null,
             CancellationToken ct = default,
             string? timeZoneId = null,
             VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null);

@@ -391,7 +391,10 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(LogLevel.Error, level);
             Assert.Contains("Ring account", message);
             Assert.DoesNotContain(AccountA.ToString(), message);
-            _ = Assert.IsType<InvalidOperationException>(exception);
+            // The failure is logged as its message and type, never as the exception object (no stack traces in logs).
+            Assert.Null(exception);
+            Assert.Contains("db-detail-xyz", message);
+            Assert.Contains("InvalidOperationException", message);
         }
 
         [Fact]

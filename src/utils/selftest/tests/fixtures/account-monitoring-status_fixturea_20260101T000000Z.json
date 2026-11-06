@@ -1,0 +1,27 @@
+{
+  "addressComplete": false,
+  "contactsComplete": false,
+  "codewordComplete": false,
+  "dispatchSetupComplete": true,
+  "userChangedAddress": false,
+  "alarmSignalSent": false,
+  "professionallyMonitored": false,
+  "userAcceptDispatch": false,
+  "vrRequired": false,
+  "vrUserOptIn": false,
+  "cmsMonitoringType": "x",
+  "suspectedBusiness": false,
+  "compatibleMonitoringPlans": [
+    "x"
+  ],
+  "accountStateReason": "x",
+  "accountUuid": "x",
+  "accountState": "x",
+  "externalServiceConfigType": "x",
+  "eligibleForDispatch": false,
+  "sosOnly": false,
+  "installationDate": 1,
+  "deliverSignals": false,
+  "planProvider": "x",
+  "sosOnlyFlagOrFalse": false
+}

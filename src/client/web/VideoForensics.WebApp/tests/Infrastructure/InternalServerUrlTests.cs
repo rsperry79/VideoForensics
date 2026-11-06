@@ -8,7 +8,10 @@ namespace VideoForensics.Client.WebApp.Tests.Infrastructure
 {
     public class InternalServerUrlTests
     {
-        private static IConfiguration EmptyConfiguration() => new ConfigurationBuilder().Build();
+        private static IConfiguration EmptyConfiguration()
+        {
+            return new ConfigurationBuilder().Build();
+        }
 
         [Fact]
         public void ServerAddressResolver_ResolveDefaultInternalUrl_UsesHttpPortAndNeverLocalhost()

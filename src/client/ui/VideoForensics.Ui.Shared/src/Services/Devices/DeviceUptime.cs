@@ -26,8 +26,9 @@ public static class DeviceUptime
     /// <param name="nowUtc">The current time.</param>
     /// <param name="offlineAfterSeconds">How long without a reading before the device counts as offline.</param>
     /// <param name="requiresConnectionFlag">
-    /// True when the provider reports connection only through its own flag (Ring's health.connected). A recent reading
-    /// with no flag then counts as offline, because recency alone does not show the device is connected.
+    /// True when the provider reports connection only through its own flag (Ring's health.connected). A reading with no flag
+    /// counts as offline, because recency alone does not show the device is connected. A reading with the flag set is online
+    /// while its capture is within the threshold.
     /// </param>
     public static DeviceUptimeStatus Evaluate(
         bool? isOnline,
@@ -45,6 +46,15 @@ public static class DeviceUptime
         if (isOnline == false || (requiresConnectionFlag && isOnline is null))
         {
             return DeviceUptimeStatus.Offline;
+        }
+
+        // Ring's heartbeat is re-sent on every sync and can be months old while the device is connected, so a connected
+        // reading is judged by the poll that produced it, not by the heartbeat.
+        if (requiresConnectionFlag)
+        {
+            return capturedAtUtc is DateTime captured && nowUtc - captured <= TimeSpan.FromSeconds(offlineAfterSeconds)
+                ? DeviceUptimeStatus.Online
+                : DeviceUptimeStatus.Offline;
         }
 
         DateTime lastSeenUtc = LastSeenUtc(lastHeartbeatUtc, capturedAtUtc);

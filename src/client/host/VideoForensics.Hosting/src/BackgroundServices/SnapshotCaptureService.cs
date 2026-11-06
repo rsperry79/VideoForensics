@@ -1,19 +1,19 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
+using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
@@ -30,7 +30,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     ///
     /// Each attempt runs through <see cref="IProviderSnapshotCapture"/>, which takes the account's pacer turns and handles rate limits
     /// (pause, alert, spacing penalty). A 429 is recorded as a gap and the account is held back for the pause the provider reported.
-    /// Rows hold only the attempt record. A 200 also writes the JPEG under the media root's &lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\yyyyMMddTHHmmssfffZ.jpg.
+    /// Rows hold only the attempt record. A 200 also writes the JPEG under the media root's &lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\ folder as &lt;device&gt;_yyyyMMdd_HHmmss_snapshot.jpg (MediaFileNamer).
     ///
     /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsSnapshotCapture). Logs use the provider name
     /// ("Ring account") and the device name, never account or device GUIDs.
@@ -61,7 +61,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private static readonly TimeSpan AccountErrorBackoff = TimeSpan.FromMinutes(1);
 
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotCaptureService> _logger;
         private readonly TimeProvider _time;
         private readonly IStorageLocationProvider _storage;
@@ -75,14 +74,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>Creates the capture service.</summary>
         public SnapshotCaptureService(
             IServiceScopeFactory scopeFactory,
-            IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotCaptureService> logger,
             TimeProvider time,
             IStorageLocationProvider storage,
             ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
-            _options = options;
             _logger = logger;
             _time = time;
             _storage = storage;
@@ -126,7 +123,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Snapshot capture tick failed; will retry on the next tick");
+                        _logger.LogError("Snapshot capture tick failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
             }
@@ -143,8 +140,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+            using IDisposable? lease = sp.TryEnter();
+            if (lease is null)
+            {
+                // Another sync or maintenance holds the lease, so this tick captures nothing. Logged so a silent gap is visible.
+                _logger.LogInformation("Snapshot capture tick skipped: another operation holds the lease");
+                return;
+            }
 
             IReadOnlyList<ProviderAccount> accounts = await sp.GetRequiredService<IProviderAccountRepository>().ListActiveAsync(ct);
+            _logger.LogDebug("Snapshot capture tick started: {AccountCount} active accounts", accounts.Count);
             var counts = new TickCounts();
 
             foreach (ProviderAccount account in accounts)
@@ -168,7 +173,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One account's failure must never stop the others.
                     _accountPausedUntil[account.Id] = _time.GetUtcNow() + AccountErrorBackoff;
-                    _logger.LogError(ex, "Snapshot capture failed for {ProviderName} account", account.ProviderName);
+                    _logger.LogError("Snapshot capture failed for {ProviderName} account: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                 }
             }
 
@@ -187,6 +192,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (IsPaused(accountId, now))
             {
+                _logger.LogDebug("Snapshot capture skipped for {AccountName}: paused until {PausedUntil:t} local time", accountName, _accountPausedUntil[accountId].ToLocalTime());
                 return;
             }
 
@@ -201,7 +207,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
             ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
             IProviderDeviceStatus deviceStatus = sp.GetRequiredKeyedService<IProviderDeviceStatus>(RingProviderName);
-            var due = new List<Device>();
+            var candidates = new List<(Device Device, TimeSpan Window)>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (Location location in await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(accountId, ct))
@@ -210,34 +216,56 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollInterval, not
                     // captured every interval. The window check also covers startup: a camera with no probe in the last window is due at once.
-                    if (!seen.Add(device.ProviderDeviceId) || !device.SnapshotCaptureEnabled || !HasCamera(device.Type))
+                    if (!seen.Add(device.ProviderDeviceId))
                     {
+                        continue;
+                    }
+
+                    // Each skip logs its own reason, so a silent camera shows whether its capture is off or its type has no camera.
+                    if (!device.SnapshotCaptureEnabled)
+                    {
+                        _logger.LogDebug("Snapshot capture skipped {DeviceName} on {AccountName}: capture is off for this device", device.Name, accountName);
+                        continue;
+                    }
+
+                    if (!HasCamera(device.Type))
+                    {
+                        _logger.LogDebug("Snapshot capture skipped {DeviceName} on {AccountName}: device type {DeviceType} has no camera", device.Name, accountName, device.Type ?? "unknown");
                         continue;
                     }
 
                     if (_deviceRetryAfter.TryGetValue(device.Id, out DateTimeOffset retryAfter) && retryAfter > now)
                     {
+                        _logger.LogDebug("Snapshot capture held for {DeviceName} on {AccountName} until {RetryAt:t} after a failure", device.Name, accountName, retryAfter.ToLocalTime());
                         continue;
                     }
 
                     TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollInterval : interval;
-
-                    // Any attempt inside the window (current or failed) means the device has already been tried this window.
-                    IReadOnlyList<SnapshotCapture> recent = await captures.GetAttemptsForDeviceAsync(device.Id, now - window, now, ct);
-                    if (recent.Count == 0)
-                    {
-                        due.Add(device);
-                    }
+                    candidates.Add((device, window));
                 }
+            }
+
+            // Which candidates already have an attempt inside their window (current or failed). One query per distinct window,
+            // not one per device, so a tick costs at most two lookups per account.
+            var due = new List<Device>();
+            foreach (TimeSpan window in candidates.Select(c => c.Window).Distinct())
+            {
+                IReadOnlyCollection<Guid> ids = candidates.Where(c => c.Window == window).Select(c => c.Device.Id).ToList();
+                IReadOnlySet<Guid> attempted = await captures.GetDeviceIdsWithAttemptsAsync(ids, now - window, now, ct);
+                due.AddRange(candidates.Where(c => c.Window == window && !attempted.Contains(c.Device.Id)).Select(c => c.Device));
             }
 
             if (due.Count == 0)
             {
+                _logger.LogDebug("Snapshot capture: no devices due for {AccountName} ({CandidateCount} candidates already attempted this window)", accountName, candidates.Count);
                 return;
             }
 
+            _logger.LogDebug("Snapshot capture: {DueCount} devices due for {AccountName} at {IntervalSeconds}s spacing", due.Count, accountName, seconds);
+
             if (!await EnsureSessionAsync(sp, accountId, accountName, ct))
             {
+                _logger.LogWarning("Snapshot capture backed off for {AccountName} for {BackoffSeconds}s: no active session", accountName, AccountErrorBackoff.TotalSeconds);
                 _accountPausedUntil[accountId] = _time.GetUtcNow() + AccountErrorBackoff;
                 return;
             }
@@ -295,9 +323,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             DateTimeOffset attemptedAt = _time.GetUtcNow();
             SnapshotCaptureAttempt attempt;
 
+            // Read before the call, because the call writes this attempt's health row. Offline is a health transition, so the
+            // alert needs the reading that was current before this attempt.
+            DeviceHealth? previousHealth = sp.GetService<IDeviceHealthRepository>() is { } healthRepository
+                ? await healthRepository.GetLatestAsync(device.Id, ct)
+                : null;
+
             try
             {
-                attempt = await provider.CaptureAsync(account.Id, device.ProviderDeviceId, SettleDelay, ct);
+                attempt = await provider.CaptureAsync(account.Id, device.ProviderDeviceId, device.Id, SettleDelay, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -313,7 +347,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Snapshot capture failed for {DeviceName} on {AccountName}", device.Name, accountName);
+                _logger.LogError("Snapshot capture failed for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
                 Hold(device.Id, interval);
                 counts.Failed++;
                 return;
@@ -324,6 +358,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 await budgetGuard.RecordCallAsync(RingProviderName, ct);
                 await budgetGuard.RecordCallAsync(RingProviderName, ct);
             }
+
+            // One line per attempt, so a failing device shows its HTTP status and how long the provider took.
+            _logger.LogInformation("Snapshot capture attempt for {DeviceName} on {AccountName}: HTTP {HttpStatus} after {ElapsedMs} ms, image {ImageBytes} bytes",
+                device.Name, accountName, attempt.HttpStatus?.ToString(CultureInfo.InvariantCulture) ?? "none",
+                (long)(_time.GetUtcNow() - attemptedAt).TotalMilliseconds, attempt.Image?.Length ?? 0);
 
             if (attempt.ThrottlePause is { } pause)
             {
@@ -357,7 +396,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogError(ex, "Could not write the snapshot for {DeviceName} on {AccountName}", device.Name, accountName);
+                    _logger.LogError("Could not write the snapshot for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
                     Hold(device.Id, interval);
                     counts.Failed++;
                     return;
@@ -366,19 +405,23 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             try
             {
-                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, mediaFilePath, deviceHealthId: null);
+                string? storedPath = mediaFilePath is null
+                    ? null
+                    : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
+                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: attempt.DeviceHealthId);
                 _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
+                _logger.LogDebug("Snapshot attempt recorded for {DeviceName} on {AccountName}: HTTP {HttpStatus}", device.Name, accountName, status);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Could not record the snapshot attempt for {DeviceName} on {AccountName}", device.Name, accountName);
+                _logger.LogError("Could not record the snapshot attempt for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
                 counts.Failed++;
                 return;
             }
 
             if (mediaFilePath is not null)
             {
-                // WriteImage returns the full path under the media root; the capture row and the Media row both hold it.
+                // WriteImage returns the full path under the media root; the capture row and the Media row both store it relative to that root.
                 await RecordCaptureMediaAsync(sp, device, mediaFilePath, attemptedAt, accountName, ct);
             }
 
@@ -386,25 +429,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 case 200:
                     counts.Captured++;
-                    if (device.IsOnline == false)
-                    {
-                        // A frame from a camera marked offline means it is back. Mark it online so it is captured every interval again.
-                        device.IsOnline = true;
-                        await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
-                    }
                     break;
                 case 404:
-                    // Ring has no frame for the camera even after the refresh and re-reads, so it is not reporting. Mark it
-                    // offline so the next ticks skip it instead of logging an error each time. Device health sync sets
-                    // IsOnline again once Ring reports the camera connected.
-                    bool wasOnline = device.IsOnline != false;
-                    _logger.LogInformation("Snapshot capture for {DeviceName} on {AccountName}: Ring has no frame, so the device is marked offline", device.Name, accountName);
-                    device.IsOnline = false;
-                    await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
-                    if (wasOnline)
+                    // Ring has no frame. Offline is decided by the health reading, not by a missing frame, so this leaves the
+                    // device's state alone. A 404 while Ring reports the camera connected is a bug.
+                    if (attempt.Connected == true)
                     {
-                        await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
+                        _logger.LogError("Snapshot capture for {DeviceName} on {AccountName} got HTTP 404 while Ring reports the device connected; this is a bug", device.Name, accountName);
                     }
+
                     counts.Failed++;
                     break;
                 case 429:
@@ -415,6 +448,21 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     _logger.LogError("Snapshot capture for {DeviceName} on {AccountName} returned HTTP {HttpStatus}", device.Name, accountName, status);
                     counts.Failed++;
                     break;
+            }
+
+            // The provider's connected reading is the device's state. It overrides a 404's offline mark, so a camera Ring reports
+            // as connected shows online even when its latest frame is not ready yet.
+            if (attempt.Connected is bool connected && device.IsOnline != connected)
+            {
+                _logger.LogInformation("Snapshot capture set {DeviceName} on {AccountName} to {OnlineState} from its health reading",
+                    device.Name, accountName, connected ? "online" : "offline");
+                device.IsOnline = connected;
+                await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
+            }
+
+            if (attempt.Connected == false && previousHealth is { IsOnline: true })
+            {
+                await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
             }
         }
 
@@ -439,7 +487,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Id = Guid.NewGuid(),
                     DeviceId = device.Id,
                     FileName = Path.GetFileName(mediaFilePath),
-                    FilePath = mediaFilePath,
+                    FilePath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct),
                     MediaFormat = "jpg",
                     FileSizeBytes = new FileInfo(mediaFilePath).Length,
                     RecordedAtUtc = capturedAt.UtcDateTime,
@@ -457,7 +505,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Could not record the captured snapshot in Media for {DeviceName} on {AccountName}", device.Name, accountName);
+                _logger.LogError("Could not record the captured snapshot in Media for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
             }
         }
 
@@ -485,7 +533,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             string folder = MediaFolderLayout.GetDeviceFolder(mediaRoot, providerName, locationName, deviceName);
-            string fileName = capturedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
+            string fileName = MediaFileNamer.FormatMediaFileName(deviceName, capturedAtUtc.UtcDateTime, "snapshot", "jpg");
             string fullPath = Path.Combine(folder, fileName);
 
             _ = Directory.CreateDirectory(folder);
@@ -499,11 +547,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         internal static bool HasCamera(string? type)
         {
-            return type is "doorbot" or "authorized_doorbot" or "stickup_cam";
+            return DeviceKinds.IsCamera(type);
         }
 
         /// <summary>
-        /// Raises the DeviceOffline alert when a camera is found offline by a 404. The link opens the account's sync page, where the
+        /// Raises the DeviceOffline alert when a health reading turns a camera offline. The link opens the account's sync page, where the
         /// device's polling mode is set. A dispatch failure is logged and never fails the capture.
         /// </summary>
         private async Task RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
@@ -522,14 +570,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     OperatorId: null,
                     PairedDeviceId: device.Id,
                     SourceIp: null,
-                    Details: $"{device.Name} went offline: Ring has no snapshot for it",
+                    Details: $"{device.Name} went offline",
                     Audience: NotificationAudience.AdminsOnly,
                     Severity: NoticeSeverity.Alert,
                     ActionPath: $"/accounts/{accountId}/sync"), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not dispatch the offline alert for {DeviceName} (non-critical)", device.Name);
+                _logger.LogWarning("Could not dispatch the offline alert for {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
             }
         }
 

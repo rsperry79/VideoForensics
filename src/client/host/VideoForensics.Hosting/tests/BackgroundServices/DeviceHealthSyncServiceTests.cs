@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
@@ -22,7 +22,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 LocationId = Guid.NewGuid(),
                 ProviderDeviceId = providerDeviceId,
                 Name = "Test Device",
-                Type = "camera"
+                Type = "camera",
+                SnapshotCaptureEnabled = false
             };
         }
 
@@ -185,6 +186,48 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.Null(captured.BatteryPresent);
         }
         [Fact]
+        public async Task RunOneTickAsync_SnapshotCamera_PollSkipsItBecauseCaptureRecordsItsHealth()
+        {
+            // A camera with snapshot capture on gets its health from each capture, so the base poll must not record it too.
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+
+            Device camera = MakeDevice("ring-cam");
+            camera.Type = "doorbot";
+            camera.SnapshotCaptureEnabled = true;
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([camera]);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new("ring-cam", Connected: true, BatteryPercentage: 50m, Rssi: -60, WifiName: null, FirmwareVersion: null)
+                ]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NonCameraDevice_PollStillRecordsIt()
+        {
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+
+            Device chime = MakeDevice("ring-chime");
+            chime.Type = "chime";
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([chime]);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new("ring-chime", Connected: true, BatteryPercentage: 50m, Rssi: -60, WifiName: null, FirmwareVersion: null)
+                ]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_HealthCaptureOff_SkipsDeviceReadings()
         {
             // HealthCaptureEnabled is the per-device "off" and "snapshots only" choices: no health row is written for it.
@@ -204,7 +247,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
         }
-
 
         [Fact]
         public async Task RunOneTickAsync_ReadingForUnknownDevice_IsSkipped()

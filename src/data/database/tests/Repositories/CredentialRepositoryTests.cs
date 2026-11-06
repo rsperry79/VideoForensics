@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     public class CredentialRepositoryTests : IAsyncLifetime
     {
@@ -157,7 +157,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.SetAsync(accountId, "Password", "pwd1", CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var cred = new VideoForensics.Data.Common.Entities.Credential
+            var cred = new Credential
             {
                 Id = Guid.NewGuid(),
                 ProviderAccountId = accountId,

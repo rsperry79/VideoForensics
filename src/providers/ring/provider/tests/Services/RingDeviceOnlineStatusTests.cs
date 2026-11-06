@@ -3,7 +3,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>Ring's offline rule: a device is offline only when Ring reports it disconnected.</summary>
     public class RingDeviceOnlineStatusTests

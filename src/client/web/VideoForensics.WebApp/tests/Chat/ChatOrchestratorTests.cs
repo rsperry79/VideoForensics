@@ -7,9 +7,9 @@ using Moq;
 
 using System.Text.Json;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Chat;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

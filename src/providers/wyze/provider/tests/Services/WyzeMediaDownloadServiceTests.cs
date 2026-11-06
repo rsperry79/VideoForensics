@@ -7,7 +7,7 @@ using VideoForensics.Providers.Wyze.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Wyze.Tests
+namespace VideoForensics.Providers.Wyze.Tests.Services
 {
     /// <summary>
     /// Tests for WyzeMediaDownloadService stub implementation.

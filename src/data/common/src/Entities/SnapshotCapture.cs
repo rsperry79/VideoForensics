@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>True only when <see cref="HttpStatus"/> is 200.</summary>
         public bool IsCurrent { get; private set; }
 
-        /// <summary>Path relative to the snapshot root. Set only when <see cref="IsCurrent"/> is true.</summary>
+        /// <summary>Path relative to the media root, with '/' separators. Set only when <see cref="IsCurrent"/> is true.</summary>
         public string? MediaFilePath { get; private set; }
 
         /// <summary>Link to the DeviceHealth row captured for the same tick, when one exists.</summary>
@@ -32,6 +32,33 @@ namespace VideoForensics.Data.Common.Entities
 
         private SnapshotCapture()
         {
+        }
+
+        /// <summary>
+        /// Rebuilds a stored capture from its persisted fields, keeping its id. For readers of stored rows only (the remote
+        /// client maps the server's DTO back to this type); new captures go through <see cref="Create"/>, which checks the invariants.
+        /// </summary>
+        public static SnapshotCapture Rehydrate(
+            Guid id,
+            Guid deviceId,
+            DateTimeOffset capturedAtUtc,
+            string trigger,
+            int httpStatus,
+            bool isCurrent,
+            string? mediaFilePath,
+            Guid? deviceHealthId)
+        {
+            return new SnapshotCapture
+            {
+                Id = id,
+                DeviceId = deviceId,
+                CapturedAtUtc = capturedAtUtc,
+                Trigger = trigger,
+                HttpStatus = httpStatus,
+                IsCurrent = isCurrent,
+                MediaFilePath = mediaFilePath,
+                DeviceHealthId = deviceHealthId,
+            };
         }
 
         /// <summary>Creates a capture attempt record. Throws if the trigger, status, or media path is inconsistent.</summary>

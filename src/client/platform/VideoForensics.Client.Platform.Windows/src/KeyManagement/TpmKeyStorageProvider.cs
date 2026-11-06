@@ -1,15 +1,9 @@
-using VideoForensics.Core.Helpers.Forensics.Exceptions;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
+using VideoForensics.Core.Helpers.Forensics.Exceptions;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Client.Platform.Windows.KeyManagement
 {
@@ -30,7 +24,7 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
         private readonly string _manifestPath;
 
         public TpmKeyStorageProvider()
-            : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys", "tpm-keys.txt"))
+            : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "Keys", "tpm-keys.txt"))
         {
         }
 

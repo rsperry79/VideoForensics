@@ -47,6 +47,7 @@ namespace VideoForensics.Data.Database.Tests
                 _ = db.LiveViewSessions.Add(new LiveViewSession { Id = sessionId, DeviceId = deviceId, StartedAtUtc = capturedAt, LastExtendedAtUtc = capturedAt });
                 _ = await db.SaveChangesAsync();
             }
+
             await using (VideoForensicsLogsDbContext logs = await _logs.Factory.CreateDbContextAsync())
             {
                 for (int i = 0; i < 3; i++)
@@ -59,6 +60,7 @@ namespace VideoForensics.Data.Database.Tests
                         BitrateBps = 1_000_000 + i,
                     });
                 }
+
                 _ = await logs.SaveChangesAsync();
             }
 

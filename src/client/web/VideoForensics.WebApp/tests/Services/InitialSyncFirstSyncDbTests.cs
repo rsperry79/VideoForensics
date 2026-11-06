@@ -4,13 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Client.Hosting;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
@@ -136,6 +136,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             _ = auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);
             _ = services.AddKeyedSingleton<IEventPullService>("Ring", pull);
+            _ = services.AddKeyedSingleton<IInventorySyncService>("Ring", Mock.Of<IInventorySyncService>());
             _ = services.AddSingleton(Mock.Of<ISnapshotSyncService>());
 
             var validation = new Mock<IEvidenceValidationService>();

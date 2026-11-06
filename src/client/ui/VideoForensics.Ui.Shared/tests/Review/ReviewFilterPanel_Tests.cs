@@ -1,5 +1,4 @@
 using AngleSharp.Dom;
-
 using AngleSharp.Html.Dom;
 
 using Bunit;
@@ -7,16 +6,15 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
-using VideoForensics.Client.Ui.Shared.Resources;
-
 using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review filter panel: provider, account and location choices, the account reset on a provider change, the debounced auto-apply, the camera selector below the location select, and the matching-camera note.</summary>
 public class ReviewFilterPanel_Tests : ReviewTestContext
@@ -65,7 +63,6 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
             .Add(p => p.Ownership, Snapshot()));
     }
 
-
     [Fact]
     public void ReviewFilterPanel_Rendered_ListsAllProvidersAndTheProvidersThatExist()
     {
@@ -111,7 +108,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Wyze");
 
         // Assert: the Ring account is not offered by Wyze, so the account choice reads "All accounts" again
-        Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value);
+        cut.WaitForAssertion(() => Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-account']")).Value));
         cut.WaitForAssertion(() => Assert.Equal("Wyze", ReviewState.ProviderFilter));
         Assert.Null(ReviewState.AccountFilter);
     }
@@ -128,8 +125,11 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Act - the debounce fires on its own
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Equal("Ring", ReviewState.ProviderFilter));
-        Assert.Equal(_ring.Id, ReviewState.AccountFilter);
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("Ring", ReviewState.ProviderFilter);
+            Assert.Equal(_ring.Id, ReviewState.AccountFilter);
+        });
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
 
         // Act - something else sets the filters before the debounce fires
-        cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
+        _ = cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
         Thread.Sleep(400);
 
         // Assert
@@ -297,6 +297,35 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewFilterPanel_Rendered_HasNoLabelsAboveTheDropdowns()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - each dropdown's first option already says what it filters, and it keeps an aria-label
+        Assert.Empty(cut.FindAll("label.form-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-provider']").GetAttribute("aria-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-account']").GetAttribute("aria-label"));
+        Assert.NotNull(cut.Find("[data-testid='review-filter-location']").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_DoesNotHoldTheCaseSection()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert - the Case section is its own section above the filters
+        Assert.Empty(cut.FindAll("[data-testid='review-case-section']"));
+    }
+
+    [Fact]
     public void ReviewFilterPanel_Inline_HasNoPopupChrome()
     {
         // Arrange
@@ -311,7 +340,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         Assert.Null(panel.GetAttribute("role"));
         Assert.DoesNotContain("min-width", panel.GetAttribute("style") ?? string.Empty);
         Assert.DoesNotContain("position", panel.GetAttribute("style") ?? string.Empty);
-        Assert.Equal(L["FilterTitle"].Value, cut.Find("[data-testid='review-filter-panel'] .fw-semibold").TextContent);
+        Assert.Contains(L["FilterTitle"].Value, cut.FindAll("[data-testid='review-filter-panel'] .fw-semibold").Select(e => e.TextContent));
     }
 
     [Fact]
@@ -323,7 +352,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         Assert.Equal("", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
 
         // Act - another control sets the filters
-        cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
+        _ = cut.InvokeAsync(() => ReviewState.SetFilters("Wyze", _wyze.Id));
 
         // Assert
         Assert.Equal("Wyze", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
@@ -339,7 +368,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         cut.Find("[data-testid='review-filter-provider']").Change("Ring");
 
         // Act - an unrelated state change (the tab) must not discard the pending pick
-        cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
+        _ = cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
 
         // Assert
         Assert.Equal("Ring", ((IHtmlSelectElement)cut.Find("[data-testid='review-filter-provider']")).Value);
@@ -363,5 +392,18 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     private static string[] OptionValues(IElement select)
     {
         return select.QuerySelectorAll("option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray();
+    }
+
+    [Fact]
+    public void ReviewFilterPanel_Rendered_HasNoEventTypeSelect()
+    {
+        // Arrange
+        SetUpTwoProviders();
+
+        // Act
+        IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
+
+        // Assert: the event type choice lives in the Event Filter section
+        Assert.Empty(cut.FindAll("[data-testid='review-event-button']"));
     }
 }

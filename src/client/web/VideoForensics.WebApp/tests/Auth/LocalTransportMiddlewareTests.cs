@@ -1,8 +1,9 @@
-using System.Net;
-
 using Microsoft.AspNetCore.Http;
-using Moq;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using Moq;
+
+using System.Net;
 
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
@@ -54,9 +55,15 @@ public class LocalTransportMiddlewareTests
         return tunnels.Object;
     }
 
-    private static LocalTransportOptions HttpsReady() => new(HttpsPort: 5443, HttpsCertificateReady: () => true);
+    private static LocalTransportOptions HttpsReady()
+    {
+        return new(HttpsPort: 5443, HttpsCertificateReady: () => true);
+    }
 
-    private static LocalTransportOptions NoHttps() => new(HttpsPort: null, HttpsCertificateReady: () => false);
+    private static LocalTransportOptions NoHttps()
+    {
+        return new(HttpsPort: null, HttpsCertificateReady: () => false);
+    }
 
     [Fact]
     public void LanHttp_TunnelRunning_IsServedLocallyWithoutRedirect()

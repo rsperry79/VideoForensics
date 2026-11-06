@@ -144,7 +144,7 @@
     top: 56px;
     right: 1rem;
     width: 400px;
-    background-color: var(--rz-card-background, #fff);
+    background-color: var(--rz-card-background, var(--bs-body-bg));
     border: 1px solid var(--rz-border-color, #e0e0e0);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);

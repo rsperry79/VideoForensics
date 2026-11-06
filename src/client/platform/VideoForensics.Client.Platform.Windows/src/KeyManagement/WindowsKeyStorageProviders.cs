@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Client.Platform.Windows.KeyManagement

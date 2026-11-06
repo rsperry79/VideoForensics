@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Signal;
 /// </summary>
 public sealed class SignalDrillTrail
 {
-    private readonly List<Crumb> _ancestors = new();
+    private readonly List<Crumb> _ancestors = [];
     private ForensicScope? _drilledTo;
 
     /// <summary>One level above the current view: the scope it came from, and the label shown for it.</summary>

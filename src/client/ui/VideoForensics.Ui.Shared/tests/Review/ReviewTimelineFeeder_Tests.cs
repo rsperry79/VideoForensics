@@ -12,7 +12,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>
 /// The page-level timeline feeder: owns the right-panel timeline model. It loads the primary camera's clips on camera or range
@@ -22,17 +22,20 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
 {
     private static readonly DateTime ClipStart = FixedNowUtc.AddHours(-1);
 
-    private static MediaItem Clip(Guid device, DateTime startUtc) => new()
+    private static MediaItem Clip(Guid device, DateTime startUtc)
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        FileName = "clip.mp4",
-        FilePath = "clip.mp4",
-        MediaFormat = "mp4",
-        RecordedAtUtc = startUtc,
-        DurationSeconds = 120,
-        Sha256Hash = "hash",
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            RecordedAtUtc = startUtc,
+            DurationSeconds = 120,
+            Sha256Hash = "hash",
+        };
+    }
 
     /// <summary>Gives every requested camera one clip at <see cref="ClipStart"/>.</summary>
     private void ServeOneClipPerCamera()
@@ -96,7 +99,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         WaitFor(() => Assert.Single(ClipLoader.Calls));
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id, Devices[0].Id]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id, Devices[0].Id]));
 
         // Assert
         WaitFor(() => Assert.Equal(2, ClipLoader.Calls.Count));
@@ -116,7 +119,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         DateTime newFrom = FixedNowUtc.AddHours(-2);
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetRange(newFrom, FixedNowUtc));
+        _ = cut.InvokeAsync(() => ReviewState.SetRange(newFrom, FixedNowUtc));
 
         // Assert
         WaitFor(() => Assert.Equal(2, ClipLoader.Calls.Count));
@@ -135,11 +138,11 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         WaitFor(() => Assert.Single(ClipLoader.Calls));
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCursor(FixedNowUtc.AddMinutes(-20)));
-        cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
+        _ = cut.InvokeAsync(() => ReviewState.SetCursor(FixedNowUtc.AddMinutes(-20)));
+        _ = cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
 
         // Assert
-        Assert.Single(ClipLoader.Calls);
+        _ = Assert.Single(ClipLoader.Calls);
     }
 
     [Fact]
@@ -153,11 +156,11 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         WaitFor(() => Assert.Single(TimelineModel.Clips));
 
         // Act
-        cut.InvokeAsync(() => ReviewState.SetCameras([]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([]));
 
         // Assert
         WaitFor(() => Assert.Empty(TimelineModel.Clips));
-        Assert.Single(ClipLoader.Calls);
+        _ = Assert.Single(ClipLoader.Calls);
     }
 
     [Fact]
@@ -197,7 +200,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         Thread.Sleep(1200);
 
         // Assert: a related change still reloads, so the subscription is live
-        Assert.Single(ClipLoader.Calls);
+        _ = Assert.Single(ClipLoader.Calls);
         EvidenceSource.Changes.OnNext(new EvidenceChangedDto(Devices[0].Id));
         WaitFor(() => Assert.Equal(2, ClipLoader.Calls.Count));
     }
@@ -219,7 +222,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         WaitFor(() => Assert.Single(ClipLoader.Calls));
 
         // Act: the newer load finishes first with no clips, then the slow one completes with a clip
-        cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
+        _ = cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
         WaitFor(() => Assert.Equal(2, ClipLoader.Calls.Count));
         slow.SetResult(new ReviewClipSet([Clip(Devices[0].Id, ClipStart)], false));
         Thread.Sleep(200);
@@ -271,7 +274,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
             await Task.Delay(Timeout.Infinite, ct);
             return new ReviewClipSet([], false);
         };
-        cut.InvokeAsync(() => ReviewState.SetRange(FixedNowUtc.AddHours(-3), FixedNowUtc));
+        _ = cut.InvokeAsync(() => ReviewState.SetRange(FixedNowUtc.AddHours(-3), FixedNowUtc));
         WaitFor(() => Assert.Equal(2, ClipLoader.Calls.Count));
 
         // Act

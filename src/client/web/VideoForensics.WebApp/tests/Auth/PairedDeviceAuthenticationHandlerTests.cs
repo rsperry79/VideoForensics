@@ -8,10 +8,10 @@ using Moq;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

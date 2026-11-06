@@ -106,7 +106,7 @@ namespace VideoForensics.Data.Database.Repositories
                 worked = clock.Elapsed;
                 await transaction.RollbackAsync(ct);
                 LogTransaction(caller, "rolled back", begun, worked, clock.Elapsed);
-                _logger.LogError(ex, "Unit of work rolled back due to exception");
+                _logger.LogError("Unit of work rolled back due to exception: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
             finally
@@ -181,12 +181,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             // An async state machine's type is "<Name>d__N" and its method is MoveNext; a lambda's method is "<Name>b__N".
             string name = method.Name == "MoveNext" && declared.Name.StartsWith('<') ? declared.Name : method.Name;
-            if (name.StartsWith('<') && name.IndexOf('>') > 1)
-            {
-                return name[1..name.IndexOf('>')];
-            }
-
-            return name;
+            return name.StartsWith('<') && name.IndexOf('>') > 1 ? name[1..name.IndexOf('>')] : name;
         }
     }
 
@@ -208,6 +203,7 @@ namespace VideoForensics.Data.Database.Repositories
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IDeviceRepository Devices => new UnitOfWorkDeviceRepository(_db, _logger);
+        public IDingIdLinkRepository DingIdLinks => new UnitOfWorkDingIdLinkRepository(_db);
         public IMediaItemRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
         public ICredentialRepository Credentials => new UnitOfWorkCredentialRepository(_db, _serviceProvider.GetRequiredService<ICredentialEncryptionProvider>(), _serviceProvider.GetRequiredService<ILogger<ICredentialRepository>>());
@@ -220,6 +216,7 @@ namespace VideoForensics.Data.Database.Repositories
         public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
         public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
         public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
+        public IMediaFlagRepository MediaFlags => new UnitOfWorkMediaFlagRepository(_db, _logger);
 
         public async Task SaveChangesAsync(CancellationToken ct)
         {
@@ -427,12 +424,6 @@ namespace VideoForensics.Data.Database.Repositories
             return GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
-        /// <summary>Gets a location by API response hash for deduplication.</summary>
-        public Task<Location?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.ApiResponseHash == apiResponseHash));
-        }
-
         public Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<Location>)_db.Locations.AsNoTracking().ToList());
@@ -472,12 +463,6 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
         {
             return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId));
-        }
-
-        /// <summary>Gets a device by API response hash for deduplication.</summary>
-        public Task<Device?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.ApiResponseHash == apiResponseHash));
         }
 
         public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
@@ -529,13 +514,21 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).ToList());
         }
+        public Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
+                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot-rollup\""))
+                .OrderByDescending(m => m.RecordedAtUtc)
+                .FirstOrDefault());
+        }
         public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
         }
 
         public Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
-            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct, bool videoOnly = false)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
             ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
@@ -545,15 +538,36 @@ namespace VideoForensics.Data.Database.Repositories
             IQueryable<MediaItem> matches = _db.MediaItems
                 .AsNoTracking()
                 .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
+            if (videoOnly)
+            {
+                matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
+            }
 
             int total = matches.Count();
-            List<MediaItem> items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
+            var items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
             return Task.FromResult(new MediaItemPage(items, total));
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList());
+        }
+
+        public Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.VideoCodec == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
@@ -571,6 +585,15 @@ namespace VideoForensics.Data.Database.Repositories
                 .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
                     && m.MediaFormat == "jpg" && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
                 .OrderBy(m => m.RecordedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MeasuredBitrate>)_db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags))
                 .ToList());
         }
 
@@ -896,6 +919,18 @@ namespace VideoForensics.Data.Database.Repositories
             existing.SnapshotUrl = @event.SnapshotUrl;
             existing.MetadataJson = @event.MetadataJson;
             existing.DiscoveredAtUtc = @event.DiscoveredAtUtc;
+
+            // Download fields are written by the download path after discovery. Keep the stored value when the
+            // incoming upsert has none, so a discovery re-upsert cannot erase a recorded download (same rule as EventRepository).
+            existing.DownloadedAtUtc = @event.DownloadedAtUtc ?? existing.DownloadedAtUtc;
+            existing.DownloadFailedAtUtc = @event.DownloadFailedAtUtc ?? existing.DownloadFailedAtUtc;
+            existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
+            existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
+            if (existing.DownloadedAtUtc.HasValue)
+            {
+                existing.DownloadStatus = EventDownloadStatus.Downloaded;
+            }
+
             _ = _db.Events.Update(existing);
             return Task.FromResult(existing);
         }
@@ -983,7 +1018,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<EventPage> ListPageByDevicesAndDateRangeAsync(
             IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
-            int skip, int take, CancellationToken ct)
+            IReadOnlyCollection<string>? includeEventTypes, int skip, int take, CancellationToken ct)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
             ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
@@ -993,12 +1028,16 @@ namespace VideoForensics.Data.Database.Repositories
 
             Guid[] ids = deviceIds.ToArray();
             string[] excluded = excludeEventTypes?.ToArray() ?? [];
+            string[] included = includeEventTypes?.ToArray() ?? [];
             IQueryable<Event> matches = _db.Events
                 .AsNoTracking()
-                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType)
+                    && (included.Length == 0
+                        || (included.Contains(e.EventType) && !(e.EventType == "motion" && _db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && d.DetectionType != "motion" && d.DetectionType != "other_motion")))
+                        || _db.EventDetections.Any(d => d.EventId == e.Id && d.DetectionType != null && included.Contains(d.DetectionType))));
 
             int total = matches.Count();
-            List<Event> items = matches
+            var items = matches
                 .OrderByDescending(e => e.OccurredAtUtc)
                 .ThenBy(e => e.Id)
                 .Skip(skip)
@@ -1375,6 +1414,62 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
+    /// <summary>Media flag repository on the unit of work's context: nothing commits until the unit does.</summary>
+    internal class UnitOfWorkMediaFlagRepository : IMediaFlagRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public UnitOfWorkMediaFlagRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
+
+        public Task<MediaFlag> UpsertRaisedAsync(MediaFlag raised, CancellationToken ct)
+        {
+            return MediaFlagOperations.StageUpsertAsync(_db, raised, ct);
+        }
+
+        public Task<int> ReconcileForMediaAsync(Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct)
+        {
+            return MediaFlagOperations.ReconcileAsync(_db, mediaItemId, raised, ct);
+        }
+
+        public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
+        {
+            return _db.MediaFlags.AsNoTracking().FirstOrDefaultAsync(f => f.Id == flagId, ct);
+        }
+
+        public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct)
+        {
+            return MediaFlagOperations.ListPageAsync(_db, filter, skip, take, ct);
+        }
+
+        public Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct)
+        {
+            return MediaFlagOperations.CountAsync(_db, filter, ct);
+        }
+
+        public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct)
+        {
+            return MediaFlagOperations.GetNeighbourAsync(_db, flagId, filter, direction, ct);
+        }
+
+        public Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
+        {
+            return MediaFlagOperations.GetPositionAsync(_db, flagId, filter, ct);
+        }
+
+        public Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
+        {
+            MediaFlagOperations.ValidateReview(expectedStatus, newStatus, reason, operatorName);
+            return MediaFlagOperations.StageReviewAsync(_db, new UnitOfWorkActionLogRepository(_db, _logger), flagId, expectedStatus, newStatus, reason, operatorName, MediaFlagOperations.ActionFor(newStatus), ct);
+        }
+
+        public Task<MediaFlag> ReopenAsync(Guid flagId, string operatorName, string reason, CancellationToken ct)
+        {
+            MediaFlagOperations.ValidateReopen(operatorName, reason);
+            return MediaFlagOperations.StageReviewAsync(_db, new UnitOfWorkActionLogRepository(_db, _logger), flagId, MediaFlagStatus.Dismissed, MediaFlagStatus.Unreviewed, reason, operatorName, MediaFlagOperations.ActionFor(MediaFlagStatus.Unreviewed), ct);
+        }
+    }
+
     internal class DetectionEntityProvider : IDetectionEntityProvider
     {
         private readonly VideoForensicsDbContext _db;
@@ -1509,6 +1604,37 @@ namespace VideoForensics.Data.Database.Repositories
             if (occurrences != null && occurrences.Count > 0)
             {
                 _db.EventDetectionTypeOccurrences.AddRange(occurrences);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Device-scoped ding id candidates and the doorbot-to-Events link. Candidates are read only from the string-id feeds
+    /// (location events and video search), because those feeds store the string ding id that a doorbot history id must equal.
+    /// </summary>
+    internal class UnitOfWorkDingIdLinkRepository : IDingIdLinkRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+
+        public UnitOfWorkDingIdLinkRepository(VideoForensicsDbContext db)
+        {
+            _db = db;
+        }
+
+        public Task<IReadOnlyList<string>> GetCandidateDingIdsAsync(long doorbotId, CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(DingIdCandidates.ForDoorbot(_db, doorbotId));
+        }
+
+        public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits.
+            RingDoorbotHistoryEvent? row = _db.RingDoorbotHistoryEvents.FirstOrDefault(e => e.ProviderEventId == doorbotHistoryProviderEventId);
+            if (row is not null)
+            {
+                row.LinkedEventId = eventId;
             }
 
             return Task.CompletedTask;

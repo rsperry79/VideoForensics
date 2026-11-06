@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Identity;
 using System.Security.Cryptography;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -55,6 +55,31 @@ namespace VideoForensics.Client.WebApp.Api
                     Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     id, tierResolver.ResolveClientIp(context), request.Reason, isUrgent: true, ct);
                 return Results.Ok();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            // Hard-deletes a revoked device row. Revoking first is the only way to reach this (the
+            // repository refuses active devices), so the live connection is already dropped by the
+            // revoke route. The audit entry keeps the device id as a plain Guid, so history survives.
+            _ = group.MapDelete("/paired-devices/{id:guid}", async (
+                Guid id,
+                IPairedDeviceRepository devices,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                if (!await devices.DeleteRevokedAsync(id, ct))
+                {
+                    return Results.Conflict(new { error = "Only a revoked device can be removed. Revoke it first." });
+                }
+
+                await auditLog.LogAsync(SecurityAuditEventTypes.PairingRemoved,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    id, tierResolver.ResolveClientIp(context), "Revoked device removed", isUrgent: true, ct);
+                return Results.NoContent();
             })
             .RequireRateLimiting("auth")
             .AddEndpointFilter<StepUpEndpointFilter>();

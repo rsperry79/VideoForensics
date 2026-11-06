@@ -1,15 +1,20 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 {
     /// <summary>
-    /// Logs EF Core's SQL command messages at Debug. EF writes them at Information, which would print in every
-    /// build, so this factory is given to the DbContext in place of the application's factory. Every other
-    /// category, and EF's own warnings, pass through unchanged.
+    /// Logs EF Core's chatty messages at Trace: every message in the Database.Command category (SQL commands and their
+    /// parameters, written at Debug or Information), and the "started tracking" event in the ChangeTracking category
+    /// (written at Debug). Matched by EF's own category and event types, so the level names what the message is.
+    /// This factory is given to the DbContext in place of the application's factory. Warnings and errors, and every
+    /// other event, pass through unchanged.
     /// </summary>
     internal sealed class EfCommandLogLevelLoggerFactory : ILoggerFactory
     {
-        private const string CommandCategory = "Microsoft.EntityFrameworkCore.Database.Command";
+        private static readonly string CommandCategory = DbLoggerCategory.Database.Command.Name;
+        private static readonly string ChangeTrackingCategory = DbLoggerCategory.ChangeTracking.Name;
 
         private readonly ILoggerFactory _inner;
 
@@ -26,7 +31,11 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
         public ILogger CreateLogger(string categoryName)
         {
             ILogger logger = _inner.CreateLogger(categoryName);
-            return string.Equals(categoryName, CommandCategory, StringComparison.Ordinal) ? new LevelRemappingLogger(logger) : logger;
+            return string.Equals(categoryName, CommandCategory, StringComparison.Ordinal)
+                ? new EventRemappingLogger(logger, _ => true)
+                : string.Equals(categoryName, ChangeTrackingCategory, StringComparison.Ordinal)
+                ? new EventRemappingLogger(logger, eventId => eventId.Id == CoreEventId.StartedTracking.Id)
+                : logger;
         }
 
         // The application's factory is owned by the service provider, so it is not disposed here.
@@ -34,33 +43,23 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
         {
         }
 
-        private sealed class LevelRemappingLogger : ILogger
+        private sealed class EventRemappingLogger(ILogger inner, Func<EventId, bool> isTraceEvent) : ILogger
         {
-            private readonly ILogger _inner;
-
-            public LevelRemappingLogger(ILogger inner)
-            {
-                _inner = inner;
-            }
-
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull
             {
-                return _inner.BeginScope(state);
+                return inner.BeginScope(state);
             }
 
+            // Not remapped here: the event id is only known in Log. A Trace event that the inner logger filters out is dropped there.
             public bool IsEnabled(LogLevel logLevel)
             {
-                return _inner.IsEnabled(Remap(logLevel));
+                return inner.IsEnabled(logLevel);
             }
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
-                _inner.Log(Remap(logLevel), eventId, state, exception, formatter);
-            }
-
-            private static LogLevel Remap(LogLevel level)
-            {
-                return level == LogLevel.Information ? LogLevel.Debug : level;
+                bool chatty = logLevel is LogLevel.Debug or LogLevel.Information && isTraceEvent(eventId);
+                inner.Log(chatty ? LogLevel.Trace : logLevel, eventId, state, exception, formatter);
             }
         }
     }

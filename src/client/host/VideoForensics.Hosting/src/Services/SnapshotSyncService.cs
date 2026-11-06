@@ -2,12 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.BackgroundServices;
-using VideoForensics.Client.Hosting.Contracts;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
@@ -154,7 +154,7 @@ namespace VideoForensics.Client.Hosting.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Snapshot download failed for a device on {AccountName}", accountName);
+                    _logger.LogError("Snapshot download failed for a device on {AccountName}: {Message} ({ErrorType})", accountName, ex.Message, ex.GetType().Name);
                     failed++;
                     firstError ??= $"{device.Name}: {ex.Message}";
                 }

@@ -1,3 +1,4 @@
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 
 using Xunit;
@@ -15,9 +16,9 @@ namespace VideoForensics.Client.Core.Tests.Services
         {
             var provider = new PosixFileSystemRootProvider();
 
-            var roots = provider.GetRoots();
+            IReadOnlyList<FileSystemRoot> roots = provider.GetRoots();
 
-            var root = Assert.Single(roots);
+            FileSystemRoot root = Assert.Single(roots);
             Assert.Equal("/", root.Name);
             Assert.Equal("/", root.Path);
         }

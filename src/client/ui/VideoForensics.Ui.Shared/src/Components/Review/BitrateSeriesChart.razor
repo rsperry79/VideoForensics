@@ -1,0 +1,139 @@
+@implements IAsyncDisposable
+@using System.Globalization
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Core.Api.Contracts
+@inject IStringLocalizer<SharedResources> L
+
+<div class="bitrate-series-chart" data-testid="bitrate-series-chart">
+    @if (Points.Count == 0)
+    {
+        <p class="text-muted small" data-testid="bitrate-series-empty">@L["BitrateSeriesEmpty"].Value</p>
+    }
+    else
+    {
+        <svg class="w-100" style="height: 60px;" viewBox="0 0 @Format(ChartWidth) @Format(ChartHeight)" preserveAspectRatio="none" role="img" aria-label="@L["BitrateSeriesChartLabel"].Value">
+            @for (int i = 0; i < Points.Count; i++)
+            {
+                int second = Points[i].Second;
+                double barHeight = BitrateChartGeometry.BarFraction(Points[i].Kbps, _maxKbps) * ChartHeight;
+                <rect class="bitrate-bar" data-testid="bitrate-bar" x="@Format(i * _barWidth)" y="@Format(ChartHeight - barHeight)" width="@Format(Math.Max(_barWidth - 0.5, 0.5))" height="@Format(barHeight)" @onclick="() => SeekToSecondAsync(second)" />
+            }
+            @foreach (int second in _dipStarts)
+            {
+                double x = (IndexOfSecond(second) + 0.5) * _barWidth;
+                <line class="bitrate-dip-mark" data-testid="bitrate-dip-mark" x1="@Format(x)" x2="@Format(x)" y1="0" y2="@Format(ChartHeight)" @onclick="() => SeekToSecondAsync(second)" />
+            }
+            <line class="bitrate-playhead" data-testid="bitrate-playhead" x1="@Format(_playheadX)" x2="@Format(_playheadX)" y1="0" y2="@Format(ChartHeight)" />
+        </svg>
+    }
+</div>
+
+@code {
+    private const double ChartWidth = 1000;
+    private const double ChartHeight = 100;
+    private const double PollIntervalSeconds = 0.25;
+
+    /// <summary>The clip's per-second bitrate, from the server.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<BitrateSecondDto> Points { get; set; } = [];
+
+    /// <summary>The player whose position the playhead follows.</summary>
+    [Parameter, EditorRequired]
+    public MediaPlayer Player { get; set; } = default!;
+
+    /// <summary>The clip's start time. A click on a second seeks the player to it; without a start, clicks do nothing.</summary>
+    [Parameter]
+    public DateTime? StartUtc { get; set; }
+
+    private long _maxKbps;
+    private double _barWidth;
+    private IReadOnlyList<int> _dipStarts = [];
+    private double _playheadSeconds;
+    private double _playheadX;
+    private CancellationTokenSource? _pollCts;
+    private Task? _pollTask;
+
+    protected override void OnInitialized()
+    {
+        _pollCts = new CancellationTokenSource();
+        _pollTask = PollPositionAsync(_pollCts.Token);
+    }
+
+    protected override void OnParametersSet()
+    {
+        _maxKbps = Points.Count == 0 ? 0 : Points.Max(p => p.Kbps);
+        _barWidth = Points.Count == 0 ? 0 : ChartWidth / Points.Count;
+        _playheadX = BitrateChartGeometry.PlayheadFraction(_playheadSeconds, Points.Count) * ChartWidth;
+        _dipStarts = BitrateChartGeometry.DipRunStarts(Points);
+    }
+
+    private int IndexOfSecond(int second)
+    {
+        return Points.Select((point, index) => (point, index)).First(pair => pair.point.Second == second).index;
+    }
+
+    private async Task SeekToSecondAsync(int second)
+    {
+        if (StartUtc is not DateTime start)
+        {
+            return;
+        }
+
+        await Player.SeekToUtcAsync(start.AddSeconds(BitrateChartGeometry.SeekSeconds(second)));
+    }
+
+    private static string Format(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private async Task PollPositionAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(PollIntervalSeconds));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                long? ms = await Player.GetCurrentTimeMsAsync();
+                await InvokeAsync(() =>
+                {
+                    if (ms is long value)
+                    {
+                        _playheadSeconds = value / 1000.0;
+                        _playheadX = BitrateChartGeometry.PlayheadFraction(_playheadSeconds, Points.Count) * ChartWidth;
+                    }
+
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The component is disposing; the loop ends.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_pollCts is null)
+        {
+            return;
+        }
+
+        _pollCts.Cancel();
+        if (_pollTask is not null)
+        {
+            try
+            {
+                await _pollTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the poll loop is cancelled.
+            }
+        }
+
+        _pollCts.Dispose();
+        _pollCts = null;
+    }
+}

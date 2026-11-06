@@ -7,10 +7,10 @@ using Microsoft.Extensions.Hosting;
 
 using Moq;
 
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 

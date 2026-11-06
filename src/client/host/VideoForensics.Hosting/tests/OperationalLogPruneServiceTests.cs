@@ -2,9 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Client.Hosting.BackgroundServices;
-using VideoForensics.Data.Common.Contracts;
-
-using Xunit;
 
 namespace VideoForensics.Client.Hosting.Tests
 {

@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging;
+
+using System.Collections.Concurrent;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -48,7 +48,10 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _warnings = warnings;
             }
 
-            public ILogger CreateLogger(string categoryName) => new Collector(categoryName == _category, _warnings);
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new Collector(categoryName == _category, _warnings);
+            }
 
             public void Dispose()
             {
@@ -65,9 +68,15 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                     _warnings = warnings;
                 }
 
-                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+                {
+                    return null;
+                }
 
-                public bool IsEnabled(LogLevel logLevel) => _watch;
+                public bool IsEnabled(LogLevel logLevel)
+                {
+                    return _watch;
+                }
 
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {

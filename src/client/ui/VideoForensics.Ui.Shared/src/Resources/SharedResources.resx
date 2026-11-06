@@ -56,6 +56,15 @@
   <data name="Events" xml:space="preserve">
     <value>Events</value>
   </data>
+  <data name="Timeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="Detail" xml:space="preserve">
+    <value>Detail</value>
+  </data>
+  <data name="Live" xml:space="preserve">
+    <value>Live</value>
+  </data>
   <data name="Devices" xml:space="preserve">
     <value>Devices</value>
   </data>
@@ -188,6 +197,9 @@
   <data name="Signal history" xml:space="preserve">
     <value>Signal history</value>
   </data>
+  <data name="Bit rate history" xml:space="preserve">
+    <value>Bit rate history</value>
+  </data>
   <data name="Chat Assistant" xml:space="preserve">
     <value>Chat Assistant</value>
   </data>
@@ -205,6 +217,9 @@
   </data>
   <data name="Provider Accounts" xml:space="preserve">
     <value>Provider Accounts</value>
+  </data>
+  <data name="Manual Sync" xml:space="preserve">
+    <value>Manual Sync</value>
   </data>
   <data name="API Tester" xml:space="preserve">
     <value>API Tester</value>
@@ -380,6 +395,9 @@
   <data name="NoticeDeviceSettings" xml:space="preserve">
     <value>Device settings</value>
   </data>
+  <data name="NoticeReauthenticate" xml:space="preserve">
+    <value>Reauthenticate</value>
+  </data>
   <data name="ClearAll" xml:space="preserve">
     <value>Clear all</value>
   </data>
@@ -478,6 +496,24 @@
   </data>
   <data name="ScopeAllDevices" xml:space="preserve">
     <value>All devices</value>
+  </data>
+  <data name="ScopeDevicesCount" xml:space="preserve">
+    <value>{0} Devices</value>
+  </data>
+  <data name="ScopeFilters" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="ScopeRangeLast24Hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="ScopeRangeLast7Days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="ScopeRangeLast30Days" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="ScopeRangeCustom" xml:space="preserve">
+    <value>Custom</value>
   </data>
   <data name="ScopeTimeRange" xml:space="preserve">
     <value>Time range</value>
@@ -590,6 +626,12 @@
   <data name="InspectorNoRawData" xml:space="preserve">
     <value>No raw provider data recorded for this item.</value>
   </data>
+  <data name="InspectorRawNotStored" xml:space="preserve">
+    <value>The provider's raw payload is not stored. This tab shows only data that has no structured field, plus the app's own markers. The provider's values are in the Fields tab.</value>
+  </data>
+  <data name="InspectorNoUnmappedData" xml:space="preserve">
+    <value>Nothing outside the structured fields was recorded for this item.</value>
+  </data>
   <data name="InspectorNoRelated" xml:space="preserve">
     <value>No related items.</value>
   </data>
@@ -605,17 +647,8 @@
   <data name="InspectorSelectCase" xml:space="preserve">
     <value>Select a case in the left panel to pin evidence.</value>
   </data>
-  <data name="InspectorPinReason" xml:space="preserve">
-    <value>Reason for pinning to this case</value>
-  </data>
   <data name="InspectorPinTo" xml:space="preserve">
     <value>Pin to {0}</value>
-  </data>
-  <data name="InspectorHoldReason" xml:space="preserve">
-    <value>Reason for hold</value>
-  </data>
-  <data name="InspectorReleaseReason" xml:space="preserve">
-    <value>Reason for release</value>
   </data>
   <data name="InspectorConfirm" xml:space="preserve">
     <value>Confirm</value>
@@ -680,8 +713,8 @@
   <data name="Diagnostics &amp; Updates" xml:space="preserve">
     <value>Diagnostics &amp; Updates</value>
   </data>
-  <data name="Devices &amp; Network" xml:space="preserve">
-    <value>Devices &amp; Network</value>
+  <data name="System &amp; Network" xml:space="preserve">
+    <value>System &amp; Network</value>
   </data>
   <data name="Storage &amp; Data" xml:space="preserve">
     <value>Storage &amp; Data</value>
@@ -785,6 +818,15 @@
   <data name="ScopeAllLocations" xml:space="preserve">
     <value>All locations</value>
   </data>
+  <data name="MediaPlayerLoading" xml:space="preserve">
+    <value>Loading video...</value>
+  </data>
+  <data name="MediaPlayerError" xml:space="preserve">
+    <value>This video could not be played.</value>
+  </data>
+  <data name="MediaPlayerMissing" xml:space="preserve">
+    <value>This video is not available.</value>
+  </data>
   <data name="ReviewPlayerGap" xml:space="preserve">
     <value>No recording covers this time.</value>
   </data>
@@ -793,5 +835,347 @@
   </data>
   <data name="SingleCameraOthers" xml:space="preserve">
     <value>Other cameras</value>
+  </data>
+  <data name="Services" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="Database" xml:space="preserve">
+    <value>Database</value>
+  </data>
+  <data name="MaintenanceBannerTitle" xml:space="preserve">
+    <value>Server maintenance.</value>
+  </data>
+  <data name="MaintenanceDraining" xml:space="preserve">
+    <value>Finishing current work before maintenance starts.</value>
+  </data>
+  <data name="MaintenanceRunning" xml:space="preserve">
+    <value>Maintenance is running.</value>
+  </data>
+  <data name="MaintenanceWorkPaused" xml:space="preserve">
+    <value>New work is paused until it finishes.</value>
+  </data>
+  <data name="FlagReviewMediaLabel" xml:space="preserve">
+    <value>Flagged media</value>
+  </data>
+  <data name="FlagReviewSideLabel" xml:space="preserve">
+    <value>Flag actions and clip navigation</value>
+  </data>
+  <data name="FlagReviewTimelineLabel" xml:space="preserve">
+    <value>Playback timeline</value>
+  </data>
+  <data name="FlaggedMediaTableLabel" xml:space="preserve">
+    <value>Flagged media list</value>
+  </data>
+  <data name="FlaggedMediaEmpty" xml:space="preserve">
+    <value>No flags of this type in the selected scope.</value>
+  </data>
+  <data name="FlaggedMediaShowingCount" xml:space="preserve">
+    <value>Showing {0} of {1}</value>
+  </data>
+  <data name="FlaggedMediaColRaised" xml:space="preserve">
+    <value>Raised</value>
+  </data>
+  <data name="FlaggedMediaColType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="FlaggedMediaColCamera" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="FlaggedMediaColWindow" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="FlaggedMediaColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="FlaggedMediaWindowRange" xml:space="preserve">
+    <value>{0} to {1}</value>
+  </data>
+  <data name="FlaggedMediaUnknownCamera" xml:space="preserve">
+    <value>Unknown camera</value>
+  </data>
+  <data name="FlaggedMediaType_BitrateCollapse" xml:space="preserve">
+    <value>Bit rate collapse</value>
+  </data>
+  <data name="FlaggedMediaType_ClippedAudio" xml:space="preserve">
+    <value>Clipped audio</value>
+  </data>
+  <data name="FlaggedMediaType_ElevatedNoiseFloor" xml:space="preserve">
+    <value>Elevated noise floor</value>
+  </data>
+  <data name="FlaggedMediaType_UnusualLighting" xml:space="preserve">
+    <value>Unusual lighting</value>
+  </data>
+  <data name="FlaggedMediaType_AudioDropout" xml:space="preserve">
+    <value>Audio dropout</value>
+  </data>
+  <data name="FlaggedMediaType_RssiDeviation" xml:space="preserve">
+    <value>Signal deviation</value>
+  </data>
+  <data name="FlaggedMediaType_Jamming" xml:space="preserve">
+    <value>Jamming</value>
+  </data>
+  <data name="FlaggedMediaStatus_Unreviewed" xml:space="preserve">
+    <value>Unreviewed</value>
+  </data>
+  <data name="FlaggedMediaStatus_Kept" xml:space="preserve">
+    <value>Kept</value>
+  </data>
+  <data name="FlaggedMediaStatus_Dismissed" xml:space="preserve">
+    <value>Dismissed</value>
+  </data>
+  <data name="FlagActionsLabel" xml:space="preserve">
+    <value>Flag review</value>
+  </data>
+  <data name="FlagActionsStatus" xml:space="preserve">
+    <value>Status: {0}</value>
+  </data>
+  <data name="FlagActionsReviewedAt" xml:space="preserve">
+    <value>Reviewed {0}</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_FalsePositive" xml:space="preserve">
+    <value>False positive</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_CameraMaintenance" xml:space="preserve">
+    <value>Camera maintenance or repositioning</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_WeatherOrLighting" xml:space="preserve">
+    <value>Weather or lighting change</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_Duplicate" xml:space="preserve">
+    <value>Duplicate of another flag</value>
+  </data>
+  <data name="ReasonMediaFlagDismissReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonEvidencePinReason_RelevantToIncident" xml:space="preserve">
+    <value>Relevant to the incident</value>
+  </data>
+  <data name="ReasonEvidencePinReason_RequestedByAuthority" xml:space="preserve">
+    <value>Requested by an authority</value>
+  </data>
+  <data name="ReasonEvidencePinReason_Corroboration" xml:space="preserve">
+    <value>Corroboration of another item</value>
+  </data>
+  <data name="ReasonEvidencePinReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_LegalHold" xml:space="preserve">
+    <value>Legal hold</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_PendingReview" xml:space="preserve">
+    <value>Pending review</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_AwaitingRequest" xml:space="preserve">
+    <value>Awaiting a request</value>
+  </data>
+  <data name="ReasonEvidenceHoldReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonEvidenceReleaseReason_ResolvedNoLongerNeeded" xml:space="preserve">
+    <value>Resolved, no longer needed</value>
+  </data>
+  <data name="ReasonEvidenceReleaseReason_CaseClosed" xml:space="preserve">
+    <value>Case closed</value>
+  </data>
+  <data name="ReasonEvidenceReleaseReason_Other" xml:space="preserve">
+    <value>Other (note required)</value>
+  </data>
+  <data name="ReasonPickerLabel" xml:space="preserve">
+    <value>Reason</value>
+  </data>
+  <data name="ReasonPickerNote" xml:space="preserve">
+    <value>Describe the reason</value>
+  </data>
+  <data name="ReasonPickerPlaceholder" xml:space="preserve">
+    <value>Choose a reason</value>
+  </data>
+  <data name="FlagActionsKeep" xml:space="preserve">
+    <value>Keep</value>
+  </data>
+  <data name="FlagActionsDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="FlagActionsConflict" xml:space="preserve">
+    <value>This flag was already reviewed by someone else. Reload to see the current state.</value>
+  </data>
+  <data name="FlagActionsFailed" xml:space="preserve">
+    <value>The review could not be saved. Try again.</value>
+  </data>
+  <data name="FlagActionsAddToCase" xml:space="preserve">
+    <value>Add to case</value>
+  </data>
+  <data name="FlagActionsPickCase" xml:space="preserve">
+    <value>Choose a case</value>
+  </data>
+  <data name="FlagActionsAlreadyIn" xml:space="preserve">
+    <value>Already in case {0}</value>
+  </data>
+  <data name="FlagActionsAddDone" xml:space="preserve">
+    <value>Added to case {0}</value>
+  </data>
+  <data name="FlagActionsDuplicate" xml:space="preserve">
+    <value>This clip is already in that case.</value>
+  </data>
+  <data name="FlagActionsClosedCase" xml:space="preserve">
+    <value>That case is closed.</value>
+  </data>
+  <data name="FlagActionsMissingTarget" xml:space="preserve">
+    <value>The clip is no longer available.</value>
+  </data>
+  <data name="FlagActionsPinReason" xml:space="preserve">
+    <value>Flagged clip</value>
+  </data>
+  <data name="FlagActionsPinReasonRssi" xml:space="preserve">
+    <value>Flagged RSSI window</value>
+  </data>
+  <data name="FlagActionsWindowCounts" xml:space="preserve">
+    <value>{0} clips and {1} snapshots will be added</value>
+  </data>
+  <data name="FlagActionsWindowConfirm" xml:space="preserve">
+    <value>Add window to case</value>
+  </data>
+  <data name="FlagActionsWindowPartial" xml:space="preserve">
+    <value>Some items were not added: {0} of {1}</value>
+  </data>
+  <data name="FlagActionsWindowDone" xml:space="preserve">
+    <value>Added {0} clips and {1} snapshots</value>
+  </data>
+  <data name="FlagActionsCreateCase" xml:space="preserve">
+    <value>Create a new case</value>
+  </data>
+  <data name="FlagActionsCaseTitle" xml:space="preserve">
+    <value>Case title (required)</value>
+  </data>
+  <data name="FlagActionsCreateFailed" xml:space="preserve">
+    <value>The case could not be created. Try again.</value>
+  </data>
+  <data name="ClipNavigatorLabel" xml:space="preserve">
+    <value>Flag navigation</value>
+  </data>
+  <data name="ClipNavigatorPrevious" xml:space="preserve">
+    <value>Previous flag</value>
+  </data>
+  <data name="ClipNavigatorNext" xml:space="preserve">
+    <value>Next flag</value>
+  </data>
+  <data name="ClipNavigatorTotal" xml:space="preserve">
+    <value>{0} flags</value>
+  </data>
+  <data name="ClipNavigatorPosition" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="ClipNavigatorMoved" xml:space="preserve">
+    <value>Moved to another flag</value>
+  </data>
+  <data name="ClipNavigatorEnd" xml:space="preserve">
+    <value>No more flags in this direction</value>
+  </data>
+  <data name="SignalFlagsHeading" xml:space="preserve">
+    <value>Signal deviation flags</value>
+  </data>
+  <data name="BitrateFlagsHeading" xml:space="preserve">
+    <value>Bit rate collapse flags</value>
+  </data>
+  <data name="MediaFitPurged" xml:space="preserve">
+    <value>This clip was removed by the retention policy.</value>
+  </data>
+  <data name="MediaFitFileMissing" xml:space="preserve">
+    <value>The media file is missing from storage.</value>
+  </data>
+  <data name="MediaFitDeviceDeleted" xml:space="preserve">
+    <value>The camera for this clip has been deleted.</value>
+  </data>
+  <data name="MediaFitFlagNotFound" xml:space="preserve">
+    <value>This flag no longer exists.</value>
+  </data>
+  <data name="MediaFitNoClipInHour" xml:space="preserve">
+    <value>No clip was recorded in this window.</value>
+  </data>
+  <data name="MediaFitStillAlt" xml:space="preserve">
+    <value>Flagged still image</value>
+  </data>
+  <data name="PlaybackTimelineLabel" xml:space="preserve">
+    <value>Playback timeline</value>
+  </data>
+  <data name="PlaybackPlay" xml:space="preserve">
+    <value>Play</value>
+  </data>
+  <data name="PlaybackPause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="PlaybackStepBack" xml:space="preserve">
+    <value>Back 10 seconds</value>
+  </data>
+  <data name="PlaybackRate" xml:space="preserve">
+    <value>Speed {0}x</value>
+  </data>
+  <data name="PlaybackMarker" xml:space="preserve">
+    <value>{0} flag at {1}</value>
+  </data>
+  <data name="BitrateSeriesChartLabel" xml:space="preserve">
+    <value>Video bit rate by second</value>
+  </data>
+  <data name="BitrateSeriesEmpty" xml:space="preserve">
+    <value>No bit rate data for this clip.</value>
+  </data>
+  <data name="PlaybackNow" xml:space="preserve">
+    <value>Now {0}</value>
+  </data>
+  <data name="BitrateReviewBreadcrumbRoot" xml:space="preserve">
+    <value>Bit rate</value>
+  </data>
+  <data name="BitrateReviewTitle" xml:space="preserve">
+    <value>Bit rate flag review</value>
+  </data>
+  <data name="RssiReviewBreadcrumbRoot" xml:space="preserve">
+    <value>Signal</value>
+  </data>
+  <data name="RssiReviewTitle" xml:space="preserve">
+    <value>Signal flag review</value>
+  </data>
+  <data name="RssiSeriesChartLabel" xml:space="preserve">
+    <value>Signal strength histogram</value>
+  </data>
+  <data name="RssiSeriesEmpty" xml:space="preserve">
+    <value>No signal readings in this window.</value>
+  </data>
+  <data name="NotesHeading" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="NotesEmpty" xml:space="preserve">
+    <value>No notes yet.</value>
+  </data>
+  <data name="NotesAdd" xml:space="preserve">
+    <value>Add note</value>
+  </data>
+  <data name="NotesBodyLabel" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="NotesRemaining" xml:space="preserve">
+    <value>{0} characters left</value>
+  </data>
+  <data name="NotesTooLong" xml:space="preserve">
+    <value>This note is longer than 4000 characters.</value>
+  </data>
+  <data name="NotesEmptyBody" xml:space="preserve">
+    <value>Enter a note.</value>
+  </data>
+  <data name="NotesClosed" xml:space="preserve">
+    <value>This case is closed; notes cannot be added.</value>
+  </data>
+  <data name="NotesFailed" xml:space="preserve">
+    <value>The note could not be saved. Try again.</value>
+  </data>
+  <data name="NotesSignIn" xml:space="preserve">
+    <value>Sign in to add a note.</value>
+  </data>
+  <data name="NotesLoadFailed" xml:space="preserve">
+    <value>The notes could not be loaded.</value>
+  </data>
+  <data name="CaseNotFound" xml:space="preserve">
+    <value>Case not found.</value>
+  </data>
+  <data name="FlagActionsMissingCase" xml:space="preserve">
+    <value>That case no longer exists.</value>
   </data>
 </root>

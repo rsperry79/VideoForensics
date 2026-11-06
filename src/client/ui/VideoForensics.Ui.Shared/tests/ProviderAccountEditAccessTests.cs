@@ -67,7 +67,7 @@ public class ProviderAccountEditAccessTests
     {
         // When the level cannot be read, the controls stay hidden; the server still enforces the real rule.
         (ProviderAccountEditAccess access, StubHttpMessageHandler handler) = Build(await SessionAsync("Admin"));
-        handler.FailingPaths.Add(PermissionsPath);
+        _ = handler.FailingPaths.Add(PermissionsPath);
 
         Assert.False(await access.CanEditAsync(CancellationToken.None));
     }

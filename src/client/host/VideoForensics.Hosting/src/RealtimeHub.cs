@@ -8,10 +8,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {
@@ -36,6 +36,7 @@ namespace VideoForensics.Client.Hosting
         private readonly CappedBackoffRetryPolicy _retryPolicy = new(ReconnectBaseDelay, ReconnectMaxDelay);
         private readonly object _gate = new();
         private readonly Subject<DownloadProgressDto> _downloadProgress = new();
+        private readonly Subject<MaintenanceStatusDto> _maintenance = new();
         private readonly Subject<NotificationEvent> _urgentEvents = new();
         private readonly Subject<SelfTestStatusDto> _selfTestStatus = new();
         private readonly Subject<LiveViewSessionDto> _liveViewSessionChanged = new();
@@ -43,6 +44,8 @@ namespace VideoForensics.Client.Hosting
         private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
         private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
         private readonly Subject<DeviceHealthChangedDto> _deviceHealthChanged = new();
+        private readonly Subject<MediaFlagChangedDto> _mediaFlagChanged = new();
+        private readonly Subject<ClientConfigDto> _clientConfigChanged = new();
         private readonly BehaviorSubject<ConnectionState> _connection = new(ConnectionState.Disconnected);
         // Guards the subscription set only. It is separate from _gate so a subscriber that re-enters a subscribe call
         // from inside an emission cannot deadlock on the hub's state lock.
@@ -84,6 +87,9 @@ namespace VideoForensics.Client.Hosting
         public IObservable<DownloadProgressDto> DownloadProgress => _downloadProgress.AsObservable();
 
         /// <inheritdoc />
+        public IObservable<MaintenanceStatusDto> Maintenance => _maintenance.AsObservable();
+
+        /// <inheritdoc />
         public IObservable<NotificationEvent> UrgentEvents => _urgentEvents.AsObservable();
 
         /// <inheritdoc />
@@ -100,6 +106,12 @@ namespace VideoForensics.Client.Hosting
 
         /// <inheritdoc />
         public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => _deviceHealthChanged.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<MediaFlagChangedDto> MediaFlagChanged => _mediaFlagChanged.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<ClientConfigDto> ClientConfigChanged => _clientConfigChanged.AsObservable();
 
         /// <summary>
         /// Live-view session state pushes ("LiveViewSessionChanged") for sessions this client subscribed to via
@@ -186,7 +198,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex) when (HubAuthFailure.IsAuthFailure(ex))
             {
-                _logger.LogError(ex, "Live hub rejected the session token (401); not retrying until the device is re-paired");
+                _logger.LogError("Live hub rejected the session token (401); not retrying until the device is re-paired: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 Publish(ConnectionState.AuthFailed);
                 throw;
             }
@@ -216,7 +228,7 @@ namespace VideoForensics.Client.Hosting
                     Publish(ConnectionState.Reconnecting);
                 }
 
-                _logger.LogError(ex, "Live hub initial connection failed; retrying with backoff");
+                _logger.LogError("Live hub initial connection failed; retrying with backoff: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 _ = ReconnectLoopAsync(lifetimeToken);
                 return;
             }
@@ -331,6 +343,7 @@ namespace VideoForensics.Client.Hosting
             }
 
             _downloadProgress.OnCompleted();
+            _maintenance.OnCompleted();
             _urgentEvents.OnCompleted();
             _selfTestStatus.OnCompleted();
             _liveViewSessionChanged.OnCompleted();
@@ -355,7 +368,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Live hub reconnect loop stopped unexpectedly; the live feed is offline until the next start");
+                _logger.LogError("Live hub reconnect loop stopped unexpectedly; the live feed is offline until the next start: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 Publish(ConnectionState.Disconnected);
             }
         }
@@ -382,7 +395,7 @@ namespace VideoForensics.Client.Hosting
                 }
                 catch (Exception ex) when (HubAuthFailure.IsAuthFailure(ex))
                 {
-                    _logger.LogError(ex, "Live hub reconnect rejected with 401; reconnect stopped until the device is re-paired");
+                    _logger.LogError("Live hub reconnect rejected with 401; reconnect stopped until the device is re-paired: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     await ClearExpiredSessionAsync();
                     Publish(ConnectionState.AuthFailed);
                     return;
@@ -390,7 +403,7 @@ namespace VideoForensics.Client.Hosting
                 catch (Exception ex)
                 {
                     attempt++;
-                    _logger.LogError(ex, "Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s", attempt, delay.TotalSeconds);
+                    _logger.LogError("Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s: {Message} ({ErrorType})", attempt, delay.TotalSeconds, ex.Message, ex.GetType().Name);
                 }
             }
         }
@@ -423,6 +436,7 @@ namespace VideoForensics.Client.Hosting
                 .Build();
 
             _ = connection.On<DownloadProgressDto>("DownloadProgress", payload => Emit(_downloadProgress, payload));
+            _ = connection.On<MaintenanceStatusDto>("MaintenanceState", status => Emit(_maintenance, status));
             _ = connection.On<NotificationEvent>("UrgentEvent", notificationEvent => Emit(_urgentEvents, notificationEvent));
             _ = connection.On<SelfTestStatusDto>("SelfTestStatus", status => Emit(_selfTestStatus, status));
             _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", EmitLiveViewSessionChanged);
@@ -430,6 +444,8 @@ namespace VideoForensics.Client.Hosting
             _ = connection.On<ThumbnailReadyDto>("ThumbnailReady", dto => Emit(_thumbnailReady, dto));
             _ = connection.On<EvidenceChangedDto>("EvidenceChanged", dto => Emit(_evidenceChanged, dto));
             _ = connection.On<DeviceHealthChangedDto>("DeviceHealthChanged", dto => Emit(_deviceHealthChanged, dto));
+            _ = connection.On<MediaFlagChangedDto>("MediaFlagChanged", dto => Emit(_mediaFlagChanged, dto));
+            _ = connection.On<ClientConfigDto>("ClientConfigChanged", dto => Emit(_clientConfigChanged, dto));
 
             connection.Reconnecting += error =>
             {
@@ -458,7 +474,7 @@ namespace VideoForensics.Client.Hosting
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to clear the expired paired session");
+                _logger.LogError("Failed to clear the expired paired session: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 
@@ -563,7 +579,7 @@ namespace VideoForensics.Client.Hosting
                 }
 
                 // The session id is not logged: it is a GUID, and only the failure matters here.
-                _logger.LogError(ex, "Live hub rejected a live-view subscription; it will not be replayed");
+                _logger.LogError("Live hub rejected a live-view subscription; it will not be replayed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

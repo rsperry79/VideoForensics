@@ -44,6 +44,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IDeviceConfigRepository, DeviceConfigRepository>();
             services.TryAddScoped<IDeviceTypedSettingsReader, DeviceTypedSettingsReader>();
             services.TryAddScoped<IDeviceSettingChangeRepository, DeviceSettingChangeRepository>();
+            services.TryAddScoped<IDeviceLightEventRepository, DeviceLightEventRepository>();
             services.TryAddScoped<IDeviceHealthRepository, DeviceHealthRepository>();
             services.TryAddScoped<ISnapshotCaptureRepository, SnapshotCaptureRepository>();
             services.TryAddScoped<IDeviceDetailsRepository, DeviceDetailsRepository>();
@@ -58,7 +59,10 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<ICameraBitrateBaselineRepository, CameraBitrateBaselineRepository>();
             services.TryAddScoped<IIntegrityRecordRepository, IntegrityRecordRepository>();
             services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
+            services.TryAddScoped<IMediaFlagRepository, MediaFlagRepository>();
             services.TryAddScoped<ICaseRepository, CaseRepository>();
+            services.TryAddScoped<INoteRepository, NoteRepository>();
+            services.TryAddScoped<ICaseNoteRepository, CaseNoteAdapter>();
             services.TryAddScoped<IMediaStillRepository, MediaStillRepository>();
             services.TryAddScoped<IOperatorRepository, OperatorRepository>();
             services.TryAddScoped<IPairedDeviceRepository, PairedDeviceRepository>();

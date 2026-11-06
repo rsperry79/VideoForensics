@@ -1,0 +1,11 @@
+{
+  "stickup_cams": [
+    { "id": 5001, "kind": "stickup_cam_test", "description": "Driveway", "led_status": { "seconds_remaining": 0 } },
+    { "id": 5002, "kind": "stickup_cam_test", "description": "Garage", "led_status": { "seconds_remaining": 20 } },
+    { "id": 5003, "kind": "stickup_cam_test", "description": "Side Yard", "led_status": "on" },
+    { "id": 5004, "kind": "stickup_cam_test", "description": "Back Yard", "led_status": 1 },
+    { "id": 5006, "kind": "stickup_cam_test", "description": "Shed", "led_status": "off" },
+    { "id": 5007, "kind": "stickup_cam_test", "description": "Gate", "led_status": "bright" },
+    { "id": 5005, "kind": "stickup_cam_test", "description": "Porch" }
+  ]
+}

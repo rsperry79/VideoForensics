@@ -10,13 +10,11 @@ namespace VideoForensics.Data.Common.Entities
         public required string Type { get; set; }
         /// <summary>Last known online state; null when the provider gave no connection or subscription state.</summary>
         public bool? IsOnline { get; set; }
-        public string? MetadataJson { get; set; }
         public DateTime? LastSuccessfulPullAtUtc { get; set; }
         public DateTime? LastPullAttemptAtUtc { get; set; }
         public string? TimeZoneId { get; set; }
         public DateTime? LastSyncedUtc { get; set; }
         public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
-        public string? ApiResponseHash { get; set; }
         public Guid? DeviceHealthId { get; set; }
         public Guid? DeviceFeaturesId { get; set; }
         public Guid? DeviceLocationId { get; set; }
@@ -123,9 +121,6 @@ namespace VideoForensics.Data.Common.Entities
 
         public decimal? BatteryVoltage2 { get; set; }
 
-        /// <summary>Stickup cam led_status as text: the string value, or the raw JSON when Ring sends an object or number.</summary>
-        public string? LedStatus { get; set; }
-
         /// <summary>Seconds remaining on a stickup cam siren_status.</summary>
         public int? SirenSecondsRemaining { get; set; }
 
@@ -165,6 +160,12 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Doorbot settings.chime_settings.duration.</summary>
         public int? SettingsChimeDuration { get; set; }
+
+        /// <summary>Ring deactivated_at, UTC. Null in every captured sample, so the type is a best guess.</summary>
+        public DateTime? DeactivatedAtUtc { get; set; }
+
+        /// <summary>Ring shared_at, UTC. Null in every captured sample, so the type is a best guess.</summary>
+        public DateTime? SharedAtUtc { get; set; }
 
         /// <summary>
         /// Local kill switch for server-side snapshot capture (SnapshotCaptureService). Not a Ring setting: Ring syncs update an

@@ -35,6 +35,8 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.TempDownloadLocation = loadedConfig.TempDownloadLocation;
                 runtimeConfig.LogsLocation = loadedConfig.LogsLocation;
                 runtimeConfig.ReportsLocation = loadedConfig.ReportsLocation;
+                runtimeConfig.KeysLocation = loadedConfig.KeysLocation;
+                runtimeConfig.DefaultStorageRoot = loadedConfig.DefaultStorageRoot;
                 runtimeConfig.RedactionLevel = loadedConfig.RedactionLevel;
                 runtimeConfig.KeyStorageProvider = loadedConfig.KeyStorageProvider;
                 runtimeConfig.RetentionDaysDefault = loadedConfig.RetentionDaysDefault;
@@ -42,6 +44,10 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
+                runtimeConfig.EnableScheduledReports = loadedConfig.EnableScheduledReports;
+                runtimeConfig.ScheduledReportIntervalHours = loadedConfig.ScheduledReportIntervalHours;
+                runtimeConfig.LogPruneIntervalHours = loadedConfig.LogPruneIntervalHours;
+                runtimeConfig.MediaBackfillIntervalHours = loadedConfig.MediaBackfillIntervalHours;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
                 runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;
@@ -82,7 +88,7 @@ namespace VideoForensics.Client.Core
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to load configuration from database; using defaults");
+                logger.LogError("Failed to load configuration from database; using defaults: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
     }

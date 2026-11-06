@@ -1,10 +1,10 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -54,6 +54,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithDescription("Inserts or updates a jamming incident. DetectedAtUtc and CaseId are server-controlled; Source (optional, new incidents only) defaults to ManuallyRecorded.");
 
             _ = group.MapPost("/stats/{deviceId:guid}/recompute", RecomputeStatsAsync)
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
                 .RequireRateLimiting("default")
                 .WithSummary("Recompute device jamming stats")
@@ -167,20 +168,14 @@ namespace VideoForensics.Client.WebApp.Api
         private static string? Validate(UpsertJammingIncidentRequest request)
         {
             // IsDefined rejects numeric strings like "99" that Enum.TryParse would otherwise accept.
-            if (request.Confidence == null
+            return request.Confidence == null
                 || !Enum.TryParse(request.Confidence, ignoreCase: true, out JammingConfidenceLevel confidence)
-                || !Enum.IsDefined(confidence))
-            {
-                return "Invalid confidence. Must be one of: " + string.Join(", ", Enum.GetNames<JammingConfidenceLevel>()) + ".";
-            }
-
-            if (request.Source != null
-                && (!Enum.TryParse(request.Source, ignoreCase: true, out JammingIncidentSource source) || !Enum.IsDefined(source)))
-            {
-                return "Invalid source. Must be one of: " + string.Join(", ", Enum.GetNames<JammingIncidentSource>()) + ".";
-            }
-
-            return request.StartUtc >= request.EndUtc
+                || !Enum.IsDefined(confidence)
+                ? "Invalid confidence. Must be one of: " + string.Join(", ", Enum.GetNames<JammingConfidenceLevel>()) + "."
+                : request.Source != null
+                && (!Enum.TryParse(request.Source, ignoreCase: true, out JammingIncidentSource source) || !Enum.IsDefined(source))
+                ? "Invalid source. Must be one of: " + string.Join(", ", Enum.GetNames<JammingIncidentSource>()) + "."
+                : request.StartUtc >= request.EndUtc
                 ? "StartUtc must be before EndUtc."
                 : !double.IsFinite(request.AverageDegradationDb) || request.AverageDegradationDb < 0
                 ? "AverageDegradationDb must be a non-negative number."

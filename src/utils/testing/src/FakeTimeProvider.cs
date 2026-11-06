@@ -27,6 +27,9 @@ namespace VideoForensics.Utils.Testing
         }
 
         /// <inheritdoc />
-        public override DateTimeOffset GetUtcNow() => _utcNow;
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
     }
 }

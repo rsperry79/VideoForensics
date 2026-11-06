@@ -1,6 +1,6 @@
-using System.Net.Http.Json;
-
 using Moq;
+
+using System.Net.Http.Json;
 
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
@@ -20,10 +20,25 @@ public class InProcessFolderBrowserEndpoint_Tests
 
         HttpResponseMessage http = await endpoint.Client.PostAsJsonAsync(endpoint.Url, new FolderBrowseRequestDto("read", "/", null));
 
-        http.EnsureSuccessStatusCode();
+        _ = http.EnsureSuccessStatusCode();
         FolderBrowseResponseDto? body = await http.Content.ReadFromJsonAsync<FolderBrowseResponseDto>();
         Assert.NotNull(body);
         Assert.Equal("C:\\", Assert.Single(body!.Files).Name);
+    }
+
+    [Fact]
+    public async Task InProcessFolderBrowserEndpoint_BrowserThrows_ReturnsErrorInsteadOfThrowing()
+    {
+        // A throw here would escape into the Blazor circuit and end the user's session.
+        Mock<IDirectoryBrowserService> browser = new();
+        _ = browser.Setup(b => b.GetRoots()).Throws(new IOException("drive not ready"));
+        using InProcessFolderBrowserEndpoint endpoint = new(browser.Object);
+
+        HttpResponseMessage http = await endpoint.Client.PostAsJsonAsync(endpoint.Url, new FolderBrowseRequestDto("read", "/C:/", null));
+
+        _ = http.EnsureSuccessStatusCode();
+        FolderBrowseResponseDto? body = await http.Content.ReadFromJsonAsync<FolderBrowseResponseDto>();
+        Assert.Equal("browse-failed", body?.Error?.Code);
     }
 
     [Fact]

@@ -9,11 +9,11 @@ using Moq;
 
 using System.Text.Json;
 
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
@@ -125,5 +125,28 @@ public class AccountSyncSchedulePage_ConfigSyncInterval_Tests : AccountSyncSched
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["ConfigSyncIntervalInvalid"], cut.Find("#config-sync-interval").TextContent));
         Assert.DoesNotContain(Handler.Sent, s => s.Method == HttpMethod.Put);
+    }
+}
+
+public class AccountSyncSchedulePage_DeviceModes_Tests : AccountSyncSchedulePageTestBase
+{
+    [Fact]
+    public void AccountSyncSchedule_NonCamera_OffersHealthOnlyAndOffButNotCapture()
+    {
+        Handler.Bodies["/api/v1/device-capture-modes"] = new[]
+        {
+            new { DeviceId = Guid.NewGuid(), Name = "Upstairs", ProviderDeviceId = "91872744", Mode = "HealthOnly", IsCamera = false },
+            new { DeviceId = Guid.NewGuid(), Name = "Front Door", ProviderDeviceId = "86401464", Mode = "Capture", IsCamera = true },
+        };
+
+        IRenderedComponent<AccountSyncSchedule> cut = RenderPage();
+
+        cut.WaitForAssertion(() =>
+        {
+            string[] upstairs = cut.Find("select[aria-label^='Upstairs']").QuerySelectorAll("option").Select(o => o.GetAttribute("value")!).ToArray();
+            Assert.Equal(new[] { "HealthOnly", "Off" }, upstairs);
+        });
+        string[] frontDoor = cut.Find("select[aria-label^='Front Door']").QuerySelectorAll("option").Select(o => o.GetAttribute("value")!).ToArray();
+        Assert.Equal(new[] { "Capture", "HealthOnly", "Off" }, frontDoor);
     }
 }

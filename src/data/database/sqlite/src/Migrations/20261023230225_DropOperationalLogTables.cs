@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,20 +10,20 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "LiveViewTelemetrySamples");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ProviderApiCallRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ProviderApiErrorLogs");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "LiveViewTelemetrySamples",
                 columns: table => new
                 {
@@ -39,8 +38,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_LiveViewTelemetrySamples", x => x.Id);
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_LiveViewTelemetrySamples", x => x.Id);
+                    _ = table.ForeignKey(
                         name: "FK_LiveViewTelemetrySamples_LiveViewSessions_SessionId",
                         column: x => x.SessionId,
                         principalTable: "LiveViewSessions",
@@ -48,7 +47,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ProviderApiCallRecords",
                 columns: table => new
                 {
@@ -58,10 +57,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ProviderApiCallRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_ProviderApiCallRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ProviderApiErrorLogs",
                 columns: table => new
                 {
@@ -80,25 +79,25 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ProviderApiErrorLogs", x => x.Id);
+                    _ = table.PrimaryKey("PK_ProviderApiErrorLogs", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_LiveViewTelemetrySamples_SessionId_CapturedAtUtc",
                 table: "LiveViewTelemetrySamples",
                 columns: new[] { "SessionId", "CapturedAtUtc" });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ProviderApiCallRecords_ProviderName_TimestampUtc",
                 table: "ProviderApiCallRecords",
                 columns: new[] { "ProviderName", "TimestampUtc" });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ProviderApiErrorLogs_DeviceId_OccurredAtUtc",
                 table: "ProviderApiErrorLogs",
                 columns: new[] { "DeviceId", "OccurredAtUtc" });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ProviderApiErrorLogs_EventId",
                 table: "ProviderApiErrorLogs",
                 column: "EventId");

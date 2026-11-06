@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to retrieve jamming detection summary for device {deviceId}", deviceId);
+                _logger.LogError("Failed to retrieve jamming detection summary for device {deviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return (false, $"Failed to retrieve detection summary: {ex.Message}", null);
             }
         }
@@ -117,7 +117,7 @@ namespace VideoForensics.Client.Core.Tools
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical)", deviceId);
+                        _logger.LogWarning("Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical): {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to record jamming incident for device {deviceId}", deviceId);
+                _logger.LogError("Failed to record jamming incident for device {deviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return (false, $"Failed to record incident: {ex.Message}", null);
             }
         }
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to retrieve jamming stats for device {deviceId}", deviceId);
+                _logger.LogError("Failed to retrieve jamming stats for device {deviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return (false, null);
             }
         }
@@ -161,7 +161,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to retrieve jamming incidents");
+                _logger.LogError("Failed to retrieve jamming incidents: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return (false, null);
             }
         }
@@ -222,7 +222,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Jamming analysis failed for device {deviceId}", deviceId);
+                _logger.LogError("Jamming analysis failed for device {deviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 return new JammingAnalysisReport
                 {
                     Success = false,
@@ -321,7 +321,7 @@ namespace VideoForensics.Client.Core.Tools
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogWarning(ex, "Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical)", deviceId);
+                                    _logger.LogWarning("Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical): {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                                 }
                             }
 

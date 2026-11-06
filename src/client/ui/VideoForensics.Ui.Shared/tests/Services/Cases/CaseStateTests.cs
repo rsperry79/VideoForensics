@@ -2,13 +2,13 @@ using Moq;
 
 using System.Reflection;
 
-using VideoForensics.Utils.Testing;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Client.Ui.Shared.Tests;
+using VideoForensics.Client.Ui.Shared.Tests.Review;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -338,6 +338,28 @@ public class CaseState_Tests
             "Test reason",
             "test-actor",
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HasActivePinAsync_WithPinnedSnapshot_ReturnsTrue()
+    {
+        var caseId = Guid.NewGuid();
+        var snapshotId = Guid.NewGuid();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        _ = mockRepo
+            .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new() { Id = Guid.NewGuid(), Kind = CaseItemKind.Snapshot, SnapshotCaptureId = snapshotId, Reason = "r", AddedBy = "a" },
+            ]);
+        var caseState = new CaseState(mockRepo.Object, CreateScopeState());
+        caseState._setActiveCaseForTest(CreateTestCase(id: caseId, status: CaseStatus.Open));
+
+        bool pinned = await caseState.HasActivePinAsync(CaseItemKind.Snapshot, snapshotId, CancellationToken.None);
+        bool otherPinned = await caseState.HasActivePinAsync(CaseItemKind.Snapshot, Guid.NewGuid(), CancellationToken.None);
+
+        Assert.True(pinned);
+        Assert.False(otherPinned);
     }
 
     [Fact]

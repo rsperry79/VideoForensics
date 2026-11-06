@@ -1,9 +1,9 @@
 using System.Reactive.Subjects;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {

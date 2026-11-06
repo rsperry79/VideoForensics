@@ -24,9 +24,6 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(dc => dc.HardwareModel)
                 .HasMaxLength(256);
 
-            _ = builder.Property(dc => dc.ApiResponseHash)
-                .HasMaxLength(256);
-
             _ = builder.HasIndex(dc => dc.DeviceId)
                 .IsUnique();
         }

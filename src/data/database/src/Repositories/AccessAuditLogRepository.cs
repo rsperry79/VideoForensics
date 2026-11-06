@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording access audit log for evidence {EvidenceId}", evidenceId);
+                _logger.LogError("Error recording access audit log for evidence {EvidenceId}: {Message} ({ErrorType})", evidenceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

@@ -22,6 +22,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
         public ILocationRepository Locations { get; set; } = null!;
         public IDeviceRepository Devices { get; set; } = null!;
+        public IDingIdLinkRepository DingIdLinks { get; set; } = null!;
         public IMediaItemRepository MediaItems { get; set; } = null!;
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;
@@ -34,6 +35,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IAccessAuditLogRepository AccessAuditLogs { get; set; } = null!;
         public IExportAuditRecordRepository ExportAuditRecords { get; set; } = null!;
         public IDetectionEntityProvider DetectionEntities { get; set; } = null!;
+        public IMediaFlagRepository MediaFlags { get; set; } = null!;
         public Task SaveChangesAsync(CancellationToken ct)
         {
             return Task.CompletedTask;
@@ -51,6 +53,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<IEventRepository> _mockEvents = new();
         private readonly Mock<IDownloadEventRepository> _mockDownloadEvents = new();
         private readonly Mock<IMediaItemRepository> _mockMediaItems = new();
+        private readonly Mock<IDingIdLinkRepository> _mockDingIdLinks = new();
 
         private static string CreateTempDirectory()
         {
@@ -69,7 +72,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 Devices = _mockDevices.Object,
                 Events = _mockEvents.Object,
                 DownloadEvents = _mockDownloadEvents.Object,
-                MediaItems = _mockMediaItems.Object
+                MediaItems = _mockMediaItems.Object,
+                DingIdLinks = _mockDingIdLinks.Object
             };
 
             _ = _mockUnitOfWork
@@ -230,6 +234,130 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.True(result.Success);
                 Assert.Equal(1, result.Locations.Inserted);
                 _mockLocations.Verify(r => r.LinkToProviderAccountAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        private static Location BuildLocation(Guid id)
+        {
+            return new() { Id = id, ProviderLocationId = "loc-1", Name = "Home" };
+        }
+
+        private static Device BuildRingDevice(Guid deviceId, Guid locationId)
+        {
+            return new()
+            {
+                Id = deviceId,
+                LocationId = locationId,
+                ProviderDeviceId = "86401464",
+                Name = "Front Door",
+                Type = "doorbell",
+            };
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_NumericEventIdEqualsOneCandidate_WritesDingId()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
+                var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456789", EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
+                    locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], events: [evt]);
+
+                _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789" });
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.Equal(1, result.Events.Inserted);
+                _mockEvents.Verify(r => r.UpsertAsync(It.Is<Event>(e => e.ProviderEventId == "1234567890123456789"), It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_NumericEventIdWithoutCandidate_SkipsEvent()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
+                var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456", EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
+                    locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], events: [evt]);
+
+                _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.Equal(0, result.Events.Inserted);
+                _mockEvents.Verify(r => r.UpsertAsync(It.IsAny<Event>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_NumericDownloadEventOnlyPrefixOfCandidate_SkipsRow()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
+                var download = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456", EventType = "motion", AppVersion = "test", EventOccurredAtUtc = DateTime.UtcNow, DownloadStartedUtc = DateTime.UtcNow };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
+                    locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], downloadEvents: [download]);
+
+                _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789" });
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.Equal(0, result.DownloadEvents.Inserted);
+                _mockDownloadEvents.Verify(r => r.AddAsync(It.IsAny<DownloadEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+        [Fact]
+        public async Task ImportBackupAsync_NumericDownloadEventWithTwoEqualCandidates_SkipsRow()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var locationId = Guid.NewGuid();
+                var deviceId = Guid.NewGuid();
+                var download = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "1234567890123456789", EventType = "motion", AppVersion = "test", EventOccurredAtUtc = DateTime.UtcNow, DownloadStartedUtc = DateTime.UtcNow };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
+                    locations: [BuildLocation(locationId)], devices: [BuildRingDevice(deviceId, locationId)], downloadEvents: [download]);
+
+                _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789", "1234567890123456789" });
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.Equal(0, result.DownloadEvents.Inserted);
+                _mockDownloadEvents.Verify(r => r.AddAsync(It.IsAny<DownloadEvent>(), It.IsAny<CancellationToken>()), Times.Never);
             }
             finally
             {

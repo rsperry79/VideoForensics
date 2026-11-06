@@ -2,9 +2,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Client.Hosting.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {
@@ -23,10 +23,13 @@ namespace VideoForensics.Client.Hosting
         private readonly BehaviorSubject<NotificationEvent?> _urgentEvents = new(null);
         private readonly BehaviorSubject<SelfTestStatusDto?> _selfTestStatus = new(null);
         private readonly BehaviorSubject<ConnectionState?> _connection = new(null);
+        private readonly BehaviorSubject<MaintenanceStatusDto> _maintenance = new(MaintenanceStatusDto.Normal);
         // Events, not state: no replay, so a late subscriber only hears about thumbnails produced after it subscribed.
         private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
         private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
         private readonly Subject<DeviceHealthChangedDto> _deviceHealthChanged = new();
+        private readonly Subject<MediaFlagChangedDto> _mediaFlagChanged = new();
+        private readonly Subject<ClientConfigDto> _clientConfigChanged = new();
         // Activity lines are not state: every line must reach a drainer, so they are queued rather than latest-value.
         // The cap stops a caller that never drains from growing memory without limit; the oldest lines go first.
         private readonly Queue<string> _activityLog = new();
@@ -38,12 +41,15 @@ namespace VideoForensics.Client.Hosting
             ArgumentNullException.ThrowIfNull(hub);
 
             _hubSubscriptions.Add(hub.DownloadProgress.Subscribe(OnDownloadProgress));
+            _hubSubscriptions.Add(hub.Maintenance.Subscribe(value => Publish(_maintenance, value)));
             _hubSubscriptions.Add(hub.UrgentEvents.Subscribe(value => Publish(_urgentEvents, value)));
             _hubSubscriptions.Add(hub.SelfTestStatus.Subscribe(value => Publish(_selfTestStatus, value)));
             _hubSubscriptions.Add(hub.Connection.Subscribe(value => Publish(_connection, value)));
             _hubSubscriptions.Add(hub.ThumbnailReady.Subscribe(value => PublishEvent(_thumbnailReady, value)));
             _hubSubscriptions.Add(hub.EvidenceChanged.Subscribe(value => PublishEvent(_evidenceChanged, value)));
             _hubSubscriptions.Add(hub.DeviceHealthChanged.Subscribe(value => PublishEvent(_deviceHealthChanged, value)));
+            _hubSubscriptions.Add(hub.MediaFlagChanged.Subscribe(value => PublishEvent(_mediaFlagChanged, value)));
+            _hubSubscriptions.Add(hub.ClientConfigChanged.Subscribe(value => PublishEvent(_clientConfigChanged, value)));
         }
 
         /// <inheritdoc />
@@ -68,7 +74,19 @@ namespace VideoForensics.Client.Hosting
         public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => _deviceHealthChanged.AsObservable();
 
         /// <inheritdoc />
+        public IObservable<MediaFlagChangedDto> MediaFlagChanged => _mediaFlagChanged.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<ClientConfigDto> ClientConfigChanged => _clientConfigChanged.AsObservable();
+
+        /// <inheritdoc />
         public DownloadProgressDto? LatestDownloadProgress => _downloadProgress.Value;
+
+        /// <inheritdoc />
+        public IObservable<MaintenanceStatusDto> Maintenance => _maintenance.AsObservable();
+
+        /// <inheritdoc />
+        public MaintenanceStatusDto LatestMaintenance => _maintenance.Value;
 
         /// <inheritdoc />
         public NotificationEvent? LatestUrgentEvent => _urgentEvents.Value;

@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     public class LocationRepositoryTests : IAsyncLifetime
     {
@@ -84,7 +84,7 @@ namespace VideoForensics.Data.Database.Tests
         private async Task<ProviderAccount> AddAccountAsync()
         {
             ProviderAccount account = TestDataBuilder.BuildProviderAccount();
-            await using VideoForensics.Data.Database.DbContext.VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
+            await using DbContext.VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
             User user = TestDataBuilder.BuildUser();
             account.UserId = user.Id;
             _ = db.Users.Add(user);

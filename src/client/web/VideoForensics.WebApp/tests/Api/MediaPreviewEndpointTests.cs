@@ -7,13 +7,11 @@ using Moq;
 
 using System.Security.Claims;
 
-using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 
@@ -27,7 +25,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     {
         private const int FileLength = 100;
 
-        private readonly List<string> _tempFiles = new();
+        private readonly List<string> _tempFiles = [];
 
         public void Dispose()
         {
@@ -43,7 +41,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task MediaPreview_NoPreviewPath_Returns404()
         {
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
 
             IResult result = await InvokeGetPreviewAsync(context, previewPath: null, previewFileExists: false);
 
@@ -54,7 +52,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaPreview_WholeFile_Returns200WithBody()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
 
             IResult result = await InvokeGetPreviewAsync(context, path, previewFileExists: true);
             _ = Assert.IsType<FileStreamHttpResult>(result);
@@ -69,7 +67,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaPreview_RangeRequest_Returns206WithContentRange()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
             context.Request.Headers["Range"] = "bytes=0-9";
 
             IResult result = await InvokeGetPreviewAsync(context, path, previewFileExists: true);
@@ -86,7 +84,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaPreview_Success_SetsPrivateCacheControlAndMp4ContentType()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
 
             IResult result = await InvokeGetPreviewAsync(context, path, previewFileExists: true);
             _ = Assert.IsType<FileStreamHttpResult>(result);
@@ -101,7 +99,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task MediaPreview_DoesNotWriteAccessAuditEntry()
         {
             string path = CreateTempFileWithKnownBytes();
-            var context = CreateAuthenticatedContext();
+            DefaultHttpContext context = CreateAuthenticatedContext();
             // GetPreviewAsync takes no audit dependency, so this mock cannot be reached from the handler.
             // The Verify documents the requirement; it would catch an audit write only if one were injected.
             var auditLog = new Mock<IAccessAuditLogRepository>();
@@ -150,7 +148,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             string? previewPath,
             bool previewFileExists)
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
 
             var mediaItems = new Mock<IMediaItemRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))

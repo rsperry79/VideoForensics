@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
         [Fact]
         public void UpdateManifest_TryParse_ReadsStageScriptOutput()
         {
-            UpdateManifest? manifest = UpdateManifest.TryParse(StageScriptOutput);
+            var manifest = UpdateManifest.TryParse(StageScriptOutput);
 
             Assert.NotNull(manifest);
             Assert.Equal("1.1.0-alpha.5+abc", manifest.Version);
@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Hosting.Tests.Updates
         {
             var original = new UpdateManifest("2.0.0", [new UpdateManifestFile("a.dll", new string('b', 64), 7)]);
 
-            UpdateManifest? parsed = UpdateManifest.TryParse(original.ToJson());
+            var parsed = UpdateManifest.TryParse(original.ToJson());
 
             Assert.Equal(original.Version, parsed?.Version);
             Assert.Equal(original.Files[0], parsed?.Files[0]);

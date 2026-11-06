@@ -114,7 +114,7 @@ public class FilterSelects_Tests : BunitContext
         cut.Find("select").Change(WyzeAccount.Id.ToString());
         cut.Find("select").Change("");
 
-        Assert.Equal([WyzeAccount.Id, (Guid?)null], raised);
+        Assert.Equal([WyzeAccount.Id, null], raised);
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class FilterSelects_Tests : BunitContext
         cut.Find("select").Change(Garage.Id.ToString());
         cut.Find("select").Change("");
 
-        Assert.Equal([Garage.Id, (Guid?)null], raised);
+        Assert.Equal([Garage.Id, null], raised);
     }
 
     [Fact]

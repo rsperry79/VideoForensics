@@ -39,12 +39,7 @@ namespace VideoForensics.Core.Helpers.Platform
             }
 
             string sanitized = new string(name.Where(c => !InvalidSegmentChars.Contains(c)).ToArray()).Trim();
-            if (sanitized.Length == 0)
-            {
-                return "unknown";
-            }
-
-            return sanitized.ToLowerInvariant().Replace(' ', '_');
+            return sanitized.Length == 0 ? "unknown" : sanitized.ToLowerInvariant().Replace(' ', '_');
         }
     }
 }

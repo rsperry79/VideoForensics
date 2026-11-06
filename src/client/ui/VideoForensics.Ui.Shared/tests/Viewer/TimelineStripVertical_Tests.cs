@@ -1,12 +1,12 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
-
 using AngleSharp.Dom;
 
 using Bunit;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
@@ -98,7 +98,7 @@ public class TimelineStripVertical_Tests : BunitContext
     {
         IRenderedComponent<TimelineStrip> cut = RenderVertical([]);
 
-        Assert.Single(cut.FindAll("[data-testid='timeline-strip']"));
+        _ = Assert.Single(cut.FindAll("[data-testid='timeline-strip']"));
         Assert.Empty(cut.FindAll("[data-testid='timeline-segment']"));
         Assert.Empty(cut.FindAll("[data-testid='timeline-cursor']"));
     }
@@ -163,7 +163,7 @@ public class TimelineStripVertical_Tests : BunitContext
             .AddCascadingValue(new UserTimeZone(Plus9))
             .Add(x => x.Orientation, TimelineOrientation.Vertical)
             .Add(x => x.LengthPx, Length)
-            .Add(x => x.Clips, new List<ClipWindow>())
+            .Add(x => x.Clips, [])
             .Add(x => x.WindowStartUtc, Start)
             .Add(x => x.WindowEndUtc, Start.AddHours(3)));
 
@@ -180,7 +180,7 @@ public class TimelineStripVertical_Tests : BunitContext
         IRenderedComponent<TimelineStrip> cut = Render<TimelineStrip>(p => p
             .Add(x => x.Orientation, TimelineOrientation.Vertical)
             .Add(x => x.LengthPx, Length)
-            .Add(x => x.Clips, new List<ClipWindow>())
+            .Add(x => x.Clips, [])
             .Add(x => x.WindowStartUtc, Start)
             .Add(x => x.WindowEndUtc, Start.AddHours(2)));
 

@@ -27,19 +27,27 @@ namespace VideoForensics.Core.Api.Contracts
     /// Data transfer object representing the full storage settings state.
     /// </summary>
     /// <param name="Categories">The status of all storage categories.</param>
+    /// <param name="DefaultRoot">The default storage root that platform-default categories are built from.</param>
     public record StorageSettingsDto(
-        IReadOnlyList<StorageCategoryStatusDto> Categories
+        IReadOnlyList<StorageCategoryStatusDto> Categories,
+        string DefaultRoot = ""
     );
 
     /// <summary>
     /// Data transfer object for a request to relocate a storage category to a new root path.
     /// </summary>
     /// <param name="Category">The storage category to relocate.</param>
-    /// <param name="NewRootPath">The new root path where files for this category will be stored.</param>
+    /// <param name="NewRootPath">The new root path where files for this category will be stored. Null resets the category to its platform default.</param>
     public record RelocateStorageCategoryRequestDto(
         StorageCategory Category,
-        string NewRootPath
+        string? NewRootPath
     );
+
+    /// <summary>
+    /// Data transfer object for a request to change the default storage root.
+    /// </summary>
+    /// <param name="NewRootPath">The new default root folder.</param>
+    public record ChangeDefaultRootRequestDto(string NewRootPath);
 
     /// <summary>
     /// Data transfer object representing the result of a storage category relocation attempt.
@@ -94,7 +102,8 @@ namespace VideoForensics.Core.Api.Contracts
         public static StorageSettingsDto ToDto(this StorageSettings settings)
         {
             return new StorageSettingsDto(
-                Categories: settings.Categories.Select(c => c.ToDto()).ToList()
+                Categories: settings.Categories.Select(c => c.ToDto()).ToList(),
+                DefaultRoot: settings.DefaultRoot
             );
         }
 
@@ -104,7 +113,8 @@ namespace VideoForensics.Core.Api.Contracts
         public static StorageSettings ToDomain(this StorageSettingsDto dto)
         {
             return new StorageSettings(
-                Categories: dto.Categories.Select(c => c.ToDomain()).ToList()
+                Categories: dto.Categories.Select(c => c.ToDomain()).ToList(),
+                DefaultRoot: dto.DefaultRoot
             );
         }
 

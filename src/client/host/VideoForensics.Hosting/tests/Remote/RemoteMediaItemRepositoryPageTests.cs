@@ -1,10 +1,8 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote;
 
@@ -63,7 +61,7 @@ public class RemoteMediaItemRepositoryPageTests
             string value = eq < 0 ? string.Empty : Uri.UnescapeDataString(pair[(eq + 1)..]);
             if (!result.TryGetValue(key, out List<string>? values))
             {
-                values = new List<string>();
+                values = [];
                 result[key] = values;
             }
 
@@ -76,8 +74,8 @@ public class RemoteMediaItemRepositoryPageTests
     [Fact]
     public async Task RemoteMediaItemRepository_GetPage_SendsDevicesRangeAndPaging_InQueryString()
     {
-        Guid deviceA = Guid.NewGuid();
-        Guid deviceB = Guid.NewGuid();
+        var deviceA = Guid.NewGuid();
+        var deviceB = Guid.NewGuid();
         var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
         HttpRequestMessage? capturedRequest = null;
@@ -113,10 +111,39 @@ public class RemoteMediaItemRepositoryPageTests
     }
 
     [Fact]
+    public async Task RemoteMediaItemRepository_GetPage_VideoOnly_AddsVideoOnlyQueryParameter()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new MockHttpMessageHandler(async request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+        var repo = new RemoteMediaItemRepository(httpClient);
+
+        _ = await repo.GetPageByDevicesAndDateRangeAsync(
+            new[] { Guid.NewGuid() },
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+            skip: 0, take: 10, CancellationToken.None, videoOnly: true);
+
+        Assert.NotNull(capturedRequest);
+        Dictionary<string, List<string>> query = ParseQuery(capturedRequest!.RequestUri!);
+        Assert.Equal(new[] { "true" }, query["videoOnly"]);
+    }
+
+    [Fact]
     public async Task RemoteMediaItemRepository_GetPage_ResponseItemsAndTotal_MapToMediaItemPage()
     {
-        Guid idOne = Guid.NewGuid();
-        Guid idTwo = Guid.NewGuid();
+        var idOne = Guid.NewGuid();
+        var idTwo = Guid.NewGuid();
         string jsonContent = JsonSerializer.Serialize(new
         {
             items = new[] { CreateDto(idOne), CreateDto(idTwo) },

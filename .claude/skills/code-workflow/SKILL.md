@@ -19,6 +19,7 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 
 ## Implementation
 - Haiku 5.5 subagents (`model: "haiku"`) write implementation files, one file or small related batch each. Verify their output yourself: build, test, read the diff.
+- A request that becomes a multi-step plan (it touches several files or components, or the task list runs to four or more steps): write the plan as the task list, then hand each independent step to a Haiku subagent as above instead of implementing it yourself. Each brief names the files, the failing test the step must satisfy, and the localization rule. Single-file fixes stay with you.
 - Blocked or confused subagent: resolve the ambiguity in the brief and re-dispatch.
 - Briefs for a Ui.Shared page must name the localization rule (`rules/ui-shared.md`) and list the page's existing literals to convert.
 - Escalation rules: `~/.claude/docs/subagent-model-selection.md`.
@@ -33,21 +34,15 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 1. Commit the batch on its worktree branch.
 2. Confirm `wip` contains `origin/dev`, merging first if not.
 3. Merge the batch branch into `wip` in the main checkout.
-4. `git push origin wip`. Do not push the work branch unless asked.
+4. List `git log origin/wip..wip` and confirm each commit, then `git push origin wip`. Do not push the work branch unless asked.
 5. Start the next batch in a new worktree from updated `wip`.
 - Stop and report instead when: a gate fails, merges conflict, the main checkout has unrelated changes, or a product decision is needed.
 
-## Full gate (before opening a PR to `dev` or `main`)
-- Ask the user to confirm first. Then:
-1. Ensure `wip` contains `dev`; sync the work branch with `wip`.
-2. `dotnet list VideoForensics.sln package --outdated`. Bump each flagged package to `Latest` in every `.csproj` that uses it, same version everywhere.
-3. `dotnet clean` then `dotnet build`. Fix every warning, error, and notice.
-4. `dotnet test` the full suite. Fix failures.
-5. `npm ci` then `npm run check`. Fix every error.
+## Full gate
+- Before opening a PR to `dev` or `main`: read `.claude/reference/full-gate.md`.
 
-## Cleanup rules
-- Never `git clean -X`. Delete build output by explicit path.
-- Never kill processes in bulk. Report hung test hosts instead.
+## Cleanup
+- Never `git clean -X`. Delete build output by explicit path. Never kill processes in bulk; report hung test hosts.
 
 ## Failure log
-- Log every failure as specified in `.claude/failure-log.md` (format, review, upkeep). Read it when logging or reviewing.
+- Format and review: `.claude/failure-log.md`.

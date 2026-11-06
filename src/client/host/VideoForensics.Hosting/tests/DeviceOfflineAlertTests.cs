@@ -2,11 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
@@ -29,7 +28,8 @@ namespace VideoForensics.Client.Hosting.Tests
                 LocationId = Guid.NewGuid(),
                 ProviderDeviceId = "ring-1",
                 Name = DeviceName,
-                Type = "stickup_cam"
+                Type = "stickup_cam",
+                SnapshotCaptureEnabled = false
             };
 
             var deviceRepo = new Mock<IDeviceRepository>();
@@ -101,7 +101,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public async Task RunOneTickAsync_OnlineToOffline_AlertLinksToTheAccountSyncPage()
         {
             // The in-app link is relative, so it names the account's sync page, where the device's polling mode is set.
-            Guid accountId = Guid.NewGuid();
+            var accountId = Guid.NewGuid();
             var locations = new Mock<ILocationRepository>();
             _ = locations.Setup(l => l.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new ProviderAccount { Id = accountId, ProviderName = "Ring" }]);

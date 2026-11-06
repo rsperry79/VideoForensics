@@ -37,12 +37,7 @@ public sealed class ReviewSelection
             }
 
             ClipSelection? covering = ReviewTimeline.ClipAt(_timeline.Clips, cursor);
-            if (covering is null)
-            {
-                return null;
-            }
-
-            return Guid.TryParse(covering.ClipId, out Guid mediaItemId) ? mediaItemId : null;
+            return covering is null ? null : Guid.TryParse(covering.ClipId, out Guid mediaItemId) ? mediaItemId : null;
         }
     }
 

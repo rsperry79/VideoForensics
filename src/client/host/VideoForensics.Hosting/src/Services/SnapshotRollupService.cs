@@ -1,16 +1,16 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using System.Security.Cryptography;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Providers.Ring.Services;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
@@ -29,6 +29,9 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>Metadata written on each roll-up loop row. The Devices tab reads it to pick the latest loop.</summary>
         public const string SnapshotRollupMarker = "{\"type\":\"snapshot-rollup\"}";
 
+        /// <summary>Event type of the row each loop writes to the Events table. The Events tab shows it as Time Lapse.</summary>
+        public const string TimelapseEventType = "timelapse";
+
         /// <summary>The loop's frames are each held at least this long; the builder rounds to whole seconds.</summary>
         private static readonly TimeSpan MinimumHold = TimeSpan.FromSeconds(1);
 
@@ -38,13 +41,14 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IProviderAccountRepository _accounts;
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
+        private readonly IEventRepository _events;
         private readonly ITimelineVideoBuilder _builder;
-        private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotRollupService> _logger;
 
         // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
         private readonly ISnapshotCaptureRepository? _captures;
         private readonly ISnapshotStillMapper? _stillMapper;
+        private readonly IMediaPathResolver _mediaPaths;
         private readonly IForensicsConfigurationService? _configurationService;
 
         public SnapshotRollupService(
@@ -54,13 +58,15 @@ namespace VideoForensics.Client.Hosting.Services
             IProviderAccountRepository accounts,
             IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
-            IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotRollupService> logger,
+            IEventRepository events,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
-            IForensicsConfigurationService? configurationService = null)
+            IForensicsConfigurationService? configurationService = null,
+            IMediaPathResolver? mediaPaths = null)
         {
+            _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _captures = captures;
             _stillMapper = stillMapper;
             _configurationService = configurationService;
@@ -70,8 +76,8 @@ namespace VideoForensics.Client.Hosting.Services
             _accounts = accounts;
             _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
+            _events = events;
             _builder = builder;
-            _options = options;
             _logger = logger;
         }
 
@@ -121,7 +127,7 @@ namespace VideoForensics.Client.Hosting.Services
                 catch (Exception ex)
                 {
                     failed++;
-                    _logger.LogError(ex, "Snapshot roll-up failed for {DeviceName}", device.Name);
+                    _logger.LogError("Snapshot roll-up failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                     firstError ??= $"{device.Name}: {ex.Message}";
                 }
             }
@@ -133,7 +139,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>Builds and registers one device's loop. Returns false when the window has no usable snapshots.</summary>
         private async Task<bool> RollUpDeviceAsync(DeviceEntity device, string deviceFolder, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
-            IReadOnlyList<TimelineStill> stills = await LoadStillsAsync(device.Id, fromUtc, toUtc, cancellationToken);
+            IReadOnlyList<TimelineStill> stills = await LoadStillsAsync(device.Id, device.Name, fromUtc, toUtc, cancellationToken);
             if (stills.Count == 0)
             {
                 // Nothing to roll up in this window is not a failure.
@@ -141,7 +147,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             // The loop file is named by its window end, so a retried window gets a fresh path.
-            string outputPath = Path.Combine(deviceFolder, $"{toUtc:yyyyMMddHHmmss}.mp4");
+            string outputPath = Path.Combine(deviceFolder, MediaFileNamer.FormatMediaFileName(device.Name, toUtc, "snapshot-loop", "mp4"));
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
             TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);
@@ -150,7 +156,9 @@ namespace VideoForensics.Client.Hosting.Services
                 throw new InvalidOperationException(result.ErrorMessage ?? "the timeline build failed");
             }
 
-            await RecordLoopAsync(device, outputPath, toUtc, cancellationToken);
+            await RecordLoopAsync(device, outputPath, fromUtc, toUtc, cancellationToken);
+            // Success is logged so a roll-up that builds a loop leaves a trace. Only the file name is logged, not the full path.
+            _logger.LogInformation("Time lapse built for {DeviceName}: {SnapshotCount} snapshots, file {FileName}", device.Name, stills.Count, Path.GetFileName(outputPath));
             return true;
         }
 
@@ -158,26 +166,33 @@ namespace VideoForensics.Client.Hosting.Services
         /// The window's snapshot JPEGs for one device, oldest first. Each is held until the next snapshot; the newest is
         /// held until the window end. Files that are missing from disk are skipped rather than failing the loop.
         /// </summary>
-        private async Task<IReadOnlyList<TimelineStill>> LoadStillsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<TimelineStill>> LoadStillsAsync(Guid deviceId, string deviceName, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             if (_captures is not null && _stillMapper is not null)
             {
-                return await LoadStillsFromCapturesAsync(deviceId, fromUtc, toUtc, cancellationToken);
+                return await LoadStillsFromCapturesAsync(deviceId, deviceName, fromUtc, toUtc, cancellationToken);
             }
-
 
             // Format, marker and time window are filtered in SQL. Only the file-on-disk check stays here: the file system is not queryable.
             IReadOnlyList<MediaItem> rows = await _mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cancellationToken);
-            var snapshots = rows.Where(m => File.Exists(m.FilePath)).ToList();
+            var snapshots = new List<(MediaItem Row, string Path)>();
+            foreach (MediaItem row in rows)
+            {
+                string path = await _mediaPaths.ToAbsoluteAsync(row.FilePath, cancellationToken);
+                if (File.Exists(path))
+                {
+                    snapshots.Add((row, path));
+                }
+            }
 
             var stills = new List<TimelineStill>(snapshots.Count);
             for (int i = 0; i < snapshots.Count; i++)
             {
-                DateTime capturedAt = snapshots[i].RecordedAtUtc;
-                DateTime holdUntil = i + 1 < snapshots.Count ? snapshots[i + 1].RecordedAtUtc : toUtc;
+                DateTime capturedAt = snapshots[i].Row.RecordedAtUtc;
+                DateTime holdUntil = i + 1 < snapshots.Count ? snapshots[i + 1].Row.RecordedAtUtc : toUtc;
                 TimeSpan hold = holdUntil - capturedAt;
                 stills.Add(new TimelineStill(
-                    snapshots[i].FilePath,
+                    snapshots[i].Path,
                     new DateTimeOffset(capturedAt, TimeSpan.Zero),
                     hold < MinimumHold ? MinimumHold : hold));
             }
@@ -190,25 +205,52 @@ namespace VideoForensics.Client.Hosting.Services
         /// the still before it, so an outage becomes a gap that the builder fills with gray. The newest still is held to the
         /// window end unless a failure ends it first.
         /// </summary>
-        private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, string deviceName, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             IReadOnlyList<SnapshotCapture> rows = await _captures!.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
-            var records = rows.Select(r => new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, r.MediaFilePath)).ToList();
+            var records = new List<SnapshotStillRecord>(rows.Count);
+            foreach (SnapshotCapture r in rows)
+            {
+                string? path = string.IsNullOrWhiteSpace(r.MediaFilePath) ? null : await _mediaPaths.ToAbsoluteAsync(r.MediaFilePath, cancellationToken);
+                records.Add(new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, path));
+            }
 
             // The newest 200 is the only still that can be held to the window end; the mapper cuts it short at a later failure.
             DateTimeOffset? newestStill = rows.Where(r => r.HttpStatus == 200 && !string.IsNullOrWhiteSpace(r.MediaFilePath))
                 .Select(r => (DateTimeOffset?)r.CapturedAtUtc).Max();
             if (newestStill is null)
             {
+                LogNoUsableStill(deviceName, rows.Count);
                 return [];
             }
 
             TimeSpan lastHold = new DateTimeOffset(toUtc, TimeSpan.Zero) - newestStill.Value;
-            return _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, _options.Value.SnapshotRoot, lastHold < MinimumHold ? MinimumHold : lastHold));
+            IReadOnlyList<TimelineStill> stills = _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, lastHold < MinimumHold ? MinimumHold : lastHold));
+            if (stills.Count == 0)
+            {
+                LogNoUsableStill(deviceName, rows.Count);
+            }
+
+            return stills;
         }
 
-        /// <summary>Registers the MP4 as a Media row. RecordedAtUtc is the window end, which is unique per roll-up tick.</summary>
-        private async Task RecordLoopAsync(DeviceEntity device, string mp4Path, DateTime windowEndUtc, CancellationToken cancellationToken)
+        /// <summary>
+        /// Logs why a window with capture attempts built no loop. A quiet window with no attempts is normal and not logged.
+        /// Without this line a roll-up that finds no usable image records success and leaves no trace.
+        /// </summary>
+        private void LogNoUsableStill(string deviceName, int attemptCount)
+        {
+            if (attemptCount > 0)
+            {
+                _logger.LogWarning("Snapshot roll-up for {DeviceName} built no loop: {AttemptCount} capture attempts in the window, none with a usable image on disk", deviceName, attemptCount);
+            }
+        }
+
+        /// <summary>
+        /// Registers the MP4 as a Media row. The loop covers the real window [fromUtc, toUtc), so it starts at fromUtc and lasts
+        /// the window's length on the timeline. The MP4's own playback length is not used: analysis keeps this value for loops.
+        /// </summary>
+        private async Task RecordLoopAsync(DeviceEntity device, string mp4Path, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             byte[] hash;
             await using (FileStream stream = File.OpenRead(mp4Path))
@@ -221,15 +263,32 @@ namespace VideoForensics.Client.Hosting.Services
                 Id = Guid.NewGuid(),
                 DeviceId = device.Id,
                 FileName = Path.GetFileName(mp4Path),
-                FilePath = mp4Path,
+                FilePath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken),
                 MediaFormat = "mp4",
                 FileSizeBytes = new FileInfo(mp4Path).Length,
-                RecordedAtUtc = windowEndUtc,
+                RecordedAtUtc = fromUtc,
+                DurationSeconds = (toUtc - fromUtc).TotalSeconds,
                 DownloadedAtUtc = DateTime.UtcNow,
                 Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
                 IntegrityVerified = false,
                 // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
                 MetadataJson = SnapshotRollupMarker,
+            }, cancellationToken);
+
+            // The Events tab reads the Events table, so the loop also gets an event row at the loop's start. It is marked
+            // Downloaded so the event media puller never tries to fetch it from the provider. The window end is the key, so a
+            // rerun updates the same row.
+            DateTime now = DateTime.UtcNow;
+            _ = await _events.UpsertAsync(new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = device.Id,
+                ProviderEventId = $"{TimelapseEventType}-{toUtc:yyyyMMddHHmmss}",
+                EventType = TimelapseEventType,
+                OccurredAtUtc = fromUtc,
+                DiscoveredAtUtc = now,
+                DownloadedAtUtc = now,
+                DownloadStatus = EventDownloadStatus.Downloaded,
             }, cancellationToken);
 
             await _evidenceChanges.EvidenceChangedAsync(device.Id, cancellationToken);

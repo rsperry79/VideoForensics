@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -11,7 +10,7 @@ using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
-namespace VideoForensics.Data.Core.Tests
+namespace VideoForensics.Data.Core.Tests.Services
 {
     /// <summary>Device timelines come from stored snapshot attempts only, mapped by the real still mapper into a mocked builder.</summary>
     public class SnapshotTimelineServiceTests : IDisposable
@@ -39,9 +38,18 @@ namespace VideoForensics.Data.Core.Tests
             }
         }
 
+        /// <summary>Resolver that roots stored (relative) paths at the test folder.</summary>
+        private IMediaPathResolver RootedPaths()
+        {
+            var paths = new Mock<IMediaPathResolver>();
+            _ = paths.Setup(p => p.ToAbsoluteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string stored, CancellationToken _) => Path.Combine(_root, stored));
+            return paths.Object;
+        }
+
         private SnapshotTimelineService CreateService()
         {
-            return new(_captures.Object, new SnapshotStillMapper(), _builder.Object, Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }), NullLogger<SnapshotTimelineService>.Instance);
+            return new(_captures.Object, new SnapshotStillMapper(), _builder.Object, NullLogger<SnapshotTimelineService>.Instance, RootedPaths());
         }
 
         private string WriteMedia(string relativePath)

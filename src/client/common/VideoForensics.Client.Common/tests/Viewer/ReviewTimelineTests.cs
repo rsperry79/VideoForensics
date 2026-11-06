@@ -71,6 +71,26 @@ namespace VideoForensics.Client.Common.Tests.Viewer
             Assert.Equal(15, selection.OffsetSeconds, precision: 6);
         }
 
+        /// <summary>
+        /// Verifies that when clips overlap, the clip that starts latest wins. A time-lapse loop sits inside a longer motion
+        /// clip, and the loop is the clip the cursor means.
+        /// </summary>
+        [Fact]
+        public void ClipAt_OverlappingClips_ReturnsTheClipThatStartsLatest()
+        {
+            var clips = new List<ClipWindow>
+            {
+                new("motion", Start, 120),
+                new("loop", Start.AddSeconds(30), 30),
+            };
+
+            ClipSelection? selection = ReviewTimeline.ClipAt(clips, Start.AddSeconds(40));
+
+            Assert.NotNull(selection);
+            Assert.Equal("loop", selection.ClipId);
+            Assert.Equal(10, selection.OffsetSeconds, precision: 6);
+        }
+
         /// <summary>Verifies that a time in a gap between clips finds no clip, so the player can show a gap instead of stale video.</summary>
         [Fact]
         public void ClipAt_TimeInGap_ReturnsNull()

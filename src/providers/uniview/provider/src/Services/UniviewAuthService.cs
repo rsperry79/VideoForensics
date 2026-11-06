@@ -71,7 +71,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to persist Uniview credentials (non-fatal)");
+                    _logger.LogError("Failed to persist Uniview credentials (non-fatal): {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     // Continue - the session is valid even if database persistence fails
                 }
 
@@ -86,7 +86,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Uniview authentication failed");
+                _logger.LogError("Uniview authentication failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: ex.Message
@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Uniview authentication error");
+                _logger.LogError("Uniview authentication error: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: ex.Message
@@ -161,7 +161,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to refresh Uniview session");
+                _logger.LogError("Failed to refresh Uniview session: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -216,7 +216,7 @@ namespace VideoForensics.Providers.Uniview.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to restore credentials from database for {ProviderName} account", ProviderName);
+                        _logger.LogError("Failed to restore credentials from database for {ProviderName} account: {Message} ({ErrorType})", ProviderName, ex.Message, ex.GetType().Name);
                     }
                 }
 
@@ -236,7 +236,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to restore Uniview session from saved credentials");
+                _logger.LogError("Failed to restore Uniview session from saved credentials: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }
         }
@@ -280,7 +280,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to persist Uniview credentials");
+                _logger.LogError("Failed to persist Uniview credentials: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return null;
             }
         }

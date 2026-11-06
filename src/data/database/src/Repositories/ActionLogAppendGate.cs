@@ -41,9 +41,15 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Waits until no other flow holds the gate. Only call when <see cref="IsHeldByCurrentFlow"/> is false.</summary>
-        public static Task WaitAsync(CancellationToken ct) => Gate.WaitAsync(ct);
+        public static Task WaitAsync(CancellationToken ct)
+        {
+            return Gate.WaitAsync(ct);
+        }
 
         /// <summary>Releases the gate. Call exactly once for each successful <see cref="WaitAsync"/>.</summary>
-        public static void Release() => _ = Gate.Release();
+        public static void Release()
+        {
+            _ = Gate.Release();
+        }
     }
 }

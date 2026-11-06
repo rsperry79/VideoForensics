@@ -1,8 +1,8 @@
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Client.WebApp.Api;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -55,6 +55,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithDescription("Builds a chain of custody report showing the complete hash-chained audit trail for evidence integrity verification.");
 
             _ = group.MapPost("/write", WriteReportAsync)
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .RequireRateLimiting("media")
                 .WithSummary("Export report to file")

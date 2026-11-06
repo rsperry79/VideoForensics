@@ -1,0 +1,176 @@
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Contracts;
+
+namespace VideoForensics.Client.WebApp.Api
+{
+    /// <summary>
+    /// Database administration for the System &gt; Database page. Super Admin on the local tier only, like Storage and Logs.
+    /// Compact, repair, purge and chain repair change the database, so each runs as a maintenance run: new work is held back
+    /// while it runs. Purge and chain repair also need a step-up. Stats and validate only read.
+    /// </summary>
+    public static class DatabaseEndpoints
+    {
+        // Bounds one purge request. A validation pass over a large archive should purge in batches.
+        private const int MaxPurgeBatch = 5000;
+
+        public static void MapDatabaseEndpoints(this WebApplication app)
+        {
+            RouteGroupBuilder group = app.MapGroup("/api/v1/database")
+                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
+                .WithTags("Database");
+
+            _ = group.MapGet("/stats", async (IDatabaseAdministrationService admin, CancellationToken ct) =>
+                {
+                    DatabaseStatsResult stats = await admin.GetStatsAsync(ct);
+                    return Results.Ok(new DatabaseStatsDto(
+                        stats.File.Engine,
+                        stats.File.Location,
+                        stats.File.FileBytes,
+                        stats.File.PageCount,
+                        stats.File.FreePageCount,
+                        stats.File.PageSize,
+                        stats.File.JournalMode,
+                        stats.MediaItemCount,
+                        stats.PurgedMediaItemCount,
+                        stats.ActionLogEntryCount));
+                })
+                .WithName("GetDatabaseStats")
+                .WithSummary("Physical database stats and record counts");
+
+            _ = group.MapPost("/compact", (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    RunMaintenanceAsync(coordinator, "Compacting the database", async (sp, token) =>
+                    {
+                        await sp.GetRequiredService<IDatabaseAdministrationService>().CompactAsync(token);
+                        return Results.NoContent();
+                    }, ct))
+                .WithName("CompactDatabase")
+                .WithSummary("Rebuild the database file to reclaim free pages");
+
+            _ = group.MapPost("/repair", (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    RunMaintenanceAsync(coordinator, "Checking and rebuilding the database", async (sp, token) =>
+                        Results.Ok(new RepairVerdictDto(await sp.GetRequiredService<IDatabaseAdministrationService>().RepairAsync(token))), ct))
+                .WithName("RepairDatabase")
+                .WithSummary("Integrity check and index rebuild");
+
+            _ = group.MapGet("/validate", async (IDatabaseAdministrationService admin, CancellationToken ct) =>
+                {
+                    DatabaseValidationResult result = await admin.ValidateAsync(ct);
+                    return Results.Ok(new DatabaseValidationDto(
+                        result.MissingMedia.Select(m => new MissingMediaDto(m.MediaItemId, m.FileName, m.ResolvedPath)).ToList(),
+                        ToDto(result.Chain),
+                        result.IsClean));
+                })
+                .WithName("ValidateDatabase")
+                .WithSummary("List media rows without files and check the action log chain. Changes nothing.");
+
+            _ = group.MapPost("/purge-missing", (PurgeMissingRequest request, MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    {
+                        return request.MediaItemIds.Count is 0 or > MaxPurgeBatch
+                            ? Task.FromResult(Results.ValidationProblem(new Dictionary<string, string[]>
+                            {
+                                [nameof(request.MediaItemIds)] = [$"Send between 1 and {MaxPurgeBatch} ids."],
+                            }))
+                            : RunMaintenanceAsync(coordinator, "Purging missing media records", async (sp, token) =>
+                            Results.Ok(new PurgeMissingResultDto(await sp.GetRequiredService<IDatabaseAdministrationService>().PurgeMissingMediaAsync(request.MediaItemIds, token))), ct);
+                    })
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .WithName("PurgeMissingMedia")
+                .WithSummary("Purge media rows whose files are missing. Legal holds are skipped.");
+
+            _ = group.MapPost("/repair-chain", (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                    RunMaintenanceAsync(coordinator, "Repairing the action log chain", async (sp, token) =>
+                    {
+                        ChainRepairResult result = await sp.GetRequiredService<IDatabaseAdministrationService>().RepairChainAsync(token);
+                        return Results.Ok(new ChainRepairResultDto(
+                            result.BridgesAdded,
+                            result.Unrepairable is null ? null : ToDto(result.Unrepairable)));
+                    }, ct))
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .WithName("RepairActionLogChain")
+                .WithSummary("Bridge action log gaps with logged ChainRepaired entries. Altered entries are never bridged.");
+
+            // Used by the offline repair tool, which opens the database file itself. The hold lasts until end, until the
+            // tool stops renewing it, or until the coordinator's safety timeout ends it, so a crashed tool cannot leave the server paused.
+            _ = group.MapPost("/maintenance/begin", async (MaintenanceCoordinator coordinator, CancellationToken ct) =>
+                {
+                    try
+                    {
+                        Guid token = await coordinator.BeginHoldAsync("Server held for an offline database tool", ct);
+                        return Results.Ok(new MaintenanceHoldResponse(token));
+                    }
+                    catch (MaintenanceInProgressException ex)
+                    {
+                        return Results.Conflict(ex.Message);
+                    }
+                    catch (MaintenanceDrainTimeoutException ex)
+                    {
+                        return Results.Text(ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+                    }
+                })
+                .WithName("BeginDatabaseMaintenanceHold")
+                .WithSummary("Drain work, release database connections and hold maintenance for an offline database tool. Returns the hold token.");
+
+            _ = group.MapPost("/maintenance/renew", (MaintenanceHoldRequest request, MaintenanceCoordinator coordinator) =>
+                    RenewHoldResponse(coordinator.RenewHoldOutcome(request.HoldToken)))
+                .WithName("RenewDatabaseMaintenanceHold")
+                .WithSummary("Restart the safety timeout of the maintenance hold with this token. 404 when the token is not the active hold. 409 when the hold reached its maximum age.");
+
+            _ = group.MapPost("/maintenance/end", (MaintenanceHoldRequest request, MaintenanceCoordinator coordinator) =>
+                    coordinator.EndHold(request.HoldToken) ? Results.NoContent() : Results.NotFound())
+                .WithName("EndDatabaseMaintenanceHold")
+                .WithSummary("End the maintenance hold with this token. 404 when the token is not the active hold.");
+        }
+
+        // Why: a hold past its maximum age gets 409 with the reason, so the tool stops renewing instead of retrying a token that will never be extended.
+        internal static IResult RenewHoldResponse(HoldRenewResult outcome)
+        {
+            return outcome switch
+            {
+                HoldRenewResult.Renewed => Results.NoContent(),
+                HoldRenewResult.MaxAgeReached => Results.Conflict("The maintenance hold reached its 4-hour maximum and was not renewed. It ends at that limit."),
+                _ => Results.NotFound(),
+            };
+        }
+
+        // Turns an overlapping run into 409 Conflict. Other failures are not caught here, so they surface as server errors.
+        private static async Task<IResult> RunMaintenanceAsync(
+            MaintenanceCoordinator coordinator,
+            string description,
+            Func<IServiceProvider, CancellationToken, Task<IResult>> operation,
+            CancellationToken ct)
+        {
+            try
+            {
+                return await coordinator.RunAsync(description, operation, ct);
+            }
+            catch (MaintenanceInProgressException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
+            catch (MaintenanceDrainTimeoutException ex)
+            {
+                return Results.Text(ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+        }
+
+        private static ChainCheckDto ToDto(ChainIntegrityResult chain)
+        {
+            return new ChainCheckDto(
+                chain.IsValid,
+                chain.EntriesChecked,
+                chain.Break.ToString(),
+                chain.FailedEntryId,
+                chain.FailedEntryTimestampUtc);
+        }
+    }
+
+    /// <summary>Response of the maintenance begin call: the token that ends or renews the hold.</summary>
+    /// <param name="HoldToken">Token of the hold that was started.</param>
+    public sealed record MaintenanceHoldResponse(Guid HoldToken);
+
+    /// <summary>Request body of the maintenance renew and end calls.</summary>
+    /// <param name="HoldToken">Token returned by the begin call.</param>
+    public sealed record MaintenanceHoldRequest(Guid HoldToken);
+}

@@ -13,8 +13,10 @@ namespace VideoForensics.Client.Platform.Windows
     public static class ServiceRestartScheduler
     {
         /// <summary>Builds the cmd.exe arguments: wait for this process to exit, then start the service.</summary>
-        public static string BuildArguments(string serviceName, int delaySeconds) =>
-            $"/c timeout /t {delaySeconds} /nobreak >nul & sc.exe start {serviceName}";
+        public static string BuildArguments(string serviceName, int delaySeconds)
+        {
+            return $"/c timeout /t {delaySeconds} /nobreak >nul & sc.exe start {serviceName}";
+        }
 
         /// <summary>
         /// Launches the detached helper. Returns false when it could not be started, in which case the caller must not
@@ -24,7 +26,7 @@ namespace VideoForensics.Client.Platform.Windows
         {
             try
             {
-                using Process? helper = Process.Start(new ProcessStartInfo("cmd.exe")
+                using var helper = Process.Start(new ProcessStartInfo("cmd.exe")
                 {
                     Arguments = BuildArguments(serviceName, delaySeconds),
                     UseShellExecute = false,

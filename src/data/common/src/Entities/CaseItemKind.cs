@@ -7,6 +7,9 @@ namespace VideoForensics.Data.Common.Entities
         Event = 0,
 
         /// <summary>A downloaded media file.</summary>
-        Media = 1
+        Media = 1,
+
+        /// <summary>A snapshot still captured from a device.</summary>
+        Snapshot = 2
     }
 }

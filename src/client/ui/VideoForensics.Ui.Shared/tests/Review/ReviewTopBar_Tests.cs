@@ -1,8 +1,7 @@
-using AngleSharp.Dom;
+using Bunit;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Bunit;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Review;
@@ -10,7 +9,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review top bar: back button, range presets, popups, and case banner.</summary>
 public class ReviewTopBar_Tests : ReviewTestContext
@@ -117,11 +116,11 @@ public class ReviewTopBar_Tests : ReviewTestContext
         Assert.Empty(cut.FindAll("[data-testid='review-pending-tags-count']"));
 
         // Act
-        cut.InvokeAsync(() => Services.GetRequiredService<PendingEvidenceTags>().Add(new PendingTag(
+        _ = cut.InvokeAsync(() => Services.GetRequiredService<PendingEvidenceTags>().Add(new PendingTag(
             CaseItemKind.Media, Guid.NewGuid(), Devices[0].Id, FixedNowUtc, PendingTagFakes.Reason, "actor-1")));
 
         // Assert
-        Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
+        _ = Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
     }
 
     [Fact]
@@ -148,5 +147,4 @@ public class ReviewTopBar_Tests : ReviewTestContext
         // Assert
         Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
     }
-
 }

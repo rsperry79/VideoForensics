@@ -31,7 +31,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error appending device setting change records");
+                _logger.LogError("Error appending device setting change records: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
             }
         }

@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 
 using System;
-using System.Runtime.Versioning;
 
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Core.Logging.Providers;
@@ -103,7 +102,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             // provider writes to the same singleton the endpoints read (no throwaway service provider).
             _ = logging.Services.AddSingleton<ILoggerProvider>(sp =>
                 sp.GetService<InMemoryLogBuffer>() is { } buffer
-                    ? new InMemoryLogBufferProvider(buffer)
+                    ? new InMemoryLogBufferProvider(buffer, sp.GetService<LogLevelSource>())
                     : NullLoggerProvider.Instance);
             return logging;
         }

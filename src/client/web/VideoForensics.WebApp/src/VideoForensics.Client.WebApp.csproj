@@ -35,7 +35,7 @@
     <!-- systemd integration on Linux (plan: allows app to run as a systemd service; no-op on other platforms). -->
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.14" />
     <!-- MCP (Model Context Protocol) HTTP hosting over ASP.NET Core (Milestone 8 client/server split) -->
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.1" />
     <!-- GeoIP lookup using MaxMind GeoLite2 database for country-based login blocking. -->
     <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
     <PackageReference Include="System.Reactive" Version="7.0.0" />
@@ -44,6 +44,19 @@
   <ItemGroup>
     <InternalsVisibleTo Include="VideoForensics.Client.WebApp.Tests" />
   </ItemGroup>
+
+  <!-- Syncfusion key for release builds. CI writes this file from the SYNCFUSION_LICENSE_KEY secret before building.
+       Local builds have no file, so the registrar falls through to Client.Core user secrets. Never committed (.gitignore). -->
+  <ItemGroup>
+    <EmbeddedResource Include="syncfusion-license.key" LogicalName="syncfusion-license.key" Condition="Exists('syncfusion-license.key')" />
+  </ItemGroup>
+
+  <!-- Visual Studio Debug builds stage themselves for the installed service, which applies the package and restarts.
+       Off unless StageDebugBuild=true is set (for example in the user environment), so ordinary builds do not restart the server.
+       Command-line builds, including the test projects, do not stage. -->
+  <Target Name="StageDebugBuildForService" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' == 'true' And '$(StageDebugBuild)' == 'true'">
+    <Exec Command="wscript.exe //B //Nologo &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.vbs&quot; &quot;$(MSBuildThisFileDirectory)..\..\..\..\..\deploy\windows\stage-debug-build.ps1&quot; &quot;$(MSBuildProjectFullPath)&quot; $(Configuration) &quot;$(ProjectDir)$(IntermediateOutputPath)stage-debug-build.log&quot;" />
+  </Target>
 
   <!-- Ui.Shared's src\ts\tsconfig.json is a TypeScript build input, not a runtime file. It reaches the publish
        list through the project reference and collides with this project's own copy at the same relative path
@@ -59,6 +72,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj" />
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\..\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
     <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />

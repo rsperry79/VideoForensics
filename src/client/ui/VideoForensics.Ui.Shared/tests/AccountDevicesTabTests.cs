@@ -1,16 +1,11 @@
-
-using System.Reactive.Subjects;
-
 using Bunit;
-
-using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -19,14 +14,12 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Source double whose changes the test pushes directly, standing in for the realtime store.</summary>
 public sealed class DeviceHealthChangedSourceDouble : IDeviceHealthChangedSource
 {
-    private readonly IObservable<DeviceHealthChangedDto> _changes;
-
     public DeviceHealthChangedSourceDouble(IObservable<DeviceHealthChangedDto> changes)
     {
-        _changes = changes;
+        DeviceHealthChanged = changes;
     }
 
-    public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => _changes;
+    public IObservable<DeviceHealthChangedDto> DeviceHealthChanged { get; }
 }
 
 /// <summary>The Devices tab: one row per device with its uptime status, and a warning when it has gone quiet.</summary>

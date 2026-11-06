@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     public class SnapshotCaptureRepositoryTests : IAsyncLifetime
     {
@@ -43,6 +43,21 @@ namespace VideoForensics.Data.Database.Tests
             Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Snapshot Camera");
             await _deviceRepository.AddAsync(device, CancellationToken.None);
             return device.Id;
+        }
+
+        [Fact]
+        public async Task SnapshotCapture_GetById_ReturnsMatchingCaptureOrNull()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            var capture = SnapshotCapture.Create(deviceId, T0, "fresh", 200, "Devices/x/by-id.jpg", null);
+            _ = await _repository.AddAsync(capture, CancellationToken.None);
+
+            SnapshotCapture? found = await _repository.GetAsync(capture.Id, CancellationToken.None);
+            SnapshotCapture? missing = await _repository.GetAsync(Guid.NewGuid(), CancellationToken.None);
+
+            Assert.NotNull(found);
+            Assert.Equal("Devices/x/by-id.jpg", found!.MediaFilePath);
+            Assert.Null(missing);
         }
 
         [Fact]

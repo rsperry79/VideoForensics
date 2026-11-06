@@ -2,8 +2,8 @@ using Microsoft.Extensions.Configuration;
 
 using Moq;
 
-using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Client.WebApp.Api;
 
 using Xunit;
 

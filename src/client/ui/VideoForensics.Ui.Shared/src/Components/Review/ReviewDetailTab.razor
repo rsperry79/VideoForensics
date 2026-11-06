@@ -17,76 +17,120 @@
 @inject ILogger<ReviewDetailTab> Logger
 
 <section class="review-tab-panel review-detail-tab" data-testid="review-tab-detail">
-    <div class="review-detail-section" data-testid="review-detail-jamming">
-        <h6>@L["DetailJammingTitle"]</h6>
-        @if (State.CameraIds.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
-        }
-        else if (_jammingError)
-        {
-            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-jamming-error">@L["DetailJammingLoadFailed"]</p>
-        }
-        else if (_jamming is null || !_jamming.Key.Matches(State))
-        {
-            <p class="review-events-message" role="status" data-testid="review-detail-jamming-loading">@L["DetailJammingLoading"]</p>
-        }
-        else if (_jamming.Items.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-jamming-empty">@L["DetailJammingEmpty"]</p>
-        }
-        else
-        {
-            <div class="list-group">
-                @foreach (JammingIncidentRecord incident in _jamming.Items)
-                {
-                    <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
-                            data-testid="review-detail-jamming-row" @onclick="() => NavigateTo(incident.DeviceId, incident.StartUtc)">
-                        <span class="review-event-camera">@CameraName(incident.DeviceId)</span>
-                        <span class="review-detail-range"><LocalTimeText Value="incident.StartUtc" Format="g" /></span>
-                        <span class="review-detail-range"><LocalTimeText Value="incident.EndUtc" Format="g" /></span>
-                        <span class="text-body-secondary">@L["DetailFieldConfidence"] @ConfidenceLabel(incident.Confidence)</span>
-                        <span class="text-body-secondary">@string.Format(L["DetailJammingAffected"].Value, incident.AffectedEventCount)</span>
-                    </button>
-                }
-            </div>
-        }
-    </div>
+    @if (ShowJamming)
+    {
+        <div class="review-detail-section" data-testid="review-detail-jamming">
+            <h6>@L["DetailJammingTitle"]</h6>
+            @if (State.CameraIds.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+            }
+            else if (_jammingError)
+            {
+                <p class="review-events-message text-danger" role="alert" data-testid="review-detail-jamming-error">@L["DetailJammingLoadFailed"]</p>
+            }
+            else if (_jamming is null || !_jamming.Key.Matches(State))
+            {
+                <p class="review-events-message" role="status" data-testid="review-detail-jamming-loading">@L["DetailJammingLoading"]</p>
+            }
+            else if (_jamming.Items.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-jamming-empty">@L["DetailJammingEmpty"]</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (JammingIncidentRecord incident in _jamming.Items)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                                data-testid="review-detail-jamming-row" @onclick="() => NavigateTo(incident.DeviceId, incident.StartUtc)">
+                            <span class="review-event-camera">@CameraName(incident.DeviceId)</span>
+                            <span class="review-detail-range"><LocalTimeText Value="incident.StartUtc" Format="g" /></span>
+                            <span class="review-detail-range"><LocalTimeText Value="incident.EndUtc" Format="g" /></span>
+                            <span class="text-body-secondary">@L["DetailFieldConfidence"] @ConfidenceLabel(incident.Confidence)</span>
+                            <span class="text-body-secondary">@string.Format(L["DetailJammingAffected"].Value, incident.AffectedEventCount)</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
 
-    <div class="review-detail-section mt-3" data-testid="review-detail-anomalies">
-        <h6>@L["DetailAnomaliesTitle"]</h6>
-        @if (State.CameraIds.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
-        }
-        else if (_anomaliesError)
-        {
-            <p class="review-events-message text-danger" role="alert" data-testid="review-detail-anomalies-error">@L["DetailAnomaliesLoadFailed"]</p>
-        }
-        else if (_anomalies is null || !_anomalies.Key.Matches(State))
-        {
-            <p class="review-events-message" role="status" data-testid="review-detail-anomalies-loading">@L["DetailAnomaliesLoading"]</p>
-        }
-        else if (_anomalies.Items.Count == 0)
-        {
-            <p class="review-events-message" data-testid="review-detail-anomalies-empty">@L["DetailAnomaliesEmpty"]</p>
-        }
-        else
-        {
-            <div class="list-group">
-                @foreach (ReviewAnomaly anomaly in _anomalies.Items)
-                {
-                    <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
-                            data-testid="review-detail-anomaly-row" @onclick="() => NavigateTo(anomaly.DeviceId, anomaly.StartUtc)">
-                        <span class="review-event-camera">@CameraName(anomaly.DeviceId)</span>
-                        <span class="review-detail-range"><LocalTimeText Value="anomaly.StartUtc" Format="g" /></span>
-                        <span class="review-detail-range"><LocalTimeText Value="anomaly.EndUtc" Format="g" /></span>
-                        <span class="text-body-secondary">@LevelLabel(anomaly.Level)</span>
-                    </button>
-                }
-            </div>
-        }
-    </div>
+    @if (ShowAnomalies)
+    {
+        <div class="review-detail-section mt-3" data-testid="review-detail-anomalies">
+            <h6>@L["DetailAnomaliesTitle"]</h6>
+            @if (State.CameraIds.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+            }
+            else if (_anomaliesError)
+            {
+                <p class="review-events-message text-danger" role="alert" data-testid="review-detail-anomalies-error">@L["DetailAnomaliesLoadFailed"]</p>
+            }
+            else if (_anomalies is null || !_anomalies.Key.Matches(State))
+            {
+                <p class="review-events-message" role="status" data-testid="review-detail-anomalies-loading">@L["DetailAnomaliesLoading"]</p>
+            }
+            else if (_anomalies.Items.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-anomalies-empty">@L["DetailAnomaliesEmpty"]</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (ReviewAnomaly anomaly in _anomalies.Items)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                                data-testid="review-detail-anomaly-row" @onclick="() => NavigateTo(anomaly.DeviceId, anomaly.StartUtc)">
+                            <span class="review-event-camera">@CameraName(anomaly.DeviceId)</span>
+                            <span class="review-detail-range"><LocalTimeText Value="anomaly.StartUtc" Format="g" /></span>
+                            <span class="review-detail-range"><LocalTimeText Value="anomaly.EndUtc" Format="g" /></span>
+                            <span class="text-body-secondary">@LevelLabel(anomaly.Level)</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @if (ShowBitRate)
+    {
+        <div class="review-detail-section mt-3" data-testid="review-detail-bitrate">
+            <h6>@L["DetailBitRateTitle"]</h6>
+            @if (State.CameraIds.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-no-cameras">@L["DetailNoCameras"]</p>
+            }
+            else if (_bitRateError)
+            {
+                <p class="review-events-message text-danger" role="alert" data-testid="review-detail-bitrate-error">@L["DetailBitRateLoadFailed"]</p>
+            }
+            else if (_bitRate is null || !_bitRate.Key.Matches(State))
+            {
+                <p class="review-events-message" role="status" data-testid="review-detail-bitrate-loading">@L["DetailBitRateLoading"]</p>
+            }
+            else if (_bitRate.Items.Count == 0)
+            {
+                <p class="review-events-message" data-testid="review-detail-bitrate-empty">@L["DetailBitRateEmpty"]</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (ReviewBitRateFlag flag in _bitRate.Items)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
+                                data-testid="review-detail-bitrate-row" @onclick="() => NavigateTo(flag.DeviceId, flag.StartUtc)">
+                            <span class="review-event-camera">@CameraName(flag.DeviceId)</span>
+                            <span class="review-detail-range"><LocalTimeText Value="flag.StartUtc" Format="g" /></span>
+                            <span class="review-detail-range"><LocalTimeText Value="flag.EndUtc" Format="g" /></span>
+                            <span class="text-body-secondary">@BitRateLabel(flag.FlagType)</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
 
     <div class="review-detail-section mt-3" data-testid="review-detail-events">
         <h6>@L["DetailEventsTitle"]</h6>
@@ -114,7 +158,7 @@
                 @foreach (Event evt in _events.Items)
                 {
                     bool selected = evt.Id == State.SelectedEventId;
-                    bool expanded = evt.Id == _expandedId;
+                    bool expanded = _expandedIds.Contains(evt.Id);
                     <div class="review-detail-event" data-testid="review-detail-event">
                         <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center @(selected ? "active" : string.Empty)"
                                 aria-expanded="@(expanded ? "true" : "false")"
@@ -124,7 +168,7 @@
                                 @onclick="() => ToggleEventAsync(evt.Id)">
                             <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
                             <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
-                            <span class="review-event-type">@TypeLabel(evt.EventType)</span>
+                            <span class="review-event-type">@RowTypeLabel(evt)</span>
                         </button>
 
                         @if (expanded)
@@ -161,7 +205,7 @@
                                             @if (!string.IsNullOrWhiteSpace(det.DetectionType))
                                             {
                                                 <dt>@L["DetailFieldDetectionType"]</dt>
-                                                <dd>@DetectionLabel(det.DetectionType)</dd>
+                                                <dd>@DetectionLabel(det.DetectionType, evt.EventType)</dd>
                                             }
                                             @if (Percent(det.Confidence) is { } confidence)
                                             {
@@ -198,7 +242,7 @@
                                             {
                                                 <button type="button" class="list-group-item list-group-item-action py-1 small"
                                                         data-testid="review-detail-occurrence" @onclick="() => NavigateTo(evt.DeviceId, occurrence.DetectedAtUtc)">
-                                                    <span>@DetectionLabel(occurrence.DetectionType)</span>
+                                                    <span>@DetectionLabel(occurrence.DetectionType, evt.EventType)</span>
                                                     <span class="review-detail-range"><LocalTimeText Value="occurrence.DetectedAtUtc" Format="g" /></span>
                                                 </button>
                                             }
@@ -279,6 +323,10 @@
     private bool _anomaliesError;
     private CancellationTokenSource? _anomaliesCts;
 
+    private Loaded<ReviewBitRateFlag>? _bitRate;
+    private bool _bitRateError;
+    private CancellationTokenSource? _bitRateCts;
+
     private LoadedEvents? _events;
     private bool _eventsError;
     private bool _eventsLoadingMore;
@@ -287,7 +335,8 @@
     private readonly Dictionary<Guid, EventDetail?> _details = [];
     private readonly HashSet<Guid> _detailInFlight = [];
     private readonly HashSet<Guid> _detailFailed = [];
-    private Guid? _expandedId;
+    // Every loaded row is expanded by default, so its detection type and fields show without a click.
+    private readonly HashSet<Guid> _expandedIds = [];
     private Guid? _autoExpandedFor;
 
     private IDisposable? _evidenceSubscription;
@@ -347,6 +396,7 @@
         _shownDeviceIds = _key.Cameras.ToHashSet();
         _ = LoadJammingAsync(reset: true);
         _ = LoadAnomaliesAsync(reset: true);
+        _ = LoadBitRateAsync(reset: true);
         _ = LoadEventsAsync(LoadMode.Reset);
     }
 
@@ -369,6 +419,7 @@
 
         _ = LoadJammingAsync(reset: false);
         _ = LoadAnomaliesAsync(reset: false);
+        _ = LoadBitRateAsync(reset: false);
         return Task.CompletedTask;
     }
 
@@ -387,7 +438,7 @@
 
         DetailKey key = CurrentKey();
         _jammingError = false;
-        if (key.Cameras.Count == 0)
+        if (key.Cameras.Count == 0 || !ShowJamming)
         {
             _jamming = null;
             StateHasChanged();
@@ -448,7 +499,7 @@
 
         DetailKey key = CurrentKey();
         _anomaliesError = false;
-        if (key.Cameras.Count == 0)
+        if (key.Cameras.Count == 0 || !ShowAnomalies)
         {
             _anomalies = null;
             StateHasChanged();
@@ -485,6 +536,66 @@
             Logger.LogError("Could not load anomalies: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
             _anomalies = null;
             _anomaliesError = true;
+        }
+
+        if (IsCurrent(cts))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadBitRateAsync(bool reset)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _bitRateCts?.Cancel();
+        _bitRateCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _bitRateCts = cts;
+        CancellationToken ct = cts.Token;
+
+        DetailKey key = CurrentKey();
+        _bitRateError = false;
+        if (key.Cameras.Count == 0 || !ShowBitRate)
+        {
+            _bitRate = null;
+            StateHasChanged();
+            return;
+        }
+
+        if (reset)
+        {
+            _bitRate = null;
+            StateHasChanged();
+        }
+
+        try
+        {
+            IReadOnlyList<ReviewBitRateFlag> rows = await DetailLoader.LoadBitRateFlagsAsync(key.Cameras, key.FromUtc, key.ToUtc, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            _bitRate = new Loaded<ReviewBitRateFlag>(key, rows);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load bit rate flags: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _bitRate = null;
+            _bitRateError = true;
         }
 
         if (IsCurrent(cts))
@@ -553,7 +664,7 @@
 
         try
         {
-            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, skip, take, ct);
+            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, ReviewEventFilters.ProviderTypes(key.EventTypes), skip, take, ct);
             if (!IsCurrent(cts))
             {
                 return;
@@ -571,12 +682,9 @@
                     _details.Remove(row.Id);
                 }
 
-                if (_expandedId is Guid expanded && _events.Items.Any(row => row.Id == expanded))
-                {
-                    await EnsureDetailAsync(expanded);
-                }
             }
 
+            await LoadAllDetailsAsync();
             await ExpandSelectedAsync();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -604,8 +712,59 @@
 
     private Task ToggleEventAsync(Guid id)
     {
-        _expandedId = _expandedId == id ? null : id;
-        return _expandedId is Guid expanded ? EnsureDetailAsync(expanded) : Task.CompletedTask;
+        if (_expandedIds.Remove(id))
+        {
+            return Task.CompletedTask;
+        }
+
+        _expandedIds.Add(id);
+        return EnsureDetailAsync(id);
+    }
+
+    /// <summary>
+    /// Expands every row on the loaded pages and reads their details in one batch. The detail decides a motion row's label
+    /// (Person, Vehicle and so on), so each row needs it even before it is clicked.
+    /// </summary>
+    private async Task LoadAllDetailsAsync()
+    {
+        if (_events is null || _disposed)
+        {
+            return;
+        }
+
+        _expandedIds.UnionWith(_events.Items.Select(row => row.Id));
+        Guid[] missing = _events.Items.Select(row => row.Id)
+            .Where(id => !_details.ContainsKey(id) && !_detailInFlight.Contains(id))
+            .ToArray();
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        _detailInFlight.UnionWith(missing);
+        try
+        {
+            IReadOnlyDictionary<Guid, EventDetail> rows = await DetailLoader.LoadEventDetailsAsync(missing, _disposeCts.Token);
+            foreach (Guid id in missing)
+            {
+                _details[id] = rows.TryGetValue(id, out EventDetail? detail) ? detail : null;
+            }
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not load event details for the detail list: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            foreach (Guid id in missing)
+            {
+                _detailFailed.Add(id);
+            }
+        }
+        finally
+        {
+            _detailInFlight.ExceptWith(missing);
+        }
     }
 
     /// <summary>
@@ -626,7 +785,7 @@
         }
 
         _autoExpandedFor = selected;
-        _expandedId = selected;
+        _ = _expandedIds.Add(selected.Value);
         await EnsureDetailAsync(selected.Value);
     }
 
@@ -691,9 +850,21 @@
         return !_disposed && !cts.IsCancellationRequested;
     }
 
+    private bool ShowJamming => ReviewEventFilters.Shows(State.EventTypes, ReviewEventFilters.Jamming);
+
+    private bool ShowAnomalies => ReviewEventFilters.Shows(State.EventTypes, ReviewEventFilters.SignalAnomaly);
+
+    private bool ShowBitRate => ReviewEventFilters.Shows(State.EventTypes, ReviewEventFilters.BitRate);
+
+    /// <summary>The localized name of a bit-rate flag type.</summary>
+    private string BitRateLabel(MediaFlagType flagType)
+    {
+        return flagType == MediaFlagType.BitrateDeviation ? L["DetailBitRateDeviation"].Value : L["DetailBitRateCollapse"].Value;
+    }
+
     private DetailKey CurrentKey()
     {
-        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc);
+        return new DetailKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc, State.EventTypes.ToList());
     }
 
     private string CameraName(Guid deviceId)
@@ -704,20 +875,19 @@
     /// <summary>The localized label for a provider event type. A type with no label shows its raw string.</summary>
     private string TypeLabel(string eventType)
     {
-        if (string.IsNullOrWhiteSpace(eventType))
-        {
-            return L["EventTypeUnknown"].Value;
-        }
-
-        LocalizedString label = L["EventType_" + eventType.ToLowerInvariant()];
-        return label.ResourceNotFound ? eventType : label.Value;
+        return ReviewEventLabels.TypeLabel(L, eventType);
     }
 
-    /// <summary>The localized label for a Ring detection type. A type with no label shows its raw string.</summary>
-    private string DetectionLabel(string detectionType)
+    /// <summary>The row's label: the detection type once its detail has loaded, else the event's own type.</summary>
+    private string RowTypeLabel(Event evt)
     {
-        LocalizedString label = L["DetectionType_" + detectionType.ToLowerInvariant()];
-        return label.ResourceNotFound ? detectionType : label.Value;
+        _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
+        return ReviewEventLabels.RowLabel(L, evt, detail);
+    }
+
+    private string DetectionLabel(string detectionType, string eventType)
+    {
+        return ReviewEventLabels.DetectionLabel(L, detectionType, eventType);
     }
 
     private string ConfidenceLabel(JammingConfidenceLevel level)
@@ -764,6 +934,8 @@
         _jammingCts?.Dispose();
         _anomaliesCts?.Cancel();
         _anomaliesCts?.Dispose();
+        _bitRateCts?.Cancel();
+        _bitRateCts?.Dispose();
         _eventsCts?.Cancel();
         _eventsCts?.Dispose();
         _disposeCts.Cancel();
@@ -778,11 +950,11 @@
     }
 
     /// <summary>The cameras and range one load asked for. A section is only shown while this still matches the state.</summary>
-    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc)
+    private sealed record DetailKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc, IReadOnlyList<string> EventTypes)
     {
         public bool Matches(ReviewPageState state)
         {
-            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc;
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc && EventTypes.SequenceEqual(state.EventTypes);
         }
     }
 

@@ -32,7 +32,7 @@ public class SignalBucketTests
     [Fact]
     public void Compute_GroupsReadingsByDayWithTheStatsForEachDay()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(new DateTime(2026, 10, 20, 1, 0, 0, DateTimeKind.Utc), -50),
             new SignalSample(new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc), -70),
@@ -53,7 +53,7 @@ public class SignalBucketTests
     [Fact]
     public void Compute_CountsNoSignalReadingsSeparatelyFromTheStats()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(new DateTime(2026, 10, 20, 1, 0, 0, DateTimeKind.Utc), null),
             new SignalSample(new DateTime(2026, 10, 20, 2, 0, 0, DateTimeKind.Utc), -55),
@@ -68,7 +68,7 @@ public class SignalBucketTests
     [Fact]
     public void Compute_LeavesOutBucketsWithNoReadings()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(new DateTime(2026, 10, 20, 1, 0, 0, DateTimeKind.Utc), -50),
             new SignalSample(new DateTime(2026, 10, 24, 1, 0, 0, DateTimeKind.Utc), -50),
@@ -82,7 +82,7 @@ public class SignalBucketTests
     [Fact]
     public void Compute_IgnoresReadingsOutsideTheWindow()
     {
-        var samples = new[] { new SignalSample(From.AddDays(-2), -50) };
+        SignalSample[] samples = new[] { new SignalSample(From.AddDays(-2), -50) };
 
         Assert.Empty(SignalBuckets.Compute(samples, From, To, SignalBucket.Week));
     }
@@ -90,7 +90,7 @@ public class SignalBucketTests
     [Fact]
     public void Compute_GroupsByHour()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(new DateTime(2026, 10, 20, 9, 5, 0, DateTimeKind.Utc), -50),
             new SignalSample(new DateTime(2026, 10, 20, 9, 55, 0, DateTimeKind.Utc), -60),

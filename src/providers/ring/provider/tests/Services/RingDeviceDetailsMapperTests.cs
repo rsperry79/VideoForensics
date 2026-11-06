@@ -7,7 +7,9 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+using RingDeviceDetails = VideoForensics.Providers.Ring.Services.RingDeviceDetails;
+
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     public class RingDeviceDetailsMapperTests
     {
@@ -39,6 +41,54 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.False(details.ShowRecordings);
             Assert.Equal("online", details.AlertConnection);
             Assert.Null(details.HasAudio);
+        }
+
+        [Fact]
+        public void ToDeviceFields_StickupCamNestedMotionAndChimeGroups_FillTheDeviceColumns()
+        {
+            var cam = new StickupCam
+            {
+                Id = 456L,
+                Settings = JsonSerializer.Deserialize<StickupCamSettings>(
+                    "{\"motion_settings\":{\"motion_detection_enabled\":true},\"chime_settings\":{\"type\":2,\"enable\":true,\"duration\":5},\"pir_settings\":{\"sensitivity_1\":4}}")
+            };
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(cam);
+
+            Assert.True(fields.MotionDetectionEnabled);
+            Assert.Equal(2, fields.SettingsChimeType);
+            Assert.True(fields.SettingsChimeEnabled);
+            Assert.Equal(5, fields.SettingsChimeDuration);
+            Assert.Equal(4, fields.PirSettingsSensitivity1);
+        }
+
+        [Fact]
+        public void ToDeviceFields_StickupCamFlatMotionDetectionKey_FillsTheDeviceColumn()
+        {
+            var cam = new StickupCam { Id = 456L, Settings = JsonSerializer.Deserialize<StickupCamSettings>("{\"motion_detection_enabled\":false}") };
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(cam);
+
+            Assert.False(fields.MotionDetectionEnabled);
+        }
+
+        [Fact]
+        public void ToDeviceFields_DoorbotPirSettingsGroup_FillsThePirColumns()
+        {
+            var doorbot = new Doorbot
+            {
+                Id = 123,
+                Settings = JsonSerializer.Deserialize<DoorbotSettings>(
+                    "{\"pir_settings\":{\"sensitivity_1\":1,\"sensitivity_2\":2,\"sensitivity_3\":3,\"zone_enable\":1,\"zone_mask\":15}}")
+            };
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.Equal(1, fields.PirSettingsSensitivity1);
+            Assert.Equal(2, fields.PirSettingsSensitivity2);
+            Assert.Equal(3, fields.PirSettingsSensitivity3);
+            Assert.Equal(1, fields.PirSettingsZoneEnable);
+            Assert.Equal(15, fields.PirSettingsZoneMask);
         }
 
         [Fact]
@@ -195,6 +245,44 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(fields.ExternalConnection);
             Assert.True(fields.Owned);
             Assert.False(fields.Stolen);
+        }
+
+        [Fact]
+        public void ToDeviceFields_DoorbotSettings_MapsNineSettingsOntoDevicesFields()
+        {
+            // Values from the sample_doorbots.json settings object (doorbell_graham_cracker).
+            Doorbot doorbot = JsonSerializer.Deserialize<Doorbot>("""
+                {"id": 123, "device_id": "aabbcc", "kind": "doorbell_graham_cracker", "settings": {
+                 "enable_vod": 1, "exposure_control": 2, "vod_suspended": 0, "pir_sensitivity_1": 5,
+                 "enable_audio_recording": true, "advanced_motion_detection_enabled": true,
+                 "advanced_motion_detection_human_only_mode": true, "live_view_preset_profile": "middle",
+                 "motion_snooze_preset_profile": "low"}}
+                """)!;
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.NotNull(fields);
+            Assert.True(fields!.EnableVod);
+            Assert.Equal(2, fields.ExposureControl);
+            Assert.False(fields.VodSuspended);
+            Assert.Equal(5, fields.PirSensitivity1);
+            Assert.True(fields.EnableAudioRecording);
+            Assert.True(fields.AdvancedMotionDetectionEnabled);
+            Assert.True(fields.AdvancedMotionDetectionHumanOnlyMode);
+            Assert.Equal("middle", fields.LiveViewPresetProfile);
+            Assert.Equal("low", fields.MotionSnoozePresetProfile);
+        }
+
+        [Fact]
+        public void ToDeviceFields_DoorbotSnoozeOnlyNested_FallsBackToMotionSettingsProfile()
+        {
+            Doorbot doorbot = JsonSerializer.Deserialize<Doorbot>("""
+                {"id": 124, "device_id": "ddeeff", "settings": {"motion_settings": {"motion_snooze_preset_profile": "high"}}}
+                """)!;
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.Equal("high", fields!.MotionSnoozePresetProfile);
         }
 
         [Fact]

@@ -1,9 +1,8 @@
-using VideoForensics.Core.Api.Contracts;
-
 using System.Reflection;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -25,12 +24,14 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Media_TabHasNoSidebarItems()
+    public void Media_TabListsTheReviewViewsInTheLeftMenu()
     {
-        // The top Media tab leads to the review page; its menu is the review view menu in the left panel.
+        // The review views are ordinary menu items, shown in the same place and style as the other groups' items.
         NavGroup media = NavGroups.All.First(g => g.Key == "media");
         Assert.Equal("/media", media.Path);
-        Assert.Empty(media.Items);
+        Assert.Equal(
+            new[] { ("Timeline", "/media"), ("Events", "/media?tab=Events"), ("Detail", "/media?tab=Detail"), ("Live", "/live-view") },
+            media.Items.Select(i => (i.Text, i.Path)).ToArray());
     }
 
     [Fact]
@@ -43,6 +44,7 @@ public class NavGroups_Tests
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/cases", itemPaths);
         Assert.Contains("/signal-history", itemPaths);
+        Assert.Contains("/bitrate-history", itemPaths);
         Assert.Contains("/chat", itemPaths);
         Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/analyze/chain-of-custody", itemPaths);
@@ -82,8 +84,20 @@ public class NavGroups_Tests
 
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         var sourceItems = group.Items.Where(i => i.Section == "Sources").ToList();
-        Assert.Equal(new[] { "/accounts", "/query" }, sourceItems.Select(i => i.Path).ToList());
-        Assert.DoesNotContain(group.Items, i => i.Path == "/query/api-tester" || i.Path == "/tools/ring-selftest" || i.Path == "/devices/config");
+        Assert.Equal(new[] { "/accounts", "/accounts/manual-sync", "/query" }, sourceItems.Select(i => i.Path).ToList());
+        Assert.DoesNotContain(group.Items, i => i.Path is "/query/api-tester" or "/tools/ring-selftest" or "/devices/config");
+    }
+
+    [Fact]
+    public void Sources_ManualSync_RequiresSuperAdminOnAnyTier()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem manualSyncItem = group.Items.First(i => i.Path == "/accounts/manual-sync");
+
+        Assert.Equal("Manual Sync", manualSyncItem.Text);
+        Assert.False(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: false)));
     }
 
     [Fact]

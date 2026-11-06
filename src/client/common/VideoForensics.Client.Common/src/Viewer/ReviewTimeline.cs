@@ -36,21 +36,26 @@ namespace VideoForensics.Client.Common.Viewer
         }
 
         /// <summary>
-        /// Returns the first clip that covers <paramref name="timeUtc"/>, with the offset into it. A clip includes its start and
-        /// excludes its end, so at a boundary the later clip wins. Returns null in a gap, so the player can show a gap rather than stale video.
+        /// Returns the clip that covers <paramref name="timeUtc"/>, with the offset into it. A clip includes its start and
+        /// excludes its end, so at a boundary the later clip wins. When clips overlap, the one that starts latest wins: a
+        /// time-lapse loop sits inside a longer motion clip, and the loop is the clip the cursor means. Returns null in a gap,
+        /// so the player can show a gap rather than stale video.
         /// </summary>
         public static ClipSelection? ClipAt(IReadOnlyList<ClipWindow> clips, DateTime timeUtc)
         {
+            ClipSelection? best = null;
+            DateTime bestStart = DateTime.MinValue;
             foreach (ClipWindow clip in clips)
             {
                 double offset = (timeUtc - clip.StartUtc).TotalSeconds;
-                if (offset >= 0 && offset < clip.DurationSeconds)
+                if (offset >= 0 && offset < clip.DurationSeconds && (best is null || clip.StartUtc >= bestStart))
                 {
-                    return new ClipSelection(clip.Id, offset);
+                    best = new ClipSelection(clip.Id, offset);
+                    bestStart = clip.StartUtc;
                 }
             }
 
-            return null;
+            return best;
         }
 
         private static double FractionOf(DateTime timeUtc, DateTime windowStartUtc, DateTime windowEndUtc)

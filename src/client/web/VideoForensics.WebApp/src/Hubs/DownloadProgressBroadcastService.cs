@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {
@@ -52,7 +52,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 try
                 {
                     // Drains the sync log here, the single consumer, so each line is broadcast exactly once.
-                    DownloadProgressDto payload = _syncActivity.ToDownloadProgressDto(_progress);
+                    var payload = _syncActivity.ToDownloadProgressDto(_progress);
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {
@@ -64,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Download progress broadcast tick failed");
+                    _logger.LogError("Download progress broadcast tick failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             } while (await timer.WaitForNextTickAsync(stoppingToken));
         }

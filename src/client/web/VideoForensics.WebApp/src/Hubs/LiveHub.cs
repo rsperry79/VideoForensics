@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
-using VideoForensics.Client.Hosting.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {
@@ -33,13 +34,15 @@ namespace VideoForensics.Client.WebApp.Hubs
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<LiveHub> _logger;
         private readonly ISyncProgressStore _progress;
+        private readonly IMaintenanceGate? _maintenance;
 
-        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger, ISyncProgressStore progress)
+        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger, ISyncProgressStore progress, IMaintenanceGate? maintenance = null)
         {
             _connectionTracker = connectionTracker;
             _scopeFactory = scopeFactory;
             _logger = logger;
             _progress = progress;
+            _maintenance = maintenance;
         }
 
         public override async Task OnConnectedAsync()
@@ -58,6 +61,12 @@ namespace VideoForensics.Client.WebApp.Hubs
             if (isAdmin)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "admins", CancellationToken.None);
+            }
+
+            // A client that connects during maintenance shows the banner at once, not on the next change.
+            if (_maintenance is not null)
+            {
+                await Clients.Caller.SendAsync(LiveHubMethods.MaintenanceState, _maintenance.Current, Context.ConnectionAborted);
             }
 
             // Snapshot-on-connect: a new client (including every reconnect) gets the current state
@@ -79,7 +88,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                     throw;
                 }
 
-                _logger.LogError(ex, "Failed to send download progress snapshot to connection {ConnectionId}", Context.ConnectionId);
+                _logger.LogError("Failed to send download progress snapshot to connection {ConnectionId}: {Message} ({ErrorType})", Context.ConnectionId, ex.Message, ex.GetType().Name);
             }
 
             // Admin-only snapshot-on-connect for the self-test status. Non-admins never receive this
@@ -104,7 +113,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                         throw;
                     }
 
-                    _logger.LogError(ex, "Failed to send self-test status snapshot to connection {ConnectionId}", Context.ConnectionId);
+                    _logger.LogError("Failed to send self-test status snapshot to connection {ConnectionId}: {Message} ({ErrorType})", Context.ConnectionId, ex.Message, ex.GetType().Name);
                 }
             }
 

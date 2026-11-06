@@ -19,5 +19,5 @@ src/
     host/VideoForensics.Hosting/     ui/VideoForensics.Ui.Shared/     web/VideoForensics.WebApp/
 ```
 
-- `archive/VideoForensics/`: retired console app, not in the solution. Do not read unless asked.
+- `docs/archive/VideoForensics/`: retired console app, not in the solution. Do not read unless asked.
 - Prefer Visual Studio MCP `GetSolutionTree` over `find`/`Glob` for structure.

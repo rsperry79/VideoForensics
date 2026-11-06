@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Services
 {
@@ -59,11 +59,11 @@ namespace VideoForensics.Client.WebApp.Services
                 {
                     if (attempt == MaxAttempts)
                     {
-                        _logger.LogError(ex, "Cloudflare tunnel autostart failed after {Attempts} attempts", MaxAttempts);
+                        _logger.LogError("Cloudflare tunnel autostart failed after {Attempts} attempts: {Message} ({ErrorType})", MaxAttempts, ex.Message, ex.GetType().Name);
                         return;
                     }
 
-                    _logger.LogWarning(ex, "Cloudflare tunnel autostart attempt {Attempt} failed; retrying in {Seconds} seconds", attempt, RetryDelay.TotalSeconds);
+                    _logger.LogWarning("Cloudflare tunnel autostart attempt {Attempt} failed; retrying in {Seconds} seconds: {Message} ({ErrorType})", attempt, RetryDelay.TotalSeconds, ex.Message, ex.GetType().Name);
                     await Task.Delay(RetryDelay, stoppingToken);
                 }
             }

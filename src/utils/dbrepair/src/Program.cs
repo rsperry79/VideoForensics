@@ -1,13 +1,15 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Client.Hosting;
+using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Utils.DbRepair;
 using VideoForensics.Utils.Diagnostics;
 using VideoForensics.Utils.Diagnostics.Contracts;
@@ -15,6 +17,7 @@ using VideoForensics.Utils.Diagnostics.Contracts;
 // Windows host: read install-time storage overrides from the registry, as the server does.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
 VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 
 // VideoForensics.Utils.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
 // and orphaned records that have dangling foreign keys. Also provides a recovery switch for lost
@@ -24,6 +27,13 @@ VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoFore
 // Usage:
 //   VideoForensics.Utils.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
 //   VideoForensics.Utils.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
+//   VideoForensics.Utils.DbRepair --repair-ding-ids [--apply] [--db-path <file>] [--data-root <dir>] [--yes]
+//
+// Ding id repair mode:
+//   Links each doorbot history row to the Events row that already holds its string ding id. A doorbot history id equals
+//   the ding id exactly (same digits), so the match is exact equality within one device. The repair sets only
+//   RingDoorbotHistoryEvents.LinkedEventId; it renames nothing. Dry run unless --apply. With --apply, a copy of the
+//   database is written to <db>.bak-<yyyyMMddHHmmss> before any change. Unmatched and ambiguous rows are never linked.
 //
 // Repair mode:
 //   --db-path takes priority over --data-root; --data-root takes priority over the platform default
@@ -48,6 +58,8 @@ string? usernameArg = null;
 bool apply = false;
 bool skipConfirmation = false;
 bool resetSuperAdminPassword = false;
+bool repairDingIds = false;
+string? serverArg = null;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -56,11 +68,17 @@ for (int i = 0; i < args.Length; i++)
         case "--reset-superadmin-password":
             resetSuperAdminPassword = true;
             break;
+        case "--repair-ding-ids":
+            repairDingIds = true;
+            break;
         case "--db-path" when i + 1 < args.Length:
             dbPathArg = args[++i];
             break;
         case "--data-root" when i + 1 < args.Length:
             dataRootArg = args[++i];
+            break;
+        case "--server" when i + 1 < args.Length:
+            serverArg = args[++i];
             break;
         case "--username" when i + 1 < args.Length:
             usernameArg = args[++i];
@@ -101,6 +119,12 @@ IDatabaseHealthChecker checker = provider.GetRequiredService<IDatabaseHealthChec
 
 string effectivePath = resolvedDbPath ?? Path.Combine(new StorageLocationProvider().GetDefaultRoot(StorageCategory.Database), "videoforensics.db");
 Console.WriteLine($"Database: {effectivePath}");
+
+// Handle ding id repair if requested
+if (repairDingIds)
+{
+    return await HandleDingIdRepairAsync(factory, effectivePath, apply, serverArg ?? ServerMaintenanceClient.DefaultServer.ToString(), CancellationToken.None);
+}
 
 // Handle SuperAdmin password recovery if requested
 if (resetSuperAdminPassword)
@@ -249,6 +273,19 @@ try
             Console.WriteLine("Cancelled.");
             return 0;
         }
+    }
+
+    // Why: the service holds the database open and caches what it read; stop it for the deletes and start it again after.
+    if (!OperatingSystem.IsWindows())
+    {
+        Console.Error.WriteLine("Stopping the VideoForensics service needs Windows.");
+        return 1;
+    }
+    using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+    if (serviceGuard is null)
+    {
+        Console.Error.WriteLine(stopError);
+        return 1;
     }
 
     // Execute repairs in a transaction
@@ -423,7 +460,7 @@ try
 catch (Exception ex)
 {
     Console.Error.WriteLine($"Database repair failed: {ex.Message}");
-    logger.LogError(ex, "Unhandled exception during repair");
+    logger.LogError("Unhandled exception during repair: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
     return 1;
 }
 
@@ -431,6 +468,19 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
 {
     try
     {
+        // Why: the service caches operator and session state; stop it for the reset and start it again after.
+        if (!OperatingSystem.IsWindows())
+        {
+            Console.Error.WriteLine("Stopping the VideoForensics service needs Windows.");
+            return 1;
+        }
+        using var serviceGuard = VideoForensics.Client.Platform.Windows.ServiceDbAccessGuard.Acquire("VideoForensics", out string? stopError);
+        if (serviceGuard is null)
+        {
+            Console.Error.WriteLine(stopError);
+            return 1;
+        }
+
         using IServiceScope scope = provider.CreateScope();
         IOperatorRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
         IAppSettingRepository appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
@@ -461,6 +511,168 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     }
 }
 
+// Why: a dry run only reads, so it takes no server hold and pairs nothing. An apply run holds the local server for the whole write, so the
+// server neither keeps the file open nor caches what it read. The hold ends in the await-using disposal, after the repair finishes or fails.
+static async Task<int> HandleDingIdRepairAsync(IDbContextFactory<VideoForensicsDbContext> factory, string dbPath, bool apply, string serverValue, CancellationToken ct)
+{
+    var service = new DingIdRepairService();
+    // Why: the path is kept so the stop message can name the backup that the repair wrote before it was stopped.
+    string? backupPath = null;
+    async Task backup(CancellationToken token)
+    {
+        backupPath = await BackupDatabaseAsync(dbPath, token);
+    }
+
+    if (!apply)
+    {
+        // Why: a dry run only reads, so it neither contacts nor validates the server.
+        return await ReportDingIdRepairAsync(service, factory, apply: false, backup, ct);
+    }
+
+    if (!ServerMaintenanceClient.TryValidateServer(serverValue, out Uri? serverUri, out string? serverError))
+    {
+        Console.Error.WriteLine(serverError);
+        return 1;
+    }
+
+    Uri server = serverUri!;
+
+    // Why: Ctrl+C cancels the run instead of killing the process, so the disposal below still ends the server hold.
+    using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
+    void onCancel(object? _, ConsoleCancelEventArgs e)
+    {
+        e.Cancel = true;
+        cancel.Cancel();
+    }
+
+    Console.CancelKeyPress += onCancel;
+    try
+    {
+        // Why: this client sends the server key, so it must not follow redirects to another address.
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
+        var maintenance = new ServerMaintenanceClient(http, new ConsoleMaintenancePrompts());
+        // Why: the server ending the hold cancels this source, which stops the repair before it writes more. Ctrl+C cancels it too.
+        using var repairStop = CancellationTokenSource.CreateLinkedTokenSource(cancel.Token);
+        ServerMaintenanceClient.ServerMaintenanceSession? session = null;
+        try
+        {
+            session = await maintenance.StartAsync(server, cancel.Token, repairStop);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled while the hold was being taken: the begin call may still have held the server, and its safety timeout ends that.
+        }
+
+        if (session is null)
+        {
+            Console.Error.WriteLine("Ding id repair cancelled. The database was not changed.");
+            return 1;
+        }
+
+        // Why: the hold is checked before the first write and again right before the commit. A run without a hold has nothing to check.
+        Func<CancellationToken, Task<bool>>? confirmHold = session.Held ? session.ConfirmHoldAsync : null;
+        Func<CancellationToken, Task<bool>>? beforeWrites = session.Held ? session.EnsureHoldFreshAsync : null;
+        DingIdRepairReport? repairReport = null;
+        int exitCode;
+        await using (session)
+        {
+            exitCode = await ReportDingIdRepairAsync(service, factory, apply: true, backup, repairStop.Token, confirmHold, beforeWrites, r => repairReport = r);
+        }
+
+        // Why: the session is disposed above, so HoldLost is final here. A stopped repair is never reported as success.
+        if (session.HoldLost)
+        {
+            // Why: a committed repair is a success even though the hold ended early, so scripts must not re-run it.
+            bool applied = repairReport?.Applied == true;
+            string message = HoldLostMessages.DescribeHoldLost(applied, backupPath ?? "(no backup was written)");
+            if (applied)
+            {
+                Console.WriteLine(message);
+                return 0;
+            }
+
+            Console.Error.WriteLine(message);
+            return 1;
+        }
+
+        if (repairStop.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"Ding id repair cancelled; the repair did not commit or was rolled back; check the database and the backup at {backupPath ?? "(no backup was written)"}");
+            return 1;
+        }
+
+        return exitCode;
+    }
+    finally
+    {
+        Console.CancelKeyPress -= onCancel;
+    }
+}
+
+static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbContextFactory<VideoForensicsDbContext> factory, bool apply, Func<CancellationToken, Task> backup, CancellationToken ct, Func<CancellationToken, Task<bool>>? confirmHold = null, Func<CancellationToken, Task<bool>>? beforeWrites = null, Action<DingIdRepairReport>? onReport = null)
+{
+    try
+    {
+        DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct, confirmHold, beforeWrites);
+        // Why: the caller needs the Applied flag to word a lost-hold message after the session has ended.
+        onReport?.Invoke(report);
+        if (report.Aborted)
+        {
+            // Why: the hold check failed before the commit, so the service rolled back. Nothing was committed.
+            Console.Error.WriteLine("Ding id repair stopped before the commit because server maintenance could not be confirmed. Nothing was committed.");
+            return 1;
+        }
+
+        // Why: a repair that was stopped mid-run must not print a success summary, even if the service returned normally.
+        ct.ThrowIfCancellationRequested();
+
+        Console.WriteLine("\nDing id repair (DoorbotHistory feed):");
+        Console.WriteLine($"  Matched: {report.DoorbotHistory.Matched}");
+        Console.WriteLine($"  Unmatched: {report.DoorbotHistory.Unmatched}");
+        Console.WriteLine($"  Ambiguous: {report.DoorbotHistory.Ambiguous}");
+        if (report.Applied)
+        {
+            Console.WriteLine($"Linked: {report.EventsLinked}, no Events row (not created): {report.NoEventRow}");
+        }
+        else
+        {
+            Console.WriteLine("DRY RUN: no changes written. Run with --apply to repair the matched rows.");
+        }
+
+        return 0;
+    }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+        // The caller prints the message that explains the stop.
+        return 1;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Ding id repair failed: {ex.Message} ({ex.GetType().Name})");
+        return 1;
+    }
+}
+
+static Task<string> BackupDatabaseAsync(string dbPath, CancellationToken ct)
+{
+    ct.ThrowIfCancellationRequested();
+    string backupPath = $"{dbPath}.bak-{DateTime.Now:yyyyMMddHHmmss}";
+    if (File.Exists(backupPath))
+    {
+        throw new IOException($"Backup already exists: {backupPath}");
+    }
+
+    // Why: VACUUM INTO writes a consistent copy that includes committed WAL pages, which a plain file copy can miss.
+    using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = dbPath, Mode = SqliteOpenMode.ReadOnly }.ToString());
+    connection.Open();
+    using SqliteCommand command = connection.CreateCommand();
+    command.CommandText = "VACUUM INTO $path";
+    _ = command.Parameters.AddWithValue("$path", backupPath);
+    _ = command.ExecuteNonQuery();
+    Console.WriteLine($"Backup written: {backupPath}");
+    return Task.FromResult(backupPath);
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("""
@@ -477,6 +689,8 @@ static void PrintUsage()
           --data-root <dir>             Directory containing videoforensics.db. Ignored if --db-path is set.
           --apply                       Execute the repair. Without this flag, runs in dry-run mode and only reports issues.
           --reset-superadmin-password   Enable SuperAdmin password recovery (lost passkey recovery mode).
+          --repair-ding-ids             Link doorbot history rows to the Events rows that hold their exact string ding id. Dry run unless --apply; --apply writes a .bak copy first.
+          --server <url>                Local server to hold in maintenance during --repair-ding-ids. Default http://localhost:5162/.
           --username <name>             Target operator username for recovery. If omitted, uses the primary SuperAdmin.
           --yes, -y                     Skips confirmation prompts. Use only in scripted contexts.
 
@@ -495,7 +709,8 @@ static void PrintUsage()
           Other findings (detection redundancy, device feature overlap) are reported informally only - no automated fix.
 
           All deletions are wrapped in a single database transaction. A confirmation prompt is required before execution
-          unless --yes is also passed. Each deleted row is logged individually.
+          unless --yes is also passed. Each deleted row is logged individually. The VideoForensics service is stopped
+          for the deletes and started again afterwards.
 
         Recovery mode (--reset-superadmin-password):
           Recovers SuperAdmin access when the passkey is lost.
@@ -503,6 +718,6 @@ static void PrintUsage()
           Resets the password, unlocks the account, re-activates it, and invalidates existing sessions.
           Requires a confirmation prompt unless --yes is passed.
           Must be run on the server machine with administrator privileges (database is under ProgramData).
-          Stop the Windows service before running, or be aware of SQLite WAL implications if concurrent writes occur.
+          The VideoForensics service is stopped for the reset and started again afterwards (needs administrator privileges).
         """);
 }

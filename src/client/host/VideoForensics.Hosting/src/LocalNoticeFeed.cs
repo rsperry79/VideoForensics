@@ -1,8 +1,8 @@
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {

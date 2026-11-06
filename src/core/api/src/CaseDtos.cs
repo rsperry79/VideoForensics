@@ -149,6 +149,53 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime CreatedAtUtc
     );
 
+    /// <summary>
+    /// Data transfer object for an append-only note on a forensic case.
+    /// </summary>
+    /// <param name="Id">Unique identifier for the note.</param>
+    /// <param name="CaseId">ID of the case the note belongs to.</param>
+    /// <param name="Body">Note text, trimmed at the ends (max 4000 chars).</param>
+    /// <param name="AddedBy">Operator ID that wrote the note.</param>
+    /// <param name="AddedAtUtc">Timestamp when the note was written (UTC).</param>
+    public record CaseNoteDto(
+        Guid Id,
+        Guid CaseId,
+        string Body,
+        string AddedBy,
+        DateTime AddedAtUtc
+    );
+
+    /// <summary>
+    /// Request DTO for adding a note to a forensic case. The author is the signed-in operator, taken server-side.
+    /// </summary>
+    /// <param name="Body">Note text (required, max 4000 chars after trimming).</param>
+    public record AddCaseNoteRequest(
+        string Body
+    );
+
+    /// <summary>Extension methods for mapping case Note entities to/from CaseNoteDto.</summary>
+    public static class CaseNoteDtoMapping
+    {
+        /// <summary>Converts a case Note entity to a CaseNoteDto. The note's target ID is the case ID.</summary>
+        public static CaseNoteDto ToDto(this VideoForensics.Data.Common.Entities.Note entity)
+        {
+            return new CaseNoteDto(entity.Id, entity.TargetId, entity.Body, entity.AddedBy, entity.AddedAtUtc);
+        }
+
+        /// <summary>Converts a CaseNoteDto to a case Note entity (target kind Case).</summary>
+        public static VideoForensics.Data.Common.Entities.Note ToDomain(this CaseNoteDto dto)
+        {
+            return new VideoForensics.Data.Common.Entities.Note
+            {
+                Id = dto.Id,
+                TargetKind = VideoForensics.Data.Common.Entities.NoteTargetKind.Case,
+                TargetId = dto.CaseId,
+                Body = dto.Body,
+                AddedBy = dto.AddedBy,
+                AddedAtUtc = dto.AddedAtUtc
+            };
+        }
+    }
     /// <summary>Extension methods for mapping ForensicCase entities to/from ForensicCaseDto and AccountCaseDto.</summary>
     public static class ForensicCaseDtoMapping
     {
@@ -237,9 +284,12 @@ namespace VideoForensics.Core.Api.Contracts
         /// </summary>
         public static CaseItemDto ToDto(this VideoForensics.Data.Common.Entities.CaseItem entity)
         {
-            Guid targetId = entity.Kind == VideoForensics.Data.Common.Entities.CaseItemKind.Event
-                ? entity.EventId ?? Guid.Empty
-                : entity.MediaItemId ?? Guid.Empty;
+            Guid targetId = entity.Kind switch
+            {
+                VideoForensics.Data.Common.Entities.CaseItemKind.Event => entity.EventId ?? Guid.Empty,
+                VideoForensics.Data.Common.Entities.CaseItemKind.Snapshot => entity.SnapshotCaptureId ?? Guid.Empty,
+                _ => entity.MediaItemId ?? Guid.Empty,
+            };
 
             return new CaseItemDto(
                 Id: entity.Id,
@@ -269,6 +319,7 @@ namespace VideoForensics.Core.Api.Contracts
                 Kind = kind,
                 EventId = kind == VideoForensics.Data.Common.Entities.CaseItemKind.Event ? dto.TargetId : null,
                 MediaItemId = kind == VideoForensics.Data.Common.Entities.CaseItemKind.Media ? dto.TargetId : null,
+                SnapshotCaptureId = kind == VideoForensics.Data.Common.Entities.CaseItemKind.Snapshot ? dto.TargetId : null,
                 Reason = dto.Reason,
                 AddedBy = dto.AddedBy,
                 AddedAtUtc = dto.AddedAtUtc,

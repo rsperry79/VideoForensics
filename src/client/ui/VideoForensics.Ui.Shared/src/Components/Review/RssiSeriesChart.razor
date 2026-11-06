@@ -1,0 +1,128 @@
+@implements IAsyncDisposable
+@using System.Globalization
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services.Signal
+@inject IStringLocalizer<SharedResources> L
+
+<div class="rssi-series-chart" data-testid="rssi-series-chart">
+    @if (_bars.Count == 0)
+    {
+        <p class="text-muted small" data-testid="rssi-series-empty">@L["RssiSeriesEmpty"].Value</p>
+    }
+    else
+    {
+        <svg class="w-100" style="height: 120px;" viewBox="0 0 @Format(ChartWidth) @Format(ChartHeight)" preserveAspectRatio="none" role="img" aria-label="@L["RssiSeriesChartLabel"].Value">
+            @foreach (RssiBar bar in _bars)
+            {
+                double x = bar.XFraction * ChartWidth - _barWidth / 2;
+                double barHeight = bar.HeightFraction * ChartHeight;
+                <rect class="rssi-bar" data-testid="rssi-bar" x="@Format(x)" y="@Format(ChartHeight - barHeight)" width="@Format(_barWidth)" height="@Format(barHeight)" @onclick="() => Player.SeekToUtcAsync(bar.CapturedAtUtc)" />
+            }
+            <line class="rssi-playhead" data-testid="rssi-playhead" x1="@Format(_playheadX)" x2="@Format(_playheadX)" y1="0" y2="@Format(ChartHeight)" />
+        </svg>
+    }
+</div>
+
+@code {
+    private const double ChartWidth = 1000;
+    private const double ChartHeight = 100;
+    private const double PollIntervalSeconds = 0.25;
+
+    /// <summary>The signal readings to draw as bars. Readings without a signal, or outside the window, are not drawn.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<SignalSample> Readings { get; set; } = [];
+
+    /// <summary>The start of the chart window (UTC).</summary>
+    [Parameter, EditorRequired]
+    public DateTime WindowStartUtc { get; set; }
+
+    /// <summary>The end of the chart window (UTC).</summary>
+    [Parameter, EditorRequired]
+    public DateTime WindowEndUtc { get; set; }
+
+    /// <summary>The player whose position the playhead follows, and which a click on a bar seeks.</summary>
+    [Parameter, EditorRequired]
+    public MediaPlayer Player { get; set; } = default!;
+
+    private IReadOnlyList<RssiBar> _bars = [];
+    private double _barWidth;
+    private DateTime? _playheadUtc;
+    private double _playheadX;
+    private CancellationTokenSource? _pollCts;
+    private Task? _pollTask;
+
+    protected override void OnInitialized()
+    {
+        _pollCts = new CancellationTokenSource();
+        _pollTask = PollPositionAsync(_pollCts.Token);
+    }
+
+    protected override void OnParametersSet()
+    {
+        _bars = RssiHistogram.Bars(Readings, WindowStartUtc, WindowEndUtc);
+        _barWidth = Math.Max(ChartWidth / Math.Max(_bars.Count, 1) - 0.5, 0.5);
+        _playheadX = PlayheadX();
+    }
+
+    private double PlayheadX()
+    {
+        double span = (WindowEndUtc - WindowStartUtc).TotalSeconds;
+        if (span <= 0 || _playheadUtc is not DateTime playhead)
+        {
+            return 0;
+        }
+
+        double fraction = Math.Clamp((playhead - WindowStartUtc).TotalSeconds / span, 0, 1);
+        return fraction * ChartWidth;
+    }
+
+    private static string Format(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private async Task PollPositionAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(PollIntervalSeconds));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                double? seconds = await Player.GetPlaybackUtcSecondsAsync();
+                await InvokeAsync(() =>
+                {
+                    _playheadUtc = seconds is double value ? DateTime.UnixEpoch.AddSeconds(value) : null;
+                    _playheadX = PlayheadX();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The component is disposing; the loop ends.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_pollCts is null)
+        {
+            return;
+        }
+
+        _pollCts.Cancel();
+        if (_pollTask is not null)
+        {
+            try
+            {
+                await _pollTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the poll loop is cancelled.
+            }
+        }
+
+        _pollCts.Dispose();
+        _pollCts = null;
+    }
+}

@@ -1,12 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -68,7 +65,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _runs.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
             _ = _events.Setup(s => s.GetEventsAsync(_accountId, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>());
+                .ReturnsAsync([]);
 
             _ = _media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .Returns<string, string, DateTime, DateTime, string?, CancellationToken>((deviceId, folder, start, end, _, _) =>
@@ -95,13 +92,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _deviceRepository.Object,
                 _locationRepository.Object,
                 _accounts.Object,
-                _discovery.Object,
                 mediaDownloadService: _media.Object,
                 mediaRoot: _root,
                 progress: progress,
                 progressPollInterval: TimeSpan.FromMilliseconds(20));
 
-            var services = new ServiceCollection()
+            ServiceProvider services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>())
                 .AddScoped(_ => _auth.Object)
                 .AddScoped<IEventPullService>(_ => eventPull)
                 .BuildServiceProvider();
@@ -142,7 +138,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             await BuildRunner().RunAsync(_accountId, new AccountSyncRequest(AccountSyncType.Events, from, End, AllHistory: false), CancellationToken.None);
 
             // The sync did finish (it wrote its display timestamp), so the watermark check is not vacuous.
-            Assert.NotNull(_account.LastSyncCompletedUtc);
+            _ = Assert.NotNull(_account.LastSyncCompletedUtc);
             Assert.NotEmpty(_watermarksWritten);
             Assert.All(_watermarksWritten, watermark => Assert.Equal(KnownWatermark, watermark));
             Assert.Equal(KnownWatermark, _account.LastDownloadTimeUtc);

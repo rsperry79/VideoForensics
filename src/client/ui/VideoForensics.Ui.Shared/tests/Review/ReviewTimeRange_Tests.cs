@@ -6,7 +6,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The Time Range section in the media right sidebar: the range dropdown, and From/To pickers for a custom range.</summary>
 public class ReviewTimeRange_Tests : ReviewTestContext
@@ -68,6 +68,22 @@ public class ReviewTimeRange_Tests : ReviewTestContext
         // Assert
         Assert.Equal(2, cut.FindAll("input[type='date']").Count);
         Assert.True(cut.Find("option[value='custom']").HasAttribute("selected"));
+    }
+
+    [Fact]
+    public void ReviewTimeRange_CustomChosen_StacksFromThenToEachWithItsPickerUnderItsLabel()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTimeRange> cut = RenderSection();
+
+        // Act
+        cut.Find("[data-testid='review-range']").Change("custom");
+
+        // Assert - one column: From label and picker, then To label and picker
+        IElement dates = cut.Find(".review-range-dates");
+        Assert.Contains("flex-column", dates.ClassName);
+        Assert.Equal(new[] { "review-range-from", "review-range-to" }, dates.QuerySelectorAll("input").Select(i => i.GetAttribute("data-testid")).ToArray());
+        Assert.Equal(2, dates.QuerySelectorAll("label").Length);
     }
 
     [Fact]

@@ -1,7 +1,7 @@
 using System.Reflection;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {

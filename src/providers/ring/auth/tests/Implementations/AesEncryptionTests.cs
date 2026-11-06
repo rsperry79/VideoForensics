@@ -3,12 +3,22 @@ using System.Text;
 
 using VideoForensics.Providers.Ring.Implementations;
 
-namespace VideoForensics.Providers.Ring.Auth.Tests
+namespace VideoForensics.Providers.Ring.Auth.Tests.Implementations
 {
     [Collection("ring-credential-salt")]
-    public class AesEncryptionTests
+    public class AesEncryptionTests : IDisposable
     {
         private readonly string _tempSaltDir = Path.Combine(Path.GetTempPath(), $"aes-test-{Guid.NewGuid()}");
+
+        public AesEncryptionTests()
+        {
+            _ = Directory.CreateDirectory(_tempSaltDir);
+        }
+
+        public void Dispose()
+        {
+            CleanupTestEnvironment();
+        }
 
         private void SetupTestEnvironment()
         {
@@ -39,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Encrypt_Null_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
 
             // Act
             string result = aes.Encrypt(null);
@@ -52,7 +62,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Encrypt_EmptyString_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
 
             // Act
             string result = aes.Encrypt(string.Empty);
@@ -65,7 +75,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Decrypt_Null_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
 
             // Act
             string result = aes.Decrypt(null);
@@ -78,7 +88,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Decrypt_EmptyString_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
 
             // Act
             string result = aes.Decrypt(string.Empty);
@@ -95,7 +105,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_PlaintextRecovered_WithASCII()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Hello, World! This is a test message.";
 
             // Act
@@ -112,7 +122,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_PlaintextRecovered_WithUnicode()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Unicode test: 你好世界 🚀 Привет мир";
 
             // Act
@@ -128,7 +138,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_PlaintextRecovered_WithSpecialCharacters()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Special chars: !@#$%^&*()_+-=[]{}|;:',.<>?/~`";
 
             // Act
@@ -144,7 +154,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_PlaintextRecovered_WithLargeString()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = new('A', 10000); // 10KB of data
 
             // Act
@@ -164,7 +174,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_IVUniqueness_MultipleEncryptions_ProduceDifferentCiphertexts()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Test message for IV uniqueness";
             var ciphertexts = new HashSet<string>();
 
@@ -188,7 +198,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Decrypt_InvalidBase64_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string invalidBase64 = "This is not valid base64!!!@@@###";
 
             // Act
@@ -202,7 +212,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Decrypt_CorruptedCiphertext_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Test message";
             string ciphertext = aes.Encrypt(plaintext);
 
@@ -220,7 +230,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Decrypt_InvalidCiphertext_ReturnsNull()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             // Create a valid base64 string but invalid ciphertext
             string invalidCiphertext = Convert.ToBase64String(Encoding.UTF8.GetBytes("This is not encrypted data"));
 
@@ -276,7 +286,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             try
             {
                 // Arrange
-                var aes = new AesEncryption();
+                var aes = new AesEncryption(saltDirectory: _tempSaltDir);
                 string plaintext = "Test message";
 
                 // Act
@@ -284,10 +294,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
 
                 // Call DeriveKey via encryption to trigger salt creation
                 // The salt should be created in the default location
-                string saltPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
-                    "ring-credential-salt.bin");
+                string saltPath = Path.Combine(_tempSaltDir, "ring-credential-salt.bin");
 
                 // Assert
                 Assert.True(File.Exists(saltPath), "Salt file should exist after encryption");
@@ -305,16 +312,13 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             try
             {
                 // Arrange
-                var aes = new AesEncryption();
+                var aes = new AesEncryption(saltDirectory: _tempSaltDir);
                 string plaintext1 = "First message";
                 string plaintext2 = "Second message";
 
                 // Act
                 // Get the salt path that will be used
-                string saltPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
-                    "ring-credential-salt.bin");
+                string saltPath = Path.Combine(_tempSaltDir, "ring-credential-salt.bin");
 
                 // Ensure clean state
                 if (File.Exists(saltPath))
@@ -347,7 +351,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_WithWhitespace()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "  \n\t  Message with whitespace  \r\n  ";
 
             // Act
@@ -367,7 +371,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_WithJsonData()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string jsonData = @"{""username"":""user@example.com"",""password"":""SecurePass123!""}";
 
             // Act
@@ -388,7 +392,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_SameKeyDifferentIV_ProducesDifferentCiphertexts()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Same plaintext, different IVs";
 
             // Act
@@ -415,7 +419,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_SingleCharacter()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "A";
 
             // Act
@@ -431,7 +435,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_Newlines()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             string plaintext = "Line1\r\nLine2\nLine3\r";
 
             // Act
@@ -447,7 +451,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_RoundTrip_NullCharacters()
         {
             // Arrange
-            var aes = new AesEncryption();
+            var aes = new AesEncryption(saltDirectory: _tempSaltDir);
             // Note: strings in .NET don't naturally contain null terminators,
             // but we can test with embedded null-like sequences
             string plaintext = "Before\0After";

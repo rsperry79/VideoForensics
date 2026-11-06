@@ -10,7 +10,7 @@ namespace VideoForensics.Client.Common.Contracts
         public required string Status { get; set; } // "verified", "failed", "missing"
         public string? FailureReason { get; set; }
 
-        /// <summary>Device the file belongs to. Set by the job that verified it; null when the run covered all devices without tagging.</summary>
+        /// <summary>Device the file belongs to. Set by the job that verified it, or by a single-item verification; null when the run covered all devices without tagging.</summary>
         public Guid? DeviceId { get; set; }
     }
 
@@ -30,6 +30,21 @@ namespace VideoForensics.Client.Common.Contracts
         /// <returns>List of verification results per device/file.</returns>
         Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(
             Guid? deviceId,
+            CancellationToken ct,
+            IProgress<string>? progress = null);
+
+        /// <summary>
+        /// Re-verifies the SHA-256 hash of one media item's file against its stored hash. Checks that file only, so a
+        /// clip with a missing file is reported as "missing" without touching the rest of its device.
+        /// </summary>
+        /// <param name="mediaItemId">Media item to verify.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <param name="progress">
+        /// Optional sink for live log lines, as for <see cref="VerifyLocalIntegrityAsync"/>. Null reports nothing.
+        /// </param>
+        /// <returns>One result for the item, or an empty list when the item does not exist or is purged.</returns>
+        Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityForMediaItemAsync(
+            Guid mediaItemId,
             CancellationToken ct,
             IProgress<string>? progress = null);
 

@@ -62,7 +62,7 @@ public sealed class DeviceOwnershipService
                 foreach (Location location in locations)
                 {
                     // A location shared by several accounts is listed once.
-                    locationsById.TryAdd(
+                    _ = locationsById.TryAdd(
                         location.Id,
                         new FilterLocation(location.Id, string.IsNullOrWhiteSpace(location.Name) ? location.ProviderLocationId : location.Name));
                 }

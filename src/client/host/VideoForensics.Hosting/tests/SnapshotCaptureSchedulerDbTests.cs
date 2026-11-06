@@ -1,16 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
-using Moq;
-
+using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -58,7 +54,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public async Task Scheduler_DueCamera_CapturesOnceAndWaitsForTheInterval()
         {
             var capture = new Mock<IProviderSnapshotCapture>();
-            _ = capture.Setup(c => c.CaptureAsync(_accountId, "100", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = capture.Setup(c => c.CaptureAsync(_accountId, "100", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await using ServiceProvider provider = await BuildProviderAsync(capture.Object);
@@ -69,7 +65,7 @@ namespace VideoForensics.Client.Hosting.Tests
             // Second tick straight after: the attempt is inside the 60 s default interval, so nothing is captured.
             await scheduler.RunOneTickAsync(CancellationToken.None);
 
-            capture.Verify(c => c.CaptureAsync(_accountId, "100", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            capture.Verify(c => c.CaptureAsync(_accountId, "100", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
 
             await using VideoForensicsDbContext db = await provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>().CreateDbContextAsync();
             List<SnapshotCapture> rows = await db.SnapshotCaptures.Where(r => r.DeviceId == _deviceId).ToListAsync();
@@ -91,7 +87,6 @@ namespace VideoForensics.Client.Hosting.Tests
         {
             return new(
             provider.GetRequiredService<IServiceScopeFactory>(),
-            Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotCaptureService>.Instance,
             TimeProvider.System,
             MediaStorage());

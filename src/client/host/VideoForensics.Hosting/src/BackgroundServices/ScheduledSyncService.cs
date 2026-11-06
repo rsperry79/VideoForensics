@@ -4,12 +4,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Maintenance;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Services;
 
 namespace VideoForensics.Client.Hosting.BackgroundServices
 {
@@ -88,7 +89,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Scheduled sync tick failed; will retry on the next tick");
+                        _logger.LogError("Scheduled sync tick failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
             }
@@ -122,6 +123,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+
+            // Why: during maintenance a tick does nothing. Schedules stay due, so they run on the first tick after it ends.
+            using IDisposable? lease = (sp.GetService<IMaintenanceGate>() ?? new NoOpMaintenanceGate()).TryEnterWork();
+            if (lease is null)
+            {
+                return;
+            }
 
             ISyncScheduleRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleRepository>();
             IReadOnlyList<SyncSchedule> schedules = await scheduleRepository.ListEnabledAsync(ct);
@@ -207,7 +215,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // One account's failure must never stop the others.
-                    _logger.LogError(ex, "Scheduled sync failed for {ProviderName} account", providerName);
+                    _logger.LogError("Scheduled sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
             }
         }
@@ -317,7 +325,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Scheduled first sync failed for {ProviderName} account", providerName);
+                    _logger.LogError("Scheduled first sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
 
                 DateTime attemptedUtc = _time.GetUtcNow().UtcDateTime;
@@ -359,19 +367,31 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     syncType = ProviderSyncRunRecorder.SyncTypeFor(from);
 
+                    // The scheduler is the place inventory and device configuration are refreshed from the provider. The pull below
+                    // then reads the stored inventory, so a failed refresh ends this run before any events are pulled.
+                    IReferenceDataCache referenceCache = sp.GetRequiredService<IReferenceDataCache>();
+                    var inventorySync = new InventorySyncService(
+                        deviceDiscovery,
+                        eventService,
+                        sp.GetRequiredService<ILocationRepository>(),
+                        sp.GetRequiredService<IDeviceRepository>(),
+                        referenceCache,
+                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<InventorySyncService>(),
+                        sp.GetRequiredService<IDeviceConfigRepository>());
+                    _ = await inventorySync.SyncAsync(accountId, ct);
+
                     // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(
                         eventService,
                         sp.GetRequiredService<IDeviceRepository>(),
                         sp.GetRequiredService<ILocationRepository>(),
                         sp.GetRequiredService<IProviderAccountRepository>(),
-                        deviceDiscovery,
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,
-                        deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>(),
                         storage: sp.GetService<IStorageLocationProvider>(),
                         configurationService: sp.GetService<IForensicsConfigurationService>(),
-                        progress: sp.GetService<ISyncProgressStore>());
+                        progress: sp.GetService<ISyncProgressStore>(),
+                        referenceCache: referenceCache);
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
@@ -408,6 +428,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     {
                         await budgetGuard.RecordCallAsync(providerName, ct);
                     }
+
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
                     // Same rule as the manual sync: the pull reports failures by recording them on the account.
@@ -421,7 +442,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Scheduled event sync failed for {ProviderName} account", providerName);
+                _logger.LogError("Scheduled event sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 outcome = ex.Message;
             }
 
@@ -488,7 +509,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Could not record the completed scheduled sync");
+                _logger.LogError("Could not record the completed scheduled sync: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 

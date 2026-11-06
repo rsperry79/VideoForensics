@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     public class DeviceCapabilitiesRepositoryTests : IAsyncLifetime
     {
@@ -73,32 +73,6 @@ namespace VideoForensics.Data.Database.Tests
             var nonExistentDeviceId = Guid.NewGuid();
 
             DeviceCapabilities? result = await _repository.GetByDeviceIdAsync(nonExistentDeviceId, CancellationToken.None);
-
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task DeviceCapabilitiesRepository_GetByApiHashAsync_FindsCapabilities()
-        {
-            var deviceId = Guid.NewGuid();
-            string apiHash = "abc123def456";
-            DeviceCapabilities capabilities = TestDataBuilder.BuildDeviceCapabilities(deviceId, apiHash: apiHash);
-
-            await _repository.AddAsync(capabilities, CancellationToken.None);
-
-            DeviceCapabilities? retrieved = await _repository.GetByApiHashAsync(apiHash, CancellationToken.None);
-
-            Assert.NotNull(retrieved);
-            Assert.Equal(capabilities.Id, retrieved.Id);
-            Assert.Equal(apiHash, retrieved.ApiResponseHash);
-        }
-
-        [Fact]
-        public async Task DeviceCapabilitiesRepository_GetByApiHashAsync_ReturnsNullWhenHashNotFound()
-        {
-            string nonExistentHash = "nonexistent_hash";
-
-            DeviceCapabilities? result = await _repository.GetByApiHashAsync(nonExistentHash, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -181,9 +155,7 @@ namespace VideoForensics.Data.Database.Tests
                 FirmwareVersion = "3.0.0",
                 HardwareModel = "ProModel",
                 LastSyncedUtc = syncedAt,
-                SyncStatus = SyncStatus.Synced,
-                ApiResponseHash = "hash123456",
-                MetadataJson = "{\"extra\": \"data\"}"
+                SyncStatus = SyncStatus.Synced
             };
 
             await _repository.AddAsync(capabilities, CancellationToken.None);
@@ -202,8 +174,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("ProModel", retrieved.HardwareModel);
             Assert.Equal(syncedAt, retrieved.LastSyncedUtc);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
-            Assert.Equal("hash123456", retrieved.ApiResponseHash);
-            Assert.Equal("{\"extra\": \"data\"}", retrieved.MetadataJson);
         }
 
         [Fact]
@@ -225,9 +195,7 @@ namespace VideoForensics.Data.Database.Tests
                 FirmwareVersion = null,
                 HardwareModel = null,
                 LastSyncedUtc = null,
-                SyncStatus = SyncStatus.Pending,
-                ApiResponseHash = null,
-                MetadataJson = null
+                SyncStatus = SyncStatus.Pending
             };
 
             await _repository.AddAsync(capabilities, CancellationToken.None);
@@ -256,25 +224,6 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.NotNull(retrieved);
             Assert.Equal(deviceId1, retrieved.DeviceId);
-            Assert.Equal(cap1.Id, retrieved.Id);
-        }
-
-        [Fact]
-        public async Task DeviceCapabilitiesRepository_GetByApiHashAsync_OnlyReturnsForSpecificHash()
-        {
-            string hash1 = "hash_001";
-            string hash2 = "hash_002";
-
-            DeviceCapabilities cap1 = TestDataBuilder.BuildDeviceCapabilities(apiHash: hash1);
-            DeviceCapabilities cap2 = TestDataBuilder.BuildDeviceCapabilities(apiHash: hash2);
-
-            await _repository.AddAsync(cap1, CancellationToken.None);
-            await _repository.AddAsync(cap2, CancellationToken.None);
-
-            DeviceCapabilities? retrieved = await _repository.GetByApiHashAsync(hash1, CancellationToken.None);
-
-            Assert.NotNull(retrieved);
-            Assert.Equal(hash1, retrieved.ApiResponseHash);
             Assert.Equal(cap1.Id, retrieved.Id);
         }
 
@@ -331,21 +280,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(retrieved1);
             Assert.NotNull(retrieved2);
             Assert.NotEqual(retrieved1.Id, retrieved2.Id);
-        }
-
-        [Fact]
-        public async Task DeviceCapabilitiesRepository_DeleteAsync_ClearsApiHash()
-        {
-            var deviceId = Guid.NewGuid();
-            string apiHash = "unique_hash_001";
-            DeviceCapabilities capabilities = TestDataBuilder.BuildDeviceCapabilities(deviceId, apiHash: apiHash);
-            await _repository.AddAsync(capabilities, CancellationToken.None);
-
-            await _repository.DeleteAsync(capabilities.Id, CancellationToken.None);
-
-            // Should not find by hash anymore
-            DeviceCapabilities? retrieved = await _repository.GetByApiHashAsync(apiHash, CancellationToken.None);
-            Assert.Null(retrieved);
         }
     }
 }

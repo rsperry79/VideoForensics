@@ -10,7 +10,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Tests for RingMediaDownloadService implementation.
@@ -348,10 +348,12 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
-            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
-            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            // The stubbed history event 987654 belongs to doorbot 12345; its string ding id is the same digits.
+            _ = dataClientMock.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "987654" });
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
             string folder = Path.Combine(Path.GetTempPath(), "ring_handle_" + Guid.NewGuid().ToString("N"));
@@ -381,6 +383,14 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private sealed class StubVideoHistoryHandler : HttpMessageHandler
         {
+            private readonly string _cvPropertiesJson;
+
+            /// <param name="cvDetectionType">Ring CV detection_type to put on the event, or null for an event without CV data.</param>
+            public StubVideoHistoryHandler(string? cvDetectionType = null)
+            {
+                _cvPropertiesJson = cvDetectionType is null ? string.Empty : ",\"cv_properties\":{\"detection_type\":\"" + cvDetectionType + "\"}";
+            }
+
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 string url = request.RequestUri?.ToString() ?? string.Empty;
@@ -398,7 +408,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     // First page has the one event; any older_than page is empty so paging terminates.
                     body = url.Contains("older_than", StringComparison.Ordinal)
                         ? "[]"
-                        : "[{\"id\":987654,\"created_at\":\"" + VideoEventCreatedAt + "\",\"kind\":\"motion\",\"doorbot\":{\"id\":12345,\"description\":\"cam\"}}]";
+                        : "[{\"id\":987654,\"created_at\":\"" + VideoEventCreatedAt + "\",\"kind\":\"motion\",\"doorbot\":{\"id\":12345,\"description\":\"cam\"}" + _cvPropertiesJson + "}]";
                 }
                 else
                 {
@@ -426,23 +436,91 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        private static async Task<(RingMediaDownloadService Service, Session Session)> CreateVideoServiceAsync()
+        private static async Task<(RingMediaDownloadService Service, Session Session)> CreateVideoServiceAsync(
+            string? cvDetectionType = null, Action<Mock<IVideoForensicsDataClient>>? configureDataClient = null)
         {
-            var session = new Session("testuser", "testpass", new StubVideoHistoryHandler(), new StubVideoDownloader(), null);
+            var session = new Session("testuser", "testpass", new StubVideoHistoryHandler(cvDetectionType), new StubVideoDownloader(), null);
             _ = await session.Authenticate();
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
-            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
-            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            // The stubbed history event 987654 belongs to doorbot 12345; its string ding id is the same digits.
+            _ = dataClientMock.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "987654" });
+            configureDataClient?.Invoke(dataClientMock);
             var tagger = new Mock<IMediaMetadataTagger>();
             _ = tagger.Setup(t => t.TagEventIdAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object, tagger.Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
             return (service, session);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_MotionEventWithPersonDetection_NamesFileWithDetectionType()
+        {
+            // Arrange - the event carries a Ring CV "human" detection
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(cvDetectionType: "human");
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vtype_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the type is in the file name; the plain motion name is not used
+                Assert.True(result.Success, result.ErrorMessage);
+                string expected = MediaFileNamer.FormatMediaFileName("cam", DateTime.Parse(VideoEventCreatedAt), "motion-person", "mp4");
+                Assert.True(File.Exists(Path.Combine(folder, expected)), $"expected {expected} in {string.Join(", ", Directory.GetFiles(folder).Select(Path.GetFileName))}");
+                Assert.Empty(Directory.GetFiles(folder, "*_motion.mp4"));
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_EventAlreadyDownloadedUnderDifferentName_IsNotRedownloaded()
+        {
+            // Arrange - the clip was downloaded earlier and later renamed; the database knows where it is
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vstored_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(folder);
+            string storedFile = Path.Combine(folder, "cam_renamed_elsewhere_motion-person.mp4");
+            byte[] storedBytes = new byte[] { 7, 7, 7, 7 };
+            await File.WriteAllBytesAsync(storedFile, storedBytes);
+
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(cvDetectionType: "human", configureDataClient: dc =>
+            {
+                _ = dc.Setup(d => d.GetDownloadEventAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new Data.Common.Entities.DownloadEvent
+                    {
+                        Id = Guid.NewGuid(),
+                        ProviderEventId = "987654",
+                        Success = true,
+                        AppVersion = "test",
+                    });
+                _ = dc.Setup(d => d.GetDownloadedMediaPathAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(storedFile);
+            });
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - nothing new was downloaded and the stored clip is untouched
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.Equal([storedFile], Directory.GetFiles(folder, "*.mp4"));
+                Assert.Equal(storedBytes, await File.ReadAllBytesAsync(storedFile));
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
         }
 
         private static void TryDeleteFolder(string folder)
@@ -833,8 +911,8 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location
                 {
                     Id = Guid.NewGuid(),
                     ProviderLocationId = "loc-1",
@@ -842,8 +920,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
@@ -859,7 +937,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", null,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -868,13 +946,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
-                    It.IsAny<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
@@ -884,14 +962,14 @@ namespace VideoForensics.Providers.Ring.Tests
                 });
             var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
-            var fields = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(RingDeviceId: "aabbcc", Owned: true);
+            var fields = new DeviceDetailFields(RingDeviceId: "aabbcc", Owned: true);
 
             _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", null, CancellationToken.None, deviceFields: fields);
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", null,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
-                It.Is<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>(f => f != null && f.RingDeviceId == "aabbcc")), Times.Once);
+                It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                It.Is<DeviceDetailFields?>(f => f != null && f.RingDeviceId == "aabbcc")), Times.Once);
         }
 
         [Fact]
@@ -900,12 +978,12 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+                .ReturnsAsync(new Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
@@ -921,7 +999,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", true,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), timeZoneId: "America/Chicago"), Times.Once);
+                It.IsAny<CancellationToken>(), timeZoneId: "America/Chicago"), Times.Once);
         }
 
         [Fact]
@@ -934,7 +1012,7 @@ namespace VideoForensics.Providers.Ring.Tests
             });
             var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, new Mock<IVideoForensicsDataClient>().Object);
 
-            Providers.Ring.Services.RingDeviceDetails? details = await service.ResolveDeviceDetailsAsync(session.Object, "123", CancellationToken.None);
+            RingDeviceDetails? details = await service.ResolveDeviceDetailsAsync(session.Object, "123", CancellationToken.None);
 
             Assert.Equal("America/Denver", details?.TimeZone);
         }
@@ -960,8 +1038,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task CaptureDeviceHealthSnapshotAsync_WritesHealthTelemetryAndDeviceDetails()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();
-            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<VideoForensics.Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((VideoForensics.Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
+            _ = dataClient.Setup(d => d.GetObservedVideoResolutionsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Array.Empty<string>());
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
             var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
             var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Entities.Devices
@@ -987,7 +1067,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", "Test Camera", deviceGuid, CancellationToken.None);
 
-            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.Is<VideoForensics.Data.Common.Entities.DeviceHealth>(h =>
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.Is<Data.Common.Entities.DeviceHealth>(h =>
                 h.DeviceId == deviceGuid
                 && h.BatteryVoltageValue == 12.5m
                 && h.IsExternalPowerConnected == true
@@ -997,11 +1077,11 @@ namespace VideoForensics.Providers.Ring.Tests
             dataClient.Verify(d => d.RecordDeviceDetailsAsync(
                 deviceGuid,
                 It.Is<Guid?>(id => id.HasValue),
-                It.Is<VideoForensics.Data.Common.Entities.DeviceCapabilities>(c => c.HasMotionDetection == true && c.HasNightVision == true && c.FirmwareVersion == "2.0.1"),
-                It.Is<VideoForensics.Data.Common.Entities.DeviceFeatures?>(f => f != null && f.MotionsEnabled == true),
-                It.IsAny<IReadOnlyList<VideoForensics.Data.Common.Entities.DeviceAlerts>?>(),
+                It.Is<Data.Common.Entities.DeviceCapabilities>(c => c.HasMotionDetection == true && c.HasNightVision == true && c.FirmwareVersion == "2.0.1"),
+                It.Is<Data.Common.Entities.DeviceFeatures?>(f => f != null && f.MotionsEnabled == true),
+                It.IsAny<IReadOnlyList<Data.Common.Entities.DeviceAlerts>?>(),
                 It.IsAny<CancellationToken>(),
-                It.Is<VideoForensics.Data.Common.Contracts.DeviceSettingsChildren?>(s => s != null)), Times.Once);
+                It.Is<Data.Common.Contracts.DeviceSettingsChildren?>(s => s != null)), Times.Once);
         }
 
         [Fact]
@@ -1010,8 +1090,8 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location
                 {
                     Id = Guid.NewGuid(),
                     ProviderLocationId = "loc-1",
@@ -1019,8 +1099,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
@@ -1036,7 +1116,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", false,
-                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -1148,13 +1228,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "default", Name = "default" });
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "default", Name = "default" });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<bool?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(),
                     It.IsAny<DeviceDetailFields?>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                .ReturnsAsync(new Data.Common.Entities.Device
                 {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
@@ -1164,6 +1244,8 @@ namespace VideoForensics.Providers.Ring.Tests
                     IsOnline = true
                 });
 
+            // The history JSON below has event id 123 on doorbot 86401464; its string ding id is 123.
+            _ = dataClient.Setup(d => d.GetDingIdCandidatesAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "123" });
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient.Object, new Mock<IMediaMetadataTagger>().Object);
             service.SetActiveProviderAccountId(Guid.NewGuid());
             return service;
@@ -1292,9 +1374,15 @@ namespace VideoForensics.Providers.Ring.Tests
         /// <summary>How many latest-snapshot reads the capture made.</summary>
         public int Reads { get; private set; }
 
-        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) => Task.CompletedTask;
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId)
+        {
+            return Task.CompletedTask;
+        }
 
-        protected override Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
 
         protected override Task<HttpUtility.DownloadResult> ReadLatestSnapshotAsync(Session session, int doorbotId, CancellationToken cancellationToken)
         {
@@ -1316,7 +1404,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
                 HttpStatusCode.NotFound, HttpStatusCode.OK);
 
-            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", Guid.NewGuid(), TimeSpan.Zero, CancellationToken.None);
 
             Assert.Equal(200, attempt.HttpStatus);
             Assert.NotNull(attempt.Image);
@@ -1332,7 +1420,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
                 HttpStatusCode.NotFound);
 
-            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", Guid.NewGuid(), TimeSpan.Zero, CancellationToken.None);
 
             Assert.Equal(404, attempt.HttpStatus);
             Assert.Null(attempt.Image);
@@ -1348,7 +1436,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new ScriptedSnapshotReadService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<IVideoForensicsDataClient>().Object,
                 HttpStatusCode.ServiceUnavailable);
 
-            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", TimeSpan.Zero, CancellationToken.None);
+            SnapshotCaptureAttempt attempt = await service.CaptureAsync(Guid.NewGuid(), "123", Guid.NewGuid(), TimeSpan.Zero, CancellationToken.None);
 
             Assert.Equal(503, attempt.HttpStatus);
             Assert.Equal(1, service.Reads);
@@ -1363,7 +1451,10 @@ namespace VideoForensics.Providers.Ring.Tests
         {
         }
 
-        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) => Task.CompletedTask;
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>Simulates Ring refusing an on-demand snapshot refresh.</summary>
@@ -1372,7 +1463,9 @@ namespace VideoForensics.Providers.Ring.Tests
         public RefreshFailingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
             : base(logger, sessionProvider, dataClient) { }
 
-        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) =>
-            Task.FromException(new InvalidOperationException("refresh unsupported"));
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId)
+        {
+            return Task.FromException(new InvalidOperationException("refresh unsupported"));
+        }
     }
 }

@@ -1,7 +1,6 @@
 using FFMpegCore;
-using Microsoft.Extensions.Logging;
 
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
@@ -61,7 +60,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception tagging media file {Path}", mediaFilePath);
+                _logger.LogError("Exception tagging media file {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 if (File.Exists(tmpPath))
                 {
                     try
@@ -72,7 +71,6 @@ namespace VideoForensics.Providers.Ring.Services
                 return false;
             }
         }
-
 
         private static bool IsJpeg(string mediaFilePath)
         {
@@ -113,7 +111,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception tagging JPEG {Path}", mediaFilePath);
+                _logger.LogError("Exception tagging JPEG {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 if (File.Exists(tmpPath))
                 {
                     try
@@ -135,12 +133,9 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), ct);
-                if (analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment))
-                {
-                    return null;
-                }
-
-                return comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
+                return analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment)
+                    ? null
+                    : comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
                     Guid.TryParse(comment[CommentPrefix.Length..], out Guid id)
                     ? id
                     : null;
@@ -151,7 +146,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception reading tagged metadata from {Path}", mediaFilePath);
+                _logger.LogError("Exception reading tagged metadata from {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
@@ -162,7 +157,6 @@ namespace VideoForensics.Providers.Ring.Services
             string? folder = Path.GetDirectoryName(_ffprobePath);
             return string.IsNullOrEmpty(folder) ? null : new FFOptions { BinaryFolder = folder };
         }
-
 
         private async Task<Guid?> ReadJpegEventIdAsync(string mediaFilePath, CancellationToken ct)
         {
@@ -179,10 +173,9 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception reading JPEG comment from {Path}", mediaFilePath);
+                _logger.LogError("Exception reading JPEG comment from {Path}: {Message} ({ErrorType})", mediaFilePath, ex.Message, ex.GetType().Name);
                 return null;
             }
         }
-
     }
 }

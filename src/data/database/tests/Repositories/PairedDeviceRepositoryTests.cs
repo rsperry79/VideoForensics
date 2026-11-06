@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -721,6 +721,53 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             // Assert
             Assert.Empty(revokedIds);
+        }
+
+        #endregion
+
+        #region DeleteRevokedAsync Tests
+
+        [Fact]
+        public async Task DeleteRevokedAsync_WithRevokedDevice_RemovesRow()
+        {
+            // Arrange
+            PairedDevice device = BuildPairedDevice(
+                webAuthnCredentialId: "cred_delete",
+                revokedAtUtc: DateTime.UtcNow,
+                revokedReason: "Lost phone");
+            _ = await _repository.AddAsync(device, CancellationToken.None);
+
+            // Act
+            bool deleted = await _repository.DeleteRevokedAsync(device.Id, CancellationToken.None);
+
+            // Assert
+            Assert.True(deleted);
+            Assert.Null(await _repository.GetAsync(device.Id, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task DeleteRevokedAsync_WithActiveDevice_LeavesRowAndReturnsFalse()
+        {
+            // Arrange - an active device must be revoked before it can be removed
+            PairedDevice device = BuildPairedDevice(webAuthnCredentialId: "cred_active_keep");
+            _ = await _repository.AddAsync(device, CancellationToken.None);
+
+            // Act
+            bool deleted = await _repository.DeleteRevokedAsync(device.Id, CancellationToken.None);
+
+            // Assert
+            Assert.False(deleted);
+            Assert.NotNull(await _repository.GetAsync(device.Id, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task DeleteRevokedAsync_WithNonexistentDevice_ReturnsFalse()
+        {
+            // Act
+            bool deleted = await _repository.DeleteRevokedAsync(Guid.NewGuid(), CancellationToken.None);
+
+            // Assert
+            Assert.False(deleted);
         }
 
         #endregion

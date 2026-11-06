@@ -5,11 +5,10 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Client.Hosting;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
@@ -115,6 +114,7 @@ namespace VideoForensics.Utils.SelfTest
             // Windows host: read install-time storage overrides and data directory access from the platform, as the server does.
             VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
             VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+            VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 
             (CliOptions? options, string? parseError) = CliOptions.Parse(args);
             if (parseError != null)
@@ -135,6 +135,21 @@ namespace VideoForensics.Utils.SelfTest
             {
                 PrintEndpointList(options.ListEndpointsJson);
                 return 0;
+            }
+
+            if (options.CheckDir != null)
+            {
+                return await RunOfflineFieldCheckAsync(options);
+            }
+
+            if (options.ListUnknown)
+            {
+                return await RunListUnknownAsync(options);
+            }
+
+            if (options.StripRawPayload)
+            {
+                return RunStripRawPayload(options);
             }
 
             if (options.InteractiveAuth)
@@ -310,7 +325,7 @@ namespace VideoForensics.Utils.SelfTest
             DbCompletenessReport report;
             try
             {
-                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath);
+                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath, outputDir);
             }
             catch (Exception ex)
             {
@@ -323,31 +338,145 @@ namespace VideoForensics.Utils.SelfTest
 
             if (!options.Quiet)
             {
-                foreach (DbCompletenessRecord? missing in report.Devices.Where(d => !d.FoundInDb))
-                {
-                    Console.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
-                }
-
-                foreach (DbCompletenessRecord? missing in report.Locations.Where(l => !l.FoundInDb))
-                {
-                    Console.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
-                }
-
-                Console.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
-                    $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
-
-                // Display metadata capture statistics
-                if (report.TotalEvents > 0 || report.TotalMediaItems > 0)
-                {
-                    Console.WriteLine($"Metadata capture: {report.MetadataCompleteness}");
-                    if (report.DevicesWithMetadata > 0 || report.LocationsWithMetadata > 0)
-                    {
-                        Console.WriteLine($"  Devices with metadata: {report.DevicesWithMetadata}, Locations: {report.LocationsWithMetadata}");
-                    }
-                }
+                // JSON columns do not count as stored: only paths the field map ties to a typed column or child rows are "in the DB".
+                DbCompletenessChecker.WriteSummary(report, Console.Out);
             }
 
             Console.WriteLine(reportPath);
+        }
+
+        /// <summary>
+        /// Offline check (--check-dir): reads a saved run's responses, checks their paths against the field map and the
+        /// EF model, and cross-checks the saved devices/locations against the database. Makes no Ring calls and needs no
+        /// credentials. The report goes to --output-dir when given, else next to the responses.
+        /// </summary>
+        private static async Task<int> RunOfflineFieldCheckAsync(CliOptions options)
+        {
+            string checkDir = options.CheckDir!;
+            if (!Directory.Exists(checkDir))
+            {
+                Console.Error.WriteLine($"Error: --check-dir directory not found: {checkDir}");
+                return 2;
+            }
+
+            string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
+            if (!File.Exists(dbPath))
+            {
+                Console.Error.WriteLine($"Error: database file not found at {dbPath}. Pass --db-path.");
+                return 2;
+            }
+
+            (Devices? devices, List<VideoForensics.Providers.Ring.Entities.Location>? locations) = ReadSavedDevicesAndLocations(checkDir);
+
+            DbCompletenessReport report;
+            try
+            {
+                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath, checkDir);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error: could not query the database: {ex.GetType().Name}: {ex.Message}");
+                return 2;
+            }
+
+            string reportDir = options.OutputDir ?? checkDir;
+            _ = Directory.CreateDirectory(reportDir);
+            string reportPath = Path.Combine(reportDir, "db-completeness.json");
+            await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(report, IndexJsonOptions));
+
+            if (!options.Quiet)
+            {
+                DbCompletenessChecker.WriteSummary(report, Console.Out);
+            }
+
+            Console.WriteLine(reportPath);
+            return 0;
+        }
+
+        /// <summary>
+        /// Opt-in maintenance (--strip-raw-payload): see <see cref="RawPayloadStripper"/>. Offline; prints counts only.
+        /// Exit 0 on success, 2 when it refused or stopped (nothing is changed in that case).
+        /// </summary>
+        private static int RunStripRawPayload(CliOptions options)
+        {
+            StripRawPayloadResult result = RawPayloadStripper.Run(options.DbPath, options.DumpFile, options.Yes);
+            if (result.Success)
+            {
+                RawPayloadStripper.WriteSummary(result, Console.Out);
+                return 0;
+            }
+
+            Console.Error.WriteLine($"Error: {result.Refusal}");
+            return 2;
+        }
+
+        /// <summary>
+        /// Read-only, offline (--list-unknown): lists the leaf JSON paths of the Ring-data JSON columns with their row counts and
+        /// value kinds, and writes unknown-keys.json and unknown-keys.md. No Ring calls and no credentials; no values are printed or written.
+        /// </summary>
+        private static async Task<int> RunListUnknownAsync(CliOptions options)
+        {
+            string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
+            if (!File.Exists(dbPath))
+            {
+                Console.Error.WriteLine($"Error: database file not found at {dbPath}. Pass --db-path.");
+                return 2;
+            }
+
+            UnknownKeyReport report;
+            try
+            {
+                report = await UnknownKeyCollator.RunAsync(dbPath, FieldMap.LoadEmbedded());
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error: could not read the database: {ex.GetType().Name}: {ex.Message}");
+                return 2;
+            }
+
+            string outputDir = options.OutputDir ?? Path.Combine(
+                new StorageLocationProvider().GetDataRoot(),
+                "SelfTesterResults",
+                DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
+            UnknownKeyCollator.WriteFiles(report, outputDir);
+
+            UnknownKeyCollator.WriteSummary(report, Console.Out);
+            Console.WriteLine(Path.Combine(outputDir, UnknownKeyCollator.JsonFileName));
+            Console.WriteLine(Path.Combine(outputDir, UnknownKeyCollator.MarkdownFileName));
+            return 0;
+        }
+
+        /// <summary>
+        /// The newest saved devices and locations responses of a run (skipping failed calls), so the presence check works
+        /// offline. A missing or unreadable file yields null, which the presence check treats as "nothing reported".
+        /// </summary>
+        private static (Devices? Devices, List<VideoForensics.Providers.Ring.Entities.Location>? Locations) ReadSavedDevicesAndLocations(string dir)
+        {
+            Dictionary<string, string> failed = FieldCoverageAnalyzer.ReadFailedFiles(dir);
+
+            T? Read<T>(string prefix)
+            {
+                string? file = Directory.EnumerateFiles(dir, prefix + "_*.json")
+                    .Where(f => !failed.ContainsKey(Path.GetFileName(f)))
+                    .OrderBy(f => f, StringComparer.Ordinal)
+                    .LastOrDefault();
+                if (file is null)
+                {
+                    return default;
+                }
+
+                try
+                {
+                    return JsonSerializer.Deserialize<T>(File.ReadAllText(file));
+                }
+                catch (JsonException ex)
+                {
+                    Console.Error.WriteLine($"Warning: could not read {Path.GetFileName(file)} for the presence check: {ex.GetType().Name}.");
+                    return default;
+                }
+            }
+
+            return (Read<Devices>("devices"), Read<UserLocationsResponse>("locations")?.UserLocations);
         }
 
         private static async Task<bool> AuthenticateWithCredentialsAsync(ResolvedCredentials credentials, IProviderAuthService authService)

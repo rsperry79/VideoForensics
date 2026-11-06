@@ -213,7 +213,6 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Null(EndpointRegistry.Find("invitations"));
         }
 
-
         [Fact]
         public void EndpointRegistry_SignallingTicket_IsReadOnlyLocationScoped()
         {

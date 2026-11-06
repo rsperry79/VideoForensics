@@ -1,0 +1,62 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Notes
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject INoteRepository NoteRepository
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<SharedResources> L
+
+<NotesPanel LoadNotes="@_loadNotes"
+            AddNote="@_addNote"
+            CanAdd="@CanAdd"
+            IsOpen="@IsOpen"
+            Heading="@L["NotesHeading"].Value" />
+
+@code {
+    /// <summary>The media flag whose notes are listed and to which a note is added.</summary>
+    [Parameter, EditorRequired]
+    public Guid FlagId { get; set; }
+
+    /// <summary>True when the signed-in operator may add notes. The flag actions panel computes this from the Review role.</summary>
+    [Parameter]
+    public bool CanAdd { get; set; }
+
+    /// <summary>False for a closed thread: the notes are shown, but no add form is.</summary>
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    private Guid? _boundFlagId;
+    private Func<CancellationToken, Task<IReadOnlyList<NoteItem>>> _loadNotes = _ => Task.FromResult<IReadOnlyList<NoteItem>>([]);
+    private Func<string, CancellationToken, Task> _addNote = (_, _) => Task.CompletedTask;
+
+    protected override void OnParametersSet()
+    {
+        // The delegates are rebuilt only when the flag changes, so the panel does not reload on every render.
+        if (_boundFlagId == FlagId)
+        {
+            return;
+        }
+
+        _boundFlagId = FlagId;
+        Guid flagId = FlagId;
+        _loadNotes = async ct => (await NoteRepository.ListAsync(NoteTargetKind.MediaFlag, flagId, ct))
+            .Select(n => new NoteItem(n.Id, n.AddedBy, n.AddedAtUtc, n.Body))
+            .ToList();
+        _addNote = AddNoteAsync;
+    }
+
+    /// <summary>Sends the trimmed body with the signed-in operator id. A missing sign-in throws, and the panel shows its sign-in text.</summary>
+    private Task AddNoteAsync(string body, CancellationToken ct)
+    {
+        string? actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actor is null)
+        {
+            throw new UnauthorizedAccessException("No operator is signed in.");
+        }
+
+        return NoteRepository.AddAsync(NoteTargetKind.MediaFlag, FlagId, body.Trim(), actor, ct);
+    }
+}

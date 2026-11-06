@@ -12,7 +12,7 @@ using VideoForensics.Data.Database.Sqlite.Migrations;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Sqlite.Tests
+namespace VideoForensics.Data.Database.Sqlite.Tests.Migrations
 {
     /// <summary>Integration tests for DatabaseInitializer.</summary>
     public class DatabaseInitializerTests

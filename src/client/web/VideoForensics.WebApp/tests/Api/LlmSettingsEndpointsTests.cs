@@ -6,9 +6,9 @@ using Moq;
 
 using System.Reflection;
 
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Client.Hosting;
 
 using Xunit;
 

@@ -21,18 +21,23 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
     {
         private static readonly DateTime Start = new(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
 
+        private readonly Bunit.BunitJSModuleInterop _player;
+
         public ViewerComponentTests()
         {
             JSInterop.Mode = JSRuntimeMode.Loose;
             _ = Services.AddLocalization();
+            _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
+            _player = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js");
         }
 
-        private static List<ClipWindow> TwoClips() =>
-            new()
-            {
+        private static List<ClipWindow> TwoClips()
+        {
+            return [
                 new("a", Start, 60),
                 new("b", Start.AddSeconds(120), 60),
-            };
+            ];
+        }
 
         /// <summary>Verifies that the timeline draws one segment per clip, in the window.</summary>
         [Fact]
@@ -117,10 +122,10 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.ContentUrlFor, id => $"/media/{id}/content")
                 .Add(x => x.Cursor, Start.AddSeconds(130)));
 
-            IElement video = cut.Find("[data-testid='review-player']");
+            IElement video = cut.Find("[data-testid='media-player']");
             Assert.Equal("b", video.GetAttribute("data-clip-id"));
             Assert.Equal("/media/b/content", video.GetAttribute("src"));
-            _ = JSInterop.VerifyInvoke("vfSetVideoTime");
+            _ = _player.VerifyInvoke("seek");
         }
 
         /// <summary>Verifies that a cursor in a gap shows the gap message and no video.</summary>
@@ -132,8 +137,8 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.ContentUrlFor, id => $"/media/{id}/content")
                 .Add(x => x.Cursor, Start.AddSeconds(90)));
 
-            Assert.Empty(cut.FindAll("[data-testid='review-player']"));
-            Assert.NotEmpty(cut.FindAll("[data-testid='review-player-gap']"));
+            Assert.Empty(cut.FindAll("[data-testid='media-player']"));
+            Assert.NotEmpty(cut.FindAll("[data-testid='media-player-gap']"));
         }
 
         /// <summary>Verifies that the grid renders one tile per camera when within the limit.</summary>
@@ -169,7 +174,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
         }
 
         /// <summary>
-        /// Queues playback reads for <c>vfGetVideoTime</c> in call order. Each setup matches one call and returns its value,
+        /// Queues playback reads for <c>getCurrentTime</c> in call order. Each setup matches one call and returns its value,
         /// so the master (tile 0) is read first and then each following tile.
         /// </summary>
         private void SetupPlaybackReads(params double[] seconds)
@@ -179,16 +184,17 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             {
                 double captured = value;
                 int ordinal = reads++;
-                _ = JSInterop.Setup<double>("vfGetVideoTime", _ => JSInterop.Invocations.Count(i => i.Identifier == "vfGetVideoTime") == ordinal + 1).SetResult(captured);
+                _ = _player.Setup<double>("getCurrentTime", _ => _player.Invocations.Count(i => i.Identifier == "getCurrentTime") == ordinal + 1).SetResult(captured);
             }
         }
 
-        private static List<CameraTile> TwoTiles() =>
-            new()
-            {
+        private static List<CameraTile> TwoTiles()
+        {
+            return [
                 new("Front", TwoClips(), id => $"/media/{id}/content"),
                 new("Back", TwoClips(), id => $"/media/{id}/content"),
-            };
+            ];
+        }
 
         /// <summary>Verifies that a tile drifting past the tolerance is seeked to the master clock's absolute time.</summary>
         [Fact]
@@ -198,12 +204,12 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.Tiles, TwoTiles())
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            int before = _player.Invocations.Count(i => i.Identifier == "seek");
             SetupPlaybackReads(10.0, 12.0);
 
-            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
 
-            Assert.Equal(1, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+            Assert.Equal(1, _player.Invocations.Count(i => i.Identifier == "seek") - before);
         }
 
         /// <summary>Verifies that a tile within the tolerance is left alone.</summary>
@@ -214,12 +220,12 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.Tiles, TwoTiles())
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            int before = _player.Invocations.Count(i => i.Identifier == "seek");
             SetupPlaybackReads(10.0, 10.2);
 
-            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
 
-            Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+            Assert.Equal(0, _player.Invocations.Count(i => i.Identifier == "seek") - before);
         }
 
         /// <summary>Verifies that a single-tile grid has nothing to sync and completes without seeking.</summary>
@@ -231,11 +237,11 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.Tiles, tiles)
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            int before = _player.Invocations.Count(i => i.Identifier == "seek");
 
-            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
 
-            Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+            Assert.Equal(0, _player.Invocations.Count(i => i.Identifier == "seek") - before);
         }
 
         /// <summary>Verifies that the single-camera view plays the selected camera large and shows one preview for the other.</summary>
@@ -253,8 +259,9 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.SelectedIndex, 0)
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            Assert.Single(cut.FindAll("[data-testid='review-player']"));
-            Assert.Single(cut.FindAll("[data-testid='single-camera-preview']"));
+            _ = Assert.Single(cut.FindAll("video.review-player"));
+            _ = Assert.Single(cut.FindAll("[data-testid='single-camera-preview'] [data-testid='media-player']"));
+            _ = Assert.Single(cut.FindAll("[data-testid='single-camera-preview']"));
         }
 
         /// <summary>Verifies that clicking a preview tile reports that camera's index in the full list.</summary>
@@ -316,7 +323,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.Cursor, Start.AddSeconds(30)));
 
             // The main player also seeks once, so two calls means the preview tile seeked too.
-            _ = JSInterop.VerifyInvoke("vfSetVideoTime", 2);
+            _ = _player.VerifyInvoke("seek", 2);
         }
 
         /// <summary>Verifies that an out-of-range selection hides the main player and renders no preview tiles.</summary>
@@ -334,7 +341,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
                 .Add(x => x.SelectedIndex, 5)
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            Assert.Empty(cut.FindAll("[data-testid='review-player']"));
+            Assert.Empty(cut.FindAll("[data-testid='media-player']"));
             Assert.Empty(cut.FindAll("[data-testid='single-camera-preview']"));
         }
 
@@ -343,10 +350,10 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
         public void SingleCameraView_EmptyCameras_RendersNoMainPlayer()
         {
             IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
-                .Add(x => x.Cameras, new List<CameraTile>())
+                .Add(x => x.Cameras, [])
                 .Add(x => x.Cursor, Start.AddSeconds(10)));
 
-            Assert.Empty(cut.FindAll("[data-testid='review-player']"));
+            Assert.Empty(cut.FindAll("[data-testid='media-player']"));
         }
     }
 }

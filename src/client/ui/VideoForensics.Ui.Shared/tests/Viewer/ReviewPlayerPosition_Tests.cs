@@ -1,9 +1,6 @@
-using AngleSharp.Dom;
-
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using VideoForensics.Client.Common.Viewer;
@@ -16,21 +13,25 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer;
 /// <summary>The review player's playback position read, and the single-camera view that forwards it to its main player.</summary>
 public class ReviewPlayerPosition_Tests : BunitContext
 {
-    private const string MediaViewerModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-viewer.js";
+    private const string MediaPlayerModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js";
     private static readonly DateTime Start = new(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
 
     public ReviewPlayerPosition_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
     }
 
-    private static List<ClipWindow> OneClip() => [new("clip-a", Start, 60)];
+    private static List<ClipWindow> OneClip()
+    {
+        return [new("clip-a", Start, 60)];
+    }
 
     /// <summary>Sets up the media-viewer module so the position read returns <paramref name="ms"/>.</summary>
     private Bunit.BunitJSModuleInterop SetupModuleReturning(double ms)
     {
-        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaViewerModule);
+        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaPlayerModule);
         _ = module.Setup<double>("getCurrentTimeMs", _ => true).SetResult(ms);
         return module;
     }
@@ -74,7 +75,7 @@ public class ReviewPlayerPosition_Tests : BunitContext
     public async Task ReviewPlayer_PositionCallThrows_ReturnsNull()
     {
         // Arrange
-        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaViewerModule);
+        Bunit.BunitJSModuleInterop module = JSInterop.SetupModule(MediaPlayerModule);
         _ = module.Setup<double>("getCurrentTimeMs", _ => true).SetException(new JSException("boom"));
         IRenderedComponent<ReviewPlayer> cut = Render<ReviewPlayer>(p => p
             .Add(x => x.Clips, OneClip())
@@ -115,7 +116,7 @@ public class ReviewPlayerPosition_Tests : BunitContext
     {
         // Arrange
         IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
-            .Add(x => x.Cameras, new List<CameraTile>())
+            .Add(x => x.Cameras, [])
             .Add(x => x.SelectedIndex, 0));
 
         // Act

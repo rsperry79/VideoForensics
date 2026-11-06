@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {
@@ -36,7 +36,7 @@ namespace VideoForensics.Client.WebApp.Hubs
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // The reading is already stored; a failed push only means open pages show the new status on their next load.
-                _logger.LogWarning(ex, "Could not push a device health change for device {DeviceId} to live clients", deviceId);
+                _logger.LogWarning("Could not push a device health change for device {DeviceId} to live clients: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
             }
         }
     }

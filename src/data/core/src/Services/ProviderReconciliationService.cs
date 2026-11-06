@@ -98,7 +98,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording reconciliation run for device {DeviceId}", deviceId);
+                _logger.LogError("Error recording reconciliation run for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -114,7 +114,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving reconciliation history for device {DeviceId}", deviceId);
+                _logger.LogError("Error retrieving reconciliation history for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -191,8 +191,8 @@ namespace VideoForensics.Data.Core.Services
                         {
                             result.Failed++;
                             result.ErrorDetails.Add($"Error fixing new event {discrepancy.ProviderEventId}: {ex.Message}");
-                            _logger.LogError(ex, "Error auto-fixing new event {ProviderEventId} for device {DeviceId}",
-                                SanitizeForLog(discrepancy.ProviderEventId), deviceId);
+                            _logger.LogError("Error auto-fixing new event {ProviderEventId} for device {DeviceId}: {Message} ({ErrorType})",
+                                SanitizeForLog(discrepancy.ProviderEventId), deviceId, ex.Message, ex.GetType().Name);
                         }
                     }
 
@@ -255,8 +255,8 @@ namespace VideoForensics.Data.Core.Services
                         {
                             result.Failed++;
                             result.ErrorDetails.Add($"Error fixing metadata for {discrepancy.ProviderEventId}: {ex.Message}");
-                            _logger.LogError(ex, "Error auto-fixing metadata for event {ProviderEventId} for device {DeviceId}",
-                                SanitizeForLog(discrepancy.ProviderEventId), deviceId);
+                            _logger.LogError("Error auto-fixing metadata for event {ProviderEventId} for device {DeviceId}: {Message} ({ErrorType})",
+                                SanitizeForLog(discrepancy.ProviderEventId), deviceId, ex.Message, ex.GetType().Name);
                         }
                     }
 
@@ -271,7 +271,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during auto-fix reconciliation for device {DeviceId}", deviceId);
+                _logger.LogError("Error during auto-fix reconciliation for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

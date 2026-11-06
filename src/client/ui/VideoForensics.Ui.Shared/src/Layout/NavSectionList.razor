@@ -57,12 +57,14 @@
     protected override void OnParametersSet()
     {
         // Reveal the section holding the current page when the page changes, or when the visible sections change
-        // underneath us (sections often arrive after the first render, once role and tier load). Other re-renders
-        // keep whatever the operator last opened, so a manual toggle is not undone.
+        // underneath us (sections often arrive after the first render, once role and tier load, e.g. after a circuit
+        // reconnect). The key covers items as well as headings: the current page's item can appear inside a heading
+        // that was already visible. Other re-renders keep whatever the operator last opened, so a manual toggle is
+        // not undone.
         string location = CurrentPath + CurrentQuery;
-        string sectionKey = string.Join("|", Sections.Select(s => s.Title ?? string.Empty));
+        string sectionKey = string.Join("|", Sections.Select(s => (s.Title ?? string.Empty) + ":" + string.Join(",", s.Items.Select(i => i.Path))));
         bool locationChanged = location != _lastLocation;
-        bool openIsStale = sectionKey != _lastSectionKey && !Sections.Any(s => s.Title == _openTitle);
+        bool openIsStale = sectionKey != _lastSectionKey && (_openTitle is null || !Sections.Any(s => s.Title == _openTitle));
 
         _lastLocation = location;
         _lastSectionKey = sectionKey;
@@ -105,9 +107,14 @@
     /// The single item that owns the current page. Several items can match by prefix (e.g. "/settings" matches
     /// "/settings/operators"), so the most specific match wins; otherwise General would highlight on every admin page.
     /// </summary>
-    private NavItem? ActiveItem => Sections
-        .SelectMany(s => s.Items)
-        .Where(i => NavPathMatcher.Matches(CurrentPath, CurrentQuery, i.Path))
-        .OrderByDescending(i => i.Path.Split('?')[0].Length)
-        .FirstOrDefault();
+    private NavItem? ActiveItem
+    {
+        get
+        {
+            // The owner comes from the whole catalog. When the page's own item is hidden for this operator, nothing is
+            // highlighted, rather than a parent item (e.g. General for /settings/logs) claiming the page.
+            string? owner = NavPathMatcher.BestMatch(NavGroups.All.SelectMany(g => g.Items).SelectMany(i => new[] { i }.Concat(i.Children ?? [])).Select(i => i.Path), CurrentPath, CurrentQuery);
+            return owner is null ? null : Sections.SelectMany(s => s.Items).FirstOrDefault(i => i.Path == owner);
+        }
+    }
 }

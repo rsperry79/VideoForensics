@@ -31,12 +31,6 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.LocationMetadata.FirstOrDefaultAsync(m => m.LocationId == locationId, ct);
         }
 
-        public async Task<LocationMetadata?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.LocationMetadata.FirstOrDefaultAsync(m => m.ApiResponseHash == apiResponseHash, ct);
-        }
-
         public async Task AddAsync(LocationMetadata metadata, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
@@ -48,7 +42,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding location metadata for location {LocationId}", metadata.LocationId);
+                _logger.LogError("Error adding location metadata for location {LocationId}: {Message} ({ErrorType})", metadata.LocationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -64,7 +58,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating location metadata for location {LocationId}", metadata.LocationId);
+                _logger.LogError("Error updating location metadata for location {LocationId}: {Message} ({ErrorType})", metadata.LocationId, ex.Message, ex.GetType().Name);
                 throw;
             }
         }
@@ -84,7 +78,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting location metadata: {MetadataId}", id);
+                _logger.LogError("Error deleting location metadata: {MetadataId}: {Message} ({ErrorType})", id, ex.Message, ex.GetType().Name);
                 throw;
             }
         }

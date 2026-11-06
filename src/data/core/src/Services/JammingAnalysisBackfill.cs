@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -48,7 +48,7 @@ namespace VideoForensics.Data.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Analysis backfill could not analyse {FileName}; it will be retried on a later pass", item.FileName);
+                    _logger.LogWarning("Analysis backfill could not analyse {FileName}; it will be retried on a later pass: {Message} ({ErrorType})", item.FileName, ex.Message, ex.GetType().Name);
                 }
             }
 

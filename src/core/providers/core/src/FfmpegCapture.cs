@@ -1,6 +1,6 @@
-using System.Text;
-
 using FFMpegCore;
+
+using System.Text;
 
 namespace VideoForensics.Core.Providers.Core
 {

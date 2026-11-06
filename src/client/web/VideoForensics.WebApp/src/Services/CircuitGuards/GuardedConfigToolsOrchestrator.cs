@@ -1,7 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
-using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services.CircuitGuards
@@ -63,7 +63,22 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 
         public Task<(bool Success, string Message)> SetHealthSyncAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default)
         {
-            return Run(AccessPolicy.Admin, () => inner.SetHealthSyncAsync(config, enabled, ct));
+            return RunServicesSetting(() => inner.SetHealthSyncAsync(config, enabled, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetScheduledReportsEnabledAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetScheduledReportsEnabledAsync(config, enabled, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetScheduledReportIntervalHoursAsync(IForensicsConfiguration config, int hours, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetScheduledReportIntervalHoursAsync(config, hours, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetServiceIntervalHoursAsync(IForensicsConfiguration config, string service, int hours, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetServiceIntervalHoursAsync(config, service, hours, ct), ct);
         }
 
         public Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default)
@@ -74,6 +89,13 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
         public Task<(bool Success, string Message)> FactoryResetAsync(CancellationToken ct = default, string? downloadDirOverride = null, string? dbPathOverride = null)
         {
             return Run(AccessPolicy.SuperAdminLocal, () => inner.FactoryResetAsync(ct, downloadDirOverride, dbPathOverride));
+        }
+
+        private async Task<(bool Success, string Message)> RunServicesSetting(Func<Task<(bool Success, string Message)>> change, CancellationToken ct)
+        {
+            // Without a policy store the safe default applies: SuperAdmin only, matching the Services page.
+            AccessPolicy required = accessPolicy is null ? AccessPolicy.SuperAdmin : await accessPolicy.GetRequiredPolicyAsync(RestrictedSettings.Services, ct);
+            return await Run(required, change);
         }
 
         private async Task<(bool Success, string Message)> RunReportSetting(Func<Task<(bool Success, string Message)>> change, CancellationToken ct)

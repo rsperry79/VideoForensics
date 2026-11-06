@@ -1,6 +1,5 @@
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using Xunit;
 
 namespace VideoForensics.Client.Hosting.Tests.Signal;
 
@@ -13,13 +12,13 @@ public class SignalAnalysisMappingTests
     [Fact]
     public void RoundTrip_PreservesEveryFigure()
     {
-        var samples = new[]
+        SignalSample[] samples = new[]
         {
             new SignalSample(From.AddHours(9), -50),
             new SignalSample(From.AddHours(10), null),
             new SignalSample(From.AddHours(11), -80),
         };
-        SignalCalendar calendar = SignalCalendar.Compute(samples, From, To);
+        var calendar = SignalCalendar.Compute(samples, From, To);
         var device = new SignalDeviceAnalysis(
             Guid.NewGuid(),
             "Front door",

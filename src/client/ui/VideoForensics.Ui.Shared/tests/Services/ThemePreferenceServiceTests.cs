@@ -143,7 +143,7 @@ public class ThemePreferenceServiceTests
         _ = session.Setup(s => s.OperatorId).Returns(operatorId);
         var service = new ThemePreferenceService(js, repository.Object, session.Object, Mock.Of<ICultureSwitcher>());
         await service.InitializeAsync();
-        var changes = 0;
+        int changes = 0;
         service.OnChange += () => changes++;
 
         // Act

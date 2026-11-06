@@ -109,6 +109,23 @@ public class NavSectionList_Tests : NavComponentTestBase
     }
 
     [Fact]
+    public void NavSectionList_ActiveItemArrivesInsideVisibleHeading_RevealsActiveSection()
+    {
+        // Tier loads after the first render: the heading is already visible but the current page's item is not yet.
+        IRenderedComponent<NavSectionList> component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, [new NavSection("Integrations", [new("Webhooks", "/settings/integrations/webhooks")])])
+            .Add(c => c.CurrentPath, "/settings/integrations/email")
+            .Add(c => c.CurrentQuery, string.Empty));
+
+        component.Render(p => p
+            .Add(c => c.Sections, [new NavSection("Integrations", [new("Webhooks", "/settings/integrations/webhooks"), new("Email", "/settings/integrations/email")])])
+            .Add(c => c.CurrentPath, "/settings/integrations/email")
+            .Add(c => c.CurrentQuery, string.Empty));
+
+        _ = Assert.Single(component.FindAll("[data-path='/settings/integrations/email']"));
+    }
+
+    [Fact]
     public void NavSectionList_UntitledSection_ItemsAlwaysRendered()
     {
         IReadOnlyList<NavSection> sections =

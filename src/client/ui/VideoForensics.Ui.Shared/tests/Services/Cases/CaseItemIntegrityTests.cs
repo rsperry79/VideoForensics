@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -7,6 +7,23 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services.Cases;
 
 public class CaseItemIntegrity_Tests
 {
+    [Fact]
+    public void Compare_WithSnapshotItem_ReturnsNotApplicable()
+    {
+        var snapshotItem = new CaseItem
+        {
+            Id = Guid.NewGuid(),
+            Kind = CaseItemKind.Snapshot,
+            SnapshotCaptureId = Guid.NewGuid(),
+            Reason = "Test snapshot",
+            AddedBy = "test"
+        };
+
+        PinIntegrity result = CaseItemIntegrity.Compare(snapshotItem, null);
+
+        Assert.Equal(PinIntegrity.NotApplicable, result);
+    }
+
     [Fact]
     public void Compare_WithEventItem_ReturnsNotApplicable()
     {

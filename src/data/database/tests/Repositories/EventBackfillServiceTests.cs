@@ -2,13 +2,13 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Data.Database.Tests
+namespace VideoForensics.Data.Database.Tests.Repositories
 {
     /// <summary>Tests for EventBackfillService, which reconstructs Events from DownloadEvents and MediaItems history.</summary>
     public class EventBackfillServiceTests : IAsyncLifetime
@@ -17,6 +17,7 @@ namespace VideoForensics.Data.Database.Tests
         private EventRepository _eventRepository = null!;
         private DownloadEventRepository _downloadEventRepository = null!;
         private MediaItemRepository _mediaItemRepository = null!;
+        private UnitOfWork _unitOfWork = null!;
         private ILoggerFactory _loggerFactory = null!;
 
         public async ValueTask InitializeAsync()
@@ -28,6 +29,7 @@ namespace VideoForensics.Data.Database.Tests
             _eventRepository = new EventRepository(_fixture.Factory, _loggerFactory.CreateLogger<EventRepository>());
             _downloadEventRepository = new DownloadEventRepository(_fixture.Factory, _loggerFactory.CreateLogger<DownloadEventRepository>());
             _mediaItemRepository = new MediaItemRepository(_fixture.Factory, _loggerFactory.CreateLogger<MediaItemRepository>());
+            _unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
         }
 
         public async ValueTask DisposeAsync()
@@ -46,6 +48,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -82,6 +85,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -123,6 +127,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -155,6 +160,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -189,6 +195,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -223,6 +230,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -260,6 +268,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -291,6 +300,7 @@ namespace VideoForensics.Data.Database.Tests
                     _downloadEventRepository,
                     _mediaItemRepository,
                     _eventRepository,
+                    _unitOfWork,
                     mockLogger.Object,
                     cts.Token));
         }
@@ -309,6 +319,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -345,6 +356,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 
@@ -383,6 +395,7 @@ namespace VideoForensics.Data.Database.Tests
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
+                _unitOfWork,
                 mockLogger.Object,
                 CancellationToken.None);
 

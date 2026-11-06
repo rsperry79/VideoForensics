@@ -11,7 +11,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Tests.Services
 {
     /// <summary>
     /// Feeds the sanitized captures through the persister into a mocked writer, and checks the mapped graph that
@@ -136,6 +136,24 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(written);
             Assert.Equal(LocationId, written!.ProviderLocationId);
             Assert.Equal(response.SharedUsersEnabled, written.SharedUsersEnabled);
+        }
+
+        [Fact]
+        public async Task RingAccountSettingsPersister_PersistAccountMonitoringStatusAsync_CapturedStatus_WritesStatusWithPlans()
+        {
+            AccountMonitoringStatusResponse response = JsonSerializer.Deserialize<AccountMonitoringStatusResponse>(ReadFixture("account-monitoring-status-sanitized.json"))!;
+            var writer = new Mock<IRingAccountSettingsWriter>();
+            RingAccountMonitoringStatus? written = null;
+            _ = writer.Setup(w => w.ReplaceAccountMonitoringStatusAsync(It.IsAny<RingAccountMonitoringStatus>(), It.IsAny<CancellationToken>()))
+                .Callback<RingAccountMonitoringStatus, CancellationToken>((s, _) => written = s)
+                .Returns(Task.CompletedTask);
+
+            await CreatePersister(writer).PersistAccountMonitoringStatusAsync(response, LocationId);
+
+            Assert.NotNull(written);
+            Assert.Equal(LocationId, written!.ProviderLocationId);
+            Assert.Equal(response.AccountState, written.AccountState);
+            Assert.Equal(response.CompatibleMonitoringPlans!.Count, written.CompatibleMonitoringPlans.Count);
         }
 
         [Fact]

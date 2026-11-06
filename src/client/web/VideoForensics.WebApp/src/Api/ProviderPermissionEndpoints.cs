@@ -52,6 +52,7 @@ namespace VideoForensics.Client.WebApp.Api
             ("notifications", RestrictedSettings.Notifications),
             ("llm", RestrictedSettings.Llm),
             ("infrastructure", RestrictedSettings.Infrastructure),
+            ("services", RestrictedSettings.Services),
         ];
 
         private static async Task<IResult> GetSettingsAccessAsync(ISettingsAccessPolicy policy, CancellationToken ct)
@@ -61,7 +62,8 @@ namespace VideoForensics.Client.WebApp.Api
                 await policy.GetRequiredPolicyAsync(RestrictedSettings.Email, ct) == AccessPolicy.Admin,
                 await policy.GetRequiredPolicyAsync(RestrictedSettings.Notifications, ct) == AccessPolicy.Admin,
                 await policy.GetRequiredPolicyAsync(RestrictedSettings.Llm, ct) == AccessPolicy.Admin,
-                await policy.GetRequiredPolicyAsync(RestrictedSettings.Infrastructure, ct) == AccessPolicy.Admin));
+                await policy.GetRequiredPolicyAsync(RestrictedSettings.Infrastructure, ct) == AccessPolicy.Admin,
+                await policy.GetRequiredPolicyAsync(RestrictedSettings.Services, ct) == AccessPolicy.Admin));
         }
 
         private static async Task<IResult> GetAreaAsync(RestrictedSettings area, IAppSettingRepository settings, CancellationToken ct)
@@ -81,7 +83,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             // Validated at the API boundary. Storing anything else would silently fall back to SuperAdmin on read.
             string level = request.Access;
-            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            if (level is not ProviderEditAccessLevels.Admin and not ProviderEditAccessLevels.SuperAdmin)
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -115,7 +117,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             // Validated at the API boundary. Storing anything else would silently fall back to Admin on read.
             string level = request.ProviderAccountEditAccess;
-            if (level != ProviderEditAccessLevels.Admin && level != ProviderEditAccessLevels.SuperAdmin)
+            if (level is not ProviderEditAccessLevels.Admin and not ProviderEditAccessLevels.SuperAdmin)
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {

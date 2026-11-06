@@ -7,6 +7,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
     /// <summary>
     /// Tests that <see cref="StorageLocationProvider"/> takes its per-category overrides from an injected source.
     /// </summary>
+    [Xunit.Collection("storage-static")]
     public class StorageOverrideSourceTests
     {
         private sealed class RecordingOverrideSource : IStorageOverrideSource
@@ -18,7 +19,10 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
                 _value = value;
             }
 
-            public string? GetOverride(StorageCategory category) => _value;
+            public string? GetOverride(StorageCategory category)
+            {
+                return _value;
+            }
         }
 
         /// <summary>Verifies that a non-empty override from the source is returned as the category root.</summary>

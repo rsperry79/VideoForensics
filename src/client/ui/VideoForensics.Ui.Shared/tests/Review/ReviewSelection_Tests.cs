@@ -4,7 +4,7 @@ using VideoForensics.Utils.Testing;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The current review selection the Actions menu acts on: the covering clip, the selected event, the primary camera, and the cursor.</summary>
 public class ReviewSelection_Tests
@@ -39,7 +39,7 @@ public class ReviewSelection_Tests
     public void ReviewSelection_CursorInsideClip_ReturnsThatClipsMediaItemId()
     {
         // Arrange
-        Guid clipId = Guid.NewGuid();
+        var clipId = Guid.NewGuid();
         DateTime clipStart = NowUtc.AddMinutes(-60);
         PublishClip(clipId.ToString("D"), clipStart, 600);
         _state.SetCursor(clipStart.AddSeconds(100));
@@ -133,7 +133,7 @@ public class ReviewSelection_Tests
     public void ReviewSelection_SelectedEvent_ReturnsItsId()
     {
         // Arrange
-        Guid eventId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
         _state.SelectEvent(eventId);
 
         // Act

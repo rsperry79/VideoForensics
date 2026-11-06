@@ -1,15 +1,16 @@
+using FFMpegCore;
+
+using Microsoft.Extensions.DependencyInjection;
+
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading;
 
-using FFMpegCore;
-using Microsoft.Extensions.DependencyInjection;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Providers.Core;
+using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -43,6 +44,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
         public ValueTask DisposeAsync()
         {
+            GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
 
@@ -132,7 +134,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 string? mediaFilePath = null;
                 if (result.Status == HttpStatusCode.OK && result.Bytes.Length > 0)
                 {
-                    mediaFilePath = Path.Combine(folder, attemptedAt.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg");
+                    mediaFilePath = Path.Combine(folder, MediaFileNamer.FormatMediaFileName(doorbot.Description, attemptedAt.UtcDateTime, "snapshot", "jpg"));
                     await File.WriteAllBytesAsync(mediaFilePath, result.Bytes, ct);
                     writtenFiles.Add(mediaFilePath);
                     images++;
@@ -171,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.All(attempts, a => Assert.InRange(a.CapturedAtUtc, start, end));
             Assert.True(attempts.Min(a => a.CapturedAtUtc) < start + SnapInterval, "The first capture did not start at the beginning of the timeframe.");
 
-            // The loop is registered as a Media row on this device, marked with the roll-up marker and stamped with the window end.
+            // The loop is registered as a Media row on this device, marked with the roll-up marker and stamped with the window start (the loop covers the real window from its start).
             IReadOnlyList<MediaItem> inWindow = await mediaItems.GetByDeviceAndDateRangeAsync(device.Id, start.UtcDateTime.AddSeconds(-1), end.UtcDateTime.AddSeconds(1), ct);
             MediaItem? loop = inWindow
                 .Where(m => m.MetadataJson == SnapshotRollupService.SnapshotRollupMarker)
@@ -179,11 +181,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 .FirstOrDefault();
             Assert.NotNull(loop);
             Assert.Equal("mp4", loop.MediaFormat);
-            Assert.True(File.Exists(loop.FilePath), $"The time lapse file is missing at {loop.FilePath}.");
-            Assert.True(Math.Abs((loop.RecordedAtUtc - end.UtcDateTime).TotalSeconds) < 1, "The time lapse is not stamped with the end of the capture timeframe.");
+            // The roll-up stores the loop's path relative to the media root, so resolve it before touching the file.
+            string loopPath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToAbsoluteAsync(loop.FilePath, ct);
+            Assert.True(File.Exists(loopPath), $"The time lapse file is missing at {loopPath}.");
+            Assert.True(Math.Abs((loop.RecordedAtUtc - start.UtcDateTime).TotalSeconds) < 1, "The time lapse is not stamped with the start of the capture timeframe.");
 
             // The file itself must run for the capture timeframe, so the loop's length is read from the MP4 and compared to end - start.
-            double lapseSeconds = await ProbeDurationSecondsAsync(ffprobe, loop.FilePath, ct);
+            double lapseSeconds = await ProbeDurationSecondsAsync(ffprobe, loopPath, ct);
             double captureSeconds = (end - start).TotalSeconds;
             Assert.True(Math.Abs(lapseSeconds - captureSeconds) <= 1,
                 $"The time lapse runs {lapseSeconds:F1}s but the capture timeframe is {captureSeconds:F1}s.");

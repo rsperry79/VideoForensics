@@ -108,7 +108,7 @@ public class EventEntityTests
         bool motionDetectionEnabled = true;
         string motionSensitivity = "high";
         string recordingMode = "continuous";
-        string customSettingsJson = "{\"nightVision\": true}";
+        var customSettings = new List<DeviceConfigSnapshotSetting> { new() { Id = Guid.NewGuid(), Key = "nightVision", ValueJson = "true" } };
         DateTime capturedAtUtc = DateTime.UtcNow;
         DeviceConfigSource source = DeviceConfigSource.Fetched;
 
@@ -120,7 +120,7 @@ public class EventEntityTests
             MotionDetectionEnabled = motionDetectionEnabled,
             MotionSensitivity = motionSensitivity,
             RecordingMode = recordingMode,
-            CustomSettingsJson = customSettingsJson,
+            CustomSettings = customSettings,
             CapturedAtUtc = capturedAtUtc,
             Source = source
         };
@@ -131,7 +131,7 @@ public class EventEntityTests
         Assert.True(snapshot.MotionDetectionEnabled);
         Assert.Equal(motionSensitivity, snapshot.MotionSensitivity);
         Assert.Equal(recordingMode, snapshot.RecordingMode);
-        Assert.Equal(customSettingsJson, snapshot.CustomSettingsJson);
+        Assert.Same(customSettings, snapshot.CustomSettings);
         Assert.Equal(capturedAtUtc, snapshot.CapturedAtUtc);
         Assert.Equal(DeviceConfigSource.Fetched, snapshot.Source);
     }
@@ -147,7 +147,7 @@ public class EventEntityTests
             MotionDetectionEnabled = null,
             MotionSensitivity = null,
             RecordingMode = null,
-            CustomSettingsJson = null,
+            CustomSettings = [],
             CapturedAtUtc = DateTime.UtcNow,
             Source = DeviceConfigSource.Fetched
         };
@@ -156,7 +156,7 @@ public class EventEntityTests
         Assert.Null(snapshot.MotionDetectionEnabled);
         Assert.Null(snapshot.MotionSensitivity);
         Assert.Null(snapshot.RecordingMode);
-        Assert.Null(snapshot.CustomSettingsJson);
+        Assert.Empty(snapshot.CustomSettings);
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class EventEntityTests
             MotionDetectionEnabled = false,
             MotionSensitivity = "medium",
             RecordingMode = "motion",
-            CustomSettingsJson = null,
+            CustomSettings = [],
             CapturedAtUtc = DateTime.UtcNow,
             Source = DeviceConfigSource.Applied
         };
@@ -196,7 +196,7 @@ public class EventEntityTests
             MotionDetectionEnabled = true,
             MotionSensitivity = "high",
             RecordingMode = "continuous",
-            CustomSettingsJson = null,
+            CustomSettings = [],
             CapturedAtUtc = fetchedTime,
             Source = DeviceConfigSource.Fetched
         };
@@ -208,7 +208,7 @@ public class EventEntityTests
             MotionDetectionEnabled = false,
             MotionSensitivity = "medium",
             RecordingMode = "motion",
-            CustomSettingsJson = null,
+            CustomSettings = [],
             CapturedAtUtc = appliedTime,
             Source = DeviceConfigSource.Applied
         };

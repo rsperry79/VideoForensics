@@ -26,5 +26,20 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Replaces the location mode sharing state for a location (keyed by <see cref="RingLocationModeSharing.ProviderLocationId"/>).</summary>
         Task ReplaceLocationModeSharingAsync(RingLocationModeSharing sharing, CancellationToken ct);
+
+        /// <summary>Replaces the alarm account monitoring status and its plans for a location (keyed by <see cref="RingAccountMonitoringStatus.ProviderLocationId"/>).</summary>
+        Task ReplaceAccountMonitoringStatusAsync(RingAccountMonitoringStatus status, CancellationToken ct);
+
+        /// <summary>Replaces the Ring-only details of a location (keyed by <see cref="RingLocationDetails.LocationId"/>).</summary>
+        Task ReplaceLocationDetailsAsync(RingLocationDetails details, CancellationToken ct);
+
+        /// <summary>Replaces the users shared onto a location, with their device grants and permissions.</summary>
+        Task ReplaceLocationSharedUsersAsync(Guid locationId, IReadOnlyList<RingLocationSharedUser> users, CancellationToken ct);
+
+        /// <summary>Replaces the doorbots linked to one chime.</summary>
+        Task ReplaceChimeLinkedDoorbotsAsync(Guid chimeDeviceId, IReadOnlyList<RingChimeLinkedDoorbot> links, CancellationToken ct);
+
+        /// <summary>Replaces the snapshot timestamps of one Ring account.</summary>
+        Task ReplaceSnapshotTimestampsAsync(Guid ringAccountId, IReadOnlyList<RingSnapshotTimestamp> timestamps, CancellationToken ct);
     }
 }

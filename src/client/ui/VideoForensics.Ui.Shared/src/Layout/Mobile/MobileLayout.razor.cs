@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Extensions;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
 {
@@ -132,7 +132,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
 
         private async Task SignOutAsync()
         {
-            await SessionState.ClearAsync();
+            await SessionState.SignOutAsync();
             Nav.NavigateTo("/signin");
         }
 

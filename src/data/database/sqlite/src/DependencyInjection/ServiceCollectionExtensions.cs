@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
@@ -62,7 +61,7 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             // SQL command messages are logged at Debug, not Information, so they stay out of every build's normal output.
             _ = services.AddDbContextFactory<VideoForensicsDbContext>((sp, options) =>
             {
-                options.UseSqlite(connectionString, b => b
+                _ = options.UseSqlite(connectionString, b => b
                     .MigrationsAssembly("VideoForensics.Data.Database.Sqlite")
                     .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
 
@@ -70,21 +69,24 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                 ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
                 if (loggerFactory is not null)
                 {
-                    options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
+                    _ = options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
                 }
             });
+
+            // The SQLite side of database maintenance. The common IDatabaseMaintenanceService reaches it only through IDatabaseEngine.
+            _ = services.AddScoped<VideoForensics.Data.Common.Contracts.IDatabaseEngine, VideoForensics.Data.Database.Sqlite.Services.SqliteDatabaseEngine>();
 
             // Operational logs live in logs.db beside the main database, so error rows and telemetry do not bloat the audit file.
             string logsPath = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "logs.db");
             _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>((sp, options) =>
             {
-                options.UseSqlite(SqliteConnectionStrings.ForFile(logsPath));
+                _ = options.UseSqlite(SqliteConnectionStrings.ForFile(logsPath));
 
                 // Same Debug remap as the main database. ProviderApiCallRecords writes go through this context.
                 ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
                 if (loggerFactory is not null)
                 {
-                    options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
+                    _ = options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
                 }
             });
 

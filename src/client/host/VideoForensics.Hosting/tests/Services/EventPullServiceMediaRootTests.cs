@@ -37,7 +37,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             DiscoveryStub.Wire(_accountId, _location, new[] { _device }, _discovery, _locationRepository, _deviceRepository);
 
             _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>());
+                .ReturnsAsync([]);
             _ = _media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DownloadResult(Success: true));
 
@@ -69,7 +69,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _deviceRepository.Object,
                 _locationRepository.Object,
                 _accountRepository.Object,
-                _discovery.Object,
                 mediaDownloadService: _media.Object,
                 mediaRoot: mediaRoot,
                 storage: _storage.Object,

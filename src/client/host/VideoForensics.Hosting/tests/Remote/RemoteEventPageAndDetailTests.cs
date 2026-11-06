@@ -1,10 +1,8 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
@@ -47,7 +45,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 string value = eq < 0 ? string.Empty : Uri.UnescapeDataString(pair[(eq + 1)..]);
                 if (!result.TryGetValue(key, out List<string>? values))
                 {
-                    values = new List<string>();
+                    values = [];
                     result[key] = values;
                 }
 
@@ -76,15 +74,15 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task RemoteEventRepository_ListEventPage_SendsDevicesRangeExcludeAndPaging_InQueryString()
         {
-            Guid deviceA = Guid.NewGuid();
-            Guid deviceB = Guid.NewGuid();
+            var deviceA = Guid.NewGuid();
+            var deviceB = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             var handler = new FakeHttpMessageHandler(_ => Task.FromResult(JsonResponse("{}")));
             var repo = new RemoteEventRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
             _ = await repo.ListPageByDevicesAndDateRangeAsync(
-                new[] { deviceA, deviceB }, fromUtc, toUtc, new[] { "person", "ring" }, skip: 5, take: 10, CancellationToken.None);
+                new[] { deviceA, deviceB }, fromUtc, toUtc, new[] { "person", "ring" }, null, skip: 5, take: 10, CancellationToken.None);
 
             Uri uri = handler.CapturedRequest!.RequestUri!;
             Assert.Equal("/api/v1/events/page", uri.AbsolutePath);
@@ -98,10 +96,27 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
+        public async Task RemoteEventRepository_ListEventPage_IncludeTypes_SendsEscapedIncludeTypesQueryParams()
+        {
+            var handler = new FakeHttpMessageHandler(_ => Task.FromResult(JsonResponse("{}")));
+            var repo = new RemoteEventRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            _ = await repo.ListPageByDevicesAndDateRangeAsync(
+                new[] { Guid.NewGuid() },
+                new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+                null, new[] { "ring doorbell", "person" }, skip: 0, take: 10, CancellationToken.None);
+
+            Dictionary<string, List<string>> query = ParseQuery(handler.CapturedRequest!.RequestUri!);
+            Assert.Equal(new[] { "ring doorbell", "person" }, query["includeTypes"]);
+            Assert.False(query.ContainsKey("excludeTypes"));
+        }
+
+        [Fact]
         public async Task RemoteEventRepository_ListEventPage_ResponseItemsAndTotal_MapToEventPage()
         {
-            Guid idOne = Guid.NewGuid();
-            Guid idTwo = Guid.NewGuid();
+            var idOne = Guid.NewGuid();
+            var idTwo = Guid.NewGuid();
             string json = JsonSerializer.Serialize(new
             {
                 items = new[] { CreateEventDto(idOne), CreateEventDto(idTwo) },
@@ -114,7 +129,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 new[] { Guid.NewGuid() },
                 new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
-                null, skip: 0, take: 2, CancellationToken.None);
+                null, null, skip: 0, take: 2, CancellationToken.None);
 
             Assert.Equal(2, page.Items.Count);
             Assert.Equal(idOne, page.Items[0].Id);
@@ -125,8 +140,8 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task RemoteEventDetailRepository_GetDetails_SendsRepeatedIds_AndMapsResponse()
         {
-            Guid eventId = Guid.NewGuid();
-            Guid otherId = Guid.NewGuid();
+            var eventId = Guid.NewGuid();
+            var otherId = Guid.NewGuid();
             var detailDto = new EventDetailDto(
                 EventId: eventId,
                 Detection: new EventDetailDto.EventDetectionDto(true, false, "Motion", "full", "short", 0.5m, 0.1m, 0.9m, "v1"),

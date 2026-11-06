@@ -4,7 +4,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>Builds an active <see cref="ReviewCaseMode"/> over repository doubles that hold the given pinned rows.</summary>
 public static class CaseModeFakes
@@ -12,7 +12,7 @@ public static class CaseModeFakes
     /// <summary>Enters a new case whose pins are the given media items and events, and returns the active mode.</summary>
     public static async Task<ReviewCaseMode> ActiveAsync(IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
     {
-        Guid caseId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         DateTime added = new(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
         var cases = new Mock<ICaseRepository>();
         var mediaRepository = new Mock<IMediaItemRepository>();

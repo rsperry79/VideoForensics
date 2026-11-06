@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The in-memory timeline model the right-panel timeline reads: publish, change detection, and clear.</summary>
 public class ReviewTimelineModel_Tests
@@ -11,7 +11,10 @@ public class ReviewTimelineModel_Tests
     private static readonly DateTime From = new(2026, 10, 28, 11, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime To = new(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
 
-    private static List<ClipWindow> OneClip(string id = "a") => [new ClipWindow(id, From.AddMinutes(10), 60)];
+    private static List<ClipWindow> OneClip(string id = "a")
+    {
+        return [new ClipWindow(id, From.AddMinutes(10), 60)];
+    }
 
     [Fact]
     public void ReviewTimelineModel_PublishNewClips_RaisesOnChangeOnce()
@@ -23,7 +26,7 @@ public class ReviewTimelineModel_Tests
         model.Publish(OneClip(), From, To);
 
         Assert.Equal(1, raised);
-        Assert.Single(model.Clips);
+        _ = Assert.Single(model.Clips);
         Assert.Equal(From, model.FromUtc);
         Assert.Equal(To, model.ToUtc);
     }
@@ -77,7 +80,7 @@ public class ReviewTimelineModel_Tests
 
         source.Clear();
 
-        Assert.Single(model.Clips);
+        _ = Assert.Single(model.Clips);
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public class ReviewTimelineModel_Tests
     {
         var model = new ReviewTimelineModel();
 
-        Assert.Throws<ArgumentException>(() => model.Publish(OneClip(), To, From));
+        _ = Assert.Throws<ArgumentException>(() => model.Publish(OneClip(), To, From));
     }
 
     [Fact]

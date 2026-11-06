@@ -115,8 +115,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}",
-                        monthStart.ToString("yyyy-MM"), channel);
+                    _logger.LogError("Failed to list segments for month {Month}, channel {Channel}: {Message} ({ErrorType})",
+                        monthStart.ToString("yyyy-MM"), channel, ex.Message, ex.GetType().Name);
                     _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
                     // Continue to next month rather than failing the whole batch
                 }
@@ -203,7 +203,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (DownloadCapacityException ex)
                 {
-                    _logger.LogError(ex, "Device capacity limit hit while downloading segment; stopping batch");
+                    _logger.LogError("Device capacity limit hit while downloading segment; stopping batch: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     lock (_statusLock)
                     {
                         _capacityBanUntilUtc = DateTime.UtcNow.AddMinutes(CapacityBanMinutes);
@@ -230,8 +230,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to download segment {Begin:O} for channel {Channel}",
-                        segment.Begin, channel);
+                    _logger.LogError("Failed to download segment {Begin:O} for channel {Channel}: {Message} ({ErrorType})",
+                        segment.Begin, channel, ex.Message, ex.GetType().Name);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
                     // Continue with next segment rather than failing the whole batch
                 }
@@ -253,7 +253,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading videos for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
+            _logger.LogError("Error downloading videos for {ProviderName} account, device {DeviceId}: {Message} ({ErrorType})", ProviderName, deviceId, ex.Message, ex.GetType().Name);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -333,8 +333,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}",
-                        monthStart.ToString("yyyy-MM"), channel);
+                    _logger.LogError("Failed to list segments for month {Month}, channel {Channel}: {Message} ({ErrorType})",
+                        monthStart.ToString("yyyy-MM"), channel, ex.Message, ex.GetType().Name);
                     _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
                     // Continue to next month rather than failing the whole batch
                 }
@@ -421,7 +421,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (DownloadCapacityException ex)
                 {
-                    _logger.LogError(ex, "Device capacity limit hit while downloading segment; stopping batch");
+                    _logger.LogError("Device capacity limit hit while downloading segment; stopping batch: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     lock (_statusLock)
                     {
                         _capacityBanUntilUtc = DateTime.UtcNow.AddMinutes(CapacityBanMinutes);
@@ -448,8 +448,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to download segment {Begin:O} for channel {Channel}",
-                        segment.Begin, channel);
+                    _logger.LogError("Failed to download segment {Begin:O} for channel {Channel}: {Message} ({ErrorType})",
+                        segment.Begin, channel, ex.Message, ex.GetType().Name);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
                     // Continue with next segment rather than failing the whole batch
                 }
@@ -471,7 +471,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading videos for device {DeviceId}", deviceId);
+            _logger.LogError("Error downloading videos for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -600,7 +600,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error capturing snapshot for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
+                _logger.LogError("Error capturing snapshot for {ProviderName} account, device {DeviceId}: {Message} ({ErrorType})", ProviderName, deviceId, ex.Message, ex.GetType().Name);
                 lock (_statusLock)
                 {
                     _currentStatus = _currentStatus with { IsDownloading = false };
@@ -614,7 +614,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
+            _logger.LogError("Error in DownloadSnapshotsAsync for {ProviderName} account, device {DeviceId}: {Message} ({ErrorType})", ProviderName, deviceId, ex.Message, ex.GetType().Name);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -741,7 +741,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error capturing snapshot for device {DeviceId}", deviceId);
+                _logger.LogError("Error capturing snapshot for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
                 lock (_statusLock)
                 {
                     _currentStatus = _currentStatus with { IsDownloading = false };
@@ -755,7 +755,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for device {DeviceId}", deviceId);
+            _logger.LogError("Error in DownloadSnapshotsAsync for device {DeviceId}: {Message} ({ErrorType})", deviceId, ex.Message, ex.GetType().Name);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -821,7 +821,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}", from.ToString("yyyy-MM"), channel);
+                _logger.LogError("Failed to list segments for month {Month}, channel {Channel}: {Message} ({ErrorType})", from.ToString("yyyy-MM"), channel, ex.Message, ex.GetType().Name);
                 _activityLog.Enqueue($"✗ Failed to query {from:yyyy-MM}: {ex.Message}");
             }
         }
@@ -879,7 +879,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (DownloadCapacityException ex)
                 {
-                    _logger.LogError(ex, "Device capacity limit hit while capturing snapshot; stopping batch");
+                    _logger.LogError("Device capacity limit hit while capturing snapshot; stopping batch: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     lock (_statusLock)
                     {
                         _capacityBanUntilUtc = DateTime.UtcNow.AddMinutes(CapacityBanMinutes);
@@ -900,7 +900,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to capture snapshot from segment {Begin:O} for channel {Channel}", target.Segment.Begin, channel);
+                    _logger.LogError("Failed to capture snapshot from segment {Begin:O} for channel {Channel}: {Message} ({ErrorType})", target.Segment.Begin, channel, ex.Message, ex.GetType().Name);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(jpg)}: {ex.GetType().Name}");
                 }
                 finally

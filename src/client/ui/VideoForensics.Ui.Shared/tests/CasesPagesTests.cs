@@ -10,10 +10,6 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Utils.Testing;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Pages;
@@ -21,6 +17,9 @@ using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -43,6 +42,7 @@ public abstract class CasesPagesTestBase : BunitContext
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
     protected Mock<IEventRepository> EventRepositoryMock { get; } = new();
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
+    protected Mock<ICaseNoteRepository> CaseNoteRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected CaseState CaseState { get; }
@@ -111,6 +111,11 @@ public abstract class CasesPagesTestBase : BunitContext
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => EventRepositoryMock.Object);
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        _ = CaseNoteRepositoryMock
+            .Setup(r => r.ListForCaseAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _ = Services.AddScoped(_ => CaseNoteRepositoryMock.Object);
+        _ = Services.AddLogging();
 
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);

@@ -20,6 +20,8 @@ namespace VideoForensics.Data.Core.DependencyInjection
             // Phase 1 core services
             _ = services.AddScoped<IWatermarkService, WatermarkService>();
             _ = services.AddActionLogger();
+            // Process-wide: reference rows (locations, devices) outlive a single scope, so every pull and download shares one snapshot.
+            services.TryAddSingleton<IReferenceDataCache, ReferenceDataCache>();
             // Holder for the configured ffmpeg bin directory; ForensicsConfigurationService writes it, tool consumers read it.
             services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation, VideoForensics.Core.Providers.Core.FfmpegToolLocation>();
             // Transient: the bin directory may be set after first resolve, so each resolve must read it fresh.
@@ -41,7 +43,6 @@ namespace VideoForensics.Data.Core.DependencyInjection
             _ = services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
             // Snapshot timelines: the mapper has no dependencies; the service reads stored captures and drives the builder above.
             services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.ISnapshotStillMapper, VideoForensics.Core.Providers.Core.SnapshotStillMapper>();
-            _ = services.AddOptions<VideoForensics.Data.Core.Services.SnapshotTimelineOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.ISnapshotTimelineService, VideoForensics.Data.Core.Services.SnapshotTimelineService>();
             services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
             services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IEvidenceChangeNotifier, VideoForensics.Data.Core.Services.NullEvidenceChangeNotifier>();
@@ -49,9 +50,14 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaPreviewService, VideoForensics.Data.Core.Services.MediaPreviewService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
+            services.TryAddScoped<VideoForensics.Data.Common.Contracts.IDatabaseAdministrationService, VideoForensics.Data.Core.Services.DatabaseAdministrationService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaPreviewBackfill, VideoForensics.Data.Core.Services.MediaPreviewBackfill>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaFlagBackfill, VideoForensics.Data.Core.Services.MediaFlagBackfill>();
+            services.TryAddTransient<VideoForensics.Data.Core.Contracts.IMediaPacketReader, VideoForensics.Data.Core.Services.FfprobeMediaPacketReader>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaBitrateSeriesService, VideoForensics.Data.Core.Services.MediaBitrateSeriesService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaCodecBackfill, VideoForensics.Data.Core.Services.MediaCodecBackfill>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
 
             // IntegrityVerificationService implementation (implements IIntegrityVerificationService from Data.Common)
@@ -70,7 +76,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
                 IUnitOfWork unitOfWork = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUnitOfWork>();
                 IActionLogger actionLogger = sp.GetRequiredService<IActionLogger>();
                 int days = retentionDays ?? 90;
-                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days);
+                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days, sp.GetService<IMediaPathResolver>());
             });
 
             _ = services.AddScoped<IRedactionService, RedactionService>();

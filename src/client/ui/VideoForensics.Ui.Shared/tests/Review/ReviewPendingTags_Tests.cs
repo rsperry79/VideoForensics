@@ -1,15 +1,17 @@
-using Microsoft.Extensions.DependencyInjection;
 using AngleSharp.Dom;
 
 using Bunit;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The pending-tags badge: hidden when idle, a count, the help text, the list with remove, and the attached notice.</summary>
 public class ReviewPendingTags_Tests : ReviewTestContext
@@ -105,7 +107,7 @@ public class ReviewPendingTags_Tests : ReviewTestContext
         // Assert
         Assert.Equal(1, Pending.Count);
         Assert.Equal(L["PendingTagsCount", 1].Value, cut.Find("[data-testid='review-pending-tags-count']").TextContent.Trim());
-        Assert.Single(cut.FindAll("[data-testid='review-pending-tag-row']"));
+        _ = Assert.Single(cut.FindAll("[data-testid='review-pending-tag-row']"));
     }
 
     [Fact]
@@ -116,10 +118,10 @@ public class ReviewPendingTags_Tests : ReviewTestContext
         _ = Pending.Add(CreateTag(Devices[0].Id));
         IRenderedComponent<ReviewPendingTags> cut = RenderBadge();
         ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var caseState = await PendingTagFakes.ActivateAsync(PendingTagFakes.CreateRepository(openCase), openCase);
+        CaseState caseState = await PendingTagFakes.ActivateAsync(PendingTagFakes.CreateRepository(openCase), openCase);
 
         // Act
-        await cut.InvokeAsync(() => Pending.AttachToActiveCaseAsync(caseState, CancellationToken.None));
+        _ = await cut.InvokeAsync(() => Pending.AttachToActiveCaseAsync(caseState, CancellationToken.None));
 
         // Assert
         IElement notice = cut.Find("[data-testid='review-pending-tags-attached']");

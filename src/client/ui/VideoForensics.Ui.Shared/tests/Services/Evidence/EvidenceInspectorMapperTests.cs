@@ -1,9 +1,9 @@
 using System.Reflection;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -55,7 +55,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>(), minusFive);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), [], minusFive);
 
         // Assert
         Assert.Contains("2024-01-15 05:30:00", result.Title);
@@ -691,5 +691,82 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.DoesNotContain("IntegrityStatus", provenanceDict.Keys);
+    }
+
+    [Fact]
+    public void ToInspector_EventWithRemainder_RawJsonIsTheRemainderAndFlaggedAsNotTheRawPayload()
+    {
+        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:3", MetadataJson = "{\"new_top_level\":\"hello\"}" };
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:3",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Front Door",
+            Event = evt,
+            Media = null
+        };
+
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+
+        Assert.Equal("{\"new_top_level\":\"hello\"}", result.RawJson);
+        Assert.True(result.RawJsonIsRemainder);
+    }
+
+    [Fact]
+    public void ToInspector_MarkerOnlyMedia_RawJsonIsTheMarkerUnchangedAndStructuredFieldsAreShown()
+    {
+        const string marker = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
+        var media = new MediaItem
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.NewGuid(),
+            FileName = "snapshot.jpg",
+            FilePath = "/path",
+            MediaFormat = "jpg",
+            FileSizeBytes = 10,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc",
+            MetadataJson = marker
+        };
+        var item = new EvidenceItem
+        {
+            Key = $"media:{media.Id}",
+            Kind = EvidenceKind.Snapshot,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = media.DeviceId,
+            DeviceName = "Doorbell",
+            Event = null,
+            Media = media
+        };
+
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(item, new Dictionary<Guid, LegalHold>(), []);
+
+        Assert.Equal(marker, result.RawJson);
+        Assert.True(result.RawJsonIsRemainder);
+        PropertyInfo? mediaProperty = result.Fields!.GetType().GetProperty("MediaItem");
+        Assert.Same(media, mediaProperty?.GetValue(result.Fields));
+    }
+
+    [Fact]
+    public void ToInspector_EventWithoutRemainder_RawJsonIsNullButStillFlagged()
+    {
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:4",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Front Door",
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:4", MetadataJson = null },
+            Media = null
+        };
+
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+
+        Assert.Null(result.RawJson);
+        Assert.True(result.RawJsonIsRemainder);
     }
 }

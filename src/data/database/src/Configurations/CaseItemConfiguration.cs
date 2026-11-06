@@ -45,11 +45,18 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasFilter("\"MediaItemId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL")
                 .HasDatabaseName("IX_CaseItems_CaseId_MediaItemId_Active");
 
-            // Exactly one of EventId/MediaItemId must be set, matching Kind.
+            // Unique index on (CaseId, SnapshotCaptureId) for active (not soft-removed) items only.
+            _ = builder.HasIndex(ci => new { ci.CaseId, ci.SnapshotCaptureId })
+                .IsUnique()
+                .HasFilter("\"SnapshotCaptureId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL")
+                .HasDatabaseName("IX_CaseItems_CaseId_SnapshotCaptureId_Active");
+
+            // Exactly one of EventId/MediaItemId/SnapshotCaptureId must be set, matching Kind.
             _ = builder.ToTable(t => t.HasCheckConstraint(
                 "CK_CaseItems_ExactlyOneTarget",
-                "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL) OR " +
-                "(\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL)"));
+                "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL AND \"SnapshotCaptureId\" IS NULL) OR " +
+                "(\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL AND \"SnapshotCaptureId\" IS NULL) OR " +
+                "(\"Kind\" = 'Snapshot' AND \"SnapshotCaptureId\" IS NOT NULL AND \"EventId\" IS NULL AND \"MediaItemId\" IS NULL)"));
 
             // Foreign keys
             _ = builder.HasOne<ForensicCase>()
@@ -65,6 +72,11 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.HasOne<MediaItem>()
                 .WithMany()
                 .HasForeignKey(ci => ci.MediaItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            _ = builder.HasOne<SnapshotCapture>()
+                .WithMany()
+                .HasForeignKey(ci => ci.SnapshotCaptureId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

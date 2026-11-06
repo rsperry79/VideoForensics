@@ -1,16 +1,15 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using System.Globalization;
 
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
@@ -43,6 +42,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
         private readonly Mock<INotificationDispatcher> _dispatcher = new();
+        private readonly Mock<IDeviceHealthRepository> _health = new();
         private readonly List<SnapshotCapture> _rows = [];
 
         // The provider's offline rule, resolved keyed by provider name. Tests can swap it before building the provider.
@@ -71,6 +71,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = _captureRows.Setup(r => r.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
                     _rows.Where(r => r.DeviceId == deviceId && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).ToList());
+            _ = _captureRows.Setup(r => r.GetDeviceIdsWithAttemptsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IReadOnlyCollection<Guid> ids, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
+                    (IReadOnlySet<Guid>)_rows.Where(r => ids.Contains(r.DeviceId) && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).Select(r => r.DeviceId).ToHashSet());
         }
 
         public void Dispose()
@@ -110,15 +113,67 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
         private readonly List<Device> _devicesList = [];
 
-        private async Task RunTickAsync()
+        /// <summary>Keeps the formatted text of every entry, so a test can assert what the service logged.</summary>
+        private sealed class CapturingLogger<T> : ILogger<T>
+        {
+            public List<string> Messages { get; } = [];
+
+            public List<string> Errors { get; } = [];
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                Messages.Add(formatter(state, exception));
+                if (logLevel == LogLevel.Error)
+                {
+                    Errors.Add(formatter(state, exception));
+                }
+            }
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_DisabledDevice_LogsCaptureOffWithoutCameraReason()
+        {
+            _ = AddDevice("12345", captureEnabled: false);
+            var logs = new CapturingLogger<SnapshotCaptureService>();
+
+            await RunTickAsync(logs);
+
+            string skip = Assert.Single(logs.Messages, m => m.Contains("Snapshot capture skipped"));
+            Assert.Contains("capture is off", skip);
+            Assert.DoesNotContain("not a camera", skip);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NonCameraDevice_LogsNoCameraTypeWithoutOffReason()
+        {
+            _ = AddDevice("12345", type: "chime");
+            var logs = new CapturingLogger<SnapshotCaptureService>();
+
+            await RunTickAsync(logs);
+
+            string skip = Assert.Single(logs.Messages, m => m.Contains("Snapshot capture skipped"));
+            Assert.Contains("has no camera", skip);
+            Assert.DoesNotContain("capture is off", skip);
+        }
+
+        private async Task RunTickAsync(ILogger<SnapshotCaptureService>? logger = null)
         {
             ServiceProvider provider = BuildProvider();
             try
             {
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
-                    NullLogger<SnapshotCaptureService>.Instance,
+                    logger ?? NullLogger<SnapshotCaptureService>.Instance,
                     _time,
                     _storage.Object);
                 await service.RunOneTickAsync(CancellationToken.None);
@@ -144,25 +199,56 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             _ = services.AddSingleton(_budget.Object);
             _ = services.AddSingleton(_dispatcher.Object);
+            _ = services.AddSingleton(_health.Object);
             _ = services.AddSingleton(_configuration.Object);
             return services.BuildServiceProvider();
         }
 
         private static string ExpectedFileName(DateTimeOffset at)
         {
-            return at.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
+            return "Front_Door_12345_" + at.UtcDateTime.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + "_snapshot.jpg";
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ManyDevices_ChecksRecentAttemptsOncePerAccount()
+        {
+            _ = AddDevice("1");
+            _ = AddDevice("2");
+            _ = AddDevice("3");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _captureRows.Verify(r => r.GetDeviceIdsWithAttemptsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 3), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Once);
+            _captureRows.Verify(r => r.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_HealthOnAttempt_StoresHealthIdAndSetsDeviceOnline()
+        {
+            Device device = AddDevice("12345", isOnline: false);
+            var healthId = Guid.NewGuid();
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, healthId, true));
+
+            await RunTickAsync();
+
+            Assert.Equal(healthId, Assert.Single(_rows).DeviceHealthId);
+            Assert.True(device.IsOnline);
         }
 
         [Fact]
         public async Task RunOneTickAsync_DisabledDevice_SkipsDevice()
         {
             _ = AddDevice("12345", captureEnabled: false);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
         }
 
@@ -172,7 +258,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             // A hard ban stops every request until BlockedUntilUtc. The account must stay paused across ticks and the
             // ban must be logged as a warning, not an error with a stack trace on every device every tick.
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new ThrottledException("Ring has rate-limited this account.", isHardBan: true)
                 {
                     BlockedUntilUtc = T0.AddHours(2).UtcDateTime,
@@ -183,7 +269,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             {
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                     logger.Object,
                     _time,
                     _storage.Object);
@@ -197,33 +282,35 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 await provider.DisposeAsync();
             }
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
             Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
         }
 
-
         [Fact]
-        public async Task RunOneTickAsync_OfflineDevice_ProbesOnStartupAndMarksOnlineWhenFrameArrives()
+        public async Task RunOneTickAsync_OfflineDevice_ProbesOnStartupAndMarksOnlineWhenHealthSaysConnected()
         {
-            // At startup an offline camera is probed once, so a camera that came back is captured without waiting for health sync.
+            // At startup an offline camera is probed once. Online state comes from the health reading, so a frame alone changes nothing.
             Device device = AddDevice("12345", isOnline: false);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), true));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
             Assert.True(device.IsOnline);
             _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == true), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task RunOneTickAsync_NotFound_RaisesOneOfflineAlertLinkedToTheAccountSyncPage()
+        public async Task RunOneTickAsync_HealthSaysOfflineOnTransition_RaisesOneOfflineAlertLinkedToTheAccountSyncPage()
         {
-            // The alert fires on the transition to offline only. Repolls that still get a 404 do not alert again.
+            // Offline comes from health only. The alert fires when the health reading turns from online to offline, not on each repoll.
             _ = AddDevice("12345", isOnline: true);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
+            _ = _health.SetupSequence(h => h.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DeviceHealth { IsOnline = true })
+                .ReturnsAsync(new DeviceHealth { IsOnline = false });
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null, Guid.NewGuid(), false));
 
             await RunTickAsync();
             _time.Now = T0.AddMinutes(11);
@@ -239,17 +326,17 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             // An offline camera is probed at most once per repoll interval, not once per capture interval.
             _ = AddDevice("12345", isOnline: false);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
 
             await RunTickAsync();
             _time.Now = T0.AddMinutes(5);
             await RunTickAsync();
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
 
             _time.Now = T0.AddMinutes(11);
             await RunTickAsync();
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -260,19 +347,19 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = status.Setup(s => s.IsOffline(It.IsAny<string>(), It.IsAny<bool?>())).Returns(true);
             _deviceStatus = status.Object;
             _ = AddDevice("12345", isOnline: true);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
             status.Verify(s => s.IsOffline("doorbot", true), Times.AtLeastOnce);
         }
         [Fact]
         public async Task RunOneTickAsync_SuccessfulCapture_RegistersSnapshotMediaRow()
         {
             _ = AddDevice("12345", isOnline: true);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
@@ -287,12 +374,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             // Null means the provider gave no connection state; it is not evidence the device is offline.
             _ = AddDevice("12345", isOnline: null);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
@@ -303,12 +390,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_NonCameraDevice_SkipsDevice(string type)
         {
             _ = AddDevice("12345", type: type, isOnline: true);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
         }
 
@@ -319,19 +406,19 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_OnlineCameraType_Captures(string type)
         {
             _ = AddDevice("12345", type: type, isOnline: true);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task RunOneTickAsync_DefaultInterval_CapturesOncePerSixtySeconds()
         {
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
@@ -340,7 +427,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _time.Now = T0.AddSeconds(61);
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
         [Fact]
         public async Task RunOneTickAsync_ScheduleSnapshotInterval_SetsCaptureSpacing()
@@ -348,7 +435,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotRssiIntervalSeconds = 30 });
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
@@ -357,7 +444,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _time.Now = T0.AddSeconds(31);
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -366,14 +453,14 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotIntervalSeconds = 120 });
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
             _time.Now = T0.AddSeconds(61);
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -383,7 +470,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             string configuredRoot = Path.Combine(_root, "configured");
             _ = _config.Setup(c => c.DownloadLocation).Returns(configuredRoot);
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
@@ -399,7 +486,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_Success_WritesImageUnderAccountAndDeviceFoldersAndRecords200()
         {
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
@@ -418,7 +505,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_FailedAttempt_RecordsNon200AndWritesNoFile()
         {
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
 
             await RunTickAsync();
@@ -431,25 +518,39 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_NotFound_MarksDeviceOfflineAndSkipsItOnNextTick()
+        public async Task RunOneTickAsync_NotFoundWithoutHealthReading_LeavesOnlineStateAlone()
         {
-            // Ring has no frame for a camera that is not reporting, so a 404 marks it offline and the next tick skips it.
-            Device device = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            // Offline comes only from health. A 404 with no connected reading is not evidence the camera went offline.
+            Device device = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
 
             await RunTickAsync();
-            _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == false), It.IsAny<CancellationToken>()), Times.Once);
 
-            await RunTickAsync();
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(device.IsOnline);
+            _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == false), It.IsAny<CancellationToken>()), Times.Never);
+            _dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NotFoundWhileHealthSaysConnected_LogsBugError()
+        {
+            // A 404 for a camera Ring reports connected is a bug in the capture path, so it is logged as an error.
+            _ = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null, Guid.NewGuid(), true));
+            var logs = new CapturingLogger<SnapshotCaptureService>();
+
+            await RunTickAsync(logs);
+
+            _ = Assert.Single(logs.Errors, m => m.Contains("404") && m.Contains("bug"));
         }
 
         [Fact]
         public async Task RunOneTickAsync_Throttled_RecordsA429AndPausesAccountUntilPauseEnds()
         {
             _ = AddDevice("12345");
-            _ = _capture.SetupSequence(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.SetupSequence(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(429, null, TimeSpan.FromSeconds(60)))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
@@ -459,7 +560,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _time.Now = T0.AddSeconds(61);
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             Assert.Equal(2, _rows.Count);
             Assert.Equal(429, _rows[0].HttpStatus);
             Assert.Null(_rows[0].MediaFilePath);
@@ -471,9 +572,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             Device first = AddDevice("111");
             Device second = AddDevice("222");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), "111", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), "111", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("network down"));
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), "222", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), "222", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
@@ -488,12 +589,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             _ = AddDevice("12345");
             _ = _budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(false);
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
         }
 
@@ -502,7 +603,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_CaptureSucceeds_RecordsTwoCallsAgainstBudget()
         {
             _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();

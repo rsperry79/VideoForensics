@@ -89,7 +89,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to load saved settings");
+                log.LogError("Failed to load saved settings: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
                 reporter.Warning("Failed to load saved settings");
             }
         }
@@ -173,7 +173,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to write raw API response log entry");
+                log.LogError("Failed to write raw API response log entry: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -207,7 +207,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to write session debug log entry");
+                log.LogError("Failed to write session debug log entry: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -238,7 +238,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to write ring events batch log file");
+                log.LogError("Failed to write ring events batch log file: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -410,14 +410,14 @@ namespace VideoForensics.Providers.Ring
                 }
 
                 // Initialize reports directory
-                reportsDirectory = Path.Combine(expandedPath, "reports");
+                reportsDirectory = Path.Combine(expandedPath, "Reports");
                 if (!Directory.Exists(reportsDirectory))
                 {
                     _ = Directory.CreateDirectory(reportsDirectory);
                 }
 
                 // Initialize logs directory
-                logsDirectory = Path.Combine(expandedPath, "logs");
+                logsDirectory = Path.Combine(expandedPath, "Logs");
                 if (!Directory.Exists(logsDirectory))
                 {
                     _ = Directory.CreateDirectory(logsDirectory);
@@ -488,7 +488,7 @@ namespace VideoForensics.Providers.Ring
                     catch (Exception ex)
                     {
                         reporter.Error($"Failed to fetch devices: {ex.Message}");
-                        log.LogError(ex, "Failed to fetch devices");
+                        log.LogError("Failed to fetch devices: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
 
                     reporter.Highlight($"Found {(allDevices.Doorbots?.Count ?? 0) + (allDevices.Chimes?.Count ?? 0) + (allDevices.StickupCams?.Count ?? 0)} total devices across all locations");
@@ -609,7 +609,7 @@ namespace VideoForensics.Providers.Ring
                     catch (Exception ex)
                     {
                         reporter.Warning($"Failed to fetch locations from API: {ex.Message}");
-                        log.LogError(ex, "Failed to fetch location list from API");
+                        log.LogError("Failed to fetch location list from API: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
 
                     // Fall back to config-supplied names for any location the API didn't cover
@@ -646,7 +646,7 @@ namespace VideoForensics.Providers.Ring
                     catch (Exception exe)
                     {
                         reporter.Error(exe.Message);
-                        log.LogError(exe.ToString());
+                        log.LogError("Ring video operation failed: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
                         return -1;
                     }
 
@@ -788,7 +788,7 @@ namespace VideoForensics.Providers.Ring
             catch (Exception exe)
             {
                 reporter.Error(exe.ToString());
-                log.LogError(exe.ToString());
+                log.LogError("Ring video operation failed: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
                 return -1;
             }
             finally
@@ -875,7 +875,7 @@ namespace VideoForensics.Providers.Ring
             catch (Exception exe)
             {
                 reporter.Warning($"Failed to download snapshot for device {doorbotId}: {exe.Message}");
-                log.LogError(exe, $"Failed to download snapshot for device {deviceName}");
+                log.LogError("Failed to download snapshot for device {DeviceName}: {Message} ({ErrorType})", deviceName, exe.Message, exe.GetType().Name);
                 return false;
             }
         }
@@ -1022,7 +1022,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception ex)
             {
-                log.LogError(ex, "Failed to write metadata sidecar for {filename}", filename);
+                log.LogError("Failed to write metadata sidecar for {filename}: {Message} ({ErrorType})", filename, ex.Message, ex.GetType().Name);
                 // Don't throw - metadata failure shouldn't block the download process
             }
         }
@@ -1133,7 +1133,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to load existing failures from report");
+                log.LogError("Failed to load existing failures from report: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -1181,7 +1181,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to write per-event JSON log file");
+                log.LogError("Failed to write per-event JSON log file: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -1220,7 +1220,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to record download failure");
+                log.LogError("Failed to record download failure: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -1275,7 +1275,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to generate failure report");
+                log.LogError("Failed to generate failure report: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -1344,7 +1344,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to generate camera health report");
+                log.LogError("Failed to generate camera health report: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -1413,7 +1413,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to generate event tracking report");
+                log.LogError("Failed to generate event tracking report: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
         }
 
@@ -1479,7 +1479,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogError(exe, "Failed to load existing failures list");
+                log.LogError("Failed to load existing failures list: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
             }
 
             return existing;
@@ -1517,7 +1517,7 @@ namespace VideoForensics.Providers.Ring
             catch (Exception exe)
             {
                 reporter.Error(exe.Message);
-                log.LogError(exe.ToString());
+                log.LogError("Ring video operation failed: {Message} ({ErrorType})", exe.Message, exe.GetType().Name);
                 return null;
             }
 

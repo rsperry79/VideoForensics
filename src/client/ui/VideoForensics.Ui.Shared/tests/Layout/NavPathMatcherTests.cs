@@ -76,4 +76,36 @@ public class NavPathMatcher_Tests
         Assert.True(NavPathMatcher.Matches("/ANALYZE", "?analysis=anomalies", "/analyze?analysis=anomalies"));
         Assert.False(NavPathMatcher.Matches("/analyze", "?analysis=Anomalies", "/analyze?analysis=anomalies"));
     }
+
+    [Fact]
+    public void NavPathMatcher_ReviewRoute_MatchesItsReportTab()
+    {
+        // The review pages live under their report path so the top tab stays on the report.
+        Assert.True(NavPathMatcher.Matches("/bitrate-history/review/1234", null, "/bitrate-history"));
+        Assert.True(NavPathMatcher.Matches("/signal-history/review/1234", null, "/signal-history"));
+    }
+
+    [Fact]
+    public void NavPathMatcher_Specificity_ItemWithQueryOutranksPlainItemOnSamePath()
+    {
+        Assert.True(NavPathMatcher.Specificity("/media?tab=Events") > NavPathMatcher.Specificity("/media"));
+    }
+
+    [Fact]
+    public void NavPathMatcher_BestMatch_PicksTheMostSpecificOwner()
+    {
+        Assert.Equal("/settings/logs", NavPathMatcher.BestMatch(["/settings", "/settings/logs"], "/settings/logs", null));
+    }
+
+    [Fact]
+    public void NavPathMatcher_BestMatch_QueryItemWinsOverPlainItemOnSamePath()
+    {
+        Assert.Equal("/media?tab=Events", NavPathMatcher.BestMatch(["/media", "/media?tab=Events"], "/media", "?tab=Events"));
+    }
+
+    [Fact]
+    public void NavPathMatcher_BestMatch_NoMatch_ReturnsNull()
+    {
+        Assert.Null(NavPathMatcher.BestMatch(["/cases"], "/settings", null));
+    }
 }

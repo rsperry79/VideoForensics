@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -85,6 +85,7 @@ namespace VideoForensics.Client.WebApp.Api
                 // If no file was created, return the result summary
                 return Results.Ok(result.ToDto());
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
@@ -143,6 +144,7 @@ namespace VideoForensics.Client.WebApp.Api
                     }
                 }
             })
+            .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")

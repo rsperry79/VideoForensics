@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -250,11 +250,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             // The per-device switch is the user's "sync off" choice; the scheduled sync must honour it as capture does.
             _ = _devices
                 .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEntity>
-                {
+                .ReturnsAsync(
+                [
                     new() { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "1", Name = "Flood", Type = "doorbot", SnapshotCaptureEnabled = false },
                     new() { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "2", Name = "Front", Type = "doorbot", SnapshotCaptureEnabled = true },
-                });
+                ]);
             DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
 
             SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);

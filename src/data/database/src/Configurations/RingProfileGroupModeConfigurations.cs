@@ -157,6 +157,7 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(m => m.ProviderLocationId).IsRequired().HasMaxLength(128);
             _ = builder.Property(m => m.Mode).HasMaxLength(32);
             _ = builder.Property(m => m.SecurityStatusMode).HasMaxLength(32);
+            _ = builder.Property(m => m.SecurityStatusInitiatingEntityId).HasMaxLength(128);
             _ = builder.Property(m => m.ModePanelType).HasMaxLength(64);
             _ = builder.HasIndex(m => m.ProviderLocationId).IsUnique();
             _ = builder.HasMany(m => m.NotYetParticipating).WithOne().HasForeignKey(n => n.RingLocationModeId).OnDelete(DeleteBehavior.Cascade);
@@ -233,6 +234,35 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.HasKey(s => s.Id);
             _ = builder.Property(s => s.ProviderLocationId).IsRequired().HasMaxLength(128);
             _ = builder.HasIndex(s => s.ProviderLocationId).IsUnique();
+        }
+    }
+
+    /// <summary>Fluent API configuration for a location's alarm account monitoring status; one row per location.</summary>
+    public class RingAccountMonitoringStatusConfiguration : IEntityTypeConfiguration<RingAccountMonitoringStatus>
+    {
+        public void Configure(EntityTypeBuilder<RingAccountMonitoringStatus> builder)
+        {
+            _ = builder.HasKey(s => s.Id);
+            _ = builder.Property(s => s.ProviderLocationId).IsRequired().HasMaxLength(128);
+            _ = builder.Property(s => s.CmsMonitoringType).HasMaxLength(64);
+            _ = builder.Property(s => s.AccountStateReason).HasMaxLength(64);
+            _ = builder.Property(s => s.AccountUuid).HasMaxLength(64);
+            _ = builder.Property(s => s.AccountState).HasMaxLength(64);
+            _ = builder.Property(s => s.ExternalServiceConfigType).HasMaxLength(64);
+            _ = builder.Property(s => s.PlanProvider).HasMaxLength(64);
+            _ = builder.HasIndex(s => s.ProviderLocationId).IsUnique();
+            _ = builder.HasMany(s => s.CompatibleMonitoringPlans).WithOne().HasForeignKey(p => p.RingAccountMonitoringStatusId).OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+
+    /// <summary>Fluent API configuration for one compatible monitoring plan.</summary>
+    public class RingAccountMonitoringPlanConfiguration : IEntityTypeConfiguration<RingAccountMonitoringPlan>
+    {
+        public void Configure(EntityTypeBuilder<RingAccountMonitoringPlan> builder)
+        {
+            _ = builder.HasKey(p => p.Id);
+            _ = builder.Property(p => p.Plan).IsRequired().HasMaxLength(128);
+            _ = builder.HasIndex(p => p.RingAccountMonitoringStatusId);
         }
     }
 }

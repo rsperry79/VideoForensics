@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
@@ -43,7 +43,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private AccountSyncRunner Sut()
         {
-            var services = new ServiceCollection().AddScoped(_ => _auth.Object).AddScoped(_ => _pull.Object).BuildServiceProvider();
+            ServiceProvider services = new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => _auth.Object).AddScoped(_ => _pull.Object).BuildServiceProvider();
             return new(services, _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), _activity);
         }
 

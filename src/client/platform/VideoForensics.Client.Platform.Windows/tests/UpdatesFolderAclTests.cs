@@ -7,7 +7,10 @@ namespace VideoForensics.Client.Platform.Windows.Tests
 {
     public class UpdatesFolderAclTests
     {
-        private static string NewTempPath() => Path.Combine(Path.GetTempPath(), "vf-acl-tests", Guid.NewGuid().ToString("N"));
+        private static string NewTempPath()
+        {
+            return Path.Combine(Path.GetTempPath(), "vf-acl-tests", Guid.NewGuid().ToString("N"));
+        }
 
         private static List<(string Sid, FileSystemRights Rights)> Rules(string path)
         {

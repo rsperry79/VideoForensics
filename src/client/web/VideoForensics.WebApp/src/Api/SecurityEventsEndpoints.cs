@@ -120,7 +120,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "GetSecurityEvents: service error for operatorId={OperatorId}", targetOperatorId);
+                logger.LogError("GetSecurityEvents: service error for operatorId={OperatorId}: {Message} ({ErrorType})", targetOperatorId, ex.Message, ex.GetType().Name);
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
         }

@@ -8,16 +8,16 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Utils.Testing;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Client.Ui.Shared.Services;
-using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -43,6 +43,7 @@ public abstract class AnalyzePageTestBase : BunitContext
     protected Mock<IReportGenerationService> ReportGenerationServiceMock { get; } = new();
     protected Mock<IJammingRepository> JammingRepositoryMock { get; } = new();
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<INoteRepository> NoteRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
 
@@ -93,6 +94,11 @@ public abstract class AnalyzePageTestBase : BunitContext
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => ReportGenerationServiceMock.Object);
+        _ = Services.AddLogging();
+        _ = NoteRepositoryMock
+            .Setup(m => m.ListAsync(It.IsAny<NoteTargetKind>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Note>());
+        _ = Services.AddScoped(_ => NoteRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => new JammingToolsOrchestrator(
             Mock.Of<ILogger<JammingToolsOrchestrator>>(),

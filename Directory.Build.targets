@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- Every test project gets the temp redirect, so its temp folders land in the checkout's .testtemp (git-ignored). -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)test-support\TestTempRedirect.cs" Link="TestTempRedirect.cs" />
+  </ItemGroup>
+
+</Project>

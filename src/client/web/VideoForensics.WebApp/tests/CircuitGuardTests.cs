@@ -6,16 +6,16 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
-using VideoForensics.Client.Ui.Shared.Layout;
-using VideoForensics.Client.Ui.Shared.Resources;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 

@@ -48,12 +48,7 @@ namespace VideoForensics.Client.Hosting.Updates
         /// <summary>True when the path exists and is a symlink, junction or other reparse point.</summary>
         public static bool IsReparsePoint(string path)
         {
-            if (!File.Exists(path) && !Directory.Exists(path))
-            {
-                return false;
-            }
-
-            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+            return (File.Exists(path) || Directory.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
         }
     }
 }

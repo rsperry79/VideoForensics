@@ -8,12 +8,12 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -281,7 +281,7 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, credential.OperatorId, null,
                     tierResolver.ResolveClientIp(context), ex.Message, isUrgent: true, ct);
-                logger.LogWarning(ex, "Passkey sign-in failed verification: {Reason}", ex.Message);
+                logger.LogWarning("Passkey sign-in failed verification: {Reason}: {Message} ({ErrorType})", ex.Message, ex.Message, ex.GetType().Name);
                 return Results.Unauthorized();
             }
 

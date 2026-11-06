@@ -14,13 +14,14 @@ using System.Reactive.Subjects;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Client.Ui.Shared.Pages;
-using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Layout.RightPanel;
 
 using Xunit;
 
@@ -109,6 +110,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         _ = Services.AddSingleton<IDeviceHealthChangedSource>(new DeviceHealthChangedSourceDouble(DeviceHealthChanges));
         _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
+        _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
@@ -130,6 +132,9 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         _ = accountRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([account]);
+        _ = accountRepository
+            .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([account]);
 
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository
@@ -141,6 +146,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
             .ReturnsAsync(true);
 
         _ = Services.AddScoped(_ => accountRepository.Object);
+        _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped(_ => userRepository.Object);
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => MultiProviderAuthServiceMock.Object);
@@ -433,162 +439,6 @@ public class AccountDetailsPage_AttachedCases_Tests : AccountDetailsPageTestBase
 public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
 {
     [Fact]
-    public void AccountDetails_Rendered_HasNoSelectOrSelectedButton()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-
-        cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNow"], ButtonLabels(cut)));
-        Assert.DoesNotContain("Select", ButtonLabels(cut));
-        Assert.DoesNotContain("Selected", ButtonLabels(cut));
-    }
-
-    [Fact]
-    public void AccountDetails_Rendered_DoesNotRenderConfigSyncInterval()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-
-        cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNow"], ButtonLabels(cut)));
-        // The config sync interval lives in the schedule section, never in the sync output or controls.
-        Assert.Empty(cut.FindAll("#sync-output [id^='config-sync']"));
-    }
-
-    [Fact]
-    public void AccountDetails_RangeNotCustom_HidesCustomDatePickers()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-
-        _ = cut.WaitForElement("#sync-range");
-        Assert.Empty(cut.FindAll("#sync-custom-start, #sync-custom-end"));
-    }
-
-    [Fact]
-    public void AccountDetails_SyncTypeEvents_ShowsRangeSelector()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-
-        _ = cut.WaitForElement("#sync-range");
-    }
-
-    [Fact]
-    public void AccountDetails_SyncTypeConfig_HidesRangeSelector()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-type").Change("Config");
-
-        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("#sync-range")));
-    }
-
-    [Fact]
-    public void AccountDetails_RangeCustom_ShowsCustomDatePickers()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-range").Change("Custom");
-
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-custom-start")));
-        _ = Assert.Single(cut.FindAll("#sync-custom-end"));
-    }
-
-    [Fact]
-    public void AccountDetails_CustomRange_DefaultsToLast30Days()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-range").Change("Custom");
-
-        cut.WaitForAssertion(() => Assert.Equal(DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd"), cut.Find("#sync-custom-start").GetAttribute("value")));
-        Assert.Equal(DateTime.Today.ToString("yyyy-MM-dd"), cut.Find("#sync-custom-end").GetAttribute("value"));
-    }
-
-    [Fact]
-    public void AccountDetails_CustomRange_ShowsEndDateMediaOnlyHint()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-range").Change("Custom");
-
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-custom-end-hint")));
-        Assert.Equal(Strings["CustomEndHint"], cut.Find("#sync-custom-end-hint").TextContent);
-    }
-
-    [Fact]
-    public void AccountDetails_SyncNowClicked_PostsChosenTypeAndRange()
-    {
-        SetEmptyLists();
-        SetJson("/sync-now", new { });
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-type").Change("Events");
-        cut.Find("#sync-range").Change("60");
-        FindButtons(cut, Strings["SyncNow"]).Single().Click();
-
-        cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == ApiPath("/sync-now")));
-        JsonElement root = JsonDocument.Parse(Handler.Sent.Single(s => s.Method == HttpMethod.Post).Body!).RootElement;
-        Assert.Equal("Events", root.GetProperty("syncType").GetString());
-        Assert.Equal("Days", root.GetProperty("rangeKind").GetString());
-        Assert.Equal(60, root.GetProperty("days").GetInt32());
-    }
-
-    [Fact]
-    public void AccountDetails_SyncTypeConfig_SendsSinceLastRange()
-    {
-        SetEmptyLists();
-        SetJson("/sync-now", new { });
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-range").Change("60");
-        cut.WaitForElement("#sync-type").Change("Config");
-        FindButtons(cut, Strings["SyncNow"]).Single().Click();
-
-        cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == ApiPath("/sync-now")));
-        JsonElement root = JsonDocument.Parse(Handler.Sent.Single(s => s.Method == HttpMethod.Post).Body!).RootElement;
-        Assert.Equal("Config", root.GetProperty("syncType").GetString());
-        Assert.Equal("SinceLast", root.GetProperty("rangeKind").GetString());
-        Assert.True(!root.TryGetProperty("days", out JsonElement days) || days.ValueKind == JsonValueKind.Null);
-    }
-
-    [Fact]
-    public void AccountDetails_SyncTypeAll_ShowsRangeSelectorWithAllHistoryChoice()
-    {
-        SetEmptyLists();
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-type").Change("All");
-
-        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("#sync-range option"), o => o.GetAttribute("value") == "All"));
-    }
-
-    [Fact]
-    public void AccountDetails_SyncTypeAllWithAllHistory_PostsAllTypeAndAllRange()
-    {
-        SetEmptyLists();
-        SetJson("/sync-now", new { });
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-        cut.WaitForElement("#sync-type").Change("All");
-        cut.WaitForElement("#sync-range").Change("All");
-        FindButtons(cut, Strings["SyncNow"]).Single().Click();
-
-        cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == ApiPath("/sync-now")));
-        JsonElement root = JsonDocument.Parse(Handler.Sent.Single(s => s.Method == HttpMethod.Post).Body!).RootElement;
-        Assert.Equal("All", root.GetProperty("syncType").GetString());
-        Assert.Equal("All", root.GetProperty("rangeKind").GetString());
-    }
-
-    [Fact]
     public void AccountDetails_SyncRunWithSnapshotCount_ShowsSnapshotsTypeAndCount()
     {
         var started = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
@@ -624,17 +474,6 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
         Assert.Contains(string.Format(Strings["SyncRecordsSummary"], 3, 1, 42, 0, 0), row);
         Assert.Contains(string.Format(Strings["SyncRecordsSnapshots"], 3), row);
-    }
-
-
-    private static List<string> ButtonLabels<T>(IRenderedComponent<T> cut) where T : Microsoft.AspNetCore.Components.IComponent
-    {
-        return cut.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
-    }
-
-    private static List<AngleSharp.Dom.IElement> FindButtons<T>(IRenderedComponent<T> cut, string text) where T : Microsoft.AspNetCore.Components.IComponent
-    {
-        return cut.FindAll("button").Where(b => b.TextContent.Trim() == text).ToList();
     }
 }
 

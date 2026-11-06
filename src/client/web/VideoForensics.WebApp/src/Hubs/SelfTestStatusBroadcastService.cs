@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {
@@ -60,7 +60,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Self-test status broadcast tick failed");
+                    _logger.LogError("Self-test status broadcast tick failed: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             } while (await timer.WaitForNextTickAsync(stoppingToken));
         }

@@ -1,4 +1,5 @@
 using AngleSharp.Dom;
+
 using Bunit;
 
 using Microsoft.Extensions.Logging;
@@ -15,7 +16,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
 /// <summary>The review detail tab: jamming, anomalies, and expandable events, their states, clicks, reloads, refreshes, and disposal.</summary>
 public class ReviewDetailTab_Tests : ReviewTestContext
@@ -28,25 +29,31 @@ public class ReviewDetailTab_Tests : ReviewTestContext
 
     private static readonly DateTime Base = FixedNowUtc.AddHours(-2);
 
-    private static Event EventAt(Guid device, DateTime utc, string type = "motion") => new()
+    private static Event EventAt(Guid device, DateTime utc, string type = "motion")
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        ProviderEventId = Guid.NewGuid().ToString("N"),
-        EventType = type,
-        OccurredAtUtc = utc,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            ProviderEventId = Guid.NewGuid().ToString("N"),
+            EventType = type,
+            OccurredAtUtc = utc,
+        };
+    }
 
-    private static JammingIncidentRecord Jam(Guid device, DateTime startUtc) => new()
+    private static JammingIncidentRecord Jam(Guid device, DateTime startUtc)
     {
-        Id = Guid.NewGuid(),
-        DeviceId = device,
-        StartUtc = startUtc,
-        EndUtc = startUtc.AddMinutes(5),
-        AffectedEventCount = 3,
-        Confidence = JammingConfidenceLevel.High,
-        Source = JammingIncidentSource.AutoDetected,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            StartUtc = startUtc,
+            EndUtc = startUtc.AddMinutes(5),
+            AffectedEventCount = 3,
+            Confidence = JammingConfidenceLevel.High,
+            Source = JammingIncidentSource.AutoDetected,
+        };
+    }
 
     private static EventDetail DetailWithAllFields(Guid eventId, Guid device)
     {
@@ -77,7 +84,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         EventLoader.Responder = (call, _) =>
         {
-            List<Event> matching = all.Where(e => call.DeviceIds.Contains(e.DeviceId)).ToList();
+            var matching = all.Where(e => call.DeviceIds.Contains(e.DeviceId)).ToList();
             return Task.FromResult(new EventPage(matching.Skip(call.Skip).Take(call.Take).ToList(), matching.Count));
         };
     }
@@ -89,7 +96,10 @@ public class ReviewDetailTab_Tests : ReviewTestContext
             .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
     }
 
-    private static string Toggle(Event evt) => $"[data-testid='review-event-toggle'][data-event-id='{evt.Id:D}']";
+    private static string Toggle(Event evt)
+    {
+        return $"[data-testid='review-event-toggle'][data-event-id='{evt.Id:D}']";
+    }
 
     [Fact]
     public void ReviewDetailTab_EachSection_RendersItsData()
@@ -127,9 +137,10 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
 
         // Assert
-        Assert.Equal(3, cut.FindAll("[data-testid='review-detail-no-cameras']").Count);
+        Assert.Equal(4, cut.FindAll("[data-testid='review-detail-no-cameras']").Count);
         Assert.Empty(DetailLoader.JammingCalls);
         Assert.Empty(DetailLoader.AnomalyCalls);
+        Assert.Empty(DetailLoader.BitRateCalls);
         Assert.Empty(EventLoader.Calls);
     }
 
@@ -198,7 +209,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewDetailTab_ExpandEvent_LoadsOnlyThatEventsDetailOnceAndCachesIt()
+    public void ReviewDetailTab_LoadedRows_ReadTheirDetailInOneBatchAndDoNotReloadOnToggle()
     {
         // Arrange
         AddDevices(1);
@@ -208,15 +219,15 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(EventRow).Count));
+        cut.WaitForAssertion(() => Assert.Single(DetailLoader.DetailCalls));
 
-        // Act
-        cut.Find(Toggle(first)).Click();
+        // Act: rows open by default, so a click closes one and a second click opens it again.
         cut.Find(Toggle(first)).Click();
         cut.Find(Toggle(first)).Click();
         cut.Find(Toggle(second)).Click();
 
         // Assert
-        Assert.Equal(new[] { new[] { first.Id }, new[] { second.Id } }, DetailLoader.DetailCalls.Select(c => c.ToArray()).ToArray());
+        Assert.Equal(new[] { new[] { first.Id, second.Id } }, DetailLoader.DetailCalls.Select(c => c.ToArray()).ToArray());
     }
 
     [Fact]
@@ -229,13 +240,33 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+        Assert.Equal("true", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
 
-        // Act
+        // Act: a click closes the row that opens by default.
         cut.Find(Toggle(evt)).Click();
 
         // Assert
-        Assert.Equal("true", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
-        Assert.Single(cut.FindAll(EventBody));
+        Assert.Equal("false", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(EventBody));
+    }
+
+    [Fact]
+    public void ReviewDetailTab_Row_ShowsTheDetectionTypeWithoutAClick()
+    {
+        // Arrange
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base);
+        ServeFrom([evt]);
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
+            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
+        ReviewState.SetCameras([Devices[0].Id]);
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+
+        // Act: nothing is clicked. The row takes its label from its detail as soon as the list loads.
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Equal(L["DetectionType_human"].Value, cut.Find(Toggle(evt)).QuerySelector(".review-event-type")!.TextContent.Trim()));
     }
 
     [Fact]
@@ -252,7 +283,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
@@ -285,7 +315,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains(L["DetailNone"].Value, cut.Find(EventBody).TextContent));
@@ -305,7 +334,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='review-detail-occurrence']").Count));
@@ -327,7 +355,6 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ReviewState.SetTab(ReviewTab.Detail);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
-        cut.Find(Toggle(evt)).Click();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='review-detail-occurrence']").Count));
         ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
 
@@ -442,9 +469,9 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         await Task.Delay(300);
 
         // Assert
-        Assert.Single(EventLoader.Calls);
-        Assert.Single(DetailLoader.JammingCalls);
-        Assert.Single(DetailLoader.AnomalyCalls);
+        _ = Assert.Single(EventLoader.Calls);
+        _ = Assert.Single(DetailLoader.JammingCalls);
+        _ = Assert.Single(DetailLoader.AnomalyCalls);
     }
 
     [Fact]
@@ -510,7 +537,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         // Assert
         cut.WaitForAssertion(() => Assert.Equal(2, DetailLoader.JammingCalls.Count), TimeSpan.FromSeconds(5));
         cut.WaitForAssertion(() => Assert.Equal(2, DetailLoader.AnomalyCalls.Count), TimeSpan.FromSeconds(5));
-        Assert.Single(EventLoader.Calls);
+        _ = Assert.Single(EventLoader.Calls);
     }
 
     [Fact]
@@ -529,9 +556,9 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll($"{EventBody}[data-event-id='{evt.Id:D}']")));
         Assert.Equal("true", cut.Find(Toggle(evt)).GetAttribute("aria-expanded"));
-        Assert.Single(cut.FindAll($"{EventRow}.active"));
+        _ = Assert.Single(cut.FindAll($"{EventRow}.active"));
     }
 
     [Fact]
@@ -559,7 +586,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         await Task.Delay(100);
 
         // Assert
-        Assert.Single(cut.FindAll(JammingRow));
+        _ = Assert.Single(cut.FindAll(JammingRow));
         Assert.Contains(NameOf(Devices[1]), cut.Find(JammingRow).TextContent);
     }
 
@@ -598,9 +625,76 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
 
         // Act
-        cut.Find(Toggle(evt)).Click();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains("mystery-kind", cut.Find(EventBody).TextContent));
+    }
+
+    [Fact]
+    public void ReviewDetailTab_OnlyMotionSelected_HidesTheSystemSectionsAndDoesNotLoadThem()
+    {
+        // Arrange
+        AddDevices(1);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ReviewState.SetEventTypes(["motion"]);
+
+        // Act
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.NotEmpty(EventLoader.Calls));
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-jamming']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-anomalies']"));
+        Assert.Empty(DetailLoader.JammingCalls);
+        Assert.Empty(DetailLoader.AnomalyCalls);
+        Assert.Equal(["motion"], EventLoader.Calls[0].EventTypes);
+    }
+
+    [Fact]
+    public void ReviewDetailTab_OnlyJammingSelected_ShowsJammingOnlyAndListsNoProviderEvents()
+    {
+        // Arrange
+        AddDevices(1);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ReviewState.SetEventTypes(["jamming"]);
+
+        // Act
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(JammingRow)));
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-anomalies']"));
+        Assert.Empty(cut.FindAll(EventRow));
+        Assert.Empty(DetailLoader.AnomalyCalls);
+    }
+
+    [Fact]
+    public void ReviewDetailTab_MotionDetectionType_ShowsTheEventTypeInstead()
+    {
+        // Arrange
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base, "on_demand");
+        ServeFrom([evt]);
+        DetailLoader.DetailResponder = (_, _) =>
+        {
+            var detection = new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "motion" };
+            var occurrence = new EventDetectionTypeOccurrence { Id = Guid.NewGuid(), EventDetectionId = detection.Id, DetectionType = "other_motion", DetectedAtUtc = Base.AddMinutes(1) };
+            EventDetail detail = new(evt.Id, detection, [occurrence], [], [], []);
+            return Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail> { [evt.Id] = detail });
+        };
+        ReviewState.SetCameras([Devices[0].Id]);
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+
+        // Act
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventBody)));
+        string body = cut.Find(EventBody).TextContent;
+        string onDemand = L["EventType_on_demand"].Value;
+        Assert.Equal(2, body.Split(onDemand).Length - 1);
+        Assert.DoesNotContain(L["DetectionType_motion"].Value, body);
+        Assert.DoesNotContain(L["DetectionType_other_motion"].Value, body);
     }
 }

@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text.Json;
 
+using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Hosting.Remote;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote;
 
@@ -19,7 +19,7 @@ public class RemoteDeviceConfigRepositoryTests
                 MotionDetectionEnabled: true,
                 MotionSensitivity: "high",
                 RecordingMode: "continuous",
-                CustomSettingsJson: """{"vendor": "test"}""",
+                CustomSettings: new Dictionary<string, JsonElement> { ["vendor"] = JsonSerializer.SerializeToElement("test") },
                 CapturedAtUtc: DateTime.UtcNow,
                 Source: "Fetched"
             );
@@ -34,7 +34,7 @@ public class RemoteDeviceConfigRepositoryTests
                 MotionDetectionEnabled = true,
                 MotionSensitivity = "high",
                 RecordingMode = "continuous",
-                CustomSettingsJson = """{"vendor": "test"}""",
+                CustomSettings = [new DeviceConfigSnapshotSetting { Id = Guid.NewGuid(), Key = "vendor", ValueJson = "\"test\"" }],
                 CapturedAtUtc = DateTime.UtcNow,
                 Source = DeviceConfigSource.Fetched
             };

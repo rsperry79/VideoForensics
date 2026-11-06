@@ -1,6 +1,8 @@
 <Project>
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
+        <!-- Don't leave the VBCSCompiler server running after a build. -->
+        <UseSharedCompilation>false</UseSharedCompilation>
         <!--
           Nullable-reference-type warnings (mostly on JSON entity/DTO classes populated by the
           deserializer rather than a constructor) and xUnit analyzer style suggestions (e.g. use

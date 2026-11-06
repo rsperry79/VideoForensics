@@ -1,6 +1,5 @@
 
 using Microsoft.EntityFrameworkCore;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +11,10 @@ using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Licensing;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Implementations;
 using VideoForensics.Core.Helpers.Platform;
@@ -26,10 +29,6 @@ using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Client.Hosting.BackgroundServices;
-using VideoForensics.Client.Hosting.Contracts;
-using VideoForensics.Client.Hosting.Remote;
-using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
@@ -91,7 +90,8 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ILogger<RingDeviceControlService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceRepository>(),
-                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationRepository>());
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationRepository>(),
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceLightEventRepository>());
         }
 
         /// <summary>
@@ -164,7 +164,9 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<IVideoForensicsDataClient>(),
                 notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
-                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>()
+                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>(),
+                mediaPaths: provider.GetService<VideoForensics.Data.Common.Contracts.IMediaPathResolver>(),
+                referenceCache: provider.GetService<VideoForensics.Data.Common.Contracts.IReferenceDataCache>()
             );
         }
 
@@ -457,7 +459,8 @@ namespace VideoForensics.Client.Hosting
                 IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
                 IForensicsConfigurationService configurationService = serviceProvider.GetRequiredService<IForensicsConfigurationService>();
                 IStorageLocationProvider storageLocationProvider = serviceProvider.GetRequiredService<IStorageLocationProvider>();
-                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService, configurationService, storageLocationProvider);
+                VideoForensics.Data.Common.Contracts.ISnapshotCaptureRepository snapshotCaptures = serviceProvider.GetRequiredService<VideoForensics.Data.Common.Contracts.ISnapshotCaptureRepository>();
+                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService, configurationService, storageLocationProvider, snapshotCaptures: snapshotCaptures);
             });
 
             // Backup export/import (event reimport feature): embeds/reads a DB record GUID in a
@@ -491,11 +494,14 @@ namespace VideoForensics.Client.Hosting
                 )
             );
 
+            _ = services.AddSingleton<ConfigurationCache>();
             _ = services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
                     serviceProvider.GetRequiredService<IAppSettingRepository>(),
-                    serviceProvider.GetRequiredService<IFfmpegToolLocation>()
+                    serviceProvider.GetRequiredService<IFfmpegToolLocation>(),
+                    changeNotifier: serviceProvider.GetService<IConfigurationChangeNotifier>(),
+                    cache: serviceProvider.GetRequiredService<ConfigurationCache>()
                 )
             );
 
@@ -519,10 +525,15 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IProviderHealthSource, RingHealthSource>();
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddScoped<SignalDeviationAlerts>();
+            _ = services.AddScoped<BitrateDeviationAlerts>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
+            services.TryAddSingleton(TimeProvider.System);
+            _ = services.AddHostedService<ScheduledReportService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
             _ = services.AddHostedService<MediaPreviewBackfillService>();
             _ = services.AddHostedService<JammingAnalysisBackfillService>();
+            _ = services.AddHostedService<MediaCodecBackfillService>();
+            _ = services.AddHostedService<MediaFlagBackfillService>();
 
             // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
             // orchestrator, and background services for idle timeouts and bitrate calibration.
@@ -550,7 +561,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHostedService(sp => (VideoForensics.Client.Hosting.BackgroundServices.UpdateCheckService)sp.GetRequiredService<Client.Common.Contracts.IUpdateCheckService>());
 
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
-            _ = services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
+            _ = services.AddScoped<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
+            _ = services.AddScoped<IMediaPathResolver, VideoForensics.Data.Core.Services.MediaPathResolver>();
 
             // Evidence "grab still with hash" (plan §8a): server-side ffmpeg frame extraction plus
             // the orchestrator that persists the derived still, its chain-of-custody entry, and an
@@ -569,7 +581,8 @@ namespace VideoForensics.Client.Hosting
                     serviceProvider.GetRequiredService<IMediaStorageProvider>(),
                     serviceProvider.GetRequiredService<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(),
                     serviceProvider.GetRequiredService<IActionLogRepository>(),
-                    serviceProvider.GetRequiredService<ICaseRepository>()));
+                    serviceProvider.GetRequiredService<ICaseRepository>(),
+                    serviceProvider.GetRequiredService<IMediaPathResolver>()));
 
             // IMemoryCache backs the short-lived auth caches registered below (WebAuthn ceremonies, 2FA pending
             // logins, login attempts). Registered here so every server-tier host gets it, not only WebApp.
@@ -605,6 +618,8 @@ namespace VideoForensics.Client.Hosting
 
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
+            // The only provider inventory and device-configuration path: the scheduler and manual sync call it, pulls never do.
+            _ = services.AddScoped<IInventorySyncService, InventorySyncService>();
             _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
             _ = services.AddScoped<ISnapshotRollupService, SnapshotRollupService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
@@ -679,13 +694,21 @@ namespace VideoForensics.Client.Hosting
                     provider.GetRequiredService<IDeviceRepository>(),
                     provider.GetRequiredService<ILocationRepository>(),
                     provider.GetRequiredService<IProviderAccountRepository>(),
-                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
                     provider.GetService<ILogger<EventPullService>>(),
                     provider.GetKeyedService<IMediaDownloadService>(providerName),
-                    deviceConfigRepository: provider.GetRequiredService<IDeviceConfigRepository>(),
                     storage: provider.GetService<IStorageLocationProvider>(),
                     configurationService: provider.GetService<IForensicsConfigurationService>(),
-                    progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>()));
+                    progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>(),
+                    mediaPaths: provider.GetService<IMediaPathResolver>(),
+                    referenceCache: provider.GetRequiredService<IReferenceDataCache>()));
+                _ = services.AddKeyedScoped<IInventorySyncService>(providerName, (provider, key) => new InventorySyncService(
+                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
+                    provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
+                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<IDeviceRepository>(),
+                    provider.GetRequiredService<IReferenceDataCache>(),
+                    provider.GetRequiredService<ILogger<InventorySyncService>>(),
+                    provider.GetRequiredService<IDeviceConfigRepository>()));
             }
 
             return services;
@@ -729,6 +752,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceHealthRepository, RemoteDeviceHealthRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, Remote.RemoteSignalAnalysisService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, Remote.RemoteBitrateAnalysisService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IMediaBitrateSeriesSource, Remote.RemoteMediaBitrateSeriesSource>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAuthService, RemoteProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);
@@ -745,7 +770,11 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IEventDetailRepository, RemoteEventDetailRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaFlagRepository, Remote.RemoteMediaFlagRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ISnapshotCaptureRepository, Remote.RemoteSnapshotCaptureRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IAccountExportService, Remote.RemoteAccountExportService>(c => c.BaseAddress = serverAddress);
@@ -786,10 +815,13 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<IRealtimeHub>(sp => sp.GetRequiredService<RealtimeHub>());
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMaintenanceStatusSource, Remote.RemoteMaintenanceStatusSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDeviceHealthChangedSource, Remote.RemoteDeviceHealthChangedSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMediaFlagChangedSource, Remote.RemoteMediaFlagChangedSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IConfigChangedSource, Remote.RemoteConfigChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.INoticeFeed, Remote.RemoteNoticeFeed>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 
@@ -829,8 +861,9 @@ namespace VideoForensics.Client.Hosting
                 IDownloadEventRepository downloadEventRepo = sp.GetRequiredService<IDownloadEventRepository>();
                 IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
                 IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
+                IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
                 int count = await EventBackfillService.BackfillFromDownloadEventsAsync(
-                    downloadEventRepo, mediaItemRepo, eventRepo, logger, ct);
+                    downloadEventRepo, mediaItemRepo, eventRepo, unitOfWork, logger, ct);
                 await appSettingRepo.SetAsync(backfillFlagKey, "true", ct);
                 logger.LogInformation("Events backfill completed: {Count} record(s).", count);
             }

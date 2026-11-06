@@ -36,7 +36,7 @@ namespace VideoForensics.Providers.Ring.Streaming
 
         // ICE candidates gathered before the offer is sent. Guarded by _iceGate, which also guards _offerSent.
         private readonly object _iceGate = new();
-        private readonly List<(string Candidate, int MLineIndex)> _pendingIce = new();
+        private readonly List<(string Candidate, int MLineIndex)> _pendingIce = [];
         private bool _offerSent;
 
         /// <summary>
@@ -173,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Streaming
             lock (_iceGate)
             {
                 _offerSent = true;
-                pending = new List<(string Candidate, int MLineIndex)>(_pendingIce);
+                pending = [.. _pendingIce];
                 _pendingIce.Clear();
             }
 

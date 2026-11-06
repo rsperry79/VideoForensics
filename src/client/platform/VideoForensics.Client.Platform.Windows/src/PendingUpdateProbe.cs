@@ -12,12 +12,7 @@ namespace VideoForensics.Client.Platform.Windows
         /// </summary>
         public static bool HasPending(string updatesRoot)
         {
-            if (!Directory.Exists(updatesRoot))
-            {
-                return false;
-            }
-
-            return Directory.EnumerateDirectories(updatesRoot).Any(d =>
+            return Directory.Exists(updatesRoot) && Directory.EnumerateDirectories(updatesRoot).Any(d =>
             {
                 string name = Path.GetFileName(d);
                 return !name.StartsWith('.')

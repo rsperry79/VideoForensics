@@ -44,7 +44,7 @@ namespace VideoForensics.Client.Hosting.Remote
                 snapshot.MotionDetectionEnabled,
                 snapshot.MotionSensitivity,
                 snapshot.RecordingMode,
-                snapshot.CustomSettingsJson,
+                CustomSettings = snapshot.ToCustomSettingsDictionary(),
                 snapshot.CapturedAtUtc,
                 Source = snapshot.Source.ToString()
             };
