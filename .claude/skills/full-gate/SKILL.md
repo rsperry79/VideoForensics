@@ -1,4 +1,9 @@
-# Full gate (before opening a PR to `dev` or `main`)
+---
+name: full-gate
+description: VideoForensics full gate before opening a PR to dev or main: sync wip, bump outdated packages, clean build, full dotnet test, npm check. Use when opening a PR to dev or main or when asked to run the full gate.
+---
+
+# Full gate
 
 Ask the user to confirm first. Then:
 

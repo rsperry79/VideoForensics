@@ -8,7 +8,7 @@ paths:
 # Providers and data
 
 ## Adding a provider
-- Before adding a provider, read `.claude/reference/provider-onboarding.md`.
+- Before adding a provider, use the `provider-onboarding` skill.
 
 ## Data
 - EF: after `migrations add`, confirm the migration is not empty (the snapshot may already have the model). `migrations remove` can leave files; delete the migration and Designer files by explicit path.
