@@ -1,0 +1,101 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
+
+using Xunit;
+
+namespace VideoForensics.Data.Database.Tests.Repositories
+{
+    /// <summary>Queries the event-gap time-lapse planner needs: a device's event times (without its own time lapses) and its latest time-lapse end.</summary>
+    public class TimelapseGapQueries_Tests : IAsyncLifetime
+    {
+        private static readonly DateTime Start = new(2026, 11, 6, 10, 0, 0, DateTimeKind.Utc);
+        private const string LoopMetadata = "{\"type\":\"snapshot-rollup\"}";
+
+        private SqliteInMemoryFixture _fixture = null!;
+        private EventRepository _events = null!;
+        private MediaItemRepository _media = null!;
+        private TimelapseGapQueries _queries = null!;
+
+        public async ValueTask InitializeAsync()
+        {
+            _fixture = new SqliteInMemoryFixture();
+            await _fixture.InitializeAsync();
+            _events = new EventRepository(_fixture.Factory, NullLogger<EventRepository>.Instance);
+            _media = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
+            _queries = new TimelapseGapQueries(_fixture.Factory, NullLogger<TimelapseGapQueries>.Instance);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _fixture.DisposeAsync();
+            _fixture.Dispose();
+        }
+
+        private static Event Ev(Guid deviceId, int minute, string eventType = "motion")
+        {
+            return new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                ProviderEventId = Guid.NewGuid().ToString("N"),
+                EventType = eventType,
+                OccurredAtUtc = Start.AddMinutes(minute),
+                DiscoveredAtUtc = Start,
+            };
+        }
+
+        private static MediaItem Loop(Guid deviceId, int minute, double seconds)
+        {
+            return new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = $"loop-{minute}",
+                FilePath = $"loop-{minute}",
+                MediaFormat = "mp4",
+                Sha256Hash = Guid.NewGuid().ToString("N"),
+                RecordedAtUtc = Start.AddMinutes(minute),
+                DurationSeconds = seconds,
+                DownloadedAtUtc = Start,
+                MetadataJson = LoopMetadata,
+            };
+        }
+
+        [Fact]
+        public async Task EventRepository_ListEventTimesForGaps_ExcludesOwnTimelapsesAndOtherDevices_AscendingOrder()
+        {
+            var device = Guid.NewGuid();
+            await _events.CreateAsync(Ev(device, 30), CancellationToken.None);
+            await _events.CreateAsync(Ev(device, 10), CancellationToken.None);
+            await _events.CreateAsync(Ev(device, 20, "timelapse"), CancellationToken.None);
+            await _events.CreateAsync(Ev(Guid.NewGuid(), 15), CancellationToken.None);
+
+            IReadOnlyList<DateTime> times = await _queries.ListEventTimesForGapsAsync(device, Start, Start.AddHours(1), CancellationToken.None);
+
+            Assert.Equal(new[] { Start.AddMinutes(10), Start.AddMinutes(30) }, times);
+        }
+
+        [Fact]
+        public async Task MediaItemRepository_LatestTimelapseEnd_IsNewestLoopStartPlusDuration()
+        {
+            var device = Guid.NewGuid();
+            await _media.AddAsync(Loop(device, 0, 43 * 60), CancellationToken.None);
+            await _media.AddAsync(Loop(device, 60, 1800), CancellationToken.None);
+
+            DateTime? end = await _queries.GetLatestTimelapseEndUtcAsync(device, CancellationToken.None);
+
+            Assert.Equal(Start.AddMinutes(60).AddSeconds(1800), end);
+        }
+
+        [Fact]
+        public async Task MediaItemRepository_LatestTimelapseEnd_NullWhenDeviceHasNoLoops()
+        {
+            DateTime? end = await _queries.GetLatestTimelapseEndUtcAsync(Guid.NewGuid(), CancellationToken.None);
+
+            Assert.Null(end);
+        }
+    }
+}
