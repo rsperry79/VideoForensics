@@ -14,5 +14,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// per-device cursor, so it needs no separate table.
         /// </summary>
         Task<DateTime?> GetLatestTimelapseEndUtcAsync(Guid deviceId, CancellationToken ct);
+
+        /// <summary>
+        /// The capture time of the device's earliest snapshot attempt (any status), or null if it has none. Used as the start
+        /// of a device's first time lapse.
+        /// </summary>
+        Task<DateTimeOffset?> GetEarliestCaptureAtUtcAsync(Guid deviceId, CancellationToken ct);
     }
 }

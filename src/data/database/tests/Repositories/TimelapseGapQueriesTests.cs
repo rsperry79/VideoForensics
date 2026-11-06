@@ -91,6 +91,28 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task SnapshotCaptures_EarliestCapture_IsOldestAttemptForTheDevice()
+        {
+            var locations = new LocationRepository(_fixture.Factory, NullLogger<LocationRepository>.Instance);
+            var devices = new DeviceRepository(_fixture.Factory, NullLogger<DeviceRepository>.Instance);
+            Location location = TestDataBuilder.BuildLocation(name: "Gap Site");
+            await locations.AddAsync(location, CancellationToken.None);
+            Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Gap Camera");
+            await devices.AddAsync(device, CancellationToken.None);
+            Device other = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Other Camera");
+            await devices.AddAsync(other, CancellationToken.None);
+
+            var captures = new SnapshotCaptureRepository(_fixture.Factory, NullLogger<SnapshotCaptureRepository>.Instance);
+            await captures.AddAsync(SnapshotCapture.Create(device.Id, new DateTimeOffset(Start.AddMinutes(20), TimeSpan.Zero), "fresh", 404, null, null), CancellationToken.None);
+            await captures.AddAsync(SnapshotCapture.Create(device.Id, new DateTimeOffset(Start.AddMinutes(5), TimeSpan.Zero), "fresh", 200, "p.jpg", null), CancellationToken.None);
+            await captures.AddAsync(SnapshotCapture.Create(other.Id, new DateTimeOffset(Start.AddMinutes(1), TimeSpan.Zero), "fresh", 200, "q.jpg", null), CancellationToken.None);
+
+            DateTimeOffset? earliest = await _queries.GetEarliestCaptureAtUtcAsync(device.Id, CancellationToken.None);
+
+            Assert.Equal(new DateTimeOffset(Start.AddMinutes(5), TimeSpan.Zero), earliest);
+        }
+
+        [Fact]
         public async Task MediaItemRepository_LatestTimelapseEnd_NullWhenDeviceHasNoLoops()
         {
             DateTime? end = await _queries.GetLatestTimelapseEndUtcAsync(Guid.NewGuid(), CancellationToken.None);
