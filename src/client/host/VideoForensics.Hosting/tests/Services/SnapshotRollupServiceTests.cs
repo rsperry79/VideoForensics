@@ -346,34 +346,4 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 && i.Arguments[2].ToString()!.Contains("2 snapshots", StringComparison.Ordinal));
         }
     }
-
-    /// <summary>When a roll-up is due: never rolled up, or the interval has passed since the last one.</summary>
-    public class ScheduleRollupDueTests
-    {
-        private static readonly DateTime Now = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
-
-        [Fact]
-        public void NeverRolledUp_IsDue()
-        {
-            Assert.True(ScheduleCalculator.IsRollupDue(SyncSchedule.CreateDefault(Guid.NewGuid()), Now));
-        }
-
-        [Fact]
-        public void WithinInterval_IsNotDue()
-        {
-            var schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
-            schedule.LastRollupUtc = Now.AddMinutes(-14);
-
-            Assert.False(ScheduleCalculator.IsRollupDue(schedule, Now));
-        }
-
-        [Fact]
-        public void AtInterval_IsDue()
-        {
-            var schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
-            schedule.LastRollupUtc = Now.AddMinutes(-15);
-
-            Assert.True(ScheduleCalculator.IsRollupDue(schedule, Now));
-        }
-    }
 }

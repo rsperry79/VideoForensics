@@ -25,8 +25,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// never intervals or IsEnabled. No-op if the row no longer exists.</summary>
         Task RecordSnapshotRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct);
 
-        /// <summary>Records that a snapshot roll-up finished: updates ONLY LastRollupUtc of the matching row. No-op if the row no longer exists.</summary>
-        Task RecordRollupAsync(Guid providerAccountId, DateTime rolledUpAtUtc, CancellationToken ct);
 
         /// <summary>Sets the scheduled backfill cursor (see <c>SyncSchedule.BackfillCursorUtc</c>); a vanished row is a no-op.</summary>
         Task RecordBackfillCursorAsync(Guid providerAccountId, DateTime? cursorUtc, CancellationToken ct);
