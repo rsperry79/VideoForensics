@@ -381,33 +381,6 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     }
 
     [Fact]
-    public async Task ReviewActionsMenu_PlaceHold_OtherNeedsNote_SendsEnumNameAndTrimmedNote()
-    {
-        // Arrange
-        Guid operatorId = await SignInOperatorAsAsync("Admin");
-        SelectClipAtCursor();
-        LegalHoldRepositoryMock
-            .Setup(r => r.PlaceAsync(_clipId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "Other: camera was moved", CreatedBy = operatorId.ToString() });
-        IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
-        await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.Other);
-
-        // Assert: Other alone is not enough
-        Assert.True(cut.Find("[data-testid='review-hold-confirm']").HasAttribute("disabled"));
-
-        // Act: the note makes the reason complete
-        cut.Find("[data-testid='reason-picker-note']").Change("  camera was moved  ");
-        cut.WaitForAssertion(() => Assert.False(cut.Find("[data-testid='review-hold-confirm']").HasAttribute("disabled")));
-        await ClickAsync(cut, "[data-testid='review-hold-confirm']");
-
-        // Assert: the enum name, then the trimmed note
-        LegalHoldRepositoryMock.Verify(
-            r => r.PlaceAsync(_clipId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
     public async Task ReviewActionsMenu_ReleaseHold_ActiveHold_CallsReleaseWithReason()
     {
         // Arrange

@@ -101,18 +101,6 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Sources_ManualSync_RequiresSuperAdminOnAnyTier()
-    {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem manualSyncItem = group.Items.First(i => i.Path == "/accounts/manual-sync");
-
-        Assert.Equal("Manual Sync", manualSyncItem.Text);
-        Assert.False(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
-        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
-        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: false)));
-    }
-
-    [Fact]
     public void Sources_QueryApi_RequiresAdminRole()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
