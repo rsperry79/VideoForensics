@@ -187,37 +187,4 @@ public class LiveViewPageTests : BunitContext
             Assert.Empty(cut.FindAll(".alert-danger"));
         });
     }
-
-    [Fact]
-    public void LiveView_Rendered_RegistersTheViewNavInTheLeftPanel()
-    {
-        // Act
-        _ = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
-
-        // Assert
-        Assert.NotNull(Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>().Content);
-    }
-
-    [Fact]
-    public void LiveView_InitializesHubConnectionThroughTheModuleWithoutError()
-    {
-        // Arrange: the module is the one the page imports, so its calls can be inspected
-        BunitJSModuleInterop module = JSInterop.SetupModule(ExpectedModulePath);
-        module.Mode = JSRuntimeMode.Loose;
-
-        // Act
-        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
-
-        // Assert: the page calls functions the module exports, and nothing else it never defined
-        cut.WaitForAssertion(() =>
-        {
-            var calls = module.Invocations.Select(i => i.Identifier).ToList();
-            Assert.Contains("initializeHubConnection", calls);
-            JSRuntimeInvocation init = module.Invocations.First(i => i.Identifier == "initializeHubConnection");
-            Assert.EndsWith("/hubs/liveview-signaling", init.Arguments[0] as string);
-            Assert.Equal(SessionToken, init.Arguments[1]);
-            Assert.DoesNotContain("setupIceCandidateHandler", calls);
-            Assert.Empty(cut.FindAll(".alert-danger"));
-        });
-    }
 }

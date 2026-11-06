@@ -504,65 +504,6 @@ namespace VideoForensics.Client.Hosting.Services
             }
         }
 
-        /// <summary>
-        /// Generates preview sidecars for the device's clips in the pulled window. At most two encodes run at once, so a large
-        /// pull does not saturate the host with ffmpeg. Per-clip failures are logged and skipped; only cancellation escapes.
-        /// </summary>
-        private async Task GeneratePreviewsAsync(Guid deviceId, string deviceName, DateTime startTime, DateTime endTime, CancellationToken cancellationToken)
-        {
-            try
-            {
-                IReadOnlyList<MediaItem> clips = await _mediaItems!.GetByDeviceAndDateRangeAsync(deviceId, startTime, endTime, cancellationToken);
-                // The repository returns purged rows too. A clip with a preview already on disk needs no encode.
-                List<MediaItem> pending = clips
-                    .Where(c => !c.IsPurged && !(c.PreviewPath != null && File.Exists(c.PreviewPath)))
-                    .ToList();
-
-                int generated = 0, failed = 0;
-
-                async Task ProcessAsync(MediaItem clip)
-                {
-                    await PreviewEncodeGate.WaitAsync(cancellationToken);
-                    try
-                    {
-                        bool ok = await _previewService!.EnsurePreviewAsync(clip, cancellationToken);
-                        if (ok)
-                        {
-                            _ = Interlocked.Increment(ref generated);
-                        }
-                        else
-                        {
-                            _ = Interlocked.Increment(ref failed);
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        _ = Interlocked.Increment(ref failed);
-                        _logger.LogError(ex, "Preview failed for clip {FileName}: {Message}", clip.FileName, ex.Message);
-                    }
-                    finally
-                    {
-                        _ = PreviewEncodeGate.Release();
-                    }
-                }
-
-                await Task.WhenAll(pending.Select(ProcessAsync));
-                _logger.LogInformation("Previews for device {DeviceName}: {Generated} generated, {Failed} failed", deviceName, generated, failed);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Preview generation failed for device {DeviceName}", deviceName);
-            }
-        }
-
         private static string TruncateErrorMessage(string message, int maxLength = 2000)
         {
             return message == null ? null : message.Length > maxLength ? message[..maxLength] : message;

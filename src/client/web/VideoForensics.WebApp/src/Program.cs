@@ -102,9 +102,6 @@ serverLogLevel.BufferLevel.TraceOnlyCategories.Add("VideoForensics.Data.Database
 static string SourceOf(Serilog.Events.LogEvent e) =>
     e.Properties.TryGetValue("SourceContext", out Serilog.Events.LogEventPropertyValue? source) ? source.ToString().Trim('"') : string.Empty;
 
-// The recording level is the saved "Logging level" setting: it governs the console and the audit files alike.
-ServerLogLevel serverLogLevel = new();
-
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.ControlledBy(serverLogLevel.Switch)
     // No per-category overrides: an override bypasses the level switch, so EF SQL and Ring API Debug lines would be
@@ -845,34 +842,6 @@ for (int i = 0; i < builder.Services.Count; i++)
 
 WebApplication app = builder.Build();
 app.Logger.LogInformation("Data protection key ring wrapped by {Wrapping}", dataProtectionWrapping);
-
-// Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
-using (IServiceScope levelScope = app.Services.CreateScope())
-{
-    try
-    {
-        IForensicsConfiguration savedConfig = await levelScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
-        serverLogLevel.Apply(savedConfig.LogLevel);
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
-    }
-}
-
-// Open the LogViewer pipe only if the Infrastructure setting says so. A failure keeps it closed.
-using (IServiceScope pipeScope = app.Services.CreateScope())
-{
-    try
-    {
-        string? storedPipe = await pipeScope.ServiceProvider.GetRequiredService<IAppSettingRepository>().GetAsync(LogPipeEndpoints.SettingKey, CancellationToken.None);
-        namedPipeGate.SetOpen(LogPipeEndpoints.IsEnabled(storedPipe));
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogError("Could not read the saved log pipe setting, keeping it closed: {Type}: {Message}", ex.GetType().Name, ex.Message);
-    }
-}
 
 // Apply the saved logging level. Until this runs the level is Information, the default. A failure keeps that default.
 using (IServiceScope levelScope = app.Services.CreateScope())
