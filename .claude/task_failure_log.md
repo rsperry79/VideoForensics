@@ -47,3 +47,8 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 2026-11-06 | localisation | scheduler and orchestrator status messages are English literals shown on the services page | ui-shared rule requires resource strings | open: move to resource keys
 2026-11-06 | live test | RealTimeLapseIntegrationTests cannot restore the Ring session from the scratch copy | unknown: copy or expired saved login | open: check the login against the live database with the user's OK
 2026-11-06 | test flake | CaseRepositoryNumberingTests concurrent create failed once in a full run (SQLite error 5) | load-dependent | passes alone; wip baseline not run
+2026-11-06 | subagent | spawned a Sonnet review agent after 'ask sonnet to review' without naming the criterion and waiting for a clear yes | treated the request as permission | CLAUDE.md: name the criterion, wait for yes, one spawn only
+2026-11-06 | worktree | ran builds and tests in the main checkout for several fixes (test flakes, Data.Core, Data.Database, ManualSync) | skipped the worktree rule | run every build and test in a worktree
+2026-11-06 | TDD | committed fixes without a recorded red run: XML param docs, stage opt-in, test-flake fixes, time lapse test update | skipped test-first | write and record the red run first, or say why it is not possible
+2026-11-06 | haiku writes code | main model wrote implementation code directly (ManualSync, MediaFit, LiveView, csproj, tests) | ignored the Haiku-writes-code rule | brief Haiku for implementation; main model verifies
+2026-11-06 | output | long recaps and closing summaries after most turns | ignored the terse output rule | keep replies short; no trailing summaries
