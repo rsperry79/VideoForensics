@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -10,6 +13,12 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// </summary>
     public class WebPushClient
     {
+        /// <summary>Shape of the object <c>vfWebPush.subscribe</c> returns.</summary>
+        private sealed record WebPushSubscriptionJs(
+            [property: JsonPropertyName("endpoint")] string? Endpoint,
+            [property: JsonPropertyName("p256dhKey")] string? P256dhKey,
+            [property: JsonPropertyName("authKey")] string? AuthKey);
+
         private readonly IJSRuntime _js;
         private readonly NavigationManager _nav;
 
@@ -57,25 +66,40 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// <returns>Subscription details: endpoint, p256dh key, and auth key</returns>
         public async Task<(string Endpoint, string P256dhKey, string AuthKey)> SubscribeAsync(string vapidPublicKey)
         {
+            JsonElement result;
             try
             {
-                dynamic result = await _js.InvokeAsync<dynamic>("vfWebPush.subscribe", vapidPublicKey);
-
-                // Deserialize the dynamic result to extract the subscription details
-                if (result != null)
-                {
-                    dynamic endpoint = result["endpoint"]?.ToString() ?? "";
-                    dynamic p256dhKey = result["p256dhKey"]?.ToString() ?? "";
-                    dynamic authKey = result["authKey"]?.ToString() ?? "";
-                    return (endpoint, p256dhKey, authKey);
-                }
-
-                throw new InvalidOperationException("Failed to subscribe to push notifications");
+                // Blazor returns a JS object as JsonElement; read it through a typed record, never a dynamic indexer.
+                result = await _js.InvokeAsync<JsonElement>("vfWebPush.subscribe", vapidPublicKey);
             }
             catch (JSException ex)
             {
                 throw new InvalidOperationException($"Push subscription failed: {ex.Message}", ex);
             }
+
+            WebPushSubscriptionJs? subscription = null;
+            if (result.ValueKind == JsonValueKind.Object)
+            {
+                try
+                {
+                    subscription = JsonSerializer.Deserialize<WebPushSubscriptionJs>(result.GetRawText());
+                }
+                catch (JsonException)
+                {
+                    // Malformed shape: reported below with the same failure as a missing result.
+                }
+            }
+
+            // Validate at the boundary: a subscription without all three values cannot be stored or used.
+            if (subscription is null
+                || string.IsNullOrEmpty(subscription.Endpoint)
+                || string.IsNullOrEmpty(subscription.P256dhKey)
+                || string.IsNullOrEmpty(subscription.AuthKey))
+            {
+                throw new InvalidOperationException("Failed to subscribe to push notifications");
+            }
+
+            return (subscription.Endpoint, subscription.P256dhKey, subscription.AuthKey);
         }
 
         /// <summary>
