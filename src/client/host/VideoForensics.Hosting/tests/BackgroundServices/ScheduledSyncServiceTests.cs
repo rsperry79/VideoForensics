@@ -909,6 +909,61 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
         }
 
+        /// <summary>Seeds a clean pull and a snapshot sync, so the time-lapse check runs, and the device's latest event time (any date).</summary>
+        private static ProviderAccount SetUpTimelapseCheckWithLatestEvent(Harness h, DateTime? latestEvent)
+        {
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
+            _ = h.TimelapseQueries.Setup(q => q.GetLatestEventTimeAnyUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(latestEvent);
+            return account;
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_LatestEventAheadOfLocalClock_WarnsOnceWithDeviceNameAndNoGuid()
+        {
+            var h = new Harness();
+            ProviderAccount account = SetUpTimelapseCheckWithLatestEvent(h, Now.AddMinutes(30));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            string warning = Assert.Single(h.Logs.Lines, l => l.StartsWith("Warning") && l.Contains("ahead of the local clock"));
+            Assert.Contains("Cam", warning);
+            Assert.Contains("30 minute", warning);
+            Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
+            var guid = new System.Text.RegularExpressions.Regex(@"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+            Assert.DoesNotContain(h.Logs.Lines, l => guid.IsMatch(l));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_LatestEventWithinFiveMinutesAhead_DoesNotWarn()
+        {
+            var h = new Harness();
+            _ = SetUpTimelapseCheckWithLatestEvent(h, Now.AddMinutes(3));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.DoesNotContain(h.Logs.Lines, l => l.Contains("ahead of the local clock"));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NoEvents_DoesNotWarn()
+        {
+            var h = new Harness();
+            _ = SetUpTimelapseCheckWithLatestEvent(h, null);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.DoesNotContain(h.Logs.Lines, l => l.Contains("ahead of the local clock"));
+        }
+
         [Theory]
         [InlineData(0, 5)]
         [InlineData(-1, 5)]
