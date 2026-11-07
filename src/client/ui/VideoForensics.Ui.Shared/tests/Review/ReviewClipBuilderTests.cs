@@ -250,4 +250,67 @@ public class ReviewClipBuilder_Tests
         Assert.Equal("preview/" + id, preview(id));
         Assert.Null(tiles[0].ContentUrlFor("unknown"));
     }
+
+    [Fact]
+    public void BuildUnavailableClips_EventWithoutMedia_IsFlaggedUnavailable()
+    {
+        // Arrange: the event was stored but has no downloadable media
+        Guid device = Guid.NewGuid();
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            ProviderEventId = "86401464",
+            EventType = "motion",
+            OccurredAtUtc = Start,
+            DiscoveredAtUtc = Start,
+            DownloadStatus = EventDownloadStatus.Unavailable,
+        };
+
+        // Act
+        IReadOnlyList<ClipWindow> windows = ReviewClipBuilder.BuildUnavailableClips([evt], device);
+
+        // Assert: one window at the event's time, marked unavailable so the timeline draws it apart from playable clips
+        ClipWindow window = Assert.Single(windows);
+        Assert.True(window.IsUnavailable);
+        Assert.Equal(Start, window.StartUtc);
+    }
+
+    [Fact]
+    public void BuildUnavailableClips_DownloadedEvent_IsExcluded()
+    {
+        // Arrange: a downloaded event has playable media, so it belongs to BuildClips, not here
+        Guid device = Guid.NewGuid();
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            ProviderEventId = "86401465",
+            EventType = "motion",
+            OccurredAtUtc = Start,
+            DiscoveredAtUtc = Start,
+            DownloadStatus = EventDownloadStatus.Downloaded,
+        };
+
+        // Act / Assert
+        Assert.Empty(ReviewClipBuilder.BuildUnavailableClips([evt], device));
+    }
+
+    [Fact]
+    public void BuildUnavailableClips_OtherDeviceEvent_IsExcluded()
+    {
+        Guid device = Guid.NewGuid();
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.NewGuid(),
+            ProviderEventId = "86401466",
+            EventType = "motion",
+            OccurredAtUtc = Start,
+            DiscoveredAtUtc = Start,
+            DownloadStatus = EventDownloadStatus.NotAttempted,
+        };
+
+        Assert.Empty(ReviewClipBuilder.BuildUnavailableClips([evt], device));
+    }
 }
