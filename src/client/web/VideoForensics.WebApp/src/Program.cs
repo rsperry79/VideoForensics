@@ -675,7 +675,14 @@ builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
 // Singleton: the per-IP lockout counters must outlive a single request. Resolves its scoped repository per ban write.
 builder.Services.AddSingleton<IFailedLoginIpTracker, FailedLoginIpTracker>();
 
-builder.Services.AddHealthChecks();
+// /healthz "services" check. The constructor takes a TimeSpan threshold that DI cannot supply, so the factory passes it.
+// ThreadHeartbeats is registered by AddVideoForensicsSnapshotCapture above.
+builder.Services.AddSingleton(sp => new VideoForensics.Client.Hosting.BackgroundServices.ServiceHealthCheck(
+    sp.GetRequiredService<VideoForensics.Client.Hosting.BackgroundServices.ThreadHeartbeats>(),
+    sp.GetRequiredService<TimeProvider>(),
+    VideoForensics.Client.Hosting.BackgroundServices.ServiceHealthCheck.DefaultStaleAfter));
+builder.Services.AddHealthChecks()
+    .AddCheck<VideoForensics.Client.Hosting.BackgroundServices.ServiceHealthCheck>("services");
 
 // LAN discovery (plan §5.2) - advertises _videoforensics._tcp.local so a pairing client can find
 // this server's address without the owner typing an IP. WebApp-only: console/MCP have no pairing
