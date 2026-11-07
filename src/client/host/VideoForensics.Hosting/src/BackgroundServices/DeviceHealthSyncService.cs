@@ -371,6 +371,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+            bool itemFailed = false;
 
             var healthSources = sp.GetServices<IProviderHealthSource>().ToList();
             if (healthSources.Count == 0)
@@ -393,6 +394,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Elevated polling tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
@@ -471,9 +473,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
-                        if (wentOffline)
+                        if (wentOffline && !await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct))
                         {
-                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
+                            itemFailed = true;
                         }
                     }
 
@@ -486,6 +488,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
+                    itemFailed = true;
                     _logger.LogWarning("Elevated polling tick: {SourceType} failed (non-critical): {Message} ({ErrorType})", healthSource.GetType().Name, ex.Message, ex.GetType().Name);
                 }
             }
@@ -534,9 +537,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
                     string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
+                    itemFailed = true;
                     _logger.LogWarning("Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical): {Message} ({ErrorType})", deviceName, ex.Message, ex.GetType().Name);
                 }
             }
+
+            if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
         }
 
         /// <summary>
