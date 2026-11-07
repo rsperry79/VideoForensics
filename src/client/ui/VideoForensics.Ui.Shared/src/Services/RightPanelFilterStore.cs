@@ -5,7 +5,8 @@ using Microsoft.JSInterop;
 namespace VideoForensics.Client.Ui.Shared.Services;
 
 /// <summary>The right-panel filter choices a page remembers: the selected providers and the chosen account id (null for All accounts).</summary>
-public sealed record RightPanelFilters(string[]? Providers, string? Account);
+/// <param name="Cameras">Camera ids a camera page remembers. Null for pages that filter by provider and account.</param>
+public sealed record RightPanelFilters(string[]? Providers, string? Account, string[]? Cameras = null);
 
 /// <summary>
 /// Device-local memory of each page's right-panel filters, kept in browser local storage through
