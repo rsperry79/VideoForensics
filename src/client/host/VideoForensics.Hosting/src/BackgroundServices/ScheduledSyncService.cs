@@ -317,15 +317,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
         }
 
-        /// <summary>The services-page check interval and max segment, or the defaults when no configuration service is registered.</summary>
+        /// <summary>The services-page check interval and max segment. The configuration service is required, so a missing one fails the check.</summary>
         private static async Task<(int CheckMinutes, int MaxSegmentMinutes)> ResolveTimelapseSettingsAsync(IServiceProvider sp, CancellationToken ct)
         {
-            IForensicsConfigurationService? config = sp.GetService<IForensicsConfigurationService>();
-            if (config is null)
-            {
-                return (15, 60);
-            }
-
+            IForensicsConfigurationService config = sp.GetRequiredService<IForensicsConfigurationService>();
             IForensicsConfiguration c = await config.LoadConfigurationAsync(string.Empty, ct);
             return (c.TimelapseCheckIntervalMinutes, c.TimelapseMaxSegmentMinutes);
         }
