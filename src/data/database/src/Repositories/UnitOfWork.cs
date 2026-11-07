@@ -1689,15 +1689,33 @@ namespace VideoForensics.Data.Database.Repositories
         public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
         {
             // Tracked entity: the unit of work saves the change when the transaction commits. The unique (DeviceId, ProviderEventId) index
-            // forbids two rows with one id, so a rekey onto an id another row of the device already holds is left undone.
+            // forbids two rows with one id, so when another row of the device already holds the ding id, the placeholder's doorbot rows
+            // move to that row instead and the placeholder is removed. Only a placeholder that was never matched and has no media is removed.
             VideoForensics.Data.Common.Entities.Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
-            if (evt is null || _db.Events.Any(e => e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId))
+            if (evt is null)
             {
                 return Task.CompletedTask;
             }
 
-            evt.ProviderEventId = newProviderEventId;
-            evt.AwaitingDingId = false;
+            VideoForensics.Data.Common.Entities.Event? existing = _db.Events.FirstOrDefault(e =>
+                e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId);
+            if (existing is null)
+            {
+                evt.ProviderEventId = newProviderEventId;
+                evt.AwaitingDingId = false;
+                return Task.CompletedTask;
+            }
+
+            foreach (RingDoorbotHistoryEvent doorbotRow in _db.RingDoorbotHistoryEvents.Where(r => r.LinkedEventId == evt.Id))
+            {
+                doorbotRow.LinkedEventId = existing.Id;
+            }
+
+            if (evt.AwaitingDingId && evt.DownloadedAtUtc is null && evt.DownloadStatus == EventDownloadStatus.NotAttempted)
+            {
+                _ = _db.Events.Remove(evt);
+            }
+
             return Task.CompletedTask;
         }
     }
