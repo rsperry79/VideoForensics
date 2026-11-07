@@ -43,6 +43,49 @@ namespace VideoForensics.Client.Core.Tests.Tools
             });
         }
 
+        [Theory]
+        [InlineData("Jamming", 15)]
+        [InlineData("Codec", 30)]
+        [InlineData("Flag", 1440)]
+        public async Task SetServiceIntervalMinutesAsync_KnownService_InRange_Saved(string service, int minutes)
+        {
+            var config = new ForensicsConfiguration();
+
+            (bool success, _) = await _orchestrator.SetServiceIntervalMinutesAsync(config, service, minutes, CancellationToken.None);
+
+            Assert.True(success);
+            _configServiceMock.Verify(s => s.SaveConfigurationAsync(config, CancellationToken.None), Times.Once);
+            Assert.Equal(minutes, service switch
+            {
+                "Jamming" => config.JammingIntervalMinutes,
+                "Codec" => config.CodecIntervalMinutes,
+                _ => config.FlagIntervalMinutes,
+            });
+        }
+
+        [Fact]
+        public void ForensicsConfiguration_BackfillIntervalMinutes_DefaultsTo15()
+        {
+            var config = new ForensicsConfiguration();
+
+            Assert.Equal(15, config.JammingIntervalMinutes);
+            Assert.Equal(15, config.CodecIntervalMinutes);
+            Assert.Equal(15, config.FlagIntervalMinutes);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1441)]
+        public async Task SetServiceIntervalMinutesAsync_OutOfRange_Rejected(int minutes)
+        {
+            var config = new ForensicsConfiguration();
+
+            (bool success, _) = await _orchestrator.SetServiceIntervalMinutesAsync(config, "Jamming", minutes, CancellationToken.None);
+
+            Assert.False(success);
+            Assert.Equal(15, config.JammingIntervalMinutes);
+        }
+
         [Fact]
         public async Task SetServiceIntervalHoursAsync_UnknownService_Rejected()
         {

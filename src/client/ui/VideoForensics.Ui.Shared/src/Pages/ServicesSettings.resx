@@ -113,8 +113,17 @@
   <data name="MediaBackfillLabel" xml:space="preserve">
     <value>Media thumbnail and preview backfill: run every (hours)</value>
   </data>
-  <data name="FixedBackfillNote" xml:space="preserve">
-    <value>Jamming, codec and flag backfills run every 15 minutes and are not adjustable here.</value>
+  <data name="JammingIntervalLabel" xml:space="preserve">
+    <value>Jamming backfill: run every (minutes)</value>
+  </data>
+  <data name="CodecIntervalLabel" xml:space="preserve">
+    <value>Codec backfill: run every (minutes)</value>
+  </data>
+  <data name="FlagIntervalLabel" xml:space="preserve">
+    <value>Flag backfill: run every (minutes)</value>
+  </data>
+  <data name="ServiceMinutesHelp" xml:space="preserve">
+    <value>Between 1 and 1440 minutes. Default 15.</value>
   </data>
   <data name="IntervalHelp" xml:space="preserve">
     <value>Between 1 and 168 hours.</value>

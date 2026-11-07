@@ -43,6 +43,9 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="MediaBackfillIntervalHours">Hours between media backfill runs (1 to 168).</param>
     /// <param name="TimelapseCheckIntervalMinutes">Minutes between time-lapse checks (1 to 1440).</param>
     /// <param name="TimelapseMaxSegmentMinutes">Longest time-lapse segment in minutes; longer event gaps are split (1 to 1440).</param>
+    /// <param name="JammingIntervalMinutes">Minutes between jamming detection runs (1 to 1440).</param>
+    /// <param name="CodecIntervalMinutes">Minutes between codec checks (1 to 1440).</param>
+    /// <param name="FlagIntervalMinutes">Minutes between flag checks (1 to 1440).</param>
     public record ClientConfigDto(
         bool EnableForensicAnalysisReports,
         bool EnableSignalAnomalyReports,
@@ -78,7 +81,10 @@ namespace VideoForensics.Core.Api.Contracts
         int LogPruneIntervalHours = 24,
         int MediaBackfillIntervalHours = 6,
         int TimelapseCheckIntervalMinutes = 15,
-        int TimelapseMaxSegmentMinutes = 60
+        int TimelapseMaxSegmentMinutes = 60,
+        int JammingIntervalMinutes = 15,
+        int CodecIntervalMinutes = 15,
+        int FlagIntervalMinutes = 15
     );
 
     /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
@@ -109,6 +115,9 @@ namespace VideoForensics.Core.Api.Contracts
                 MediaBackfillIntervalHours: config.MediaBackfillIntervalHours,
                 TimelapseCheckIntervalMinutes: config.TimelapseCheckIntervalMinutes,
                 TimelapseMaxSegmentMinutes: config.TimelapseMaxSegmentMinutes,
+                JammingIntervalMinutes: config.JammingIntervalMinutes,
+                CodecIntervalMinutes: config.CodecIntervalMinutes,
+                FlagIntervalMinutes: config.FlagIntervalMinutes,
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,
                 ConfiguredNetworkTier: config.ConfiguredNetworkTier,
@@ -155,6 +164,9 @@ namespace VideoForensics.Core.Api.Contracts
                 MediaBackfillIntervalHours = dto.MediaBackfillIntervalHours,
                 TimelapseCheckIntervalMinutes = dto.TimelapseCheckIntervalMinutes,
                 TimelapseMaxSegmentMinutes = dto.TimelapseMaxSegmentMinutes,
+                JammingIntervalMinutes = dto.JammingIntervalMinutes,
+                CodecIntervalMinutes = dto.CodecIntervalMinutes,
+                FlagIntervalMinutes = dto.FlagIntervalMinutes,
                 EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
                 EnableEmailNotifications = dto.EnableEmailNotifications,
                 ConfiguredNetworkTier = dto.ConfiguredNetworkTier,

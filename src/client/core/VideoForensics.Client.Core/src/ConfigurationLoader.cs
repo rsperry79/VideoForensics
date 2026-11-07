@@ -50,6 +50,9 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.TimelapseCheckIntervalMinutes = loadedConfig.TimelapseCheckIntervalMinutes;
                 runtimeConfig.TimelapseMaxSegmentMinutes = loadedConfig.TimelapseMaxSegmentMinutes;
                 runtimeConfig.MediaBackfillIntervalHours = loadedConfig.MediaBackfillIntervalHours;
+                runtimeConfig.JammingIntervalMinutes = loadedConfig.JammingIntervalMinutes;
+                runtimeConfig.CodecIntervalMinutes = loadedConfig.CodecIntervalMinutes;
+                runtimeConfig.FlagIntervalMinutes = loadedConfig.FlagIntervalMinutes;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
                 runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;

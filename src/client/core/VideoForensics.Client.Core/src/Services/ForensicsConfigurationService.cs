@@ -148,6 +148,9 @@ namespace VideoForensics.Client.Core.Services
                 config.TimelapseCheckIntervalMinutes = await GetIntSetting("TimelapseCheckIntervalMinutes", config.TimelapseCheckIntervalMinutes, cancellationToken);
                 config.TimelapseMaxSegmentMinutes = await GetIntSetting("TimelapseMaxSegmentMinutes", config.TimelapseMaxSegmentMinutes, cancellationToken);
                 config.MediaBackfillIntervalHours = await GetIntSetting("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours, cancellationToken);
+                config.JammingIntervalMinutes = await GetIntSetting("JammingIntervalMinutes", config.JammingIntervalMinutes, cancellationToken);
+                config.CodecIntervalMinutes = await GetIntSetting("CodecIntervalMinutes", config.CodecIntervalMinutes, cancellationToken);
+                config.FlagIntervalMinutes = await GetIntSetting("FlagIntervalMinutes", config.FlagIntervalMinutes, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
                 config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
@@ -228,6 +231,9 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("TimelapseCheckIntervalMinutes", config.TimelapseCheckIntervalMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("TimelapseMaxSegmentMinutes", config.TimelapseMaxSegmentMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("MediaBackfillIntervalHours", config.MediaBackfillIntervalHours.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("JammingIntervalMinutes", config.JammingIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("CodecIntervalMinutes", config.CodecIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("FlagIntervalMinutes", config.FlagIntervalMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);

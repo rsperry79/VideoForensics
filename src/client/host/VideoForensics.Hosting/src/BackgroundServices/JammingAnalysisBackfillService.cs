@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
@@ -17,19 +18,20 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>Lets startup finish before the first pass.</summary>
         private static readonly TimeSpan StartupDelay = TimeSpan.FromMinutes(5);
 
-        /// <summary>Between passes. New unanalysed rows appear as captures and roll-ups are written, so 15 minutes keeps them current.</summary>
-        private static readonly TimeSpan PassInterval = TimeSpan.FromMinutes(15);
-
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<JammingAnalysisBackfillService> _logger;
+        private readonly ThreadHeartbeats? _heartbeats;
+        private readonly IForensicsConfiguration _config;
+
+        /// <summary>The wait between passes, read from the Services page setting before each wait.</summary>
+        internal TimeSpan CurrentInterval => TimeSpan.FromMinutes(_config.JammingIntervalMinutes);
 
         /// <summary>Creates the service.</summary>
-        private readonly ThreadHeartbeats? _heartbeats;
-
-        public JammingAnalysisBackfillService(IServiceScopeFactory scopeFactory, ILogger<JammingAnalysisBackfillService> logger, ThreadHeartbeats? heartbeats = null)
+        public JammingAnalysisBackfillService(IServiceScopeFactory scopeFactory, ILogger<JammingAnalysisBackfillService> logger, IForensicsConfiguration config, ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _heartbeats = heartbeats;
+            _config = config;
             _logger = logger;
         }
 
@@ -38,13 +40,29 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         {
             await Task.Delay(StartupDelay, stoppingToken);
 
-            using var timer = new PeriodicTimer(PassInterval);
             do
             {
-                _heartbeats?.Beat(nameof(JammingAnalysisBackfillService), DateTimeOffset.UtcNow, PassInterval);
+                _heartbeats?.Beat(nameof(JammingAnalysisBackfillService), DateTimeOffset.UtcNow, CurrentInterval);
                 await RunPassAsync(stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
+            while (await WaitForNextPassAsync(stoppingToken));
+        }
+
+        /// <summary>
+        /// Waits the configured interval, read now so a changed setting applies from the next pass. A fresh delay each
+        /// pass is used instead of a PeriodicTimer, which is fixed at creation and would ignore the change.
+        /// </summary>
+        private async Task<bool> WaitForNextPassAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentInterval, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <summary>Runs one pass in its own scope, since the repository and analysis services are scoped.</summary>

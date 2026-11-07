@@ -219,6 +219,37 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"{service} will run every {hours} hours");
         }
 
+        public async Task<(bool Success, string Message)> SetServiceIntervalMinutesAsync(
+            IForensicsConfiguration config,
+            string service,
+            int minutes,
+            CancellationToken ct = default)
+        {
+            if (minutes is < 1 or > 1440)
+            {
+                return (false, "Service interval must be between 1 and 1440 minutes");
+            }
+
+            switch (service)
+            {
+                case "Jamming":
+                    config.JammingIntervalMinutes = minutes;
+                    break;
+                case "Codec":
+                    config.CodecIntervalMinutes = minutes;
+                    break;
+                case "Flag":
+                    config.FlagIntervalMinutes = minutes;
+                    break;
+                default:
+                    return (false, $"Unknown service: {service}");
+            }
+
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Service {service} interval set to {minutes} minutes", service, minutes);
+            return (true, $"{service} will run every {minutes} minutes");
+        }
+
         public async Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(
             IForensicsConfiguration config,
             int minutes,
