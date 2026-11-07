@@ -10,7 +10,10 @@ namespace VideoForensics.Data.Common.Entities
         DownloadFailed = 1,
 
         /// <summary>Event was successfully downloaded.</summary>
-        Downloaded = 2
+        Downloaded = 2,
+
+        /// <summary>Event has no downloadable media and the backfill queue has used all its retry passes. It no longer blocks pulls.</summary>
+        Unavailable = 3
     }
 
     /// <summary>An event detected by a device, independent of whether it was downloaded.</summary>
@@ -41,5 +44,11 @@ namespace VideoForensics.Data.Common.Entities
         public string? RecordingStatus { get; set; }
         public EventDownloadStatus DownloadStatus { get; set; } = EventDownloadStatus.NotAttempted;
         public DateTime? DownloadFailedAtUtc { get; set; }
+
+        /// <summary>Retry passes made for an event with no downloadable media. Reaching the cap sets <see cref="EventDownloadStatus.Unavailable"/>.</summary>
+        public int DownloadAttempts { get; set; }
+
+        /// <summary>When the backfill queue next tries this event. Null when it is not waiting for a retry.</summary>
+        public DateTime? NextAttemptAtUtc { get; set; }
     }
 }
