@@ -9,3 +9,5 @@ Feed data in through parameters. Do not copy a control into a page.
 - `Components/Viewer/MediaPlayer.razor`: the only video element. Playback, seek and rate go through it.
 - `Components/Viewer/TimelineStrip.razor`: horizontal timeline strip over a time window.
 - `Components/IntervalSecondsInput.razor`, `Components/LocalTimeText.razor`: shared input and time display; use them instead of local copies.
+- `Components/Filters/ProviderAccountFilter.razor`: provider multi-select and account dropdown over the shared `Services/Filters/ProviderAccountFilterState`. Empty providers means all. Used by Accounts, Manual Sync and Notices. Pass the provider names and an account lookup; do not keep page-local provider or account state.
+- Camera filter: `Components/Review/ReviewCameraSelector.razor` over the scoped `ReviewPageState`. Used by Review, Timeline, Events and Live View, which share one camera choice.

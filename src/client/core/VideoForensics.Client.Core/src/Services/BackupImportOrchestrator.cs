@@ -56,6 +56,12 @@ namespace VideoForensics.Client.Core.Services
                 List<DownloadEvent> downloadEvents = await ReadJsonAsync<List<DownloadEvent>>(Path.Combine(tempDir, "download_events.json"), ct) ?? [];
                 List<ExportedMediaItem> mediaItems = await ReadJsonAsync<List<ExportedMediaItem>>(Path.Combine(tempDir, "media_items.json"), ct) ?? [];
 
+                // Why: a backup without kinds cannot be stored without collisions, so it is refused before any write.
+                if (mediaItems.Any(m => string.IsNullOrWhiteSpace(m.MediaKind)))
+                {
+                    return new BackupImportResult { Success = false, ErrorMessage = "This backup predates media kinds. Export it again before importing." };
+                }
+
                 // Optional section: older backups lack it, in which case the migration backfill supplies the links.
                 List<ExportedAccountLocationLink> accountLocations = await ReadJsonAsync<List<ExportedAccountLocationLink>>(Path.Combine(tempDir, "account_locations.json"), ct) ?? [];
 

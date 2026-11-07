@@ -26,12 +26,13 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<SecurityEventSummary>> GetEventsAsync(Guid? operatorId, int offset, int limit, CancellationToken ct)
+        public async Task<IReadOnlyList<SecurityEventSummary>> GetEventsAsync(Guid? operatorId, bool unknownOnly, int offset, int limit, CancellationToken ct)
         {
             var request = new SecurityEventsQueryRequest(
                 Limit: limit,
                 Offset: offset,
-                OperatorId: operatorId?.ToString()
+                OperatorId: operatorId?.ToString(),
+                UnknownOnly: unknownOnly
             );
 
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/security-events", request, cancellationToken: ct);
@@ -45,7 +46,8 @@ namespace VideoForensics.Client.Hosting.Remote
                     dto.Success,
                     dto.IpAddress,
                     dto.OccurredAtUtc,
-                    dto.Reason))
+                    dto.Reason,
+                    dto.AttemptedUsername))
                 .ToList();
         }
     }

@@ -51,12 +51,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>How often the loop checks which devices are due.</summary>
         internal static readonly TimeSpan TickPeriod = TimeSpan.FromSeconds(5);
 
-        /// <summary>
-        /// How often an offline camera is probed. Offline cameras are repolled, not captured every interval, so a camera that
-        /// stays offline costs one or two Ring calls per repoll rather than per capture.
-        /// </summary>
-        internal static readonly TimeSpan OfflineRepollInterval = TimeSpan.FromMinutes(10);
-
         /// <summary>Hold-off for an account whose credentials could not be restored or whose pass threw, so it is not retried every tick.</summary>
         private static readonly TimeSpan AccountErrorBackoff = TimeSpan.FromMinutes(1);
 
@@ -64,6 +58,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<SnapshotCaptureService> _logger;
         private readonly TimeProvider _time;
         private readonly IStorageLocationProvider _storage;
+        private readonly IForensicsConfiguration _config;
+
+        /// <summary>
+        /// How often an offline camera is probed, from the Services page setting. Offline cameras are repolled, not captured every
+        /// interval, so a camera that stays offline costs one or two Ring calls per repoll rather than per capture.
+        /// </summary>
+        internal TimeSpan OfflineRepollWindow => TimeSpan.FromMinutes(_config.OfflineRepollIntervalMinutes);
 
         // Process-lifetime guards. The Ring pacers live on a per-tick scoped instance, so a provider pause must be remembered here
         // to hold across ticks. Keyed by internal GUIDs; never logged.
@@ -77,12 +78,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             ILogger<SnapshotCaptureService> logger,
             TimeProvider time,
             IStorageLocationProvider storage,
+            IForensicsConfiguration config,
             ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
             _time = time;
             _storage = storage;
+            _config = config;
             _heartbeats = heartbeats;
         }
 
@@ -222,7 +225,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 foreach (Device device in await devices.GetByLocationIdAsync(location.Id, ct))
                 {
-                    // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollInterval, not
+                    // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollWindow, not
                     // captured every interval. The window check also covers startup: a camera with no probe in the last window is due at once.
                     if (!seen.Add(device.ProviderDeviceId))
                     {
@@ -248,7 +251,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         continue;
                     }
 
-                    TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollInterval : interval;
+                    TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollWindow : interval;
                     candidates.Add((device, window));
                 }
             }
@@ -510,6 +513,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     FileName = Path.GetFileName(mediaFilePath),
                     FilePath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct),
                     MediaFormat = "jpg",
+                    MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Snapshot,
                     FileSizeBytes = new FileInfo(mediaFilePath).Length,
                     RecordedAtUtc = capturedAt.UtcDateTime,
                     DownloadedAtUtc = DateTime.UtcNow,

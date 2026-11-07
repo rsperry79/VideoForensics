@@ -23,10 +23,13 @@
 @inject IMediaContentUrlProvider ContentUrls
 @inject IEvidenceChangedSource EvidenceChangedSource
 @inject NavigationManager NavigationManager
+@* The camera choice lives in the shared review state, so Live View shows the cameras chosen on the Review page and the reverse. *@
+@inject ReviewPageState CameraState
 @inject IJSRuntime JsRuntime
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<LiveView> L
 @inject ILogger<LiveView> Logger
+@inject RightPanelFilterStore FilterStore
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -46,7 +49,7 @@ else
         <div class="right-panel-section">
             <small>@L["Title"]</small>
             <div class="d-flex flex-column gap-2">
-                <ReviewCameraSelector State="_cameraState" Devices="_cameraIds" DeviceNames="_deviceNames" Mode="DevicePickerMode.Cameras" />
+                <ReviewCameraSelector State="CameraState" Devices="_cameraIds" DeviceNames="_deviceNames" Mode="DevicePickerMode.Cameras" />
 
                 @if (!string.IsNullOrEmpty(_error))
                 {
@@ -132,7 +135,9 @@ else
     private Dictionary<Guid, string> _deviceNames = new();
 
     // The media page's camera filter. An empty selection means the first cameras, as the media page shows them.
-    private readonly ReviewPageState _cameraState = new();
+
+    /// <summary>Key for this page's remembered camera choice in the device's local storage.</summary>
+    private const string FilterPageKey = "live-view";
 
     // The latest still per camera, as a browser-loadable URL. A null value means the camera has no still in the last hour.
     private readonly Dictionary<Guid, string?> _stills = new();
@@ -150,8 +155,8 @@ else
     private LiveViewTelemetrySample? _latestTelemetry;
 
     private IReadOnlyList<Guid> ShownCameras =>
-        _cameraState.CameraIds.Count > 0
-            ? _cameraState.CameraIds
+        CameraState.CameraIds.Count > 0
+            ? CameraState.CameraIds
             : _cameraIds.Take(CameraSync.MaxTiles).ToList();
 
     private string NameOf(Guid id) => _deviceNames.TryGetValue(id, out string? name) ? name : id.ToString("D");
@@ -170,10 +175,25 @@ else
 
             if (Device is Guid requested && _cameraIds.Contains(requested))
             {
-                _cameraState.SetCameras([requested]);
+                CameraState.SetCameras([requested]);
+            }
+            else
+            {
+                // Restore the camera choice the operator last made on this device. Ids that no longer exist are dropped.
+                RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
+                if (stored?.Cameras is { } saved)
+                {
+                    Guid[] restored = saved.Select(s => Guid.TryParse(s, out Guid id) ? id : Guid.Empty)
+                        .Where(id => _cameraIds.Contains(id))
+                        .ToArray();
+                    if (restored.Length > 0)
+                    {
+                        CameraState.SetCameras(restored);
+                    }
+                }
             }
 
-            _cameraState.OnChange += OnCameraSelectionChanged;
+            CameraState.OnChange += OnCameraSelectionChanged;
             _evidenceSubscription = EvidenceChangedSource.EvidenceChanged.Subscribe(OnEvidenceChanged);
             await LoadMissingStillsAsync();
 
@@ -222,6 +242,7 @@ else
                 return;
             }
 
+            await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, CameraState.CameraIds.Select(id => id.ToString("D")).ToArray()));
             await LoadMissingStillsAsync();
             StateHasChanged();
         });
@@ -377,7 +398,7 @@ else
     private async Task CleanupAsync()
     {
         _disposed = true;
-        _cameraState.OnChange -= OnCameraSelectionChanged;
+        CameraState.OnChange -= OnCameraSelectionChanged;
         _evidenceSubscription?.Dispose();
         _evidenceSubscription = null;
 
@@ -491,12 +512,18 @@ else
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 0.75rem;
+    /* Fill the page width, so one camera stretches across it instead of sitting at its minimum size. */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .live-view-tile {
     background-color: #111;
     border-radius: 4px;
     padding: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .live-view-still {

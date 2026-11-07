@@ -266,9 +266,10 @@ namespace VideoForensics.Data.Core.Services
                     {
                         // A clip is unique by (DeviceId, RecordedAtUtc). When the file was lost but the row remains, the
                         // re-download must update that row; a blind insert would violate the index and roll back the event.
-                        // The range is a single instant, so the list holds at most the one matching row.
+                        // The range is a single instant, so the list holds one row per media kind at most.
+                        // Only a row of the same kind is the same recording: a snapshot or loop at this instant must not be overwritten.
                         MediaItem? sameRecording = (await context.MediaItems.GetByDeviceAndDateRangeAsync(
-                            media.DeviceId, media.RecordedAtUtc, media.RecordedAtUtc, ct)).FirstOrDefault();
+                            media.DeviceId, media.RecordedAtUtc, media.RecordedAtUtc, ct)).FirstOrDefault(m => m.MediaKind == media.MediaKind);
                         if (sameRecording != null)
                         {
                             media.Id = sameRecording.Id;
@@ -335,7 +336,7 @@ namespace VideoForensics.Data.Core.Services
 
         public Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct)
         {
-            return _unitOfWork.ExecuteAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
+            return _unitOfWork.ReadAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
         }
 
         public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)

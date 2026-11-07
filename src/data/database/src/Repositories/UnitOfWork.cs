@@ -49,6 +49,15 @@ namespace VideoForensics.Data.Database.Repositories
         /// Executes a work function within a shared transaction context, committing on success or rolling back on exception.
         /// Each call logs its timing, so a slow write can be traced to the operation that ran it.
         /// </summary>
+        /// <inheritdoc />
+        public async Task<T> ReadAsync<T>(Func<IUnitOfWorkContext, Task<T>> read, CancellationToken ct)
+        {
+            // Why: no transaction and no append gate. A read that took either would wait behind every slow write in the process.
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            var context = new UnitOfWorkContext(db, _serviceProvider);
+            return await read(context);
+        }
+
         public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
         {
             // Read the caller before the first await: its frames are only on the stack until then.
@@ -1680,15 +1689,33 @@ namespace VideoForensics.Data.Database.Repositories
         public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
         {
             // Tracked entity: the unit of work saves the change when the transaction commits. The unique (DeviceId, ProviderEventId) index
-            // forbids two rows with one id, so a rekey onto an id another row of the device already holds is left undone.
+            // forbids two rows with one id, so when another row of the device already holds the ding id, the placeholder's doorbot rows
+            // move to that row instead and the placeholder is removed. Only a placeholder that was never matched and has no media is removed.
             VideoForensics.Data.Common.Entities.Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
-            if (evt is null || _db.Events.Any(e => e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId))
+            if (evt is null)
             {
                 return Task.CompletedTask;
             }
 
-            evt.ProviderEventId = newProviderEventId;
-            evt.AwaitingDingId = false;
+            VideoForensics.Data.Common.Entities.Event? existing = _db.Events.FirstOrDefault(e =>
+                e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId);
+            if (existing is null)
+            {
+                evt.ProviderEventId = newProviderEventId;
+                evt.AwaitingDingId = false;
+                return Task.CompletedTask;
+            }
+
+            foreach (RingDoorbotHistoryEvent doorbotRow in _db.RingDoorbotHistoryEvents.Where(r => r.LinkedEventId == evt.Id))
+            {
+                doorbotRow.LinkedEventId = existing.Id;
+            }
+
+            if (evt.AwaitingDingId && evt.DownloadedAtUtc is null && evt.DownloadStatus == EventDownloadStatus.NotAttempted)
+            {
+                _ = _db.Events.Remove(evt);
+            }
+
             return Task.CompletedTask;
         }
     }

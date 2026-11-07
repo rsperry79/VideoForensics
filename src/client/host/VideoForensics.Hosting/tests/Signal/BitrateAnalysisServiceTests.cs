@@ -143,4 +143,25 @@ public class BitrateAnalysisServiceTests
 
         Assert.Contains("1234", result.Devices[0].Name);
     }
+
+    [Fact]
+    public async Task AnalyzeAsync_ReadingOutsideRange_IsLeftOutOfCellsButKeepsAllTimeHourProfile()
+    {
+        var id = Guid.NewGuid();
+        // Sunday 14:00 is before the window, so the 14:00 Sunday cell is empty. Monday 09:00 is inside the window.
+        MeasuredBitrate[] rows =
+        [
+            Row(From.AddDays(-1).AddHours(14), 2_000_000),
+            Row(From.AddHours(9), 1_000_000, "Day"),
+        ];
+        BitrateAnalysisService service = Create([Camera(id)], new() { [id] = rows });
+
+        BitrateAnalysis result = await service.AnalyzeAsync([id], From, To, CancellationToken.None);
+
+        SignalCalendar calendar = Assert.Single(result.Devices).Calendar;
+        Assert.Equal(0, calendar.Cell(6, 14).Count);
+        Assert.Equal(1, calendar.HourOfDay(14).Count);
+        Assert.Equal(1, calendar.Cell(0, 9).Count);
+        Assert.Equal(1, calendar.HourOfDay(9).Count);
+    }
 }

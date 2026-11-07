@@ -114,6 +114,220 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task LoginPasswordAsync_UnknownUsername_RecordsUnknownUserLoginEvent()
+        {
+            // Arrange - no operator matches the typed username
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            _ = credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var auditService = new Mock<ISecurityAuditService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            LoginPasswordRequest request = CreateLoginRequest("zumba", "WrongPassword123!");
+
+            // Act
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert - one unknown-user failure with the typed name and no operator; no operator-scoped attempt
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Invalid username", It.IsAny<CancellationToken>()), Times.Once);
+            auditService.Verify(s => s.RecordLoginAttemptAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginPasswordAsync_BannedIpUnknownUsername_RecordsUnknownUserLoginEvent()
+        {
+            // Arrange - source IP is banned before the password check, and no operator matches the typed username
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var auditService = new Mock<ISecurityAuditService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+            _ = bannedIpService.Setup(s => s.IsIpBannedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            LoginPasswordRequest request = CreateLoginRequest("zumba", "WrongPassword123!");
+
+            // Act
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert - exactly one unknown-user event with the typed name and no operator
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Source IP banned", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPasswordAsync_ThreatIntelBlockUnknownUsername_RecordsUnknownUserLoginEvent()
+        {
+            // Arrange - threat intelligence blocks the source IP, and no operator matches the typed username
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var auditService = new Mock<ISecurityAuditService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+            _ = threatIntelService.Setup(s => s.IsIpBlockedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            LoginPasswordRequest request = CreateLoginRequest("zumba", "WrongPassword123!");
+
+            // Act
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Threat intel block", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPasswordAsync_BlockedCountryUnknownUsername_RecordsUnknownUserLoginEvent()
+        {
+            // Arrange - the source IP resolves to a blocked country, and no operator matches the typed username
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository(blockedCountryCodes: "XX");
+            var auditService = new Mock<ISecurityAuditService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+            _ = geoIpService.Setup(s => s.LookupCountryCodeAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("XX");
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            LoginPasswordRequest request = CreateLoginRequest("zumba", "WrongPassword123!");
+
+            // Act
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Country blocked", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPasswordAsync_GeoLookupFailsClosedUnknownUsername_RecordsUnknownUserLoginEvent()
+        {
+            // Arrange - a country block is configured, the GeoIP lookup fails, and the policy fails closed
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository(blockedCountryCodes: "XX", failClosedOnLookupError: true);
+            var auditService = new Mock<ISecurityAuditService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            LoginPasswordRequest request = CreateLoginRequest("zumba", "WrongPassword123!");
+
+            // Act
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "GeoIP lookup failed", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPasswordAsync_PasswordSignInDisabledUnknownUsername_RecordsUnknownUserLoginEvent()
+        {
+            // Arrange - password sign-in is switched off, and no operator matches the typed username
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var auditService = new Mock<ISecurityAuditService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            LoginPasswordRequest request = CreateLoginRequest("zumba", "WrongPassword123!");
+
+            // Act
+            IResult result = await OperatorAuthEndpointsSecurityAuditInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None,
+                passwordAuthEnabled: false);
+
+            // Assert
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Password sign-in disabled", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task LoginPasswordAsync_LockedOutAfterThreshold_RecordsLockoutEvent()
         {
             // Arrange - operator at failed attempt threshold; 5th failure triggers lockout
@@ -227,7 +441,9 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private static Mock<ILockoutPolicySettingsRepository> MockLockoutPolicyRepository(
             int maxFailedAttempts = 5,
-            int lockoutDurationMinutes = 15)
+            int lockoutDurationMinutes = 15,
+            string? blockedCountryCodes = null,
+            bool failClosedOnLookupError = false)
         {
             var mock = new Mock<ILockoutPolicySettingsRepository>();
             _ = mock.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
@@ -236,6 +452,8 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                     Id = Guid.NewGuid(),
                     MaxFailedAttempts = maxFailedAttempts,
                     LockoutDurationMinutes = lockoutDurationMinutes,
+                    BlockedCountryCodes = blockedCountryCodes,
+                    FailClosedOnLookupError = failClosedOnLookupError,
                     UpdatedAtUtc = DateTime.UtcNow
                 });
             return mock;
@@ -287,7 +505,8 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             ISecurityAuditService auditService,
             HttpContext context,
             ILogger<Program> logger,
-            CancellationToken ct)
+            CancellationToken ct,
+            bool passwordAuthEnabled = true)
         {
             MethodInfo? method = typeof(OperatorAuthEndpoints)
                 .GetMethod("LoginPasswordAsync",
@@ -306,7 +525,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             }
 
             var authMethodSettings = new Mock<IAuthMethodSettingsService>();
-            _ = authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(passwordAuthEnabled);
 
             IFailedLoginIpTracker failedLoginIpTracker = new Mock<IFailedLoginIpTracker>().Object;
             object? result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, failedLoginIpTracker, context, logger, ct]);

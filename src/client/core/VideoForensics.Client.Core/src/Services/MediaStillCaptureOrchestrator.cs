@@ -182,6 +182,7 @@ namespace VideoForensics.Client.Core.Services
                 FileName = stillFileName,
                 FilePath = stillFilePath,
                 MediaFormat = "image/png",
+                MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Still,
                 FileSizeBytes = stillBytes.Length,
                 RecordedAtUtc = source.RecordedAtUtc.AddMilliseconds(frameOffsetMs),
                 DownloadedAtUtc = nowUtc,

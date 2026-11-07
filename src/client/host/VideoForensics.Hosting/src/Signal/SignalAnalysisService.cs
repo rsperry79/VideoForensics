@@ -64,7 +64,7 @@ namespace VideoForensics.Client.Hosting.Signal
                     inWindow,
                     SignalChartModel.Periods(samples, fromUtc, toUtc, expected),
                     SignalDeviation.Windows(samples, fromUtc, toUtc, allTime),
-                    SignalCalendar.Compute(samples, fromUtc, toUtc),
+                    SignalCalendar.ForWindowWithAllTimeProfiles(samples, fromUtc, toUtc),
                     SignalBuckets.Compute(inWindow, fromUtc, toUtc, SignalBucket.Hour),
                     SignalBuckets.Compute(inWindow, fromUtc, toUtc, SignalBucket.Day),
                     SignalBuckets.Compute(inWindow, fromUtc, toUtc, SignalBucket.Week)));

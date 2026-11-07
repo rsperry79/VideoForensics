@@ -35,7 +35,9 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         public async Task<BackupExportResult> ExportBackupAsync(string outputDirectory, CancellationToken ct)
         {
-            var request = new ExportBackupRequest(outputDirectory);
+            // The server accepts only a folder name (BackupEndpoints rejects rooted paths) and writes the archive under its
+            // own export root. The archive is streamed back below and saved into the local outputDirectory.
+            var request = new ExportBackupRequest(Path.GetFileName(Path.TrimEndingDirectorySeparator(outputDirectory)));
             string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/backup/export")
             {
@@ -67,18 +69,21 @@ namespace VideoForensics.Client.Hosting.Remote
                     await contentStream.CopyToAsync(fileStream, ct);
                 }
 
+                // The streamed zip carries its real totals in manifest.json, so read them from there.
+                (int providerAccounts, int locations, int devices, int events, int downloadEvents, int mediaItems) = ReadManifestCounts(outputPath);
+
                 // Return a result indicating success with the local path
                 return new BackupExportResult
                 {
                     Success = true,
                     ArchivePath = outputPath,
                     ArchiveSha256Hash = null, // Client-side: would need to hash the file if required
-                    ProviderAccountCount = 0,
-                    LocationCount = 0,
-                    DeviceCount = 0,
-                    EventCount = 0,
-                    DownloadEventCount = 0,
-                    MediaItemCount = 0,
+                    ProviderAccountCount = providerAccounts,
+                    LocationCount = locations,
+                    DeviceCount = devices,
+                    EventCount = events,
+                    DownloadEventCount = downloadEvents,
+                    MediaItemCount = mediaItems,
                     ErrorMessage = null
                 };
             }
@@ -88,6 +93,34 @@ namespace VideoForensics.Client.Hosting.Remote
                 BackupExportResultDto? dto = await response.Content.ReadFromJsonAsync<BackupExportResultDto>(JsonOptions, ct);
                 return (dto ?? throw new InvalidOperationException("Server returned null export result")).ToDomain();
             }
+        }
+
+        /// <summary>
+        /// Reads the record counts from the Counts object of the archive's manifest.json.
+        /// </summary>
+        /// <param name="archivePath">Path of the backup zip written to disk.</param>
+        /// <returns>The provider account, location, device, event, download event and media item counts.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the archive has no manifest.json or the manifest has no Counts object.</exception>
+        private static (int ProviderAccounts, int Locations, int Devices, int Events, int DownloadEvents, int MediaItems) ReadManifestCounts(string archivePath)
+        {
+            using System.IO.Compression.ZipArchive archive = System.IO.Compression.ZipFile.OpenRead(archivePath);
+            System.IO.Compression.ZipArchiveEntry manifestEntry = archive.GetEntry("manifest.json")
+                ?? throw new InvalidOperationException("Backup archive has no manifest.json.");
+
+            using Stream manifestStream = manifestEntry.Open();
+            using JsonDocument manifest = JsonDocument.Parse(manifestStream);
+            if (!manifest.RootElement.TryGetProperty("Counts", out JsonElement counts))
+            {
+                throw new InvalidOperationException("Backup manifest has no Counts object.");
+            }
+
+            return (
+                counts.GetProperty("ProviderAccounts").GetInt32(),
+                counts.GetProperty("Locations").GetInt32(),
+                counts.GetProperty("Devices").GetInt32(),
+                counts.GetProperty("Events").GetInt32(),
+                counts.GetProperty("DownloadEvents").GetInt32(),
+                counts.GetProperty("MediaItems").GetInt32());
         }
 
         /// <summary>

@@ -10,6 +10,7 @@ using Syncfusion.Blazor.DropDowns;
 
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Filters;
 
 using Xunit;
 
@@ -82,17 +83,29 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
-    public void ManualSync_StoredProviderFilterWithNoProviders_IsRestoredAfterReload()
+    public void ManualSync_StoredSharedProviderChoiceWithNoAccounts_ShowsPickAccountHintOnLoad()
     {
-        // A stored empty provider list means the operator cleared the filter; it must not revert to "all providers".
-        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.manual-sync").SetResult("{\"providers\":[],\"account\":null}");
+        // Wyze has no account in this fixture, so a stored Wyze choice leaves no sync target.
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.provider-account").SetResult("{\"providers\":[\"Wyze\"],\"account\":null}");
         IRenderedComponent<ManualSync> cut = RenderManualSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Manual["PickAccountHint"], cut.Markup));
     }
 
     [Fact]
-    public void ManualSync_RightPanel_HasProviderAndAccountFilters_AllProvidersSelectedByDefault()
+    public async Task ManualSync_ProviderChoiceMadeInSharedState_ChangesTheSyncTargets()
+    {
+        IRenderedComponent<ManualSync> cut = RenderManualSync();
+        cut.WaitForAssertion(() => Assert.DoesNotContain(Manual["PickAccountHint"], cut.Markup));
+        ProviderAccountFilterState shared = Services.GetRequiredService<ProviderAccountFilterState>();
+
+        await cut.InvokeAsync(() => shared.SetAsync(new[] { "Wyze" }, null));
+
+        cut.WaitForAssertion(() => Assert.Contains(Manual["PickAccountHint"], cut.Markup));
+    }
+
+    [Fact]
+    public void ManualSync_RightPanel_HasProviderAndAccountFilters_NoProviderSelectedMeansAll()
     {
         _ = RenderManualSync();
         RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
@@ -101,8 +114,7 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
         IRenderedComponent<ContainerFragment> panel = Render(slot.Content!);
 
         IRenderedComponent<SfMultiSelect<string[], string>> providers = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
-        Assert.NotNull(providers.Instance.Value);
-        Assert.Contains("Ring", providers.Instance.Value!);
+        Assert.Empty(providers.Instance.Value!);
         _ = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfDropDownList<string, KeyValuePair<string, string>>>();
     }
 }

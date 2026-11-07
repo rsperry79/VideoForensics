@@ -4,8 +4,13 @@ using Microsoft.JSInterop;
 
 namespace VideoForensics.Client.Ui.Shared.Services;
 
-/// <summary>The right-panel filter choices a page remembers: the selected providers and the chosen account id (null for All accounts).</summary>
-public sealed record RightPanelFilters(string[]? Providers, string? Account);
+/// <summary>
+/// The right-panel filter choices a page remembers: the selected providers, the chosen account id (null for All accounts),
+/// and a page-specific on/off choice (the Security events page's "Unknown login only" toggle).
+/// </summary>
+/// <param name="Cameras">Camera ids a camera page remembers. Null for pages that filter by provider and account.</param>
+/// <param name="UnknownOnly">Security events only: show failed logins with no matched operator.</param>
+public sealed record RightPanelFilters(string[]? Providers, string? Account, string[]? Cameras = null, bool UnknownOnly = false);
 
 /// <summary>
 /// Device-local memory of each page's right-panel filters, kept in browser local storage through
