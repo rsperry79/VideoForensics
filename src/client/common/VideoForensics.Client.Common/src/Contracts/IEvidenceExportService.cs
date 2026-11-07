@@ -34,14 +34,12 @@ namespace VideoForensics.Client.Common.Contracts
         /// 2. Verifies integrity of each item; items that fail verification are excluded and flagged
         /// 3. Builds the case's reports (per scope device over the case time window) under reports/
         /// 4. Builds manifest.json and chain_of_custody.json
-        /// 5. Creates the ZIP archive, optionally encrypted with AES-256, and records the export with per-item hashes
+        /// 5. Creates the ZIP archive and records the export with per-item hashes
         /// The case number is used as the case reference. The archive is written under the exports location stored
         /// in the database; callers cannot choose the destination.
         /// </summary>
         Task<ExportResult> ExportEvidenceAsync(
             Guid caseId,
-            string? recipientDescription,
-            string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null);
     }

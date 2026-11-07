@@ -51,12 +51,6 @@ else
         <div class="mb-3"><span>@L["SelectCaseMessage"]</span></div>
     }
     <div class="mb-3">
-        <SfTextBox @bind-Value="_recipientDescription" Placeholder="@L["RecipientDescriptionPlaceholder"]" Enabled="@(!_isExporting)" />
-    </div>
-    <div class="mb-3">
-        <SfTextBox @bind-Value="_passphrase" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["PassphrasePlaceholder"].Value" Enabled="@(!_isExporting)" />
-    </div>
-    <div class="mb-3">
         <button type="button" class="btn btn-primary" data-testid="export-button" @onclick="ExportAsync" disabled="@(_isExporting || _selectedCaseId is null)">
             @(_isExporting ? L["ExportingButton"] : L["ExportButton"])
         </button>
@@ -97,9 +91,6 @@ else
     private Guid? _selectedCaseId;
     private string? _loadError;
     private ExportResult? _result;
-
-    private string? _recipientDescription;
-    private string? _passphrase;
 
     protected override async Task OnInitializedAsync()
     {
@@ -164,8 +155,6 @@ else
 
             _result = await EvidenceExportService.ExportEvidenceAsync(
                 caseId,
-                string.IsNullOrWhiteSpace(_recipientDescription) ? null : _recipientDescription,
-                string.IsNullOrWhiteSpace(_passphrase) ? null : _passphrase,
                 CancellationToken.None,
                 stepUpToken);
         }

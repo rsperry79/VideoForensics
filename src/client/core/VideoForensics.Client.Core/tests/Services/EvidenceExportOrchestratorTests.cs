@@ -49,7 +49,6 @@ namespace VideoForensics.Client.Core.Tests.Services
             {
                 var mediaItemId = Guid.NewGuid();
                 string injectedCaseRef = "Case-123\r\nFAKE ADMIN LOG: Unauthorized access granted";
-                string recipient = "Detective Smith";
 
                 // Setup media item mock
                 var mediaItem = new MediaItem
@@ -94,8 +93,6 @@ namespace VideoForensics.Client.Core.Tests.Services
                     [mediaItemId],
                     relativeExportPath,
                     injectedCaseRef,
-                    recipient,
-                    null,
                     CancellationToken.None);
 
                 // Assert: Verify the method completed and didn't throw
@@ -128,7 +125,6 @@ namespace VideoForensics.Client.Core.Tests.Services
             {
                 var mediaItemId = Guid.NewGuid();
                 string caseRef = "Case-123";
-                string recipient = "Detective Smith";
 
                 // Setup media item mock
                 var mediaItem = new MediaItem
@@ -173,8 +169,6 @@ namespace VideoForensics.Client.Core.Tests.Services
                     [mediaItemId],
                     relativeExportPath,
                     caseRef,
-                    recipient,
-                    null,
                     CancellationToken.None);
 
                 // Assert: Verify success and archive exists (in the mapped exports directory)
