@@ -259,7 +259,7 @@ else
     private async Task OnUnknownOnlyChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         _unknownOnly = e.Value is bool value && value;
-        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, _unknownOnly));
+        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, UnknownOnly: _unknownOnly));
         await LoadEventsAsync(_currentOperatorId, offset: 0);
     }
 
