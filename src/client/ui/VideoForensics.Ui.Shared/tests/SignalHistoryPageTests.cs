@@ -45,4 +45,12 @@ public class SignalHistory_Tests : ScopeRailTestContext
         Assert.NotNull(table);
         Assert.Equal(new[] { MediaFlagType.RssiDeviation }, table.Types);
     }
+
+    [Fact]
+    public void SignalHistory_FlagsHeading_ShowsLocalizedText()
+    {
+        IRenderedComponent<SignalHistory> page = RenderPage();
+
+        Assert.Equal("Signal deviation flags", page.Find("[data-testid='signal-flags-heading']").TextContent.Trim());
+    }
 }

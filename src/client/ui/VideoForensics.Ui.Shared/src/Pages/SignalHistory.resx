@@ -185,4 +185,7 @@
   <data name="TimelineLabel" xml:space="preserve">
     <value>Signal over time</value>
   </data>
+  <data name="SignalFlagsHeading" xml:space="preserve">
+    <value>Signal deviation flags</value>
+  </data>
 </root>
