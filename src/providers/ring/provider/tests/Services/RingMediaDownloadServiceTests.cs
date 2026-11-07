@@ -523,6 +523,35 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             }
         }
 
+        [Fact]
+        public async Task DownloadVideosAsync_UnmatchedEvent_StoresEventRowKeyedByDoorbotId()
+        {
+            // Arrange - no string ding id exists yet, so the event cannot be downloaded, but it must still be stored
+            var stored = new List<Data.Common.Entities.Event>();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vunmatched_" + Guid.NewGuid().ToString("N"));
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(configureDataClient: dc =>
+            {
+                _ = dc.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
+                _ = dc.Setup(d => d.UpsertEventAsync(
+                        It.IsAny<Data.Common.Entities.Event>(), It.IsAny<CancellationToken>(), It.IsAny<Data.Common.Entities.EventDetection?>(),
+                        It.IsAny<List<Data.Common.Entities.EventDetectionZone>?>(), It.IsAny<List<Data.Common.Entities.EventSecurityAlert>?>(),
+                        It.IsAny<List<Data.Common.Entities.EventDetectedPerson>?>(), It.IsAny<List<Data.Common.Entities.EventDetectionTypeOccurrence>?>()))
+                    .Callback<Data.Common.Entities.Event, CancellationToken, Data.Common.Entities.EventDetection?, List<Data.Common.Entities.EventDetectionZone>?,
+                        List<Data.Common.Entities.EventSecurityAlert>?, List<Data.Common.Entities.EventDetectedPerson>?, List<Data.Common.Entities.EventDetectionTypeOccurrence>?>(
+                        (evt, _, _, _, _, _, _) => stored.Add(evt))
+                    .ReturnsAsync((Data.Common.Entities.Event evt, CancellationToken _, Data.Common.Entities.EventDetection? _, List<Data.Common.Entities.EventDetectionZone>? _,
+                        List<Data.Common.Entities.EventSecurityAlert>? _, List<Data.Common.Entities.EventDetectedPerson>? _, List<Data.Common.Entities.EventDetectionTypeOccurrence>? _) => evt);
+            });
+
+            // Act
+            DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+            // Assert - the row is keyed by the doorbot id, still NotAttempted, and nothing was downloaded
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Contains(stored, e => e.ProviderEventId == "987654" && e.DownloadStatus == Data.Common.Entities.EventDownloadStatus.NotAttempted);
+            Assert.False(Directory.Exists(folder) && Directory.GetFiles(folder, "*.mp4").Length > 0);
+        }
+
         private static void TryDeleteFolder(string folder)
         {
             if (Directory.Exists(folder))

@@ -653,7 +653,20 @@ namespace VideoForensics.Providers.Ring.Services
                         DingIdMatchResult dingLink = await ResolveDingIdAsync(@event, rateLimitCts.Token);
                         if (dingLink.Outcome != DingIdMatchOutcome.Matched)
                         {
-                            _logger.LogInformation("Skipped doorbot event for {CameraName}: {Outcome}, no string ding id to link yet", SanitizeForLog(cameraName), dingLink.Outcome);
+                            // Why: the event exists at the provider but has no ding id yet, so it cannot be downloaded. Its row is stored now,
+                            // keyed by the doorbot id, so it is kept and can be linked to its ding once Ring assigns one.
+                            _logger.LogInformation("Stored unmatched doorbot event for {CameraName}: {Outcome}, awaiting its string ding id", SanitizeForLog(cameraName), dingLink.Outcome);
+                            if (@event.Id is { } doorbotHistoryId)
+                            {
+                                DateTime unmatchedOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                                Guid unmatchedDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, doorbotHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                    eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
+                                if (unmatchedDbId != Guid.Empty)
+                                {
+                                    await LinkDoorbotEventAsync(@event, unmatchedDbId, rateLimitCts.Token);
+                                }
+                            }
+
                             return;
                         }
 
