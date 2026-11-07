@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
         private readonly Mock<IProviderSyncRunRepository> _mockRuns = new();
         private readonly Mock<ILogger<AccountSyncRunner>> _mockLogger = new();
-        private readonly SyncActivityLog _activity = new();
+        private readonly SyncActivityLog _activity = new(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance);
         private readonly Guid _accountId = Guid.NewGuid();
 
         private AccountSyncRunner CreateSut()

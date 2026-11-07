@@ -25,13 +25,18 @@ namespace VideoForensics.Client.WebApp.Services
         /// <summary>Default time between samples of the activity log.</summary>
         public static readonly TimeSpan DefaultSampleInterval = TimeSpan.FromMilliseconds(750);
 
+        /// <summary>Activity lines a new subscriber is replayed: the most recent ones, matching the log's own retention.</summary>
+        private const int MaxSeenActivityLines = 500;
+
         private readonly ISyncActivityLog _syncActivity;
         private readonly ISyncProgressStore _progress;
         private readonly ILogger<LocalDownloadProgressSource> _logger;
         private readonly TimeSpan _sampleInterval;
-        private readonly ReplaySubject<DownloadProgressSnapshot> _snapshots = new(1);
+        private readonly Subject<DownloadProgressSnapshot> _snapshots = new();
         private readonly CancellationTokenSource _cancellation = new();
         private readonly object _gate = new();
+        private readonly List<string> _seenActivity = new();
+        private long _activityPosition;
         private DownloadProgressSnapshot? _lastEmitted;
         private bool _started;
         private bool _disposed;
@@ -56,11 +61,24 @@ namespace VideoForensics.Client.WebApp.Services
         }
 
         /// <inheritdoc />
-        public IObservable<DownloadProgressSnapshot> Progress => Observable.Defer(() =>
-                                                                              {
-                                                                                  EnsureSampling();
-                                                                                  return _snapshots.AsObservable();
-                                                                              });
+        /// <remarks>
+        /// A new subscriber first receives the latest state with every activity line seen so far, so a page opened
+        /// mid-sync restores its output, then the live snapshots.
+        /// </remarks>
+        public IObservable<DownloadProgressSnapshot> Progress => Observable.Create<DownloadProgressSnapshot>(observer =>
+        {
+            EnsureSampling();
+            lock (_gate)
+            {
+                IDisposable subscription = _snapshots.Subscribe(observer);
+                if (_lastEmitted is not null)
+                {
+                    observer.OnNext(_lastEmitted with { Activity = _seenActivity.ToArray() });
+                }
+
+                return subscription;
+            }
+        });
 
         /// <summary>
         /// Takes one sample and emits it if it carries activity lines, if its progress state differs from the last emitted
@@ -90,6 +108,16 @@ namespace VideoForensics.Client.WebApp.Services
                 // An identical idle repeat is not re-broadcast. The first sample is emitted so a subscriber gets an
                 // initial value. A changed reading or any activity line is always sent.
                 bool stateChanged = _lastEmitted is null || !SameState(_lastEmitted, current);
+                if (current.Activity.Count > 0)
+                {
+                    _seenActivity.AddRange(current.Activity);
+                    int excess = _seenActivity.Count - MaxSeenActivityLines;
+                    if (excess > 0)
+                    {
+                        _seenActivity.RemoveRange(0, excess);
+                    }
+                }
+
                 if (stateChanged || current.Activity.Count > 0)
                 {
                     _lastEmitted = current;
@@ -166,9 +194,20 @@ namespace VideoForensics.Client.WebApp.Services
                 CurrentDeviceTotal: reading.DeviceTotal,
                 CurrentDeviceName: reading.DeviceName ?? string.Empty,
                 PreScanCounts: new Dictionary<string, int>(),
-                Activity: _syncActivity.Drain(),
+                Activity: ReadNewActivity(),
                 LastError: null,
                 RemainingReason: null);
+        }
+
+        /// <summary>
+        /// Reads the lines appended since this source last read. The log is shared with the hub broadcaster and other
+        /// pages, so this reads by position and never removes lines from it.
+        /// </summary>
+        private IReadOnlyList<string> ReadNewActivity()
+        {
+            IReadOnlyList<string> lines = _syncActivity.ReadSince(_activityPosition, out long next);
+            _activityPosition = next;
+            return lines;
         }
 
         /// <summary>
