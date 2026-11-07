@@ -126,6 +126,19 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task EventRepository_LatestEventTimeAny_ReturnsFutureDatedEvent()
+        {
+            var device = Guid.NewGuid();
+            await _events.CreateAsync(Ev(device, 10), CancellationToken.None);
+            await _events.CreateAsync(Ev(device, 300), CancellationToken.None);
+            await _events.CreateAsync(Ev(device, 320, "timelapse"), CancellationToken.None);
+
+            DateTime? latest = await _queries.GetLatestEventTimeAnyUtcAsync(device, CancellationToken.None);
+
+            Assert.Equal(Start.AddHours(5), latest);
+        }
+
+        [Fact]
         public async Task MediaItemRepository_LatestTimelapseEnd_NullWhenDeviceHasNoLoops()
         {
             DateTime? end = await _queries.GetLatestTimelapseEndUtcAsync(Guid.NewGuid(), CancellationToken.None);

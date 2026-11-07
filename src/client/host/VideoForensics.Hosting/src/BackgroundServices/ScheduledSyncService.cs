@@ -347,7 +347,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // One device failing must not stop the others; its cursor is unchanged, so it retries on the next check.
                     try
                     {
-                        await RunDeviceTimelapseAsync(sp, account.Id, device.Id, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct);
+                        await RunDeviceTimelapseAsync(sp, account.Id, device.Id, device.Name, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct);
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested)
                     {
@@ -369,7 +369,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Plans and builds one device's segments from its cursor up to the horizon, within the tick's budget.</summary>
-        private async Task RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
+        private async Task RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, string deviceName, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
         {
             ITimelapseGapQueries queries = sp.GetRequiredService<ITimelapseGapQueries>();
             DateTimeOffset? earliest = await queries.GetEarliestCaptureAtUtcAsync(deviceId, ct);
@@ -377,6 +377,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 await queries.GetLatestTimelapseEndUtcAsync(deviceId, ct),
                 await queries.GetLatestEventTimeUtcAsync(deviceId, horizon, ct),
                 earliest?.UtcDateTime);
+
+            // The planner only sees events up to the horizon, so a future-dated event (a device clock running ahead) is warned about here.
+            DateTime? latestAny = await queries.GetLatestEventTimeAnyUtcAsync(deviceId, ct);
+            DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
+            if (latestAny is not null && latestAny.Value > nowUtc.AddMinutes(5))
+            {
+                int minutesAhead = (int)Math.Round((latestAny.Value - nowUtc).TotalMinutes);
+                _logger.LogWarning("Time-lapse check for {DeviceName}: event dated ahead of the local clock by {MinutesAhead} minute(s); check the device clock.", deviceName, minutesAhead);
+            }
+
             if (cursor is null || cursor.Value >= horizon)
             {
                 return;
