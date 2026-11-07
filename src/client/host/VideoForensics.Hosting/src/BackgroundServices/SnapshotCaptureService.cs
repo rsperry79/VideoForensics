@@ -510,6 +510,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     FileName = Path.GetFileName(mediaFilePath),
                     FilePath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct),
                     MediaFormat = "jpg",
+                    MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Snapshot,
                     FileSizeBytes = new FileInfo(mediaFilePath).Length,
                     RecordedAtUtc = capturedAt.UtcDateTime,
                     DownloadedAtUtc = DateTime.UtcNow,

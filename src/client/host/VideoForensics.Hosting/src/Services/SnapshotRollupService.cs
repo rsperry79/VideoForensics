@@ -350,6 +350,7 @@ namespace VideoForensics.Client.Hosting.Services
                     FileName = Path.GetFileName(mp4Path),
                     FilePath = storedPath,
                     MediaFormat = "mp4",
+                    MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Timelapse,
                     FileSizeBytes = fileSizeBytes,
                     RecordedAtUtc = fromUtc,
                     DurationSeconds = (toUtc - fromUtc).TotalSeconds,
