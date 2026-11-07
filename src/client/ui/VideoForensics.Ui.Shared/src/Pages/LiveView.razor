@@ -28,6 +28,8 @@
 @inject IStringLocalizer<LiveView> L
 @inject ILogger<LiveView> Logger
 @inject RightPanelFilterStore FilterStore
+@* The camera choice is the shared review camera state, so Live View, Timeline and Events show the same cameras. *@
+@inject ReviewPageState _cameraState
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -133,7 +135,6 @@ else
     private Dictionary<Guid, string> _deviceNames = new();
 
     // The media page's camera filter. An empty selection means the first cameras, as the media page shows them.
-    private readonly ReviewPageState _cameraState = new();
 
     /// <summary>Key for this page's remembered camera choice in the device's local storage.</summary>
     private const string FilterPageKey = "live-view";
