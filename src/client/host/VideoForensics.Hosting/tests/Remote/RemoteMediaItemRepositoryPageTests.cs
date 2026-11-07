@@ -32,6 +32,7 @@ public class RemoteMediaItemRepositoryPageTests
             FileName: "2024-01-15_120000.mp4",
             FilePath: "/media/2024-01-15_120000.mp4",
             MediaFormat: "mp4",
+            MediaKind: "Clip",
             FileSizeBytes: 1024,
             RecordedAtUtc: new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
             DownloadedAtUtc: new DateTime(2024, 1, 15, 12, 5, 0, DateTimeKind.Utc),
