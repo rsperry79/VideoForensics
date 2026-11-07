@@ -134,4 +134,13 @@
   <data name="TimelapseMaxSegmentHelp" xml:space="preserve">
     <value>Gaps longer than this are split into segments of this length. Default 60.</value>
   </data>
+  <data name="TimelapseCheckSaved" xml:space="preserve">
+    <value>Time lapses will be checked every {0} minutes.</value>
+  </data>
+  <data name="TimelapseMaxSegmentSaved" xml:space="preserve">
+    <value>Time-lapse segments will be at most {0} minutes.</value>
+  </data>
+  <data name="TimelapseRangeError" xml:space="preserve">
+    <value>Enter a value within the allowed range.</value>
+  </data>
 </root>
