@@ -128,6 +128,30 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewDetailTab_UnavailableEvent_ShowsStatusAndFailureTimeInPlaceOfDetail()
+    {
+        // Arrange: the event has no media; its retries failed at a known time
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base);
+        evt.DownloadStatus = EventDownloadStatus.Unavailable;
+        evt.DiscoveredAtUtc = Base;
+        evt.DownloadFailedAtUtc = Base.AddHours(1);
+        ServeFrom([evt]);
+        ReviewState.SetCameras([Devices[0].Id]);
+        IRenderedComponent<ReviewDetailTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
+
+        // Act: rows open by default, so the body is already shown
+
+        // Assert: the body states the status and the failure time, and does not wait for a detail load
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='review-detail-unavailable']")));
+        string body = cut.Find("[data-testid='review-detail-unavailable']").TextContent;
+        Assert.Contains(L["DetailUnavailable"].Value, body);
+        Assert.Contains(L["DetailFailedAt"].Value, body);
+        Assert.Empty(cut.FindAll("[data-testid='review-detail-event-loading']"));
+    }
+
+    [Fact]
     public void ReviewDetailTab_NoCameras_ShowsTheNoCamerasMessageInEachSectionAndDoesNotLoad()
     {
         // Arrange
