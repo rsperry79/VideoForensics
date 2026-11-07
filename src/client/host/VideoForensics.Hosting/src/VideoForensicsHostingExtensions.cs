@@ -610,6 +610,7 @@ namespace VideoForensics.Client.Hosting
             // is now also implemented - MAUI toast remains deliberately not yet implemented (see
             // INotificationProvider's doc comment for why the extensibility point exists regardless).
             _ = services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
+            _ = services.AddScoped<ISmtpMailSender, MailKitSmtpMailSender>();
             _ = services.AddScoped<IAuthMethodSettingsService, AuthMethodSettingsService>();
             _ = services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
             _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
