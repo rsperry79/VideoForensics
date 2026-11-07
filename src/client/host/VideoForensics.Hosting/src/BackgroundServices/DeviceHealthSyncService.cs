@@ -24,12 +24,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     /// health source calls a provider's API directly, and per §1's "only the server pulls from any
     /// provider" rule, no client host may do that.
     ///
-    /// Implements tiered polling: base interval (15min) plus elevated polling when RSSI degradation
+    /// Implements tiered polling: base interval (DeviceHealthIntervalMinutes, 15 by default) plus elevated polling when RSSI degradation
     /// is detected, running a faster check to determine if jamming occurred (plan §4.2).
     /// </summary>
     public class DeviceHealthSyncService : BackgroundService
     {
-        private static readonly TimeSpan BaseInterval = TimeSpan.FromMinutes(15);
         private const int OnBatteryIntervalMultiplier = 3;
         // DegradationThresholdDb matches JammingToolsOrchestrator's threshold
         private const double DegradationThresholdDb = 8.0;
@@ -41,6 +40,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ElevatedPollingWindowTracker _elevatedTracker;
 
         private readonly ThreadHeartbeats? _heartbeats;
+
+        /// <summary>The base wait, read from the Services page setting before each wait.</summary>
+        internal TimeSpan CurrentInterval => TimeSpan.FromMinutes(_config.DeviceHealthIntervalMinutes);
 
         public DeviceHealthSyncService(
             IServiceScopeFactory scopeFactory,
@@ -68,13 +70,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private int _tickCount;
 
         /// <summary>
-        /// Base polling loop: runs every 15 minutes (or 45 minutes on battery).
+        /// Base polling loop: runs every DeviceHealthIntervalMinutes (or three times that on battery).
         /// Detects RSSI degradation and enters elevated windows as needed.
         /// </summary>
         private async Task RunBaseLoopAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(BaseInterval);
-
             do
             {
                 if (!_config.EnableHealthSync)
@@ -86,9 +86,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 bool onBattery = _batteryStatusProvider.GetStatus() == BatteryStatus.OnBattery;
                 if (onBattery)
                 {
-                    // Skip most ticks while on battery rather than running a separate slower timer,
-                    // so the effective interval is roughly BaseInterval * OnBatteryIntervalMultiplier
-                    // without restarting the PeriodicTimer.
+                    // Skip most ticks while on battery rather than running a separate slower wait,
+                    // so the effective interval is roughly CurrentInterval * OnBatteryIntervalMultiplier.
                     bool shouldRun = System.Threading.Interlocked.Increment(ref _tickCount) % OnBatteryIntervalMultiplier == 0;
                     if (!shouldRun)
                     {
@@ -99,7 +98,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _heartbeats?.Beat(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, TimeSpan.FromMinutes(45));
                 await RunOneTickAsync(stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
+            while (await WaitForNextTickAsync(stoppingToken));
+        }
+
+        /// <summary>
+        /// Waits the configured base interval, read now so a changed setting applies from the next wait. A fresh delay each
+        /// tick is used instead of a PeriodicTimer, which is fixed at creation and would ignore the change.
+        /// </summary>
+        private async Task<bool> WaitForNextTickAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentInterval, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <summary>

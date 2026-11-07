@@ -249,6 +249,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     options.Object,
                     sp.GetRequiredService<ILogger<ScheduledSyncService>>(),
                     Time,
+                    new ForensicsConfiguration(),
                     heartbeats: Heartbeats);
             }
 
@@ -973,6 +974,35 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public void ResolveTickInterval_Seconds_ClampsToFiveSecondFloor(int configured, int expectedSeconds)
         {
             Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), ScheduledSyncService.ResolveTickInterval(configured));
+        }
+
+        [Fact]
+        public void CurrentTickInterval_DefaultConfig_Uses60Seconds()
+        {
+            var service = new ScheduledSyncService(
+                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                Mock.Of<IOptionsMonitor<ScheduledTasksOptions>>(),
+                Mock.Of<ILogger<ScheduledSyncService>>(),
+                TimeProvider.System,
+                new ForensicsConfiguration());
+
+            Assert.Equal(TimeSpan.FromSeconds(60), service.CurrentTickInterval);
+        }
+
+        [Fact]
+        public void CurrentTickInterval_ConfigChanged_UsesNewTick()
+        {
+            var config = new ForensicsConfiguration();
+            var service = new ScheduledSyncService(
+                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                Mock.Of<IOptionsMonitor<ScheduledTasksOptions>>(),
+                Mock.Of<ILogger<ScheduledSyncService>>(),
+                TimeProvider.System,
+                config);
+
+            config.ScheduledSyncTickSeconds = 30;
+
+            Assert.Equal(TimeSpan.FromSeconds(30), service.CurrentTickInterval);
         }
 
         [Fact]

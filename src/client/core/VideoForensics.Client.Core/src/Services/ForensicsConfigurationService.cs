@@ -151,6 +151,9 @@ namespace VideoForensics.Client.Core.Services
                 config.JammingIntervalMinutes = await GetIntSetting("JammingIntervalMinutes", config.JammingIntervalMinutes, cancellationToken);
                 config.CodecIntervalMinutes = await GetIntSetting("CodecIntervalMinutes", config.CodecIntervalMinutes, cancellationToken);
                 config.FlagIntervalMinutes = await GetIntSetting("FlagIntervalMinutes", config.FlagIntervalMinutes, cancellationToken);
+                config.DeviceHealthIntervalMinutes = await GetIntSetting("DeviceHealthIntervalMinutes", config.DeviceHealthIntervalMinutes, cancellationToken);
+                config.OfflineRepollIntervalMinutes = await GetIntSetting("OfflineRepollIntervalMinutes", config.OfflineRepollIntervalMinutes, cancellationToken);
+                config.ScheduledSyncTickSeconds = await GetIntSetting("ScheduledSyncTickSeconds", config.ScheduledSyncTickSeconds, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
                 config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
@@ -234,6 +237,9 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("JammingIntervalMinutes", config.JammingIntervalMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CodecIntervalMinutes", config.CodecIntervalMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("FlagIntervalMinutes", config.FlagIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("DeviceHealthIntervalMinutes", config.DeviceHealthIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("OfflineRepollIntervalMinutes", config.OfflineRepollIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ScheduledSyncTickSeconds", config.ScheduledSyncTickSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);

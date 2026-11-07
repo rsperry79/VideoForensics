@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Core.Contracts
 
         /// <summary>
         /// Sets how often a detection service runs, in minutes. Valid range is 1 to 1440 minutes.
-        /// Known services: Jamming, Codec, Flag.
+        /// Known services: Jamming, Codec, Flag, DeviceHealth, OfflineRepoll.
         /// </summary>
         /// <param name="config">The configuration to update and save.</param>
         /// <param name="service">The service name.</param>
@@ -42,6 +42,15 @@ namespace VideoForensics.Client.Core.Contracts
         /// <param name="ct">Cancellation token.</param>
         /// <returns>Whether the change was saved, and a message for the operator.</returns>
         Task<(bool Success, string Message)> SetServiceIntervalMinutesAsync(IForensicsConfiguration config, string service, int minutes, CancellationToken ct = default);
+
+        /// <summary>
+        /// Sets how often the scheduled sync tick runs, in seconds. Valid range is 5 to 3600 seconds.
+        /// </summary>
+        /// <param name="config">The configuration to update and save.</param>
+        /// <param name="seconds">The tick interval in seconds.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>Whether the change was saved, and a message for the operator.</returns>
+        Task<(bool Success, string Message)> SetScheduledSyncTickSecondsAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default);
 
         /// <summary>
         /// Sets how often a time lapse is built from the window's snapshots. Valid range is 1 to 1440 minutes.
