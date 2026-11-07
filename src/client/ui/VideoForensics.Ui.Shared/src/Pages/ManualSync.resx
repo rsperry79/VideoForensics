@@ -36,7 +36,7 @@
     <value>Manual Sync</value>
   </data>
   <data name="PickAccountHint" xml:space="preserve">
-    <value>Pick one account in the filter to run a sync.</value>
+    <value>Select a provider that has an account to run a sync.</value>
   </data>
   <data name="FilterProviders" xml:space="preserve">
     <value>Providers</value>

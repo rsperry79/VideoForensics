@@ -13,7 +13,7 @@ public static class SyncRequestBuilder
 
     public const string SinceLastRange = "SinceLast";
 
-    public static readonly string[] SyncTypes = { "All", "Events", "Snapshots", ConfigSyncType };
+    public static readonly string[] SyncTypes = { "All", "Events", ConfigSyncType };
 
     public static readonly string[] RangeOptions = { "30", "60", "90", "365", AllRange, CustomRange };
 
