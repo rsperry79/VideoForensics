@@ -1,3 +1,8 @@
+---
+name: provider-onboarding
+description: How to add a new video provider (vendor integration) to VideoForensics: required services, base class, and tests. Use when adding, scaffolding, or wiring a new provider.
+---
+
 # Adding a provider
 
 - Do not create new interfaces. Reuse `VideoForensics.Providers.Common.Contracts.*` (`src/core/providers/common/Contracts/`).
