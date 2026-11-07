@@ -491,12 +491,18 @@ else
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 0.75rem;
+    /* Fill the page width, so one camera stretches across it instead of sitting at its minimum size. */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .live-view-tile {
     background-color: #111;
     border-radius: 4px;
     padding: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .live-view-still {
