@@ -102,7 +102,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     WindowEndUtc = window.HourStartUtc.AddHours(1),
                     RaisedAtUtc = now,
                     Severity = MediaFlagSeverity.Alert,
-                    NoticeId = noticeId
+                    NoticeId = noticeId,
+                    // Stored now, so the flag keeps the sigma it was raised with when the all-time baseline moves later.
+                    DeviationSigma = SignalDeviation.DeviationSigma(window.WorstRssiDbm, baseline.Average, baseline.StdDev)
                 }, ct);
 
                 await _dispatcher.DispatchAsync(new NotificationEvent(

@@ -9,7 +9,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for MediaFlag review state, with chain-of-custody logging on every review.</summary>
-    public class MediaFlagRepository : IMediaFlagRepository
+    public class MediaFlagRepository : IMediaFlagRepository, IMediaFlagDeviationRepository
     {
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<MediaFlagRepository> _logger;
@@ -75,7 +75,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.MediaFlags.AsNoTracking().FirstOrDefaultAsync(f => f.Id == flagId, ct);
+            return await MediaFlagOperations.FindWithEventTypeAsync(db, db.MediaFlags.AsNoTracking().Where(f => f.Id == flagId), ct);
         }
 
         /// <inheritdoc />
@@ -104,6 +104,26 @@ namespace VideoForensics.Data.Database.Repositories
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await MediaFlagOperations.GetPositionAsync(db, flagId, filter, ct);
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<MediaFlag>> ListWithoutDeviationSigmaAsync(MediaFlagType flagType, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.MediaFlags.AsNoTracking()
+                .Where(f => f.FlagType == flagType && f.DeviationSigma == null)
+                .OrderBy(f => f.Id)
+                .ToListAsync(ct);
+        }
+
+        /// <inheritdoc />
+        public async Task SetDeviationSigmaAsync(Guid flagId, double deviationSigma, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            // Only fills a null: a value stored by the raise path, or by an earlier pass, is never overwritten here.
+            _ = await db.MediaFlags
+                .Where(f => f.Id == flagId && f.DeviationSigma == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.DeviationSigma, deviationSigma), ct);
         }
 
         /// <inheritdoc />

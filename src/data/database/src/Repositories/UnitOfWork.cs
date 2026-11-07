@@ -1470,7 +1470,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
         {
-            return _db.MediaFlags.AsNoTracking().FirstOrDefaultAsync(f => f.Id == flagId, ct);
+            return MediaFlagOperations.FindWithEventTypeAsync(_db, _db.MediaFlags.AsNoTracking().Where(f => f.Id == flagId), ct);
         }
 
         public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct)

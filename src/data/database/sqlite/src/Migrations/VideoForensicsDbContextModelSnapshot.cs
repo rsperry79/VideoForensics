@@ -2792,6 +2792,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("DeviationSigma")
+                        .HasColumnType("REAL");
+
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 

@@ -166,6 +166,26 @@ public class SignalDeviationAlertsTests
         Assert.Equal(sent!.NoticeId, flag.NoticeId);
     }
 
+    [Fact]
+    public async Task CheckAsync_TwoSigmaHour_StoresDeviationSigmaOfWorstReading()
+    {
+        var notices = new Mock<INoticeRepository>();
+        _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var dispatcher = new Mock<INotificationDispatcher>();
+        var flags = new Mock<IMediaFlagRepository>();
+        var written = new List<MediaFlag>();
+        _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
+            .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
+            .ReturnsAsync((MediaFlag f, CancellationToken _) => f);
+
+        _ = await CheckAsync(notices.Object, dispatcher.Object, flags.Object);
+
+        // The worst reading is -95 against a camera mean near -63 and a std dev near 14, so it sits a little over 2 std devs out.
+        MediaFlag flag = Assert.Single(written);
+        Assert.NotNull(flag.DeviationSigma);
+        Assert.InRange(flag.DeviationSigma!.Value, 2.0, 2.5);
+    }
+
     /// <summary>
     /// Ten readings alternating -50 and -70 (mean about -60), then one at -95 an hour ago. The -95 sits about 2.2 sample
     /// std devs below the mean, so it is an alert; the others are inside one std dev.

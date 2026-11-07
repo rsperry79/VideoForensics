@@ -534,6 +534,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHostedService<JammingAnalysisBackfillService>();
             _ = services.AddHostedService<MediaCodecBackfillService>();
             _ = services.AddHostedService<MediaFlagBackfillService>();
+            _ = services.AddScoped<MediaFlagDeviationBackfill>();
+            _ = services.AddHostedService<MediaFlagDeviationBackfillService>();
 
             // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
             // orchestrator, and background services for idle timeouts and bitrate calibration.
