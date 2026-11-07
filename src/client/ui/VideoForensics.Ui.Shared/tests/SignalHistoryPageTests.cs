@@ -132,4 +132,69 @@ public class SignalHistory_Tests : ScopeRailTestContext
         Assert.Equal(5, page.FindAll("[data-testid='signal-alert'] li").Count);
         Assert.Empty(page.FindAll("[data-testid='signal-alert-toggle']"));
     }
+
+    /// <summary>Renders one camera whose all-time mean is -60 dBm with a 10 dBm sd, and a week grid with the given first cells.</summary>
+    private IRenderedComponent<SignalHistory> RenderWithGrid(params (int Index, double Mean)[] boxes)
+    {
+        _ = RegisterDeviceRepository();
+        DateTime from = DateTime.UtcNow.AddDays(-30);
+        DateTime to = DateTime.UtcNow.AddDays(1);
+        var cells = Enumerable.Range(0, SignalCalendar.Days * SignalCalendar.Hours)
+            .Select(_ => SignalStats.Compute(Array.Empty<SignalSample>()))
+            .ToList();
+        foreach ((int index, double mean) in boxes)
+        {
+            cells[index] = SignalStats.Compute([new SignalSample(from.AddHours(1), (int)mean)]);
+        }
+
+        var calendar = new SignalCalendar(
+            cells,
+            Enumerable.Range(0, SignalCalendar.Hours).Select(_ => SignalStats.Compute(Array.Empty<SignalSample>())).ToList(),
+            Enumerable.Range(0, SignalCalendar.Days).Select(_ => SignalStats.Compute(Array.Empty<SignalSample>())).ToList());
+        var allTime = new SignalStats(Count: 10, Min: -95, Max: -40, Average: -60, Latest: -60, PercentWeak: 0, StdDev: 10);
+        var device = new SignalDeviceAnalysis(
+            Guid.NewGuid(),
+            "Front door",
+            "Ring",
+            "ring-front",
+            allTime,
+            allTime,
+            Array.Empty<SignalSample>(),
+            Array.Empty<SignalPeriod>(),
+            Array.Empty<SignalDeviationWindow>(),
+            calendar,
+            SignalBuckets.Compute(Array.Empty<SignalSample>(), from, to, SignalBucket.Hour),
+            SignalBuckets.Compute(Array.Empty<SignalSample>(), from, to, SignalBucket.Day),
+            SignalBuckets.Compute(Array.Empty<SignalSample>(), from, to, SignalBucket.Week));
+        var service = new Mock<ISignalAnalysisService>();
+        _ = service
+            .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SignalAnalysis([device]));
+        _ = Services.AddScoped(_ => service.Object);
+        _ = Services.AddScoped<SignalDrillTrail>();
+        var flags = new Mock<IMediaFlagRepository>();
+        _ = flags
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+        _ = Services.AddScoped(_ => flags.Object);
+        return Render<SignalHistory>();
+    }
+
+    [Fact]
+    public void CalendarBox_IsGreenUnderOneStdDevAndRedAtTwoOrMore()
+    {
+        // Monday 00:00 is at index 0 and Monday 01:00 at index 1. Mean -65 is 0.5 sd, mean -80 is 2 sd.
+        IRenderedComponent<SignalHistory> page = RenderWithGrid((0, -65), (1, -80));
+
+        Assert.Single(page.FindAll("[data-testid='signal-calendar'] tbody tr:first-child td.calendar-box-green"));
+        Assert.Single(page.FindAll("[data-testid='signal-calendar'] tbody tr:first-child td.calendar-box-red"));
+    }
+
+    [Fact]
+    public void CalendarBox_IsOnlyOnFilledBoxes()
+    {
+        IRenderedComponent<SignalHistory> page = RenderWithGrid((0, -65));
+
+        Assert.Single(page.FindAll("[data-testid='signal-calendar'] tbody td[class*='calendar-box-']"));
+    }
 }

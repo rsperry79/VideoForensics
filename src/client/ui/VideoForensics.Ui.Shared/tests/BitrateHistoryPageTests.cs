@@ -204,4 +204,39 @@ public class BitrateHistory_Tests : ScopeRailTestContext
         Assert.NotNull(table);
         Assert.Equal(new[] { MediaFlagType.BitrateCollapse, MediaFlagType.BitrateDeviation }, table.Types);
     }
+
+    [Fact]
+    public void CalendarBox_IsGreenUnderOneStdDevAndRedAtTwoOrMore()
+    {
+        // All-time mean 2000 kbps with a 100 kbps sd. Monday 00:00 is at 2050 (0.5 sd), Monday 01:00 at 1800 (2 sd).
+        var cells = Enumerable.Range(0, SignalCalendar.Days * SignalCalendar.Hours)
+            .Select(_ => SignalStats.Compute(Array.Empty<SignalSample>()))
+            .ToList();
+        DateTime when = DateTime.UtcNow.AddDays(-3);
+        cells[0] = SignalStats.Compute([new SignalSample(when, 2050)]);
+        cells[1] = SignalStats.Compute([new SignalSample(when, 1800)]);
+        var calendar = new SignalCalendar(
+            cells,
+            Enumerable.Range(0, SignalCalendar.Hours).Select(_ => SignalStats.Compute(Array.Empty<SignalSample>())).ToList(),
+            Enumerable.Range(0, SignalCalendar.Days).Select(_ => SignalStats.Compute(Array.Empty<SignalSample>())).ToList());
+        var allTime = new SignalStats(Count: 10, Min: 1700, Max: 2300, Average: 2000, Latest: 2000, PercentWeak: 0, StdDev: 100);
+        var analysis = new BitrateDeviceAnalysis(
+            _device.Id,
+            _device.Name,
+            "Ring",
+            _device.ProviderDeviceId,
+            allTime,
+            allTime,
+            Array.Empty<BitrateSample>(),
+            Array.Empty<SignalDeviationWindow>(),
+            calendar,
+            Array.Empty<SignalBucketStats>(),
+            Array.Empty<SignalBucketStats>(),
+            Array.Empty<SignalBucketStats>());
+
+        IRenderedComponent<BitrateHistory> page = RenderWith(analysis);
+
+        Assert.Single(page.FindAll("[data-testid='bitrate-calendar'] tbody tr:first-child td.calendar-box-green"));
+        Assert.Single(page.FindAll("[data-testid='bitrate-calendar'] tbody tr:first-child td.calendar-box-red"));
+    }
 }

@@ -188,4 +188,13 @@
   <data name="SignalFlagsHeading" xml:space="preserve">
     <value>Signal deviation flags</value>
   </data>
+  <data name="CalendarLegendUnderOneSd" xml:space="preserve">
+    <value>&lt; 1 sd</value>
+  </data>
+  <data name="CalendarLegendOneToTwoSd" xml:space="preserve">
+    <value>1 to 2 sd</value>
+  </data>
+  <data name="CalendarLegendTwoSdOrMore" xml:space="preserve">
+    <value>2 sd or more</value>
+  </data>
 </root>

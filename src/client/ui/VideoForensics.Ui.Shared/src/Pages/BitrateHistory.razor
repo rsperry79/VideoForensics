@@ -224,7 +224,7 @@
                                         @for (int hour = 0; hour < 24; hour++)
                                         {
                                             SignalStats cell = section.Calendar.Cell(day, hour);
-                                            <td title="@L["CalendarCellTitle", cell.Count]">@(cell.Count == 0 ? "-" : cell.Average.ToString("0", CultureInfo.InvariantCulture))</td>
+                                            <td class="@CalendarBoxClass(cell, section.AllTime)" title="@L["CalendarCellTitle", cell.Count]">@(cell.Count == 0 ? "-" : cell.Average.ToString("0", CultureInfo.InvariantCulture))</td>
                                         }
                                         <td class="fw-semibold">@StdDevText(section.Calendar.DayOfWeek(day))</td>
                                     </tr>
@@ -242,6 +242,11 @@
                             </tfoot>
                         </table>
                     </div>
+                    <p class="small mb-0 mt-1" data-testid="bitrate-calendar-legend">
+                        <span class="calendar-box-swatch calendar-box-green"></span> @L["CalendarLegendUnderOneSd"]
+                        <span class="calendar-box-swatch calendar-box-yellow ms-3"></span> @L["CalendarLegendOneToTwoSd"]
+                        <span class="calendar-box-swatch calendar-box-red ms-3"></span> @L["CalendarLegendTwoSdOrMore"]
+                    </p>
                 </div>
 
                 <div class="mt-3" data-testid="bitrate-over-time">
@@ -471,6 +476,13 @@
     private static string StdDevText(SignalStats stats)
     {
         return stats.StdDev is double sd ? sd.ToString("0.0", CultureInfo.InvariantCulture) : "-";
+    }
+
+    /// <summary>The colour class for one grid box: none when the box is empty or there is no spread to measure against.</summary>
+    private static string? CalendarBoxClass(SignalStats cell, SignalStats allTime)
+    {
+        string? colour = SignalDeviation.ClassifyBox(cell.Count == 0 ? null : cell.Average, allTime.Average, allTime.StdDev);
+        return colour is null ? null : $"calendar-box-{colour}";
     }
 
     /// <summary>The short weekday name for a calendar row (0 = Monday).</summary>
