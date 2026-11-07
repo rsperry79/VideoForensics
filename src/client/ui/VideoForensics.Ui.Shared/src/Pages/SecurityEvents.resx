@@ -53,9 +53,6 @@
   <data name="PreviousPageButton" xml:space="preserve">
     <value>Previous Page</value>
   </data>
-  <data name="EventTypeColumn" xml:space="preserve">
-    <value>Event Type</value>
-  </data>
   <data name="StatusColumn" xml:space="preserve">
     <value>Status</value>
   </data>

@@ -4,10 +4,12 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
 @inject ISecurityEventsService SecurityEventsService
 @inject IAdminOperatorService AdminOperatorService
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<SecurityEvents> L
+@inject IStringLocalizer<SharedResources> SharedL
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <h4 class="mb-0">@L["Title"]</h4>
@@ -72,7 +74,6 @@ else
                     {
                         <th>@L["OperatorColumn"]</th>
                     }
-                    <th>@L["EventTypeColumn"]</th>
                     <th>@L["StatusColumn"]</th>
                     <th>@L["IpAddressColumn"]</th>
                     <th>@L["DateTimeColumn"]</th>
@@ -87,7 +88,6 @@ else
                         {
                             <td>@evt.OperatorId</td>
                         }
-                        <td>@evt.EventType</td>
                         <td>
                             @if (evt.Success)
                             {
@@ -98,7 +98,7 @@ else
                                 <span style="color: var(--bs-danger);">@L["StatusFailure"]</span>
                             }
                         </td>
-                        <td>@evt.IpAddress</td>
+                        <td data-testid="security-event-ip">@SourceIpLabel.Format(evt.IpAddress, SharedL["LocalHost"])</td>
                         <td><LocalTimeText Value="@evt.OccurredAtUtc" Format="u" /></td>
                         <td>@evt.Reason</td>
                     </tr>

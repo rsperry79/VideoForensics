@@ -5,6 +5,7 @@ using AngleSharp.Html.Dom;
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using Moq;
@@ -13,6 +14,7 @@ using System.Net;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Entities;
 
@@ -102,7 +104,7 @@ public class SecurityEventsPage_OwnEvents_Tests : SecurityEventsPageTestBase
             s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()),
             Times.AtLeastOnce);
 
-        Assert.Contains("LoginAttemptSuccess", component.Markup);
+        Assert.Single(component.FindAll("[data-testid='security-event-row']"));
     }
 }
 
@@ -157,7 +159,7 @@ public class SecurityEventsPage_SuperAdminOperatorPicker_Tests : SecurityEventsP
             s => s.GetEventsAsync(otherOperatorId, 0, 25, It.IsAny<CancellationToken>()),
             Times.Once);
 
-        Assert.Contains("LoginAttemptFailure", component.Markup);
+        Assert.Single(component.FindAll("[data-testid='security-event-row']"));
     }
 
     [Fact]
@@ -173,6 +175,52 @@ public class SecurityEventsPage_SuperAdminOperatorPicker_Tests : SecurityEventsP
 
         Assert.Empty(component.FindAll("[data-testid='security-events-operator-picker']"));
         AdminOperatorServiceMock.Verify(s => s.ListOperatorsAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+public class SecurityEventsPage_ColumnsAndSourceIp_Tests : SecurityEventsPageTestBase
+{
+    [Fact]
+    public async Task Table_HasNoEventTypeHeader()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.Review);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeEvent()]);
+
+        IRenderedComponent<SecurityEvents> component = RenderPage();
+
+        IStringLocalizer<SecurityEvents> localizer = Services.GetRequiredService<IStringLocalizer<SecurityEvents>>();
+        string[] expectedHeaders =
+        [
+            localizer["StatusColumn"],
+            localizer["IpAddressColumn"],
+            localizer["DateTimeColumn"],
+            localizer["ReasonColumn"],
+        ];
+        string[] headers = component.FindAll("[data-testid='security-events-table'] thead th")
+            .Select(th => th.TextContent.Trim())
+            .ToArray();
+
+        Assert.Equal(expectedHeaders, headers);
+    }
+
+    [Fact]
+    public async Task LoopbackRow_IpCellShowsLocalHostLabel()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.Review);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeEvent() with { IpAddress = "::1" }]);
+
+        IRenderedComponent<SecurityEvents> component = RenderPage();
+
+        string localHostLabel = Services.GetRequiredService<IStringLocalizer<SharedResources>>()["LocalHost"];
+        IElement ipCell = component.Find("[data-testid='security-event-ip']");
+
+        Assert.Equal(localHostLabel, ipCell.TextContent.Trim());
     }
 }
 
@@ -202,6 +250,6 @@ public class SecurityEventsPage_Pagination_Tests : SecurityEventsPageTestBase
             s => s.GetEventsAsync(null, 25, 25, It.IsAny<CancellationToken>()),
             Times.Once);
 
-        Assert.Contains("SecondPageEvent", component.Markup);
+        Assert.Single(component.FindAll("[data-testid='security-event-row']"));
     }
 }
