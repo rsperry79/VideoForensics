@@ -18,4 +18,5 @@ public interface IReviewClipLoader
 /// <summary>The media items one review load returned.</summary>
 /// <param name="Items">Items, oldest first within each camera.</param>
 /// <param name="Truncated">True when the safety cap stopped the load before every item was read.</param>
-public sealed record ReviewClipSet(IReadOnlyList<MediaItem> Items, bool Truncated);
+/// <param name="UnavailableEvents">Stored events in the window with no downloaded media. Null when the loader does not read them.</param>
+public sealed record ReviewClipSet(IReadOnlyList<MediaItem> Items, bool Truncated, IReadOnlyList<Event>? UnavailableEvents = null);

@@ -24,15 +24,18 @@ public sealed class ReviewClipLoader : IReviewClipLoader
 
     private readonly IMediaItemRepository _mediaItems;
     private readonly ReviewCaseMode? _caseMode;
+    private readonly IEventRepository? _events;
 
     /// <summary>
     /// Creates the loader over the media item repository. When <paramref name="caseMode"/> is active, the loader
     /// returns the case's pinned clips instead of paging the repository. Null means the case view is never active.
+    /// <paramref name="events"/> supplies the stored events without media, shown on the timeline as unavailable.
     /// </summary>
-    public ReviewClipLoader(IMediaItemRepository mediaItems, ReviewCaseMode? caseMode = null)
+    public ReviewClipLoader(IMediaItemRepository mediaItems, ReviewCaseMode? caseMode = null, IEventRepository? events = null)
     {
         _mediaItems = mediaItems;
         _caseMode = caseMode;
+        _events = events;
     }
 
     /// <inheritdoc />
@@ -48,16 +51,35 @@ public sealed class ReviewClipLoader : IReviewClipLoader
         var items = new List<MediaItem>();
 
         // The cap is shared across device chunks, so one chunk can stop the whole load.
-        for (int start = 0; start < devices.Count; start += MaxDevicesPerCall)
+        bool truncated = false;
+        for (int start = 0; start < devices.Count && !truncated; start += MaxDevicesPerCall)
         {
             List<Guid> chunk = devices.GetRange(start, Math.Min(MaxDevicesPerCall, devices.Count - start));
-            if (await ReadChunkAsync(chunk, fromUtc, toUtc, items, ct))
-            {
-                return new ReviewClipSet(items, true);
-            }
+            truncated = await ReadChunkAsync(chunk, fromUtc, toUtc, items, ct);
         }
 
-        return new ReviewClipSet(items, false);
+        return new ReviewClipSet(items, truncated, await ReadUnavailableEventsAsync(devices, fromUtc, toUtc, ct));
+    }
+
+    /// <summary>
+    /// Reads the stored events of the cameras in the window that have no downloaded media. Downloaded events are left out,
+    /// since their media is already in the clip list. Returns null when no event repository was given.
+    /// </summary>
+    private async Task<IReadOnlyList<Event>?> ReadUnavailableEventsAsync(IReadOnlyList<Guid> devices, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        if (_events is null)
+        {
+            return null;
+        }
+
+        var unavailable = new List<Event>();
+        foreach (Guid device in devices)
+        {
+            IReadOnlyList<Event> stored = await _events.ListByDeviceAndDateRangeAsync(device, fromUtc, toUtc, ct);
+            unavailable.AddRange(stored.Where(evt => evt.DownloadStatus != EventDownloadStatus.Downloaded));
+        }
+
+        return unavailable;
     }
 
     /// <summary>
