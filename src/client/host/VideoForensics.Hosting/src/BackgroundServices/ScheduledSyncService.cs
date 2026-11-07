@@ -39,6 +39,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<ScheduledSyncService> _logger;
         private readonly TimeProvider _time;
 
+        /// <summary>When this process started. Partial time-lapse files written after it may belong to a build running now.</summary>
+        private readonly DateTime _processStartUtc = DateTime.UtcNow;
+
+        /// <summary>Whether the once-per-process cleanup of partial time-lapse files has run.</summary>
+        private bool _startupCleanupDone;
+
         /// <summary>Creates the scheduler.</summary>
         public ScheduledSyncService(
             IServiceScopeFactory scopeFactory,
@@ -169,6 +175,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             ISyncScheduleRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleRepository>();
             IReadOnlyList<SyncSchedule> schedules = await scheduleRepository.ListEnabledAsync(ct);
+
+            // Why: runs before the empty check so an idle install is cleaned too.
+            if (!_startupCleanupDone)
+            {
+                await RunStartupCleanupAsync(sp, ct);
+            }
+
             if (schedules.Count == 0)
             {
                 return;
@@ -256,6 +269,41 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // One account's failure must never stop the others.
                     _logger.LogError("Scheduled sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Deletes partial time-lapse files left by a crash, once per process. Skipped (and retried on a later tick) while the
+        /// configuration or storage service is not registered. Only a pass that completes without an exception sets the flag.
+        /// </summary>
+        private async Task RunStartupCleanupAsync(IServiceProvider sp, CancellationToken ct)
+        {
+            IForensicsConfigurationService? config = sp.GetService<IForensicsConfigurationService>();
+            IStorageLocationProvider? storage = sp.GetService<IStorageLocationProvider>();
+            if (config == null || storage == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string configuredMediaRoot = (await config.LoadConfigurationAsync(string.Empty, ct)).DownloadLocation;
+                string mediaRoot = storage.GetEffectiveRoot(StorageCategory.Media, configuredMediaRoot);
+                int removed = BuildingFileCleanup.Delete(mediaRoot, _processStartUtc);
+                if (removed > 0)
+                {
+                    _logger.LogInformation("Removed {Count} partial time-lapse file(s) left by an earlier run", removed);
+                }
+
+                _startupCleanupDone = true;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Startup time-lapse cleanup failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }
 
