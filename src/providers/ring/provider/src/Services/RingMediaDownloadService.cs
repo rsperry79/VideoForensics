@@ -660,7 +660,8 @@ namespace VideoForensics.Providers.Ring.Services
                             {
                                 DateTime unmatchedOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                                 Guid unmatchedDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, doorbotHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                                    eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
+                                    eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token,
+                                    apiResponse: @event, awaitingDingId: true);
                                 if (unmatchedDbId != Guid.Empty)
                                 {
                                     await LinkDoorbotEventAsync(@event, unmatchedDbId, rateLimitCts.Token);
@@ -1537,7 +1538,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
-            object? apiResponse = null)
+            object? apiResponse = null, bool awaitingDingId = false)
         {
             try
             {
@@ -1555,7 +1556,8 @@ namespace VideoForensics.Providers.Ring.Services
                     EventIntegrityHash = hash,
                     MetadataJson = Json,
                     ApiSourceHash = Hash,
-                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status
+                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status,
+                    AwaitingDingId = awaitingDingId,
                 };
 
                 // Extract detection metadata if the API response is a DoorbotHistoryEvent

@@ -942,6 +942,14 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId && e.AwaitingDingId && e.DownloadAttempts < maxAttempts && e.DownloadStatus != EventDownloadStatus.Downloaded)
+                .OrderBy(e => e.OccurredAtUtc)
+                .ToList());
+        }
+
         public Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult(_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).Min(e => (DateTime?)e.OccurredAtUtc));
@@ -1661,6 +1669,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             evt.ProviderEventId = newProviderEventId;
+            evt.AwaitingDingId = false;
             return Task.CompletedTask;
         }
     }

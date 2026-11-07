@@ -1917,6 +1917,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("ApiSourceHash")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AwaitingDingId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
@@ -1924,6 +1927,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("DownloadAttempts")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0);
 

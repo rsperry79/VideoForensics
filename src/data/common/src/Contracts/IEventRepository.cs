@@ -26,6 +26,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists events for a device within a date range.</summary>
         Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>
+        /// Lists a device's backfill queue: events still awaiting their ding id that have used fewer than <paramref name="maxAttempts"/> retry passes.
+        /// Oldest first.
+        /// </summary>
+        Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct);
+
         /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when the device has no events.</summary>
         Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct);
 
