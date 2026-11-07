@@ -174,7 +174,18 @@
                         @if (expanded)
                         {
                             <div class="review-detail-event-body p-2" data-testid="review-detail-event-body" data-event-id="@evt.Id.ToString("D")">
-                                @if (_detailInFlight.Contains(evt.Id) || !_details.ContainsKey(evt.Id))
+                                @if (evt.DownloadStatus == EventDownloadStatus.Unavailable)
+                                {
+                                    <div data-testid="review-detail-unavailable">
+                                        <p class="fw-semibold mb-1">@L["DetailUnavailable"]</p>
+                                        <p class="mb-0">@L["DetailDiscoveredAt"] <LocalTimeText Value="evt.DiscoveredAtUtc" Format="g" /></p>
+                                        @if (evt.DownloadFailedAtUtc is { } failedAt)
+                                        {
+                                            <p class="mb-0">@L["DetailFailedAt"] <LocalTimeText Value="failedAt" Format="g" /></p>
+                                        }
+                                    </div>
+                                }
+                                else if (_detailInFlight.Contains(evt.Id) || !_details.ContainsKey(evt.Id))
                                 {
                                     @if (_detailFailed.Contains(evt.Id))
                                     {
