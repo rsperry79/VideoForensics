@@ -24,9 +24,17 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
         private sealed class ManualTimeProvider(DateTime utcNow) : TimeProvider
         {
+            private DateTime _utcNow = utcNow;
+
+            /// <summary>Moves the clock forward by <paramref name="by"/>.</summary>
+            public void Advance(TimeSpan by)
+            {
+                _utcNow += by;
+            }
+
             public override DateTimeOffset GetUtcNow()
             {
-                return new DateTimeOffset(utcNow, TimeSpan.Zero);
+                return new DateTimeOffset(_utcNow, TimeSpan.Zero);
             }
         }
 
@@ -240,11 +248,14 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     sp.GetRequiredService<IServiceScopeFactory>(),
                     options.Object,
                     sp.GetRequiredService<ILogger<ScheduledSyncService>>(),
-                    new ManualTimeProvider(Now),
+                    Time,
                     heartbeats: Heartbeats);
             }
 
             public ThreadHeartbeats Heartbeats { get; } = new();
+
+            /// <summary>The clock the built service reads. Tests advance it between ticks.</summary>
+            public ManualTimeProvider Time { get; } = new(Now);
 
             public void VerifyNotPulled(string provider)
             {
@@ -854,6 +865,33 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.Contains(h.Logs.Lines, l => l.StartsWith("Error") && l.Contains("sync run"));
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_TimelapseCheckStalled_LogsOneErrorWithProviderNameAndNoGuid()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
+
+            // The device's gap query always throws, so every time-lapse check fails for the device and never completes.
+            _ = h.TimelapseQueries.Setup(q => q.GetEarliestCaptureAtUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("timelapse query down"));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+            h.Time.Advance(TimeSpan.FromMinutes(31));
+            await service.RunOneTickAsync(CancellationToken.None);
+            h.Time.Advance(TimeSpan.FromMinutes(31));
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            string stall = Assert.Single(h.Logs.Lines, l => l.StartsWith("Error") && l.Contains("has not completed"));
+            Assert.Contains("Ring", stall);
+            Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
         }
 
         [Theory]
