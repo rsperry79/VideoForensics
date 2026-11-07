@@ -50,12 +50,6 @@
   <data name="SignInRequired" xml:space="preserve">
     <value>- an Admin (or higher) device is required to manage notification settings.</value>
   </data>
-  <data name="SaveButton" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="SavingButton" xml:space="preserve">
-    <value>Saving...</value>
-  </data>
   <data name="UrgentEventOverrides" xml:space="preserve">
     <value>Urgent Event Overrides</value>
   </data>

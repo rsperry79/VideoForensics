@@ -122,6 +122,9 @@
   <data name="App Lock" xml:space="preserve">
     <value>App Lock</value>
   </data>
+  <data name="My Notifications" xml:space="preserve">
+    <value>My Notifications</value>
+  </data>
   <data name="Save" xml:space="preserve">
     <value>Save</value>
   </data>

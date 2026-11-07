@@ -92,6 +92,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/database"] = AccessPolicy.SuperAdminLocal,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/notifications"] = AccessPolicy.NotificationSettings,
+                // Each operator edits only their own preferences, so any signed-in operator (the lowest policy) may open it.
+                ["/settings/my-notifications"] = AccessPolicy.ReadOnly,
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
                 // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).

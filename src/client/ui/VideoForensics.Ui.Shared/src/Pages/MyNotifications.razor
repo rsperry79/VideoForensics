@@ -1,0 +1,232 @@
+@page "/settings/my-notifications"
+@using System.Globalization
+@using System.Reflection
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Data.Common.Entities
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebPushClient WebPushClient
+@inject INotificationPreferencesService Preferences
+@inject IStringLocalizer<MyNotifications> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else
+{
+    <h6 class="mt-4 mb-2">@L["PushHeading"]</h6>
+    <div class="card border p-4 mb-4">
+        <div class="d-flex flex-row gap-2 mb-3">
+            <div style="flex: 1;">
+                <label>@L["MinimumSeverity"]</label>
+                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_minimumSeverity" DataSource="@_severityOptions" Enabled="@_pushEnabled" Style="max-width: 200px;">
+                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+                </SfDropDownList>
+            </div>
+            <div>
+                <label>&nbsp;</label>
+                <label><SfCheckBox TChecked="bool" Checked="@_pushEnabled" CheckedChanged="@((v) => { _pushEnabled = v; })" /> @L["PushNotifications"]</label>
+            </div>
+        </div>
+
+        <SfButton Content="@(_isEnabling ? L["EnablingPushButton"] : L["EnablePushButton"])" OnClick="EnablePushAsync" CssClass="e-flat" Disabled="@_isEnabling" />
+    </div>
+
+    <h6 class="mt-4 mb-2">@L["EmailHeading"]</h6>
+    <div class="card border p-4 mb-4">
+        <div class="mb-3">
+            <label><SfCheckBox TChecked="bool" Checked="@_emailEnabled" CheckedChanged="@((v) => { _emailEnabled = v; })" /> @L["EmailNotifications"]</label>
+        </div>
+        <div class="row">
+            @foreach (string eventType in EventTypeNames)
+            {
+                string name = eventType;
+                <div class="col-md-6 mb-1" data-testid="email-event-@name">
+                    <SfCheckBox TChecked="bool" Checked="@_emailEventTypes.Contains(name)" CheckedChanged="@((v) => SetEmailEventType(name, v))" Label="@name" />
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex flex-row gap-2 align-items-center mb-4">
+        <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveAsync" CssClass="e-primary" Disabled="@_isSaving" />
+        @if (_message is not null)
+        {
+            <span style="color: @(_success ? "#4caf50" : "#f44336")">@_message</span>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>The audit event type names, in alphabetical order. The public string constants are the names, so the reflection lists them all.</summary>
+    private static readonly IReadOnlyList<string> EventTypeNames = typeof(SecurityAuditEventTypes)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+        .Select(f => (string)f.GetRawConstantValue()!)
+        .OrderBy(n => n, StringComparer.Ordinal)
+        .ToList();
+
+    private bool _isLoading = true;
+    private string? _loadError;
+    private bool _pushEnabled;
+    private string _minimumSeverity = "1";
+    private bool _emailEnabled;
+    private readonly HashSet<string> _emailEventTypes = new(StringComparer.Ordinal);
+    private bool _isEnabling;
+    private bool _isSaving;
+    private string? _message;
+    private bool _success;
+
+    private List<KeyValuePair<string, string>> _severityOptions => new()
+    {
+        new("0", L["SeverityInfo"].Value),
+        new("1", L["SeverityWarning"].Value),
+        new("2", L["SeverityAlert"].Value),
+        new("3", L["SeverityCritical"].Value),
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note on Notifications.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            NotificationPreferencesSummary prefs = await Preferences.GetAsync(CancellationToken.None);
+            _pushEnabled = prefs.PushEnabled;
+            _minimumSeverity = prefs.MinimumSeverity.ToString(CultureInfo.InvariantCulture);
+            _emailEnabled = prefs.EmailEnabled;
+            _emailEventTypes.Clear();
+            foreach (string name in prefs.EmailEventTypes)
+            {
+                _ = _emailEventTypes.Add(name);
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["LoadFailed", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SetEmailEventType(string name, bool selected)
+    {
+        if (selected)
+        {
+            _ = _emailEventTypes.Add(name);
+        }
+        else
+        {
+            _ = _emailEventTypes.Remove(name);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _message = null;
+        try
+        {
+            var summary = new NotificationPreferencesSummary(
+                _pushEnabled,
+                int.Parse(_minimumSeverity, CultureInfo.InvariantCulture),
+                _emailEnabled,
+                EventTypeNames.Where(n => _emailEventTypes.Contains(n)).ToList());
+            _ = await Preferences.SaveAsync(summary, CancellationToken.None);
+            _success = true;
+            _message = L["Saved"];
+        }
+        catch (Exception ex)
+        {
+            _success = false;
+            _message = L["SaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    // Same subscribe flow as Notifications.razor: fetch the VAPID key, subscribe this browser, post the subscription.
+    private async Task EnablePushAsync()
+    {
+        _isEnabling = true;
+        _message = null;
+        try
+        {
+            var client = CreateClient();
+            var keyResponse = await client.GetAsync("api/v1/push/vapid-public-key");
+            if (!keyResponse.IsSuccessStatusCode)
+            {
+                _success = false;
+                _message = L["GetVapidKeyFailed", keyResponse.StatusCode.ToString()];
+                return;
+            }
+
+            var keyBody = await keyResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            string publicKey = keyBody.GetProperty("publicKey").GetString() ?? "";
+
+            var (endpoint, p256dhKey, authKey) = await WebPushClient.SubscribeAsync(publicKey);
+
+            var subscribeResponse = await client.PostAsJsonAsync("api/v1/push/subscribe", new
+            {
+                endpoint,
+                p256dhKey,
+                authKey
+            });
+
+            if (!subscribeResponse.IsSuccessStatusCode)
+            {
+                _success = false;
+                _message = L["SubscribeFailed", subscribeResponse.StatusCode.ToString()];
+                return;
+            }
+
+            _success = true;
+            _message = L["PushEnabledOnDevice"];
+            _pushEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            _success = false;
+            _message = L["EnablePushFailed", ex.Message];
+        }
+        finally
+        {
+            _isEnabling = false;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
+    }
+}
