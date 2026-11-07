@@ -41,6 +41,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="CalibrationStalenessDays">Staleness threshold in days; calibration buckets older than this are re-sampled even if at minimum threshold.</param>
     /// <param name="LogPruneIntervalHours">Hours between operational log prune runs (1 to 168).</param>
     /// <param name="MediaBackfillIntervalHours">Hours between media backfill runs (1 to 168).</param>
+    /// <param name="TimelapseCheckIntervalMinutes">Minutes between time-lapse checks (1 to 1440).</param>
+    /// <param name="TimelapseMaxSegmentMinutes">Longest time-lapse segment in minutes; longer event gaps are split (1 to 1440).</param>
     public record ClientConfigDto(
         bool EnableForensicAnalysisReports,
         bool EnableSignalAnomalyReports,

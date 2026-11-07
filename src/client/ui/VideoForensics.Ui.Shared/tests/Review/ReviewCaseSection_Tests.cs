@@ -68,11 +68,11 @@ public class ReviewCaseSection_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewCaseSection_PickNoCase_LeavesTheCase()
+    public async Task ReviewCaseSection_PickNoCase_LeavesTheCase()
     {
         // Arrange
         ArrangeOpenCase();
-        _ = CaseMode.EnterAsync(_openCase.Id, CancellationToken.None).GetAwaiter().GetResult();
+        _ = await CaseMode.EnterAsync(_openCase.Id, CancellationToken.None);
         IRenderedComponent<ReviewCaseSection> cut = RenderSection();
 
         // Act
@@ -83,11 +83,11 @@ public class ReviewCaseSection_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewCaseSection_CaseAlreadyEntered_SelectsItsOption()
+    public async Task ReviewCaseSection_CaseAlreadyEntered_SelectsItsOption()
     {
         // Arrange
         ArrangeOpenCase();
-        _ = CaseMode.EnterAsync(_openCase.Id, CancellationToken.None).GetAwaiter().GetResult();
+        _ = await CaseMode.EnterAsync(_openCase.Id, CancellationToken.None);
 
         // Act
         IRenderedComponent<ReviewCaseSection> cut = RenderSection();
