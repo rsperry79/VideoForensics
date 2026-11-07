@@ -15,6 +15,8 @@ namespace VideoForensics.Client.Common.Contracts
         public string FileName { get; set; } = "";
         public string RelativeMediaPath { get; set; } = "";
         public string MediaFormat { get; set; } = "";
+        /// <summary>What the row holds (<see cref="MediaKinds"/>). Backups without it are rejected on import.</summary>
+        public string MediaKind { get; set; } = "";
         public long FileSizeBytes { get; set; }
         public DateTime RecordedAtUtc { get; set; }
         public DateTime DownloadedAtUtc { get; set; }
@@ -36,6 +38,7 @@ namespace VideoForensics.Client.Common.Contracts
                 FileName = FileName,
                 FilePath = Path.Combine(mediaRootPath, RelativeMediaPath),
                 MediaFormat = MediaFormat,
+                MediaKind = MediaKind,
                 FileSizeBytes = FileSizeBytes,
                 RecordedAtUtc = RecordedAtUtc,
                 DownloadedAtUtc = DownloadedAtUtc,
@@ -62,6 +65,7 @@ namespace VideoForensics.Client.Common.Contracts
                 ? item.FilePath
                 : Path.GetRelativePath(downloadLocationRoot, item.FilePath),
                 MediaFormat = item.MediaFormat,
+                MediaKind = item.MediaKind,
                 FileSizeBytes = item.FileSizeBytes,
                 RecordedAtUtc = item.RecordedAtUtc,
                 DownloadedAtUtc = item.DownloadedAtUtc,
