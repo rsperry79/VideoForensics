@@ -85,10 +85,42 @@ else
                     <button type="button" class="btn btn-primary" @onclick="SaveBackfillIntervalAsync">@L["SaveButton"]</button>
                 </div>
             </div>
-            <small class="text-body-secondary">@L["FixedBackfillNote"]</small>
             @if (_intervalMessage is not null)
             {
                 <span style="@(_intervalSuccess ? "color: green;" : "color: red;")">@_intervalMessage</span>
+            }
+        </div>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <div class="card-body d-flex flex-column gap-3">
+            <div>
+                <label class="form-label fw-semibold" for="jamming-interval">@L["JammingIntervalLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["ServiceMinutesHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="jamming-interval" data-testid="jamming-interval-minutes" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_jammingMinutes" />
+                    <button type="button" class="btn btn-primary" data-testid="jamming-interval-save" @onclick="SaveJammingMinutesAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label fw-semibold" for="codec-interval">@L["CodecIntervalLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["ServiceMinutesHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="codec-interval" data-testid="codec-interval-minutes" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_codecMinutes" />
+                    <button type="button" class="btn btn-primary" data-testid="codec-interval-save" @onclick="SaveCodecMinutesAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label fw-semibold" for="flag-interval">@L["FlagIntervalLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["ServiceMinutesHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="flag-interval" data-testid="flag-interval-minutes" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_flagMinutes" />
+                    <button type="button" class="btn btn-primary" data-testid="flag-interval-save" @onclick="SaveFlagMinutesAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            @if (_minuteMessage is not null)
+            {
+                <span style="@(_minuteSuccess ? "color: green;" : "color: red;")">@_minuteMessage</span>
             }
         </div>
     </div>
@@ -142,6 +174,13 @@ else
 
     private int _timelapseCheckMinutes;
     private int _timelapseMaxSegmentMinutes;
+
+    private bool _minuteSuccess;
+    private string? _minuteMessage;
+
+    private int _jammingMinutes;
+    private int _codecMinutes;
+    private int _flagMinutes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -228,6 +267,31 @@ else
         }
     }
 
+    private async Task SaveServiceMinutesAsync(string service, int minutes)
+    {
+        try
+        {
+            (bool applied, string message) = await ConfigTools.SetServiceIntervalMinutesAsync(Config, service, minutes, CancellationToken.None);
+            _minuteSuccess = applied;
+            _minuteMessage = message;
+            if (!applied)
+            {
+                ResetIntervalInputs();
+            }
+        }
+        catch (Exception ex)
+        {
+            _minuteSuccess = false;
+            _minuteMessage = L["IntervalError", ex.Message].Value;
+        }
+    }
+
+    private Task SaveJammingMinutesAsync() => SaveServiceMinutesAsync("Jamming", _jammingMinutes);
+
+    private Task SaveCodecMinutesAsync() => SaveServiceMinutesAsync("Codec", _codecMinutes);
+
+    private Task SaveFlagMinutesAsync() => SaveServiceMinutesAsync("Flag", _flagMinutes);
+
     private Task SavePruneIntervalAsync() => SaveIntervalAsync("LogPrune", _pruneInterval);
 
     private Task SaveUpdateIntervalAsync() => SaveIntervalAsync("UpdateCheck", _updateInterval);
@@ -299,5 +363,8 @@ else
         _backfillInterval = Config.MediaBackfillIntervalHours;
         _timelapseCheckMinutes = Config.TimelapseCheckIntervalMinutes;
         _timelapseMaxSegmentMinutes = Config.TimelapseMaxSegmentMinutes;
+        _jammingMinutes = Config.JammingIntervalMinutes;
+        _codecMinutes = Config.CodecIntervalMinutes;
+        _flagMinutes = Config.FlagIntervalMinutes;
     }
 }
