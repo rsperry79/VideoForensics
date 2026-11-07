@@ -79,6 +79,12 @@ namespace VideoForensics.Client.Hosting.Remote
             return (resultDto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
         }
 
+        /// <summary>The backfill queue runs on the server only; a remote client never reads it.</summary>
+        public Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
+        {
+            throw new NotSupportedException("The backfill queue is read on the server, not by a remote client.");
+        }
+
         /// <inheritdoc />
         public async Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {

@@ -72,6 +72,9 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
                     existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
 
+                    // Only the rekey on a match clears the queue flag; a re-upsert of an awaiting row keeps it.
+                    existing.AwaitingDingId |= @event.AwaitingDingId;
+
                     // Update DownloadStatus based on DownloadedAtUtc
                     if (existing.DownloadedAtUtc.HasValue)
                     {
@@ -141,6 +144,16 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
+                .ToListAsync(ct);
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId && e.AwaitingDingId && e.DownloadAttempts < maxAttempts && e.DownloadStatus != EventDownloadStatus.Downloaded)
+                .OrderBy(e => e.OccurredAtUtc)
                 .ToListAsync(ct);
         }
 

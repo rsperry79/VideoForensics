@@ -50,5 +50,8 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>When the backfill queue next tries this event. Null when it is not waiting for a retry.</summary>
         public DateTime? NextAttemptAtUtc { get; set; }
+
+        /// <summary>True while the event is stored without a string ding id. Such an event is in the backfill queue, and it blocks its account's pulls until the queue clears.</summary>
+        public bool AwaitingDingId { get; set; }
     }
 }

@@ -549,6 +549,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             // Assert - the row is keyed by the doorbot id, still NotAttempted, and nothing was downloaded
             Assert.True(result.Success, result.ErrorMessage);
             Assert.Contains(stored, e => e.ProviderEventId == "987654" && e.DownloadStatus == Data.Common.Entities.EventDownloadStatus.NotAttempted);
+            Assert.Contains(stored, e => e.ProviderEventId == "987654" && e.AwaitingDingId);
             Assert.False(Directory.Exists(folder) && Directory.GetFiles(folder, "*.mp4").Length > 0);
         }
 
