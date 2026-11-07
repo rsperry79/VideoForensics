@@ -1918,7 +1918,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("AwaitingDingId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
