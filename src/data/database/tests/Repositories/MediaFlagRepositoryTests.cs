@@ -351,6 +351,34 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task MediaFlagRepository_GetNeighbourAsync_CurrentNoLongerMatchesFilter_ReturnsNeighbourThatMatches()
+        {
+            var cam = Guid.NewGuid();
+            MediaFlag newest = await RaiseAsync(cam, 2);
+            MediaFlag current = await RaiseAsync(cam, 1);
+            MediaFlag oldest = await RaiseAsync(cam, 0);
+            _ = await _repository.UpdateStatusAsync(current.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "noise", "alice", Ct);
+            var unreviewed = new MediaFlagFilter { Statuses = new[] { MediaFlagStatus.Unreviewed } };
+
+            // The current flag is Dismissed, so it is outside the filter, but its position still anchors the walk.
+            Assert.Equal(oldest.Id, (await _repository.GetNeighbourAsync(current.Id, unreviewed, MediaFlagNeighbour.Next, Ct))?.Id);
+            Assert.Equal(newest.Id, (await _repository.GetNeighbourAsync(current.Id, unreviewed, MediaFlagNeighbour.Previous, Ct))?.Id);
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_GetNeighbourAsync_CurrentMatchesFilter_ReturnsNeighbourThatMatches()
+        {
+            var cam = Guid.NewGuid();
+            MediaFlag newest = await RaiseAsync(cam, 2);
+            MediaFlag current = await RaiseAsync(cam, 1);
+            MediaFlag oldest = await RaiseAsync(cam, 0);
+            var unreviewed = new MediaFlagFilter { Statuses = new[] { MediaFlagStatus.Unreviewed } };
+
+            Assert.Equal(oldest.Id, (await _repository.GetNeighbourAsync(current.Id, unreviewed, MediaFlagNeighbour.Next, Ct))?.Id);
+            Assert.Equal(newest.Id, (await _repository.GetNeighbourAsync(current.Id, unreviewed, MediaFlagNeighbour.Previous, Ct))?.Id);
+        }
+
+        [Fact]
         public async Task MediaFlagRepository_GetPosition_ReturnsOneBasedPositionInListOrder()
         {
             var cam = Guid.NewGuid();
