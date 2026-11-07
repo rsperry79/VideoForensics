@@ -18,6 +18,7 @@
 @inject IDeviceRepository DeviceRepository
 @inject IMediaBitrateSeriesSource BitrateSeries
 @inject IStringLocalizer<SharedResources> L
+@inject NavigationManager NavigationManager
 
 <PageRightPanelContent>
     @if (_flag is { } flag)
@@ -26,7 +27,7 @@
     }
     @if (_flag is not null)
     {
-        <ClipNavigator Filter="@BitrateFilter" CurrentFlagId="@FlagId" />
+        <ClipNavigator Filter="@BitrateFilter" CurrentFlagId="@FlagId" OnNavigate="OnNeighbourNavigate" />
     }
 </PageRightPanelContent>
 
@@ -42,6 +43,10 @@
             </BreadcrumbItems>
         </SfBreadcrumb>
         <h5 class="mb-0" data-testid="bitrate-review-title">@L["BitrateReviewTitle"]</h5>
+        @if (_noUnreviewedMessage is { } noUnreviewed)
+        {
+            <div class="small text-muted" role="status" data-testid="flag-review-no-unreviewed">@noUnreviewed</div>
+        }
     </Breadcrumb>
 
     <Media>
@@ -97,6 +102,7 @@
     private DateTime _windowEnd;
     private IReadOnlyList<DateTime> _dipTimes = [];
     private IReadOnlyList<BitrateSecondDto>? _points;
+    private string? _noUnreviewedMessage;
 
     /// <summary>How far the timeline window extends beyond the flag window when the clip has no known duration.</summary>
     private static readonly TimeSpan FlagWindowPad = TimeSpan.FromMinutes(5);
@@ -121,6 +127,7 @@
         _source = null;
         _dipTimes = [];
         _points = null;
+        _noUnreviewedMessage = null;
         _state = MediaFitState.FlagNotFound;
         try
         {
@@ -184,9 +191,39 @@
         _player = player;
     }
 
-    private void OnFlagChanged(MediaFlag updated)
+    /// <summary>Keep or Dismiss moves to the next unreviewed flag. Undoing a review stays on the flag.</summary>
+    private async Task OnFlagChanged(MediaFlag updated)
     {
         _flag = updated;
+        if (updated.Status == MediaFlagStatus.Unreviewed)
+        {
+            return;
+        }
+
+        try
+        {
+            MediaFlag? next = await FlagAdvance.FindNextUnreviewedAsync(MediaFlagRepository, BitrateFilter, updated.Id, _disposeCts.Token);
+            if (next is { } found && FlaggedMediaTable.ReviewPath(found) is { } path)
+            {
+                NavigationManager.NavigateTo(path);
+                return;
+            }
+
+            _noUnreviewedMessage = L["NoUnreviewedFlagsLeft"].Value;
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            // The page is leaving; the advance is dropped.
+        }
+    }
+
+    private void OnNeighbourNavigate(MediaFlag neighbour)
+    {
+        string? path = FlaggedMediaTable.ReviewPath(neighbour);
+        if (path is not null)
+        {
+            NavigationManager.NavigateTo(path);
+        }
     }
 
     public void Dispose()

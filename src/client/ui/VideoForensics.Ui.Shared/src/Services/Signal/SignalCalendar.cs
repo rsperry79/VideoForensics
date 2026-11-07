@@ -75,6 +75,21 @@ public sealed class SignalCalendar
         return new SignalCalendar(cells, hours, days);
     }
 
+    /// <summary>
+    /// The calendar the analysis returns. The 168 cells are computed from the readings inside the window, so the grid
+    /// follows the selected range. The hour-of-day and day-of-week profiles use every reading, so the grid's margins
+    /// and deviation figures stay all-time.
+    /// </summary>
+    public static SignalCalendar ForWindowWithAllTimeProfiles(IEnumerable<SignalSample> samples, DateTime from, DateTime to)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+
+        var all = samples.ToList();
+        SignalCalendar range = Compute(all, from, to);
+        SignalCalendar allTime = Compute(all, DateTime.MinValue, DateTime.MaxValue);
+        return new SignalCalendar(range.CellList, allTime.HourOfDayList, allTime.DayOfWeekList);
+    }
+
     /// <summary>The stats for one weekday (0 = Monday) and hour (0-23).</summary>
     public SignalStats Cell(int day, int hour)
     {

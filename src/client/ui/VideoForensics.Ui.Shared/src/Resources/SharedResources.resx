@@ -1070,6 +1070,9 @@
   <data name="ClipNavigatorEnd" xml:space="preserve">
     <value>No more flags in this direction</value>
   </data>
+  <data name="NoUnreviewedFlagsLeft" xml:space="preserve">
+    <value>No unreviewed flags left</value>
+  </data>
   <data name="SignalFlagsHeading" xml:space="preserve">
     <value>Signal deviation flags</value>
   </data>
@@ -1142,9 +1145,6 @@
   <data name="NotesHeading" xml:space="preserve">
     <value>Notes</value>
   </data>
-  <data name="NotesEmpty" xml:space="preserve">
-    <value>No notes yet.</value>
-  </data>
   <data name="NotesAdd" xml:space="preserve">
     <value>Add note</value>
   </data>
@@ -1180,5 +1180,11 @@
   </data>
   <data name="FlagActionsMissingCase" xml:space="preserve">
     <value>That case no longer exists.</value>
+  </data>
+  <data name="ShowMoreAlerts" xml:space="preserve">
+    <value>Show {0} more</value>
+  </data>
+  <data name="ShowLessAlerts" xml:space="preserve">
+    <value>Show less</value>
   </data>
 </root>
