@@ -700,7 +700,8 @@ namespace VideoForensics.Client.Hosting
                     configurationService: provider.GetService<IForensicsConfigurationService>(),
                     progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>(),
                     mediaPaths: provider.GetService<IMediaPathResolver>(),
-                    referenceCache: provider.GetRequiredService<IReferenceDataCache>()));
+                    referenceCache: provider.GetRequiredService<IReferenceDataCache>(),
+                    budgetGuard: provider.GetService<IProviderApiBudgetGuard>()));
                 _ = services.AddKeyedScoped<IInventorySyncService>(providerName, (provider, key) => new InventorySyncService(
                     provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
                     provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),

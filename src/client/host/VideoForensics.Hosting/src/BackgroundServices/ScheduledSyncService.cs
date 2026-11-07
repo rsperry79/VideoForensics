@@ -448,10 +448,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     return;
                 }
 
+                // Provider API budget: a refused run is skipped here and the schedule still advances, so it is retried on the next interval.
+                IProviderApiBudgetGuard budget = sp.GetRequiredService<IProviderApiBudgetGuard>();
+                if (!await budget.TryConsumeAsync(account.ProviderName, ct))
+                {
+                    _logger.LogDebug("Scheduled snapshot sync deferred for {ProviderName} account: provider API budget exceeded for this window", account.ProviderName);
+                    return;
+                }
+
                 if (await authService.RestoreFromSavedCredentialsAsync(account.Id, ct))
                 {
                     SnapshotSyncResult result = await sp.GetRequiredService<ISnapshotSyncService>()
                         .SyncAccountSnapshotsAsync(account.Id, fromUtc: null, toUtc: null, ct);
+
+                    // Each device attempt is one Ring capture call, so the budget counts them one by one.
+                    for (int i = 0; i < result.DevicesAttempted; i++)
+                    {
+                        await budget.RecordCallAsync(account.ProviderName, ct);
+                    }
                     if (result.ErrorMessage is not null)
                     {
                         _logger.LogWarning("Scheduled snapshot sync for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
@@ -576,7 +590,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         storage: sp.GetService<IStorageLocationProvider>(),
                         configurationService: sp.GetService<IForensicsConfigurationService>(),
                         progress: sp.GetService<ISyncProgressStore>(),
-                        referenceCache: referenceCache);
+                        referenceCache: referenceCache,
+                        budgetGuard: budgetGuard);
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
@@ -608,11 +623,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     }
 
-                    // Each catch-up window records its own provider call inside PullCatchUpAsync.
-                    if (catchUpFrom is null)
-                    {
-                        await budgetGuard.RecordCallAsync(providerName, ct);
-                    }
+                    // The pull records each provider call it makes, so the scheduler records none here.
 
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -673,7 +684,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                 // A failed window records its error on the account; a later clean window clears it. Keep the first one so it is not lost.
                 firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await accounts.GetAsync(accountId, ct));
-                await budgetGuard.RecordCallAsync(providerName, ct);
 
                 // Why: a throttled window means the provider is refusing this account. The later windows would only add refused calls.
                 if (window.RateLimited)

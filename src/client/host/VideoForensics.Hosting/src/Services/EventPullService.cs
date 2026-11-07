@@ -59,6 +59,9 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IMediaItemRepository? _mediaItems;
         private readonly ISyncProgressStore? _progress;
         private readonly IMediaPathResolver _mediaPaths;
+
+        // Why: every event fetch and media download is a Ring call. Counting each one stops a pull before it exceeds the provider budget.
+        private readonly IProviderApiBudgetGuard? _budgetGuard;
         private readonly TimeSpan _progressPollInterval;
 
         // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
@@ -84,8 +87,10 @@ namespace VideoForensics.Client.Hosting.Services
             ISyncProgressStore? progress = null,
             TimeSpan? progressPollInterval = null,
             IMediaPathResolver? mediaPaths = null,
-            IReferenceDataCache? referenceCache = null)
+            IReferenceDataCache? referenceCache = null,
+            IProviderApiBudgetGuard? budgetGuard = null)
         {
+            _budgetGuard = budgetGuard;
             _progress = progress;
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _progressPollInterval = progressPollInterval ?? TimeSpan.FromMilliseconds(500);
@@ -190,6 +195,14 @@ namespace VideoForensics.Client.Hosting.Services
                     {
                         _logger.LogInformation("Syncing events for device {DeviceName} ({Index}/{DeviceCount})", deviceName, deviceIndex, inventory.Devices.Count);
 
+                        // One budget check covers this device's event fetch and download; each call is then recorded as it is made.
+                        if (_budgetGuard is not null && !await _budgetGuard.TryConsumeAsync(account.ProviderName, cancellationToken))
+                        {
+                            rateLimited = true;
+                            _logger.LogWarning("Event pull stopped early: provider API budget is spent for this window; remaining devices wait for the next run");
+                            break;
+                        }
+
                         IReadOnlyList<DeviceEvent> events = await _eventAndConfigService.GetEventsAsync(
                             accountId,
                             device.ProviderDeviceId,
@@ -198,6 +211,11 @@ namespace VideoForensics.Client.Hosting.Services
                             eventType: null,
                             cancellationToken
                         );
+
+                        if (_budgetGuard is not null)
+                        {
+                            await _budgetGuard.RecordCallAsync(account.ProviderName, cancellationToken);
+                        }
 
                         // The provider is asked for the window, but not every provider trims strictly; count only what is inside it.
                         int deviceEventCount = events?.Count(e => e.Timestamp >= startTime && e.Timestamp <= endTime) ?? 0;
@@ -215,6 +233,11 @@ namespace VideoForensics.Client.Hosting.Services
                             DownloadResult media = await DownloadWithProgressAsync(
                                 _mediaDownloadService, device.ProviderDeviceId, deviceFolder, startTime, endTime, providerLocationId,
                                 deviceName, deviceIndex, inventory.Devices.Count, cancellationToken);
+                            if (_budgetGuard is not null)
+                            {
+                                await _budgetGuard.RecordCallAsync(account.ProviderName, cancellationToken);
+                            }
+
                             if (!media.Success)
                             {
                                 throw new InvalidOperationException(media.ErrorMessage ?? "Media download failed");

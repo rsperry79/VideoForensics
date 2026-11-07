@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -18,7 +19,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _media = new();
 
-        private EventPullService BuildSut()
+        private EventPullService BuildSut(IProviderApiBudgetGuard? budget = null)
         {
             var account = new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
             var location = new LocationEntity { Id = _locationId, ProviderLocationId = "location-123", Name = "Home" };
@@ -31,7 +32,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DownloadResult(Success: true));
 
-            return new EventPullService(_events.Object, _devices.Object, _locations.Object, _accounts.Object, NullLogger<EventPullService>.Instance, _media.Object);
+            return new EventPullService(_events.Object, _devices.Object, _locations.Object, _accounts.Object, NullLogger<EventPullService>.Instance, _media.Object, budgetGuard: budget);
         }
 
         [Fact]
@@ -65,6 +66,32 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _events.Verify(e => e.GetEventsAsync(_accountId, "dev-2", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.True(result.RateLimited);
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_BudgetSpent_MakesNoEventCall()
+        {
+            var budget = new Mock<IProviderApiBudgetGuard>();
+            _ = budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            EventPullService sut = BuildSut(budget.Object);
+
+            EventPullResult result = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            _events.Verify(e => e.GetEventsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.True(result.RateLimited);
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_EachDeviceCall_IsCountedAgainstTheBudget()
+        {
+            var budget = new Mock<IProviderApiBudgetGuard>();
+            _ = budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            EventPullService sut = BuildSut(budget.Object);
+
+            _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            // One device: the event fetch and the media download are each a Ring call.
+            budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
