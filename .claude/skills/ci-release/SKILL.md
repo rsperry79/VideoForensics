@@ -39,11 +39,3 @@ Also: `build-ios.yml` (pull request to `main`/`dev`, manual), `codeql.yml`, `mai
 3. Open a PR to `dev`. Its CI run is the verification. Local builds do not prove a workflow works.
 4. Check the run's logs for the changed step before merging.
 
-## When CI fails
-- Read the failing job's log for the first error. Do not guess from the job name.
-- Log the failure in `.claude/task_failure_log.md` (global `failure-log` skill).
-- Rerun a single job or the full workflow only after fixing the cause, or to confirm a flaky test (see the Watch list in the failure log).
-
-## Releasing
-- Releases come from merges to `dev` (Testing prerelease) and `main` (Release). Promotion follows `pr-promotion`.
-- Before a release PR, run the `full-gate` skill.
