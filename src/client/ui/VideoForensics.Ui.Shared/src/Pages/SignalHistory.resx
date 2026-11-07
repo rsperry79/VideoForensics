@@ -155,6 +155,27 @@
   <data name="CalendarHourStdDev" xml:space="preserve">
     <value>Hour std dev</value>
   </data>
+  <data name="CalendarCellTitle" xml:space="preserve">
+    <value>{0}: {1}, {2} readings, {3}: {4}, {5}: {6}</value>
+  </data>
+  <data name="CalendarTipValue" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="CalendarTipWeekSigma" xml:space="preserve">
+    <value>Week sigma</value>
+  </data>
+  <data name="CalendarTipHourSigma" xml:space="preserve">
+    <value>Hour sigma</value>
+  </data>
+  <data name="GridModeLabel" xml:space="preserve">
+    <value>Grid view</value>
+  </data>
+  <data name="GridModeReading" xml:space="preserve">
+    <value>Reading (current view)</value>
+  </data>
+  <data name="GridModeDeviation" xml:space="preserve">
+    <value>Deviation</value>
+  </data>
   <data name="AlertTitle" xml:space="preserve">
     <value>Signal alert: readings more than 2 std devs from the camera's mean</value>
   </data>

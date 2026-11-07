@@ -9,6 +9,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -238,5 +239,114 @@ public class BitrateHistory_Tests : ScopeRailTestContext
 
         Assert.Single(page.FindAll("[data-testid='bitrate-calendar'] tbody tr:first-child td.calendar-box-green"));
         Assert.Single(page.FindAll("[data-testid='bitrate-calendar'] tbody tr:first-child td.calendar-box-red"));
+    }
+
+    private IStringLocalizer<BitrateHistory> PageL => Services.GetRequiredService<IStringLocalizer<BitrateHistory>>();
+
+    private const string FirstBoxCell = "[data-testid='bitrate-calendar'] tbody tr:first-child td:nth-child(2)";
+    private const string SecondBoxCell = "[data-testid='bitrate-calendar'] tbody tr:first-child td:nth-child(3)";
+    private const string FooterCells = "[data-testid='bitrate-calendar'] tfoot";
+
+    /// <summary>A grid box's stats: a mean over the count readings, with an optional sample sd.</summary>
+    private static SignalStats Box(int count, double mean, double? stdDev = null)
+    {
+        return new SignalStats(Count: count, Min: null, Max: null, Average: mean, Latest: null, PercentWeak: 0, StdDev: stdDev);
+    }
+
+    /// <summary>A week grid from the given cells, hour-of-day and day-of-week profiles, keyed by index. Missing entries are empty.</summary>
+    private static SignalCalendar BuildCalendar(Dictionary<int, SignalStats> cells, Dictionary<int, SignalStats> hours, Dictionary<int, SignalStats> days)
+    {
+        SignalStats empty = SignalStats.Compute(Array.Empty<SignalSample>());
+        return new SignalCalendar(
+            Enumerable.Range(0, SignalCalendar.Days * SignalCalendar.Hours).Select(i => cells.GetValueOrDefault(i, empty)).ToList(),
+            Enumerable.Range(0, SignalCalendar.Hours).Select(i => hours.GetValueOrDefault(i, empty)).ToList(),
+            Enumerable.Range(0, SignalCalendar.Days).Select(i => days.GetValueOrDefault(i, empty)).ToList());
+    }
+
+    /// <summary>One camera with a 2000 kbps all-time mean and a 100 kbps sd, and the given grid.</summary>
+    private static BitrateDeviceAnalysis DeviceWithCalendar(SignalCalendar calendar)
+    {
+        var allTime = new SignalStats(Count: 10, Min: 1700, Max: 2300, Average: 2000, Latest: 2000, PercentWeak: 0, StdDev: 100);
+        return new BitrateDeviceAnalysis(
+            Guid.NewGuid(),
+            "Front door",
+            "Ring",
+            "ring-front",
+            allTime,
+            allTime,
+            Array.Empty<BitrateSample>(),
+            Array.Empty<SignalDeviationWindow>(),
+            calendar,
+            Array.Empty<SignalBucketStats>(),
+            Array.Empty<SignalBucketStats>(),
+            Array.Empty<SignalBucketStats>());
+    }
+
+    /// <summary>Renders the page. The first load gets the first analysis, and each later load (a scope change) the next one.</summary>
+    private IRenderedComponent<BitrateHistory> RenderSequence(params BitrateDeviceAnalysis[] responses)
+    {
+        _ = RegisterDeviceRepository(_device);
+        var queue = new Queue<BitrateAnalysis>(responses.Select(r => new BitrateAnalysis([r])));
+        var service = new Mock<IBitrateAnalysisService>();
+        _ = service
+            .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => queue.Count > 1 ? queue.Dequeue() : queue.Peek());
+        _ = Services.AddScoped(_ => service.Object);
+        _ = Services.AddScoped<SignalDrillTrail>();
+        var flags = new Mock<IMediaFlagRepository>();
+        _ = flags
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+        _ = Services.AddScoped(_ => flags.Object);
+        return Render<BitrateHistory>();
+    }
+
+    [Fact]
+    public void CalendarBox_TooltipShowsItsValue_ReadingCount_AndWeekAndHourSigma()
+    {
+        IRenderedComponent<BitrateHistory> page = RenderSequence(DeviceWithCalendar(BuildCalendar(
+            new() { [0] = Box(2, 2050, 3.5) },
+            new() { [0] = Box(4, 2050, 6.8) },
+            new() { [0] = Box(5, 2050, 4.2) })));
+
+        string title = page.Find(FirstBoxCell).GetAttribute("title");
+
+        Assert.Equal(
+            PageL["CalendarCellTitle", PageL["CalendarTipValue"].Value, "2050.0 kbps", 2, PageL["CalendarTipWeekSigma"].Value, "4.2", PageL["CalendarTipHourSigma"].Value, "6.8"].Value,
+            title);
+    }
+
+    [Fact]
+    public void GridMode_ReadingShowsTheMean_AndDeviationShowsDToOneDecimal()
+    {
+        // The box mean of 2150 kbps sits 1.5 sd from the all-time mean of 2000 kbps (sd 100). The next box is empty.
+        IRenderedComponent<BitrateHistory> page = RenderSequence(DeviceWithCalendar(BuildCalendar(new() { [0] = Box(1, 2150) }, new(), new())));
+
+        Assert.Equal("2150", page.Find(FirstBoxCell).TextContent.Trim());
+
+        page.Find("[data-testid='bitrate-grid-mode-deviation']").Click();
+
+        Assert.Equal("1.5", page.Find(FirstBoxCell).TextContent.Trim());
+        Assert.Equal(string.Empty, page.Find(SecondBoxCell).TextContent.Trim());
+
+        page.Find("[data-testid='bitrate-grid-mode-reading']").Click();
+
+        Assert.Equal("2150", page.Find(FirstBoxCell).TextContent.Trim());
+    }
+
+    [Fact]
+    public void ChangingTheRange_RedrawsTheGrid_ButLeavesTheFooterSigmaUnchanged()
+    {
+        Dictionary<int, SignalStats> hours = new() { [0] = Box(4, 2000, 6.8) };
+        BitrateDeviceAnalysis before = DeviceWithCalendar(BuildCalendar(new() { [0] = Box(2, 2050) }, hours, new()));
+        BitrateDeviceAnalysis after = DeviceWithCalendar(BuildCalendar(new() { [0] = Box(2, 2300) }, hours, new()));
+        IRenderedComponent<BitrateHistory> page = RenderSequence(before, after);
+        string footer = page.Find(FooterCells).TextContent;
+        Assert.Equal("2050", page.Find(FirstBoxCell).TextContent.Trim());
+
+        Services.GetRequiredService<ScopeState>().Set(new ForensicScope([], DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddDays(1), null));
+
+        page.WaitForAssertion(() => Assert.Equal("2300", page.Find(FirstBoxCell).TextContent.Trim()));
+        Assert.Equal(footer, page.Find(FooterCells).TextContent);
     }
 }
