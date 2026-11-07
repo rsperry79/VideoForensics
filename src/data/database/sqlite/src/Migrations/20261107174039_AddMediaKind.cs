@@ -26,8 +26,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             migrationBuilder.Sql(
                 """
                 UPDATE "MediaItems" SET "MediaKind" = CASE
-                    WHEN "MediaFormat" = 'jpg' THEN 'Snapshot'
-                    WHEN "MediaFormat" = 'image/png' THEN 'Still'
+                    WHEN lower("MediaFormat") IN ('jpg', 'jpeg') THEN 'Snapshot'
+                    WHEN lower("MediaFormat") = 'image/png' THEN 'Still'
                     WHEN "FileName" LIKE '%snapshot-loop%' THEN 'Timelapse'
                     ELSE 'Clip'
                 END;
@@ -51,6 +51,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 name: "MediaKind",
                 table: "MediaItems");
 
+            // Why: this recreates the stricter (DeviceId, RecordedAtUtc) index. It fails while a snapshot, loop or still shares
+            // an instant with a clip, so those rows must be moved or removed before rolling back.
             migrationBuilder.CreateIndex(
                 name: "IX_MediaItems_DeviceId_RecordedAtUtc",
                 table: "MediaItems",

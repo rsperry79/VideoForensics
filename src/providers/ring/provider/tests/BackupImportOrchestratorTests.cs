@@ -159,6 +159,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     FileName = "missing.mp4",
                     RelativeMediaPath = "missing.mp4",
                     MediaFormat = "mp4",
+                    MediaKind = "Clip",
                     Sha256Hash = "abc123"
                 };
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: [exportedItem]);
@@ -174,6 +175,73 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.Equal(1, result.MediaItems.Inserted);
                 Assert.Equal(1, result.MediaItems.IntegrityIssues);
                 _mockMediaItems.Verify(r => r.AddAsync(It.Is<MediaItem>(m => m.Id == exportedItem.Id && !m.IntegrityVerified), It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_MediaItemWithoutKind_RejectsTheBackupBeforeAnyWrite()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var deviceId = Guid.NewGuid();
+                var exportedItem = new ExportedMediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    FileName = "old.mp4",
+                    RelativeMediaPath = "old.mp4",
+                    MediaFormat = "mp4",
+                    Sha256Hash = "abc123"
+                };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: [exportedItem]);
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.False(result.Success);
+                Assert.Contains("Export it again", result.ErrorMessage);
+                _mockMediaItems.Verify(r => r.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_MediaItemKind_IsCarriedToTheImportedRow()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var deviceId = Guid.NewGuid();
+                var exportedItem = new ExportedMediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    FileName = "snap.jpg",
+                    RelativeMediaPath = "snap.jpg",
+                    MediaFormat = "jpg",
+                    MediaKind = "Snapshot",
+                    Sha256Hash = "abc123"
+                };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: [exportedItem]);
+
+                _ = _mockMediaItems.Setup(r => r.GetAsync(exportedItem.Id, It.IsAny<CancellationToken>())).ReturnsAsync((MediaItem?)null);
+                _ = _mockDevices.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "d1", Name = "Cam", Type = "camera" });
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.True(result.Success);
+                _mockMediaItems.Verify(r => r.AddAsync(It.Is<MediaItem>(m => m.Id == exportedItem.Id && m.MediaKind == "Snapshot"), It.IsAny<CancellationToken>()), Times.Once);
             }
             finally
             {
