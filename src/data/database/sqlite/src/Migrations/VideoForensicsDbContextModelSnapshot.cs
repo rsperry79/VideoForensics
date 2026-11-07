@@ -1918,6 +1918,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("AwaitingDingId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
@@ -2943,6 +2944,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid?>("MediaItemDetectionId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MediaKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Clip");
+
                     b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
 
@@ -2999,7 +3007,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("Sha256Hash");
 
-                    b.HasIndex("DeviceId", "RecordedAtUtc")
+                    b.HasIndex("DeviceId", "RecordedAtUtc", "MediaKind")
                         .IsUnique();
 
                     b.ToTable("MediaItems");
