@@ -64,19 +64,13 @@
 }
 @{
     string alertSignature = AlertSignature(alerts);
+    IReadOnlyList<string> alertLines = alerts
+        .Select(a => L["AlertLine", a.Section.Name, a.Window.WorstRssiDbm, Zone.Format(a.Window.HourStartUtc, "ddd MMM d HH:00")].Value)
+        .ToList();
 }
 @if (alerts.Count > 0 && alertSignature != _dismissedAlertSignature)
 {
-    <div class="alert alert-danger alert-dismissible" role="alert" data-testid="bitrate-alert">
-        <button type="button" class="btn-close" aria-label="@L["CloseMenu"]" data-testid="bitrate-alert-close" @onclick="() => DismissAlerts(alertSignature)"></button>
-        <strong>@L["AlertTitle"]</strong>
-        <ul class="mb-0">
-            @foreach ((DeviceBitrate section, SignalDeviationWindow window) in alerts)
-            {
-                <li>@L["AlertLine", section.Name, window.WorstRssiDbm, Zone.Format(window.HourStartUtc, "ddd MMM d HH:00")]</li>
-            }
-        </ul>
-    </div>
+    <DeviationAlertBanner Items="@alertLines" Signature="@alertSignature" Title="@L["AlertTitle"].Value" TestId="bitrate-alert" DismissTestId="bitrate-alert-close" CloseLabel="@L["CloseMenu"].Value" OnDismiss="() => DismissAlerts(alertSignature)" />
 }
 
 @foreach (DeviceBitrate section in _sections)

@@ -1181,4 +1181,10 @@
   <data name="FlagActionsMissingCase" xml:space="preserve">
     <value>That case no longer exists.</value>
   </data>
+  <data name="ShowMoreAlerts" xml:space="preserve">
+    <value>Show {0} more</value>
+  </data>
+  <data name="ShowLessAlerts" xml:space="preserve">
+    <value>Show less</value>
+  </data>
 </root>

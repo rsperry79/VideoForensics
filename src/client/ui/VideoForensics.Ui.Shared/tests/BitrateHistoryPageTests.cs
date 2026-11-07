@@ -8,6 +8,7 @@ using Moq;
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -154,6 +155,43 @@ public class BitrateHistory_Tests : ScopeRailTestContext
         IRenderedComponent<BitrateHistory> page = RenderWith(Analysis(_device, Steady(10)));
 
         Assert.Empty(page.FindAll("[data-testid='bitrate-alert']"));
+    }
+
+    private IStringLocalizer<SharedResources> SharedL => Services.GetRequiredService<IStringLocalizer<SharedResources>>();
+
+    /// <summary>Two-sigma windows on consecutive past hours, one alert each.</summary>
+    private static SignalDeviationWindow[] TwoSigmaHours(int count)
+    {
+        DateTime latest = DateTime.UtcNow.Date.AddDays(-1);
+        return Enumerable.Range(0, count)
+            .Select(i => new SignalDeviationWindow(latest.AddHours(-i), SignalDeviationLevel.TwoSigma, 1, 9000))
+            .ToArray();
+    }
+
+    [Fact]
+    public void SevenTwoSigmaAlerts_ShowFiveAndAShowMoreLink()
+    {
+        BitrateDeviceAnalysis analysis = Analysis(_device, Steady(6)) with { Deviations = TwoSigmaHours(7) };
+        IRenderedComponent<BitrateHistory> page = RenderWith(analysis);
+
+        Assert.Equal(5, page.FindAll("[data-testid='bitrate-alert'] li").Count);
+        Assert.Equal(SharedL["ShowMoreAlerts", 2].Value, page.Find("[data-testid='bitrate-alert-toggle']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ShowMore_ExpandsTheAlertList_AndShowLessCollapsesIt()
+    {
+        BitrateDeviceAnalysis analysis = Analysis(_device, Steady(6)) with { Deviations = TwoSigmaHours(7) };
+        IRenderedComponent<BitrateHistory> page = RenderWith(analysis);
+
+        page.Find("[data-testid='bitrate-alert-toggle']").Click();
+
+        Assert.Equal(7, page.FindAll("[data-testid='bitrate-alert'] li").Count);
+        Assert.Equal(SharedL["ShowLessAlerts"].Value, page.Find("[data-testid='bitrate-alert-toggle']").TextContent.Trim());
+
+        page.Find("[data-testid='bitrate-alert-toggle']").Click();
+
+        Assert.Equal(5, page.FindAll("[data-testid='bitrate-alert'] li").Count);
     }
 
     [Fact]
