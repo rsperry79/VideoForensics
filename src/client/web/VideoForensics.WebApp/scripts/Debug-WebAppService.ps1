@@ -392,6 +392,11 @@ try {
         # staged package and restarts, then the wait below confirms it answers.
         if ($PSCmdlet.ShouldProcess("service $ServiceName", "Stage the $Configuration build with the updater")) {
             $stager = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..\deploy\windows\stage-debug-build.ps1')).Path
+            # The stager publishes without rebuilding, so this script builds the project first.
+            Write-Host "Building $project ($Configuration) for service $ServiceName"
+            dotnet build $project -c $Configuration
+            if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+
             Write-Host "Staging the $Configuration build for service $ServiceName"
             & $stager -ProjectPath $project -Configuration $Configuration -ServiceName $ServiceName
             if ($LASTEXITCODE -ne 0) { throw "stage-debug-build.ps1 failed with exit code $LASTEXITCODE." }
