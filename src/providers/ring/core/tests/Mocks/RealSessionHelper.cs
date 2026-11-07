@@ -44,17 +44,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
                 DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
             }
 
-            // A scratch copy (see TryUseScratchCopy) points the database pointer at the copy before anything reads it.
-            if (_scratchDb is not null)
-            {
-                DatabaseLocationPointerStore.Current = new FixedDatabaseLocationPointerStore(_scratchDb);
-            }
-
             var storageProvider = new StorageLocationProvider();
             SavedStorageSettings saved = new StorageSettingsBootstrap(storageProvider).Read();
             StorageLocationStore.KeysRoot = saved.KeysRoot;
             StorageLocationStore.LogsRoot = saved.LogsRoot;
-            StorageLocationStore.DefaultRoot = _scratchMedia ?? saved.DefaultRoot;
+            StorageLocationStore.DefaultRoot = saved.DefaultRoot;
 
             var services = new ServiceCollection();
             _ = services.AddLogging();
@@ -124,75 +118,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             return !restored
                 ? throw new InvalidOperationException($"Ring API credentials not found in database.\n{SetupPointer}")
                 : authService.GetAuthStatusDetails();
-        }
-
-        private static string? _scratchRoot;
-        private static string? _scratchDb;
-        private static string? _scratchMedia;
-
-        /// <summary>
-        /// Points the shared provider at a throwaway copy of the saved database and at a scratch media folder, so a test can write
-        /// rows and files without touching the real data. Only possible before the shared provider is built: it returns false
-        /// when it already is. The copy keeps the saved credentials, so the Ring login still works. Keys are shared and unchanged.
-        /// </summary>
-        public static bool TryUseScratchCopy(string liveDatabaseRoot)
-        {
-            if (ServiceProviderLazy.IsValueCreated)
-            {
-                return false;
-            }
-
-            string root = Path.Combine(Path.GetTempPath(), "vf-live-scratch-" + Guid.NewGuid().ToString("N"));
-            string db = Path.Combine(root, "db");
-            string media = Path.Combine(root, "media");
-            _ = Directory.CreateDirectory(db);
-            _ = Directory.CreateDirectory(media);
-            foreach (string name in new[] { "videoforensics.db", "videoforensics.db-wal", "videoforensics.db-shm" })
-            {
-                string source = Path.Combine(liveDatabaseRoot, name);
-                if (File.Exists(source))
-                {
-                    File.Copy(source, Path.Combine(db, name));
-                }
-            }
-
-            _scratchRoot = root;
-            _scratchDb = db;
-            _scratchMedia = media;
-            return true;
-        }
-
-        /// <summary>Removes the scratch copy. Best effort: a file still open by the provider is left for the OS to clean up.</summary>
-        public static void CleanupScratchCopy()
-        {
-            if (_scratchRoot is null)
-            {
-                return;
-            }
-
-            try
-            {
-                Directory.Delete(_scratchRoot, recursive: true);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-
-            _scratchRoot = null;
-            _scratchDb = null;
-            _scratchMedia = null;
-        }
-
-        /// <summary>Reports the scratch copy's database folder in place of the saved location. It never changes the saved location.</summary>
-        private sealed class FixedDatabaseLocationPointerStore(string databaseRoot) : IDatabaseLocationPointerStore
-        {
-            public string? Read() => databaseRoot;
-
-            public void Write(string databaseRoot) =>
-                throw new InvalidOperationException("A scratch copy must not change the saved database location.");
         }
 
         /// <summary>The same composition root the helper builds. Live tests that need the saved database resolve repositories from it.</summary>

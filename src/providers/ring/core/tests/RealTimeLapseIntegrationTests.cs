@@ -37,20 +37,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         // Same metadata the capture service writes on a capture's Media row (SnapshotCaptureService.CaptureSnapshotMetadata).
         private const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
 
-        // The live check writes rows and files, so it runs only against a scratch copy of the database and media folder. The copy
-        // is taken from the saved database location before the shared provider is built; the real data is never written.
-        private bool _scratchReady;
-
         public ValueTask InitializeAsync()
         {
-            string? liveRoot = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore().Read();
-            _scratchReady = liveRoot is not null && RealSessionHelper.TryUseScratchCopy(liveRoot);
             return ValueTask.CompletedTask;
         }
 
         public ValueTask DisposeAsync()
         {
-            RealSessionHelper.CleanupScratchCopy();
             GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
@@ -59,12 +52,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: six snapshots five seconds apart become one time lapse over the same start and end as the capture, and the snapshots are kept as evidence")]
         public async Task RealTimeLapse_SixSnapshotsFiveSecondsApart_RegistersLoopAndKeepsSnapshots()
         {
-            if (!_scratchReady)
-            {
-                Assert.Skip("The shared Ring provider was already built, so this check cannot use a scratch copy. Run it alone.");
-                return;
-            }
-
             RealSessionHelper.RequireLive();
             string ffprobe = ResolveFfprobeOrSkip();
             CancellationToken ct = TestContext.Current.CancellationToken;
