@@ -7595,6 +7595,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AttemptedUsername")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT");
 
@@ -7608,7 +7612,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime>("OccurredAtUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("OperatorId")
+                    b.Property<Guid?>("OperatorId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Reason")

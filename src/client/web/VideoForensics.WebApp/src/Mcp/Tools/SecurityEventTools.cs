@@ -101,7 +101,7 @@ namespace VideoForensics.Client.WebApp.Mcp.Tools
             {
                 // Fetch events
                 var events = new List<SecurityEventDto>();
-                await foreach (SecurityEventDto @event in _auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, cancellationToken))
+                await foreach (SecurityEventDto @event in _auditService.GetOperatorEventsAsync(targetOperatorId, unknownOnly: false, offset, limit, cancellationToken))
                 {
                     events.Add(@event);
                 }

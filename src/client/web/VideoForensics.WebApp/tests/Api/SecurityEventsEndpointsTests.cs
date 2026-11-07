@@ -95,7 +95,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             HttpContext context = CreateAuthenticatedHttpContext(callerId, NetworkTier.Local);
 
             var auditService = new Mock<ISecurityAuditService>();
-            _ = auditService.Setup(a => a.GetOperatorEventsAsync(targetOperatorId, 0, 20, It.IsAny<CancellationToken>()))
+            _ = auditService.Setup(a => a.GetOperatorEventsAsync(targetOperatorId, false, 0, 20, It.IsAny<CancellationToken>()))
                 .Returns(EmptyEvents());
 
             var request = new SecurityEventsQueryRequest(Limit: 20, Offset: 0, OperatorId: targetOperatorId.ToString());
@@ -108,10 +108,70 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
         }
 
+        [Fact]
+        public async Task GetSecurityEventsAsync_UnknownOnly_ConnectionClaimSaysInternet_Denied()
+        {
+            // Arrange - the unknown-login list shows typed usernames that belong to no operator, so it is
+            // gated like a cross-account query: SuperAdmin on the Local tier only.
+            HttpContext context = CreateAuthenticatedHttpContext(Guid.NewGuid(), NetworkTier.Internet);
+
+            var auditService = new Mock<ISecurityAuditService>();
+
+            var request = new SecurityEventsQueryRequest(Limit: 20, Offset: 0, UnknownOnly: true);
+
+            // Act
+            IResult result = await InvokeAsync(request, auditService.Object, context);
+
+            // Assert
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
+            auditService.Verify(a => a.GetOperatorEventsAsync(It.IsAny<Guid?>(), It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetSecurityEventsAsync_UnknownOnly_LocalSuperAdmin_ReturnsNoOperatorRowWithTypedName()
+        {
+            // Arrange - the query asks the audit service for rows with no operator only
+            HttpContext context = CreateAuthenticatedHttpContext(Guid.NewGuid(), NetworkTier.Local);
+
+            var auditService = new Mock<ISecurityAuditService>();
+            _ = auditService.Setup(a => a.GetOperatorEventsAsync(null, true, 0, 20, It.IsAny<CancellationToken>()))
+                .Returns(UnknownUserEvents("zumba"));
+
+            var request = new SecurityEventsQueryRequest(Limit: 20, Offset: 0, UnknownOnly: true);
+
+            // Act
+            IResult result = await InvokeAsync(request, auditService.Object, context);
+
+            // Assert
+            var valueResult = Assert.IsAssignableFrom<IValueHttpResult>(result);
+            List<VideoForensics.Core.Api.Contracts.SecurityEventDto> events = Assert.IsType<List<VideoForensics.Core.Api.Contracts.SecurityEventDto>>(valueResult.Value);
+            VideoForensics.Core.Api.Contracts.SecurityEventDto single = Assert.Single(events);
+            Assert.Null(single.OperatorId);
+            Assert.Equal("zumba", single.AttemptedUsername);
+            auditService.Verify(a => a.GetOperatorEventsAsync(null, true, 0, 20, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
 #pragma warning disable CS1998
         private static async IAsyncEnumerable<Data.Common.Contracts.SecurityEventDto> EmptyEvents()
         {
             yield break;
+        }
+
+        private static async IAsyncEnumerable<Data.Common.Contracts.SecurityEventDto> UnknownUserEvents(string attemptedUsername)
+        {
+            yield return new Data.Common.Contracts.SecurityEventDto
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = null,
+                EventType = nameof(SecurityEventType.LoginAttemptFailure),
+                Success = false,
+                IpAddress = "192.168.1.50",
+                OccurredAtUtc = DateTime.UtcNow,
+                Reason = "Invalid username",
+                AttemptedUsername = attemptedUsername
+            };
+            await Task.CompletedTask;
         }
 #pragma warning restore CS1998
     }
