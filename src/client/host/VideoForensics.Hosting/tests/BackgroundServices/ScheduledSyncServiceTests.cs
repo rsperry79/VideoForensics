@@ -1050,5 +1050,45 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             // Eight hours of quiet time with no events plans seven full segments; one tick builds at most five of them.
             h.SnapshotRollup.Verify(s => s.RollUpSegmentAsync(account.Id, It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Exactly(ScheduledSyncService.MaxSegmentsPerTick));
         }
+
+        [Fact]
+        public async Task RunOneTickAsync_SegmentReturnsError_CheckIsNotCompleteAndTheWatchdogStalls()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
+            _ = h.TimelapseQueries.Setup(q => q.GetEarliestCaptureAtUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DateTimeOffset(Now.AddHours(-2), TimeSpan.Zero));
+            _ = h.TimelapseQueries.Setup(q => q.GetLatestTimelapseEndUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateTime?)null);
+            _ = h.TimelapseQueries.Setup(q => q.GetLatestEventTimeUtcAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateTime?)null);
+            _ = h.TimelapseQueries.Setup(q => q.ListEventTimesForGapsAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DateTime>());
+            var attempts = new List<SnapshotCapture>();
+            for (DateTime t = Now.AddHours(-2); t < Now; t = t.AddMinutes(10))
+            {
+                attempts.Add(SnapshotCapture.Create(Guid.NewGuid(), new DateTimeOffset(t, TimeSpan.Zero), "fresh", 200, "p.jpg", null));
+            }
+
+            _ = h.Captures.Setup(c => c.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(attempts);
+            // The segment fails without throwing: the rollup reports an error message.
+            _ = h.SnapshotRollup.Setup(s => s.RollUpSegmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(1, 0, "segment failed"));
+            ScheduledSyncService service = h.Build();
+
+            // Ticks at 0, 16 and 31 minutes. The check runs each time (15-minute interval). With the segment failing, the
+            // check never completes, so the account stalls once more than 30 minutes pass since its first attempt.
+            await service.RunOneTickAsync(CancellationToken.None);
+            h.Time.Advance(TimeSpan.FromMinutes(16));
+            await service.RunOneTickAsync(CancellationToken.None);
+            h.Time.Advance(TimeSpan.FromMinutes(15));
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            _ = Assert.Single(h.Logs.Lines, l => l.StartsWith("Error") && l.Contains("has not completed"));
+        }
     }
 }

@@ -368,7 +368,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // One device failing must not stop the others; its cursor is unchanged, so it retries on the next check.
                     try
                     {
-                        await RunDeviceTimelapseAsync(sp, account.Id, device.Id, device.Name, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct);
+                        if (!await RunDeviceTimelapseAsync(sp, account.Id, device.Id, device.Name, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct))
+                        {
+                            deviceFailed = true;
+                        }
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested)
                     {
@@ -390,7 +393,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Plans and builds one device's segments from its cursor up to the horizon, within the tick's budget.</summary>
-        private async Task RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, string deviceName, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
+        /// <returns>True when the device's planned segments were built, or nothing was due; false when a segment failed.</returns>
+        private async Task<bool> RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, string deviceName, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
         {
             ITimelapseGapQueries queries = sp.GetRequiredService<ITimelapseGapQueries>();
             DateTimeOffset? earliest = await queries.GetEarliestCaptureAtUtcAsync(deviceId, ct);
@@ -410,7 +414,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (cursor is null || cursor.Value >= horizon)
             {
-                return;
+                return true;
             }
 
             IReadOnlyList<DateTime> events = await queries.ListEventTimesForGapsAsync(deviceId, cursor.Value, horizon, ct);
@@ -433,10 +437,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 SnapshotRollupResult result = await rollup.RollUpSegmentAsync(accountId, deviceId, segment.StartUtc, segment.EndUtc, ct);
                 if (result.ErrorMessage is not null)
                 {
-                    _logger.LogWarning("Time-lapse segment not built: {Error}", result.ErrorMessage);
-                    break;
+                    // Why: a failed segment leaves the cursor where it was, so the check is not complete and the watchdog sees it.
+                    _logger.LogWarning("Time-lapse segment not built for {DeviceName}: {Error}", deviceName, result.ErrorMessage);
+                    return false;
                 }
             }
+
+            return true;
         }
 
         /// <summary>The services-page check interval and max segment. The configuration service is required, so a missing one fails the check.</summary>
