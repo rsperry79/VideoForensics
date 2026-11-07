@@ -701,7 +701,8 @@ namespace VideoForensics.Client.Hosting
                     progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>(),
                     mediaPaths: provider.GetService<IMediaPathResolver>(),
                     referenceCache: provider.GetRequiredService<IReferenceDataCache>(),
-                    budgetGuard: provider.GetService<IProviderApiBudgetGuard>()));
+                    budgetGuard: provider.GetService<IProviderApiBudgetGuard>(),
+                    events: provider.GetService<IEventRepository>()));
                 _ = services.AddKeyedScoped<IInventorySyncService>(providerName, (provider, key) => new InventorySyncService(
                     provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
                     provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),

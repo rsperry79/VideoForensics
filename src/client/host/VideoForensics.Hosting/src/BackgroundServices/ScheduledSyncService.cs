@@ -591,7 +591,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         configurationService: sp.GetService<IForensicsConfigurationService>(),
                         progress: sp.GetService<ISyncProgressStore>(),
                         referenceCache: referenceCache,
-                        budgetGuard: budgetGuard);
+                        budgetGuard: budgetGuard,
+                        events: sp.GetService<IEventRepository>());
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
