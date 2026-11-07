@@ -271,6 +271,15 @@ public class NavGroups_Tests
     }
 
     [Fact]
+    public void NotificationsAndReports_SectionIsSystemAndNetwork()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+
+        Assert.Equal("System & Network", group.Items.First(i => i.Path == "/settings/notifications").Section);
+        Assert.Equal("System & Network", group.Items.First(i => i.Path == "/settings/reports").Section);
+    }
+
+    [Fact]
     public void AppLock_RequiresAppLockSupport()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
