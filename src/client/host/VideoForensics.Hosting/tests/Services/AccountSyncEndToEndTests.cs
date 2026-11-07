@@ -108,7 +108,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _runs.Object,
                 _snapshots.Object,
                 Mock.Of<ILogger<AccountSyncRunner>>(),
-                new SyncActivityLog());
+                new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
         }
 
         [Fact]

@@ -89,6 +89,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
 
                 await RunOneTickAsync(stoppingToken);
+                _heartbeats?.RecordRun(nameof(UpdateCheckService), DateTimeOffset.UtcNow);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

@@ -41,6 +41,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="CalibrationStalenessDays">Staleness threshold in days; calibration buckets older than this are re-sampled even if at minimum threshold.</param>
     /// <param name="LogPruneIntervalHours">Hours between operational log prune runs (1 to 168).</param>
     /// <param name="MediaBackfillIntervalHours">Hours between media backfill runs (1 to 168).</param>
+    /// <param name="TimelapseCheckIntervalMinutes">Minutes between time-lapse checks (1 to 1440).</param>
+    /// <param name="TimelapseMaxSegmentMinutes">Longest time-lapse segment in minutes; longer event gaps are split (1 to 1440).</param>
     public record ClientConfigDto(
         bool EnableForensicAnalysisReports,
         bool EnableSignalAnomalyReports,
@@ -74,7 +76,9 @@ namespace VideoForensics.Core.Api.Contracts
         bool EnableScheduledReports = true,
         int ScheduledReportIntervalHours = 24,
         int LogPruneIntervalHours = 24,
-        int MediaBackfillIntervalHours = 6
+        int MediaBackfillIntervalHours = 6,
+        int TimelapseCheckIntervalMinutes = 15,
+        int TimelapseMaxSegmentMinutes = 60
     );
 
     /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
@@ -103,6 +107,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ScheduledReportIntervalHours: config.ScheduledReportIntervalHours,
                 LogPruneIntervalHours: config.LogPruneIntervalHours,
                 MediaBackfillIntervalHours: config.MediaBackfillIntervalHours,
+                TimelapseCheckIntervalMinutes: config.TimelapseCheckIntervalMinutes,
+                TimelapseMaxSegmentMinutes: config.TimelapseMaxSegmentMinutes,
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,
                 ConfiguredNetworkTier: config.ConfiguredNetworkTier,
@@ -147,6 +153,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ScheduledReportIntervalHours = dto.ScheduledReportIntervalHours,
                 LogPruneIntervalHours = dto.LogPruneIntervalHours,
                 MediaBackfillIntervalHours = dto.MediaBackfillIntervalHours,
+                TimelapseCheckIntervalMinutes = dto.TimelapseCheckIntervalMinutes,
+                TimelapseMaxSegmentMinutes = dto.TimelapseMaxSegmentMinutes,
                 EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
                 EnableEmailNotifications = dto.EnableEmailNotifications,
                 ConfiguredNetworkTier = dto.ConfiguredNetworkTier,

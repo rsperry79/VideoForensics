@@ -37,6 +37,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<IDeviceRepository> _devices = new();
         private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
         private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<IMediaDownloadService> _ringMedia = new();
         private readonly Mock<IProviderSnapshotCapture> _capture = new();
         private readonly Mock<IProviderApiBudgetGuard> _budget = new();
         private readonly Mock<IProviderAuthService> _auth = new();
@@ -195,6 +196,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddSingleton(_media.Object);
             _ = services.AddSingleton(_sessions.Object);
             _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", _capture.Object);
+            _ = services.AddKeyedSingleton<IMediaDownloadService>("Ring", _ringMedia.Object);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             _ = services.AddSingleton(_budget.Object);
@@ -250,6 +252,30 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RingBanActive_MakesNoSnapshotCallUntilItLifts()
+        {
+            _ = AddDevice("12345");
+            _ = _ringMedia.Setup(m => m.GetRateLimitBanUntilUtc()).Returns(T0.AddHours(2).UtcDateTime);
+            ServiceProvider provider = BuildProvider();
+            try
+            {
+                var service = new SnapshotCaptureService(
+                    provider.GetRequiredService<IServiceScopeFactory>(),
+                    new Mock<ILogger<SnapshotCaptureService>>().Object,
+                    _time,
+                    _storage.Object);
+
+                await service.RunOneTickAsync(CancellationToken.None);
+            }
+            finally
+            {
+                await provider.DisposeAsync();
+            }
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

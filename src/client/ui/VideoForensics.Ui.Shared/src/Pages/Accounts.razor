@@ -11,6 +11,7 @@
 @inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
 @inject IAccountExportService ExportService
+@inject RightPanelFilterStore FilterStore
 @inject IProviderAccountEditAccess EditAccess
 @inject IStringLocalizer<Accounts> L
 @inject NavigationManager NavigationManager
@@ -193,6 +194,9 @@ else
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 
     // About an hour at the poll interval; a job still running after that is reported instead of polled forever.
+    /// <summary>Key for this page's remembered right-panel filters in the device's local storage.</summary>
+    private const string FilterPageKey = "accounts";
+
     private const int MaxPollTicks = 1200;
 
     private readonly CancellationTokenSource _disposeCts = new();
@@ -226,7 +230,26 @@ else
             _ = OnAccountLinkedAsync();
         });
         _canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
+        RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
         await LoadAccountsAsync();
+
+        // Restore after the load: the provider list must exist before a stored selection can be matched to it.
+        if (stored?.Providers is { } providers)
+        {
+            _selectedProviders = providers.Where(_providerNames.Contains).ToArray();
+        }
+
+        if (stored?.Account is { } account && AccountFilterOptions.Any(o => o.Key == account))
+        {
+            _accountFilterValue = account;
+        }
+
+        ApplyProviderFilter();
+    }
+
+    private async Task SaveFiltersAsync()
+    {
+        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(_selectedProviders, string.IsNullOrEmpty(_accountFilterValue) ? null : _accountFilterValue));
     }
 
     private Task OnAccountLinkedAsync() => InvokeAsync(async () =>
@@ -343,7 +366,7 @@ else
         return rows;
     }
 
-    private void OnProvidersChanged(string[] selected)
+    private async Task OnProvidersChanged(string[] selected)
     {
         _selectedProviders = selected ?? Array.Empty<string>();
 
@@ -354,6 +377,7 @@ else
         }
 
         ApplyProviderFilter();
+        await SaveFiltersAsync();
     }
 
     private void ApplyProviderFilter()
@@ -379,10 +403,11 @@ else
         }
     }
 
-    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    private async Task OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
     {
         _accountFilterValue = args.Value ?? string.Empty;
         ApplyProviderFilter();
+        await SaveFiltersAsync();
     }
 
     private void StartRemove(Guid accountId, bool startAtDeleteStep)

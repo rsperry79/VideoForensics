@@ -147,6 +147,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
         _ = Services.AddScoped(_ => accountRepository.Object);
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
         _ = Services.AddScoped(_ => userRepository.Object);
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => MultiProviderAuthServiceMock.Object);

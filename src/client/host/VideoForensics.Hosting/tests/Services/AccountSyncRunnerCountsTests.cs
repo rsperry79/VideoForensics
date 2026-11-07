@@ -45,7 +45,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private AccountSyncRunner Sut()
         {
-            return new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
+            return new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
         }
 
         [Fact]
@@ -263,7 +263,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = services.AddKeyedScoped("Ring", (_, _) => ringPull.Object);
             _ = services.AddScoped(_ => ringAuth.Object);
             _ = services.AddScoped(_ => ringPull.Object);
-            var sut = new AccountSyncRunner(services.BuildServiceProvider(), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
+            var sut = new AccountSyncRunner(services.BuildServiceProvider(), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
 
             await sut.RunAsync(_id, CancellationToken.None);
 

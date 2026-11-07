@@ -83,6 +83,13 @@
             }
 
             _latest = snapshot;
+            // A sync in progress, or output from one already run, keeps the box open here: a page opened mid-sync
+            // is replayed the output so far and shows it.
+            if (snapshot.IsDownloading || snapshot.Activity.Count > 0)
+            {
+                _hasEverStarted = true;
+            }
+
             if (snapshot.Activity.Count > 0)
             {
                 _activityLog.AddRange(snapshot.Activity);

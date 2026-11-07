@@ -170,6 +170,18 @@
   <data name="EventsEmpty" xml:space="preserve">
     <value>No events for the selected cameras in this time range.</value>
   </data>
+  <data name="EventUnavailable" xml:space="preserve">
+    <value>No media</value>
+  </data>
+  <data name="DetailUnavailable" xml:space="preserve">
+    <value>No media is available for this event. It cannot be played.</value>
+  </data>
+  <data name="DetailDiscoveredAt" xml:space="preserve">
+    <value>Discovered:</value>
+  </data>
+  <data name="DetailFailedAt" xml:space="preserve">
+    <value>Retries failed at:</value>
+  </data>
   <data name="EventsLoading" xml:space="preserve">
     <value>Loading events...</value>
   </data>

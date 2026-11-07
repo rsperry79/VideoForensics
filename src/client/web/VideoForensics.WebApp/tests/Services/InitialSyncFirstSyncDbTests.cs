@@ -130,7 +130,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             var services = new ServiceCollection();
             _ = services.AddLogging();
             _ = services.AddVideoForensicsDataLayer(_dbPath);
-            _ = services.AddSingleton<ISyncActivityLog>(new SyncActivityLog());
+            _ = services.AddSingleton<ISyncActivityLog>(new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
 
             var auth = new Mock<IProviderAuthService>();
             _ = auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);

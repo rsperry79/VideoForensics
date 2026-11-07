@@ -109,7 +109,7 @@ public class InitialSyncCoordinatorTests
             _accountDevices.Object,
             validation,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<InitialSyncCoordinator>.Instance,
-            new SyncActivityLog());
+            new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
     }
 
     private static Device CreateDevice(string providerDeviceId)

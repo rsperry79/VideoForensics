@@ -9,6 +9,7 @@
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAccountEditAccess EditAccess
+@inject RightPanelFilterStore FilterStore
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ManualSync> L
@@ -85,9 +86,9 @@ else
         <div class="d-flex flex-wrap gap-2 align-items-center">
             @if (CanEditAccount)
             {
-                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@(_isSyncing || TargetRow is null)" />
+                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@(_isSyncing || SyncTargets.Count == 0)" />
             }
-            @if (TargetRow is null)
+            @if (SyncTargets.Count == 0)
             {
                 <span class="form-text">@L["PickAccountHint"]</span>
             }
@@ -119,6 +120,9 @@ else
 
 @code {
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName, string? Email);
+
+    /// <summary>Key for this page's remembered right-panel filters in the device's local storage.</summary>
+    private const string FilterPageKey = "manual-sync";
 
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<AccountRow> _rows = new();
@@ -157,6 +161,20 @@ else
         }
     }
 
+    /// <summary>The accounts Sync Now runs against: the chosen account, or every account of the selected providers when Account is All accounts.</summary>
+    private IReadOnlyList<AccountRow> SyncTargets
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_accountFilterValue))
+            {
+                return _rows.Where(r => _selectedProviders.Contains(r.Account.ProviderName)).ToList();
+            }
+
+            return TargetRow is { } one ? new[] { one } : Array.Empty<AccountRow>();
+        }
+    }
+
     private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         _syncRange = e.Value?.ToString() ?? "30";
@@ -169,7 +187,6 @@ else
     private string SyncTypeChoiceLabel(string type) => type switch
     {
         "Events" => L["SyncChoiceEvents"],
-        "Snapshots" => L["SyncChoiceSnapshots"],
         "Config" => L["SyncChoiceConfig"],
         _ => L["SyncChoiceAll"],
     };
@@ -200,7 +217,19 @@ else
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
         // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
         _ = RefreshEditAccessAsync();
+        RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
         await LoadAccountsAsync();
+
+        // Restore after the load: the provider list must exist before a stored selection can be matched to it.
+        if (stored?.Providers is { } providers)
+        {
+            _selectedProviders = providers.Where(_providerNames.Contains).ToArray();
+        }
+
+        if (stored?.Account is { } account && AccountFilterOptions.Any(o => o.Key == account))
+        {
+            _accountFilterValue = account;
+        }
     }
 
     /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>
@@ -276,7 +305,7 @@ else
         }
     }
 
-    private void OnProvidersChanged(string[] selected)
+    private async Task OnProvidersChanged(string[] selected)
     {
         _selectedProviders = selected ?? Array.Empty<string>();
 
@@ -285,6 +314,13 @@ else
         {
             _accountFilterValue = string.Empty;
         }
+
+        await SaveFiltersAsync();
+    }
+
+    private async Task SaveFiltersAsync()
+    {
+        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(_selectedProviders, string.IsNullOrEmpty(_accountFilterValue) ? null : _accountFilterValue));
     }
 
     /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
@@ -299,9 +335,10 @@ else
         }
     }
 
-    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    private async Task OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
     {
         _accountFilterValue = args.Value ?? string.Empty;
+        await SaveFiltersAsync();
     }
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)
@@ -314,8 +351,8 @@ else
 
     private async Task SyncNowAsync()
     {
-        AccountRow? target = TargetRow;
-        if (target is null)
+        IReadOnlyList<AccountRow> targets = SyncTargets;
+        if (targets.Count == 0)
         {
             return;
         }
@@ -327,24 +364,33 @@ else
             await SessionState.EnsureLoadedAsync();
             // Session state loads lazily; the token is only populated after this.
             // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
-            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{target.Account.Id}/sync-now"))
+            int started = 0;
+            int failed = 0;
+            foreach (AccountRow target in targets)
             {
-                Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
-            };
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-            using HttpResponseMessage response = await Http.SendAsync(request, CancellationToken.None);
+                using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{target.Account.Id}/sync-now"))
+                {
+                    Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
+                };
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+                using HttpResponseMessage response = await Http.SendAsync(request, CancellationToken.None);
+                if (response.IsSuccessStatusCode)
+                {
+                    started++;
+                }
+                else
+                {
+                    failed++;
+                }
+            }
 
-            if (response.IsSuccessStatusCode)
+            if (failed == 0)
             {
                 await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
                 {
                     Title = L["SyncStarted"],
                     Icon = "e-success"
                 });
-
-                // Reload after a delay to show the updated timestamps
-                await Task.Delay(2000);
-                await LoadAccountsAsync();
             }
             else
             {
@@ -353,6 +399,13 @@ else
                     Title = L["SyncFailed"],
                     Icon = "e-danger"
                 });
+            }
+
+            if (started > 0)
+            {
+                // Reload after a delay to show the updated timestamps
+                await Task.Delay(2000);
+                await LoadAccountsAsync();
             }
         }
         catch (Exception ex)

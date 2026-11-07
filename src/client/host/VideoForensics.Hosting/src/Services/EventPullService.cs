@@ -32,12 +32,14 @@ namespace VideoForensics.Client.Hosting.Services
     /// <param name="EventsSynced">Events returned by the provider across all device feeds.</param>
     /// <param name="ConfigAreasSynced">Devices whose configuration was returned by the provider.</param>
     /// <param name="FeedsFailed">Per-device event feeds that failed.</param>
+    /// <param name="RateLimited">True when Ring throttled the account. The pull stopped there and the rest of its devices were not called.</param>
     public readonly record struct EventPullResult(
         int DevicesSynced = 0,
         int LocationsSynced = 0,
         int EventsSynced = 0,
         int ConfigAreasSynced = 0,
-        int FeedsFailed = 0);
+        int FeedsFailed = 0,
+        bool RateLimited = false);
 
     /// <summary>Pulls events and configuration from provider accounts automatically.</summary>
     public class EventPullService : IEventPullService
@@ -57,6 +59,14 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IMediaItemRepository? _mediaItems;
         private readonly ISyncProgressStore? _progress;
         private readonly IMediaPathResolver _mediaPaths;
+
+        // Why: every event fetch and media download is a Ring call. Counting each one stops a pull before it exceeds the provider budget.
+        private readonly IProviderApiBudgetGuard? _budgetGuard;
+
+        // Why: events awaiting their ding id are retried this many passes; after that they are unavailable and stop holding the pull.
+        private const int MaxRetryPasses = 3;
+
+        private readonly IEventRepository? _events;
         private readonly TimeSpan _progressPollInterval;
 
         // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
@@ -82,8 +92,12 @@ namespace VideoForensics.Client.Hosting.Services
             ISyncProgressStore? progress = null,
             TimeSpan? progressPollInterval = null,
             IMediaPathResolver? mediaPaths = null,
-            IReferenceDataCache? referenceCache = null)
+            IReferenceDataCache? referenceCache = null,
+            IProviderApiBudgetGuard? budgetGuard = null,
+            IEventRepository? events = null)
         {
+            _events = events;
+            _budgetGuard = budgetGuard;
             _progress = progress;
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
             _progressPollInterval = progressPollInterval ?? TimeSpan.FromMilliseconds(500);
@@ -121,12 +135,21 @@ namespace VideoForensics.Client.Hosting.Services
         {
             // Counts live outside the try so a failure partway through still reports what was reached.
             int locationsSynced = 0, devicesSynced = 0, eventsSynced = 0, configAreasSynced = 0, feedsFailed = 0;
+            bool rateLimited = false;
             try
             {
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
                     _logger.LogWarning("Provider account not found");
+                    return default;
+                }
+
+                // Why: while Ring has us banned, every event call is refused and each refusal still counts against the account.
+                // Stopping before the first call lets the ban lift instead of extending it.
+                if (_mediaDownloadService?.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Event pull skipped: provider rate-limit ban is active until {BanUntilUtc:u}", banUntilUtc);
                     return default;
                 }
 
@@ -139,6 +162,17 @@ namespace VideoForensics.Client.Hosting.Services
                 if (inventory.LocationCount == 0)
                 {
                     _logger.LogWarning("No stored locations for account; run a device sync before pulling events");
+                    return default;
+                }
+
+                // Why: no new pull while an event is still waiting for its ding id. The queue is retried first, in one batch per device,
+                // so the pull resumes as soon as the events are downloaded or have used all their passes.
+                if (_events is not null && await RetryQueueAsync(inventory, account, cancellationToken))
+                {
+                    _logger.LogWarning("Event pull held: events are waiting for their string ding id");
+                    account.LastErrorMessage = "Event pull held: events are waiting for their string ding id";
+                    account.LastErrorUtc = DateTime.UtcNow;
+                    await _providerAccountRepository.UpdateAsync(account, cancellationToken);
                     return default;
                 }
 
@@ -179,6 +213,14 @@ namespace VideoForensics.Client.Hosting.Services
                     {
                         _logger.LogInformation("Syncing events for device {DeviceName} ({Index}/{DeviceCount})", deviceName, deviceIndex, inventory.Devices.Count);
 
+                        // One budget check covers this device's event fetch and download; each call is then recorded as it is made.
+                        if (_budgetGuard is not null && !await _budgetGuard.TryConsumeAsync(account.ProviderName, cancellationToken))
+                        {
+                            rateLimited = true;
+                            _logger.LogWarning("Event pull stopped early: provider API budget is spent for this window; remaining devices wait for the next run");
+                            break;
+                        }
+
                         IReadOnlyList<DeviceEvent> events = await _eventAndConfigService.GetEventsAsync(
                             accountId,
                             device.ProviderDeviceId,
@@ -187,6 +229,11 @@ namespace VideoForensics.Client.Hosting.Services
                             eventType: null,
                             cancellationToken
                         );
+
+                        if (_budgetGuard is not null)
+                        {
+                            await _budgetGuard.RecordCallAsync(account.ProviderName, cancellationToken);
+                        }
 
                         // The provider is asked for the window, but not every provider trims strictly; count only what is inside it.
                         int deviceEventCount = events?.Count(e => e.Timestamp >= startTime && e.Timestamp <= endTime) ?? 0;
@@ -204,6 +251,11 @@ namespace VideoForensics.Client.Hosting.Services
                             DownloadResult media = await DownloadWithProgressAsync(
                                 _mediaDownloadService, device.ProviderDeviceId, deviceFolder, startTime, endTime, providerLocationId,
                                 deviceName, deviceIndex, inventory.Devices.Count, cancellationToken);
+                            if (_budgetGuard is not null)
+                            {
+                                await _budgetGuard.RecordCallAsync(account.ProviderName, cancellationToken);
+                            }
+
                             if (!media.Success)
                             {
                                 throw new InvalidOperationException(media.ErrorMessage ?? "Media download failed");
@@ -246,6 +298,14 @@ namespace VideoForensics.Client.Hosting.Services
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
                         feedsFailed++;
+
+                        // Why: once Ring has throttled the account, each further device call is refused too. Stop here and let the next run retry.
+                        if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException || IsRateLimitBanActive())
+                        {
+                            rateLimited = true;
+                            _logger.LogWarning("Event pull stopped early: Ring rate-limited this account; remaining devices wait for the next run");
+                            break;
+                        }
                     }
                 }
 
@@ -273,7 +333,7 @@ namespace VideoForensics.Client.Hosting.Services
                     _logger.LogInformation("Successfully pulled events for account");
                 }
 
-                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed, rateLimited);
             }
             catch (Exception ex)
             {
@@ -295,7 +355,7 @@ namespace VideoForensics.Client.Hosting.Services
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
                 }
 
-                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed, rateLimited || ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException);
             }
             finally
             {
@@ -394,6 +454,56 @@ namespace VideoForensics.Client.Hosting.Services
         /// Reads the account's stored inventory from the reference cache, loading it from the database on a miss. Only the
         /// device rows are read per pull, because a pull updates their timestamps.
         /// </summary>
+        /// <summary>
+        /// Retries each device's queue in one download batch, then counts a failed pass for each event still waiting.
+        /// Returns true while any queued event still has passes left, which holds the account's pull.
+        /// </summary>
+        private async Task<bool> RetryQueueAsync(Inventory inventory, ProviderAccount account, CancellationToken ct)
+        {
+            bool held = false;
+            foreach (InventoryDevice inv in inventory.Devices)
+            {
+                IReadOnlyList<Event> queued = await _events!.ListAwaitingDingIdAsync(inv.Device.Id, MaxRetryPasses, ct);
+                if (queued.Count == 0)
+                {
+                    continue;
+                }
+
+                // One window per device, from the oldest queued event, so the device's history is read once for the whole batch.
+                if (_mediaDownloadService is not null)
+                {
+                    DateTime from = queued.Min(e => e.OccurredAtUtc).AddDays(-1);
+                    string locationName = inv.LocationName ?? inv.ProviderLocationId;
+                    string deviceFolder = MediaFolderLayout.GetDeviceFolder(_mediaRoot, account.ProviderName, locationName, inv.Device.Name ?? inv.Device.ProviderDeviceId);
+                    _ = Directory.CreateDirectory(deviceFolder);
+                    DownloadResult batch = await _mediaDownloadService.DownloadVideosAsync(inv.Device.ProviderDeviceId, deviceFolder, from, DateTime.UtcNow, inv.ProviderLocationId, ct);
+                    if (!batch.Success)
+                    {
+                        _logger.LogWarning("Queued event batch for a device did not download: {Reason}", batch.ErrorMessage ?? "unknown");
+                    }
+                }
+
+                // Whatever is still waiting after the batch used one pass. An event on its last pass is unavailable and does not hold the pull.
+                IReadOnlyList<Event> stillQueued = await _events.ListAwaitingDingIdAsync(inv.Device.Id, MaxRetryPasses, ct);
+                foreach (Event evt in stillQueued)
+                {
+                    await _events.RecordRetryPassAsync(evt.Id, MaxRetryPasses, ct);
+                    if (evt.DownloadAttempts + 1 < MaxRetryPasses)
+                    {
+                        held = true;
+                    }
+                }
+            }
+
+            return held;
+        }
+
+        /// <summary>True while the provider's rate-limit ban is in force. Read from the media service, which owns the session.</summary>
+        private bool IsRateLimitBanActive()
+        {
+            return _mediaDownloadService?.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > DateTime.UtcNow;
+        }
+
         private async Task<Inventory> LoadInventoryAsync(Guid accountId, CancellationToken cancellationToken)
         {
             AccountReferenceData data = _referenceCache.Get(accountId) ?? await LoadReferenceDataFromDbAsync(accountId, cancellationToken);
