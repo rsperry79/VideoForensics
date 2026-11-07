@@ -170,6 +170,9 @@
   <data name="EventsEmpty" xml:space="preserve">
     <value>No events for the selected cameras in this time range.</value>
   </data>
+  <data name="EventUnavailable" xml:space="preserve">
+    <value>No media</value>
+  </data>
   <data name="EventsLoading" xml:space="preserve">
     <value>Loading events...</value>
   </data>

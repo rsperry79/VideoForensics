@@ -33,6 +33,26 @@ public class ReviewClipLoader_Tests
         };
     }
 
+    [Fact]
+    public async Task LoadAsync_IncludesUnavailableEventsOfTheWindow_AndLeavesOutDownloadedOnes()
+    {
+        // Arrange: one stored event with no media, one with downloaded media
+        Guid device = Guid.NewGuid();
+        var unavailable = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401464", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Unavailable };
+        var downloaded = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401465", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Downloaded };
+        var events = new Mock<IEventRepository>();
+        _ = events.Setup(e => e.ListByDeviceAndDateRangeAsync(device, FromUtc, ToUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Event> { unavailable, downloaded });
+        var loader = new ReviewClipLoader(RepositoryServing([]).Object, events: events.Object);
+
+        // Act
+        ReviewClipSet set = await loader.LoadAsync([device], FromUtc, ToUtc, CancellationToken.None);
+
+        // Assert
+        Event only = Assert.Single(set.UnavailableEvents!);
+        Assert.Equal(unavailable.Id, only.Id);
+    }
+
     /// <summary>A repository double that answers pages from <paramref name="items"/>, filtered by device as the SQL query does.</summary>
     private Mock<IMediaItemRepository> RepositoryServing(IReadOnlyList<MediaItem> items)
     {
