@@ -55,6 +55,9 @@ namespace VideoForensics.Client.WebApp.Api
                         writer.WriteString("lastError", service.LastError);
                     }
 
+                    // Per-item failures (for the scheduler, accounts that failed on the last tick). The state is unchanged by them.
+                    writer.WriteNumber("failedItems", service.FailedItems);
+
                     writer.WriteEndObject();
                 }
 
