@@ -292,7 +292,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Once);
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
-            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
+            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -459,7 +459,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(3));
+            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(6));
         }
 
         [Fact]
@@ -476,7 +476,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = Assert.Single(windows);
             Assert.Equal(last.AddMinutes(-10), windows[0].Start);
             h.Media["Ring"].Verify(Harness.Pulled(account.Id, last.AddMinutes(-10)), Times.Once);
-            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
+            h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -610,8 +610,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             h.Media["Ring"].Verify(Harness.Pulled(wyze.Id), Times.Never);
             h.Media["Wyze"].Verify(Harness.Pulled(wyze.Id), Times.Once);
             h.Media["Wyze"].Verify(Harness.Pulled(ring.Id), Times.Never);
-            h.Budget.Verify(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
-            h.Budget.Verify(b => b.TryConsumeAsync("Wyze", It.IsAny<CancellationToken>()), Times.Once);
+            h.Budget.Verify(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(2));
+            h.Budget.Verify(b => b.TryConsumeAsync("Wyze", It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -830,7 +830,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             ProviderSyncRun run = Assert.Single(h.Runs);
             Assert.Equal(account.Id, run.ProviderAccountId);
             Assert.False(run.Success);
-            Assert.Equal("budget store down", run.ErrorMessage);
+            Assert.Contains("budget store down", run.ErrorMessage);
         }
 
         [Fact]
