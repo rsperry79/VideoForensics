@@ -62,6 +62,51 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task RecordRetryPass_ThirdFailedPass_MarksTheEventUnavailableAndLeavesTheQueue()
+        {
+            Device device = TestDataBuilder.BuildDevice(providerDeviceId: "86401466");
+            var evt = new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = device.Id,
+                ProviderEventId = "86401466",
+                EventType = "motion",
+                OccurredAtUtc = DateTime.UtcNow,
+                DiscoveredAtUtc = DateTime.UtcNow,
+                AwaitingDingId = true,
+            };
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Devices.Add(device);
+                _ = seed.Events.Add(evt);
+                _ = await seed.SaveChangesAsync();
+            }
+
+            var repository = new EventRepository(_fixture.Factory, Microsoft.Extensions.Logging.Abstractions.NullLogger<EventRepository>.Instance);
+            await repository.RecordRetryPassAsync(evt.Id, 3, CancellationToken.None);
+            await repository.RecordRetryPassAsync(evt.Id, 3, CancellationToken.None);
+
+            // Two passes: still queued
+            await using (VideoForensicsDbContext mid = _fixture.Factory.CreateDbContext())
+            {
+                Event still = await mid.Events.AsNoTracking().SingleAsync(e => e.Id == evt.Id);
+                Assert.Equal(2, still.DownloadAttempts);
+                Assert.True(still.AwaitingDingId);
+                Assert.Equal(EventDownloadStatus.NotAttempted, still.DownloadStatus);
+            }
+
+            await repository.RecordRetryPassAsync(evt.Id, 3, CancellationToken.None);
+
+            // Third pass: unavailable and out of the queue
+            await using VideoForensicsDbContext end = _fixture.Factory.CreateDbContext();
+            Event done = await end.Events.AsNoTracking().SingleAsync(e => e.Id == evt.Id);
+            Assert.Equal(3, done.DownloadAttempts);
+            Assert.Equal(EventDownloadStatus.Unavailable, done.DownloadStatus);
+            Assert.False(done.AwaitingDingId);
+            Assert.Empty(await repository.ListAwaitingDingIdAsync(device.Id, 3, CancellationToken.None));
+        }
+
+        [Fact]
         public async Task ListAwaitingDingId_ReturnsOnlyQueuedEventsOfTheDeviceUnderTheAttemptCap()
         {
             Device device = TestDataBuilder.BuildDevice(providerDeviceId: "86401464");
