@@ -347,6 +347,20 @@ namespace VideoForensics.Data.Core.Services
             }, ct);
         }
 
+        public Task<Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct)
+        {
+            return _unitOfWork.ExecuteAsync(context => context.DingIdLinks.GetLinkedEventAsync(doorbotHistoryProviderEventId, ct), ct);
+        }
+
+        public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
+        {
+            return _unitOfWork.ExecuteAsync(async context =>
+            {
+                await context.DingIdLinks.RekeyLinkedEventAsync(eventId, newProviderEventId, ct);
+                return true;
+            }, ct);
+        }
+
         public async Task<Event> UpsertEventAsync(
             Event evt,
             CancellationToken ct,

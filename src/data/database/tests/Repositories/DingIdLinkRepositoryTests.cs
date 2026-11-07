@@ -49,6 +49,45 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task DingIdLinks_GetLinkedEvent_ReturnsTheRowTheDoorbotRowLinksTo()
+        {
+            Device device = await SeedDeviceAsync(DoorbotId.ToString());
+            var evt = new Event { Id = Guid.NewGuid(), DeviceId = device.Id, ProviderEventId = DoorbotId.ToString(), EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Events.Add(evt);
+                _ = seed.RingDoorbotHistoryEvents.Add(new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "1234567890123456", LinkedEventId = evt.Id });
+                _ = await seed.SaveChangesAsync();
+            }
+
+            Event? linked = await _unitOfWork.ExecuteAsync(
+                ctx => ctx.DingIdLinks.GetLinkedEventAsync("1234567890123456", CancellationToken.None), CancellationToken.None);
+
+            Assert.Equal(evt.Id, linked?.Id);
+        }
+
+        [Fact]
+        public async Task DingIdLinks_RekeyLinkedEvent_ChangesItsProviderEventIdToTheDingId()
+        {
+            Device device = await SeedDeviceAsync(DoorbotId.ToString());
+            var evt = new Event { Id = Guid.NewGuid(), DeviceId = device.Id, ProviderEventId = DoorbotId.ToString(), EventType = "motion", OccurredAtUtc = DateTime.UtcNow, DiscoveredAtUtc = DateTime.UtcNow };
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Events.Add(evt);
+                _ = await seed.SaveChangesAsync();
+            }
+
+            _ = await _unitOfWork.ExecuteAsync(async ctx =>
+            {
+                await ctx.DingIdLinks.RekeyLinkedEventAsync(evt.Id, "1234567890123456789", CancellationToken.None);
+                return true;
+            }, CancellationToken.None);
+
+            await using VideoForensicsDbContext check = _fixture.Factory.CreateDbContext();
+            Assert.Equal("1234567890123456789", (await check.Events.FindAsync(evt.Id))!.ProviderEventId);
+        }
+
+        [Fact]
         public async Task DingIdLinks_NoDeviceForDoorbot_ReturnsNoCandidates()
         {
             // Device-first: a location row with a matching doorbot id does not count without a device to scope it.

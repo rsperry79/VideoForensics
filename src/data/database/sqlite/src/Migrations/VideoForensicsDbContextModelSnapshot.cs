@@ -1923,6 +1923,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime>("DiscoveredAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DownloadAttempts")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("DownloadFailedAtUtc")
                         .HasColumnType("TEXT");
 
@@ -1944,6 +1947,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MetadataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("OccurredAtUtc")
