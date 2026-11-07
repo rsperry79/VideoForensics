@@ -118,6 +118,30 @@ else
                     <button type="button" class="btn btn-primary" data-testid="flag-interval-save" @onclick="SaveFlagMinutesAsync">@L["SaveButton"]</button>
                 </div>
             </div>
+            <div>
+                <label class="form-label fw-semibold" for="device-health-interval">@L["DeviceHealthIntervalLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["DeviceHealthIntervalHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="device-health-interval" data-testid="device-health-interval-minutes" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_deviceHealthMinutes" />
+                    <button type="button" class="btn btn-primary" data-testid="device-health-interval-save" @onclick="SaveDeviceHealthMinutesAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label fw-semibold" for="offline-repoll-interval">@L["OfflineRepollIntervalLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["OfflineRepollIntervalHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="offline-repoll-interval" data-testid="offline-repoll-interval-minutes" type="number" class="form-control" style="max-width: 160px;" min="1" max="1440" @bind="_offlineRepollMinutes" />
+                    <button type="button" class="btn btn-primary" data-testid="offline-repoll-interval-save" @onclick="SaveOfflineRepollMinutesAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label fw-semibold" for="scheduled-sync-tick">@L["ScheduledSyncTickLabel"]</label>
+                <small class="d-block text-body-secondary mb-2">@L["ScheduledSyncTickHelp"]</small>
+                <div class="d-flex flex-row gap-2 align-items-center">
+                    <input id="scheduled-sync-tick" data-testid="scheduled-sync-tick-seconds" type="number" class="form-control" style="max-width: 160px;" min="5" max="3600" @bind="_scheduledSyncTickSeconds" />
+                    <button type="button" class="btn btn-primary" data-testid="scheduled-sync-tick-save" @onclick="SaveScheduledSyncTickSecondsAsync">@L["SaveButton"]</button>
+                </div>
+            </div>
             @if (_minuteMessage is not null)
             {
                 <span style="@(_minuteSuccess ? "color: green;" : "color: red;")">@_minuteMessage</span>
@@ -181,6 +205,10 @@ else
     private int _jammingMinutes;
     private int _codecMinutes;
     private int _flagMinutes;
+
+    private int _deviceHealthMinutes;
+    private int _offlineRepollMinutes;
+    private int _scheduledSyncTickSeconds;
 
     protected override async Task OnInitializedAsync()
     {
@@ -292,6 +320,29 @@ else
 
     private Task SaveFlagMinutesAsync() => SaveServiceMinutesAsync("Flag", _flagMinutes);
 
+    private Task SaveDeviceHealthMinutesAsync() => SaveServiceMinutesAsync("DeviceHealth", _deviceHealthMinutes);
+
+    private Task SaveOfflineRepollMinutesAsync() => SaveServiceMinutesAsync("OfflineRepoll", _offlineRepollMinutes);
+
+    private async Task SaveScheduledSyncTickSecondsAsync()
+    {
+        try
+        {
+            (bool applied, string message) = await ConfigTools.SetScheduledSyncTickSecondsAsync(Config, _scheduledSyncTickSeconds, CancellationToken.None);
+            _minuteSuccess = applied;
+            _minuteMessage = message;
+            if (!applied)
+            {
+                ResetIntervalInputs();
+            }
+        }
+        catch (Exception ex)
+        {
+            _minuteSuccess = false;
+            _minuteMessage = L["IntervalError", ex.Message].Value;
+        }
+    }
+
     private Task SavePruneIntervalAsync() => SaveIntervalAsync("LogPrune", _pruneInterval);
 
     private Task SaveUpdateIntervalAsync() => SaveIntervalAsync("UpdateCheck", _updateInterval);
@@ -366,5 +417,8 @@ else
         _jammingMinutes = Config.JammingIntervalMinutes;
         _codecMinutes = Config.CodecIntervalMinutes;
         _flagMinutes = Config.FlagIntervalMinutes;
+        _deviceHealthMinutes = Config.DeviceHealthIntervalMinutes;
+        _offlineRepollMinutes = Config.OfflineRepollIntervalMinutes;
+        _scheduledSyncTickSeconds = Config.ScheduledSyncTickSeconds;
     }
 }

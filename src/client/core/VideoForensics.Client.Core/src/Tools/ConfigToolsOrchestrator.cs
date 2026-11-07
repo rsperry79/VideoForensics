@@ -241,6 +241,12 @@ namespace VideoForensics.Client.Core.Tools
                 case "Flag":
                     config.FlagIntervalMinutes = minutes;
                     break;
+                case "DeviceHealth":
+                    config.DeviceHealthIntervalMinutes = minutes;
+                    break;
+                case "OfflineRepoll":
+                    config.OfflineRepollIntervalMinutes = minutes;
+                    break;
                 default:
                     return (false, $"Unknown service: {service}");
             }
@@ -248,6 +254,22 @@ namespace VideoForensics.Client.Core.Tools
             await _configService.SaveConfigurationAsync(config, ct);
             _logger.LogInformation("Service {service} interval set to {minutes} minutes", service, minutes);
             return (true, $"{service} will run every {minutes} minutes");
+        }
+
+        public async Task<(bool Success, string Message)> SetScheduledSyncTickSecondsAsync(
+            IForensicsConfiguration config,
+            int seconds,
+            CancellationToken ct = default)
+        {
+            if (seconds is < 5 or > 3600)
+            {
+                return (false, "Scheduled sync tick must be between 5 and 3600 seconds");
+            }
+
+            config.ScheduledSyncTickSeconds = seconds;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Scheduled sync tick set to {seconds} seconds", seconds);
+            return (true, $"Scheduled sync tick will run every {seconds} seconds");
         }
 
         public async Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(

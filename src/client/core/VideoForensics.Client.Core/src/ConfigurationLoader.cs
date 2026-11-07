@@ -53,6 +53,9 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.JammingIntervalMinutes = loadedConfig.JammingIntervalMinutes;
                 runtimeConfig.CodecIntervalMinutes = loadedConfig.CodecIntervalMinutes;
                 runtimeConfig.FlagIntervalMinutes = loadedConfig.FlagIntervalMinutes;
+                runtimeConfig.DeviceHealthIntervalMinutes = loadedConfig.DeviceHealthIntervalMinutes;
+                runtimeConfig.OfflineRepollIntervalMinutes = loadedConfig.OfflineRepollIntervalMinutes;
+                runtimeConfig.ScheduledSyncTickSeconds = loadedConfig.ScheduledSyncTickSeconds;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
                 runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;

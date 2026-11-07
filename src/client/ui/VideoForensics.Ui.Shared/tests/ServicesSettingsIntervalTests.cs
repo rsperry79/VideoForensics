@@ -1,3 +1,5 @@
+using AngleSharp.Dom;
+
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +31,9 @@ public class ServicesSettingsIntervalTests : OperatorSessionGateTestBase
         _ = _orchestrator
             .Setup(o => o.SetServiceIntervalMinutesAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, "saved"));
+        _ = _orchestrator
+            .Setup(o => o.SetScheduledSyncTickSecondsAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, "saved"));
         _ = Services.AddScoped(_ => _orchestrator.Object);
     }
 
@@ -57,6 +62,57 @@ public class ServicesSettingsIntervalTests : OperatorSessionGateTestBase
 
         component.WaitForAssertion(() => _orchestrator.Verify(
             o => o.SetServiceIntervalMinutesAsync(It.IsAny<IForensicsConfiguration>(), service, minutes, It.IsAny<CancellationToken>()),
+            Times.Once));
+    }
+
+    [Fact]
+    public async Task ServicesSettings_DeviceHealthRow_RendersInputAndSavesMinutesViaDeviceHealthService()
+    {
+        await SignInOperatorAsync();
+        IRenderedComponent<ServicesSettingsPage> component = Render<ServicesSettingsPage>();
+
+        IElement input = component.Find("[data-testid='device-health-interval-minutes']");
+        Assert.Equal("number", input.GetAttribute("type"));
+
+        input.Change("25");
+        component.Find("[data-testid='device-health-interval-save']").Click();
+
+        component.WaitForAssertion(() => _orchestrator.Verify(
+            o => o.SetServiceIntervalMinutesAsync(It.IsAny<IForensicsConfiguration>(), "DeviceHealth", 25, It.IsAny<CancellationToken>()),
+            Times.Once));
+    }
+
+    [Fact]
+    public async Task ServicesSettings_OfflineRepollRow_RendersInputAndSavesMinutesViaOfflineRepollService()
+    {
+        await SignInOperatorAsync();
+        IRenderedComponent<ServicesSettingsPage> component = Render<ServicesSettingsPage>();
+
+        IElement input = component.Find("[data-testid='offline-repoll-interval-minutes']");
+        Assert.Equal("number", input.GetAttribute("type"));
+
+        input.Change("12");
+        component.Find("[data-testid='offline-repoll-interval-save']").Click();
+
+        component.WaitForAssertion(() => _orchestrator.Verify(
+            o => o.SetServiceIntervalMinutesAsync(It.IsAny<IForensicsConfiguration>(), "OfflineRepoll", 12, It.IsAny<CancellationToken>()),
+            Times.Once));
+    }
+
+    [Fact]
+    public async Task ServicesSettings_ScheduledSyncTickRow_RendersInputAndSavesSecondsViaTickMethod()
+    {
+        await SignInOperatorAsync();
+        IRenderedComponent<ServicesSettingsPage> component = Render<ServicesSettingsPage>();
+
+        IElement input = component.Find("[data-testid='scheduled-sync-tick-seconds']");
+        Assert.Equal("number", input.GetAttribute("type"));
+
+        input.Change("120");
+        component.Find("[data-testid='scheduled-sync-tick-save']").Click();
+
+        component.WaitForAssertion(() => _orchestrator.Verify(
+            o => o.SetScheduledSyncTickSecondsAsync(It.IsAny<IForensicsConfiguration>(), 120, It.IsAny<CancellationToken>()),
             Times.Once));
     }
 }

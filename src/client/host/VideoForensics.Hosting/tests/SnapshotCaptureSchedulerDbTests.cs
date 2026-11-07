@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -89,7 +90,8 @@ namespace VideoForensics.Client.Hosting.Tests
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<SnapshotCaptureService>.Instance,
             TimeProvider.System,
-            MediaStorage());
+            MediaStorage(),
+            new ForensicsConfiguration());
         }
 
         /// <summary>Builds the real data layer on a temp database, seeds one Ring account with one camera, and fakes only the provider.</summary>

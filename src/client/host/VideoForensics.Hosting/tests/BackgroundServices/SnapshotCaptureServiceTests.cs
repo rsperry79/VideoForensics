@@ -167,6 +167,35 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.DoesNotContain("capture is off", skip);
         }
 
+        [Fact]
+        public void OfflineRepollWindow_DefaultConfig_Uses10Minutes()
+        {
+            var service = new SnapshotCaptureService(
+                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<SnapshotCaptureService>.Instance,
+                TimeProvider.System,
+                _storage.Object,
+                new ForensicsConfiguration());
+
+            Assert.Equal(TimeSpan.FromMinutes(10), service.OfflineRepollWindow);
+        }
+
+        [Fact]
+        public void OfflineRepollWindow_ConfigChanged_UsesNewWindow()
+        {
+            var config = new ForensicsConfiguration();
+            var service = new SnapshotCaptureService(
+                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<SnapshotCaptureService>.Instance,
+                TimeProvider.System,
+                _storage.Object,
+                config);
+
+            config.OfflineRepollIntervalMinutes = 30;
+
+            Assert.Equal(TimeSpan.FromMinutes(30), service.OfflineRepollWindow);
+        }
+
         private async Task RunTickAsync(ILogger<SnapshotCaptureService>? logger = null)
         {
             ServiceProvider provider = BuildProvider();
@@ -176,7 +205,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     logger ?? NullLogger<SnapshotCaptureService>.Instance,
                     _time,
-                    _storage.Object);
+                    _storage.Object,
+                    new ForensicsConfiguration());
                 await service.RunOneTickAsync(CancellationToken.None);
             }
             finally
@@ -266,7 +296,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     new Mock<ILogger<SnapshotCaptureService>>().Object,
                     _time,
-                    _storage.Object);
+                    _storage.Object,
+                    new ForensicsConfiguration());
 
                 await service.RunOneTickAsync(CancellationToken.None);
             }
@@ -297,7 +328,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     logger.Object,
                     _time,
-                    _storage.Object);
+                    _storage.Object,
+                    new ForensicsConfiguration());
 
                 await service.RunOneTickAsync(CancellationToken.None);
                 _time.Now = T0.AddMinutes(5);

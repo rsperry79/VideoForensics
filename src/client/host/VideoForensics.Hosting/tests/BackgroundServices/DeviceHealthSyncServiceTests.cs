@@ -63,6 +63,25 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public void CurrentInterval_DefaultConfig_Uses15Minutes()
+        {
+            var (service, _, _, _, _) = CreateService();
+
+            Assert.Equal(TimeSpan.FromMinutes(15), service.CurrentInterval);
+        }
+
+        [Fact]
+        public void CurrentInterval_ConfigChanged_UsesNewInterval()
+        {
+            var config = new ForensicsConfiguration();
+            var (service, _, _, _, _) = CreateService(config: config);
+
+            config.DeviceHealthIntervalMinutes = 5;
+
+            Assert.Equal(TimeSpan.FromMinutes(5), service.CurrentInterval);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_MatchesReadingToDeviceAndPersistsSnapshot()
         {
             (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();

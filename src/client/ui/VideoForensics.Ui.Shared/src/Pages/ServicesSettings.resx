@@ -125,6 +125,24 @@
   <data name="ServiceMinutesHelp" xml:space="preserve">
     <value>Between 1 and 1440 minutes. Default 15.</value>
   </data>
+  <data name="DeviceHealthIntervalLabel" xml:space="preserve">
+    <value>Device health sync: run every (minutes)</value>
+  </data>
+  <data name="DeviceHealthIntervalHelp" xml:space="preserve">
+    <value>Between 1 and 1440 minutes. Default 15.</value>
+  </data>
+  <data name="OfflineRepollIntervalLabel" xml:space="preserve">
+    <value>Camera offline re-poll: run every (minutes)</value>
+  </data>
+  <data name="OfflineRepollIntervalHelp" xml:space="preserve">
+    <value>Between 1 and 1440 minutes. Default 10.</value>
+  </data>
+  <data name="ScheduledSyncTickLabel" xml:space="preserve">
+    <value>Scheduled sync tick: check every (seconds)</value>
+  </data>
+  <data name="ScheduledSyncTickHelp" xml:space="preserve">
+    <value>Between 5 and 3600 seconds. Default 60.</value>
+  </data>
   <data name="IntervalHelp" xml:space="preserve">
     <value>Between 1 and 168 hours.</value>
   </data>

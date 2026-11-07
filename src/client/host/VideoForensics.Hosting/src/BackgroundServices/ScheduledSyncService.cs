@@ -38,6 +38,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly IOptionsMonitor<ScheduledTasksOptions> _options;
         private readonly ILogger<ScheduledSyncService> _logger;
         private readonly TimeProvider _time;
+        private readonly IForensicsConfiguration _config;
 
         /// <summary>When this process started. Partial time-lapse files written after it may belong to a build running now.</summary>
         private readonly DateTime _processStartUtc = DateTime.UtcNow;
@@ -51,16 +52,21 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IOptionsMonitor<ScheduledTasksOptions> options,
             ILogger<ScheduledSyncService> logger,
             TimeProvider time,
+            IForensicsConfiguration config,
             ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _logger = logger;
             _time = time;
+            _config = config;
             _heartbeats = heartbeats;
         }
 
         private readonly ThreadHeartbeats? _heartbeats;
+
+        /// <summary>The wait between scheduler passes, read from the Services page setting before each wait.</summary>
+        internal TimeSpan CurrentTickInterval => ResolveTickInterval(_config.ScheduledSyncTickSeconds);
 
         /// <summary>Most time-lapse segments built in one tick, across all accounts. Keeps a long encode from blocking event pulls.</summary>
         internal const int MaxSegmentsPerTick = 5;
@@ -84,6 +90,23 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         internal static TimeSpan ResolveTickInterval(int tickSeconds)
         {
             return TimeSpan.FromSeconds(Math.Max(tickSeconds, MinimumTickSeconds));
+        }
+
+        /// <summary>
+        /// Waits the configured tick, read now so a changed setting applies from the next wait. A fresh delay each tick is used
+        /// instead of a PeriodicTimer, which is fixed at creation and would ignore the change.
+        /// </summary>
+        private async Task<bool> WaitForNextTickAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentTickInterval, _time, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <inheritdoc />
@@ -114,12 +137,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <inheritdoc />
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(ResolveTickInterval(_options.CurrentValue.TickSeconds), _time);
-
             try
             {
                 // Wait for the first tick before the first pass so a cold start does not race database initialization.
-                while (await timer.WaitForNextTickAsync(stoppingToken))
+                while (await WaitForNextTickAsync(stoppingToken))
                 {
                     try
                     {
