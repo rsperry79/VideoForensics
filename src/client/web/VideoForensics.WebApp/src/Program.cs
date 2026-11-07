@@ -676,7 +676,9 @@ builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
 builder.Services.AddSingleton<IFailedLoginIpTracker, FailedLoginIpTracker>();
 
 // /healthz "services" check. The constructor takes a TimeSpan threshold that DI cannot supply, so the factory passes it.
-// ThreadHeartbeats is registered by AddVideoForensicsSnapshotCapture above.
+// ThreadHeartbeats is also registered by AddVideoForensicsSnapshotCapture, but only when snapshot capture is on. TryAdd keeps
+// one registration in every configuration, so /healthz never fails for lack of heartbeats.
+builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.BackgroundServices.ThreadHeartbeats>();
 builder.Services.AddSingleton(sp => new VideoForensics.Client.Hosting.BackgroundServices.ServiceHealthCheck(
     sp.GetRequiredService<VideoForensics.Client.Hosting.BackgroundServices.ThreadHeartbeats>(),
     sp.GetRequiredService<TimeProvider>(),
