@@ -53,3 +53,4 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 2026-11-06 | TDD | committed fixes without a recorded red run: XML param docs, stage opt-in, test-flake fixes, time lapse test update | skipped test-first | write and record the red run first, or say why it is not possible
 2026-11-06 | haiku writes code | main model wrote implementation code directly (ManualSync, MediaFit, LiveView, csproj, tests) | ignored the Haiku-writes-code rule | brief Haiku for implementation; main model verifies
 2026-11-06 | output | long recaps and closing summaries after most turns | ignored the terse output rule | keep replies short; no trailing summaries
+2026-11-06 | line endings | regex edit of SnapshotRollupServiceTests.cs left lone CRs and dropped a space in the Device alias | scripted replacement and an Edit string both mangled the file | fixed to CRLF; check git ls-files --eol and git diff stat after scripted edits

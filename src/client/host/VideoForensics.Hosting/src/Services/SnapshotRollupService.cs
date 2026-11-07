@@ -42,6 +42,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
         private readonly IEventRepository _events;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ITimelineVideoBuilder _builder;
         private readonly ILogger<SnapshotRollupService> _logger;
 
@@ -60,6 +61,7 @@ namespace VideoForensics.Client.Hosting.Services
             ITimelineVideoBuilder builder,
             ILogger<SnapshotRollupService> logger,
             IEventRepository events,
+            IUnitOfWork unitOfWork,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
@@ -77,6 +79,7 @@ namespace VideoForensics.Client.Hosting.Services
             _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
             _events = events;
+            _unitOfWork = unitOfWork;
             _builder = builder;
             _logger = logger;
         }
@@ -333,37 +336,47 @@ namespace VideoForensics.Client.Hosting.Services
                 hash = await SHA256.HashDataAsync(stream, cancellationToken);
             }
 
-            await _mediaItems.AddAsync(new MediaItem
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = device.Id,
-                FileName = Path.GetFileName(mp4Path),
-                FilePath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken),
-                MediaFormat = "mp4",
-                FileSizeBytes = new FileInfo(mp4Path).Length,
-                RecordedAtUtc = fromUtc,
-                DurationSeconds = (toUtc - fromUtc).TotalSeconds,
-                DownloadedAtUtc = DateTime.UtcNow,
-                Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
-                IntegrityVerified = false,
-                // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
-                MetadataJson = SnapshotRollupMarker,
-            }, cancellationToken);
+            string storedPath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken);
+            long fileSizeBytes = new FileInfo(mp4Path).Length;
 
-            // The Events tab reads the Events table, so the loop also gets an event row at the loop's start. It is marked
-            // Downloaded so the event media puller never tries to fetch it from the provider. The window end is the key, so a
-            // rerun updates the same row.
-            DateTime now = DateTime.UtcNow;
-            _ = await _events.UpsertAsync(new Event
+            // The loop row and its event row share one unit of work, so they commit together or not at all. A crash between
+            // them would otherwise leave a loop the Events tab cannot show, or an event pointing at no loop.
+            _ = await _unitOfWork.ExecuteAsync<int>(async ctx =>
             {
-                Id = Guid.NewGuid(),
-                DeviceId = device.Id,
-                ProviderEventId = $"{TimelapseEventType}-{toUtc:yyyyMMddHHmmss}",
-                EventType = TimelapseEventType,
-                OccurredAtUtc = fromUtc,
-                DiscoveredAtUtc = now,
-                DownloadedAtUtc = now,
-                DownloadStatus = EventDownloadStatus.Downloaded,
+                await ctx.MediaItems.AddAsync(new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = device.Id,
+                    FileName = Path.GetFileName(mp4Path),
+                    FilePath = storedPath,
+                    MediaFormat = "mp4",
+                    FileSizeBytes = fileSizeBytes,
+                    RecordedAtUtc = fromUtc,
+                    DurationSeconds = (toUtc - fromUtc).TotalSeconds,
+                    DownloadedAtUtc = DateTime.UtcNow,
+                    Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
+                    IntegrityVerified = false,
+                    // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
+                    MetadataJson = SnapshotRollupMarker,
+                }, cancellationToken);
+
+                // The Events tab reads the Events table, so the loop also gets an event row at the loop's start. It is marked
+                // Downloaded so the event media puller never tries to fetch it from the provider. The window end is the key, so a
+                // rerun updates the same row.
+                DateTime now = DateTime.UtcNow;
+                _ = await ctx.Events.UpsertAsync(new Event
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = device.Id,
+                    ProviderEventId = $"{TimelapseEventType}-{toUtc:yyyyMMddHHmmss}",
+                    EventType = TimelapseEventType,
+                    OccurredAtUtc = fromUtc,
+                    DiscoveredAtUtc = now,
+                    DownloadedAtUtc = now,
+                    DownloadStatus = EventDownloadStatus.Downloaded,
+                }, cancellationToken);
+
+                return 0;
             }, cancellationToken);
 
             await _evidenceChanges.EvidenceChangedAsync(device.Id, cancellationToken);
