@@ -30,7 +30,3 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - Run `dotnet test` with a plain `--filter`. Ui.Shared uses MTP; filter by namespace or class substring (`FullyQualifiedName~QueryApi`), and confirm with `--list-tests`. File-name filters match zero tests.
 - Don't use `--logger console`, `-p:DefaultItemExcludes`, or a build while a dev server holds the WebApp DLLs. Build to a scratch OutDir.
 - Register every service an endpoint or component injects in its test base (test hosts, ScopeRail, QueryApi page base).
-- Never kill processes in bulk (`taskkill /F` on dotnet.exe). Report a hung test host instead.
-- Stop a background shell's dotnet run with TaskStop, and don't assume PATH in background shells.
-- Build with `-m:1` after a merge or a clean; parallel builds race on stale ref output and locked DLLs.
-- Stale generated files with NUL bytes (obj folders) are deleted by explicit path; the next build regenerates them.

@@ -14,13 +14,11 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 - Create or reuse worktrees per the global skill `git-worktree-workflow`, under `F:/vf-worktrees/<feature>`.
 
 ## Implementation
-- Plan review (standing approval, no per-plan ask): before dispatching a Haiku implementer, one read-only Sonnet agent reviews its plan/brief; fold its findings in before dispatch. This is the only non-Haiku spawn allowed without a yes (CLAUDE.md STOP).
-- Test first: write the failing test, run it, record the red run, then implement.
 - Haiku 5.5 subagents (`model: "haiku"`) write implementation files, one file or small related batch each. Verify every result yourself (build, test, read the diff).
 - A request that becomes a multi-step plan (it touches several files or components, or the task list runs to four or more steps): write the plan as the task list, then hand each independent step to a Haiku subagent as above instead of implementing it yourself. Each brief names the files, the failing test the step must satisfy, and the localization rule. Single-file fixes stay with you.
 - Blocked or confused subagent: resolve the ambiguity in the brief and re-dispatch.
 - Briefs for a Ui.Shared page must name the localization rule (`rules/ui-shared.md`) and list the page's existing literals to convert.
-- Model choice: Haiku only; any other model needs the user's yes (CLAUDE.md STOP). Criteria: `~/.claude/docs/subagent-model-selection.md`.
+- Model choice: CLAUDE.md STOP block.
 
 ## Lite gate (after each file/service change or batch)
 - `dotnet build` on touched `.csproj` files (incremental).
@@ -35,4 +33,5 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 4. List `git log origin/wip..wip` and confirm each commit, then `git push origin wip`. Do not push the work branch unless asked.
 5. Start the next batch in a new worktree from updated `wip`.
 - Stop and report instead when: a gate fails, merges conflict, the main checkout has unrelated changes, or a product decision is needed.
+- "wip" from the user (e.g. "wip it", "to wip") means steps 2–4 with no question. Any other push needs one "push?" question, named after the commit: a yes means steps 2–4, a no means no push. Never push `dev` or `main`. Before either, mention unpushed commits on `wip` that the push would also send.
 
