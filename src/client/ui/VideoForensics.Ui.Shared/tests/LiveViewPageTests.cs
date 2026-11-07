@@ -31,6 +31,7 @@ public class LiveViewPageTests : BunitContext
 
     private static readonly Guid Camera = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Snapshot = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid Garage = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
     private void AddCamera()
     {
@@ -88,6 +89,24 @@ public class LiveViewPageTests : BunitContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Equal("https://example.test/still-2.jpg", cut.Find("[data-testid='live-view-still']").GetAttribute("src")));
+    }
+
+    [Fact]
+    public async Task LiveView_CameraChosenOnSharedReviewState_IsTheCameraShown()
+    {
+        // Arrange: two cameras; Live View starts on the first one
+        var porch = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" };
+        var garage = new Device { Id = Garage, LocationId = Guid.NewGuid(), ProviderDeviceId = "garage", Name = "Garage", Type = "camera" };
+        _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([porch, garage]);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(Camera.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id")));
+
+        // Act: the camera is chosen on the shared review state, the same one the Review page writes to
+        var shared = Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
+        await cut.InvokeAsync(() => shared.SetCameras([Garage]));
+
+        // Assert: Live View shows the chosen camera
+        cut.WaitForAssertion(() => Assert.Equal(Garage.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id")));
     }
 
     public LiveViewPageTests()

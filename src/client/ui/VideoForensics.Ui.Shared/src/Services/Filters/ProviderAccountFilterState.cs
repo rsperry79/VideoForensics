@@ -45,6 +45,12 @@ public sealed class ProviderAccountFilterState
         OnChange?.Invoke();
     }
 
+    /// <summary>Whether a page shows this provider's rows: every provider when none is selected, otherwise only the selected ones.</summary>
+    public bool IncludesProvider(string provider)
+    {
+        return Providers.Length == 0 || Providers.Contains(provider, StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>Sets the choice, saves it, and tells every reader.</summary>
     public async Task SetAsync(string[] providers, string? account)
     {

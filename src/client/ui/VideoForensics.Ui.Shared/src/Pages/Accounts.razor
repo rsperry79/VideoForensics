@@ -6,12 +6,14 @@
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Filters
+@using VideoForensics.Client.Ui.Shared.Components.Filters
 @inject PairedSessionState SessionState
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
 @inject IAccountExportService ExportService
-@inject RightPanelFilterStore FilterStore
+@inject ProviderAccountFilterState SharedFilter
 @inject IProviderAccountEditAccess EditAccess
 @inject IStringLocalizer<Accounts> L
 @inject NavigationManager NavigationManager
@@ -24,21 +26,7 @@
 </style>
 
 <PageRightPanelContent>
-    <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterProviders"]</small>
-        <SfMultiSelect TValue="string[]" TItem="string" DataSource="@_providerNames"
-            Value="@_selectedProviders" ValueChanged="OnProvidersChanged"
-            Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
-        </SfMultiSelect>
-    </div>
-    <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterAccount"]</small>
-        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
-            Placeholder="@L["AllAccounts"]" data-testid="accounts-account-filter"
-            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
-            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-        </SfDropDownList>
-    </div>
+    <ProviderAccountFilter ProviderNames="@_providerNames" AccountsFor="@AccountsForProvider" />
 </PageRightPanelContent>
 
 @if (_removeTarget is { } target)
@@ -194,9 +182,6 @@ else
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 
     // About an hour at the poll interval; a job still running after that is reported instead of polled forever.
-    /// <summary>Key for this page's remembered right-panel filters in the device's local storage.</summary>
-    private const string FilterPageKey = "accounts";
-
     private const int MaxPollTicks = 1200;
 
     private readonly CancellationTokenSource _disposeCts = new();
@@ -206,8 +191,6 @@ else
     private List<AccountRow> _rows = new();
     private List<AccountRow> _removedRows = new();
     private List<string> _providerNames = new();
-    private string[] _selectedProviders = Array.Empty<string>();
-    private string _accountFilterValue = string.Empty;
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private IEnumerable<AccountRow> _filteredRemovedRows = new List<AccountRow>();
     private RemoveTarget? _removeTarget;
@@ -229,27 +212,16 @@ else
 
             _ = OnAccountLinkedAsync();
         });
+        SharedFilter.OnChange += OnSharedFilterChanged;
         _canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
-        RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
+        await SharedFilter.EnsureLoadedAsync();
         await LoadAccountsAsync();
-
-        // Restore after the load: the provider list must exist before a stored selection can be matched to it.
-        if (stored?.Providers is { } providers)
-        {
-            _selectedProviders = providers.Where(_providerNames.Contains).ToArray();
-        }
-
-        if (stored?.Account is { } account && AccountFilterOptions.Any(o => o.Key == account))
-        {
-            _accountFilterValue = account;
-        }
-
-        ApplyProviderFilter();
     }
 
-    private async Task SaveFiltersAsync()
+    private void OnSharedFilterChanged()
     {
-        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(_selectedProviders, string.IsNullOrEmpty(_accountFilterValue) ? null : _accountFilterValue));
+        ApplyProviderFilter();
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private Task OnAccountLinkedAsync() => InvokeAsync(async () =>
@@ -266,6 +238,7 @@ else
     public void Dispose()
     {
         _disposed = true;
+        SharedFilter.OnChange -= OnSharedFilterChanged;
         _accountLinkedSubscription?.Dispose();
         _accountLinkedSubscription = null;
         // Stops every export polling loop.
@@ -283,14 +256,7 @@ else
             _rows = await BuildRowsAsync(active);
             _removedRows = await BuildRowsAsync(removed);
             await RefreshExportStatusesAsync();
-            var previous = new HashSet<string>(_providerNames, StringComparer.OrdinalIgnoreCase);
             _providerNames = _rows.Concat(_removedRows).Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
-            // Every provider is selected by default so the grids start with all accounts visible; providers that appear later are selected too.
-            _selectedProviders = _selectedProviders
-                .Where(p => _providerNames.Contains(p))
-                .Concat(_providerNames.Where(p => !previous.Contains(p)))
-                .Distinct()
-                .ToArray();
             ApplyProviderFilter();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -366,48 +332,22 @@ else
         return rows;
     }
 
-    private async Task OnProvidersChanged(string[] selected)
-    {
-        _selectedProviders = selected ?? Array.Empty<string>();
-
-        // An account from a provider that is no longer selected can't stay as the filter.
-        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
-        {
-            _accountFilterValue = string.Empty;
-        }
-
-        ApplyProviderFilter();
-        await SaveFiltersAsync();
-    }
-
     private void ApplyProviderFilter()
     {
-        var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
-        var accountId = Guid.TryParse(_accountFilterValue, out var parsed) ? parsed : (Guid?)null;
+        var accountId = Guid.TryParse(SharedFilter.Account, out var parsed) ? parsed : (Guid?)null;
         bool Keep(AccountRow r) =>
-            selected.Contains(r.Account.ProviderName) && (accountId is null || r.Account.Id == accountId);
+            SharedFilter.IncludesProvider(r.Account.ProviderName) && (accountId is null || r.Account.Id == accountId);
 
         _filteredRows = _rows.Where(Keep).ToList();
         _filteredRemovedRows = _removedRows.Where(Keep).ToList();
     }
 
-    /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
-    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions
+    /// <summary>The Account filter's choices for one provider, from the active accounts.</summary>
+    private IEnumerable<KeyValuePair<string, string>> AccountsForProvider(string provider)
     {
-        get
-        {
-            var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
-            return _rows
-                .Where(r => selected.Contains(r.Account.ProviderName))
-                .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
-        }
-    }
-
-    private async Task OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
-    {
-        _accountFilterValue = args.Value ?? string.Empty;
-        ApplyProviderFilter();
-        await SaveFiltersAsync();
+        return _rows
+            .Where(r => string.Equals(r.Account.ProviderName, provider, StringComparison.OrdinalIgnoreCase))
+            .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
     }
 
     private void StartRemove(Guid accountId, bool startAtDeleteStep)

@@ -10,6 +10,7 @@ using Moq;
 
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Filters;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -45,6 +46,7 @@ public class NoticesPage_FilterRestore_Tests : BunitContext
         _ = Services.AddScoped(_ => Mock.Of<INoticeDismissalRepository>());
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped<RightPanelFilterStore>();
+        _ = Services.AddScoped<ProviderAccountFilterState>();
         _ = Services.AddScoped<RightPanelContentService>();
 
         _noticeRepository
@@ -59,12 +61,29 @@ public class NoticesPage_FilterRestore_Tests : BunitContext
     }
 
     [Fact]
-    public async Task Notices_StoredProviderFilter_IsAppliedOnLoad()
+    public async Task Notices_StoredSharedProviderChoice_IsAppliedOnLoad()
     {
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", _operatorId, "Admin");
-        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.notices").SetResult("{\"providers\":[\"Wyze\"],\"account\":null}");
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.provider-account").SetResult("{\"providers\":[\"Wyze\"],\"account\":null}");
 
         IRenderedComponent<Notices> cut = Render<Notices>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("wyze-notice", cut.Markup);
+            Assert.DoesNotContain("ring-notice", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task Notices_ProviderChoiceMadeInSharedState_FiltersTheNotices()
+    {
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", _operatorId, "Admin");
+        IRenderedComponent<Notices> cut = Render<Notices>();
+        cut.WaitForAssertion(() => Assert.Contains("ring-notice", cut.Markup));
+        ProviderAccountFilterState shared = Services.GetRequiredService<ProviderAccountFilterState>();
+
+        await cut.InvokeAsync(() => shared.SetAsync(new[] { "Wyze" }, null));
 
         cut.WaitForAssertion(() =>
         {
