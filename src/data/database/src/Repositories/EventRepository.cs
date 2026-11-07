@@ -157,6 +157,26 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <inheritdoc />
+        public async Task RecordRetryPassAsync(Guid eventId, int maxAttempts, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Event? evt = await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
+            if (evt is null)
+            {
+                return;
+            }
+
+            evt.DownloadAttempts++;
+            if (evt.DownloadAttempts >= maxAttempts)
+            {
+                evt.DownloadStatus = EventDownloadStatus.Unavailable;
+                evt.AwaitingDingId = false;
+            }
+
+            _ = await db.SaveChangesAsync(ct);
+        }
+
         /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when it has none.</summary>
         public async Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
         {

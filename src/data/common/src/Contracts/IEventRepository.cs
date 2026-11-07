@@ -32,6 +32,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// </summary>
         Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct);
 
+        /// <summary>
+        /// Counts one failed retry pass for a queued event. On the pass that reaches <paramref name="maxAttempts"/>, the event
+        /// becomes <see cref="EventDownloadStatus.Unavailable"/> and leaves the queue.
+        /// </summary>
+        Task RecordRetryPassAsync(Guid eventId, int maxAttempts, CancellationToken ct);
+
         /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when the device has no events.</summary>
         Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct);
 

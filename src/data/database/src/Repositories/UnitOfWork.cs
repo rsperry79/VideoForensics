@@ -942,6 +942,25 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task RecordRetryPassAsync(Guid eventId, int maxAttempts, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits.
+            Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
+            if (evt is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            evt.DownloadAttempts++;
+            if (evt.DownloadAttempts >= maxAttempts)
+            {
+                evt.DownloadStatus = EventDownloadStatus.Unavailable;
+                evt.AwaitingDingId = false;
+            }
+
+            return Task.CompletedTask;
+        }
+
         public Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
