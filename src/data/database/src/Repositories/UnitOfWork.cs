@@ -1639,5 +1639,29 @@ namespace VideoForensics.Data.Database.Repositories
 
             return Task.CompletedTask;
         }
+
+        public Task<VideoForensics.Data.Common.Entities.Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct)
+        {
+            Guid? linkedId = _db.RingDoorbotHistoryEvents
+                .Where(e => e.ProviderEventId == doorbotHistoryProviderEventId)
+                .Select(e => e.LinkedEventId)
+                .FirstOrDefault();
+            VideoForensics.Data.Common.Entities.Event? linked = linkedId is { } id ? _db.Events.FirstOrDefault(e => e.Id == id) : null;
+            return Task.FromResult(linked);
+        }
+
+        public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits. The unique (DeviceId, ProviderEventId) index
+            // forbids two rows with one id, so a rekey onto an id another row of the device already holds is left undone.
+            VideoForensics.Data.Common.Entities.Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
+            if (evt is null || _db.Events.Any(e => e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId))
+            {
+                return Task.CompletedTask;
+            }
+
+            evt.ProviderEventId = newProviderEventId;
+            return Task.CompletedTask;
+        }
     }
 }

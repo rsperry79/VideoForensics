@@ -680,6 +680,15 @@ namespace VideoForensics.Providers.Ring.Services
                         // not DownloadEvents, so an event must land here the moment it's discovered
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
+                        // Why: a row stored under the doorbot id before its ding id was known must be kept, not duplicated. Rekeying it to the
+                        // ding id lets the upsert below update that same row.
+                        if (@event.Id is { } matchedHistoryId
+                            && await _dataClient.GetLinkedEventAsync(matchedHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture), rateLimitCts.Token) is { } linkedRow
+                            && linkedRow.ProviderEventId != eventIdStr)
+                        {
+                            await _dataClient.RekeyLinkedEventAsync(linkedRow.Id, eventIdStr, rateLimitCts.Token);
+                        }
+
                         Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
                         if (eventDbId != Guid.Empty)

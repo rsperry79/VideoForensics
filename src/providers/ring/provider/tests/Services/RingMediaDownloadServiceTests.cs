@@ -552,6 +552,43 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             Assert.False(Directory.Exists(folder) && Directory.GetFiles(folder, "*.mp4").Length > 0);
         }
 
+        [Fact]
+        public async Task DownloadVideosAsync_MatchedEventLinkedToUnmatchedRow_RekeysThatRowInsteadOfAddingOne()
+        {
+            // Arrange - the row was stored under the doorbot id before its ding id existed; the ding id has now arrived
+            Mock<IVideoForensicsDataClient>? client = null;
+            var linkedId = Guid.NewGuid();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vrekey_" + Guid.NewGuid().ToString("N"));
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(configureDataClient: dc =>
+            {
+                client = dc;
+                _ = dc.Setup(d => d.GetLinkedEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(new Data.Common.Entities.Event
+                {
+                    Id = linkedId,
+                    DeviceId = Guid.NewGuid(),
+                    ProviderEventId = "987000",
+                    EventType = "motion",
+                    OccurredAtUtc = DateTime.UtcNow,
+                    DiscoveredAtUtc = DateTime.UtcNow,
+                });
+            });
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the stored row takes the ding id; no second row is created under it
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.NotNull(client);
+                client!.Verify(d => d.RekeyLinkedEventAsync(linkedId, "987654", It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
         private static void TryDeleteFolder(string folder)
         {
             if (Directory.Exists(folder))
