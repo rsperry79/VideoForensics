@@ -990,6 +990,7 @@ app.MapStorageSettingsEndpoints();
 app.MapFolderBrowseEndpoints();
 app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
+app.MapNotificationPreferencesEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
 app.MapLogPipeEndpoints();
