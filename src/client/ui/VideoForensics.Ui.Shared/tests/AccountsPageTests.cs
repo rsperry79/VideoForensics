@@ -104,6 +104,7 @@ public abstract class AccountsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => WebAuthnMock.Object);
         _ = Services.AddScoped<StepUpService>();
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
         _ = Services.AddScoped<AccountLinkedBus>();
         _ = Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
     }
@@ -204,6 +205,18 @@ public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
 
         Assert.NotNull(multiSelect.Instance.Value);
         Assert.Equal(new[] { "Ring", "Wyze" }.OrderBy(x => x), multiSelect.Instance.Value!.OrderBy(x => x));
+    }
+
+    [Fact]
+    public void Accounts_StoredProviderSelection_IsRestoredAfterReload()
+    {
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.accounts").SetResult("{\"providers\":[\"Ring\"],\"account\":null}");
+        _ = RenderPage();
+        IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
+
+        IRenderedComponent<SfMultiSelect<string[], string>> multiSelect = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
+
+        Assert.Equal(new[] { "Ring" }, multiSelect.Instance.Value);
     }
 
     [Fact]

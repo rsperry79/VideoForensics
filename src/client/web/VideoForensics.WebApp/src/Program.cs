@@ -760,6 +760,7 @@ builder.Services.AddScoped<WebPushClient>();
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<RightPanelFilterStore>();
 builder.Services.AddScoped<LeftPanelContentService>();
 builder.Services.AddScoped<InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
