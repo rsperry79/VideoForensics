@@ -10,7 +10,6 @@ Pruned 2026-11-06. Resolved entries removed; history is in git. Rules that came 
 - 2026-10-24 | debug-launch and deploy scripts | wrong WebApp csproj name (real: VideoForensics.Client.WebApp.csproj); exe name hardcoded as VideoForensics.WebApp.exe; service path regex fails on unquoted paths with spaces | OPEN: fix both scripts, test with a path that has spaces
 - 2026-10-24 | webview2 | MAUI reports no WebView2 Runtime (EdgeUpdate pv 155 vs installed 156; loader 0x80070002) | OPEN: verify on the Windows head; fixed-version runtime path is in merged fix/maui-local-password
 - 2026-10-24 | test flake | AccountLinkedWiringTests Accounts_Disposed_UnsubscribesFromAccountLinked timed out under full-suite load | OPEN: investigate WaitForAssertion timing
-- 2026-10-24 | git | new .razor/.cs files written LF; repo files CRLF | OPEN (low): normalise on next touch
 - 2026-10-25 | windows-service | .NET 10 x64 service exits 'No frameworks were found'; x64 InstallLocation points at x86 dotnet and the sharedfx subkey is missing | OPEN: reinstall the x64 runtime (admin), or self-contained redeploy via hotswap-service.ps1 -Build
 - 2026-10-25 | publish | self-contained win-x64 publish fails NETSDK1152 on tsconfig.json (Ui.Shared and WebApp src/ts) | OPEN: exclude the ts folder from Ui.Shared publish, or set ErrorOnDuplicatePublishOutputFiles=false
 - 2026-10-28 | stray worktree cleanup | .claude/worktrees/device-offline-settings not removed (Linux rm syntax; delete denied) | OPEN: user runs Remove-Item -LiteralPath <path> -Recurse -Force
@@ -28,14 +27,6 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 
 ## Rules (covered)
 
-- Edit files with the Edit or Write tool, or a script file. Never pipe a bare python3 or a heredoc into bash (hangs on stdin, unbalanced quotes).
 - Run `dotnet test` with a plain `--filter`. Ui.Shared uses MTP; filter by namespace or class substring (`FullyQualifiedName~QueryApi`), and confirm with `--list-tests`. File-name filters match zero tests.
 - Don't use `--logger console`, `-p:DefaultItemExcludes`, or a build while a dev server holds the WebApp DLLs. Build to a scratch OutDir.
 - Register every service an endpoint or component injects in its test base (test hosts, ScopeRail, QueryApi page base).
-- Briefs for subagents must require a recorded failing run before implementation (TDD order).
-- Never `git clean -X`. Match worktrees by `refs/heads/<branch>` after stripping `\r`, and run `git worktree list --porcelain` before removing one.
-- Never kill processes in bulk (`taskkill /F` on dotnet.exe). Report a hung test host instead.
-- Check original line endings with `git show` before editing a file. Write files with explicit CRLF when the repo file uses it.
-- Stop a background shell's dotnet run with TaskStop, and don't assume PATH in background shells.
-- Build with `-m:1` after a merge or a clean; parallel builds race on stale ref output and locked DLLs.
-- Stale generated files with NUL bytes (obj folders) are deleted by explicit path; the next build regenerates them.

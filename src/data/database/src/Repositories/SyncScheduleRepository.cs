@@ -47,13 +47,6 @@ namespace VideoForensics.Data.Database.Repositories
                     nameof(schedule));
             }
 
-            if (schedule.SnapshotRollupIntervalMinutes < SyncSchedule.MinimumSnapshotRollupIntervalMinutes)
-            {
-                throw new ArgumentException(
-                    $"SnapshotRollupIntervalMinutes ({schedule.SnapshotRollupIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotRollupIntervalMinutes}",
-                    nameof(schedule));
-            }
-
             // Validate jamming windows
             if (schedule.JammingWindows != null)
             {
@@ -107,7 +100,6 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
                     existing.SnapshotRssiIntervalSeconds = schedule.SnapshotRssiIntervalSeconds;
-                    existing.SnapshotRollupIntervalMinutes = schedule.SnapshotRollupIntervalMinutes;
                     existing.IsEnabled = schedule.IsEnabled;
                     existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
                     existing.EventNextRunUtc = schedule.EventNextRunUtc;
@@ -211,14 +203,6 @@ namespace VideoForensics.Data.Database.Repositories
                 .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.BackfillCursorUtc, cursorUtc), ct);
         }
 
-        /// <summary>Updates only LastRollupUtc; a vanished row is a no-op. Never touches the form-edited interval.</summary>
-        public async Task RecordRollupAsync(Guid providerAccountId, DateTime rolledUpAtUtc, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.LastRollupUtc, rolledUpAtUtc), ct);
-        }
 
         /// <summary>Updates only SnapshotIntervalSeconds; a vanished row is a no-op.</summary>
         public async Task SetSnapshotIntervalSecondsAsync(Guid providerAccountId, int seconds, CancellationToken ct)

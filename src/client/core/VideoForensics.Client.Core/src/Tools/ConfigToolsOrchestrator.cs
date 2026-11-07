@@ -219,6 +219,38 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"{service} will run every {hours} hours");
         }
 
+        public async Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(
+            IForensicsConfiguration config,
+            int minutes,
+            CancellationToken ct = default)
+        {
+            if (minutes is < 1 or > 1440)
+            {
+                return (false, "Time-lapse interval must be between 1 and 1440 minutes");
+            }
+
+            config.TimelapseCheckIntervalMinutes = minutes;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Time-lapse check interval set to {minutes} minutes", minutes);
+            return (true, $"Time-lapses will be built every {minutes} minutes");
+        }
+
+        public async Task<(bool Success, string Message)> SetTimelapseMaxSegmentMinutesAsync(
+            IForensicsConfiguration config,
+            int minutes,
+            CancellationToken ct = default)
+        {
+            if (minutes is < 1 or > 1440)
+            {
+                return (false, "Time-lapse maximum segment must be between 1 and 1440 minutes");
+            }
+
+            config.TimelapseMaxSegmentMinutes = minutes;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Time-lapse max segment set to {minutes} minutes", minutes);
+            return (true, $"Time-lapse segments will be at most {minutes} minutes");
+        }
+
         public async Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(
             IForensicsConfiguration config,
             bool enabled,

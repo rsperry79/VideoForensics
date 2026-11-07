@@ -122,4 +122,16 @@
   <data name="IntervalError" xml:space="preserve">
     <value>Failed to update the interval: {0}</value>
   </data>
+  <data name="TimelapseCheckIntervalLabel" xml:space="preserve">
+    <value>Time-lapse interval (minutes)</value>
+  </data>
+  <data name="TimelapseCheckIntervalHelp" xml:space="preserve">
+    <value>How often the service checks for time-lapse gaps. Default 15.</value>
+  </data>
+  <data name="TimelapseMaxSegmentLabel" xml:space="preserve">
+    <value>Longest time-lapse segment (minutes)</value>
+  </data>
+  <data name="TimelapseMaxSegmentHelp" xml:space="preserve">
+    <value>Gaps longer than this are split into segments of this length. Default 60.</value>
+  </data>
 </root>

@@ -75,6 +75,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
             public Mock<ISnapshotSyncService> SnapshotSync { get; } = new();
             public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
+            public Mock<ITimelapseGapQueries> TimelapseQueries { get; } = new();
+            public Mock<ISnapshotCaptureRepository> Captures { get; } = new();
             public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = [];
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = [];
@@ -128,7 +130,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     EventPollIntervalMinutes = intervalMinutes,
                     SnapshotRssiIntervalSeconds = 60,
                     SnapshotNextRunUtc = snapshotNext ?? Now.AddHours(1),
-                    LastRollupUtc = Now.AddMinutes(-1),
                     EventNextRunUtc = eventNext,
                     EventLastRunUtc = eventLast
                 };
@@ -217,6 +218,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
                 _ = _services.AddScoped(_ => SnapshotSync.Object);
                 _ = _services.AddScoped(_ => SnapshotRollup.Object);
+                _ = _services.AddScoped(_ => TimelapseQueries.Object);
+                _ = _services.AddScoped(_ => Captures.Object);
                 _ = _services.AddSingleton<IReferenceDataCache, ReferenceDataCache>();
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
@@ -292,58 +295,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await service.RunOneTickAsync(CancellationToken.None);
 
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_RollupDue_RollsUpSinceOneIntervalAgoAndRecordsRollup()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring");
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, Now.AddMinutes(-15), Now, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 1, ErrorMessage: null));
-            ScheduledSyncService service = h.Build();
-
-            // The harness schedule has no LastRollupUtc, so the roll-up is due and starts one interval back.
-            _ = h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            h.SnapshotRollup.Verify(s => s.RollUpAccountAsync(account.Id, Now.AddMinutes(-15), Now, It.IsAny<CancellationToken>()), Times.Once);
-            h.Schedules.Verify(r => r.RecordRollupAsync(account.Id, Now, It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_RollupFails_DoesNotRecordRollup()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring");
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 0, ErrorMessage: "Cam: ffmpeg failed"));
-            _ = h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
-            ScheduledSyncService service = h.Build();
-
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            h.Schedules.Verify(r => r.RecordRollupAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_RollupFailed_IsNotRetriedWithinBackoff()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring");
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 0, ErrorMessage: "Cam: ffmpeg failed"));
-            _ = h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
-            ScheduledSyncService service = h.Build();
-
-            // Two ticks at the same time: the second falls inside the retry backoff, so the roll-up runs once.
-            await service.RunOneTickAsync(CancellationToken.None);
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            h.SnapshotRollup.Verify(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -886,6 +837,52 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public void ResolveTickInterval_Seconds_ClampsToFiveSecondFloor(int configured, int expectedSeconds)
         {
             Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), ScheduledSyncService.ResolveTickInterval(configured));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NoSnapshotSyncThisProcess_DoesNotBuildTimelapseSegments()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            // The horizon needs a snapshot sync from this process, and none ran, so nothing is planned or built.
+            h.SnapshotRollup.Verify(s => s.RollUpSegmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CleanPullAndSnapshotSync_BuildsAtMostFiveSegmentsPerTick()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            _ = h.TimelapseQueries.Setup(q => q.GetEarliestCaptureAtUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DateTimeOffset(Now.AddHours(-8), TimeSpan.Zero));
+            _ = h.TimelapseQueries.Setup(q => q.GetLatestTimelapseEndUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateTime?)null);
+            _ = h.TimelapseQueries.Setup(q => q.GetLatestEventTimeUtcAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateTime?)null);
+            _ = h.TimelapseQueries.Setup(q => q.ListEventTimesForGapsAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DateTime>());
+            var attempts = new List<SnapshotCapture>();
+            for (DateTime t = Now.AddHours(-8); t < Now; t = t.AddMinutes(10))
+            {
+                attempts.Add(SnapshotCapture.Create(Guid.NewGuid(), new DateTimeOffset(t, TimeSpan.Zero), "fresh", 200, "p.jpg", null));
+            }
+
+            _ = h.Captures.Setup(c => c.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(attempts);
+            _ = h.SnapshotRollup.Setup(s => s.RollUpSegmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(1, 1, null));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            // Eight hours of quiet time with no events plans seven full segments; one tick builds at most five of them.
+            h.SnapshotRollup.Verify(s => s.RollUpSegmentAsync(account.Id, It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Exactly(ScheduledSyncService.MaxSegmentsPerTick));
         }
     }
 }

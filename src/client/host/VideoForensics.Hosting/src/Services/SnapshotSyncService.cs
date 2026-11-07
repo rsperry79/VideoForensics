@@ -16,6 +16,9 @@ namespace VideoForensics.Client.Hosting.Services
     /// <inheritdoc />
     public class SnapshotSyncService : ISnapshotSyncService
     {
+        /// <summary>The services-page check interval default, in minutes. Used when no configuration service is registered.</summary>
+        private const int DefaultCheckIntervalMinutes = 15;
+
         private readonly IServiceProvider _services;
         private readonly IProviderAccountRepository _accounts;
         private readonly ILocationRepository _locations;
@@ -60,10 +63,13 @@ namespace VideoForensics.Client.Hosting.Services
                 ?? _services.GetRequiredService<IMediaDownloadService>();
             download.SetActiveProviderAccountId(accountId);
 
-            // The non-image warning is logged once per roll-up window, so the window is the account's roll-up interval.
-            ISyncScheduleRepository? schedules = _services.GetService<ISyncScheduleRepository>();
-            SyncSchedule? schedule = schedules is null ? null : await schedules.GetByProviderAccountIdAsync(accountId, cancellationToken);
-            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(schedule?.SnapshotRollupIntervalMinutes ?? SyncSchedule.DefaultSnapshotRollupIntervalMinutes));
+            // The non-image warning is logged once per time-lapse check window, so the window is the services check interval.
+            // Without a configuration service registered, the default check interval (15 minutes) applies.
+            IForensicsConfigurationService? configService = _services.GetService<IForensicsConfigurationService>();
+            int checkMinutes = configService is null
+                ? DefaultCheckIntervalMinutes
+                : (await configService.LoadConfigurationAsync(string.Empty, cancellationToken)).TimelapseCheckIntervalMinutes;
+            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(checkMinutes));
 
             // The offline rule belongs to the account's provider. A provider with no registered rule keeps every device,
             // because nothing on this path can tell that it is offline.

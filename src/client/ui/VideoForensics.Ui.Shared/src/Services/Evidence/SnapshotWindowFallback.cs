@@ -8,6 +8,9 @@ namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 /// </summary>
 public static class SnapshotWindowFallback
 {
+    /// <summary>The services-page check interval default, in minutes. Matches the configuration default.</summary>
+    private const int DefaultCheckIntervalMinutes = 15;
+
     /// <summary>
     /// Returns the one saved window when every account agrees on it. With no saved windows, or accounts that disagree,
     /// no single setting applies, so the entity default is returned.
@@ -19,6 +22,6 @@ public static class SnapshotWindowFallback
         var distinct = savedWindows.Distinct().ToList();
         return distinct.Count == 1
             ? distinct[0]
-            : TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes);
+            : TimeSpan.FromMinutes(DefaultCheckIntervalMinutes);
     }
 }

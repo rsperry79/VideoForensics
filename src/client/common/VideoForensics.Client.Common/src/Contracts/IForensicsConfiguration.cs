@@ -38,6 +38,10 @@ namespace VideoForensics.Client.Common.Contracts
         int ScheduledReportIntervalHours { get; set; }
         /// <summary>Hours between log pruning passes (OperationalLogPruneService). Default 24; allowed 1 to 168.</summary>
         int LogPruneIntervalHours { get; set; }
+        /// <summary>How often the time-lapse check looks for gaps, in minutes. Default 15.</summary>
+        int TimelapseCheckIntervalMinutes { get; set; }
+        /// <summary>Longest time-lapse segment, in minutes. Longer gaps are split into segments of this length. Default 60.</summary>
+        int TimelapseMaxSegmentMinutes { get; set; }
         /// <summary>Hours between media thumbnail and preview backfill passes. Default 6; allowed 1 to 168.</summary>
         int MediaBackfillIntervalHours { get; set; }
         /// <summary>Elevated health polling (every ElevatedPollingIntervalSeconds while a device is in an elevated window). Off by default; the regular health check is unaffected.</summary>
@@ -204,6 +208,8 @@ namespace VideoForensics.Client.Common.Contracts
         public bool EnableScheduledReports { get; set; } = true;
         public int ScheduledReportIntervalHours { get; set; } = 24;
         public int LogPruneIntervalHours { get; set; } = 24;
+        public int TimelapseCheckIntervalMinutes { get; set; } = 15;
+        public int TimelapseMaxSegmentMinutes { get; set; } = 60;
         public int MediaBackfillIntervalHours { get; set; } = 6;
         public bool EnableElevatedPolling { get; set; } = false;
         public bool EnableMdnsAdvertisement { get; set; } = true;
