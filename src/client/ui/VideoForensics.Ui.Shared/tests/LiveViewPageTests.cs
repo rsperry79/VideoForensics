@@ -90,9 +90,38 @@ public class LiveViewPageTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal("https://example.test/still-2.jpg", cut.Find("[data-testid='live-view-still']").GetAttribute("src")));
     }
 
+    [Fact]
+    public void LiveView_StoredCameraSelection_RestoresOnLoad()
+    {
+        // Arrange: two cameras, and the operator last chose only the second one
+        var flood = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(
+        [
+            new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" },
+            new Device { Id = flood, LocationId = Guid.NewGuid(), ProviderDeviceId = "flood", Name = "Flood", Type = "camera" },
+        ]);
+        var media = new MediaItem { Id = Snapshot, DeviceId = flood, FileName = "f.jpg", FilePath = "f.jpg", MediaFormat = "jpg", RecordedAtUtc = DateTime.UtcNow, Sha256Hash = "h" };
+        _mediaItems
+            .Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(flood, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync([media]);
+        _contentUrls
+            .Setup(c => c.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string> { [Snapshot] = "https://example.test/flood.jpg" });
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.live-view")
+            .SetResult($"{{\"providers\":null,\"account\":null,\"cameras\":[\"{flood:D}\"]}}");
+
+        // Act
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+
+        // Assert: only the stored camera has a tile
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        Assert.Equal(flood.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id"));
+    }
+
     public LiveViewPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelFilterStore>();
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);

@@ -27,6 +27,7 @@
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<LiveView> L
 @inject ILogger<LiveView> Logger
+@inject RightPanelFilterStore FilterStore
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -134,6 +135,9 @@ else
     // The media page's camera filter. An empty selection means the first cameras, as the media page shows them.
     private readonly ReviewPageState _cameraState = new();
 
+    /// <summary>Key for this page's remembered camera choice in the device's local storage.</summary>
+    private const string FilterPageKey = "live-view";
+
     // The latest still per camera, as a browser-loadable URL. A null value means the camera has no still in the last hour.
     private readonly Dictionary<Guid, string?> _stills = new();
 
@@ -171,6 +175,21 @@ else
             if (Device is Guid requested && _cameraIds.Contains(requested))
             {
                 _cameraState.SetCameras([requested]);
+            }
+            else
+            {
+                // Restore the camera choice the operator last made on this device. Ids that no longer exist are dropped.
+                RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
+                if (stored?.Cameras is { } saved)
+                {
+                    Guid[] restored = saved.Select(s => Guid.TryParse(s, out Guid id) ? id : Guid.Empty)
+                        .Where(id => _cameraIds.Contains(id))
+                        .ToArray();
+                    if (restored.Length > 0)
+                    {
+                        _cameraState.SetCameras(restored);
+                    }
+                }
             }
 
             _cameraState.OnChange += OnCameraSelectionChanged;
@@ -222,6 +241,7 @@ else
                 return;
             }
 
+            await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, _cameraState.CameraIds.Select(id => id.ToString("D")).ToArray()));
             await LoadMissingStillsAsync();
             StateHasChanged();
         });
