@@ -388,8 +388,16 @@ try {
             Start-Service -Name $ServiceName
         }
 
-        # Visual Studio stages each Debug build (deploy\windows\stage-debug-build.ps1). Here the script waits for the
-        # service to apply that build, so build in Visual Studio first.
+        # Stage the Debug build with the updater, the same step Visual Studio runs after a build. The service applies the
+        # staged package and restarts, then the wait below confirms it answers.
+        if ($PSCmdlet.ShouldProcess("service $ServiceName", "Stage the $Configuration build with the updater")) {
+            $stager = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..\deploy\windows\stage-debug-build.ps1')).Path
+            Write-Host "Staging the $Configuration build for service $ServiceName"
+            & $stager -ProjectPath $project -Configuration $Configuration -ServiceName $ServiceName
+            if ($LASTEXITCODE -ne 0) { throw "stage-debug-build.ps1 failed with exit code $LASTEXITCODE." }
+        }
+
+        # Waits for the service to apply the staged build and answer the health check.
         if ($PSCmdlet.ShouldProcess("service $ServiceName", "Wait for the service to run the current build")) {
             Write-Host "Waiting for service $ServiceName to apply any staged build (up to $ReadyTimeoutSeconds s)"
             if (-not (Wait-ForStagedBuild -TimeoutSeconds $ReadyTimeoutSeconds)) {
