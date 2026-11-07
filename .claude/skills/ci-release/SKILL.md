@@ -27,7 +27,7 @@ Also: `build-ios.yml` (pull request to `main`/`dev`, manual), `codeql.yml`, `mai
 4. **Version from NBGV.** `version.json` sets the version. The release tag is `v<major>.<minor>-<branch>.<run>` for branches, `v*` for tag releases. Dev creates a `Testing` prerelease, main creates a `Release` release. Do not create or move release tags by hand; the workflow force-moves the `Testing`, `Release`, and `v*-dev`/`v*-release` label tags.
 5. **Secrets.** `SYNCFUSION_LICENSE_KEY`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` come from `secrets.*`. The live Anthropic test skips when the key is empty, so forks stay green.
 6. **Unsigned installers.** Windows and Debian installers are unsigned. SmartScreen warnings are expected until a certificate exists.
-7. **Required checks.** `main` has no branch protection as of 2026-11-06 (`gh api repos/rsperry79/VideoForensics/branches/main/protection` returns 404), so no check is enforced. `main-source-guard` and the test gate must become required status checks on `main`. Enabling that is a repo setting: ask the user first.
+7. **Required checks.** `main` requires `only-from-dev` (the `main-source-guard` job) and `test-windows / test`. Reviews are not required and admins are not enforced, so the owner can still promote. Check with `gh api repos/rsperry79/VideoForensics/branches/main/protection`. Changing these is a repo setting: ask the user first.
 
 ## Test specifics
 - Microsoft.Testing.Platform is on (`Directory.Build.props`). Use MTP's flags: `--report-xunit-trx`, not `--logger trx`.
