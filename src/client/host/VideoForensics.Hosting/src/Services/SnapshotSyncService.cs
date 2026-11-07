@@ -60,10 +60,11 @@ namespace VideoForensics.Client.Hosting.Services
                 ?? _services.GetRequiredService<IMediaDownloadService>();
             download.SetActiveProviderAccountId(accountId);
 
-            // The non-image warning is logged once per roll-up window, so the window is the account's roll-up interval.
-            ISyncScheduleRepository? schedules = _services.GetService<ISyncScheduleRepository>();
-            SyncSchedule? schedule = schedules is null ? null : await schedules.GetByProviderAccountIdAsync(accountId, cancellationToken);
-            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(schedule?.SnapshotRollupIntervalMinutes ?? SyncSchedule.DefaultSnapshotRollupIntervalMinutes));
+            // The non-image warning is logged once per time-lapse check window, so the window is the services check interval.
+            // The configuration service is required: without it the window is unknown, so the sync fails.
+            IForensicsConfiguration config = await _services.GetRequiredService<IForensicsConfigurationService>()
+                .LoadConfigurationAsync(string.Empty, cancellationToken);
+            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(config.TimelapseCheckIntervalMinutes));
 
             // The offline rule belongs to the account's provider. A provider with no registered rule keeps every device,
             // because nothing on this path can tell that it is offline.

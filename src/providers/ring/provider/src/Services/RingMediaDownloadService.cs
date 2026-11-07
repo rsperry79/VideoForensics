@@ -653,7 +653,21 @@ namespace VideoForensics.Providers.Ring.Services
                         DingIdMatchResult dingLink = await ResolveDingIdAsync(@event, rateLimitCts.Token);
                         if (dingLink.Outcome != DingIdMatchOutcome.Matched)
                         {
-                            _logger.LogInformation("Skipped doorbot event for {CameraName}: {Outcome}, no string ding id to link yet", SanitizeForLog(cameraName), dingLink.Outcome);
+                            // Why: the event exists at the provider but has no ding id yet, so it cannot be downloaded. Its row is stored now,
+                            // keyed by the doorbot id, so it is kept and can be linked to its ding once Ring assigns one.
+                            _logger.LogInformation("Stored unmatched doorbot event for {CameraName}: {Outcome}, awaiting its string ding id", SanitizeForLog(cameraName), dingLink.Outcome);
+                            if (@event.Id is { } doorbotHistoryId)
+                            {
+                                DateTime unmatchedOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                                Guid unmatchedDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, doorbotHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                    eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token,
+                                    apiResponse: @event, awaitingDingId: true);
+                                if (unmatchedDbId != Guid.Empty)
+                                {
+                                    await LinkDoorbotEventAsync(@event, unmatchedDbId, rateLimitCts.Token);
+                                }
+                            }
+
                             return;
                         }
 
@@ -667,6 +681,15 @@ namespace VideoForensics.Providers.Ring.Services
                         // not DownloadEvents, so an event must land here the moment it's discovered
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
+                        // Why: a row stored under the doorbot id before its ding id was known must be kept, not duplicated. Rekeying it to the
+                        // ding id lets the upsert below update that same row.
+                        if (@event.Id is { } matchedHistoryId
+                            && await _dataClient.GetLinkedEventAsync(matchedHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture), rateLimitCts.Token) is { } linkedRow
+                            && linkedRow.ProviderEventId != eventIdStr)
+                        {
+                            await _dataClient.RekeyLinkedEventAsync(linkedRow.Id, eventIdStr, rateLimitCts.Token);
+                        }
+
                         Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
                         if (eventDbId != Guid.Empty)
@@ -1515,7 +1538,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
-            object? apiResponse = null)
+            object? apiResponse = null, bool awaitingDingId = false)
         {
             try
             {
@@ -1533,7 +1556,8 @@ namespace VideoForensics.Providers.Ring.Services
                     EventIntegrityHash = hash,
                     MetadataJson = Json,
                     ApiSourceHash = Hash,
-                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status
+                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status,
+                    AwaitingDingId = awaitingDingId,
                 };
 
                 // Extract detection metadata if the API response is a DoorbotHistoryEvent

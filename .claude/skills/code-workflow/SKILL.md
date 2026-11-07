@@ -8,21 +8,20 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 ## Branches
 - `dev` = integration. `wip` = local dev base; all code work starts from `wip`. `main` = release, only moves by merging `dev`.
 - Before code work or a PR from a `wip` branch: `git fetch origin`, then `git merge-base --is-ancestor origin/dev wip`. If it fails, `git merge origin/dev` into `wip`. Recheck after any PR lands in `dev`.
-- Match worktrees by `refs/heads/<branch>` from `git worktree list --porcelain` (strip `\r`), never by folder name.
 
 ## Worktrees
-- Reuse the chat's worktree if it is valid: it is listed in `git worktree list --porcelain`, its branch is not yet merged into `wip` (`git merge-base --is-ancestor <branch> wip` fails), and the new work is the same feature. Otherwise make one.
-- Otherwise create per feature: `git worktree add <sibling-path>/<feature> -b <feature-branch> wip`, after the `wip` checks above. Name it for the feature, not the session.
-- A new request on a branch already merged into `wip` gets a new branch from updated `wip`, even in the same chat.
-- All edits, commits, and builds happen in the worktree. Leave the main checkout's uncommitted changes alone.
-- Before removing a worktree, confirm its path in `git worktree list --porcelain`.
+- Base is `wip`, after the checks above.
+- Create or reuse worktrees per the global skill `git-worktree-workflow`, under `F:/vf-worktrees/<feature>`.
+- Submodules (`docs`) in a worktree: commit inside the submodule's own repository first (its branch, not detached), then stage the new submodule commit in the parent. Do not commit only in the parent. Run `git submodule update --init <path>` before editing a submodule path that is empty.
 
 ## Implementation
-- Haiku 5.5 subagents (`model: "haiku"`) write implementation files, one file or small related batch each. Verify their output yourself: build, test, read the diff.
+- Plan review (standing approval, no per-plan ask): before dispatching a Haiku implementer, one read-only Sonnet agent reviews its plan/brief; fold its findings in before dispatch. This is the only non-Haiku spawn allowed without a yes (CLAUDE.md STOP).
+- Test first: write the failing test, run it, record the red run, then implement.
+- Haiku 5.5 subagents (`model: "haiku"`) write implementation files, one file or small related batch each. Verify every result yourself (build, test, read the diff).
 - A request that becomes a multi-step plan (it touches several files or components, or the task list runs to four or more steps): write the plan as the task list, then hand each independent step to a Haiku subagent as above instead of implementing it yourself. Each brief names the files, the failing test the step must satisfy, and the localization rule. Single-file fixes stay with you.
 - Blocked or confused subagent: resolve the ambiguity in the brief and re-dispatch.
 - Briefs for a Ui.Shared page must name the localization rule (`rules/ui-shared.md`) and list the page's existing literals to convert.
-- Escalation rules: `~/.claude/docs/subagent-model-selection.md`.
+- Model choice: Haiku only; any other model needs the user's yes (CLAUDE.md STOP). Criteria: `~/.claude/docs/subagent-model-selection.md`.
 
 ## Lite gate (after each file/service change or batch)
 - `dotnet build` on touched `.csproj` files (incremental).
@@ -38,11 +37,3 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 5. Start the next batch in a new worktree from updated `wip`.
 - Stop and report instead when: a gate fails, merges conflict, the main checkout has unrelated changes, or a product decision is needed.
 
-## Full gate
-- Before opening a PR to `dev` or `main`: read `.claude/reference/full-gate.md`.
-
-## Cleanup
-- Never `git clean -X`. Delete build output by explicit path. Never kill processes in bulk; report hung test hosts.
-
-## Failure log
-- Format and review: `.claude/failure-log.md`.

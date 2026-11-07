@@ -1917,11 +1917,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("ApiSourceHash")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AwaitingDingId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("DiscoveredAtUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("DownloadAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("DownloadFailedAtUtc")
                         .HasColumnType("TEXT");
@@ -1944,6 +1952,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MetadataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("OccurredAtUtc")
@@ -7667,9 +7678,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("LastRollupUtc")
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
@@ -7681,11 +7689,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<DateTime?>("SnapshotNextRunUtc")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("SnapshotRollupIntervalMinutes")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(15);
 
                     b.Property<int>("SnapshotRssiIntervalSeconds")
                         .HasColumnType("INTEGER");

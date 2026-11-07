@@ -35,33 +35,34 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private ISnapshotSyncService Sut()
         {
-            return Sut(new ServiceCollection().AddScoped(_ => _download.Object));
+            return Sut(new ServiceCollection()
+                .AddScoped(_ => _download.Object)
+                .AddScoped(_ => ConfigService(15).Object));
         }
 
         private ISnapshotSyncService Sut(IServiceCollection services)
         {
+            // Every host registers the configuration service; a test that does not care about it gets the default one.
+            if (!services.Any(d => d.ServiceType == typeof(IForensicsConfigurationService)))
+            {
+                _ = services.AddScoped(_ => ConfigService(15).Object);
+            }
+
             return new SnapshotSyncService(
             services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
         }
 
         [Fact]
-        public async Task SyncAccountSnapshotsAsync_ScheduleHasRollupInterval_SetsWarningWindowToIt()
+        public async Task SyncAccountSnapshotsAsync_NoConfigurationService_Throws()
         {
+            // The check interval is required: without it the warning window cannot be set, so the sync must fail, not guess.
             AddDevices("1");
             DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
-            var schedules = new Mock<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>();
-            _ = schedules.Setup(s => s.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VideoForensics.Data.Common.Entities.SyncSchedule
-                {
-                    Id = Guid.NewGuid(),
-                    ProviderAccountId = _accountId,
-                    SnapshotRollupIntervalMinutes = 30,
-                });
-            IServiceCollection services = new ServiceCollection().AddScoped(_ => _download.Object).AddScoped(_ => schedules.Object);
+            var services = new ServiceCollection().AddScoped(_ => _download.Object);
+            ISnapshotSyncService sut = new SnapshotSyncService(
+                services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
 
-            _ = await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
-
-            _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(30)), Times.Once);
+            _ = await Assert.ThrowsAnyAsync<InvalidOperationException>(() => sut.SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None));
         }
 
         [Fact]
@@ -72,7 +73,29 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _ = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
 
-            _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(VideoForensics.Data.Common.Entities.SyncSchedule.DefaultSnapshotRollupIntervalMinutes)), Times.Once);
+            _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(15)), Times.Once);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_WarningWindowFollowsServicesCheckInterval()
+        {
+            AddDevices("1");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+            var services = new ServiceCollection()
+                .AddScoped(_ => _download.Object)
+                .AddScoped(_ => ConfigService(30).Object);
+
+            _ = await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(30)), Times.Once);
+        }
+
+        private static Mock<IForensicsConfigurationService> ConfigService(int checkIntervalMinutes)
+        {
+            var config = new ForensicsConfiguration { TimelapseCheckIntervalMinutes = checkIntervalMinutes };
+            var mock = new Mock<IForensicsConfigurationService>();
+            _ = mock.Setup(s => s.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(config);
+            return mock;
         }
 
         private void AddDevices(params string[] providerIds)

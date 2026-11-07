@@ -1,3 +1,5 @@
+using AngleSharp.Dom;
+
 using Bunit;
 using Bunit.Rendering;
 
@@ -24,11 +26,11 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
-    public void ManualSync_NoAccountChosen_ShowsPickAccountHint()
+    public void ManualSync_AccountsOfSelectedProviders_HidesPickAccountHint()
     {
         IRenderedComponent<ManualSync> cut = RenderManualSync();
 
-        cut.WaitForAssertion(() => Assert.Contains(Manual["PickAccountHint"], cut.Markup));
+        cut.WaitForAssertion(() => Assert.DoesNotContain(Manual["PickAccountHint"], cut.Markup));
     }
 
     [Fact]
@@ -58,6 +60,35 @@ public class ManualSyncPage_Tests : AccountDetailsPageTestBase
         cut.WaitForAssertion(() => Assert.Equal(DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd"), cut.Find("#sync-custom-start").GetAttribute("value")));
         Assert.Equal(DateTime.Today.ToString("yyyy-MM-dd"), cut.Find("#sync-custom-end").GetAttribute("value"));
         Assert.Equal(Manual["CustomEndHint"], cut.Find("#sync-custom-end-hint").TextContent);
+    }
+
+    [Fact]
+    public void ManualSync_AllAccounts_SyncNowIsEnabledAndSyncsEveryAccountInProvidersFilter()
+    {
+        EditAccess.CanEdit = true;
+        string path = $"/api/v1/accounts/provider-accounts/{AccountId}/sync-now";
+        Handler.Bodies[path] = new { };
+        IRenderedComponent<ManualSync> cut = RenderManualSync();
+
+        IElement syncNow = null!;
+        cut.WaitForAssertion(() =>
+        {
+            syncNow = cut.FindAll("button").First(b => b.TextContent.Contains(Manual["SyncNow"]));
+            Assert.False(syncNow.HasAttribute("disabled"));
+        });
+        syncNow.Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == path));
+    }
+
+    [Fact]
+    public void ManualSync_StoredProviderFilterWithNoProviders_IsRestoredAfterReload()
+    {
+        // A stored empty provider list means the operator cleared the filter; it must not revert to "all providers".
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.manual-sync").SetResult("{\"providers\":[],\"account\":null}");
+        IRenderedComponent<ManualSync> cut = RenderManualSync();
+
+        cut.WaitForAssertion(() => Assert.Contains(Manual["PickAccountHint"], cut.Markup));
     }
 
     [Fact]

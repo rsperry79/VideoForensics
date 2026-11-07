@@ -133,6 +133,24 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewEventsTab_UnavailableEvent_ShowsNoMediaBadge()
+    {
+        // Arrange
+        AddDevices(1);
+        Event evt = EventAt(Devices[0].Id, Base);
+        evt.DownloadStatus = EventDownloadStatus.Unavailable;
+        ServeFrom([evt]);
+        ReviewState.SetCameras([Devices[0].Id]);
+
+        // Act
+        IRenderedComponent<ReviewEventsTab> cut = RenderTab();
+
+        // Assert: the row says the event has no media, so the operator knows it cannot be played
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(RowSelector)));
+        Assert.NotEmpty(cut.FindAll("[data-testid='review-event-unavailable']"));
+    }
+
+    [Fact]
     public void ReviewEventsTab_MotionRowWithAPerson_ShowsPersonInsteadOfMotion()
     {
         // Arrange

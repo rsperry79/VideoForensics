@@ -15,6 +15,7 @@
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject PairedSessionState SessionState
 @inject IServiceProvider ServiceProvider
+@inject RightPanelFilterStore FilterStore
 @implements IDisposable
 
 <Breadcrumb Items="@_breadcrumbItems" />
@@ -133,6 +134,9 @@ else
 
     // Provider/Account filters. A notice without a provider account is global, so it is hidden while either filter is set.
     private DeviceOwnershipSnapshot? _ownership;
+    /// <summary>Key for this page's remembered filters in the device's local storage.</summary>
+    private const string FilterPageKey = "notices";
+
     private string _providerFilterValue = string.Empty;
     private string _accountFilterValue = string.Empty;
 
@@ -151,11 +155,24 @@ else
         // Reload when a notice is raised, so the list does not need a page refresh to show it.
         _noticeSubscription = ServiceProvider.GetService<VideoForensics.Client.Ui.Shared.Contracts.INoticeFeed>()?.NewNotices
             .Subscribe(notice => { _ = InvokeAsync(ReloadOnNewNoticeAsync); });
+        RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
         _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Data.Common.Entities.Device>(), CancellationToken.None);
+
+        // Restore before the first load so the list is filtered from the start.
+        if (stored?.Providers?.FirstOrDefault() is { } provider && ProviderFilterOptions.Any(o => o.Key == provider))
+        {
+            _providerFilterValue = provider;
+        }
+
+        if (stored?.Account is { } account && AccountFilterOptions.Any(o => o.Key == account))
+        {
+            _accountFilterValue = account;
+        }
+
         await LoadNoticesAsync();
     }
 
-    private void OnProviderFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    private async Task OnProviderFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
     {
         _providerFilterValue = args.Value ?? string.Empty;
 
@@ -166,12 +183,20 @@ else
         }
 
         ApplyFilters();
+        await SaveFiltersAsync();
     }
 
-    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    private async Task OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
     {
         _accountFilterValue = args.Value ?? string.Empty;
         ApplyFilters();
+        await SaveFiltersAsync();
+    }
+
+    private async Task SaveFiltersAsync()
+    {
+        string[]? providers =string.IsNullOrEmpty(_providerFilterValue) ? null : new[] { _providerFilterValue };
+        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(providers, string.IsNullOrEmpty(_accountFilterValue) ? null : _accountFilterValue));
     }
 
     private void ApplyFilters()

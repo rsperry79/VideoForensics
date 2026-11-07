@@ -42,6 +42,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
         private readonly IEventRepository _events;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ITimelineVideoBuilder _builder;
         private readonly ILogger<SnapshotRollupService> _logger;
 
@@ -60,6 +61,7 @@ namespace VideoForensics.Client.Hosting.Services
             ITimelineVideoBuilder builder,
             ILogger<SnapshotRollupService> logger,
             IEventRepository events,
+            IUnitOfWork unitOfWork,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
@@ -77,6 +79,7 @@ namespace VideoForensics.Client.Hosting.Services
             _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
             _events = events;
+            _unitOfWork = unitOfWork;
             _builder = builder;
             _logger = logger;
         }
@@ -136,6 +139,49 @@ namespace VideoForensics.Client.Hosting.Services
             return new SnapshotRollupResult(devices.Count, rolledUp, error);
         }
 
+        /// <inheritdoc />
+        public async Task<SnapshotRollupResult> RollUpSegmentAsync(Guid accountId, Guid deviceId, DateTime startUtc, DateTime endUtc, CancellationToken cancellationToken)
+        {
+            ProviderAccount? account = await _accounts.GetAsync(accountId, cancellationToken);
+            if (account is null)
+            {
+                return new SnapshotRollupResult(ErrorMessage: "Account not found");
+            }
+
+            string? configuredMediaRoot = _configurationService is null
+                ? null
+                : (await _configurationService.LoadConfigurationAsync(string.Empty, cancellationToken)).DownloadLocation;
+            string mediaRoot = _storage.GetEffectiveRoot(StorageCategory.Media, configuredMediaRoot);
+            foreach (VideoForensics.Data.Common.Entities.Location location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
+            {
+                foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
+                {
+                    if (device.Id != deviceId)
+                    {
+                        continue;
+                    }
+
+                    string deviceFolder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, location.Name, device.Name);
+                    try
+                    {
+                        bool built = await RollUpDeviceAsync(device, deviceFolder, startUtc, endUtc, cancellationToken);
+                        return new SnapshotRollupResult(1, built ? 1 : 0, null);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Time-lapse segment failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                        return new SnapshotRollupResult(1, 0, $"{device.Name}: {ex.Message}");
+                    }
+                }
+            }
+
+            return new SnapshotRollupResult(ErrorMessage: "Device not found for this account");
+        }
+
         /// <summary>Builds and registers one device's loop. Returns false when the window has no usable snapshots.</summary>
         private async Task<bool> RollUpDeviceAsync(DeviceEntity device, string deviceFolder, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
@@ -150,16 +196,48 @@ namespace VideoForensics.Client.Hosting.Services
             string outputPath = Path.Combine(deviceFolder, MediaFileNamer.FormatMediaFileName(device.Name, toUtc, "snapshot-loop", "mp4"));
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-            TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);
+            // Build into a partial file and move it into place only when the build succeeded. A crash or failure leaves no
+            // half-written MP4 under the final name, and the rerun rebuilds the same segment from the same name.
+            string buildingPath = Path.Combine(Path.GetDirectoryName(outputPath)!, Path.GetFileNameWithoutExtension(outputPath) + ".building.mp4");
+            TimelineVideoResult result;
+            try
+            {
+                result = await _builder.BuildAsync(new TimelineVideoRequest(stills, buildingPath, MaxHeight: CameraLoopHeight), cancellationToken);
+            }
+            catch
+            {
+                DeletePartialQuietly(buildingPath);
+                throw;
+            }
+
             if (!result.Success)
             {
+                DeletePartialQuietly(buildingPath);
                 throw new InvalidOperationException(result.ErrorMessage ?? "the timeline build failed");
             }
+
+            File.Move(buildingPath, outputPath, overwrite: true);
 
             await RecordLoopAsync(device, outputPath, fromUtc, toUtc, cancellationToken);
             // Success is logged so a roll-up that builds a loop leaves a trace. Only the file name is logged, not the full path.
             _logger.LogInformation("Time lapse built for {DeviceName}: {SnapshotCount} snapshots, file {FileName}", device.Name, stills.Count, Path.GetFileName(outputPath));
             return true;
+        }
+
+        /// <summary>Removes a partial MP4 left by a failed build. Missing files and I/O errors are ignored: the next run overwrites it.</summary>
+        private static void DeletePartialQuietly(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch (IOException)
+            {
+                // Best effort only. A leftover partial file is replaced by the next build of the same segment.
+            }
         }
 
         /// <summary>
@@ -258,37 +336,47 @@ namespace VideoForensics.Client.Hosting.Services
                 hash = await SHA256.HashDataAsync(stream, cancellationToken);
             }
 
-            await _mediaItems.AddAsync(new MediaItem
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = device.Id,
-                FileName = Path.GetFileName(mp4Path),
-                FilePath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken),
-                MediaFormat = "mp4",
-                FileSizeBytes = new FileInfo(mp4Path).Length,
-                RecordedAtUtc = fromUtc,
-                DurationSeconds = (toUtc - fromUtc).TotalSeconds,
-                DownloadedAtUtc = DateTime.UtcNow,
-                Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
-                IntegrityVerified = false,
-                // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
-                MetadataJson = SnapshotRollupMarker,
-            }, cancellationToken);
+            string storedPath = await _mediaPaths.ToStoredAsync(mp4Path, cancellationToken);
+            long fileSizeBytes = new FileInfo(mp4Path).Length;
 
-            // The Events tab reads the Events table, so the loop also gets an event row at the loop's start. It is marked
-            // Downloaded so the event media puller never tries to fetch it from the provider. The window end is the key, so a
-            // rerun updates the same row.
-            DateTime now = DateTime.UtcNow;
-            _ = await _events.UpsertAsync(new Event
+            // The loop row and its event row share one unit of work, so they commit together or not at all. A crash between
+            // them would otherwise leave a loop the Events tab cannot show, or an event pointing at no loop.
+            _ = await _unitOfWork.ExecuteAsync<int>(async ctx =>
             {
-                Id = Guid.NewGuid(),
-                DeviceId = device.Id,
-                ProviderEventId = $"{TimelapseEventType}-{toUtc:yyyyMMddHHmmss}",
-                EventType = TimelapseEventType,
-                OccurredAtUtc = fromUtc,
-                DiscoveredAtUtc = now,
-                DownloadedAtUtc = now,
-                DownloadStatus = EventDownloadStatus.Downloaded,
+                await ctx.MediaItems.AddAsync(new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = device.Id,
+                    FileName = Path.GetFileName(mp4Path),
+                    FilePath = storedPath,
+                    MediaFormat = "mp4",
+                    FileSizeBytes = fileSizeBytes,
+                    RecordedAtUtc = fromUtc,
+                    DurationSeconds = (toUtc - fromUtc).TotalSeconds,
+                    DownloadedAtUtc = DateTime.UtcNow,
+                    Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
+                    IntegrityVerified = false,
+                    // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
+                    MetadataJson = SnapshotRollupMarker,
+                }, cancellationToken);
+
+                // The Events tab reads the Events table, so the loop also gets an event row at the loop's start. It is marked
+                // Downloaded so the event media puller never tries to fetch it from the provider. The window end is the key, so a
+                // rerun updates the same row.
+                DateTime now = DateTime.UtcNow;
+                _ = await ctx.Events.UpsertAsync(new Event
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = device.Id,
+                    ProviderEventId = $"{TimelapseEventType}-{toUtc:yyyyMMddHHmmss}",
+                    EventType = TimelapseEventType,
+                    OccurredAtUtc = fromUtc,
+                    DiscoveredAtUtc = now,
+                    DownloadedAtUtc = now,
+                    DownloadStatus = EventDownloadStatus.Downloaded,
+                }, cancellationToken);
+
+                return 0;
             }, cancellationToken);
 
             await _evidenceChanges.EvidenceChangedAsync(device.Id, cancellationToken);

@@ -11,5 +11,11 @@ namespace VideoForensics.Client.Hosting.Contracts
     {
         /// <summary>Rolls up [fromUtc, toUtc) for every device of the account. Throws only on cancellation.</summary>
         Task<SnapshotRollupResult> RollUpAccountAsync(Guid accountId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Builds one time-lapse segment [startUtc, endUtc) for one device of the account and registers it. Used by the
+        /// event-gap scheduler, one segment at a time. Returns false in the result's build count when the span has no usable snapshots.
+        /// </summary>
+        Task<SnapshotRollupResult> RollUpSegmentAsync(Guid accountId, Guid deviceId, DateTime startUtc, DateTime endUtc, CancellationToken cancellationToken);
     }
 }

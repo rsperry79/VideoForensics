@@ -942,6 +942,33 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task RecordRetryPassAsync(Guid eventId, int maxAttempts, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits.
+            Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
+            if (evt is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            evt.DownloadAttempts++;
+            if (evt.DownloadAttempts >= maxAttempts)
+            {
+                evt.DownloadStatus = EventDownloadStatus.Unavailable;
+                evt.AwaitingDingId = false;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId && e.AwaitingDingId && e.DownloadAttempts < maxAttempts && e.DownloadStatus != EventDownloadStatus.Downloaded)
+                .OrderBy(e => e.OccurredAtUtc)
+                .ToList());
+        }
+
         public Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult(_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).Min(e => (DateTime?)e.OccurredAtUtc));
@@ -1637,6 +1664,31 @@ namespace VideoForensics.Data.Database.Repositories
                 row.LinkedEventId = eventId;
             }
 
+            return Task.CompletedTask;
+        }
+
+        public Task<VideoForensics.Data.Common.Entities.Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct)
+        {
+            Guid? linkedId = _db.RingDoorbotHistoryEvents
+                .Where(e => e.ProviderEventId == doorbotHistoryProviderEventId)
+                .Select(e => e.LinkedEventId)
+                .FirstOrDefault();
+            VideoForensics.Data.Common.Entities.Event? linked = linkedId is { } id ? _db.Events.FirstOrDefault(e => e.Id == id) : null;
+            return Task.FromResult(linked);
+        }
+
+        public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
+        {
+            // Tracked entity: the unit of work saves the change when the transaction commits. The unique (DeviceId, ProviderEventId) index
+            // forbids two rows with one id, so a rekey onto an id another row of the device already holds is left undone.
+            VideoForensics.Data.Common.Entities.Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
+            if (evt is null || _db.Events.Any(e => e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId))
+            {
+                return Task.CompletedTask;
+            }
+
+            evt.ProviderEventId = newProviderEventId;
+            evt.AwaitingDingId = false;
             return Task.CompletedTask;
         }
     }

@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IProviderSyncRunRepository> _runs = new();
         private readonly Mock<ISnapshotSyncService> _snapshots = new();
-        private readonly SyncActivityLog _activity = new();
+        private readonly SyncActivityLog _activity = new(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance);
         private readonly Guid _id = Guid.NewGuid();
         private readonly List<(DateTime? From, DateTime? To)> _pulled = [];
 
@@ -114,6 +114,27 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             Assert.Equal(End.AddYears(-1), _pulled[0].From);
             Assert.Equal(End, _pulled[^1].To);
             Assert.Contains("Ring: history limited to one year per request", _activity.Drain());
+        }
+
+        [Fact]
+        public async Task RunAsync_NoRangeSinceLastSuccessTwentyDaysAgo_PullsThreeWindowsOldestFirst()
+        {
+            DateTime since = DateTime.UtcNow.AddDays(-20);
+            _ = _accounts.Setup(r => r.GetAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(new ProviderAccountEntity
+            {
+                Id = _id,
+                UserId = Guid.NewGuid(),
+                ProviderName = "Ring",
+                LinkedUtc = DateTime.UtcNow,
+                IsActive = true,
+                LastSuccessfulAuthUtc = since,
+            });
+
+            await Sut().RunAsync(_id, CancellationToken.None);
+
+            Assert.Equal(3, _pulled.Count);
+            Assert.Equal(since, _pulled[0].From);
+            Assert.True(_pulled[0].From < _pulled[1].From && _pulled[1].From < _pulled[2].From);
         }
 
         [Fact]

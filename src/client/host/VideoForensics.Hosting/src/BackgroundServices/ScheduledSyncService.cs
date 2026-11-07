@@ -39,11 +39,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<ScheduledSyncService> _logger;
         private readonly TimeProvider _time;
 
-        /// <summary>How long a failed roll-up waits before its next attempt. Keeps a broken encoder from running every tick.</summary>
-        internal static readonly TimeSpan RollupRetryBackoff = TimeSpan.FromMinutes(5);
+        /// <summary>When this process started. Partial time-lapse files written after it may belong to a build running now.</summary>
+        private readonly DateTime _processStartUtc = DateTime.UtcNow;
 
-        /// <summary>Per account: the time before which a failed roll-up is not retried.</summary>
-        private readonly Dictionary<Guid, DateTimeOffset> _rollupRetryAfter = [];
+        /// <summary>Whether the once-per-process cleanup of partial time-lapse files has run.</summary>
+        private bool _startupCleanupDone;
 
         /// <summary>Creates the scheduler.</summary>
         public ScheduledSyncService(
@@ -62,10 +62,53 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         private readonly ThreadHeartbeats? _heartbeats;
 
+        /// <summary>Most time-lapse segments built in one tick, across all accounts. Keeps a long encode from blocking event pulls.</summary>
+        internal const int MaxSegmentsPerTick = 5;
+
+        /// <summary>Per account: when this process last finished a clean event pull. Unset after a restart until the next clean pull.</summary>
+        private readonly Dictionary<Guid, DateTime> _cleanPullUtc = [];
+
+        /// <summary>Per account: when this process last finished a snapshot sync without errors.</summary>
+        private readonly Dictionary<Guid, DateTime> _snapshotSyncUtc = [];
+
+        /// <summary>Per account: the next time-lapse check. Set from the services check interval.</summary>
+        private readonly Dictionary<Guid, DateTime> _nextTimelapseCheckUtc = [];
+
+        /// <summary>Segments still allowed in the current tick.</summary>
+        private int _segmentsLeftThisTick;
+
+        /// <summary>Per account: whether each time-lapse check completes. Reports accounts whose check has stalled.</summary>
+        private readonly TimelapseCheckWatchdog _timelapseWatchdog = new();
+
         /// <summary>Tick period for a configured value: seconds, floored at 5.</summary>
         internal static TimeSpan ResolveTickInterval(int tickSeconds)
         {
             return TimeSpan.FromSeconds(Math.Max(tickSeconds, MinimumTickSeconds));
+        }
+
+        /// <inheritdoc />
+        /// <summary>
+        /// Runs one tick and records it: a beat when it starts, a run when it completes, or an error label when it fails.
+        /// The health endpoint reads these, so a service that never completes a tick shows no last run.
+        /// </summary>
+        internal async Task RunRecordedTickAsync(CancellationToken ct)
+        {
+            string name = nameof(ScheduledSyncService);
+            _heartbeats?.Beat(name, _time.GetUtcNow());
+            try
+            {
+                await RunOneTickAsync(ct);
+                _heartbeats?.RecordRun(name, _time.GetUtcNow());
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                _heartbeats?.RecordError(name, _time.GetUtcNow(), "tick failed");
+                throw;
+            }
         }
 
         /// <inheritdoc />
@@ -78,10 +121,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 // Wait for the first tick before the first pass so a cold start does not race database initialization.
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
-                    _heartbeats?.Beat(nameof(ScheduledSyncService), _time.GetUtcNow());
                     try
                     {
-                        await RunOneTickAsync(stoppingToken);
+                        await RunRecordedTickAsync(stoppingToken);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {
@@ -133,11 +175,26 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             ISyncScheduleRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleRepository>();
             IReadOnlyList<SyncSchedule> schedules = await scheduleRepository.ListEnabledAsync(ct);
+
+            // Why: runs before the empty check so an idle install is cleaned too.
+            if (!_startupCleanupDone)
+            {
+                await RunStartupCleanupAsync(sp, ct);
+            }
+
             if (schedules.Count == 0)
             {
                 return;
             }
 
+            _segmentsLeftThisTick = MaxSegmentsPerTick;
+
+            // Each newly stalled time-lapse check is logged once. Logged by provider name, never by account GUID.
+            foreach (TimelapseCheckStall stall in _timelapseWatchdog.TakeNewStalls(_time.GetUtcNow().UtcDateTime))
+            {
+                _logger.LogError("Time-lapse check for {ProviderName} account has not completed for more than twice its {CheckInterval} interval; it may be failing or stuck.",
+                    stall.ProviderName, stall.CheckInterval);
+            }
             string[] enabledProviders = _options.CurrentValue.EnabledProviders ?? [];
 
             foreach (SyncSchedule schedule in schedules)
@@ -193,20 +250,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
                     if (ScheduleCalculator.IsSnapshotDue(schedule, nowUtc))
                     {
-                        await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, ct);
+                        await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, mediaService, ct);
                     }
 
-                    if (ScheduleCalculator.IsRollupDue(schedule, nowUtc))
+                    if (ScheduleCalculator.IsEventDue(schedule, nowUtc))
                     {
-                        await RunRollupAsync(sp, scheduleRepository, schedule, account, ct);
+                        await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
                     }
 
-                    if (!ScheduleCalculator.IsEventDue(schedule, nowUtc))
-                    {
-                        continue;
-                    }
-
-                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
+                    await RunTimelapseCheckAsync(sp, account, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -221,37 +273,158 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>
-        /// Rolls the account's snapshots since the last roll-up into MP4 loops and records the roll-up only when every device
-        /// succeeded. A failed roll-up is retried on a later tick with a window that still starts at the last good roll-up.
+        /// Deletes partial time-lapse files left by a crash, once per process. Skipped (and retried on a later tick) while the
+        /// configuration or storage service is not registered. Only a pass that completes without an exception sets the flag.
         /// </summary>
-        private async Task RunRollupAsync(
-            IServiceProvider sp,
-            ISyncScheduleRepository scheduleRepository,
-            SyncSchedule schedule,
-            ProviderAccount account,
-            CancellationToken ct)
+        private async Task RunStartupCleanupAsync(IServiceProvider sp, CancellationToken ct)
         {
-            DateTimeOffset now = _time.GetUtcNow();
-            if (_rollupRetryAfter.TryGetValue(account.Id, out DateTimeOffset retryAfter) && now < retryAfter)
+            IForensicsConfigurationService? config = sp.GetService<IForensicsConfigurationService>();
+            IStorageLocationProvider? storage = sp.GetService<IStorageLocationProvider>();
+            if (config == null || storage == null)
             {
                 return;
             }
 
-            DateTime toUtc = _time.GetUtcNow().UtcDateTime;
-            DateTime fromUtc = schedule.LastRollupUtc ?? toUtc.AddMinutes(-schedule.SnapshotRollupIntervalMinutes);
-            SnapshotRollupResult result = await sp.GetRequiredService<ISnapshotRollupService>().RollUpAccountAsync(account.Id, fromUtc, toUtc, ct);
-            if (result.ErrorMessage is not null)
+            try
             {
-                _logger.LogWarning("Scheduled snapshot roll-up for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
-                _rollupRetryAfter[account.Id] = now + RollupRetryBackoff;
-                return;
-            }
+                string configuredMediaRoot = (await config.LoadConfigurationAsync(string.Empty, ct)).DownloadLocation;
+                string mediaRoot = storage.GetEffectiveRoot(StorageCategory.Media, configuredMediaRoot);
+                int removed = BuildingFileCleanup.Delete(mediaRoot, _processStartUtc);
+                if (removed > 0)
+                {
+                    _logger.LogInformation("Removed {Count} partial time-lapse file(s) left by an earlier run", removed);
+                }
 
-            // Uses CancellationToken.None so a completed roll-up is recorded even when shutdown cancelled the tick.
-            _ = _rollupRetryAfter.Remove(account.Id);
-            await scheduleRepository.RecordRollupAsync(account.Id, toUtc, CancellationToken.None);
+                _startupCleanupDone = true;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Startup time-lapse cleanup failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+            }
         }
 
+        /// <summary>
+        /// Runs the event-gap time-lapse check for one account when its check interval has passed. Plans each device's gaps up to
+        /// the horizon and builds the segments, within the tick's budget. Needs a clean event pull and a snapshot sync in this process.
+        /// </summary>
+        private async Task RunTimelapseCheckAsync(IServiceProvider sp, ProviderAccount account, CancellationToken ct)
+        {
+            DateTime now = _time.GetUtcNow().UtcDateTime;
+            if (_nextTimelapseCheckUtc.TryGetValue(account.Id, out DateTime next) && now < next)
+            {
+                return;
+            }
+
+            (int checkMinutes, int maxSegmentMinutes) = await ResolveTimelapseSettingsAsync(sp, ct);
+            _nextTimelapseCheckUtc[account.Id] = now.AddMinutes(checkMinutes);
+            _timelapseWatchdog.Attempted(account.Id, account.ProviderName, TimeSpan.FromMinutes(checkMinutes), now);
+
+            DateTime? horizon = TimelapseHorizon.Compute(
+                _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
+                _snapshotSyncUtc.TryGetValue(account.Id, out DateTime synced) ? synced : null,
+                PullOverlap);
+            if (horizon is null || _segmentsLeftThisTick <= 0)
+            {
+                return;
+            }
+
+            ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
+            IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
+            bool deviceFailed = false;
+            foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, ct))
+            {
+                foreach (VideoForensics.Data.Common.Entities.Device device in await devices.GetByLocationIdAsync(location.Id, ct))
+                {
+                    if (_segmentsLeftThisTick <= 0)
+                    {
+                        return;
+                    }
+
+                    // One device failing must not stop the others; its cursor is unchanged, so it retries on the next check.
+                    try
+                    {
+                        await RunDeviceTimelapseAsync(sp, account.Id, device.Id, device.Name, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        deviceFailed = true;
+                        _logger.LogError("Time-lapse check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                    }
+                }
+            }
+
+            // Only a check with no device failures counts as complete, so a device that keeps failing stalls the account.
+            if (!deviceFailed)
+            {
+                _timelapseWatchdog.Completed(account.Id, _time.GetUtcNow().UtcDateTime);
+            }
+        }
+
+        /// <summary>Plans and builds one device's segments from its cursor up to the horizon, within the tick's budget.</summary>
+        private async Task RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, string deviceName, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
+        {
+            ITimelapseGapQueries queries = sp.GetRequiredService<ITimelapseGapQueries>();
+            DateTimeOffset? earliest = await queries.GetEarliestCaptureAtUtcAsync(deviceId, ct);
+            DateTime? cursor = TimelapseCursor.Resolve(
+                await queries.GetLatestTimelapseEndUtcAsync(deviceId, ct),
+                await queries.GetLatestEventTimeUtcAsync(deviceId, horizon, ct),
+                earliest?.UtcDateTime);
+
+            // The planner only sees events up to the horizon, so a future-dated event (a device clock running ahead) is warned about here.
+            DateTime? latestAny = await queries.GetLatestEventTimeAnyUtcAsync(deviceId, ct);
+            DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
+            if (latestAny is not null && latestAny.Value > nowUtc.AddMinutes(5))
+            {
+                int minutesAhead = (int)Math.Round((latestAny.Value - nowUtc).TotalMinutes);
+                _logger.LogWarning("Time-lapse check for {DeviceName}: event dated ahead of the local clock by {MinutesAhead} minute(s); check the device clock.", deviceName, minutesAhead);
+            }
+
+            if (cursor is null || cursor.Value >= horizon)
+            {
+                return;
+            }
+
+            IReadOnlyList<DateTime> events = await queries.ListEventTimesForGapsAsync(deviceId, cursor.Value, horizon, ct);
+            IReadOnlyList<SnapshotCapture> attempts = await sp.GetRequiredService<ISnapshotCaptureRepository>()
+                .GetAttemptsForDeviceAsync(deviceId, new DateTimeOffset(cursor.Value, TimeSpan.Zero), new DateTimeOffset(horizon, TimeSpan.Zero), ct);
+
+            // Only attempts that produced an image count as snapshots; failed attempts leave a gap, not a frame.
+            IReadOnlyList<DateTime> usable = attempts.Where(a => a.HttpStatus == 200).Select(a => a.CapturedAtUtc.UtcDateTime).ToList();
+
+            GapPlanResult plan = GapPlanner.Plan(cursor.Value, horizon, events, usable, maxSegment);
+            ISnapshotRollupService rollup = sp.GetRequiredService<ISnapshotRollupService>();
+            foreach (GapSegment segment in plan.Segments)
+            {
+                if (_segmentsLeftThisTick <= 0)
+                {
+                    break;
+                }
+
+                _segmentsLeftThisTick--;
+                SnapshotRollupResult result = await rollup.RollUpSegmentAsync(accountId, deviceId, segment.StartUtc, segment.EndUtc, ct);
+                if (result.ErrorMessage is not null)
+                {
+                    _logger.LogWarning("Time-lapse segment not built: {Error}", result.ErrorMessage);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>The services-page check interval and max segment. The configuration service is required, so a missing one fails the check.</summary>
+        private static async Task<(int CheckMinutes, int MaxSegmentMinutes)> ResolveTimelapseSettingsAsync(IServiceProvider sp, CancellationToken ct)
+        {
+            IForensicsConfigurationService config = sp.GetRequiredService<IForensicsConfigurationService>();
+            IForensicsConfiguration c = await config.LoadConfigurationAsync(string.Empty, ct);
+            return (c.TimelapseCheckIntervalMinutes, c.TimelapseMaxSegmentMinutes);
+        }
         /// <summary>
         /// Pulls the latest snapshot for each device of a due account and records the next snapshot run. The provider
         /// session is restored first, as the event pull does; a failed restore still records the run so it is not retried every tick.
@@ -262,18 +435,44 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             SyncSchedule schedule,
             ProviderAccount account,
             IProviderAuthService authService,
+            IMediaDownloadService mediaService,
             CancellationToken ct)
         {
             DateTime now = _time.GetUtcNow().UtcDateTime;
             try
             {
+                // Why: snapshots are Ring calls too. During a rate-limit ban they are skipped, and the run is still recorded so the schedule advances.
+                if (mediaService.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > now)
+                {
+                    _logger.LogWarning("Scheduled snapshot sync skipped for {ProviderName} account: rate-limit ban active until {BanUntilUtc:u}", account.ProviderName, banUntilUtc);
+                    return;
+                }
+
+                // Provider API budget: a refused run is skipped here and the schedule still advances, so it is retried on the next interval.
+                IProviderApiBudgetGuard budget = sp.GetRequiredService<IProviderApiBudgetGuard>();
+                if (!await budget.TryConsumeAsync(account.ProviderName, ct))
+                {
+                    _logger.LogDebug("Scheduled snapshot sync deferred for {ProviderName} account: provider API budget exceeded for this window", account.ProviderName);
+                    return;
+                }
+
                 if (await authService.RestoreFromSavedCredentialsAsync(account.Id, ct))
                 {
                     SnapshotSyncResult result = await sp.GetRequiredService<ISnapshotSyncService>()
                         .SyncAccountSnapshotsAsync(account.Id, fromUtc: null, toUtc: null, ct);
+
+                    // Each device attempt is one Ring capture call, so the budget counts them one by one.
+                    for (int i = 0; i < result.DevicesAttempted; i++)
+                    {
+                        await budget.RecordCallAsync(account.ProviderName, ct);
+                    }
                     if (result.ErrorMessage is not null)
                     {
                         _logger.LogWarning("Scheduled snapshot sync for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
+                    }
+                    else
+                    {
+                        _snapshotSyncUtc[account.Id] = _time.GetUtcNow().UtcDateTime;
                     }
                 }
                 else
@@ -391,7 +590,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         storage: sp.GetService<IStorageLocationProvider>(),
                         configurationService: sp.GetService<IForensicsConfigurationService>(),
                         progress: sp.GetService<ISyncProgressStore>(),
-                        referenceCache: referenceCache);
+                        referenceCache: referenceCache,
+                        budgetGuard: budgetGuard,
+                        events: sp.GetService<IEventRepository>());
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
@@ -423,11 +624,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     }
 
-                    // Each catch-up window records its own provider call inside PullCatchUpAsync.
-                    if (catchUpFrom is null)
-                    {
-                        await budgetGuard.RecordCallAsync(providerName, ct);
-                    }
+                    // The pull records each provider call it makes, so the scheduler records none here.
 
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -450,6 +647,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             if (outcome is null && !backfillInProgress)
             {
                 await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct);
+                _cleanPullUtc[accountId] = _time.GetUtcNow().UtcDateTime;
             }
 
             await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome, syncType, counts);
@@ -487,7 +685,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                 // A failed window records its error on the account; a later clean window clears it. Keep the first one so it is not lost.
                 firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await accounts.GetAsync(accountId, ct));
-                await budgetGuard.RecordCallAsync(providerName, ct);
+
+                // Why: a throttled window means the provider is refusing this account. The later windows would only add refused calls.
+                if (window.RateLimited)
+                {
+                    _logger.LogWarning("Catch-up stopped at a throttle for {ProviderName} account; the remaining windows wait for the next run", providerName);
+                    break;
+                }
             }
 
             return (new EventPullResult(devices, locations, events, config, failed), firstError);

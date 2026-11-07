@@ -2,7 +2,8 @@ namespace VideoForensics.Client.Common.Viewer
 {
     /// <summary>A clip on the review timeline: its id, when it starts (UTC), how long it runs, and an optional thumbnail.</summary>
     /// <param name="ThumbnailUrl">Image shown behind the clip's timeline segment. Null or empty draws a plain segment.</param>
-    public sealed record ClipWindow(string Id, DateTime StartUtc, double DurationSeconds, string? ThumbnailUrl = null);
+    /// <param name="IsUnavailable">True for an event with no playable media. It is drawn on the timeline but never played.</param>
+    public sealed record ClipWindow(string Id, DateTime StartUtc, double DurationSeconds, string? ThumbnailUrl = null, bool IsUnavailable = false);
 
     /// <summary>The clip that covers a time, and how far into that clip the time falls.</summary>
     public sealed record ClipSelection(string ClipId, double OffsetSeconds);

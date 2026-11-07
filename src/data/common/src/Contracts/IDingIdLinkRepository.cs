@@ -19,5 +19,22 @@ namespace VideoForensics.Data.Common.Contracts
         /// <param name="eventId">The Events row this doorbot row belongs to.</param>
         /// <param name="ct">Cancellation token.</param>
         Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct);
+
+        /// <summary>
+        /// Returns the Events row the doorbot history row links to, or null when the row is not linked or does not exist.
+        /// Used to find a row stored before its ding id was known.
+        /// </summary>
+        /// <param name="doorbotHistoryProviderEventId">The numeric doorbot history id, as text.</param>
+        /// <param name="ct">Cancellation token.</param>
+        Task<VideoForensics.Data.Common.Entities.Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct);
+
+        /// <summary>
+        /// Changes the provider event id of an existing Events row, so a row stored under a doorbot id is kept when its
+        /// string ding id arrives. Does nothing when another row of the same device already has the new id.
+        /// </summary>
+        /// <param name="eventId">The Events row to rekey.</param>
+        /// <param name="newProviderEventId">The string ding id to store on the row.</param>
+        /// <param name="ct">Cancellation token.</param>
+        Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct);
     }
 }

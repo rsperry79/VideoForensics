@@ -21,7 +21,7 @@ public class SnapshotWindowFallbackTests
     {
         TimeSpan window = SnapshotWindowFallback.Resolve([]);
 
-        Assert.Equal(TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes), window);
+        Assert.Equal(TimeSpan.FromMinutes(15), window);
     }
 
     [Fact]
@@ -38,6 +38,6 @@ public class SnapshotWindowFallbackTests
         // Two accounts with different settings cannot pick one window for an unmapped device, so the default stands.
         TimeSpan window = SnapshotWindowFallback.Resolve([TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30)]);
 
-        Assert.Equal(TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes), window);
+        Assert.Equal(TimeSpan.FromMinutes(15), window);
     }
 }

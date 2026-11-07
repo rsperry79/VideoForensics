@@ -45,6 +45,10 @@
                     <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
                     <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
                     <span class="review-event-type">@RowTypeLabel(evt)</span>
+                    @if (evt.DownloadStatus == EventDownloadStatus.Unavailable)
+                    {
+                        <span class="badge text-bg-warning" data-testid="review-event-unavailable">@L["EventUnavailable"]</span>
+                    }
                 </button>
             }
         </div>

@@ -17,6 +17,33 @@ public class ReviewTimelineModel_Tests
     }
 
     [Fact]
+    public void ReviewTimelineModel_PublishUnavailable_KeepsItApartFromPlayableClips()
+    {
+        var model = new ReviewTimelineModel();
+        var unavailable = new List<ClipWindow> { new("event:x", From.AddMinutes(20), 10, null, true) };
+
+        model.Publish(OneClip(), From, To, unavailable);
+
+        // The playable list is unchanged, so playback never sees the unavailable window
+        _ = Assert.Single(model.Clips);
+        Assert.Equal("a", model.Clips[0].Id);
+        _ = Assert.Single(model.UnavailableClips);
+    }
+
+    [Fact]
+    public void ReviewTimelineModel_ChangedUnavailableOnly_RaisesOnChange()
+    {
+        var model = new ReviewTimelineModel();
+        model.Publish(OneClip(), From, To);
+        int raised = 0;
+        model.OnChange += () => raised++;
+
+        model.Publish(OneClip(), From, To, [new ClipWindow("event:x", From.AddMinutes(20), 10, null, true)]);
+
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
     public void ReviewTimelineModel_PublishNewClips_RaisesOnChangeOnce()
     {
         var model = new ReviewTimelineModel();

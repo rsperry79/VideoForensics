@@ -1,5 +1,7 @@
 # Ui.Shared reusable controls
 
+Paths below are relative to `src/client/ui/VideoForensics.Ui.Shared/src/`.
+
 Feed data in through parameters. Do not copy a control into a page.
 
 - `Components/Review/HistogramTimeline.razor`: scrub timeline (transport, speed, scrub bar, flag and time markers) above, any histogram below it via the `Histogram` render fragment. Use for any chart tied to playback.

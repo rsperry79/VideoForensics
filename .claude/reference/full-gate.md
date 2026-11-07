@@ -1,6 +1,6 @@
-# Full gate (before opening a PR to `dev` or `main`)
+# VideoForensics full gate
 
-Ask the user to confirm first. Then:
+Used by the global `full-gate` skill. Ask the user to confirm first. Then:
 
 1. Ensure `wip` contains `dev`; sync the work branch with `wip`.
 2. `dotnet list VideoForensics.sln package --outdated`. Bump each flagged package to `Latest` in every `.csproj` that uses it, same version everywhere.

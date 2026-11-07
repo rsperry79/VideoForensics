@@ -69,6 +69,8 @@ window.vfTheme = {
                 link.href = href;
             }
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            // Bootstrap's text tokens switch only under data-bs-theme; without it hint text stays dark on dark.
+            document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
         } catch {
             // Best-effort - page keeps whatever theme was last successfully applied.
         }

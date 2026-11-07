@@ -355,6 +355,13 @@ namespace VideoForensics.Client.Hosting.Services
 
                 (counts, weeklyError) = await PullWeeklyAsync(eventPullService, accountId, AccountSyncRunner.WeeklyWindows(customFrom, customEnd), cancellationToken);
             }
+            else if (requestedFrom is { } since && since < DateTime.UtcNow.AddDays(-7))
+            {
+                // A start older than a week is split into seven-day windows, oldest first, the same as a custom range.
+                IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.WeeklyWindows(since, DateTime.UtcNow);
+                _activity.Append($"{initial.ProviderName}: pulling {windows.Count} week window(s) since the last sync");
+                (counts, weeklyError) = await PullWeeklyAsync(eventPullService, accountId, windows, cancellationToken);
+            }
             else
             {
                 DateTime? from = AccountSyncRunner.OneWeekFloor(requestedFrom, DateTime.UtcNow);
@@ -454,6 +461,13 @@ namespace VideoForensics.Client.Hosting.Services
 
                 // A failed week records its error on the account; a later clean week clears it. Keep the first one so it is not lost.
                 firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+
+                // Why: a throttled week means the provider is refusing this account. The later weeks would only add refused calls.
+                if (week.RateLimited)
+                {
+                    _logger.LogWarning("Weekly pull stopped at a throttle; the remaining weeks wait for the next run");
+                    break;
+                }
             }
 
             return (new EventPullResult(devices, locations, events, config, failed), firstError);
