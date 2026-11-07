@@ -4,6 +4,8 @@
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Signal
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using VideoForensics.Core.Api.Contracts
 @inject IStringLocalizer<SharedResources> L
 
@@ -19,7 +21,9 @@
             {
                 int second = Points[i].Second;
                 double barHeight = BitrateChartGeometry.BarFraction(Points[i].Kbps, _maxKbps) * ChartHeight;
-                <rect class="bitrate-bar" data-testid="bitrate-bar" x="@Format(i * _barWidth)" y="@Format(ChartHeight - barHeight)" width="@Format(Math.Max(_barWidth - 0.5, 0.5))" height="@Format(barHeight)" @onclick="() => SeekToSecondAsync(second)" />
+                <rect class="bitrate-bar" data-testid="bitrate-bar" x="@Format(i * _barWidth)" y="@Format(ChartHeight - barHeight)" width="@Format(Math.Max(_barWidth - 0.5, 0.5))" height="@Format(barHeight)" @onclick="() => SeekToSecondAsync(second)">
+                    <title>@BarTooltip(second, Points[i].Kbps)</title>
+                </rect>
             }
             @foreach (int second in _dipStarts)
             {
@@ -47,6 +51,12 @@
     /// <summary>The clip's start time. A click on a second seeks the player to it; without a start, clicks do nothing.</summary>
     [Parameter]
     public DateTime? StartUtc { get; set; }
+
+    /// <summary>The signed-in user's zone, for the tooltip's clock time. Until the browser's zone is known, UTC is used.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
 
     private long _maxKbps;
     private double _barWidth;
@@ -83,6 +93,15 @@
         }
 
         await Player.SeekToUtcAsync(start.AddSeconds(BitrateChartGeometry.SeekSeconds(second)));
+    }
+
+    /// <summary>The bar's clock time in the user's zone (or its offset when the clip has no start), and its bit rate.</summary>
+    private string BarTooltip(int second, long kbps)
+    {
+        string when = StartUtc is DateTime start
+            ? SignalChartModel.FormatTooltipTime(start.AddSeconds(second), Zone)
+            : L["BitrateBarOffset", second].Value;
+        return L["BitrateBarTooltip", when, kbps.ToString(CultureInfo.InvariantCulture)].Value;
     }
 
     private static string Format(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);

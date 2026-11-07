@@ -119,7 +119,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("LLM API", "/settings/llm", Section: "Integrations"),
                 new("Email", "/settings/integrations/email", Section: "Integrations"),
 
-                new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
                 new("Permissions", "/settings/permissions", Section: "Security"),

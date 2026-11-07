@@ -3,11 +3,14 @@ using AngleSharp.Dom;
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
@@ -64,4 +67,19 @@ public class RssiSeriesChart_Tests : BunitContext
         Assert.Empty(cut.FindAll("[data-testid=rssi-bar]"));
         Assert.NotNull(cut.Find("[data-testid=rssi-series-empty]"));
     }
+
+    [Fact]
+    public void RssiSeriesChart_Bar_Tooltip_Shows_The_Clock_Time_And_The_Reading()
+    {
+        DateTime at = WindowStart.AddSeconds(3);
+        SignalSample[] readings = new[] { new SignalSample(at, -75) };
+
+        IRenderedComponent<RssiSeriesChart> cut = RenderChart(readings);
+
+        IElement bar = cut.Find("[data-testid=rssi-bar]");
+        string expected = Localizer["RssiBarTooltip", SignalChartModel.FormatTooltipTime(at, UserTimeZone.Unavailable), -75].Value;
+        Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
+    }
+
+    private IStringLocalizer<SharedResources> Localizer => Services.GetRequiredService<IStringLocalizer<SharedResources>>();
 }

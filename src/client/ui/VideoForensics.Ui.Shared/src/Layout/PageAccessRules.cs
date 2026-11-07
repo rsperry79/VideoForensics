@@ -82,9 +82,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/security-events"] = AccessPolicy.ReadOnly,
                 ["/settings/operators"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/operators/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
-                // Approving credentials needs SuperAdminLocalOrPasskey (DeviceManagementEndpoints approve route); the
-                // list itself needs Admin, but the page exists only to act on approvals, so the stricter policy applies.
-                ["/admin/pending-credentials"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
                 // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
                 ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,

@@ -134,4 +134,19 @@
   <data name="UnknownOperatorName" xml:space="preserve">
     <value>Unknown (ID: {0})</value>
   </data>
+  <data name="CredentialApproved" xml:space="preserve">
+    <value>Credential approved successfully.</value>
+  </data>
+  <data name="RevokeButton" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="RevokingButton" xml:space="preserve">
+    <value>Revoking...</value>
+  </data>
+  <data name="RevokeFailed" xml:space="preserve">
+    <value>Revoke failed: {0}</value>
+  </data>
+  <data name="CredentialRevoked" xml:space="preserve">
+    <value>Credential revoked successfully.</value>
+  </data>
 </root>

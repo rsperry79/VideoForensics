@@ -21,13 +21,13 @@
 @inject NavigationManager NavigationManager
 
 <PageRightPanelContent>
-    @if (_flag is { } flag)
-    {
-        <FlagActionsPanel Flag="@flag" OnChanged="OnFlagChanged" />
-    }
     @if (_flag is not null)
     {
         <ClipNavigator Filter="@BitrateFilter" CurrentFlagId="@FlagId" OnNavigate="OnNeighbourNavigate" />
+    }
+    @if (_flag is { } flag)
+    {
+        <FlagActionsPanel Flag="@flag" OnChanged="OnFlagChanged" />
     }
 </PageRightPanelContent>
 

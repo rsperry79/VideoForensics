@@ -4,6 +4,7 @@
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Signal
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @inject IStringLocalizer<SharedResources> L
 
 <div class="rssi-series-chart" data-testid="rssi-series-chart">
@@ -18,7 +19,9 @@
             {
                 double x = bar.XFraction * ChartWidth - _barWidth / 2;
                 double barHeight = bar.HeightFraction * ChartHeight;
-                <rect class="rssi-bar" data-testid="rssi-bar" x="@Format(x)" y="@Format(ChartHeight - barHeight)" width="@Format(_barWidth)" height="@Format(barHeight)" @onclick="() => Player.SeekToUtcAsync(bar.CapturedAtUtc)" />
+                <rect class="rssi-bar" data-testid="rssi-bar" x="@Format(x)" y="@Format(ChartHeight - barHeight)" width="@Format(_barWidth)" height="@Format(barHeight)" @onclick="() => Player.SeekToUtcAsync(bar.CapturedAtUtc)">
+                    <title>@L["RssiBarTooltip", SignalChartModel.FormatTooltipTime(bar.CapturedAtUtc, Zone), bar.RssiDbm.ToString(CultureInfo.InvariantCulture)].Value</title>
+                </rect>
             }
             <line class="rssi-playhead" data-testid="rssi-playhead" x1="@Format(_playheadX)" x2="@Format(_playheadX)" y1="0" y2="@Format(ChartHeight)" />
         </svg>
@@ -45,6 +48,12 @@
     /// <summary>The player whose position the playhead follows, and which a click on a bar seeks.</summary>
     [Parameter, EditorRequired]
     public MediaPlayer Player { get; set; } = default!;
+
+    /// <summary>The signed-in user's zone, for the tooltip's clock time. Until the browser's zone is known, UTC is used.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
 
     private IReadOnlyList<RssiBar> _bars = [];
     private double _barWidth;

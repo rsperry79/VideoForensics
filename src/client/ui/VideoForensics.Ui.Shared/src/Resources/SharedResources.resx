@@ -731,9 +731,6 @@
   <data name="Security Events" xml:space="preserve">
     <value>Security Events</value>
   </data>
-  <data name="Pending Approvals" xml:space="preserve">
-    <value>Pending Approvals</value>
-  </data>
   <data name="Login Methods" xml:space="preserve">
     <value>Login Methods</value>
   </data>
@@ -1056,10 +1053,10 @@
     <value>Flag navigation</value>
   </data>
   <data name="ClipNavigatorPrevious" xml:space="preserve">
-    <value>Previous flag</value>
+    <value>Previous</value>
   </data>
   <data name="ClipNavigatorNext" xml:space="preserve">
-    <value>Next flag</value>
+    <value>Next</value>
   </data>
   <data name="ClipNavigatorTotal" xml:space="preserve">
     <value>{0} flags</value>
@@ -1123,6 +1120,15 @@
   </data>
   <data name="BitrateSeriesEmpty" xml:space="preserve">
     <value>No bit rate data for this clip.</value>
+  </data>
+  <data name="BitrateBarTooltip" xml:space="preserve">
+    <value>{0} · {1} kbps</value>
+  </data>
+  <data name="BitrateBarOffset" xml:space="preserve">
+    <value>{0} s into clip</value>
+  </data>
+  <data name="RssiBarTooltip" xml:space="preserve">
+    <value>{0} · {1} dBm</value>
   </data>
   <data name="PlaybackNow" xml:space="preserve">
     <value>Now {0}</value>

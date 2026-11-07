@@ -35,6 +35,33 @@ public class ClipNavigator_Tests : BunitContext
             .ReturnsAsync((int?)null);
     }
 
+    [Fact]
+    public void ClipNavigator_ButtonsAreLabelledPreviousAndNext()
+    {
+        _ = _repository
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(17);
+
+        IRenderedComponent<ClipNavigator> cut = Render();
+
+        _ = cut.WaitForElement("[data-testid=clip-nav-total]");
+        Assert.Equal("Previous", cut.Find("[data-testid=clip-nav-prev]").TextContent.Trim());
+        Assert.Equal("Next", cut.Find("[data-testid=clip-nav-next]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ClipNavigator_Readout_PrecedesButtons()
+    {
+        _ = _repository
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(17);
+
+        IRenderedComponent<ClipNavigator> cut = Render();
+
+        _ = cut.WaitForElement("[data-testid=clip-nav-total]");
+        Assert.Equal("clip-nav-total", cut.Find("[data-testid=clip-navigator]").Children[0].GetAttribute("data-testid"));
+    }
+
     private static MediaFlag Flag()
     {
         return new MediaFlag
