@@ -77,6 +77,17 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
             public Mock<ITimelapseGapQueries> TimelapseQueries { get; } = new();
             public Mock<ISnapshotCaptureRepository> Captures { get; } = new();
+
+            /// <summary>The services-page settings. Defaults: 15-minute check, 60-minute segments.</summary>
+            public Mock<IForensicsConfigurationService> Config { get; } = DefaultConfig();
+
+            private static Mock<IForensicsConfigurationService> DefaultConfig()
+            {
+                var mock = new Mock<IForensicsConfigurationService>();
+                _ = mock.Setup(s => s.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new ForensicsConfiguration());
+                return mock;
+            }
             public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = [];
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = [];
@@ -220,6 +231,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 _ = _services.AddScoped(_ => SnapshotRollup.Object);
                 _ = _services.AddScoped(_ => TimelapseQueries.Object);
                 _ = _services.AddScoped(_ => Captures.Object);
+                _ = _services.AddScoped(_ => Config.Object);
                 _ = _services.AddSingleton<IReferenceDataCache, ReferenceDataCache>();
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
