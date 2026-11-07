@@ -71,6 +71,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>Segments still allowed in the current tick.</summary>
         private int _segmentsLeftThisTick;
 
+        /// <summary>Per account: whether each time-lapse check completes. Reports accounts whose check has stalled.</summary>
+        private readonly TimelapseCheckWatchdog _timelapseWatchdog = new();
+
         /// <summary>Tick period for a configured value: seconds, floored at 5.</summary>
         internal static TimeSpan ResolveTickInterval(int tickSeconds)
         {
@@ -148,6 +151,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             _segmentsLeftThisTick = MaxSegmentsPerTick;
+
+            // Each newly stalled time-lapse check is logged once. Logged by provider name, never by account GUID.
+            foreach (TimelapseCheckStall stall in _timelapseWatchdog.TakeNewStalls(_time.GetUtcNow().UtcDateTime))
+            {
+                _logger.LogError("Time-lapse check for {ProviderName} account has not completed for more than twice its {CheckInterval} interval; it may be failing or stuck.",
+                    stall.ProviderName, stall.CheckInterval);
+            }
             string[] enabledProviders = _options.CurrentValue.EnabledProviders ?? [];
 
             foreach (SyncSchedule schedule in schedules)
@@ -239,6 +249,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             (int checkMinutes, int maxSegmentMinutes) = await ResolveTimelapseSettingsAsync(sp, ct);
             _nextTimelapseCheckUtc[account.Id] = now.AddMinutes(checkMinutes);
+            _timelapseWatchdog.Attempted(account.Id, account.ProviderName, TimeSpan.FromMinutes(checkMinutes), now);
 
             DateTime? horizon = TimelapseHorizon.Compute(
                 _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
@@ -251,6 +262,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
+            bool deviceFailed = false;
             foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, ct))
             {
                 foreach (VideoForensics.Data.Common.Entities.Device device in await devices.GetByLocationIdAsync(location.Id, ct))
@@ -271,9 +283,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
+                        deviceFailed = true;
                         _logger.LogError("Time-lapse check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                     }
                 }
+            }
+
+            // Only a check with no device failures counts as complete, so a device that keeps failing stalls the account.
+            if (!deviceFailed)
+            {
+                _timelapseWatchdog.Completed(account.Id, _time.GetUtcNow().UtcDateTime);
             }
         }
 
