@@ -40,3 +40,4 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - Stop a background shell's dotnet run with TaskStop, and don't assume PATH in background shells.
 - Build with `-m:1` after a merge or a clean; parallel builds race on stale ref output and locked DLLs.
 - Stale generated files with NUL bytes (obj folders) are deleted by explicit path; the next build regenerates them.
+- Branch cleanup (global `branch-cleanup` skill): delete only branches merged into `wip` with clean worktrees; never `-D`; remote deletes need a yes.
