@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Hosting.Services
     /// <param name="LocationCount">Locations the provider returned for the account.</param>
     /// <param name="DeviceCount">Devices stored across those locations.</param>
     /// <param name="DeviceConfigsRead">Devices whose configuration the provider returned.</param>
-    public readonly record struct InventorySyncResult(int LocationCount, int DeviceCount, int DeviceConfigsRead);
+    public readonly record struct InventorySyncResult(int LocationCount, int DeviceCount, int DeviceConfigsRead, int DeviceConfigFailures);
 
     /// <summary>
     /// Refreshes an account's locations, devices and device configuration from the provider. It runs only from the scheduler
@@ -71,6 +71,7 @@ namespace VideoForensics.Client.Hosting.Services
             var locations = new List<CachedLocation>();
             var devices = new Dictionary<string, CachedDevice>(StringComparer.Ordinal);
             int configsRead = 0;
+            int configFailures = 0;
 
             foreach (Location remoteLocation in remoteLocations)
             {
@@ -83,40 +84,56 @@ namespace VideoForensics.Client.Hosting.Services
                     DeviceEntity device = await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken);
                     devices[device.ProviderDeviceId] = new CachedDevice(device.Id, location.Id, location.ProviderLocationId, device.ProviderDeviceId, device.Name);
 
-                    if (await SyncDeviceConfigAsync(accountId, device, cancellationToken))
+                    switch (await SyncDeviceConfigAsync(accountId, device, cancellationToken))
                     {
-                        configsRead++;
+                        case DeviceConfigOutcome.Read:
+                            configsRead++;
+                            break;
+                        case DeviceConfigOutcome.Failed:
+                            configFailures++;
+                            break;
                     }
                 }
             }
 
             _referenceCache.Replace(accountId, new AccountReferenceData(locations, devices));
             _logger.LogInformation("Synced device inventory: {LocationCount} location(s), {DeviceCount} device(s)", locations.Count, devices.Count);
-            return new InventorySyncResult(locations.Count, devices.Count, configsRead);
+            return new InventorySyncResult(locations.Count, devices.Count, configsRead, configFailures);
         }
 
         /// <summary>
         /// Reads one device's configuration and records a history snapshot when it changed. Returns true when the provider returned
         /// a configuration. A failure is logged and skipped: configuration history must not fail the inventory sync.
         /// </summary>
-        private async Task<bool> SyncDeviceConfigAsync(Guid accountId, DeviceEntity device, CancellationToken cancellationToken)
+        /// <summary>
+        /// Reads and stores one device's configuration. A missing configuration is not a failure; an exception is, and is
+        /// counted in the result so the caller reports it. The exception itself is logged here, not its text in the caller.
+        /// </summary>
+        private async Task<DeviceConfigOutcome> SyncDeviceConfigAsync(Guid accountId, DeviceEntity device, CancellationToken cancellationToken)
         {
             try
             {
                 DeviceConfig? config = await _eventAndConfigService.GetDeviceConfigAsync(accountId, device.ProviderDeviceId, cancellationToken);
                 if (config is null)
                 {
-                    return false;
+                    return DeviceConfigOutcome.NoConfig;
                 }
 
                 await PersistDeviceConfigIfChangedAsync(device.Id, config, cancellationToken);
-                return true;
+                return DeviceConfigOutcome.Read;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning("Could not read or record device configuration; inventory was synced: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
-                return false;
+                return DeviceConfigOutcome.Failed;
             }
+        }
+
+        private enum DeviceConfigOutcome
+        {
+            NoConfig,
+            Read,
+            Failed,
         }
 
         private async Task<LocationEntity> UpsertLocationAsync(Guid accountId, Location remote, CancellationToken cancellationToken)

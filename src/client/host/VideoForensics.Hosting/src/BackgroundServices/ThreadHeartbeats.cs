@@ -6,7 +6,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     /// The state of one background service, as the health endpoint reports it. <see cref="LastError"/> is a fixed category
     /// per service, never exception text, because the endpoint is anonymous.
     /// </summary>
-    public sealed record ServiceStatus(string Name, string State, DateTimeOffset? LastRunUtc, string? LastError);
+    public sealed record ServiceStatus(string Name, string State, DateTimeOffset? LastRunUtc, string? LastError, int FailedItems);
 
     /// <summary>
     /// Last-tick times and run outcomes for the long-running background loops. Each loop calls <see cref="Beat"/> on every
@@ -19,6 +19,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ConcurrentDictionary<string, (DateTimeOffset Last, TimeSpan Expected)> _beats = new(StringComparer.Ordinal);
         private readonly object _runLock = new();
         private readonly Dictionary<string, (DateTimeOffset? LastRun, string? LastError)> _runs = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _failedItems = new(StringComparer.Ordinal);
 
         /// <summary>
         /// Records that the named loop is alive at <paramref name="now"/>. <paramref name="expectedInterval"/> is how often the loop
@@ -47,6 +48,19 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             lock (_runLock)
             {
                 _runs[name] = (now, null);
+            }
+        }
+
+        /// <summary>
+        /// Records how many items (for the scheduler, accounts) failed in the last tick. Reported as a count next to the state, so
+        /// one failing item does not turn the whole service into a failure. Zero clears it.
+        /// </summary>
+        public void RecordFailedItems(string name, int count)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+            lock (_runLock)
+            {
+                _failedItems[name] = count;
             }
         }
 
@@ -84,9 +98,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public IReadOnlyList<ServiceStatus> Snapshot(DateTimeOffset now, TimeSpan staleAfter)
         {
             List<(string Name, DateTimeOffset? LastRun, string? LastError)> runs;
+            Dictionary<string, int> failed;
             lock (_runLock)
             {
                 runs = _runs.Select(pair => (pair.Key, pair.Value.LastRun, pair.Value.LastError)).ToList();
+                failed = new Dictionary<string, int>(_failedItems, StringComparer.Ordinal);
             }
 
             var names = new SortedSet<string>(StringComparer.Ordinal);
@@ -124,7 +140,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     state = "NotStarted";
                 }
 
-                list.Add(new ServiceStatus(name, state, lastRun, lastError));
+                int failedItems = failed.TryGetValue(name, out int count) ? count : 0;
+                list.Add(new ServiceStatus(name, state, lastRun, lastError, failedItems));
             }
 
             return list;
