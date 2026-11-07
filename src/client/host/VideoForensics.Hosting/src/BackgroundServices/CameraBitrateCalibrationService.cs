@@ -87,6 +87,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
@@ -105,6 +106,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Bitrate calibration tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 

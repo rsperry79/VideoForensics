@@ -128,15 +128,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// Runs the signal-deviation check for one camera. A failure is logged and does not stop the poll: the reading
         /// is already saved, and the next poll checks again.
         /// </summary>
-        private async Task CheckSignalDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task<bool> CheckSignalDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             try
             {
                 _ = await sp.GetRequiredService<SignalDeviationAlerts>().CheckAsync(device, ct);
+                return true;
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning("Signal deviation check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
@@ -144,15 +146,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// Runs the bit rate deviation check for one camera. A failure is logged and does not stop the poll: the reading
         /// is already saved, and the next poll checks again.
         /// </summary>
-        private async Task CheckBitrateDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task<bool> CheckBitrateDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             try
             {
                 _ = await sp.GetRequiredService<BitrateDeviationAlerts>().CheckAsync(device, ct);
+                return true;
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning("Bit rate deviation check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
@@ -186,6 +190,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Health sync tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
@@ -279,15 +284,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         persisted++;
                         if (wentOffline)
                         {
-                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
+                            if (!await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct))
+                            {
+                                itemFailed = true;
+                            }
                         }
 
                         // Readings more than 2 std devs from the camera's mean raise an alert. Base poll only: the elevated
                         // poll runs far more often and each check reads the camera's full history.
-                        await CheckSignalDeviationAsync(sp, device, ct);
+                        if (!await CheckSignalDeviationAsync(sp, device, ct))
+                        {
+                            itemFailed = true;
+                        }
 
                         // Clip bit rates more than 2 std devs from the camera's mean raise an alert. Same base-poll-only rule as above.
-                        await CheckBitrateDeviationAsync(sp, device, ct);
+                        if (!await CheckBitrateDeviationAsync(sp, device, ct))
+                        {
+                            itemFailed = true;
+                        }
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try
@@ -564,11 +578,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
-        private async Task NotifyDeviceOfflineAsync(IServiceProvider sp, INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task<bool> NotifyDeviceOfflineAsync(IServiceProvider sp, INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             if (dispatcher == null)
             {
-                return;
+                return true;
             }
 
             try
@@ -584,10 +598,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Severity: NoticeSeverity.Alert,
                     ActionPath: await SyncPagePathAsync(sp, device, ct)), ct);
                 _logger.LogInformation("Health sync: device {DeviceName} went offline; DeviceOffline alert dispatched", device.Name);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("Health sync: failed to dispatch offline alert for device {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 

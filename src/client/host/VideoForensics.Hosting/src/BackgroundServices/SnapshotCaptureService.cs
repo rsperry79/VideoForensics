@@ -185,7 +185,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _logger.LogInformation("Snapshot capture tick: {Captured} captured, {Failed} failed, {Throttled} throttled",
                     counts.Captured, counts.Failed, counts.Throttled);
             }
-            if (counts.Failed > 0)
+            if (counts.Failed > 0 || counts.AlertFailed)
             {
                 itemFailed = true;
             }
@@ -470,7 +470,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (attempt.Connected == false && previousHealth is { IsOnline: true })
             {
-                await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
+                if (!await RaiseOfflineAlertAsync(sp, device, account.Id, ct))
+                {
+                    counts.AlertFailed = true;
+                }
             }
         }
 
@@ -562,12 +565,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// Raises the DeviceOffline alert when a health reading turns a camera offline. The link opens the account's sync page, where the
         /// device's polling mode is set. A dispatch failure is logged and never fails the capture.
         /// </summary>
-        private async Task RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
+        private async Task<bool> RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
         {
             INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
             if (dispatcher is null)
             {
-                return;
+                return true;
             }
 
             try
@@ -582,10 +585,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Audience: NotificationAudience.AdminsOnly,
                     Severity: NoticeSeverity.Alert,
                     ActionPath: $"/accounts/{accountId}/sync"), ct);
+                return true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning("Could not dispatch the offline alert for {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
@@ -608,6 +613,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             public int Failed { get; set; }
 
             public int Throttled { get; set; }
+
+            /// <summary>True when an offline alert failed to dispatch this tick. The capture itself still counts as recorded.</summary>
+            public bool AlertFailed { get; set; }
 
             public int Attempted => Captured + Failed + Throttled;
         }

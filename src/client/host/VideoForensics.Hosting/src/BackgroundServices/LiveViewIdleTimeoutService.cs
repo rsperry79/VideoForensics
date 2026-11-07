@@ -74,6 +74,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Live view idle timeout tick: failed to list active sessions; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
