@@ -32,12 +32,14 @@ namespace VideoForensics.Client.Hosting.Services
     /// <param name="EventsSynced">Events returned by the provider across all device feeds.</param>
     /// <param name="ConfigAreasSynced">Devices whose configuration was returned by the provider.</param>
     /// <param name="FeedsFailed">Per-device event feeds that failed.</param>
+    /// <param name="RateLimited">True when Ring throttled the account. The pull stopped there and the rest of its devices were not called.</param>
     public readonly record struct EventPullResult(
         int DevicesSynced = 0,
         int LocationsSynced = 0,
         int EventsSynced = 0,
         int ConfigAreasSynced = 0,
-        int FeedsFailed = 0);
+        int FeedsFailed = 0,
+        bool RateLimited = false);
 
     /// <summary>Pulls events and configuration from provider accounts automatically.</summary>
     public class EventPullService : IEventPullService
@@ -121,12 +123,21 @@ namespace VideoForensics.Client.Hosting.Services
         {
             // Counts live outside the try so a failure partway through still reports what was reached.
             int locationsSynced = 0, devicesSynced = 0, eventsSynced = 0, configAreasSynced = 0, feedsFailed = 0;
+            bool rateLimited = false;
             try
             {
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
                     _logger.LogWarning("Provider account not found");
+                    return default;
+                }
+
+                // Why: while Ring has us banned, every event call is refused and each refusal still counts against the account.
+                // Stopping before the first call lets the ban lift instead of extending it.
+                if (_mediaDownloadService?.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Event pull skipped: provider rate-limit ban is active until {BanUntilUtc:u}", banUntilUtc);
                     return default;
                 }
 
@@ -246,6 +257,14 @@ namespace VideoForensics.Client.Hosting.Services
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
                         feedsFailed++;
+
+                        // Why: once Ring has throttled the account, each further device call is refused too. Stop here and let the next run retry.
+                        if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException || IsRateLimitBanActive())
+                        {
+                            rateLimited = true;
+                            _logger.LogWarning("Event pull stopped early: Ring rate-limited this account; remaining devices wait for the next run");
+                            break;
+                        }
                     }
                 }
 
@@ -273,7 +292,7 @@ namespace VideoForensics.Client.Hosting.Services
                     _logger.LogInformation("Successfully pulled events for account");
                 }
 
-                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed, rateLimited);
             }
             catch (Exception ex)
             {
@@ -295,7 +314,7 @@ namespace VideoForensics.Client.Hosting.Services
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
                 }
 
-                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed, rateLimited || ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException);
             }
             finally
             {
@@ -394,6 +413,12 @@ namespace VideoForensics.Client.Hosting.Services
         /// Reads the account's stored inventory from the reference cache, loading it from the database on a miss. Only the
         /// device rows are read per pull, because a pull updates their timestamps.
         /// </summary>
+        /// <summary>True while the provider's rate-limit ban is in force. Read from the media service, which owns the session.</summary>
+        private bool IsRateLimitBanActive()
+        {
+            return _mediaDownloadService?.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > DateTime.UtcNow;
+        }
+
         private async Task<Inventory> LoadInventoryAsync(Guid accountId, CancellationToken cancellationToken)
         {
             AccountReferenceData data = _referenceCache.Get(accountId) ?? await LoadReferenceDataFromDbAsync(accountId, cancellationToken);

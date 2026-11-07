@@ -250,7 +250,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
                     if (ScheduleCalculator.IsSnapshotDue(schedule, nowUtc))
                     {
-                        await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, ct);
+                        await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, mediaService, ct);
                     }
 
                     if (ScheduleCalculator.IsEventDue(schedule, nowUtc))
@@ -435,11 +435,19 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             SyncSchedule schedule,
             ProviderAccount account,
             IProviderAuthService authService,
+            IMediaDownloadService mediaService,
             CancellationToken ct)
         {
             DateTime now = _time.GetUtcNow().UtcDateTime;
             try
             {
+                // Why: snapshots are Ring calls too. During a rate-limit ban they are skipped, and the run is still recorded so the schedule advances.
+                if (mediaService.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > now)
+                {
+                    _logger.LogWarning("Scheduled snapshot sync skipped for {ProviderName} account: rate-limit ban active until {BanUntilUtc:u}", account.ProviderName, banUntilUtc);
+                    return;
+                }
+
                 if (await authService.RestoreFromSavedCredentialsAsync(account.Id, ct))
                 {
                     SnapshotSyncResult result = await sp.GetRequiredService<ISnapshotSyncService>()
@@ -666,6 +674,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 // A failed window records its error on the account; a later clean window clears it. Keep the first one so it is not lost.
                 firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await accounts.GetAsync(accountId, ct));
                 await budgetGuard.RecordCallAsync(providerName, ct);
+
+                // Why: a throttled window means the provider is refusing this account. The later windows would only add refused calls.
+                if (window.RateLimited)
+                {
+                    _logger.LogWarning("Catch-up stopped at a throttle for {ProviderName} account; the remaining windows wait for the next run", providerName);
+                    break;
+                }
             }
 
             return (new EventPullResult(devices, locations, events, config, failed), firstError);

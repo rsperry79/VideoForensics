@@ -454,6 +454,13 @@ namespace VideoForensics.Client.Hosting.Services
 
                 // A failed week records its error on the account; a later clean week clears it. Keep the first one so it is not lost.
                 firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+
+                // Why: a throttled week means the provider is refusing this account. The later weeks would only add refused calls.
+                if (week.RateLimited)
+                {
+                    _logger.LogWarning("Weekly pull stopped at a throttle; the remaining weeks wait for the next run");
+                    break;
+                }
             }
 
             return (new EventPullResult(devices, locations, events, config, failed), firstError);
