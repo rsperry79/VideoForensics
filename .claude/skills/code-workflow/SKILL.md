@@ -12,6 +12,7 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 ## Worktrees
 - Base is `wip`, after the checks above.
 - Create or reuse worktrees per the global skill `git-worktree-workflow`, under `F:/vf-worktrees/<feature>`.
+- Submodules (`docs`) in a worktree: commit inside the submodule's own repository first (its branch, not detached), then stage the new submodule commit in the parent. Do not commit only in the parent. Run `git submodule update --init <path>` before editing a submodule path that is empty.
 
 ## Implementation
 - Plan review (standing approval, no per-plan ask): before dispatching a Haiku implementer, one read-only Sonnet agent reviews its plan/brief; fold its findings in before dispatch. This is the only non-Haiku spawn allowed without a yes (CLAUDE.md STOP).
