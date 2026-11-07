@@ -35,6 +35,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 existing.PushEnabled = preferences.PushEnabled;
                 existing.MinimumSeverity = preferences.MinimumSeverity;
+                existing.EmailEnabled = preferences.EmailEnabled;
+                existing.EmailEventTypes = preferences.EmailEventTypes;
                 _ = db.OperatorNotificationPreferences.Update(existing);
             }
             else
