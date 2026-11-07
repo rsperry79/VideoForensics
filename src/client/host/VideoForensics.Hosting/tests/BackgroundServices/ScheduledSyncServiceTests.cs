@@ -353,6 +353,21 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public async Task RunOneTickAsync_SnapshotDueDuringRingBan_SkipsSnapshotSyncButRecordsRun()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = h.Media["Ring"].Setup(m => m.GetRateLimitBanUntilUtc()).Returns(Now.AddMinutes(10));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+            h.Schedules.Verify(r => r.RecordSnapshotRunAsync(account.Id, Now, Now.AddSeconds(60), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_SnapshotNotDue_DoesNotRunSnapshotSync()
         {
             var h = new Harness();

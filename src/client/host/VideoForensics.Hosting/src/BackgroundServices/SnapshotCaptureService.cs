@@ -278,6 +278,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            // Why: a Ring rate-limit ban refuses every snapshot until it lifts. Holding the account for the ban's length, instead of
+            // discovering it one device at a time, stops these calls from extending the ban.
+            IMediaDownloadService? media = sp.GetKeyedService<IMediaDownloadService>(RingProviderName);
+            if (media?.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > _time.GetUtcNow().UtcDateTime)
+            {
+                _logger.LogWarning("Snapshot capture paused for {AccountName}: rate-limit ban active until {BanUntilUtc:u}", accountName, banUntilUtc);
+                _accountPausedUntil[accountId] = new DateTimeOffset(DateTime.SpecifyKind(banUntilUtc, DateTimeKind.Utc));
+                return;
+            }
+
             IProviderSnapshotCapture provider = sp.GetRequiredKeyedService<IProviderSnapshotCapture>(RingProviderName);
             foreach (Device device in due)
             {

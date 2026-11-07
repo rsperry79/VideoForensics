@@ -117,6 +117,27 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RunAsync_NoRangeSinceLastSuccessTwentyDaysAgo_PullsThreeWindowsOldestFirst()
+        {
+            DateTime since = DateTime.UtcNow.AddDays(-20);
+            _ = _accounts.Setup(r => r.GetAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(new ProviderAccountEntity
+            {
+                Id = _id,
+                UserId = Guid.NewGuid(),
+                ProviderName = "Ring",
+                LinkedUtc = DateTime.UtcNow,
+                IsActive = true,
+                LastSuccessfulAuthUtc = since,
+            });
+
+            await Sut().RunAsync(_id, CancellationToken.None);
+
+            Assert.Equal(3, _pulled.Count);
+            Assert.Equal(since, _pulled[0].From);
+            Assert.True(_pulled[0].From < _pulled[1].From && _pulled[1].From < _pulled[2].From);
+        }
+
+        [Fact]
         public async Task RunAsync_NoExplicitStart_PullsOnceWithOneWeekFloor()
         {
             await Sut().RunAsync(_id, CancellationToken.None);
