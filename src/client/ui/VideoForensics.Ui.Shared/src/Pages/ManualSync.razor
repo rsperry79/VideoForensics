@@ -4,12 +4,15 @@
 @using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Filters
+@using VideoForensics.Client.Ui.Shared.Components.Filters
 @using VideoForensics.Core.Providers.Common.Contracts
+@implements IDisposable
 @inject PairedSessionState SessionState
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAccountEditAccess EditAccess
-@inject RightPanelFilterStore FilterStore
+@inject ProviderAccountFilterState SharedFilter
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ManualSync> L
@@ -19,21 +22,7 @@
 <h4 class="mb-4">@L["Title"]</h4>
 
 <PageRightPanelContent>
-    <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterProviders"]</small>
-        <SfMultiSelect TValue="string[]" TItem="string" DataSource="@_providerNames"
-            Value="@_selectedProviders" ValueChanged="OnProvidersChanged"
-            Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
-        </SfMultiSelect>
-    </div>
-    <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterAccount"]</small>
-        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
-            Placeholder="@L["AllAccounts"]" data-testid="manual-sync-account-filter"
-            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
-            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-        </SfDropDownList>
-    </div>
+    <ProviderAccountFilter ProviderNames="@_providerNames" AccountsFor="@AccountsForProvider" />
 </PageRightPanelContent>
 
 @if (_isLoading)
@@ -121,16 +110,9 @@ else
 @code {
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName, string? Email);
 
-    /// <summary>Key for this page's remembered right-panel filters in the device's local storage.</summary>
-    private const string FilterPageKey = "manual-sync";
-
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<AccountRow> _rows = new();
     private List<string> _providerNames = new();
-    private string[] _selectedProviders = Array.Empty<string>();
-
-    /// <summary>The Account filter's selected account (its id as text). Empty means no sync target.</summary>
-    private string _accountFilterValue = string.Empty;
 
     private string? _loadError;
     private bool _isLoading = true;
@@ -147,17 +129,17 @@ else
     private bool _isSyncing;
     private SfToast _toastRef = null!;
 
-    /// <summary>The account chosen in the Account filter, or null when none is chosen or it is hidden by the provider filter.</summary>
+    /// <summary>The account chosen in the shared Account filter, or null when none is chosen or it is hidden by the provider filter.</summary>
     private AccountRow? TargetRow
     {
         get
         {
-            if (!Guid.TryParse(_accountFilterValue, out Guid accountId))
+            if (!Guid.TryParse(SharedFilter.Account, out Guid accountId))
             {
                 return null;
             }
 
-            return _rows.FirstOrDefault(r => r.Account.Id == accountId && _selectedProviders.Contains(r.Account.ProviderName));
+            return _rows.FirstOrDefault(r => r.Account.Id == accountId && SharedFilter.IncludesProvider(r.Account.ProviderName));
         }
     }
 
@@ -166,9 +148,9 @@ else
     {
         get
         {
-            if (string.IsNullOrEmpty(_accountFilterValue))
+            if (string.IsNullOrEmpty(SharedFilter.Account))
             {
-                return _rows.Where(r => _selectedProviders.Contains(r.Account.ProviderName)).ToList();
+                return _rows.Where(r => SharedFilter.IncludesProvider(r.Account.ProviderName)).ToList();
             }
 
             return TargetRow is { } one ? new[] { one } : Array.Empty<AccountRow>();
@@ -215,21 +197,21 @@ else
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
+        SharedFilter.OnChange += OnSharedFilterChanged;
         // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
         _ = RefreshEditAccessAsync();
-        RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
+        await SharedFilter.EnsureLoadedAsync();
         await LoadAccountsAsync();
+    }
 
-        // Restore after the load: the provider list must exist before a stored selection can be matched to it.
-        if (stored?.Providers is { } providers)
-        {
-            _selectedProviders = providers.Where(_providerNames.Contains).ToArray();
-        }
+    private void OnSharedFilterChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 
-        if (stored?.Account is { } account && AccountFilterOptions.Any(o => o.Key == account))
-        {
-            _accountFilterValue = account;
-        }
+    public void Dispose()
+    {
+        SharedFilter.OnChange -= OnSharedFilterChanged;
     }
 
     /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>
@@ -280,20 +262,7 @@ else
             }
 
             _rows = rows;
-            var previous = new HashSet<string>(_providerNames, StringComparer.OrdinalIgnoreCase);
             _providerNames = _rows.Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
-            // Every provider is selected by default; providers that appear later are selected too.
-            _selectedProviders = _selectedProviders
-                .Where(p => _providerNames.Contains(p))
-                .Concat(_providerNames.Where(p => !previous.Contains(p)))
-                .Distinct()
-                .ToArray();
-
-            // An account that no longer exists can't stay as the filter.
-            if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
-            {
-                _accountFilterValue = string.Empty;
-            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -305,40 +274,12 @@ else
         }
     }
 
-    private async Task OnProvidersChanged(string[] selected)
+    /// <summary>The Account filter's choices for one provider, from the active accounts.</summary>
+    private IEnumerable<KeyValuePair<string, string>> AccountsForProvider(string provider)
     {
-        _selectedProviders = selected ?? Array.Empty<string>();
-
-        // An account from a provider that is no longer selected can't stay as the filter.
-        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
-        {
-            _accountFilterValue = string.Empty;
-        }
-
-        await SaveFiltersAsync();
-    }
-
-    private async Task SaveFiltersAsync()
-    {
-        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(_selectedProviders, string.IsNullOrEmpty(_accountFilterValue) ? null : _accountFilterValue));
-    }
-
-    /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
-    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions
-    {
-        get
-        {
-            var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
-            return _rows
-                .Where(r => selected.Contains(r.Account.ProviderName))
-                .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
-        }
-    }
-
-    private async Task OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
-    {
-        _accountFilterValue = args.Value ?? string.Empty;
-        await SaveFiltersAsync();
+        return _rows
+            .Where(r => string.Equals(r.Account.ProviderName, provider, StringComparison.OrdinalIgnoreCase))
+            .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
     }
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)

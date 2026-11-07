@@ -23,13 +23,13 @@
 @inject IMediaContentUrlProvider ContentUrls
 @inject IEvidenceChangedSource EvidenceChangedSource
 @inject NavigationManager NavigationManager
+@* The camera choice lives in the shared review state, so Live View shows the cameras chosen on the Review page and the reverse. *@
+@inject ReviewPageState CameraState
 @inject IJSRuntime JsRuntime
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<LiveView> L
 @inject ILogger<LiveView> Logger
 @inject RightPanelFilterStore FilterStore
-@* The camera choice is the shared review camera state, so Live View, Timeline and Events show the same cameras. *@
-@inject ReviewPageState _cameraState
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -49,7 +49,7 @@ else
         <div class="right-panel-section">
             <small>@L["Title"]</small>
             <div class="d-flex flex-column gap-2">
-                <ReviewCameraSelector State="_cameraState" Devices="_cameraIds" DeviceNames="_deviceNames" Mode="DevicePickerMode.Cameras" />
+                <ReviewCameraSelector State="CameraState" Devices="_cameraIds" DeviceNames="_deviceNames" Mode="DevicePickerMode.Cameras" />
 
                 @if (!string.IsNullOrEmpty(_error))
                 {
@@ -155,8 +155,8 @@ else
     private LiveViewTelemetrySample? _latestTelemetry;
 
     private IReadOnlyList<Guid> ShownCameras =>
-        _cameraState.CameraIds.Count > 0
-            ? _cameraState.CameraIds
+        CameraState.CameraIds.Count > 0
+            ? CameraState.CameraIds
             : _cameraIds.Take(CameraSync.MaxTiles).ToList();
 
     private string NameOf(Guid id) => _deviceNames.TryGetValue(id, out string? name) ? name : id.ToString("D");
@@ -175,7 +175,7 @@ else
 
             if (Device is Guid requested && _cameraIds.Contains(requested))
             {
-                _cameraState.SetCameras([requested]);
+                CameraState.SetCameras([requested]);
             }
             else
             {
@@ -188,12 +188,12 @@ else
                         .ToArray();
                     if (restored.Length > 0)
                     {
-                        _cameraState.SetCameras(restored);
+                        CameraState.SetCameras(restored);
                     }
                 }
             }
 
-            _cameraState.OnChange += OnCameraSelectionChanged;
+            CameraState.OnChange += OnCameraSelectionChanged;
             _evidenceSubscription = EvidenceChangedSource.EvidenceChanged.Subscribe(OnEvidenceChanged);
             await LoadMissingStillsAsync();
 
@@ -242,7 +242,7 @@ else
                 return;
             }
 
-            await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, _cameraState.CameraIds.Select(id => id.ToString("D")).ToArray()));
+            await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, CameraState.CameraIds.Select(id => id.ToString("D")).ToArray()));
             await LoadMissingStillsAsync();
             StateHasChanged();
         });
@@ -398,7 +398,7 @@ else
     private async Task CleanupAsync()
     {
         _disposed = true;
-        _cameraState.OnChange -= OnCameraSelectionChanged;
+        CameraState.OnChange -= OnCameraSelectionChanged;
         _evidenceSubscription?.Dispose();
         _evidenceSubscription = null;
 

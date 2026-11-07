@@ -1,0 +1,86 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Services.Filters
+@implements IDisposable
+@inject ProviderAccountFilterState State
+@inject IStringLocalizer<SharedResources> L
+
+<div class="provider-account-filter" data-testid="provider-account-filter">
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["ScopeProvider"]</small>
+        <SfMultiSelect TValue="string[]" TItem="string" DataSource="@ProviderNames"
+                       Value="@State.Providers" ValueChanged="OnProvidersChanged"
+                       Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["ScopeAllProviders"]"
+                       data-testid="provider-account-filter-providers">
+        </SfMultiSelect>
+    </div>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["ScopeAccount"]</small>
+        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@AccountValue" DataSource="@AccountOptions"
+                        Placeholder="@L["ScopeAllAccounts"]" data-testid="provider-account-filter-account"
+                        ValueChange="@((Syncfusion.Blazor.DropDowns.ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountChanged(args))">
+            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
+</div>
+
+@code {
+    /// <summary>The providers to offer, in display order.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> ProviderNames { get; set; } = [];
+
+    /// <summary>The accounts of one provider, as account id and display name pairs.</summary>
+    [Parameter, EditorRequired]
+    public Func<string, IEnumerable<KeyValuePair<string, string>>> AccountsFor { get; set; } = _ => [];
+
+    private IReadOnlyList<KeyValuePair<string, string>> AccountOptions => AccountsOf(State.Providers);
+
+    private string AccountValue => State.Account ?? string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await State.EnsureLoadedAsync();
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>The accounts of the selected providers. An empty selection means every provider.</summary>
+    private IReadOnlyList<KeyValuePair<string, string>> AccountsOf(IEnumerable<string> providers)
+    {
+        IEnumerable<string> selected = providers.Any() ? providers : ProviderNames;
+        return selected.SelectMany(p => AccountsFor(p)).ToList();
+    }
+
+    private async Task OnProvidersChanged(string[] picked)
+    {
+        string[] providers = picked ?? [];
+        string? account = State.Account;
+        if (account is not null && !AccountsOf(providers).Any(o => o.Key == account))
+        {
+            account = null;
+        }
+
+        await State.SetAsync(providers, account);
+    }
+
+    private async Task OnAccountChanged(Syncfusion.Blazor.DropDowns.ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    {
+        // The dropdown clears its value when its list lacks it, so an empty write while the list is empty is ignored.
+        if (AccountOptions.Count == 0)
+        {
+            return;
+        }
+
+        string? account = string.IsNullOrEmpty(args.Value) ? null : args.Value;
+        await State.SetAsync(State.Providers, account);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}
