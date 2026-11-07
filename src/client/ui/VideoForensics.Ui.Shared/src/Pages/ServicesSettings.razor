@@ -257,9 +257,9 @@ else
     {
         try
         {
-            (bool applied, string message) = await ConfigTools.SetTimelapseCheckIntervalMinutesAsync(Config, _timelapseCheckMinutes, CancellationToken.None);
+            (bool applied, _) = await ConfigTools.SetTimelapseCheckIntervalMinutesAsync(Config, _timelapseCheckMinutes, CancellationToken.None);
             _timelapseSuccess = applied;
-            _timelapseMessage = message;
+            _timelapseMessage = applied ? L["TimelapseCheckSaved", _timelapseCheckMinutes].Value : L["TimelapseRangeError"].Value;
             if (!applied)
             {
                 ResetIntervalInputs();
@@ -276,9 +276,9 @@ else
     {
         try
         {
-            (bool applied, string message) = await ConfigTools.SetTimelapseMaxSegmentMinutesAsync(Config, _timelapseMaxSegmentMinutes, CancellationToken.None);
+            (bool applied, _) = await ConfigTools.SetTimelapseMaxSegmentMinutesAsync(Config, _timelapseMaxSegmentMinutes, CancellationToken.None);
             _timelapseSuccess = applied;
-            _timelapseMessage = message;
+            _timelapseMessage = applied ? L["TimelapseMaxSegmentSaved", _timelapseMaxSegmentMinutes].Value : L["TimelapseRangeError"].Value;
             if (!applied)
             {
                 ResetIntervalInputs();
