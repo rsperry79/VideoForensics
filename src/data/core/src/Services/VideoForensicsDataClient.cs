@@ -335,7 +335,7 @@ namespace VideoForensics.Data.Core.Services
 
         public Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct)
         {
-            return _unitOfWork.ExecuteAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
+            return _unitOfWork.ReadAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
         }
 
         public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)

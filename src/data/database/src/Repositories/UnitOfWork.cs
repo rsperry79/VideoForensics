@@ -49,6 +49,15 @@ namespace VideoForensics.Data.Database.Repositories
         /// Executes a work function within a shared transaction context, committing on success or rolling back on exception.
         /// Each call logs its timing, so a slow write can be traced to the operation that ran it.
         /// </summary>
+        /// <inheritdoc />
+        public async Task<T> ReadAsync<T>(Func<IUnitOfWorkContext, Task<T>> read, CancellationToken ct)
+        {
+            // Why: no transaction and no append gate. A read that took either would wait behind every slow write in the process.
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            var context = new UnitOfWorkContext(db, _serviceProvider);
+            return await read(context);
+        }
+
         public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
         {
             // Read the caller before the first await: its frames are only on the stack until then.

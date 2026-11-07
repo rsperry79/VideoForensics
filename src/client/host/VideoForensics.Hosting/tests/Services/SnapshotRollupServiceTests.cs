@@ -375,6 +375,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 ExecuteCount++;
                 return await work(_context);
             }
+
+            public Task<T> ReadAsync<T>(Func<IUnitOfWorkContext, Task<T>> read, CancellationToken ct)
+            {
+                return read(_context);
+            }
         }
 
         [Fact]
