@@ -51,7 +51,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _heartbeats?.Beat(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow, CheckInterval);
                 await RunOneTickAsync(stoppingToken);
-                _heartbeats?.RecordRun(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
@@ -61,6 +60,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         {
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+            bool itemFailed = false;
 
             ILiveViewSessionRepository sessionRepository = sp.GetRequiredService<ILiveViewSessionRepository>();
             ILiveViewSessionService sessionService = sp.GetRequiredService<ILiveViewSessionService>();
@@ -79,6 +79,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (activeSessions.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -129,6 +130,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                                 }
                                 catch (Exception ex)
                                 {
+                                    itemFailed = true;
                                     // One notification failure must not stop processing other sessions.
                                     _logger.LogWarning("Live view safety valve tick: failed to dispatch notification for session {SessionId} (non-critical): {Message} ({ErrorType})", session.Id, ex.Message, ex.GetType().Name);
                                 }
@@ -138,10 +140,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
+                    itemFailed = true;
                     // One session's failure must not stop the next session's processing.
                     _logger.LogWarning("Live view idle timeout tick: failed to process session {SessionId} (non-critical): {Message} ({ErrorType})", session.Id, ex.Message, ex.GetType().Name);
                 }
             }
+            if (itemFailed) { _heartbeats?.RecordError(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow); }
         }
     }
 }

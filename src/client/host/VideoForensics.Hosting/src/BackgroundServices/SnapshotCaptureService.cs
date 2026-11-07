@@ -116,7 +116,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     try
                     {
                         await RunOneTickAsync(stoppingToken);
-                        _heartbeats?.RecordRun(nameof(SnapshotCaptureService), _time.GetUtcNow());
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {
@@ -150,6 +149,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            bool itemFailed = false;
             IReadOnlyList<ProviderAccount> accounts = await sp.GetRequiredService<IProviderAccountRepository>().ListActiveAsync(ct);
             _logger.LogDebug("Snapshot capture tick started: {AccountCount} active accounts", accounts.Count);
             var counts = new TickCounts();
@@ -175,6 +175,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One account's failure must never stop the others.
                     _accountPausedUntil[account.Id] = _time.GetUtcNow() + AccountErrorBackoff;
+                    itemFailed = true;
                     _logger.LogError("Snapshot capture failed for {ProviderName} account: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                 }
             }
@@ -184,6 +185,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _logger.LogInformation("Snapshot capture tick: {Captured} captured, {Failed} failed, {Throttled} throttled",
                     counts.Captured, counts.Failed, counts.Throttled);
             }
+            if (counts.Failed > 0)
+            {
+                itemFailed = true;
+            }
+            if (itemFailed) { _heartbeats?.RecordError(nameof(SnapshotCaptureService), _time.GetUtcNow(), "run failed"); } else { _heartbeats?.RecordRun(nameof(SnapshotCaptureService), _time.GetUtcNow()); }
         }
 
         private async Task CaptureAccountAsync(IServiceProvider sp, ProviderAccount account, TickCounts counts, CancellationToken ct)

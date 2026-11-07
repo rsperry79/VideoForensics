@@ -53,7 +53,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _heartbeats?.Beat(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow, CurrentInterval);
                 await RunPassAsync(stoppingToken);
-                _heartbeats?.RecordRun(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow);
             }
             while (await WaitForNextPassAsync(stoppingToken));
         }
@@ -77,6 +76,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         public async Task RunPassAsync(CancellationToken ct)
         {
+            bool itemFailed = false;
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
@@ -91,6 +91,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _logger.LogInformation(
                     "Preview backfill: processed {Processed} video(s), {Generated} generated, {Failed} failed",
                     result.Processed, result.Generated, result.Failed);
+                if (result.Failed > 0)
+                {
+                    itemFailed = true;
+                }
+                if (itemFailed) { _heartbeats?.RecordError(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow); }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -98,6 +103,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
+                itemFailed = true;
+                _heartbeats?.RecordError(nameof(MediaPreviewBackfillService), DateTimeOffset.UtcNow, "run failed");
                 _logger.LogError("Preview backfill pass failed; the next pass will retry: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }

@@ -51,7 +51,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _heartbeats?.Beat(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow, CurrentInterval);
                 await RunPassAsync(stoppingToken);
-                _heartbeats?.RecordRun(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow);
             }
             while (await WaitForNextPassAsync(stoppingToken));
         }
@@ -75,6 +74,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         public async Task RunPassAsync(CancellationToken ct)
         {
+            bool itemFailed = false;
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();
@@ -85,7 +85,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
 
                 IMediaThumbnailBackfill backfill = scope.ServiceProvider.GetRequiredService<IMediaThumbnailBackfill>();
-                _ = await backfill.BackfillAsync(ct);
+                var result = await backfill.BackfillAsync(ct);
+                itemFailed = result.Unavailable > 0 || result.MissingFile > 0;
+                if (itemFailed) { _heartbeats?.RecordError(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow); }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -93,6 +95,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
+                itemFailed = true;
+                _heartbeats?.RecordError(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow, "run failed");
                 _logger.LogError("Thumbnail backfill pass failed; the next pass will retry: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
             }
         }

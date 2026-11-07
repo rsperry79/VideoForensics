@@ -98,7 +98,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                 _heartbeats?.Beat(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, TimeSpan.FromMinutes(45));
                 await RunOneTickAsync(stoppingToken);
-                _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
@@ -173,6 +172,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            bool itemFailed = false;
             IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IDeviceHealthRepository healthRepository = sp.GetRequiredService<IDeviceHealthRepository>();
@@ -191,6 +191,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (devices.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -202,6 +203,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 .ToDictionary(g => g.Key, g => g.First());
             if (devicesByProviderId.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -323,6 +325,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         }
                         catch (Exception ex)
                         {
+                            itemFailed = true;
                             // Non-critical: don't let degradation check failure break the main tick
                             _logger.LogWarning("Health sync tick: degradation check for device {DeviceName} failed (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                         }
@@ -336,9 +339,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One provider's failure must not stop another's - each health source gets its
                     // own try/catch, matching the plan's explicit call-out for this.
+                    itemFailed = true;
                     _logger.LogWarning("Health sync tick: {SourceType} failed (non-critical): {Message} ({ErrorType})", healthSource.GetType().Name, ex.Message, ex.GetType().Name);
                 }
             }
+            if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
         }
 
         /// <summary>Internal for direct testability; runs one tick of elevated polling for devices in elevated windows.</summary>
