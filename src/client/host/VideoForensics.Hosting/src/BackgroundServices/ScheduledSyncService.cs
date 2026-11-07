@@ -81,6 +81,31 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <inheritdoc />
+        /// <summary>
+        /// Runs one tick and records it: a beat when it starts, a run when it completes, or an error label when it fails.
+        /// The health endpoint reads these, so a service that never completes a tick shows no last run.
+        /// </summary>
+        internal async Task RunRecordedTickAsync(CancellationToken ct)
+        {
+            string name = nameof(ScheduledSyncService);
+            _heartbeats?.Beat(name, _time.GetUtcNow());
+            try
+            {
+                await RunOneTickAsync(ct);
+                _heartbeats?.RecordRun(name, _time.GetUtcNow());
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                _heartbeats?.RecordError(name, _time.GetUtcNow(), "tick failed");
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var timer = new PeriodicTimer(ResolveTickInterval(_options.CurrentValue.TickSeconds), _time);
@@ -90,10 +115,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 // Wait for the first tick before the first pass so a cold start does not race database initialization.
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
-                    _heartbeats?.Beat(nameof(ScheduledSyncService), _time.GetUtcNow());
                     try
                     {
-                        await RunOneTickAsync(stoppingToken);
+                        await RunRecordedTickAsync(stoppingToken);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {

@@ -51,6 +51,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _heartbeats?.Beat(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow, CheckInterval);
                 await RunOneTickAsync(stoppingToken);
+                _heartbeats?.RecordRun(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

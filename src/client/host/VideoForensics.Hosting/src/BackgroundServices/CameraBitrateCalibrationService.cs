@@ -48,6 +48,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _heartbeats?.Beat(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, calibrationInterval);
                 await RunOneTickAsync(stoppingToken);
+                _heartbeats?.RecordRun(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

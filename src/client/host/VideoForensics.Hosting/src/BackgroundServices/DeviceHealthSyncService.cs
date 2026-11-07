@@ -98,6 +98,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                 _heartbeats?.Beat(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, TimeSpan.FromMinutes(45));
                 await RunOneTickAsync(stoppingToken);
+                _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

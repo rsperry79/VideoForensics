@@ -240,8 +240,11 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     sp.GetRequiredService<IServiceScopeFactory>(),
                     options.Object,
                     sp.GetRequiredService<ILogger<ScheduledSyncService>>(),
-                    new ManualTimeProvider(Now));
+                    new ManualTimeProvider(Now),
+                    heartbeats: Heartbeats);
             }
+
+            public ThreadHeartbeats Heartbeats { get; } = new();
 
             public void VerifyNotPulled(string provider)
             {
@@ -252,6 +255,19 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             {
                 Schedules.Verify(r => r.RecordEventRunAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
             }
+        }
+
+        [Fact]
+        public async Task RunRecordedTickAsync_CompletedTick_RecordsRunInHeartbeats()
+        {
+            var h = new Harness();
+            ScheduledSyncService service = h.Build();
+
+            await service.RunRecordedTickAsync(CancellationToken.None);
+
+            ServiceStatus status = h.Heartbeats.Snapshot(Now, TimeSpan.FromMinutes(5)).Single(s => s.Name == nameof(ScheduledSyncService));
+            Assert.NotNull(status.LastRunUtc);
+            Assert.Null(status.LastError);
         }
 
         [Fact]

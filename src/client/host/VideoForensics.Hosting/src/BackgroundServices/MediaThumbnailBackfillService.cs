@@ -51,6 +51,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _heartbeats?.Beat(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow, CurrentInterval);
                 await RunPassAsync(stoppingToken);
+                _heartbeats?.RecordRun(nameof(MediaThumbnailBackfillService), DateTimeOffset.UtcNow);
             }
             while (await WaitForNextPassAsync(stoppingToken));
         }

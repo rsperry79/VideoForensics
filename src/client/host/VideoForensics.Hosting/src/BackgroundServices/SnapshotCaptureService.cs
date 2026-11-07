@@ -116,6 +116,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     try
                     {
                         await RunOneTickAsync(stoppingToken);
+                        _heartbeats?.RecordRun(nameof(SnapshotCaptureService), _time.GetUtcNow());
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {
@@ -123,6 +124,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
+                        _heartbeats?.RecordError(nameof(SnapshotCaptureService), _time.GetUtcNow(), "run failed");
                         _logger.LogError("Snapshot capture tick failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
