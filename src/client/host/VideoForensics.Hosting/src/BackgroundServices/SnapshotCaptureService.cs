@@ -185,7 +185,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (counts.Attempted > 0)
             {
-                _logger.LogInformation("Snapshot capture tick: {Captured} captured, {Failed} failed, {Throttled} throttled",
+                _logger.LogDebug("Snapshot capture tick: {Captured} captured, {Failed} failed, {Throttled} throttled",
                     counts.Captured, counts.Failed, counts.Throttled);
             }
             if (counts.Failed > 0 || counts.AlertFailed)
