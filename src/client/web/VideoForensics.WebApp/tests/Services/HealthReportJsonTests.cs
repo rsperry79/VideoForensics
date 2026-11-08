@@ -19,8 +19,8 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             var services = new List<ServiceStatus>
             {
-                new("ScheduledSyncService", "Running", LastRun, null),
-                new("SnapshotCaptureService", "NotStarted", null, null),
+                new("ScheduledSyncService", "Running", LastRun, null, 0),
+                new("SnapshotCaptureService", "NotStarted", null, null, 0),
             };
 
             string json = HealthReportJson.Write(HealthStatus.Healthy, "1.0.5", services);
@@ -45,7 +45,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             var services = new List<ServiceStatus>
             {
-                new("ScheduledSyncService", "Stale", LastRun, null),
+                new("ScheduledSyncService", "Stale", LastRun, null, 0),
             };
 
             string json = HealthReportJson.Write(HealthStatus.Unhealthy, "1.0.5", services);
@@ -60,7 +60,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             var services = new List<ServiceStatus>
             {
-                new("ScheduledSyncService", "Failed", LastRun, "sync failed"),
+                new("ScheduledSyncService", "Failed", LastRun, "sync failed", 0),
             };
 
             string json = HealthReportJson.Write(HealthStatus.Unhealthy, "1.0.5", services);
@@ -74,7 +74,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         {
             var services = new List<ServiceStatus>
             {
-                new("ScheduledSyncService", "NotStarted", null, null),
+                new("ScheduledSyncService", "NotStarted", null, null, 0),
             };
 
             string json = HealthReportJson.Write(HealthStatus.Healthy, "1.0.5", services);
