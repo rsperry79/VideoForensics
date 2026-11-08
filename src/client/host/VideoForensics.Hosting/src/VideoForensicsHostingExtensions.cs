@@ -137,6 +137,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddKeyedScoped<IProviderSnapshotCapture>("Ring", (provider, key) => BuildRingMediaDownloadService(provider));
             _ = services.AddKeyedSingleton<IProviderDeviceStatus, RingDeviceOnlineStatus>("Ring");
             services.TryAddSingleton(TimeProvider.System);
+            // Singleton: the cycle holds the account pauses and device holds across ticks.
+            _ = services.AddSingleton<SnapshotCycle>();
             _ = services.AddHostedService<SnapshotCaptureService>();
 
             // Daily trim of operational tables (error rows, call log, telemetry). Audit tables are not pruned.

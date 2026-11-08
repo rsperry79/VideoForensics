@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -86,12 +87,12 @@ namespace VideoForensics.Client.Hosting.Tests
 
         private SnapshotCaptureService BuildScheduler(IServiceProvider provider)
         {
+            var cycle = new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, TimeProvider.System, MediaStorage(), new ForensicsConfiguration());
             return new(
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<SnapshotCaptureService>.Instance,
             TimeProvider.System,
-            MediaStorage(),
-            new ForensicsConfiguration());
+            cycle);
         }
 
         /// <summary>Builds the real data layer on a temp database, seeds one Ring account with one camera, and fakes only the provider.</summary>

@@ -6,6 +6,7 @@ using System.Globalization;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -145,7 +146,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_DisabledDevice_LogsCaptureOffWithoutCameraReason()
         {
             _ = AddDevice("12345", captureEnabled: false);
-            var logs = new CapturingLogger<SnapshotCaptureService>();
+            var logs = new CapturingLogger<SnapshotCycle>();
 
             await RunTickAsync(logs);
 
@@ -158,7 +159,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_NonCameraDevice_LogsNoCameraTypeWithoutOffReason()
         {
             _ = AddDevice("12345", type: "chime");
-            var logs = new CapturingLogger<SnapshotCaptureService>();
+            var logs = new CapturingLogger<SnapshotCycle>();
 
             await RunTickAsync(logs);
 
@@ -170,43 +171,63 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public void OfflineRepollWindow_DefaultConfig_Uses10Minutes()
         {
-            var service = new SnapshotCaptureService(
-                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-                NullLogger<SnapshotCaptureService>.Instance,
+            var cycle = new SnapshotCycle(
+                NullLogger<SnapshotCycle>.Instance,
                 TimeProvider.System,
                 _storage.Object,
                 new ForensicsConfiguration());
 
-            Assert.Equal(TimeSpan.FromMinutes(10), service.OfflineRepollWindow);
+            Assert.Equal(TimeSpan.FromMinutes(10), cycle.OfflineRepollWindow);
         }
 
         [Fact]
         public void OfflineRepollWindow_ConfigChanged_UsesNewWindow()
         {
             var config = new ForensicsConfiguration();
-            var service = new SnapshotCaptureService(
-                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-                NullLogger<SnapshotCaptureService>.Instance,
+            var cycle = new SnapshotCycle(
+                NullLogger<SnapshotCycle>.Instance,
                 TimeProvider.System,
                 _storage.Object,
                 config);
 
             config.OfflineRepollIntervalMinutes = 30;
 
-            Assert.Equal(TimeSpan.FromMinutes(30), service.OfflineRepollWindow);
+            Assert.Equal(TimeSpan.FromMinutes(30), cycle.OfflineRepollWindow);
         }
 
-        private async Task RunTickAsync(ILogger<SnapshotCaptureService>? logger = null)
+        [Fact]
+        public async Task SnapshotCycle_EnabledDeviceWithNoRecentAttempt_CapturesOnce()
+        {
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+            ServiceProvider provider = BuildProvider();
+            try
+            {
+                var cycle = new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, _time, _storage.Object, new ForensicsConfiguration());
+                var account = new ProviderAccount { Id = _accountId, ProviderName = "Ring", IsActive = true };
+
+                await cycle.CaptureAccountAsync(provider, account, new SnapshotCycle.TickCounts(), CancellationToken.None);
+            }
+            finally
+            {
+                await provider.DisposeAsync();
+            }
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        private async Task RunTickAsync(ILogger<SnapshotCycle>? logger = null)
         {
             ServiceProvider provider = BuildProvider();
             try
             {
+                var cycle = new SnapshotCycle(logger ?? NullLogger<SnapshotCycle>.Instance, _time, _storage.Object, new ForensicsConfiguration());
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    logger ?? NullLogger<SnapshotCaptureService>.Instance,
+                    NullLogger<SnapshotCaptureService>.Instance,
                     _time,
-                    _storage.Object,
-                    new ForensicsConfiguration());
+                    cycle);
                 await service.RunOneTickAsync(CancellationToken.None);
             }
             finally
@@ -292,12 +313,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             ServiceProvider provider = BuildProvider();
             try
             {
+                var cycle = new SnapshotCycle(new Mock<ILogger<SnapshotCycle>>().Object, _time, _storage.Object, new ForensicsConfiguration());
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    new Mock<ILogger<SnapshotCaptureService>>().Object,
+                    NullLogger<SnapshotCaptureService>.Instance,
                     _time,
-                    _storage.Object,
-                    new ForensicsConfiguration());
+                    cycle);
 
                 await service.RunOneTickAsync(CancellationToken.None);
             }
@@ -321,15 +342,15 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     BlockedUntilUtc = T0.AddHours(2).UtcDateTime,
                 });
             ServiceProvider provider = BuildProvider();
-            var logger = new Mock<ILogger<SnapshotCaptureService>>();
+            var logger = new Mock<ILogger<SnapshotCycle>>();
             try
             {
+                var cycle = new SnapshotCycle(logger.Object, _time, _storage.Object, new ForensicsConfiguration());
                 var service = new SnapshotCaptureService(
                     provider.GetRequiredService<IServiceScopeFactory>(),
-                    logger.Object,
+                    NullLogger<SnapshotCaptureService>.Instance,
                     _time,
-                    _storage.Object,
-                    new ForensicsConfiguration());
+                    cycle);
 
                 await service.RunOneTickAsync(CancellationToken.None);
                 _time.Now = T0.AddMinutes(5);
@@ -423,7 +444,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await RunTickAsync();
 
             _media.Verify(m => m.AddAsync(
-                It.Is<MediaItem>(i => i.MediaFormat == "jpg" && i.MetadataJson == SnapshotCaptureService.CaptureSnapshotMetadata && i.FilePath.EndsWith(".jpg")),
+                It.Is<MediaItem>(i => i.MediaFormat == "jpg" && i.MetadataJson == SnapshotCycle.CaptureSnapshotMetadata && i.FilePath.EndsWith(".jpg")),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -597,7 +618,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = AddDevice("12345", isOnline: true);
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null, Guid.NewGuid(), true));
-            var logs = new CapturingLogger<SnapshotCaptureService>();
+            var logs = new CapturingLogger<SnapshotCycle>();
 
             await RunTickAsync(logs);
 
