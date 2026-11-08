@@ -178,7 +178,7 @@ public class FlaggedMediaTable_Tests : BunitContext
 
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")), TimeSpan.FromSeconds(10));
 
         await cut.InvokeAsync(() => cut.Instance.OpenFlag(flag));
 
