@@ -893,6 +893,18 @@
   <data name="FlaggedMediaUnknownCamera" xml:space="preserve">
     <value>Unknown camera</value>
   </data>
+  <data name="FlaggedMediaNoEvent" xml:space="preserve">
+    <value>No event</value>
+  </data>
+  <data name="FlaggedMediaColDev" xml:space="preserve">
+    <value>Dev</value>
+  </data>
+  <data name="FlaggedMediaDevEmpty" xml:space="preserve">
+    <value>-</value>
+  </data>
+  <data name="FlaggedMediaDevTooltip" xml:space="preserve">
+    <value>std devs from the all-time mean</value>
+  </data>
   <data name="FlaggedMediaType_BitrateCollapse" xml:space="preserve">
     <value>Bit rate collapse</value>
   </data>

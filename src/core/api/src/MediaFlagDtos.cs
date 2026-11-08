@@ -18,7 +18,9 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime? ReviewedAtUtc,
         string? ReviewNote,
         Guid? NoticeId,
-        int RowVersion);
+        int RowVersion,
+        string? EventType,
+        double? DeviationSigma);
 
     /// <summary>One page of media flags plus the total number matching the filter.</summary>
     public sealed record MediaFlagPageDto(IReadOnlyList<MediaFlagDto> Items, int TotalCount);
