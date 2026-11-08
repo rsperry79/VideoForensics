@@ -17,6 +17,7 @@
 @inject IMediaContentUrlProvider MediaContentUrls
 @inject IDeviceRepository DeviceRepository
 @inject IMediaBitrateSeriesSource BitrateSeries
+@inject IBitrateAnalysisService BitrateAnalysisService
 @inject IStringLocalizer<SharedResources> L
 @inject NavigationManager NavigationManager
 
@@ -73,7 +74,7 @@
                 <Histogram>
                     @if (_points is { } points)
                     {
-                        <BitrateSeriesChart Points="@points" Player="@player" StartUtc="@_clipStartUtc" />
+                        <BitrateSeriesChart Points="@points" Player="@player" StartUtc="@_clipStartUtc" StdDevKbps="@_stdDevKbps" />
                     }
                 </Histogram>
             </HistogramTimeline>
@@ -103,6 +104,7 @@
     private DateTime _windowEnd;
     private IReadOnlyList<DateTime> _dipTimes = [];
     private IReadOnlyList<BitrateSecondDto>? _points;
+    private double? _stdDevKbps;
     private string? _noUnreviewedMessage;
 
     /// <summary>How far the timeline window extends beyond the flag window when the clip has no known duration.</summary>
@@ -128,6 +130,7 @@
         _source = null;
         _dipTimes = [];
         _points = null;
+        _stdDevKbps = null;
         _noUnreviewedMessage = null;
         _state = MediaFitState.FlagNotFound;
         try
@@ -170,6 +173,9 @@
                 : BitrateChartGeometry.DipRunStarts(_points)
                     .Select(second => clip.RecordedAtUtc.AddSeconds(BitrateChartGeometry.SeekSeconds(second)))
                     .ToList();
+            // The camera's all-time std dev, the same figure the bit rate history shows as Dev. Computed on the server.
+            _stdDevKbps = (await BitrateAnalysisService.AnalyzeAsync([flag.DeviceId], _windowStart, _windowEnd, ct))
+                .Devices.FirstOrDefault(d => d.DeviceId == flag.DeviceId)?.AllTime.StdDev;
             _clipDurationSeconds = clip.DurationSeconds;
             if (clip.DurationSeconds is { } seconds)
             {

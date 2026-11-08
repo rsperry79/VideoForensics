@@ -32,13 +32,14 @@ public class RssiSeriesChart_Tests : BunitContext
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
     }
 
-    private IRenderedComponent<RssiSeriesChart> RenderChart(IReadOnlyList<SignalSample> readings)
+    private IRenderedComponent<RssiSeriesChart> RenderChart(IReadOnlyList<SignalSample> readings, double? stdDevDbm = null)
     {
         IRenderedComponent<MediaPlayer> player = Render<MediaPlayer>();
         return Render<RssiSeriesChart>(p => p
             .Add(c => c.Readings, readings)
             .Add(c => c.WindowStartUtc, WindowStart)
             .Add(c => c.WindowEndUtc, WindowEnd)
+            .Add(c => c.StdDevDbm, stdDevDbm)
             .Add(c => c.Player, player.Instance));
     }
 
@@ -75,6 +76,32 @@ public class RssiSeriesChart_Tests : BunitContext
         SignalSample[] readings = new[] { new SignalSample(at, -75) };
 
         IRenderedComponent<RssiSeriesChart> cut = RenderChart(readings);
+
+        IElement bar = cut.Find("[data-testid=rssi-bar]");
+        string expected = Localizer["RssiBarTooltip", SignalChartModel.FormatTooltipTime(at, UserTimeZone.Unavailable), -75].Value;
+        Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
+    }
+
+    [Fact]
+    public void RssiSeriesChart_Bar_Tooltip_Adds_The_Standard_Deviation_When_Known()
+    {
+        DateTime at = WindowStart.AddSeconds(3);
+        SignalSample[] readings = new[] { new SignalSample(at, -75) };
+
+        IRenderedComponent<RssiSeriesChart> cut = RenderChart(readings, 4.2);
+
+        IElement bar = cut.Find("[data-testid=rssi-bar]");
+        string expected = Localizer["RssiBarTooltipWithStdDev", SignalChartModel.FormatTooltipTime(at, UserTimeZone.Unavailable), -75, "4.2"].Value;
+        Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
+    }
+
+    [Fact]
+    public void RssiSeriesChart_Bar_Tooltip_Leaves_Out_The_Standard_Deviation_When_Unknown()
+    {
+        DateTime at = WindowStart.AddSeconds(3);
+        SignalSample[] readings = new[] { new SignalSample(at, -75) };
+
+        IRenderedComponent<RssiSeriesChart> cut = RenderChart(readings, null);
 
         IElement bar = cut.Find("[data-testid=rssi-bar]");
         string expected = Localizer["RssiBarTooltip", SignalChartModel.FormatTooltipTime(at, UserTimeZone.Unavailable), -75].Value;

@@ -1136,11 +1136,17 @@
   <data name="BitrateBarTooltip" xml:space="preserve">
     <value>{0} · {1} kbps</value>
   </data>
+  <data name="BitrateBarTooltipWithStdDev" xml:space="preserve">
+    <value>{0} · {1} kbps · σ {2} kbps</value>
+  </data>
   <data name="BitrateBarOffset" xml:space="preserve">
     <value>{0} s into clip</value>
   </data>
   <data name="RssiBarTooltip" xml:space="preserve">
     <value>{0} · {1} dBm</value>
+  </data>
+  <data name="RssiBarTooltipWithStdDev" xml:space="preserve">
+    <value>{0} · {1} dBm · σ {2} dBm</value>
   </data>
   <data name="PlaybackNow" xml:space="preserve">
     <value>Now {0}</value>

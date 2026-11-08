@@ -34,12 +34,13 @@ public class BitrateSeriesChart_Tests : BunitContext
 
     private IStringLocalizer<SharedResources> Localizer => Services.GetRequiredService<IStringLocalizer<SharedResources>>();
 
-    private IRenderedComponent<BitrateSeriesChart> RenderChart(IReadOnlyList<BitrateSecondDto> points, DateTime? startUtc)
+    private IRenderedComponent<BitrateSeriesChart> RenderChart(IReadOnlyList<BitrateSecondDto> points, DateTime? startUtc, double? stdDevKbps = null)
     {
         IRenderedComponent<MediaPlayer> player = Render<MediaPlayer>();
         return Render<BitrateSeriesChart>(p => p
             .Add(c => c.Points, points)
             .Add(c => c.StartUtc, startUtc)
+            .Add(c => c.StdDevKbps, stdDevKbps)
             .Add(c => c.Player, player.Instance));
     }
 
@@ -71,6 +72,45 @@ public class BitrateSeriesChart_Tests : BunitContext
         IElement bar = cut.FindAll("[data-testid=bitrate-bar]")[1];
         string offset = Localizer["BitrateBarOffset", 5].Value;
         string expected = Localizer["BitrateBarTooltip", offset, 4210L].Value;
+        Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
+    }
+
+    [Fact]
+    public void BitrateSeriesChart_Bar_Tooltip_Adds_The_Standard_Deviation_When_Known()
+    {
+        BitrateSecondDto[] points = [new BitrateSecondDto(0, 1000), new BitrateSecondDto(1, 4210)];
+
+        IRenderedComponent<BitrateSeriesChart> cut = RenderChart(points, ClipStart, 310.4);
+
+        IElement bar = cut.FindAll("[data-testid=bitrate-bar]")[1];
+        string time = SignalChartModel.FormatTooltipTime(ClipStart.AddSeconds(1), UserTimeZone.Unavailable);
+        string expected = Localizer["BitrateBarTooltipWithStdDev", time, 4210L, "310"].Value;
+        Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
+    }
+
+    [Fact]
+    public void BitrateSeriesChart_Bar_Tooltip_Leaves_Out_The_Standard_Deviation_When_Unknown()
+    {
+        BitrateSecondDto[] points = [new BitrateSecondDto(0, 1000), new BitrateSecondDto(1, 4210)];
+
+        IRenderedComponent<BitrateSeriesChart> cut = RenderChart(points, ClipStart, null);
+
+        IElement bar = cut.FindAll("[data-testid=bitrate-bar]")[1];
+        string time = SignalChartModel.FormatTooltipTime(ClipStart.AddSeconds(1), UserTimeZone.Unavailable);
+        string expected = Localizer["BitrateBarTooltip", time, 4210L].Value;
+        Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
+    }
+
+    [Fact]
+    public void BitrateSeriesChart_Bar_Tooltip_Adds_The_Standard_Deviation_To_The_Offset_When_There_Is_No_Start()
+    {
+        BitrateSecondDto[] points = [new BitrateSecondDto(0, 1000), new BitrateSecondDto(5, 4210)];
+
+        IRenderedComponent<BitrateSeriesChart> cut = RenderChart(points, null, 310.4);
+
+        IElement bar = cut.FindAll("[data-testid=bitrate-bar]")[1];
+        string offset = Localizer["BitrateBarOffset", 5].Value;
+        string expected = Localizer["BitrateBarTooltipWithStdDev", offset, 4210L, "310"].Value;
         Assert.Equal(expected, bar.QuerySelector("title")?.TextContent);
     }
 }

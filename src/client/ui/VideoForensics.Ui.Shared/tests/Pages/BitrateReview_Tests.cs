@@ -18,6 +18,7 @@ using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -39,6 +40,7 @@ public class BitrateReview_Tests : BunitContext
     private readonly Mock<IMediaItemRepository> _items = new();
     private readonly Mock<IMediaContentUrlProvider> _urls = new();
     private readonly Mock<IMediaBitrateSeriesSource> _series = new();
+    private readonly Mock<IBitrateAnalysisService> _analysis = new();
     private readonly Mock<IDeviceRepository> _devices = new();
     private readonly Mock<ICaseRepository> _cases = new();
     private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
@@ -57,6 +59,7 @@ public class BitrateReview_Tests : BunitContext
         _ = Services.AddSingleton(_items.Object);
         _ = Services.AddSingleton(_urls.Object);
         _ = Services.AddSingleton(_series.Object);
+        _ = Services.AddSingleton(_analysis.Object);
         _ = Services.AddSingleton(_devices.Object);
         _ = Services.AddSingleton(_cases.Object);
         _ = Services.AddSingleton(_snapshots.Object);
@@ -70,6 +73,8 @@ public class BitrateReview_Tests : BunitContext
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
         _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
         _ = _devices.Setup(d => d.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Device?)null);
+        _ = _analysis.Setup(a => a.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BitrateAnalysis([]));
     }
 
     private IStringLocalizer<SharedResources> Localizer => Services.GetRequiredService<IStringLocalizer<SharedResources>>();
