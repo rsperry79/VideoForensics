@@ -99,9 +99,11 @@ namespace VideoForensics.Utils.SelfTest.Tests
         }
 
         [Fact]
-        public void EndpointsRepeated_Accumulate_AndDefaultDoesNotAdd()
+        public void EndpointsRepeated_IsRejected_UseOneCommaList()
         {
-            Assert.Equal(["alpha", "beta"], Parsed("--endpoints", "alpha", "--endpoints", "beta").Endpoints);
+            // Changed by the System.CommandLine migration (approved): a repeated value option is an error, and the
+            // keys go in one comma-separated list instead.
+            Assert.Equal("--endpoints may be given only once", ErrorOf("--endpoints", "alpha", "--endpoints", "beta"));
         }
 
         [Theory]
