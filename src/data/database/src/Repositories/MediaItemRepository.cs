@@ -156,6 +156,32 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>
+        /// A device's all-time bit rate baseline over the same rows as <see cref="GetMeasuredBitrateByDeviceAsync"/>, with no
+        /// date window. The count, sum and sum of squares run as one SQL aggregate. The sums are cast to double, since SQLite
+        /// sums of 64-bit integers overflow for squared bitrates. The mean and sample std dev are computed from those three
+        /// values in C#, so only one scalar row is read.
+        /// </summary>
+        public async Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            var totals = await db.MediaItems
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
+                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
+                .GroupBy(m => m.DeviceId)
+                .Select(g => new
+                {
+                    Count = g.Count(),
+                    Sum = g.Sum(m => (double)m.VideoBitrateBps!.Value),
+                    SumOfSquares = g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value),
+                })
+                .FirstOrDefaultAsync(ct);
+
+            return totals is null
+                ? AllTimeBitrateBaseline.FromTotals(0, 0, 0)
+                : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares);
+        }
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {

@@ -606,6 +606,25 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            // Same aggregate as MediaItemRepository: one SQL GROUP BY, with the arithmetic shared through FromTotals.
+            var totals = _db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
+                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
+                .GroupBy(m => m.DeviceId)
+                .Select(g => new
+                {
+                    Count = g.Count(),
+                    Sum = g.Sum(m => (double)m.VideoBitrateBps!.Value),
+                    SumOfSquares = g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value),
+                })
+                .FirstOrDefault();
+            return Task.FromResult(totals is null
+                ? AllTimeBitrateBaseline.FromTotals(0, 0, 0)
+                : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares));
+        }
+
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));

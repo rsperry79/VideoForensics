@@ -13,6 +13,9 @@ public class BitrateDeviationAlertsTests
 {
     private readonly Device _device = new() { Id = Guid.NewGuid(), Name = "Rear camera", ProviderName = "Ring", ProviderDeviceId = "1234", Type = "doorbot" };
 
+    /// <summary>The all-time baseline of the eleven clips in <see cref="Spike"/>: mean 5545.45 kbps, sample sd about 1809 kbps.</summary>
+    private static readonly AllTimeBitrateBaseline AllTimeBaseline = new(11, 5_545_454.5, 1_809_076.0);
+
     [Fact]
     public async Task BitrateDeviationAlerts_SpikeAboveTwoStdDevs_RaisesOneFlagAndOneNotice()
     {
@@ -50,6 +53,10 @@ public class BitrateDeviationAlertsTests
         Assert.Equal(alertedHourUtc, flag.WindowStartUtc);
         Assert.Equal(alertedHourUtc.AddHours(1), flag.WindowEndUtc);
         Assert.Equal(sent.NoticeId, flag.NoticeId);
+
+        // The worst reading (1000 kbps) against the all-time baseline (about 5545 kbps, sd about 1809): about 2.5 std devs.
+        _ = Assert.NotNull(flag.DeviationSigma);
+        Assert.InRange(flag.DeviationSigma!.Value, 2.4, 2.6);
     }
 
     [Fact]
@@ -108,6 +115,7 @@ public class BitrateDeviationAlertsTests
     {
         var mediaItems = new Mock<IMediaItemRepository>();
         _ = mediaItems.Setup(m => m.GetMeasuredBitrateByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _ = mediaItems.Setup(m => m.GetBitrateBaselineByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(AllTimeBaseline);
 
         var checker = new BitrateDeviationAlerts(
             mediaItems.Object,
