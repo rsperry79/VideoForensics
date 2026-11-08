@@ -17,6 +17,7 @@
 @inject IDeviceRepository DeviceRepository
 @inject ISignalAnalysisService Signals
 @inject IStringLocalizer<SharedResources> L
+@inject NavigationManager NavigationManager
 
 <PageRightPanelContent>
     @if (_flag is { } flag)
@@ -25,7 +26,7 @@
     }
     @if (_flag is not null)
     {
-        <ClipNavigator Filter="@RssiFilter" CurrentFlagId="@FlagId" />
+        <ClipNavigator Filter="@RssiFilter" CurrentFlagId="@FlagId" OnNavigate="OnNeighbourNavigate" />
     }
 </PageRightPanelContent>
 
@@ -41,6 +42,10 @@
             </BreadcrumbItems>
         </SfBreadcrumb>
         <h5 class="mb-0" data-testid="rssi-review-title">@L["RssiReviewTitle"]</h5>
+        @if (_noUnreviewedMessage is { } noUnreviewed)
+        {
+            <div class="small text-muted" role="status" data-testid="flag-review-no-unreviewed">@noUnreviewed</div>
+        }
     </Breadcrumb>
 
     <Media>
@@ -99,6 +104,7 @@
     private DateTime _windowEnd;
     private IReadOnlyCollection<MediaFlag> _markers = [];
     private IReadOnlyList<SignalSample> _readings = [];
+    private string? _noUnreviewedMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -120,6 +126,7 @@
         _source = null;
         _markers = [];
         _readings = [];
+        _noUnreviewedMessage = null;
         _state = MediaFitState.FlagNotFound;
         try
         {
@@ -196,10 +203,40 @@
         _player = player;
     }
 
-    private void OnFlagChanged(MediaFlag updated)
+    /// <summary>Keep or Dismiss moves to the next unreviewed flag. Undoing a review stays on the flag.</summary>
+    private async Task OnFlagChanged(MediaFlag updated)
     {
         _flag = updated;
         _markers = [updated];
+        if (updated.Status == MediaFlagStatus.Unreviewed)
+        {
+            return;
+        }
+
+        try
+        {
+            MediaFlag? next = await FlagAdvance.FindNextUnreviewedAsync(MediaFlagRepository, RssiFilter, updated.Id, _disposeCts.Token);
+            if (next is { } found && FlaggedMediaTable.ReviewPath(found) is { } path)
+            {
+                NavigationManager.NavigateTo(path);
+                return;
+            }
+
+            _noUnreviewedMessage = L["NoUnreviewedFlagsLeft"].Value;
+        }
+        catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
+        {
+            // The page is leaving; the advance is dropped.
+        }
+    }
+
+    private void OnNeighbourNavigate(MediaFlag neighbour)
+    {
+        string? path = FlaggedMediaTable.ReviewPath(neighbour);
+        if (path is not null)
+        {
+            NavigationManager.NavigateTo(path);
+        }
     }
 
     public void Dispose()

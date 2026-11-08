@@ -229,3 +229,4 @@ src/client/web/VideoForensics.WebApp/src/syncfusion-license.key
 
 # Test temp folders, created inside the checkout by test runs and removed with it
 .testtemp/
+.tokensaver/

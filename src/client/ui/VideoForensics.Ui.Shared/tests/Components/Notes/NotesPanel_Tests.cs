@@ -151,4 +151,27 @@ public class NotesPanel_Tests : BunitContext
         // Assert
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("[data-testid='notes-error']")));
     }
+
+    [Fact]
+    public void NotesPanel_NoNotes_RendersNoEmptyMessage()
+    {
+        // Arrange and Act
+        IRenderedComponent<NotesPanel> cut = RenderPanel([]);
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='notes-empty']")));
+        Assert.Single(cut.FindAll("[data-testid='notes-form']"));
+    }
+
+    [Fact]
+    public void NotesPanel_NoteBox_OpensOneRowTallAndStaysVerticallyResizable()
+    {
+        // Arrange and Act
+        IRenderedComponent<NotesPanel> cut = RenderPanel([]);
+        AngleSharp.Dom.IElement box = cut.Find("#notes-body");
+
+        // Assert
+        Assert.Equal("1", box.GetAttribute("rows"));
+        Assert.Contains("resize: vertical", box.GetAttribute("style") ?? string.Empty);
+    }
 }

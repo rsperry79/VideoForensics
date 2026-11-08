@@ -66,6 +66,49 @@ public class SignalDeviationTests
     }
 
     [Fact]
+    public void ClassifyBox_IsGreenBelowOneStdDev()
+    {
+        Assert.Equal("green", SignalDeviation.ClassifyBox(-69.99, -60, 10));
+    }
+
+    [Fact]
+    public void ClassifyBox_IsYellowFromOneUpToTwoStdDevs()
+    {
+        Assert.Equal("yellow", SignalDeviation.ClassifyBox(-70, -60, 10)); // exactly 1 std dev is yellow
+        Assert.Equal("yellow", SignalDeviation.ClassifyBox(-75, -60, 10));
+    }
+
+    [Fact]
+    public void ClassifyBox_IsRedAtTwoStdDevsOrMore()
+    {
+        Assert.Equal("red", SignalDeviation.ClassifyBox(-80, -60, 10)); // exactly 2 std devs is red
+        Assert.Equal("red", SignalDeviation.ClassifyBox(-95, -60, 10));
+        Assert.Equal("red", SignalDeviation.ClassifyBox(-40, -60, 5)); // 4 std devs above the mean
+    }
+
+    [Fact]
+    public void ClassifyBox_HasNoColourForAnEmptyBox()
+    {
+        Assert.Null(SignalDeviation.ClassifyBox(null, -60, 10));
+    }
+
+    [Fact]
+    public void ClassifyBox_HasNoColourWithoutASpread()
+    {
+        Assert.Null(SignalDeviation.ClassifyBox(-95, -60, 0));
+        Assert.Null(SignalDeviation.ClassifyBox(-95, -60, null));
+    }
+
+    [Fact]
+    public void DeviationSigma_IsTheExactDistanceInStdDevs()
+    {
+        Assert.Equal(0.999, SignalDeviation.DeviationSigma(-69.99, -60, 10)!.Value, precision: 6);
+        Assert.Equal(2.5, SignalDeviation.DeviationSigma(-85, -60, 10)!.Value, precision: 6);
+        Assert.Null(SignalDeviation.DeviationSigma(null, -60, 10));
+        Assert.Null(SignalDeviation.DeviationSigma(-85, -60, 0));
+    }
+
+    [Fact]
     public void DedupeKey_IsStablePerCameraAndHour()
     {
         var hour = new DateTime(2026, 10, 24, 9, 0, 0, DateTimeKind.Utc);
