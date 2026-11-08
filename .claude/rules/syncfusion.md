@@ -2,7 +2,6 @@
 paths:
   - "src/client/**/*.csproj"
   - "src/client/**/Program.cs"
-  - ".github/workflows/**"
 ---
 
 # Syncfusion license
