@@ -1,5 +1,6 @@
 
 using Bunit;
+using Moq;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 public class NotificationsPageTests : BunitContext
 {
     private readonly PairedSessionState _session;
+    private readonly Mock<ISelfApiHttpClientFactory> _clientFactory = new();
 
     public NotificationsPageTests()
     {
@@ -41,6 +43,9 @@ public class NotificationsPageTests : BunitContext
         _ = Services.AddSingleton(_ => new NotificationsApiProbe());
         _ = Services.AddScoped<NavigationManager>(sp => new ProbeNavigationManager(sp.GetRequiredService<NotificationsApiProbe>()));
         _ = Services.AddScoped(sp => new WebPushClient(sp.GetRequiredService<IJSRuntime>(), sp.GetRequiredService<NavigationManager>()));
+        // Default behaves like DefaultSelfApiHttpClientFactory: a client rooted at the probe. The new test overrides it.
+        _ = Services.AddScoped(_ => _clientFactory.Object);
+        _ = _clientFactory.Setup(f => f.CreateClient()).Returns(() => new HttpClient { BaseAddress = new Uri(Services.GetRequiredService<NavigationManager>().BaseUri) });
 
         SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("Server", true));
     }
@@ -59,6 +64,39 @@ public class NotificationsPageTests : BunitContext
         Assert.DoesNotContain(localizer["PushNotifications"].Value, cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(localizer["EnablePushNotifications"].Value, cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(localizer["CheckConfigButton"].Value, cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Notifications_LoadsDataThroughSelfApiHttpClientFactory()
+    {
+        var handler = new SelfApiRecordingHandler();
+        _ = _clientFactory.Setup(f => f.CreateClient()).Returns(() => new HttpClient(handler) { BaseAddress = new Uri("http://self.test/") });
+        await _session.SetAsync("test-token", Guid.NewGuid(), OperatorRole.SuperAdmin.ToString());
+        IStringLocalizer<Notifications> localizer = Services.GetRequiredService<IStringLocalizer<Notifications>>();
+
+        IRenderedComponent<Notifications> cut = Render<Notifications>();
+
+        cut.WaitForAssertion(() => Assert.Contains(localizer["UrgentEventOverrides"].Value, cut.Markup, StringComparison.Ordinal));
+        _clientFactory.Verify(f => f.CreateClient(), Times.AtLeastOnce());
+        Assert.Contains("/api/v1/permissions/notifications", handler.Paths);
+    }
+
+    /// <summary>Records the request paths the page sends through the factory's client and answers the two GETs.</summary>
+    private sealed class SelfApiRecordingHandler : HttpMessageHandler
+    {
+        public List<string> Paths { get; } = new();
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            string path = request.RequestUri!.AbsolutePath;
+            Paths.Add(path);
+            string body = path == "/api/v1/permissions/notifications" ? "{\"access\":\"SuperAdmin\"}" : "[]";
+            var response = new HttpResponseMessage(path is "/api/v1/permissions/notifications" or "/api/notifications/urgency-overrides" ? HttpStatusCode.OK : HttpStatusCode.NotFound)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            };
+            return Task.FromResult(response);
+        }
     }
 
     /// <summary>NavigationManager whose BaseUri is the loopback probe, so the page's raw HttpClient hits it.</summary>
