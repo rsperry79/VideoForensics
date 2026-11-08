@@ -6,8 +6,9 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
-    /// Service for checking if an IP address is within any manually-banned CIDR range.
-    /// Loads active ranges from the database and parses CIDR notation to check containment.
+    /// Service for checking if an IP address is within any manually-banned range.
+    /// Loads active ranges from the database. Each range is a CIDR block (e.g. "192.168.0.0/24")
+    /// or a single address with no prefix (e.g. "203.0.113.50"), parsed by IPNetwork2.
     /// </summary>
     public class BannedIpMatchService : IBannedIpMatchService
     {
@@ -24,9 +25,13 @@ namespace VideoForensics.Client.WebApp.Services
         {
             IReadOnlyList<BannedIpRange> bannedRanges = await _repository.GetActiveAsync(ct);
 
+            // An IPv4-mapped IPv6 address (::ffff:a.b.c.d) is the IPv4 address a.b.c.d; match it as IPv4
+            // so an IPv4 ban also covers the mapped form the socket layer reports.
+            IPAddress candidate = ipAddress.IsIPv4MappedToIPv6 ? ipAddress.MapToIPv4() : ipAddress;
+
             foreach (BannedIpRange range in bannedRanges)
             {
-                if (IsIpInCidrRange(ipAddress, range.CidrRange))
+                if (IsIpInRange(candidate, range.CidrRange))
                 {
                     return true;
                 }
@@ -35,67 +40,25 @@ namespace VideoForensics.Client.WebApp.Services
             return false;
         }
 
-        private bool IsIpInCidrRange(IPAddress ipAddress, string cidrRange)
+        private bool IsIpInRange(IPAddress ipAddress, string range)
         {
             try
             {
-                // Parse CIDR notation: e.g., "192.168.0.0/24"
-                string[] parts = cidrRange.Split('/');
-                if (parts.Length != 2)
+                // A bare address is a single-host range: give it a full-length prefix before parsing.
+                string cidr = range.Contains('/') ? range : range + (range.Contains(':') ? "/128" : "/32");
+                if (!IPNetwork2.TryParse(cidr, out IPNetwork2? network))
                 {
-                    _logger.LogDebug("Invalid CIDR format in banned range");
+                    _logger.LogDebug("Invalid banned range format");
                     return false;
                 }
 
-                if (!IPAddress.TryParse(parts[0], out IPAddress? network))
-                {
-                    _logger.LogDebug("Failed to parse network address in CIDR");
-                    return false;
-                }
-
-                if (!int.TryParse(parts[1], out int prefixLength) || prefixLength < 0 || prefixLength > (network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
-                {
-                    _logger.LogDebug("Invalid prefix length in CIDR");
-                    return false;
-                }
-
-                return IsIpInNetwork(ipAddress, network, prefixLength);
+                return network.Contains(ipAddress);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error checking CIDR range: {CidrRange}: {Message} ({ErrorType})", cidrRange, ex.Message, ex.GetType().Name);
+                _logger.LogError("Error checking banned range: {CidrRange}: {Message} ({ErrorType})", range, ex.Message, ex.GetType().Name);
                 return false;
             }
-        }
-
-        private bool IsIpInNetwork(IPAddress ipAddress, IPAddress network, int prefixLength)
-        {
-            if (ipAddress.AddressFamily != network.AddressFamily)
-            {
-                return false;
-            }
-
-            byte[] ipBytes = ipAddress.GetAddressBytes();
-            byte[] networkBytes = network.GetAddressBytes();
-
-            int byteCount = prefixLength / 8;
-            int bitCount = prefixLength % 8;
-
-            for (int i = 0; i < byteCount; i++)
-            {
-                if (ipBytes[i] != networkBytes[i])
-                {
-                    return false;
-                }
-            }
-
-            if (bitCount > 0)
-            {
-                byte mask = (byte)(0xFF << (8 - bitCount));
-                return (ipBytes[byteCount] & mask) == (networkBytes[byteCount] & mask);
-            }
-
-            return true;
         }
     }
 
