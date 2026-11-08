@@ -52,6 +52,19 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<DateTime?> GetLatestEventTimeAnyUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            DateTime? latest = await db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId && e.EventType != TimelapseEventType)
+                .OrderByDescending(e => e.OccurredAtUtc)
+                .Select(e => (DateTime?)e.OccurredAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            return latest is null ? null : DateTime.SpecifyKind(latest.Value, DateTimeKind.Utc);
+        }
+
+        /// <inheritdoc />
         public async Task<DateTimeOffset?> GetEarliestCaptureAtUtcAsync(Guid deviceId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

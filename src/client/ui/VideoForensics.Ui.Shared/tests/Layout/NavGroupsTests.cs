@@ -11,16 +11,30 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 public class NavGroups_Tests
 {
     [Fact]
-    public void All_HasExactlyThreeGroups()
+    public void All_HasExactlyFourGroups()
     {
-        Assert.Equal(3, NavGroups.All.Count);
+        Assert.Equal(4, NavGroups.All.Count);
     }
 
     [Fact]
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "media", "cases", "admin" }, groupKeys);
+        Assert.Equal(new[] { "media", "cases", "admin", "tools" }, groupKeys);
+    }
+
+    [Fact]
+    public void ImportExport_IsInToolsGroup_NotUnderStorageAndData()
+    {
+        // Import / Export is a tool, not an admin storage setting, so it has its own top-level tab.
+        NavGroup tools = NavGroups.All.First(g => g.Key == "tools");
+        Assert.Equal("Tools", tools.Text);
+        Assert.Equal("/tools/import-export", tools.Path);
+        Assert.Contains(tools.Items, i => i.Text == "Import / Export" && i.Path == "/tools/import-export");
+
+        NavGroup admin = NavGroups.All.First(g => g.Key == "admin");
+        Assert.DoesNotContain(admin.Items, i => i.Path == "/tools/import-export");
+        Assert.DoesNotContain(admin.Items, i => i.Section == "Storage & Data" && i.Text == "Import / Export");
     }
 
     [Fact]
@@ -254,6 +268,15 @@ public class NavGroups_Tests
 
         // Super Admin always sees it
         Assert.True(notificationsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void NotificationsAndReports_SectionIsSystemAndNetwork()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+
+        Assert.Equal("System & Network", group.Items.First(i => i.Path == "/settings/notifications").Section);
+        Assert.Equal("System & Network", group.Items.First(i => i.Path == "/settings/reports").Section);
     }
 
     [Fact]

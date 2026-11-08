@@ -654,10 +654,19 @@ namespace VideoForensics.Client.WebApp.Api
                 sourceIp = parsedIp;
             }
 
+            // Look up operator by username (may be null). Done first so every early rejection below can tell
+            // whether the typed username matches an operator; only unmatched names are recorded as unknown users.
+            Operator? op = await operators.GetByUsernameAsync(request.Username, ct);
+
             // Check: if password authentication is disabled, reject immediately (unless first-run setup is pending)
             bool isSetupPhase = await operators.IsEmptyAsync(ct);
             if (!isSetupPhase && !await authMethodsService.IsEnabledAsync("password", ct))
             {
+                if (op == null)
+                {
+                    await auditService.RecordUnknownUserLoginAsync(request.Username, sourceIpString, "Password sign-in disabled", ct);
+                }
+
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Password sign-in is disabled", isUrgent: true, ct);
                 return new PasswordCheck(Results.Json(new { error = "Password sign-in is disabled." }, statusCode: StatusCodes.Status403Forbidden), null, sourceIpString);
@@ -667,6 +676,11 @@ namespace VideoForensics.Client.WebApp.Api
             // This is deterministic (admin-curated), so always block without fail-open/fail-closed logic.
             if (sourceIp != null && await bannedIpService.IsIpBannedAsync(sourceIp, ct))
             {
+                if (op == null)
+                {
+                    await auditService.RecordUnknownUserLoginAsync(request.Username, sourceIpString, "Source IP banned", ct);
+                }
+
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
                 return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
@@ -675,13 +689,15 @@ namespace VideoForensics.Client.WebApp.Api
             // Check: if IP is blocked by threat intelligence, reject immediately.
             if (sourceIp != null && await threatIntelService.IsIpBlockedAsync(sourceIp, ct))
             {
+                if (op == null)
+                {
+                    await auditService.RecordUnknownUserLoginAsync(request.Username, sourceIpString, "Threat intel block", ct);
+                }
+
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
                 return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
             }
-
-            // Look up operator by username (may be null)
-            Operator? op = await operators.GetByUsernameAsync(request.Username, ct);
 
             // Check: if operator is primary SuperAdmin, they may only log in from Local tier.
             // We do this check BEFORE password verification to avoid timing leaks on which accounts are primary.
@@ -726,6 +742,11 @@ namespace VideoForensics.Client.WebApp.Api
                     if (policy.FailClosedOnLookupError)
                     {
                         // Fail closed: treat as blocked
+                        if (op == null)
+                        {
+                            await auditService.RecordUnknownUserLoginAsync(request.Username, sourceIpString, "GeoIP lookup failed", ct);
+                        }
+
                         await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                             sourceIpString, "Invalid username or password", isUrgent: true, ct);
                         return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
@@ -739,6 +760,11 @@ namespace VideoForensics.Client.WebApp.Api
                     if (blockedCountries.Contains(countryCode, StringComparer.OrdinalIgnoreCase))
                     {
                         // Country is blocked
+                        if (op == null)
+                        {
+                            await auditService.RecordUnknownUserLoginAsync(request.Username, sourceIpString, "Country blocked", ct);
+                        }
+
                         await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                             sourceIpString, "Invalid username or password", isUrgent: true, ct);
                         return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
@@ -774,6 +800,13 @@ namespace VideoForensics.Client.WebApp.Api
                         // Result deliberately ignored: a ban (or not) must not change the generic 401 this request returns.
                         _ = await failedLoginIpTracker.RecordLockoutAsync(sourceIpString, op.Id, policy, ct);
                     }
+                }
+
+                // No operator matches the username: record it as a security event with no operator and the typed name,
+                // so the security-events page can show it. The password is never recorded.
+                if (op == null)
+                {
+                    await auditService.RecordUnknownUserLoginAsync(request.Username, sourceIpString, "Invalid username", ct);
                 }
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op?.Id, null,

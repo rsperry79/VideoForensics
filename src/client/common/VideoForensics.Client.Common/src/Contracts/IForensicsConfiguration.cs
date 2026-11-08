@@ -44,6 +44,18 @@ namespace VideoForensics.Client.Common.Contracts
         int TimelapseMaxSegmentMinutes { get; set; }
         /// <summary>Hours between media thumbnail and preview backfill passes. Default 6; allowed 1 to 168.</summary>
         int MediaBackfillIntervalHours { get; set; }
+        /// <summary>Minutes between jamming detection runs. Default 15; allowed 1 to 1440.</summary>
+        int JammingIntervalMinutes { get; set; }
+        /// <summary>Minutes between codec checks. Default 15; allowed 1 to 1440.</summary>
+        int CodecIntervalMinutes { get; set; }
+        /// <summary>Minutes between flag checks. Default 15; allowed 1 to 1440.</summary>
+        int FlagIntervalMinutes { get; set; }
+        /// <summary>Minutes between device health checks. Default 15; allowed 1 to 1440.</summary>
+        int DeviceHealthIntervalMinutes { get; set; }
+        /// <summary>Minutes between re-poll attempts for offline devices. Default 10; allowed 1 to 1440.</summary>
+        int OfflineRepollIntervalMinutes { get; set; }
+        /// <summary>Seconds between scheduled sync ticks. Default 60; allowed 5 to 3600.</summary>
+        int ScheduledSyncTickSeconds { get; set; }
         /// <summary>Elevated health polling (every ElevatedPollingIntervalSeconds while a device is in an elevated window). Off by default; the regular health check is unaffected.</summary>
         bool EnableElevatedPolling { get; set; }
         /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.Client.WebApp - console/MCP have no pairing API to advertise.</summary>
@@ -211,6 +223,12 @@ namespace VideoForensics.Client.Common.Contracts
         public int TimelapseCheckIntervalMinutes { get; set; } = 15;
         public int TimelapseMaxSegmentMinutes { get; set; } = 60;
         public int MediaBackfillIntervalHours { get; set; } = 6;
+        public int JammingIntervalMinutes { get; set; } = 15;
+        public int CodecIntervalMinutes { get; set; } = 15;
+        public int FlagIntervalMinutes { get; set; } = 15;
+        public int DeviceHealthIntervalMinutes { get; set; } = 15;
+        public int OfflineRepollIntervalMinutes { get; set; } = 10;
+        public int ScheduledSyncTickSeconds { get; set; } = 60;
         public bool EnableElevatedPolling { get; set; } = false;
         public bool EnableMdnsAdvertisement { get; set; } = true;
         public bool EnableUpdateCheck { get; set; } = true;

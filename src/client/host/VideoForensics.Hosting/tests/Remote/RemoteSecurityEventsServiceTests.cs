@@ -42,7 +42,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act
-            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None);
+            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, unknownOnly: false, offset: 0, limit: 20, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -83,7 +83,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act
-            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: operatorId, offset: 0, limit: 20, ct: CancellationToken.None);
+            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: operatorId, unknownOnly: false, offset: 0, limit: 20, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -110,11 +110,52 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act
-            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None);
+            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, unknownOnly: false, offset: 0, limit: 20, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetEventsAsync_UnknownOnly_SendsUnknownOnlyFlagAndNoOperatorId()
+        {
+            // Arrange
+            string? requestBody = null;
+            var handler = new FakeHttpMessageHandler(
+                request =>
+                {
+                    requestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = JsonContent.Create(new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>
+                        {
+                            new(
+                                Id: Guid.NewGuid(),
+                                OperatorId: null,
+                                EventType: "LoginAttemptFailure",
+                                Success: false,
+                                IpAddress: "192.168.1.50",
+                                OccurredAtUtc: DateTime.UtcNow,
+                                Reason: "Invalid username",
+                                AttemptedUsername: "zumba")
+                        })
+                    };
+                }
+            );
+
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+            var service = new RemoteSecurityEventsService(httpClient);
+
+            // Act
+            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, unknownOnly: true, offset: 0, limit: 20, ct: CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(requestBody);
+            Assert.Contains("\"unknownOnly\":true", requestBody);
+            _ = Assert.Single(result);
+            Assert.Null(result[0].OperatorId);
+            Assert.Equal("zumba", result[0].AttemptedUsername);
         }
 
         [Fact]
@@ -133,7 +174,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             // Act & Assert
             _ = await Assert.ThrowsAsync<HttpRequestException>(
-                () => service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None)
+                () => service.GetEventsAsync(operatorId: null, unknownOnly: false, offset: 0, limit: 20, ct: CancellationToken.None)
             );
         }
 

@@ -94,7 +94,11 @@
                 return;
             }
 
-            TimelineModel.Publish(ReviewClipBuilder.BuildClips(set.Items, primary), key.FromUtc, key.ToUtc);
+            TimelineModel.Publish(
+                ReviewClipBuilder.BuildClips(set.Items, primary),
+                key.FromUtc,
+                key.ToUtc,
+                ReviewClipBuilder.BuildUnavailableClips(set.UnavailableEvents ?? [], primary));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

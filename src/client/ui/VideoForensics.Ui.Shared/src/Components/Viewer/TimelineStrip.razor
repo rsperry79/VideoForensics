@@ -18,6 +18,12 @@
             }
             <div class="review-timeline-segment" data-testid="timeline-segment" style="@style"></div>
         }
+        @foreach (ClipWindow gap in UnavailableClips)
+        {
+            double top = VerticalY(gap.StartUtc.AddSeconds(gap.DurationSeconds), length);
+            double bottom = VerticalY(gap.StartUtc, length);
+            <div class="review-timeline-segment review-timeline-unavailable" data-testid="timeline-unavailable" style="top:@(top)px;height:@(Math.Max(1, bottom - top))px"></div>
+        }
         @foreach (DateTime tick in HourTicks())
         {
             <div class="review-timeline-tick" data-testid="timeline-tick" style="top:@(VerticalY(tick, length))px">@ZoneOrLocal.Format(tick, "HH:mm")</div>
@@ -43,6 +49,12 @@ else
         }
         <div class="review-timeline-segment" data-testid="timeline-segment" style="@style"></div>
     }
+    @foreach (ClipWindow gap in UnavailableClips)
+    {
+        double left = ReviewTimeline.ToPixel(gap.StartUtc, WindowStartUtc, WindowEndUtc, WidthPx);
+        double right = ReviewTimeline.ToPixel(gap.StartUtc.AddSeconds(gap.DurationSeconds), WindowStartUtc, WindowEndUtc, WidthPx);
+        <div class="review-timeline-segment review-timeline-unavailable" data-testid="timeline-unavailable" style="left:@(left)px;width:@(Math.Max(1, right - left))px"></div>
+    }
     @if (Cursor is DateTime cursor)
     {
         <div class="review-timeline-cursor" data-testid="timeline-cursor" style="left:@(ReviewTimeline.ToPixel(cursor, WindowStartUtc, WindowEndUtc, WidthPx))px"></div>
@@ -56,6 +68,9 @@ else
 
     /// <summary>Clips to draw as segments, in any order.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<ClipWindow> Clips { get; set; } = [];
+
+    /// <summary>Events with no playable media. Drawn as their own segments so the operator can see the gap; never played.</summary>
+    [Parameter] public IReadOnlyList<ClipWindow> UnavailableClips { get; set; } = [];
 
     /// <summary>Start of the visible window (UTC).</summary>
     [Parameter, EditorRequired] public DateTime WindowStartUtc { get; set; }

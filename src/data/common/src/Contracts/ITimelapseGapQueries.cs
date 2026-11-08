@@ -26,5 +26,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// there is none.
         /// </summary>
         Task<DateTime?> GetLatestEventTimeUtcAsync(Guid deviceId, DateTime upToUtc, CancellationToken ct);
+
+        /// <summary>
+        /// The device's latest event occurrence with no upper bound, excluding its own time lapses. Unlike
+        /// <see cref="GetLatestEventTimeUtcAsync"/>, this sees events dated after the planning horizon. Null when there is none.
+        /// </summary>
+        Task<DateTime?> GetLatestEventTimeAnyUtcAsync(Guid deviceId, CancellationToken ct);
     }
 }

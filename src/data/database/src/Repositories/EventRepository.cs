@@ -72,6 +72,9 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
                     existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
 
+                    // Only the rekey on a match clears the queue flag; a re-upsert of an awaiting row keeps it.
+                    existing.AwaitingDingId |= @event.AwaitingDingId;
+
                     // Update DownloadStatus based on DownloadedAtUtc
                     if (existing.DownloadedAtUtc.HasValue)
                     {
@@ -142,6 +145,36 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
                 .ToListAsync(ct);
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId && e.AwaitingDingId && e.DownloadAttempts < maxAttempts && e.DownloadStatus != EventDownloadStatus.Downloaded)
+                .OrderBy(e => e.OccurredAtUtc)
+                .ToListAsync(ct);
+        }
+
+        /// <inheritdoc />
+        public async Task RecordRetryPassAsync(Guid eventId, int maxAttempts, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Event? evt = await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
+            if (evt is null)
+            {
+                return;
+            }
+
+            evt.DownloadAttempts++;
+            if (evt.DownloadAttempts >= maxAttempts)
+            {
+                evt.DownloadStatus = EventDownloadStatus.Unavailable;
+                evt.AwaitingDingId = false;
+            }
+
+            _ = await db.SaveChangesAsync(ct);
         }
 
         /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when it has none.</summary>

@@ -37,6 +37,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<IDeviceRepository> _devices = new();
         private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
         private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<IMediaDownloadService> _ringMedia = new();
         private readonly Mock<IProviderSnapshotCapture> _capture = new();
         private readonly Mock<IProviderApiBudgetGuard> _budget = new();
         private readonly Mock<IProviderAuthService> _auth = new();
@@ -166,6 +167,35 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.DoesNotContain("capture is off", skip);
         }
 
+        [Fact]
+        public void OfflineRepollWindow_DefaultConfig_Uses10Minutes()
+        {
+            var service = new SnapshotCaptureService(
+                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<SnapshotCaptureService>.Instance,
+                TimeProvider.System,
+                _storage.Object,
+                new ForensicsConfiguration());
+
+            Assert.Equal(TimeSpan.FromMinutes(10), service.OfflineRepollWindow);
+        }
+
+        [Fact]
+        public void OfflineRepollWindow_ConfigChanged_UsesNewWindow()
+        {
+            var config = new ForensicsConfiguration();
+            var service = new SnapshotCaptureService(
+                new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<SnapshotCaptureService>.Instance,
+                TimeProvider.System,
+                _storage.Object,
+                config);
+
+            config.OfflineRepollIntervalMinutes = 30;
+
+            Assert.Equal(TimeSpan.FromMinutes(30), service.OfflineRepollWindow);
+        }
+
         private async Task RunTickAsync(ILogger<SnapshotCaptureService>? logger = null)
         {
             ServiceProvider provider = BuildProvider();
@@ -175,7 +205,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     logger ?? NullLogger<SnapshotCaptureService>.Instance,
                     _time,
-                    _storage.Object);
+                    _storage.Object,
+                    new ForensicsConfiguration());
                 await service.RunOneTickAsync(CancellationToken.None);
             }
             finally
@@ -195,6 +226,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddSingleton(_media.Object);
             _ = services.AddSingleton(_sessions.Object);
             _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", _capture.Object);
+            _ = services.AddKeyedSingleton<IMediaDownloadService>("Ring", _ringMedia.Object);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             _ = services.AddSingleton(_budget.Object);
@@ -253,6 +285,31 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public async Task RunOneTickAsync_RingBanActive_MakesNoSnapshotCallUntilItLifts()
+        {
+            _ = AddDevice("12345");
+            _ = _ringMedia.Setup(m => m.GetRateLimitBanUntilUtc()).Returns(T0.AddHours(2).UtcDateTime);
+            ServiceProvider provider = BuildProvider();
+            try
+            {
+                var service = new SnapshotCaptureService(
+                    provider.GetRequiredService<IServiceScopeFactory>(),
+                    new Mock<ILogger<SnapshotCaptureService>>().Object,
+                    _time,
+                    _storage.Object,
+                    new ForensicsConfiguration());
+
+                await service.RunOneTickAsync(CancellationToken.None);
+            }
+            finally
+            {
+                await provider.DisposeAsync();
+            }
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_RingThrottled_PausesAccountUntilTheBlockLiftsWithoutErrorLogs()
         {
             // A hard ban stops every request until BlockedUntilUtc. The account must stay paused across ticks and the
@@ -271,7 +328,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     logger.Object,
                     _time,
-                    _storage.Object);
+                    _storage.Object,
+                    new ForensicsConfiguration());
 
                 await service.RunOneTickAsync(CancellationToken.None);
                 _time.Now = T0.AddMinutes(5);

@@ -42,8 +42,27 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private ISnapshotSyncService Sut(IServiceCollection services)
         {
+            // Every host registers the configuration service; a test that does not care about it gets the default one.
+            if (!services.Any(d => d.ServiceType == typeof(IForensicsConfigurationService)))
+            {
+                _ = services.AddScoped(_ => ConfigService(15).Object);
+            }
+
             return new SnapshotSyncService(
             services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_NoConfigurationService_Throws()
+        {
+            // The check interval is required: without it the warning window cannot be set, so the sync must fail, not guess.
+            AddDevices("1");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+            var services = new ServiceCollection().AddScoped(_ => _download.Object);
+            ISnapshotSyncService sut = new SnapshotSyncService(
+                services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
+
+            _ = await Assert.ThrowsAnyAsync<InvalidOperationException>(() => sut.SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None));
         }
 
         [Fact]

@@ -9,6 +9,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="FileName">Original file name (e.g., "2024-01-15_120000.mp4").</param>
     /// <param name="FilePath">Absolute or relative path where the media file is stored locally.</param>
     /// <param name="MediaFormat">File format (e.g., "mp4", "jpeg", "h264").</param>
+    /// <param name="MediaKind">What the row holds (Clip, Snapshot, Timelapse, Still). Part of the server's unique key.</param>
     /// <param name="FileSizeBytes">Size of the media file in bytes.</param>
     /// <param name="RecordedAtUtc">Timestamp when the media was recorded at the source device, in UTC.</param>
     /// <param name="DownloadedAtUtc">Timestamp when the media was downloaded and stored locally, in UTC.</param>
@@ -33,6 +34,7 @@ namespace VideoForensics.Core.Api.Contracts
         string FileName,
         string FilePath,
         string MediaFormat,
+        string MediaKind,
         long FileSizeBytes,
         DateTime RecordedAtUtc,
         DateTime DownloadedAtUtc,
@@ -67,6 +69,7 @@ namespace VideoForensics.Core.Api.Contracts
                 FileName: entity.FileName,
                 FilePath: entity.FilePath,
                 MediaFormat: entity.MediaFormat,
+                MediaKind: entity.MediaKind,
                 FileSizeBytes: entity.FileSizeBytes,
                 RecordedAtUtc: entity.RecordedAtUtc,
                 DownloadedAtUtc: entity.DownloadedAtUtc,
@@ -100,6 +103,7 @@ namespace VideoForensics.Core.Api.Contracts
                 FileName = dto.FileName,
                 FilePath = dto.FilePath,
                 MediaFormat = dto.MediaFormat,
+                MediaKind = dto.MediaKind,
                 FileSizeBytes = dto.FileSizeBytes,
                 RecordedAtUtc = dto.RecordedAtUtc,
                 DownloadedAtUtc = dto.DownloadedAtUtc,

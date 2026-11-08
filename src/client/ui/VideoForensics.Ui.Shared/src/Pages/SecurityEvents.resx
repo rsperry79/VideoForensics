@@ -53,9 +53,6 @@
   <data name="PreviousPageButton" xml:space="preserve">
     <value>Previous Page</value>
   </data>
-  <data name="EventTypeColumn" xml:space="preserve">
-    <value>Event Type</value>
-  </data>
   <data name="StatusColumn" xml:space="preserve">
     <value>Status</value>
   </data>
@@ -88,5 +85,11 @@
   </data>
   <data name="LoadError" xml:space="preserve">
     <value>Failed to load security events</value>
+  </data>
+  <data name="UnknownOnlyToggle" xml:space="preserve">
+    <value>Unknown login only</value>
+  </data>
+  <data name="InvalidUserFormat" xml:space="preserve">
+    <value>Invalid user: {0}</value>
   </data>
 </root>

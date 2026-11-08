@@ -16,9 +16,6 @@ namespace VideoForensics.Client.Hosting.Services
     /// <inheritdoc />
     public class SnapshotSyncService : ISnapshotSyncService
     {
-        /// <summary>The services-page check interval default, in minutes. Used when no configuration service is registered.</summary>
-        private const int DefaultCheckIntervalMinutes = 15;
-
         private readonly IServiceProvider _services;
         private readonly IProviderAccountRepository _accounts;
         private readonly ILocationRepository _locations;
@@ -64,12 +61,10 @@ namespace VideoForensics.Client.Hosting.Services
             download.SetActiveProviderAccountId(accountId);
 
             // The non-image warning is logged once per time-lapse check window, so the window is the services check interval.
-            // Without a configuration service registered, the default check interval (15 minutes) applies.
-            IForensicsConfigurationService? configService = _services.GetService<IForensicsConfigurationService>();
-            int checkMinutes = configService is null
-                ? DefaultCheckIntervalMinutes
-                : (await configService.LoadConfigurationAsync(string.Empty, cancellationToken)).TimelapseCheckIntervalMinutes;
-            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(checkMinutes));
+            // The configuration service is required: without it the window is unknown, so the sync fails.
+            IForensicsConfiguration config = await _services.GetRequiredService<IForensicsConfigurationService>()
+                .LoadConfigurationAsync(string.Empty, cancellationToken);
+            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(config.TimelapseCheckIntervalMinutes));
 
             // The offline rule belongs to the account's provider. A provider with no registered rule keeps every device,
             // because nothing on this path can tell that it is offline.

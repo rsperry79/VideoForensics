@@ -4,11 +4,15 @@
 @using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Filters
+@using VideoForensics.Client.Ui.Shared.Components.Filters
 @using VideoForensics.Core.Providers.Common.Contracts
+@implements IDisposable
 @inject PairedSessionState SessionState
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAccountEditAccess EditAccess
+@inject ProviderAccountFilterState SharedFilter
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ManualSync> L
@@ -18,21 +22,7 @@
 <h4 class="mb-4">@L["Title"]</h4>
 
 <PageRightPanelContent>
-    <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterProviders"]</small>
-        <SfMultiSelect TValue="string[]" TItem="string" DataSource="@_providerNames"
-            Value="@_selectedProviders" ValueChanged="OnProvidersChanged"
-            Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
-        </SfMultiSelect>
-    </div>
-    <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterAccount"]</small>
-        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
-            Placeholder="@L["AllAccounts"]" data-testid="manual-sync-account-filter"
-            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
-            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-        </SfDropDownList>
-    </div>
+    <ProviderAccountFilter ProviderNames="@_providerNames" AccountsFor="@AccountsForProvider" />
 </PageRightPanelContent>
 
 @if (_isLoading)
@@ -85,9 +75,9 @@ else
         <div class="d-flex flex-wrap gap-2 align-items-center">
             @if (CanEditAccount)
             {
-                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@(_isSyncing || TargetRow is null)" />
+                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@(_isSyncing || SyncTargets.Count == 0)" />
             }
-            @if (TargetRow is null)
+            @if (SyncTargets.Count == 0)
             {
                 <span class="form-text">@L["PickAccountHint"]</span>
             }
@@ -123,10 +113,6 @@ else
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<AccountRow> _rows = new();
     private List<string> _providerNames = new();
-    private string[] _selectedProviders = Array.Empty<string>();
-
-    /// <summary>The Account filter's selected account (its id as text). Empty means no sync target.</summary>
-    private string _accountFilterValue = string.Empty;
 
     private string? _loadError;
     private bool _isLoading = true;
@@ -143,17 +129,31 @@ else
     private bool _isSyncing;
     private SfToast _toastRef = null!;
 
-    /// <summary>The account chosen in the Account filter, or null when none is chosen or it is hidden by the provider filter.</summary>
+    /// <summary>The account chosen in the shared Account filter, or null when none is chosen or it is hidden by the provider filter.</summary>
     private AccountRow? TargetRow
     {
         get
         {
-            if (!Guid.TryParse(_accountFilterValue, out Guid accountId))
+            if (!Guid.TryParse(SharedFilter.Account, out Guid accountId))
             {
                 return null;
             }
 
-            return _rows.FirstOrDefault(r => r.Account.Id == accountId && _selectedProviders.Contains(r.Account.ProviderName));
+            return _rows.FirstOrDefault(r => r.Account.Id == accountId && SharedFilter.IncludesProvider(r.Account.ProviderName));
+        }
+    }
+
+    /// <summary>The accounts Sync Now runs against: the chosen account, or every account of the selected providers when Account is All accounts.</summary>
+    private IReadOnlyList<AccountRow> SyncTargets
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(SharedFilter.Account))
+            {
+                return _rows.Where(r => SharedFilter.IncludesProvider(r.Account.ProviderName)).ToList();
+            }
+
+            return TargetRow is { } one ? new[] { one } : Array.Empty<AccountRow>();
         }
     }
 
@@ -169,7 +169,6 @@ else
     private string SyncTypeChoiceLabel(string type) => type switch
     {
         "Events" => L["SyncChoiceEvents"],
-        "Snapshots" => L["SyncChoiceSnapshots"],
         "Config" => L["SyncChoiceConfig"],
         _ => L["SyncChoiceAll"],
     };
@@ -198,9 +197,21 @@ else
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["Title"], null) };
+        SharedFilter.OnChange += OnSharedFilterChanged;
         // Edit access is checked in the background: a check that never answers must not keep the accounts from loading.
         _ = RefreshEditAccessAsync();
+        await SharedFilter.EnsureLoadedAsync();
         await LoadAccountsAsync();
+    }
+
+    private void OnSharedFilterChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        SharedFilter.OnChange -= OnSharedFilterChanged;
     }
 
     /// <summary>Asks whether the operator may edit, and shows the answer when it changes. A failed check leaves the controls hidden.</summary>
@@ -251,20 +262,7 @@ else
             }
 
             _rows = rows;
-            var previous = new HashSet<string>(_providerNames, StringComparer.OrdinalIgnoreCase);
             _providerNames = _rows.Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
-            // Every provider is selected by default; providers that appear later are selected too.
-            _selectedProviders = _selectedProviders
-                .Where(p => _providerNames.Contains(p))
-                .Concat(_providerNames.Where(p => !previous.Contains(p)))
-                .Distinct()
-                .ToArray();
-
-            // An account that no longer exists can't stay as the filter.
-            if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
-            {
-                _accountFilterValue = string.Empty;
-            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -276,32 +274,12 @@ else
         }
     }
 
-    private void OnProvidersChanged(string[] selected)
+    /// <summary>The Account filter's choices for one provider, from the active accounts.</summary>
+    private IEnumerable<KeyValuePair<string, string>> AccountsForProvider(string provider)
     {
-        _selectedProviders = selected ?? Array.Empty<string>();
-
-        // An account from a provider that is no longer selected can't stay as the filter.
-        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
-        {
-            _accountFilterValue = string.Empty;
-        }
-    }
-
-    /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
-    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions
-    {
-        get
-        {
-            var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
-            return _rows
-                .Where(r => selected.Contains(r.Account.ProviderName))
-                .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
-        }
-    }
-
-    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
-    {
-        _accountFilterValue = args.Value ?? string.Empty;
+        return _rows
+            .Where(r => string.Equals(r.Account.ProviderName, provider, StringComparison.OrdinalIgnoreCase))
+            .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
     }
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)
@@ -314,8 +292,8 @@ else
 
     private async Task SyncNowAsync()
     {
-        AccountRow? target = TargetRow;
-        if (target is null)
+        IReadOnlyList<AccountRow> targets = SyncTargets;
+        if (targets.Count == 0)
         {
             return;
         }
@@ -327,24 +305,33 @@ else
             await SessionState.EnsureLoadedAsync();
             // Session state loads lazily; the token is only populated after this.
             // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
-            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{target.Account.Id}/sync-now"))
+            int started = 0;
+            int failed = 0;
+            foreach (AccountRow target in targets)
             {
-                Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
-            };
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-            using HttpResponseMessage response = await Http.SendAsync(request, CancellationToken.None);
+                using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{target.Account.Id}/sync-now"))
+                {
+                    Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
+                };
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+                using HttpResponseMessage response = await Http.SendAsync(request, CancellationToken.None);
+                if (response.IsSuccessStatusCode)
+                {
+                    started++;
+                }
+                else
+                {
+                    failed++;
+                }
+            }
 
-            if (response.IsSuccessStatusCode)
+            if (failed == 0)
             {
                 await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
                 {
                     Title = L["SyncStarted"],
                     Icon = "e-success"
                 });
-
-                // Reload after a delay to show the updated timestamps
-                await Task.Delay(2000);
-                await LoadAccountsAsync();
             }
             else
             {
@@ -353,6 +340,13 @@ else
                     Title = L["SyncFailed"],
                     Icon = "e-danger"
                 });
+            }
+
+            if (started > 0)
+            {
+                // Reload after a delay to show the updated timestamps
+                await Task.Delay(2000);
+                await LoadAccountsAsync();
             }
         }
         catch (Exception ex)

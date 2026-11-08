@@ -18,6 +18,19 @@
     pointer-events: none;
 }
 
+/* Unavailable events: a warning colour on the same bar, so they read apart from playable clips (primary). */
+.review-timeline-unavailable {
+    background-color: var(--bs-warning);
+}
+
+.review-timeline-vertical .review-timeline-unavailable {
+    position: absolute;
+    left: 3.5rem;
+    width: 16px;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
 .review-timeline-vertical .review-timeline-tick {
     position: absolute;
     left: 0;

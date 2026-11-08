@@ -7,6 +7,7 @@ using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -32,6 +33,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IForensicsConfiguration> _config = new();
         private readonly Mock<IEventRepository> _events = new();
+        private readonly Mock<IUnitOfWorkContext> _context = new();
+        private readonly FakeUnitOfWork _unitOfWork;
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         private readonly Device _device;
 
@@ -49,6 +52,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>()))
                 .Returns<StorageCategory, string?>((_, configuredOverride) => string.IsNullOrWhiteSpace(configuredOverride) ? MediaRoot : configuredOverride);
             _ = _configuration.Setup(s => s.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(_config.Object);
+            _ = _context.SetupGet(c => c.MediaItems).Returns(_media.Object);
+            _ = _context.SetupGet(c => c.Events).Returns(_events.Object);
+            _unitOfWork = new FakeUnitOfWork(_context.Object);
         }
 
         public void Dispose()
@@ -70,6 +76,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _builder.Object,
             NullLogger<SnapshotRollupService>.Instance,
             _events.Object,
+            _unitOfWork,
             configurationService: _configuration.Object);
         }
 
@@ -251,6 +258,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 logger.Object,
                 _events.Object,
+                _unitOfWork,
                 captures: captures.Object,
                 stillMapper: new SnapshotStillMapper(),
                 mediaPaths: RootedPaths());
@@ -298,6 +306,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 NullLogger<SnapshotRollupService>.Instance,
                 _events.Object,
+                _unitOfWork,
                 captures: captures.Object,
                 stillMapper: new SnapshotStillMapper(),
                 mediaPaths: RootedPaths());
@@ -331,6 +340,49 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RollUp_RecordsLoopAndEventInOneUnitOfWork()
+        {
+            // The loop row and its event row must commit together, so the Events tab never shows one without the other.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            BuildSucceeds();
+
+            SnapshotRollupResult result = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(1, result.DevicesRolledUp);
+            Assert.Equal(1, _unitOfWork.ExecuteCount);
+            _media.Verify(m => m.AddAsync(
+                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
+                It.IsAny<CancellationToken>()), Times.Once);
+            _events.Verify(e => e.UpsertAsync(
+                It.Is<Event>(ev => ev.DeviceId == _device.Id && ev.EventType == "timelapse"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        /// <summary>Runs each unit of work once against a context that forwards to the test mocks, and counts the runs.</summary>
+        private sealed class FakeUnitOfWork : IUnitOfWork
+        {
+            private readonly IUnitOfWorkContext _context;
+
+            public FakeUnitOfWork(IUnitOfWorkContext context)
+            {
+                _context = context;
+            }
+
+            public int ExecuteCount { get; private set; }
+
+            public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
+            {
+                ExecuteCount++;
+                return await work(_context);
+            }
+
+            public Task<T> ReadAsync<T>(Func<IUnitOfWorkContext, Task<T>> read, CancellationToken ct)
+            {
+                return read(_context);
+            }
+        }
+
+        [Fact]
         public async Task RollUp_SuccessfulLoop_LogsInformationWithDeviceAndFrameCount()
         {
             // A successful loop must leave a trace: the device, how many snapshots went in, and the file name.
@@ -341,6 +393,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 logger.Object,
                 _events.Object,
+                _unitOfWork,
                 configurationService: _configuration.Object);
 
             _ = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);

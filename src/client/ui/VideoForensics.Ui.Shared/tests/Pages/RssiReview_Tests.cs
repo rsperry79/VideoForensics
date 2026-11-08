@@ -212,4 +212,145 @@ public class RssiReview_Tests : BunitContext
         _ = Assert.Single(panel.FindAll("[data-testid=flag-actions-panel]"));
         _ = Assert.Single(panel.FindAll("[data-testid=clip-navigator]"));
     }
+
+    [Fact]
+    public void RssiReview_NextClick_NavigatesToNeighbourReview()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        MediaFlag neighbour = Flag(MediaFlagType.RssiDeviation);
+        MediaItem clip = Clip(flag.DeviceId, FlagStartUtc, 3600, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(neighbour);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { clip });
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<MediaPlayer>()));
+
+        RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
+        Assert.NotNull(panelContent);
+        IRenderedComponent<ContainerFragment> panel = Render(panelContent);
+        panel.Find("[data-testid=clip-nav-next]").Click();
+
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.EndsWith($"/signal-history/review/{neighbour.Id}", nav.Uri));
+    }
+
+    [Fact]
+    public void RssiReview_PreviousClick_NavigatesToNeighbourReview()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        MediaFlag neighbour = Flag(MediaFlagType.RssiDeviation);
+        MediaItem clip = Clip(flag.DeviceId, FlagStartUtc, 3600, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(neighbour);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { clip });
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<MediaPlayer>()));
+
+        RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
+        Assert.NotNull(panelContent);
+        IRenderedComponent<ContainerFragment> panel = Render(panelContent);
+        panel.Find("[data-testid=clip-nav-prev]").Click();
+
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.EndsWith($"/signal-history/review/{neighbour.Id}", nav.Uri));
+    }
+
+    /// <summary>Matches the advance lookup: the page's type filter narrowed to Unreviewed flags.</summary>
+    private static MediaFlagFilter UnreviewedOfRssi()
+    {
+        return It.Is<MediaFlagFilter>(f => f.Types != null && f.Types.SequenceEqual(new[] { MediaFlagType.RssiDeviation })
+            && f.Statuses != null && f.Statuses.SequenceEqual(new[] { MediaFlagStatus.Unreviewed }));
+    }
+
+    /// <summary>Raises the flag actions panel's OnChanged with the flag in the given status, as a Keep or Dismiss does.</summary>
+    private async Task RaiseReviewAsync(IRenderedComponent<RssiReview> cut, MediaFlag flag, MediaFlagStatus status)
+    {
+        RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
+        Assert.NotNull(panelContent);
+        IRenderedComponent<ContainerFragment> panel = Render(panelContent);
+        FlagActionsPanel actions = panel.FindComponent<FlagActionsPanel>().Instance;
+        flag.Status = status;
+        await cut.InvokeAsync(() => actions.OnChanged.InvokeAsync(flag));
+    }
+
+    [Fact]
+    public async Task RssiReview_DismissedFlag_MovesToNextUnreviewedFlag()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        MediaFlag next = Flag(MediaFlagType.RssiDeviation);
+        MediaItem clip = Clip(flag.DeviceId, FlagStartUtc, 3600, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfRssi(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(next);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { clip });
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<MediaPlayer>()));
+
+        await RaiseReviewAsync(cut, flag, MediaFlagStatus.Dismissed);
+
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.EndsWith($"/signal-history/review/{next.Id}", nav.Uri));
+    }
+
+    [Fact]
+    public async Task RssiReview_NoUnreviewedFlagLeft_StaysAndShowsMessage()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        MediaItem clip = Clip(flag.DeviceId, FlagStartUtc, 3600, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfRssi(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MediaFlag?)null);
+        _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfRssi(), MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MediaFlag?)null);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { clip });
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<MediaPlayer>()));
+        string before = Services.GetRequiredService<NavigationManager>().Uri;
+
+        await RaiseReviewAsync(cut, flag, MediaFlagStatus.Kept);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flag-review-no-unreviewed]")));
+        Assert.Contains(Localizer["NoUnreviewedFlagsLeft"].Value, cut.Markup);
+        Assert.Equal(before, Services.GetRequiredService<NavigationManager>().Uri);
+    }
+
+    [Fact]
+    public async Task RssiReview_UndoReview_DoesNotMove()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        MediaItem clip = Clip(flag.DeviceId, FlagStartUtc, 3600, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { clip });
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<MediaPlayer>()));
+        string before = Services.GetRequiredService<NavigationManager>().Uri;
+
+        await RaiseReviewAsync(cut, flag, MediaFlagStatus.Unreviewed);
+
+        Assert.Equal(before, Services.GetRequiredService<NavigationManager>().Uri);
+        Assert.Empty(cut.FindAll("[data-testid=flag-review-no-unreviewed]"));
+        _flags.Verify(r => r.GetNeighbourAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilter>(), It.IsAny<MediaFlagNeighbour>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

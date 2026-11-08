@@ -59,9 +59,13 @@ namespace VideoForensics.Data.Core.Tests.Services
             string? previousKeys = StorageLocationStore.KeysRoot;
             string? previousLogs = StorageLocationStore.LogsRoot;
             bool previousSaved = StorageLocationStore.SavedSettingsRead;
+            IDatabaseLocationPointerStore previousPointer = DatabaseLocationPointerStore.Current;
 
             try
             {
+                // The Database category reads the machine's own database pointer. Use a store with no custom location, so the
+                // test expects the default on every machine.
+                DatabaseLocationPointerStore.Current = new NoCustomDatabaseLocation();
                 KeysLocationPointer.Write(dataRoot, staleRoot);
                 LogsLocationPointer.Write(dataRoot, staleRoot);
                 StorageLocationStore.DefaultRoot = defaultRoot;
@@ -101,11 +105,21 @@ namespace VideoForensics.Data.Core.Tests.Services
                 StorageLocationStore.KeysRoot = previousKeys;
                 StorageLocationStore.LogsRoot = previousLogs;
                 StorageLocationStore.SavedSettingsRead = previousSaved;
+                DatabaseLocationPointerStore.Current = previousPointer;
                 if (Directory.Exists(dataRoot))
                 {
                     Directory.Delete(dataRoot, recursive: true);
                 }
             }
+        }
+
+        /// <summary>A pointer store with no custom database location, so the Database category reports its default.</summary>
+        private sealed class NoCustomDatabaseLocation : IDatabaseLocationPointerStore
+        {
+            public string? Read() => null;
+
+            public void Write(string databaseRoot) =>
+                throw new InvalidOperationException("The test pointer store must not change the machine's database location.");
         }
     }
 }

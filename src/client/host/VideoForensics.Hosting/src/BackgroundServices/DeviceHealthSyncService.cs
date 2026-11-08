@@ -24,12 +24,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     /// health source calls a provider's API directly, and per §1's "only the server pulls from any
     /// provider" rule, no client host may do that.
     ///
-    /// Implements tiered polling: base interval (15min) plus elevated polling when RSSI degradation
+    /// Implements tiered polling: base interval (DeviceHealthIntervalMinutes, 15 by default) plus elevated polling when RSSI degradation
     /// is detected, running a faster check to determine if jamming occurred (plan §4.2).
     /// </summary>
     public class DeviceHealthSyncService : BackgroundService
     {
-        private static readonly TimeSpan BaseInterval = TimeSpan.FromMinutes(15);
         private const int OnBatteryIntervalMultiplier = 3;
         // DegradationThresholdDb matches JammingToolsOrchestrator's threshold
         private const double DegradationThresholdDb = 8.0;
@@ -41,6 +40,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ElevatedPollingWindowTracker _elevatedTracker;
 
         private readonly ThreadHeartbeats? _heartbeats;
+
+        /// <summary>The base wait, read from the Services page setting before each wait.</summary>
+        internal TimeSpan CurrentInterval => TimeSpan.FromMinutes(_config.DeviceHealthIntervalMinutes);
 
         public DeviceHealthSyncService(
             IServiceScopeFactory scopeFactory,
@@ -68,13 +70,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private int _tickCount;
 
         /// <summary>
-        /// Base polling loop: runs every 15 minutes (or 45 minutes on battery).
+        /// Base polling loop: runs every DeviceHealthIntervalMinutes (or three times that on battery).
         /// Detects RSSI degradation and enters elevated windows as needed.
         /// </summary>
         private async Task RunBaseLoopAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(BaseInterval);
-
             do
             {
                 if (!_config.EnableHealthSync)
@@ -86,9 +86,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 bool onBattery = _batteryStatusProvider.GetStatus() == BatteryStatus.OnBattery;
                 if (onBattery)
                 {
-                    // Skip most ticks while on battery rather than running a separate slower timer,
-                    // so the effective interval is roughly BaseInterval * OnBatteryIntervalMultiplier
-                    // without restarting the PeriodicTimer.
+                    // Skip most ticks while on battery rather than running a separate slower wait,
+                    // so the effective interval is roughly CurrentInterval * OnBatteryIntervalMultiplier.
                     bool shouldRun = System.Threading.Interlocked.Increment(ref _tickCount) % OnBatteryIntervalMultiplier == 0;
                     if (!shouldRun)
                     {
@@ -99,7 +98,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _heartbeats?.Beat(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, TimeSpan.FromMinutes(45));
                 await RunOneTickAsync(stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
+            while (await WaitForNextTickAsync(stoppingToken));
+        }
+
+        /// <summary>
+        /// Waits the configured base interval, read now so a changed setting applies from the next wait. A fresh delay each
+        /// tick is used instead of a PeriodicTimer, which is fixed at creation and would ignore the change.
+        /// </summary>
+        private async Task<bool> WaitForNextTickAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(CurrentInterval, ct);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -128,15 +144,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// Runs the signal-deviation check for one camera. A failure is logged and does not stop the poll: the reading
         /// is already saved, and the next poll checks again.
         /// </summary>
-        private async Task CheckSignalDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task<bool> CheckSignalDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             try
             {
                 _ = await sp.GetRequiredService<SignalDeviationAlerts>().CheckAsync(device, ct);
+                return true;
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning("Signal deviation check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
@@ -144,15 +162,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// Runs the bit rate deviation check for one camera. A failure is logged and does not stop the poll: the reading
         /// is already saved, and the next poll checks again.
         /// </summary>
-        private async Task CheckBitrateDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task<bool> CheckBitrateDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             try
             {
                 _ = await sp.GetRequiredService<BitrateDeviationAlerts>().CheckAsync(device, ct);
+                return true;
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning("Bit rate deviation check failed for {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
@@ -172,6 +192,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            bool itemFailed = false;
             IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IDeviceHealthRepository healthRepository = sp.GetRequiredService<IDeviceHealthRepository>();
@@ -185,11 +206,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Health sync tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
             if (devices.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -201,6 +224,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 .ToDictionary(g => g.Key, g => g.First());
             if (devicesByProviderId.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -276,15 +300,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         persisted++;
                         if (wentOffline)
                         {
-                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
+                            if (!await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct))
+                            {
+                                itemFailed = true;
+                            }
                         }
 
                         // Readings more than 2 std devs from the camera's mean raise an alert. Base poll only: the elevated
                         // poll runs far more often and each check reads the camera's full history.
-                        await CheckSignalDeviationAsync(sp, device, ct);
+                        if (!await CheckSignalDeviationAsync(sp, device, ct))
+                        {
+                            itemFailed = true;
+                        }
 
                         // Clip bit rates more than 2 std devs from the camera's mean raise an alert. Same base-poll-only rule as above.
-                        await CheckBitrateDeviationAsync(sp, device, ct);
+                        if (!await CheckBitrateDeviationAsync(sp, device, ct))
+                        {
+                            itemFailed = true;
+                        }
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try
@@ -322,6 +355,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         }
                         catch (Exception ex)
                         {
+                            itemFailed = true;
                             // Non-critical: don't let degradation check failure break the main tick
                             _logger.LogWarning("Health sync tick: degradation check for device {DeviceName} failed (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                         }
@@ -335,9 +369,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One provider's failure must not stop another's - each health source gets its
                     // own try/catch, matching the plan's explicit call-out for this.
+                    itemFailed = true;
                     _logger.LogWarning("Health sync tick: {SourceType} failed (non-critical): {Message} ({ErrorType})", healthSource.GetType().Name, ex.Message, ex.GetType().Name);
                 }
             }
+            if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
         }
 
         /// <summary>Internal for direct testability; runs one tick of elevated polling for devices in elevated windows.</summary>
@@ -351,6 +387,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+            bool itemFailed = false;
 
             var healthSources = sp.GetServices<IProviderHealthSource>().ToList();
             if (healthSources.Count == 0)
@@ -373,6 +410,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Elevated polling tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
@@ -451,9 +489,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
-                        if (wentOffline)
+                        if (wentOffline && !await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct))
                         {
-                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
+                            itemFailed = true;
                         }
                     }
 
@@ -466,6 +504,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
+                    itemFailed = true;
                     _logger.LogWarning("Elevated polling tick: {SourceType} failed (non-critical): {Message} ({ErrorType})", healthSource.GetType().Name, ex.Message, ex.GetType().Name);
                 }
             }
@@ -514,9 +553,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
                     string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
+                    itemFailed = true;
                     _logger.LogWarning("Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical): {Message} ({ErrorType})", deviceName, ex.Message, ex.GetType().Name);
                 }
             }
+
+            if (itemFailed) { _heartbeats?.RecordError(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow); }
         }
 
         /// <summary>
@@ -558,11 +600,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
-        private async Task NotifyDeviceOfflineAsync(IServiceProvider sp, INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task<bool> NotifyDeviceOfflineAsync(IServiceProvider sp, INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             if (dispatcher == null)
             {
-                return;
+                return true;
             }
 
             try
@@ -578,10 +620,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Severity: NoticeSeverity.Alert,
                     ActionPath: await SyncPagePathAsync(sp, device, ct)), ct);
                 _logger.LogInformation("Health sync: device {DeviceName} went offline; DeviceOffline alert dispatched", device.Name);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("Health sync: failed to dispatch offline alert for device {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 

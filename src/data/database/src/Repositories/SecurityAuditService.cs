@@ -12,6 +12,9 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for security audit logging.</summary>
     public class SecurityAuditService : ISecurityAuditService
     {
+        /// <summary>Maximum stored length of <see cref="SecurityEvent.AttemptedUsername"/>; matches the column limit in the EF configuration.</summary>
+        private const int MaxAttemptedUsernameLength = 256;
+
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<SecurityAuditService> _logger;
 
@@ -25,6 +28,37 @@ namespace VideoForensics.Data.Database.Repositories
         {
             SecurityEventType eventType = success ? SecurityEventType.LoginAttemptSuccess : SecurityEventType.LoginAttemptFailure;
             await RecordEventAsync(operatorId, eventType, ipAddress, success, reason, ct);
+        }
+
+        public async Task RecordUnknownUserLoginAsync(string? attemptedUsername, string? ipAddress, string? reason, CancellationToken ct)
+        {
+            string? username = attemptedUsername?.Trim();
+            if (string.IsNullOrEmpty(username))
+            {
+                username = null;
+            }
+            else if (username.Length > MaxAttemptedUsernameLength)
+            {
+                username = username[..MaxAttemptedUsernameLength];
+            }
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            var securityEvent = new SecurityEvent
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = null,
+                EventType = SecurityEventType.LoginAttemptFailure,
+                Success = false,
+                IpAddress = ipAddress,
+                OccurredAtUtc = DateTime.UtcNow,
+                Reason = reason,
+                AttemptedUsername = username,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            _ = db.SecurityEvents.Add(securityEvent);
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogDebug("Security event recorded: login failure for an unknown username");
         }
 
         public async Task RecordBreachDetectionAsync(Guid operatorId, string? ipAddress, string reason, CancellationToken ct)
@@ -42,11 +76,19 @@ namespace VideoForensics.Data.Database.Repositories
             await RecordEventAsync(operatorId, SecurityEventType.LockedOutReleased, null, true, null, ct);
         }
 
-        public async IAsyncEnumerable<SecurityEventDto> GetOperatorEventsAsync(Guid operatorId, int skip, int take, [EnumeratorCancellation] CancellationToken ct)
+        public async IAsyncEnumerable<SecurityEventDto> GetOperatorEventsAsync(Guid? operatorId, bool unknownOnly, int skip, int take, [EnumeratorCancellation] CancellationToken ct)
         {
+            // Guard: without unknownOnly, a null operator would silently match the unknown-login rows.
+            if (!unknownOnly && operatorId is null)
+            {
+                throw new ArgumentException("operatorId is required unless unknownOnly is true.", nameof(operatorId));
+            }
+
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<SecurityEvent> events = db.SecurityEvents
-                .Where(e => e.OperatorId == operatorId)
+            // The unknown-login filter is applied in SQL, before paging.
+            IQueryable<SecurityEvent> events = (unknownOnly
+                    ? db.SecurityEvents.Where(e => e.OperatorId == null)
+                    : db.SecurityEvents.Where(e => e.OperatorId == operatorId))
                 .OrderByDescending(e => e.OccurredAtUtc)
                 .Skip(skip)
                 .Take(take);
@@ -101,7 +143,8 @@ namespace VideoForensics.Data.Database.Repositories
                 Success = @event.Success,
                 IpAddress = @event.IpAddress,
                 OccurredAtUtc = @event.OccurredAtUtc,
-                Reason = @event.Reason
+                Reason = @event.Reason,
+                AttemptedUsername = @event.AttemptedUsername
             };
         }
     }

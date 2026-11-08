@@ -51,12 +51,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>How often the loop checks which devices are due.</summary>
         internal static readonly TimeSpan TickPeriod = TimeSpan.FromSeconds(5);
 
-        /// <summary>
-        /// How often an offline camera is probed. Offline cameras are repolled, not captured every interval, so a camera that
-        /// stays offline costs one or two Ring calls per repoll rather than per capture.
-        /// </summary>
-        internal static readonly TimeSpan OfflineRepollInterval = TimeSpan.FromMinutes(10);
-
         /// <summary>Hold-off for an account whose credentials could not be restored or whose pass threw, so it is not retried every tick.</summary>
         private static readonly TimeSpan AccountErrorBackoff = TimeSpan.FromMinutes(1);
 
@@ -64,6 +58,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<SnapshotCaptureService> _logger;
         private readonly TimeProvider _time;
         private readonly IStorageLocationProvider _storage;
+        private readonly IForensicsConfiguration _config;
+
+        /// <summary>
+        /// How often an offline camera is probed, from the Services page setting. Offline cameras are repolled, not captured every
+        /// interval, so a camera that stays offline costs one or two Ring calls per repoll rather than per capture.
+        /// </summary>
+        internal TimeSpan OfflineRepollWindow => TimeSpan.FromMinutes(_config.OfflineRepollIntervalMinutes);
 
         // Process-lifetime guards. The Ring pacers live on a per-tick scoped instance, so a provider pause must be remembered here
         // to hold across ticks. Keyed by internal GUIDs; never logged.
@@ -77,12 +78,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             ILogger<SnapshotCaptureService> logger,
             TimeProvider time,
             IStorageLocationProvider storage,
+            IForensicsConfiguration config,
             ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
             _time = time;
             _storage = storage;
+            _config = config;
             _heartbeats = heartbeats;
         }
 
@@ -123,6 +126,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                     catch (Exception ex)
                     {
+                        _heartbeats?.RecordError(nameof(SnapshotCaptureService), _time.GetUtcNow(), "run failed");
                         _logger.LogError("Snapshot capture tick failed; will retry on the next tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                     }
                 }
@@ -148,6 +152,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            bool itemFailed = false;
             IReadOnlyList<ProviderAccount> accounts = await sp.GetRequiredService<IProviderAccountRepository>().ListActiveAsync(ct);
             _logger.LogDebug("Snapshot capture tick started: {AccountCount} active accounts", accounts.Count);
             var counts = new TickCounts();
@@ -173,6 +178,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 {
                     // One account's failure must never stop the others.
                     _accountPausedUntil[account.Id] = _time.GetUtcNow() + AccountErrorBackoff;
+                    itemFailed = true;
                     _logger.LogError("Snapshot capture failed for {ProviderName} account: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
                 }
             }
@@ -182,6 +188,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _logger.LogInformation("Snapshot capture tick: {Captured} captured, {Failed} failed, {Throttled} throttled",
                     counts.Captured, counts.Failed, counts.Throttled);
             }
+            if (counts.Failed > 0 || counts.AlertFailed)
+            {
+                itemFailed = true;
+            }
+            if (itemFailed) { _heartbeats?.RecordError(nameof(SnapshotCaptureService), _time.GetUtcNow(), "run failed"); } else { _heartbeats?.RecordRun(nameof(SnapshotCaptureService), _time.GetUtcNow()); }
         }
 
         private async Task CaptureAccountAsync(IServiceProvider sp, ProviderAccount account, TickCounts counts, CancellationToken ct)
@@ -214,7 +225,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 foreach (Device device in await devices.GetByLocationIdAsync(location.Id, ct))
                 {
-                    // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollInterval, not
+                    // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollWindow, not
                     // captured every interval. The window check also covers startup: a camera with no probe in the last window is due at once.
                     if (!seen.Add(device.ProviderDeviceId))
                     {
@@ -240,7 +251,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         continue;
                     }
 
-                    TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollInterval : interval;
+                    TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollWindow : interval;
                     candidates.Add((device, window));
                 }
             }
@@ -267,6 +278,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 _logger.LogWarning("Snapshot capture backed off for {AccountName} for {BackoffSeconds}s: no active session", accountName, AccountErrorBackoff.TotalSeconds);
                 _accountPausedUntil[accountId] = _time.GetUtcNow() + AccountErrorBackoff;
+                return;
+            }
+
+            // Why: a Ring rate-limit ban refuses every snapshot until it lifts. Holding the account for the ban's length, instead of
+            // discovering it one device at a time, stops these calls from extending the ban.
+            IMediaDownloadService? media = sp.GetKeyedService<IMediaDownloadService>(RingProviderName);
+            if (media?.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > _time.GetUtcNow().UtcDateTime)
+            {
+                _logger.LogWarning("Snapshot capture paused for {AccountName}: rate-limit ban active until {BanUntilUtc:u}", accountName, banUntilUtc);
+                _accountPausedUntil[accountId] = new DateTimeOffset(DateTime.SpecifyKind(banUntilUtc, DateTimeKind.Utc));
                 return;
             }
 
@@ -462,7 +483,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (attempt.Connected == false && previousHealth is { IsOnline: true })
             {
-                await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
+                if (!await RaiseOfflineAlertAsync(sp, device, account.Id, ct))
+                {
+                    counts.AlertFailed = true;
+                }
             }
         }
 
@@ -489,6 +513,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     FileName = Path.GetFileName(mediaFilePath),
                     FilePath = await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct),
                     MediaFormat = "jpg",
+                    MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Snapshot,
                     FileSizeBytes = new FileInfo(mediaFilePath).Length,
                     RecordedAtUtc = capturedAt.UtcDateTime,
                     DownloadedAtUtc = DateTime.UtcNow,
@@ -554,12 +579,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// Raises the DeviceOffline alert when a health reading turns a camera offline. The link opens the account's sync page, where the
         /// device's polling mode is set. A dispatch failure is logged and never fails the capture.
         /// </summary>
-        private async Task RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
+        private async Task<bool> RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
         {
             INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
             if (dispatcher is null)
             {
-                return;
+                return true;
             }
 
             try
@@ -574,10 +599,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Audience: NotificationAudience.AdminsOnly,
                     Severity: NoticeSeverity.Alert,
                     ActionPath: $"/accounts/{accountId}/sync"), ct);
+                return true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning("Could not dispatch the offline alert for {DeviceName} (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
@@ -600,6 +627,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             public int Failed { get; set; }
 
             public int Throttled { get; set; }
+
+            /// <summary>True when an offline alert failed to dispatch this tick. The capture itself still counts as recorded.</summary>
+            public bool AlertFailed { get; set; }
 
             public int Attempted => Captured + Failed + Throttled;
         }

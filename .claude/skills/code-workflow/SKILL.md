@@ -12,6 +12,7 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 ## Worktrees
 - Base is `wip`, after the checks above.
 - Create or reuse worktrees per the global skill `git-worktree-workflow`, under `F:/vf-worktrees/<feature>`.
+- Submodules (`docs`) in a worktree: commit inside the submodule's own repository first (its branch, not detached), then stage the new submodule commit in the parent. Do not commit only in the parent. Run `git submodule update --init <path>` before editing a submodule path that is empty.
 
 ## Implementation
 - Haiku 5.5 subagents (`model: "haiku"`) write implementation files, one file or small related batch each. Verify every result yourself (build, test, read the diff).

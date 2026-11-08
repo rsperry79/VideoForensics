@@ -31,6 +31,22 @@ public static class ReviewClipBuilder
             .ToList();
     }
 
+    /// <summary>How long an unavailable event is drawn on the timeline. It has no media length, so it gets a fixed visible width.</summary>
+    public const double UnavailableMarkerSeconds = 10;
+
+    /// <summary>
+    /// The unavailable events of one device: each stored event with no downloaded media, drawn at its time and never played.
+    /// Downloaded events are excluded, since their media is in <see cref="BuildClips"/>.
+    /// </summary>
+    public static IReadOnlyList<ClipWindow> BuildUnavailableClips(IEnumerable<Event> events, Guid deviceId)
+    {
+        return events
+            .Where(evt => evt.DeviceId == deviceId && evt.DownloadStatus != EventDownloadStatus.Downloaded)
+            .OrderBy(evt => evt.OccurredAtUtc)
+            .Select(evt => new ClipWindow("event:" + evt.Id.ToString("D"), evt.OccurredAtUtc, UnavailableMarkerSeconds, null, IsUnavailable: true))
+            .ToList();
+    }
+
     /// <summary>
     /// One tile per requested camera, in the requested order. Each tile holds ALL of that camera's playable clips, oldest
     /// first: the player resolves the clip covering the cursor itself and must be able to continue into the next clip, so

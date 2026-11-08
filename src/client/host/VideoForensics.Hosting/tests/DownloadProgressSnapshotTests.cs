@@ -71,7 +71,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [Fact]
         public void DownloadProgressDtoMapping_IdleSnapshot_WithStore_CarriesProgressAndLeavesActivityInLog()
         {
-            var log = new SyncActivityLog();
+            var log = new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance);
             log.Append("pending line");
             var store = new SyncProgressStore();
             store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 2, 4, "Garage"));

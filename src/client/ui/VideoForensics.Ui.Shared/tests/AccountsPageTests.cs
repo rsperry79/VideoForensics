@@ -17,6 +17,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Filters;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -104,6 +105,8 @@ public abstract class AccountsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => WebAuthnMock.Object);
         _ = Services.AddScoped<StepUpService>();
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
+        _ = Services.AddScoped<ProviderAccountFilterState>();
         _ = Services.AddScoped<AccountLinkedBus>();
         _ = Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
     }
@@ -195,15 +198,43 @@ public class AccountsPage_Grid_Tests : AccountsPageTestBase
 public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
 {
     [Fact]
-    public void Accounts_ProviderFilterDefault_AllProvidersSelected()
+    public void Accounts_ProviderFilterDefault_NoProviderSelectedMeansAll()
     {
         _ = RenderPage();
         IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
 
         IRenderedComponent<SfMultiSelect<string[], string>> multiSelect = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
 
-        Assert.NotNull(multiSelect.Instance.Value);
-        Assert.Equal(new[] { "Ring", "Wyze" }.OrderBy(x => x), multiSelect.Instance.Value!.OrderBy(x => x));
+        Assert.Empty(multiSelect.Instance.Value!);
+    }
+
+    [Fact]
+    public void Accounts_StoredSharedProviderChoice_IsAppliedOnLoad()
+    {
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.provider-account").SetResult("{\"providers\":[\"Ring\"],\"account\":null}");
+        IRenderedComponent<Accounts> cut = RenderPage();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Ring Owner", cut.Find("#active-accounts").TextContent);
+            Assert.DoesNotContain("Wyze Owner", cut.Find("#active-accounts").TextContent);
+        });
+    }
+
+    [Fact]
+    public async Task Accounts_ProviderChoiceMadeInSharedState_FiltersTheRows()
+    {
+        IRenderedComponent<Accounts> cut = RenderPage();
+        Assert.Contains("Wyze Owner", cut.Find("#active-accounts").TextContent);
+        ProviderAccountFilterState shared = Services.GetRequiredService<ProviderAccountFilterState>();
+
+        await cut.InvokeAsync(() => shared.SetAsync(new[] { "Ring" }, null));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Ring Owner", cut.Find("#active-accounts").TextContent);
+            Assert.DoesNotContain("Wyze Owner", cut.Find("#active-accounts").TextContent);
+        });
     }
 
     [Fact]

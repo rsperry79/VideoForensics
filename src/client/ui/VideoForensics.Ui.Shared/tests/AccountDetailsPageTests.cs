@@ -17,6 +17,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Filters;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -147,6 +148,8 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
         _ = Services.AddScoped(_ => accountRepository.Object);
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
+        _ = Services.AddScoped<ProviderAccountFilterState>();
         _ = Services.AddScoped(_ => userRepository.Object);
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => MultiProviderAuthServiceMock.Object);

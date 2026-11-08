@@ -3,11 +3,15 @@
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
 @inject ISecurityEventsService SecurityEventsService
 @inject IAdminOperatorService AdminOperatorService
 @inject PairedSessionState SessionState
+@inject RightPanelFilterStore FilterStore
 @inject IStringLocalizer<SecurityEvents> L
+@inject IStringLocalizer<SharedResources> SharedL
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <h4 class="mb-0">@L["Title"]</h4>
@@ -33,12 +37,12 @@ else if (_loadError is not null)
 }
 else
 {
-    <div class="mb-3 d-flex gap-2 align-items-end flex-wrap">
+    <PageRightPanelContent>
         @if (_isSuperAdmin)
         {
-            <div>
-                <label class="form-label d-block">@L["OperatorPickerLabel"]</label>
-                <select class="form-select" style="max-width: 280px;" data-testid="security-events-operator-picker"
+            <div class="right-panel-section">
+                <small style="font-weight: bold;">@L["OperatorPickerLabel"]</small>
+                <select class="form-select" data-testid="security-events-operator-picker" disabled="@_unknownOnly"
                         @bind="_selectedOperatorIdText" @bind:after="OnOperatorPickerChangedAsync">
                     <option value="">@L["MyEventsOption"]</option>
                     @if (_operators is not null)
@@ -50,8 +54,17 @@ else
                     }
                 </select>
             </div>
+            <div class="right-panel-section">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="security-events-unknown-only" data-testid="security-events-unknown-only"
+                           checked="@_unknownOnly" @onchange="OnUnknownOnlyChangedAsync" />
+                    <label class="form-check-label" for="security-events-unknown-only">@L["UnknownOnlyToggle"]</label>
+                </div>
+            </div>
         }
+    </PageRightPanelContent>
 
+    <div class="mb-3 d-flex gap-2 align-items-end flex-wrap">
         <SfButton Content="@L["RefreshButton"]" OnClick="@(() => LoadEventsAsync(_currentOperatorId, _offset))" Disabled="@_isLoadingEvents" CssClass="e-flat" />
     </div>
 
@@ -72,7 +85,6 @@ else
                     {
                         <th>@L["OperatorColumn"]</th>
                     }
-                    <th>@L["EventTypeColumn"]</th>
                     <th>@L["StatusColumn"]</th>
                     <th>@L["IpAddressColumn"]</th>
                     <th>@L["DateTimeColumn"]</th>
@@ -85,9 +97,17 @@ else
                     <tr data-testid="security-event-row">
                         @if (_isSuperAdmin)
                         {
-                            <td>@evt.OperatorId</td>
+                            <td data-testid="security-event-operator">
+                            @if (evt.OperatorId is null)
+                            {
+                                @L["InvalidUserFormat", evt.AttemptedUsername ?? string.Empty]
+                            }
+                            else
+                            {
+                                @evt.OperatorId
+                            }
+                        </td>
                         }
-                        <td>@evt.EventType</td>
                         <td>
                             @if (evt.Success)
                             {
@@ -98,7 +118,7 @@ else
                                 <span style="color: var(--bs-danger);">@L["StatusFailure"]</span>
                             }
                         </td>
-                        <td>@evt.IpAddress</td>
+                        <td data-testid="security-event-ip">@SourceIpLabel.Format(evt.IpAddress, SharedL["LocalHost"])</td>
                         <td><LocalTimeText Value="@evt.OccurredAtUtc" Format="u" /></td>
                         <td>@evt.Reason</td>
                     </tr>
@@ -123,10 +143,14 @@ else
 
 @code {
     private const int PageSize = 25;
+    private const string FilterPageKey = "security-events";
 
     private bool _isLoading = true;
     private bool _isLoadingEvents;
     private bool _isSuperAdmin;
+
+    /// <summary>When true, the list shows only failed logins whose username matched no operator.</summary>
+    private bool _unknownOnly;
 
     private List<SecurityEventSummary>? _events;
     private List<OperatorSummary>? _operators;
@@ -148,6 +172,12 @@ else
         if (firstRender)
         {
             await SessionState.EnsureLoadedAsync();
+
+            // Restore the toggle before the reload so the list is filtered from the first visible load. JS is only
+            // available after the first render, which is why this happens here and not in OnInitializedAsync.
+            RightPanelFilters? stored = await FilterStore.LoadAsync(FilterPageKey);
+            _unknownOnly = stored?.UnknownOnly ?? false;
+
             await LoadAsync();
             StateHasChanged();
         }
@@ -205,7 +235,9 @@ else
 
         try
         {
-            IReadOnlyList<SecurityEventSummary> events = await SecurityEventsService.GetEventsAsync(operatorId, offset, PageSize, CancellationToken.None);
+            // The unknown-login list has no operator, so the operator choice does not apply to it.
+            IReadOnlyList<SecurityEventSummary> events = await SecurityEventsService.GetEventsAsync(
+                _unknownOnly ? null : operatorId, _unknownOnly, offset, PageSize, CancellationToken.None);
             _events = events.ToList();
             _currentOperatorId = operatorId;
             _offset = offset;
@@ -222,6 +254,13 @@ else
         {
             _isLoadingEvents = false;
         }
+    }
+
+    private async Task OnUnknownOnlyChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _unknownOnly = e.Value is bool value && value;
+        await FilterStore.SaveAsync(FilterPageKey, new RightPanelFilters(null, null, UnknownOnly: _unknownOnly));
+        await LoadEventsAsync(_currentOperatorId, offset: 0);
     }
 
     private async Task OnOperatorPickerChangedAsync()

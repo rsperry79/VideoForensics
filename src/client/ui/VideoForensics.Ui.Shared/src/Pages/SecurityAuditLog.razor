@@ -1,5 +1,6 @@
 @page "/settings/security-log"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
@@ -7,6 +8,7 @@
 @inject PairedSessionState SessionState
 @inject ISelfApiHttpClientFactory ClientFactory
 @inject IStringLocalizer<SecurityAuditLog> L
+@inject IStringLocalizer<SharedResources> SharedL
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -71,7 +73,11 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" MinWidth="100" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" MinWidth="100">
+                <Template>
+                    @SourceIpLabel.Format(((SecurityAuditLogEntry)context).SourceIp, SharedL["LocalHost"])
+                </Template>
+            </GridColumn>
             <GridColumn HeaderText="@L["ColDetails"]" MinWidth="100">
                 <Template>
                     @{
