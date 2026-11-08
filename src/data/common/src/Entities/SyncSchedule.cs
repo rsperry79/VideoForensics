@@ -44,12 +44,6 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>The UTC timestamp of the most recent event poll run; null if never run.</summary>
         public DateTime? EventLastRunUtc { get; set; }
 
-        /// <summary>The UTC timestamp when the next snapshot/RSSI poll is scheduled to run; null if no future poll is scheduled.</summary>
-        public DateTime? SnapshotNextRunUtc { get; set; }
-
-        /// <summary>The UTC timestamp of the most recent snapshot/RSSI poll run; null if never run.</summary>
-        public DateTime? SnapshotLastRunUtc { get; set; }
-
         /// <summary>Navigation property: jamming detection schedule windows (empty if UseAdvancedJammingSchedule is false).</summary>
         public ICollection<JammingScheduleWindow> JammingWindows { get; set; } = [];
 

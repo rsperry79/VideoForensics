@@ -503,13 +503,13 @@ namespace VideoForensics.Client.WebApp.Api
             AccountSyncType type = AccountSyncType.All;
             if (body.SyncType != null && !Enum.TryParse(body.SyncType, ignoreCase: true, out type))
             {
-                error = "syncType must be All, Events or Snapshots";
+                error = "syncType must be All or Events";
                 return false;
             }
 
             if (!Enum.IsDefined(type))
             {
-                error = "syncType must be All, Events or Snapshots";
+                error = "syncType must be All or Events";
                 return false;
             }
 

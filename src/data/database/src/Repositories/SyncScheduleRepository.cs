@@ -104,8 +104,6 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
                     existing.EventNextRunUtc = schedule.EventNextRunUtc;
                     existing.EventLastRunUtc = schedule.EventLastRunUtc;
-                    existing.SnapshotNextRunUtc = schedule.SnapshotNextRunUtc;
-                    existing.SnapshotLastRunUtc = schedule.SnapshotLastRunUtc;
 
                     // Update jamming windows: remove all old ones and add new ones
                     existing.JammingWindows.Clear();
@@ -181,17 +179,6 @@ namespace VideoForensics.Data.Database.Repositories
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(ss => ss.EventLastRunUtc, ranAtUtc)
                     .SetProperty(ss => ss.EventNextRunUtc, nextRunUtc), ct);
-        }
-
-        /// <summary>Updates only SnapshotLastRunUtc/SnapshotNextRunUtc; a vanished row is a no-op.</summary>
-        public async Task RecordSnapshotRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(ss => ss.SnapshotLastRunUtc, ranAtUtc)
-                    .SetProperty(ss => ss.SnapshotNextRunUtc, nextRunUtc), ct);
         }
 
         /// <summary>Updates only BackfillCursorUtc; a vanished row is a no-op.</summary>

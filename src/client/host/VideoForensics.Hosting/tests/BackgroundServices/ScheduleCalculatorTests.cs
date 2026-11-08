@@ -184,35 +184,5 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
-        [Fact]
-        public void IsSnapshotDue_NextRunNullOrPast_ReturnsTrueAndFutureReturnsFalse()
-        {
-            SyncSchedule s = Build();
-            Assert.True(ScheduleCalculator.IsSnapshotDue(s, Now));
-            s.SnapshotNextRunUtc = Now.AddMinutes(-1);
-            Assert.True(ScheduleCalculator.IsSnapshotDue(s, Now));
-            s.SnapshotNextRunUtc = Now.AddMinutes(1);
-            Assert.False(ScheduleCalculator.IsSnapshotDue(s, Now));
-        }
-
-        [Fact]
-        public void NextSnapshotRunUtc_WithActiveWindow_UsesWindowInterval()
-        {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
-            s.JammingWindows.Add(Window(1, 11 * 60, 13 * 60, 5));
-            Assert.Equal(Now.AddSeconds(5), ScheduleCalculator.NextSnapshotRunUtc(s, Now, TimeZoneInfo.Utc));
-        }
-
-        [Fact]
-        public void NextSnapshotRunUtc_WithoutWindow_UsesDefaultInterval()
-        {
-            Assert.Equal(Now.AddSeconds(60), ScheduleCalculator.NextSnapshotRunUtc(Build(snapshotSeconds: 60), Now, TimeZoneInfo.Utc));
-        }
-
-        [Fact]
-        public void NextSnapshotRunUtc_DefaultIntervalBelowMinimum_ClampsToMinimum()
-        {
-            Assert.Equal(Now.AddSeconds(SyncSchedule.MinimumSnapshotIntervalSeconds), ScheduleCalculator.NextSnapshotRunUtc(Build(snapshotSeconds: 0), Now, TimeZoneInfo.Utc));
-        }
     }
 }

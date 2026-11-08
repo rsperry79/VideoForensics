@@ -7708,12 +7708,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("SnapshotIntervalSeconds")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("SnapshotLastRunUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("SnapshotNextRunUtc")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("SnapshotRssiIntervalSeconds")
                         .HasColumnType("INTEGER");
 

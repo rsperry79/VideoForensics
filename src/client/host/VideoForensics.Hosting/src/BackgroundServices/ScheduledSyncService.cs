@@ -74,9 +74,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>Per account: when this process last finished a clean event pull. Unset after a restart until the next clean pull.</summary>
         private readonly Dictionary<Guid, DateTime> _cleanPullUtc = [];
 
-        /// <summary>Per account: when this process last finished a snapshot sync without errors.</summary>
-        private readonly Dictionary<Guid, DateTime> _snapshotSyncUtc = [];
-
         /// <summary>Per account: the next time-lapse check. Set from the services check interval.</summary>
         private readonly Dictionary<Guid, DateTime> _nextTimelapseCheckUtc = [];
 
@@ -269,11 +266,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
 
                     DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
-                    if (ScheduleCalculator.IsSnapshotDue(schedule, nowUtc))
-                    {
-                        await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, mediaService, ct);
-                    }
-
                     if (ScheduleCalculator.IsEventDue(schedule, nowUtc))
                     {
                         await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
@@ -346,7 +338,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             DateTime? horizon = TimelapseHorizon.Compute(
                 _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
-                _snapshotSyncUtc.TryGetValue(account.Id, out DateTime synced) ? synced : null,
+                sp.GetService<SnapshotCycle>()?.LastSuccessfulPassUtc(account.Id),
                 PullOverlap);
             if (horizon is null || _segmentsLeftThisTick <= 0)
             {
@@ -446,68 +438,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IForensicsConfiguration c = await config.LoadConfigurationAsync(string.Empty, ct);
             return (c.TimelapseCheckIntervalMinutes, c.TimelapseMaxSegmentMinutes);
         }
-        /// <summary>
-        /// Pulls the latest snapshot for each device of a due account and records the next snapshot run. The provider
-        /// session is restored first, as the event pull does; a failed restore still records the run so it is not retried every tick.
-        /// </summary>
-        private async Task RunSnapshotSyncAsync(
-            IServiceProvider sp,
-            ISyncScheduleRepository scheduleRepository,
-            SyncSchedule schedule,
-            ProviderAccount account,
-            IProviderAuthService authService,
-            IMediaDownloadService mediaService,
-            CancellationToken ct)
-        {
-            DateTime now = _time.GetUtcNow().UtcDateTime;
-            try
-            {
-                // Why: snapshots are Ring calls too. During a rate-limit ban they are skipped, and the run is still recorded so the schedule advances.
-                if (mediaService.GetRateLimitBanUntilUtc() is { } banUntilUtc && banUntilUtc > now)
-                {
-                    _logger.LogWarning("Scheduled snapshot sync skipped for {ProviderName} account: rate-limit ban active until {BanUntilUtc:u}", account.ProviderName, banUntilUtc);
-                    return;
-                }
-
-                // Provider API budget: a refused run is skipped here and the schedule still advances, so it is retried on the next interval.
-                IProviderApiBudgetGuard budget = sp.GetRequiredService<IProviderApiBudgetGuard>();
-                if (!await budget.TryConsumeAsync(account.ProviderName, ct))
-                {
-                    _logger.LogDebug("Scheduled snapshot sync deferred for {ProviderName} account: provider API budget exceeded for this window", account.ProviderName);
-                    return;
-                }
-
-                if (await authService.RestoreFromSavedCredentialsAsync(account.Id, ct))
-                {
-                    SnapshotSyncResult result = await sp.GetRequiredService<ISnapshotSyncService>()
-                        .SyncAccountSnapshotsAsync(account.Id, fromUtc: null, toUtc: null, ct);
-
-                    // Each device attempt is one Ring capture call, so the budget counts them one by one.
-                    for (int i = 0; i < result.DevicesAttempted; i++)
-                    {
-                        await budget.RecordCallAsync(account.ProviderName, ct);
-                    }
-                    if (result.ErrorMessage is not null)
-                    {
-                        _logger.LogWarning("Scheduled snapshot sync for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
-                    }
-                    else
-                    {
-                        _snapshotSyncUtc[account.Id] = _time.GetUtcNow().UtcDateTime;
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("Scheduled snapshot sync skipped: saved credentials could not be restored for {ProviderName} account", account.ProviderName);
-                }
-            }
-            finally
-            {
-                // Uses CancellationToken.None so the run is recorded even when shutdown cancelled the pull.
-                await scheduleRepository.RecordSnapshotRunAsync(account.Id, now, ScheduleCalculator.NextSnapshotRunUtc(schedule, now), CancellationToken.None);
-            }
-        }
-
         private async Task RunEventSyncAsync(
             IServiceProvider sp,
             ISyncScheduleRepository scheduleRepository,

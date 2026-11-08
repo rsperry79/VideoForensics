@@ -110,9 +110,6 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = services.AddScoped<ISnapshotSyncService>(sp => new SnapshotSyncService(
                 sp,
                 sp.GetRequiredService<IProviderAccountRepository>(),
-                sp.GetRequiredService<ILocationRepository>(),
-                sp.GetRequiredService<IDeviceRepository>(),
-                Mock.Of<IStorageSettingsService>(),
                 NullLogger<SnapshotSyncService>.Instance));
 
             ServiceProvider provider = services.BuildServiceProvider();

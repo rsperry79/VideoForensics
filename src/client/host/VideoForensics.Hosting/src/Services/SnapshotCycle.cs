@@ -62,6 +62,9 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _accountPausedUntil = new();
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _deviceRetryAfter = new();
 
+        // Completion time of each account's last pass that did not throw. The time-lapse horizon reads it. Process-lifetime, never logged.
+        private readonly ConcurrentDictionary<Guid, DateTime> _lastSuccessfulPassUtc = new();
+
         /// <summary>Creates the capture cycle.</summary>
         public SnapshotCycle(
             ILogger<SnapshotCycle> logger,
@@ -214,6 +217,23 @@ namespace VideoForensics.Client.Hosting.Services
 
                 await CaptureDeviceAsync(sp, provider, account, accountName, device, interval, counts, ct);
             }
+        }
+
+        /// <summary>Records that an account's pass completed without throwing, at the current time.</summary>
+        /// <param name="accountId">The account whose pass completed.</param>
+        public void MarkPassCompleted(Guid accountId)
+        {
+            _lastSuccessfulPassUtc[accountId] = _time.GetUtcNow().UtcDateTime;
+        }
+
+        /// <summary>
+        /// The completion time of the account's last pass that did not throw, or null when none has completed in this process.
+        /// The time-lapse check reads it as the point up to which capture has covered the account.
+        /// </summary>
+        /// <param name="accountId">The account to read.</param>
+        public DateTime? LastSuccessfulPassUtc(Guid accountId)
+        {
+            return _lastSuccessfulPassUtc.TryGetValue(accountId, out DateTime completed) ? completed : null;
         }
 
         /// <summary>

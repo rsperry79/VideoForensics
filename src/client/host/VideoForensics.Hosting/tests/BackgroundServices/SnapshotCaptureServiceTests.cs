@@ -243,9 +243,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddScoped<ISnapshotSyncService>(sp => new SnapshotSyncService(
                 sp,
                 sp.GetRequiredService<IProviderAccountRepository>(),
-                sp.GetRequiredService<ILocationRepository>(),
-                sp.GetRequiredService<IDeviceRepository>(),
-                Mock.Of<IStorageSettingsService>(),
                 NullLogger<SnapshotSyncService>.Instance));
             _ = services.AddSingleton(_accounts.Object);
             _ = services.AddSingleton(_schedules.Object);
