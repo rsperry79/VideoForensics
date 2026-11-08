@@ -82,6 +82,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         /// <summary>Segments still allowed in the current tick.</summary>
         private int _segmentsLeftThisTick;
+        private int _failedAccountsThisTick;
+        private readonly HashSet<Guid> _inactiveReported = [];
 
         /// <summary>Per account: whether each time-lapse check completes. Reports accounts whose check has stalled.</summary>
         private readonly TimelapseCheckWatchdog _timelapseWatchdog = new();
@@ -121,6 +123,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             try
             {
                 await RunOneTickAsync(ct);
+                _heartbeats?.RecordFailedItems(name, _failedAccountsThisTick);
                 _heartbeats?.RecordRun(name, _time.GetUtcNow());
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -183,6 +186,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
+            _failedAccountsThisTick = 0;
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
@@ -247,9 +251,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     if (!account.IsActive)
                     {
-                        _logger.LogDebug("Scheduled sync skipped: {ProviderName} account is inactive", providerName);
+                        // Reported once until the account is active again, not on every tick.
+                        if (_inactiveReported.Add(account.Id))
+                        {
+                            _logger.LogInformation("Scheduled sync skipped: {ProviderName} account is inactive; it will not run until it is reactivated", providerName);
+                        }
+
                         continue;
                     }
+
+                    _ = _inactiveReported.Remove(account.Id);
 
                     // Keyed services are registered under the configured spelling, so resolve with that key.
                     string? key = enabledProviders.FirstOrDefault(p => string.Equals(p, providerName, StringComparison.OrdinalIgnoreCase));
@@ -287,7 +298,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    // One account's failure must never stop the others.
+                    // One account's failure must never stop the others. It is counted for the health report, so it is not hidden.
+                    _failedAccountsThisTick++;
                     _logger.LogError("Scheduled sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
             }
@@ -303,6 +315,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IStorageLocationProvider? storage = sp.GetService<IStorageLocationProvider>();
             if (config == null || storage == null)
             {
+                // Retried on a later tick, so Debug: it is expected until the services are registered.
+                _logger.LogDebug("Startup time-lapse cleanup waits until the configuration and storage services are registered");
                 return;
             }
 
@@ -348,7 +362,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
                 _snapshotSyncUtc.TryGetValue(account.Id, out DateTime synced) ? synced : null,
                 PullOverlap);
-            if (horizon is null || _segmentsLeftThisTick <= 0)
+            if (horizon is null)
+            {
+                // Why: without a clean pull and a snapshot sync in this process there is no horizon, so the check does nothing yet.
+                _logger.LogInformation("Time-lapse check for {ProviderName} account is waiting for a clean event pull and a snapshot sync in this process", account.ProviderName);
+                return;
+            }
+
+            if (_segmentsLeftThisTick <= 0)
             {
                 return;
             }
@@ -368,7 +389,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // One device failing must not stop the others; its cursor is unchanged, so it retries on the next check.
                     try
                     {
-                        await RunDeviceTimelapseAsync(sp, account.Id, device.Id, device.Name, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct);
+                        if (!await RunDeviceTimelapseAsync(sp, account.Id, device.Id, device.Name, horizon.Value, TimeSpan.FromMinutes(maxSegmentMinutes), ct))
+                        {
+                            deviceFailed = true;
+                        }
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested)
                     {
@@ -390,7 +414,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Plans and builds one device's segments from its cursor up to the horizon, within the tick's budget.</summary>
-        private async Task RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, string deviceName, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
+        /// <returns>True when the device's planned segments were built, or nothing was due; false when a segment failed.</returns>
+        private async Task<bool> RunDeviceTimelapseAsync(IServiceProvider sp, Guid accountId, Guid deviceId, string deviceName, DateTime horizon, TimeSpan maxSegment, CancellationToken ct)
         {
             ITimelapseGapQueries queries = sp.GetRequiredService<ITimelapseGapQueries>();
             DateTimeOffset? earliest = await queries.GetEarliestCaptureAtUtcAsync(deviceId, ct);
@@ -410,7 +435,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (cursor is null || cursor.Value >= horizon)
             {
-                return;
+                return true;
             }
 
             IReadOnlyList<DateTime> events = await queries.ListEventTimesForGapsAsync(deviceId, cursor.Value, horizon, ct);
@@ -433,10 +458,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 SnapshotRollupResult result = await rollup.RollUpSegmentAsync(accountId, deviceId, segment.StartUtc, segment.EndUtc, ct);
                 if (result.ErrorMessage is not null)
                 {
-                    _logger.LogWarning("Time-lapse segment not built: {Error}", result.ErrorMessage);
-                    break;
+                    // Why: a failed segment leaves the cursor where it was, so the check is not complete and the watchdog sees it.
+                    _logger.LogWarning("Time-lapse segment not built for {DeviceName}: {Error}", deviceName, result.ErrorMessage);
+                    return false;
                 }
             }
+
+            return true;
         }
 
         /// <summary>The services-page check interval and max segment. The configuration service is required, so a missing one fails the check.</summary>
@@ -545,6 +573,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
+                    _failedAccountsThisTick++;
                     _logger.LogError("Scheduled first sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 }
 
@@ -598,7 +627,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         referenceCache,
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<InventorySyncService>(),
                         sp.GetRequiredService<IDeviceConfigRepository>());
-                    _ = await inventorySync.SyncAsync(accountId, ct);
+                    InventorySyncResult inventory = await inventorySync.SyncAsync(accountId, ct);
+                    if (inventory.DeviceConfigFailures > 0)
+                    {
+                        _logger.LogWarning("Device configuration could not be read for {ProviderName} account: {Count} device(s); the inventory was synced", providerName, inventory.DeviceConfigFailures);
+                    }
 
                     // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(
@@ -660,6 +693,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
+                _failedAccountsThisTick++;
                 _logger.LogError("Scheduled event sync failed for {ProviderName} account: {Message} ({ErrorType})", providerName, ex.Message, ex.GetType().Name);
                 outcome = ex.Message;
             }
@@ -667,8 +701,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             // A clean scheduled pull is a completed sync, the same as a manual one, so the Sync tab's Last Sync Completed is current.
             if (outcome is null && !backfillInProgress)
             {
-                await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct);
-                _cleanPullUtc[accountId] = _time.GetUtcNow().UtcDateTime;
+                // Why: the clean-pull time gates the time-lapse horizon, so it is set only when the completion is recorded.
+                // A failed write leaves it unset, and the next tick retries the write.
+                if (await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct))
+                {
+                    _cleanPullUtc[accountId] = _time.GetUtcNow().UtcDateTime;
+                }
             }
 
             await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome, syncType, counts);
@@ -719,22 +757,25 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>
-        private async Task MarkSyncCompletedAsync(IProviderAccountRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
+        /// <returns>True when the completion is recorded, or the account no longer exists; false when the write failed.</returns>
+        private async Task<bool> MarkSyncCompletedAsync(IProviderAccountRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
         {
             try
             {
                 ProviderAccount? account = await accounts.GetAsync(accountId, CancellationToken.None);
                 if (account is null)
                 {
-                    return;
+                    return true;
                 }
 
                 account.LastSyncCompletedUtc = completedUtc;
                 await accounts.UpdateAsync(account, CancellationToken.None);
+                return true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError("Could not record the completed scheduled sync: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                return false;
             }
         }
 
