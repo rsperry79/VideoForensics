@@ -190,6 +190,22 @@ public class BitrateReview_Tests : BunitContext
     }
 
     [Fact]
+    public void BitrateReview_FlagWithEventType_PassesEventTypeToTimeline()
+    {
+        MediaFlag flag = Flag(MediaFlagType.BitrateCollapse, Guid.NewGuid());
+        flag.EventType = "person";
+        MediaItem clip = Clip(flag.DeviceId, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
+
+        cut.WaitForAssertion(() => Assert.Equal("person", cut.FindComponent<HistogramTimeline>().Instance.EventType));
+    }
+
+    [Fact]
     public void BitrateReview_StillClip_ShowsStillAndNoTimeline()
     {
         MediaFlag flag = Flag(MediaFlagType.BitrateCollapse, Guid.NewGuid());

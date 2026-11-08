@@ -68,7 +68,8 @@
                                WindowStartUtc="@_windowStart"
                                WindowEndUtc="@_windowEnd"
                                MarkTimes="@_dipTimes"
-                               OnRateChange="@(r => _rate = r)">
+                               OnRateChange="@(r => _rate = r)"
+                               EventType="@_flag?.EventType">
                 <Histogram>
                     @if (_points is { } points)
                     {

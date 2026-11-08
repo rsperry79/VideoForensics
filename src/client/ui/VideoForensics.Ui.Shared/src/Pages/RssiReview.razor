@@ -67,7 +67,8 @@
                                WindowStartUtc="@_windowStart"
                                WindowEndUtc="@_windowEnd"
                                Markers="@_markers"
-                               OnRateChange="@(r => _rate = r)">
+                               OnRateChange="@(r => _rate = r)"
+                               EventType="@_flag?.EventType">
                 <Histogram>
                     <RssiSeriesChart Readings="@_readings" WindowStartUtc="@_windowStart" WindowEndUtc="@_windowEnd" Player="@player" />
                 </Histogram>
