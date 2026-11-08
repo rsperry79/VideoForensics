@@ -20,6 +20,7 @@
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Client.Platform.Windows.csproj" />
     <ProjectReference Include="../../../../core/helpers/forensics/tests/VideoForensics.Core.Helpers.Forensics.Tests.csproj" />
   </ItemGroup>

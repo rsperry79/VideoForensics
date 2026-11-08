@@ -20,6 +20,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Utils.SelfTest.csproj" />
     <ProjectReference Include="../../../data/database/src/VideoForensics.Data.Database.csproj" />
   </ItemGroup>
