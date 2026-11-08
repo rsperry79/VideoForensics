@@ -338,7 +338,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             // One line per attempt, so a failing device shows its HTTP status and how long the provider took.
-            _logger.LogInformation("Snapshot capture attempt for {DeviceName} on {AccountName}: HTTP {HttpStatus} after {ElapsedMs} ms, image {ImageBytes} bytes",
+            _logger.LogDebug("Snapshot capture attempt for {DeviceName} on {AccountName}: HTTP {HttpStatus} after {ElapsedMs} ms, image {ImageBytes} bytes",
                 device.Name, accountName, attempt.HttpStatus?.ToString(CultureInfo.InvariantCulture) ?? "none",
                 (long)(_time.GetUtcNow() - attemptedAt).TotalMilliseconds, attempt.Image?.Length ?? 0);
 
