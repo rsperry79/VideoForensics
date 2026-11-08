@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -60,7 +61,7 @@ namespace VideoForensics.Client.Hosting.Tests
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await using ServiceProvider provider = await BuildProviderAsync(capture.Object);
-            SnapshotCaptureService scheduler = BuildScheduler(provider);
+            SnapshotSyncBackgroundService scheduler = BuildScheduler(provider);
 
             // First tick: the camera has no attempt in the window, so it is due and captured.
             await scheduler.RunOneTickAsync(CancellationToken.None);
@@ -85,14 +86,12 @@ namespace VideoForensics.Client.Hosting.Tests
             return storage.Object;
         }
 
-        private SnapshotCaptureService BuildScheduler(IServiceProvider provider)
+        private SnapshotSyncBackgroundService BuildScheduler(IServiceProvider provider)
         {
-            var cycle = new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, TimeProvider.System, MediaStorage(), new ForensicsConfiguration());
             return new(
             provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<SnapshotCaptureService>.Instance,
-            TimeProvider.System,
-            cycle);
+            NullLogger<SnapshotSyncBackgroundService>.Instance,
+            TimeProvider.System);
         }
 
         /// <summary>Builds the real data layer on a temp database, seeds one Ring account with one camera, and fakes only the provider.</summary>
@@ -107,6 +106,14 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", new RingDeviceOnlineStatus());
             _ = services.AddSingleton(Mock.Of<ISessionProvider>());
+            _ = services.AddSingleton(new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, TimeProvider.System, MediaStorage(), new ForensicsConfiguration()));
+            _ = services.AddScoped<ISnapshotSyncService>(sp => new SnapshotSyncService(
+                sp,
+                sp.GetRequiredService<IProviderAccountRepository>(),
+                sp.GetRequiredService<ILocationRepository>(),
+                sp.GetRequiredService<IDeviceRepository>(),
+                Mock.Of<IStorageSettingsService>(),
+                NullLogger<SnapshotSyncService>.Instance));
 
             ServiceProvider provider = services.BuildServiceProvider();
             IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();

@@ -12,7 +12,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Review;
 /// </summary>
 public static class ReviewClipBuilder
 {
-    // The host writes this marker (SnapshotCaptureService). Ui.Shared cannot reference the host, so the value is repeated
+    // The host writes this marker (SnapshotSyncBackgroundService). Ui.Shared cannot reference the host, so the value is repeated
     // here and must change together.
     private const string SnapshotType = "snapshot";
     private const string CaptureSource = "capture";

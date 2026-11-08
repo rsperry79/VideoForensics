@@ -84,7 +84,7 @@ namespace VideoForensics.Client.Hosting.Services
 
                     // Only cameras have snapshots. Chimes, base stations and range extenders are health-only devices, and their
                     // health comes from the device health sync, so asking Ring for a snapshot would only fail.
-                    if (!SnapshotCaptureService.HasCamera(device.Type))
+                    if (!SnapshotSyncBackgroundService.HasCamera(device.Type))
                     {
                         continue;
                     }
@@ -172,6 +172,45 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             return new SnapshotSyncResult(targets.Count, succeeded, saved, failed, error);
+        }
+
+        /// <inheritdoc />
+        public async Task<SnapshotCycle.TickCounts> RunCycleAsync(CancellationToken cancellationToken)
+        {
+            // The cycle is a process-lifetime singleton (its pauses and holds must survive ticks), so it is resolved here
+            // rather than injected: this service is scoped, and the timer that calls it has no scope-bound state to share.
+            SnapshotCycle cycle = _services.GetRequiredService<SnapshotCycle>();
+            var counts = new SnapshotCycle.TickCounts();
+            IReadOnlyList<ProviderAccount> accounts = await _accounts.ListActiveAsync(cancellationToken);
+            _logger.LogDebug("Snapshot capture tick started: {AccountCount} active accounts", accounts.Count);
+
+            foreach (ProviderAccount account in accounts)
+            {
+                if (account.RemovedUtc != null || !account.IsActive
+                    || !string.Equals(account.ProviderName, SnapshotCycle.RingProviderName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    await cycle.CaptureAccountAsync(_services, account, counts, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // One account's failure must never stop the others.
+                    cycle.HoldAccountAfterError(account.Id);
+                    counts.AccountFailed = true;
+                    _logger.LogError("Snapshot capture failed for {ProviderName} account: {Message} ({ErrorType})", account.ProviderName, ex.Message, ex.GetType().Name);
+                }
+            }
+
+            return counts;
         }
     }
 }

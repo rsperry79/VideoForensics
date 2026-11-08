@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             _ = services.AddVideoForensicsSnapshotCapture(Config());
 
-            Assert.Contains(services, d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(SnapshotCaptureService));
+            Assert.Contains(services, d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(SnapshotSyncBackgroundService));
             Assert.Contains(services, d => d.ServiceType == typeof(IProviderSnapshotCapture) && d.IsKeyedService && Equals(d.ServiceKey, "Ring"));
         }
 
@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             _ = services.AddVideoForensicsSnapshotCapture(Config(("SnapshotCapture:Enabled", "false")));
 
-            Assert.DoesNotContain(services, d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(SnapshotCaptureService));
+            Assert.DoesNotContain(services, d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(SnapshotSyncBackgroundService));
             Assert.DoesNotContain(services, d => d.ServiceType == typeof(IProviderSnapshotCapture));
         }
     }

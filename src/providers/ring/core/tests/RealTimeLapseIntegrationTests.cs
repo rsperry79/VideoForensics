@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         // A loop needs at least two frames to show any motion; fewer means Ring is not serving images, and the test should say so.
         private const int MinimumImages = 2;
 
-        // Same metadata the capture service writes on a capture's Media row (SnapshotCaptureService.CaptureSnapshotMetadata).
+        // Same metadata the capture service writes on a capture's Media row (SnapshotCycle.CaptureSnapshotMetadata).
         private const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
 
         public ValueTask InitializeAsync()

@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Hosting.Services
     /// <summary>
     /// One capture pass for one Ring account: decides which of its enabled cameras are due, runs each due capture through
     /// <see cref="IProviderSnapshotCapture"/>, and records every attempt in <see cref="SnapshotCapture"/>. A 200 also writes the JPEG
-    /// and registers it as a snapshot Media row. Called once per account by <see cref="BackgroundServices.SnapshotCaptureService"/>
+    /// and registers it as a snapshot Media row. Called once per account by <see cref="BackgroundServices.SnapshotSyncBackgroundService"/>
     /// on each tick.
     ///
     /// Holds the process-lifetime guards (account pauses and per-device holds), so it is registered as a singleton. The Ring pacers
@@ -89,6 +89,9 @@ namespace VideoForensics.Client.Hosting.Services
 
             /// <summary>True when an offline alert failed to dispatch this tick. The capture itself still counts as recorded.</summary>
             public bool AlertFailed { get; set; }
+
+            /// <summary>True when one account's capture pass threw this tick. The other accounts still ran.</summary>
+            public bool AccountFailed { get; set; }
 
             /// <summary>Attempts made this tick, across all outcomes.</summary>
             public int Attempted => Captured + Failed + Throttled;

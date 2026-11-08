@@ -121,7 +121,7 @@ namespace VideoForensics.Client.Hosting
         }
 
         /// <summary>
-        /// Registers <see cref="SnapshotCaptureService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
+        /// Registers <see cref="SnapshotSyncBackgroundService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
         /// registers nothing. Server tier only (VideoForensics.Client.WebApp); never call this from a client host.
         /// </summary>
         public static IServiceCollection AddVideoForensicsSnapshotCapture(this IServiceCollection services, IConfiguration configuration)
@@ -139,7 +139,7 @@ namespace VideoForensics.Client.Hosting
             services.TryAddSingleton(TimeProvider.System);
             // Singleton: the cycle holds the account pauses and device holds across ticks.
             _ = services.AddSingleton<SnapshotCycle>();
-            _ = services.AddHostedService<SnapshotCaptureService>();
+            _ = services.AddHostedService<SnapshotSyncBackgroundService>();
 
             // Daily trim of operational tables (error rows, call log, telemetry). Audit tables are not pruned.
             _ = services.AddHostedService<OperationalLogPruneService>();
