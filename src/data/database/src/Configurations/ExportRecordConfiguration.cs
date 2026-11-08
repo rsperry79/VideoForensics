@@ -19,9 +19,6 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(er => er.CaseReference)
                 .HasMaxLength(256);
 
-            _ = builder.Property(er => er.RecipientDescription)
-                .HasMaxLength(512);
-
             _ = builder.Property(er => er.ArchiveFileName)
                 .IsRequired()
                 .HasMaxLength(1024);

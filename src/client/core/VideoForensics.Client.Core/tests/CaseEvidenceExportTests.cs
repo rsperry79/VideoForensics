@@ -59,7 +59,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(r => r.GetHistoryForEntityAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
             _ = _exportRecords
-                .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
+                .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ExportRecord { Id = Guid.NewGuid(), ExportedByUserName = "u", ArchiveFileName = "a.zip", ArchiveSha256Hash = "h", AppVersion = "1" });
             _ = _reports.Setup(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new EvidenceReviewReport());
             _ = _reports.Setup(r => r.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ForensicAnalysisReport());
@@ -270,7 +270,7 @@ namespace VideoForensics.Client.Core.Tests
 
             _ = await _orchestrator.ExportEvidenceAsync(caseId, CancellationToken.None);
 
-            _exportRecords.Verify(s => s.RecordExportAsync(It.IsAny<string>(), "C-1", null, It.IsAny<string>(), It.IsAny<string>(), false, It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()), Times.Once);
+            _exportRecords.Verify(s => s.RecordExportAsync(It.IsAny<string>(), "C-1", It.IsAny<string>(), It.IsAny<string>(), false, It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

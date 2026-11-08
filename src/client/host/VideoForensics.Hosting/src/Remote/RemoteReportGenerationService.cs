@@ -277,7 +277,6 @@ namespace VideoForensics.Client.Hosting.Remote
                 ExportedAtUtc = dto.ExportedAtUtc,
                 ExportedByUserName = dto.ExportedByUserName,
                 CaseReference = dto.CaseReference,
-                RecipientDescription = dto.RecipientDescription,
                 ItemCount = dto.ItemCount
             };
         }

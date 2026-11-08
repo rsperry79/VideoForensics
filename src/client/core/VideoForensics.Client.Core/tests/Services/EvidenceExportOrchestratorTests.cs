@@ -78,7 +78,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                     .Returns(Task.FromResult((IReadOnlyList<ActionLogEntry>)[]));
 
                 _ = _exportRecordServiceMock
-                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
+                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(new ExportRecord
                     {
                         Id = Guid.NewGuid(),
@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                 Assert.NotNull(result);
                 // Verify export was recorded
                 _exportRecordServiceMock.Verify(
-                    s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()),
+                    s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
             }
             finally
@@ -154,7 +154,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                     .Returns(Task.FromResult((IReadOnlyList<ActionLogEntry>)[]));
 
                 _ = _exportRecordServiceMock
-                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
+                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(new ExportRecord
                     {
                         Id = Guid.NewGuid(),

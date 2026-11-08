@@ -44,7 +44,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -146,7 +145,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -226,7 +224,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     .ReturnsAsync([]);
 
                 _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
-                    It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -335,7 +332,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -433,7 +429,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     .ReturnsAsync([]);
 
                 _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
-                    It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),

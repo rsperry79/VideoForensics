@@ -35,7 +35,6 @@ namespace VideoForensics.Data.Core.Services
         public async Task<ExportRecord> RecordExportAsync(
             string exportedByUserName,
             string? caseReference,
-            string? recipientDescription,
             string archiveFileName,
             string archiveSha256Hash,
             bool wasEncrypted,
@@ -54,7 +53,6 @@ namespace VideoForensics.Data.Core.Services
                         ExportedAtUtc = DateTime.UtcNow,
                         ExportedByUserName = exportedByUserName,
                         CaseReference = caseReference,
-                        RecipientDescription = recipientDescription,
                         ArchiveFileName = archiveFileName,
                         ArchiveSha256Hash = archiveSha256Hash,
                         WasEncrypted = wasEncrypted,
@@ -76,7 +74,6 @@ namespace VideoForensics.Data.Core.Services
                     var details = new
                     {
                         CaseReference = caseReference,
-                        RecipientDescription = recipientDescription,
                         ItemCount = items.Count,
                         WasEncrypted = wasEncrypted
                     };

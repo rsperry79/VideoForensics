@@ -92,9 +92,6 @@
   <data name="ColCaseReference" xml:space="preserve">
     <value>Case Reference</value>
   </data>
-  <data name="ColRecipient" xml:space="preserve">
-    <value>Recipient</value>
-  </data>
   <data name="ColItemCount" xml:space="preserve">
     <value>Item Count</value>
   </data>

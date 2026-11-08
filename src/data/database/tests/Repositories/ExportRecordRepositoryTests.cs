@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Utils.Testing;
 
@@ -142,6 +144,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.Equal(record3.Id, history[0].Id);
             Assert.Equal(record2.Id, history[1].Id);
             Assert.Equal(record1.Id, history[2].Id);
+        }
+
+        [Fact]
+        public void ExportRecord_HasNoRecipientDescription_InClrTypeOrEfModel()
+        {
+            Assert.Null(typeof(ExportRecord).GetProperty("RecipientDescription"));
+
+            using VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            IEntityType? entity = ctx.Model.FindEntityType(typeof(ExportRecord));
+            Assert.NotNull(entity);
+            Assert.Null(entity.FindProperty("RecipientDescription"));
         }
     }
 }

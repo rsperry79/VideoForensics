@@ -409,7 +409,6 @@ namespace VideoForensics.Client.Core.Services
                 _ = await _exportRecordService.RecordExportAsync(
                     Environment.UserName,
                     caseReference,
-                    null,
                     archiveFileName,
                     archiveHash,
                     wasEncrypted: false,

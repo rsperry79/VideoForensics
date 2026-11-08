@@ -2219,10 +2219,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int>("ItemCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("RecipientDescription")
-                        .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("WasEncrypted")
                         .HasColumnType("INTEGER");
 

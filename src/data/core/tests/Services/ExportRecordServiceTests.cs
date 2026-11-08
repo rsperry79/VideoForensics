@@ -42,7 +42,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Arrange
             string exportedByUserName = "test_user";
             string caseReference = "Case-2024-001";
-            string recipientDescription = "Law Enforcement";
             string archiveFileName = "evidence_export.zip";
             string archiveSha256Hash = "abc123def456";
             bool wasEncrypted = true;
@@ -98,7 +97,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReference,
-                recipientDescription,
                 archiveFileName,
                 archiveSha256Hash,
                 wasEncrypted,
@@ -132,7 +130,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Arrange
             string exportedByUserName = "analyst_123";
             string caseReference = "Case-2024-002";
-            string recipientDescription = "District Attorney";
             string archiveFileName = "evidence_2024.zip";
             string archiveSha256Hash = "xyz789";
             bool wasEncrypted = false;
@@ -177,7 +174,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             _ = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReference,
-                recipientDescription,
                 archiveFileName,
                 archiveSha256Hash,
                 wasEncrypted,
@@ -188,7 +184,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             Assert.NotNull(capturedRecord);
             Assert.Equal(exportedByUserName, capturedRecord.ExportedByUserName);
             Assert.Equal(caseReference, capturedRecord.CaseReference);
-            Assert.Equal(recipientDescription, capturedRecord.RecipientDescription);
             Assert.Equal(archiveFileName, capturedRecord.ArchiveFileName);
             Assert.Equal(archiveSha256Hash, capturedRecord.ArchiveSha256Hash);
             Assert.False(capturedRecord.WasEncrypted);
@@ -197,7 +192,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         }
 
         [Fact]
-        public async Task RecordExportAsync_WithNullCaseReferenceAndRecipient_StillLogsEntry()
+        public async Task RecordExportAsync_WithNullCaseReference_StillLogsEntry()
         {
             // Arrange
             string exportedByUserName = "analyst";
@@ -238,7 +233,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 null,
-                null,
                 archiveFileName,
                 archiveSha256Hash,
                 false,
@@ -248,7 +242,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Assert
             Assert.NotNull(result);
             Assert.Null(result.CaseReference);
-            Assert.Null(result.RecipientDescription);
 
             mockActionLogRepoInContext.Verify(
                 x => x.AppendAsync(
@@ -307,7 +300,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Act
             _ = await _service.RecordExportAsync(
                 "user",
-                null,
                 null,
                 "export.zip",
                 "archive_hash",
@@ -462,7 +454,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReferenceWithNewlines,
-                null,
                 archiveFileNameWithNewlines,
                 archiveSha256Hash,
                 false,
