@@ -8,7 +8,7 @@ namespace VideoForensics.Client.WebApp.Services
     /// <summary>
     /// Service for checking if an IP address is within any manually-banned range.
     /// Loads active ranges from the database. Each range is a CIDR block (e.g. "192.168.0.0/24")
-    /// or a single address with no prefix (e.g. "203.0.113.50"), parsed by IPNetwork (pinned to 2.1.2, the version Makaretu needs).
+    /// or a single address with no prefix (e.g. "203.0.113.50"), parsed by IPNetwork2.
     /// </summary>
     public class BannedIpMatchService : IBannedIpMatchService
     {
@@ -40,55 +40,25 @@ namespace VideoForensics.Client.WebApp.Services
             return false;
         }
 
-        /// <summary>
-        /// True when the address falls inside the CIDR range. A bare address is a single-host range. IPv4-mapped IPv6
-        /// addresses match IPv4 ranges. Compares address bytes directly: no IPNetwork type, because Makaretu brings its own
-        /// copy of that assembly and the two clash.
-        /// </summary>
         private bool IsIpInRange(IPAddress ipAddress, string range)
         {
-            string[] parts = range.Split('/');
-            if (parts.Length > 2 || !IPAddress.TryParse(parts[0], out IPAddress? network))
+            try
             {
-                _logger.LogDebug("Invalid banned range format");
-                return false;
-            }
-
-            IPAddress address = ipAddress.IsIPv4MappedToIPv6 ? ipAddress.MapToIPv4() : ipAddress;
-            network = network.IsIPv4MappedToIPv6 ? network.MapToIPv4() : network;
-
-            int maxPrefix = network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128;
-            int prefix = maxPrefix;
-            if (parts.Length == 2 && (!int.TryParse(parts[1], out prefix) || prefix < 0 || prefix > maxPrefix))
-            {
-                _logger.LogDebug("Invalid banned range prefix");
-                return false;
-            }
-
-            byte[] a = address.GetAddressBytes();
-            byte[] n = network.GetAddressBytes();
-            if (a.Length != n.Length)
-            {
-                return false;
-            }
-
-            int wholeBytes = prefix / 8;
-            for (int i = 0; i < wholeBytes; i++)
-            {
-                if (a[i] != n[i])
+                // A bare address is a single-host range: give it a full-length prefix before parsing.
+                string cidr = range.Contains('/') ? range : range + (range.Contains(':') ? "/128" : "/32");
+                if (!IPNetwork2.TryParse(cidr, out IPNetwork2? network))
                 {
+                    _logger.LogDebug("Invalid banned range format");
                     return false;
                 }
-            }
 
-            int remainingBits = prefix % 8;
-            if (remainingBits == 0)
+                return network.Contains(ipAddress);
+            }
+            catch (Exception ex)
             {
-                return true;
+                _logger.LogError("Error checking banned range: {CidrRange}: {Message} ({ErrorType})", range, ex.Message, ex.GetType().Name);
+                return false;
             }
-
-            int mask = (0xFF << (8 - remainingBits)) & 0xFF;
-            return (a[wholeBytes] & mask) == (n[wholeBytes] & mask);
         }
     }
 
