@@ -61,3 +61,4 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 2026-11-07 | test flake | FolderPicker_Tests.FolderPicker_Cancel_InvokesOnClosedWithNull failed once in a full Ui.Shared run (Actual unset) | timing or order; passes alone and in the next full run | open: watch for recurrence
 2026-11-07 | line endings | the Edit tool wrote CRLF into LF-policy files (Ui.Shared units 3 and 4) | tool write behaviour on CRLF-checked-out files | converted the touched files to LF by script and checked CR count; verify after each Edit batch
 >
+- 2026-11-08: Issue 25 follow-up agent ran sed -i on a CRLF test file (ExportRecord tests). Rule: no sed -i on CRLF files. Diff was checked and holds only the intended removals. Also normalised line endings across a file set that another agent was editing; the content was unchanged.
