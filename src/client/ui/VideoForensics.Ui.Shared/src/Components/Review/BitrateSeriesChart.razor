@@ -52,6 +52,10 @@
     [Parameter]
     public DateTime? StartUtc { get; set; }
 
+    /// <summary>The camera's all-time sample std dev in kbps, from the server. Null with fewer than two readings; the tooltip then leaves the σ part out.</summary>
+    [Parameter]
+    public double? StdDevKbps { get; set; }
+
     /// <summary>The signed-in user's zone, for the tooltip's clock time. Until the browser's zone is known, UTC is used.</summary>
     [CascadingParameter]
     private UserTimeZone? UserTz { get; set; }
@@ -95,13 +99,16 @@
         await Player.SeekToUtcAsync(start.AddSeconds(BitrateChartGeometry.SeekSeconds(second)));
     }
 
-    /// <summary>The bar's clock time in the user's zone (or its offset when the clip has no start), and its bit rate.</summary>
+    /// <summary>The bar's clock time in the user's zone (or its offset when the clip has no start), its bit rate, and the camera's std dev when known.</summary>
     private string BarTooltip(int second, long kbps)
     {
         string when = StartUtc is DateTime start
             ? SignalChartModel.FormatTooltipTime(start.AddSeconds(second), Zone)
             : L["BitrateBarOffset", second].Value;
-        return L["BitrateBarTooltip", when, kbps.ToString(CultureInfo.InvariantCulture)].Value;
+        string value = kbps.ToString(CultureInfo.InvariantCulture);
+        return StdDevKbps is double sd
+            ? L["BitrateBarTooltipWithStdDev", when, value, sd.ToString("0", CultureInfo.InvariantCulture)].Value
+            : L["BitrateBarTooltip", when, value].Value;
     }
 
     private static string Format(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);

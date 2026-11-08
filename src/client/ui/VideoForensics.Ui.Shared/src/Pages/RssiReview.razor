@@ -70,7 +70,7 @@
                                OnRateChange="@(r => _rate = r)"
                                EventType="@_flag?.EventType">
                 <Histogram>
-                    <RssiSeriesChart Readings="@_readings" WindowStartUtc="@_windowStart" WindowEndUtc="@_windowEnd" Player="@player" />
+                    <RssiSeriesChart Readings="@_readings" WindowStartUtc="@_windowStart" WindowEndUtc="@_windowEnd" Player="@player" StdDevDbm="@_stdDevDbm" />
                 </Histogram>
             </HistogramTimeline>
         }
@@ -105,6 +105,7 @@
     private DateTime _windowEnd;
     private IReadOnlyCollection<MediaFlag> _markers = [];
     private IReadOnlyList<SignalSample> _readings = [];
+    private double? _stdDevDbm;
     private string? _noUnreviewedMessage;
 
     protected override async Task OnParametersSetAsync()
@@ -127,6 +128,7 @@
         _source = null;
         _markers = [];
         _readings = [];
+        _stdDevDbm = null;
         _noUnreviewedMessage = null;
         _state = MediaFitState.FlagNotFound;
         try
@@ -176,7 +178,10 @@
             }
 
             SignalAnalysis analysis = await Signals.AnalyzeAsync([flag.DeviceId], _windowStart, _windowEnd, ct);
-            _readings = analysis.Devices.FirstOrDefault(d => d.DeviceId == flag.DeviceId)?.Readings ?? [];
+            SignalDeviceAnalysis? camera = analysis.Devices.FirstOrDefault(d => d.DeviceId == flag.DeviceId);
+            _readings = camera?.Readings ?? [];
+            // The camera's all-time std dev, the same figure the signal history shows as Dev. Computed on the server.
+            _stdDevDbm = camera?.AllTime.StdDev;
         }
         catch (OperationCanceledException) when (_disposeCts.IsCancellationRequested)
         {
