@@ -25,7 +25,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _reader = new DeviceTypedSettingsReader(_fixture.Factory);
 
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            var locationRepository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
+            var locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<LocationRepository>());
             var deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
             Location location = TestDataBuilder.BuildLocation();
             await locationRepository.AddAsync(location, CancellationToken.None);

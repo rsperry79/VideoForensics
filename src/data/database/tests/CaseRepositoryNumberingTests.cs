@@ -38,7 +38,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
             _actionLogRepository = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _locationRepository = new LocationRepository(_fixture.Factory, _loggerFactory.CreateLogger<LocationRepository>());
+            _locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
             _deviceRepository = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());
             _repository = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>());
         }
@@ -751,7 +751,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var factory = new SimpleFactory(new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options);
             Location loc = TestDataBuilder.BuildLocation(name: "Race Location");
-            await new LocationRepository(factory, _loggerFactory.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            await new LocationRepository(new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Race Device");
             await new DeviceRepository(factory, _loggerFactory.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;

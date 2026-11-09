@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
@@ -53,7 +54,7 @@ namespace VideoForensics.Data.Database.Tests
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
             Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
-            await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            await new LocationRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
             await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
@@ -294,7 +295,7 @@ namespace VideoForensics.Data.Database.Tests
 
             // Seed the device in the in-memory connection
             var plainFactory = new SimpleFactory(plain);
-            var locRepo = new LocationRepository(plainFactory, _loggerFactory.CreateLogger<LocationRepository>());
+            var locRepo = new LocationRepository(new UnitOfWork(plainFactory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
             var devRepo = new DeviceRepository(plainFactory, _loggerFactory.CreateLogger<DeviceRepository>());
             Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
             await locRepo.AddAsync(loc, CancellationToken.None);

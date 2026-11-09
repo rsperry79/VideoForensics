@@ -62,7 +62,7 @@ namespace VideoForensics.Data.Database.Tests
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
             Location loc = TestDataBuilder.BuildLocation(name: "Test Location");
-            await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            await new LocationRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Test Device");
             await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;

@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new OperatorCredentialRepository(Fixture.Factory, CreateLogger<OperatorCredentialRepository>());
+            _repository = new OperatorCredentialRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<OperatorCredentialRepository>());
         }
 
         /// <summary>Helper method to create and persist a parent operator for testing.</summary>

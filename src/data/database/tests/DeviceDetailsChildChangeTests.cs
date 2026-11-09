@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Database.Tests
             var unitOfWork = new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
             _repository = new DeviceDetailsRepository(unitOfWork, CreateLogger<DeviceDetailsRepository>());
 
-            var locationRepository = new LocationRepository(Fixture.Factory, CreateLogger<LocationRepository>());
+            var locationRepository = new LocationRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<LocationRepository>());
             var deviceRepository = new DeviceRepository(Fixture.Factory, CreateLogger<DeviceRepository>());
             Location location = TestDataBuilder.BuildLocation();
             await locationRepository.AddAsync(location, CancellationToken.None);

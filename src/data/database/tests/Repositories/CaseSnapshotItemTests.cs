@@ -31,7 +31,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
             _cases = new CaseRepository(unitOfWork, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
             _snapshots = new SnapshotCaptureRepository(_fixture.Factory, _loggerFactory.CreateLogger<SnapshotCaptureRepository>());
-            _locations = new LocationRepository(_fixture.Factory, _loggerFactory.CreateLogger<LocationRepository>());
+            _locations = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
             _devices = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());
         }
 
