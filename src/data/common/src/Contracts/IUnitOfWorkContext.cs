@@ -17,9 +17,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets the device repository.</summary>
         IDeviceRepository Devices { get; }
 
-        /// <summary>Gets the doorbot-to-ding link repository.</summary>
-        IDingIdLinkRepository DingIdLinks { get; }
-
         /// <summary>Gets the media item repository.</summary>
         IMediaItemRepository MediaItems { get; }
 

@@ -16,9 +16,18 @@ namespace VideoForensics.Data.Database.Repositories
     /// from that history; events that were discovered but never downloaded (and so never appear in
     /// DownloadEvents at all) cannot be recovered by this backfill.
     /// </summary>
-    public static class EventBackfillService
+    public class EventBackfillService
     {
-        public static async Task<int> BackfillFromDownloadEventsAsync(
+        private readonly IDingIdLinkRepository _dingIdLinks;
+
+        /// <summary>Initializes a new instance of the EventBackfillService.</summary>
+        public EventBackfillService(IDingIdLinkRepository dingIdLinks)
+        {
+            _dingIdLinks = dingIdLinks;
+        }
+
+        /// <summary>Reconstructs Event rows from DownloadEvents and MediaItems. Returns the number of Events written.</summary>
+        public async Task<int> BackfillFromDownloadEventsAsync(
             IDownloadEventRepository downloadEventRepository,
             IMediaItemRepository mediaItemRepository,
             IEventRepository eventRepository,
@@ -75,7 +84,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Returns the id to store for a DownloadEvent, or null when the row cannot be resolved to one ding id.</summary>
-        private static async Task<string?> ResolveProviderEventIdAsync(
+        private async Task<string?> ResolveProviderEventIdAsync(
             DownloadEvent downloadEvent,
             IUnitOfWork unitOfWork,
             Dictionary<Guid, IReadOnlyList<string>> candidatesByDevice,
@@ -86,7 +95,7 @@ namespace VideoForensics.Data.Database.Repositories
                 candidates = await unitOfWork.ExecuteAsync(async ctx =>
                 {
                     Device? device = await ctx.Devices.GetAsync(downloadEvent.DeviceId, ct);
-                    return await ProviderEventIdResolver.CandidatesForDeviceAsync(device, ctx.DingIdLinks, ct);
+                    return await ProviderEventIdResolver.CandidatesForDeviceAsync(device, _dingIdLinks, ct);
                 }, ct);
                 candidatesByDevice[downloadEvent.DeviceId] = candidates;
             }

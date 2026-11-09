@@ -25,6 +25,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         private MediaItemRepository _mediaItemRepository = null!;
         private UnitOfWork _unitOfWork = null!;
         private ILoggerFactory _loggerFactory = null!;
+        private EventBackfillService _backfillService = null!;
 
         public async ValueTask InitializeAsync()
         {
@@ -36,6 +37,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _eventRepository = new EventRepository(_unitOfWork, _loggerFactory.CreateLogger<EventRepository>());
             _mediaItemRepository = new MediaItemRepository(_unitOfWork, _loggerFactory.CreateLogger<MediaItemRepository>());
             _downloadEventRepository = new DownloadEventRepository(_unitOfWork, _loggerFactory.CreateLogger<DownloadEventRepository>());
+            _backfillService = new EventBackfillService(new DingIdLinkRepository(_unitOfWork));
         }
 
         public async ValueTask DisposeAsync()
@@ -97,7 +99,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
         private async Task<int> RunBackfillAsync()
         {
-            return await EventBackfillService.BackfillFromDownloadEventsAsync(
+            return await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,

@@ -492,7 +492,9 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IBackupImportService>(serviceProvider =>
                 new BackupImportOrchestrator(
                     serviceProvider.GetRequiredService<ILogger<BackupImportOrchestrator>>(),
-                    serviceProvider.GetRequiredService<IUnitOfWork>()
+                    serviceProvider.GetRequiredService<IUnitOfWork>(),
+                    serviceProvider.GetRequiredService<IDeviceRepository>(),
+                    serviceProvider.GetRequiredService<IDingIdLinkRepository>()
                 )
             );
 
@@ -870,7 +872,8 @@ namespace VideoForensics.Client.Hosting
                 IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
                 IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
                 IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
-                int count = await EventBackfillService.BackfillFromDownloadEventsAsync(
+                EventBackfillService backfillService = sp.GetRequiredService<EventBackfillService>();
+                int count = await backfillService.BackfillFromDownloadEventsAsync(
                     downloadEventRepo, mediaItemRepo, eventRepo, unitOfWork, logger, ct);
                 await appSettingRepo.SetAsync(backfillFlagKey, "true", ct);
                 logger.LogInformation("Events backfill completed: {Count} record(s).", count);

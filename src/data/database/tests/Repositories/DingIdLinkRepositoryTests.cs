@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await SeedLocationEventAsync(999, "9999999999999999999");
 
             IReadOnlyList<string> candidates = await _unitOfWork.ExecuteAsync(
-                ctx => ctx.DingIdLinks.GetCandidateDingIdsAsync(DoorbotId, CancellationToken.None), CancellationToken.None);
+                _ => new DingIdLinkRepository(_unitOfWork).GetCandidateDingIdsAsync(DoorbotId, CancellationToken.None), CancellationToken.None);
 
             Assert.Equal(new[] { "1234567890123456789" }, candidates);
         }
@@ -61,7 +61,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             }
 
             Event? linked = await _unitOfWork.ExecuteAsync(
-                ctx => ctx.DingIdLinks.GetLinkedEventAsync("1234567890123456", CancellationToken.None), CancellationToken.None);
+                _ => new DingIdLinkRepository(_unitOfWork).GetLinkedEventAsync("1234567890123456", CancellationToken.None), CancellationToken.None);
 
             Assert.Equal(evt.Id, linked?.Id);
         }
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync(async ctx =>
             {
-                await ctx.DingIdLinks.RekeyLinkedEventAsync(evt.Id, "1234567890123456789", CancellationToken.None);
+                await new DingIdLinkRepository(_unitOfWork).RekeyLinkedEventAsync(evt.Id, "1234567890123456789", CancellationToken.None);
                 return true;
             }, CancellationToken.None);
 
@@ -103,7 +103,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync(async ctx =>
             {
-                await ctx.DingIdLinks.RekeyLinkedEventAsync(placeholder.Id, "1234567890123456789", CancellationToken.None);
+                await new DingIdLinkRepository(_unitOfWork).RekeyLinkedEventAsync(placeholder.Id, "1234567890123456789", CancellationToken.None);
                 return true;
             }, CancellationToken.None);
 
@@ -120,7 +120,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await SeedLocationEventAsync(DoorbotId, "1234567890123456789");
 
             IReadOnlyList<string> candidates = await _unitOfWork.ExecuteAsync(
-                ctx => ctx.DingIdLinks.GetCandidateDingIdsAsync(DoorbotId, CancellationToken.None), CancellationToken.None);
+                _ => new DingIdLinkRepository(_unitOfWork).GetCandidateDingIdsAsync(DoorbotId, CancellationToken.None), CancellationToken.None);
 
             Assert.Empty(candidates);
         }
@@ -139,7 +139,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync(async ctx =>
             {
-                await ctx.DingIdLinks.LinkDoorbotHistoryEventAsync("1234567890123456", evt.Id, CancellationToken.None);
+                await new DingIdLinkRepository(_unitOfWork).LinkDoorbotHistoryEventAsync("1234567890123456", evt.Id, CancellationToken.None);
                 return true;
             }, CancellationToken.None);
 

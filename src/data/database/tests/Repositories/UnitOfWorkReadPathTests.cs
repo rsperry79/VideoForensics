@@ -42,7 +42,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             }, CancellationToken.None);
 
             IReadOnlyList<string> candidates = await _unitOfWork.ReadAsync(
-                ctx => ctx.DingIdLinks.GetCandidateDingIdsAsync(86401464, CancellationToken.None), CancellationToken.None)
+                _ => new DingIdLinkRepository(_unitOfWork).GetCandidateDingIdsAsync(86401464, CancellationToken.None), CancellationToken.None)
                 .WaitAsync(TimeSpan.FromSeconds(5));
 
             Assert.Empty(candidates);

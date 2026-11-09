@@ -314,7 +314,6 @@ namespace VideoForensics.Data.Database.Repositories
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IDeviceRepository Devices => new UnitOfWorkDeviceRepository(_db, _logger);
-        public IDingIdLinkRepository DingIdLinks => new UnitOfWorkDingIdLinkRepository(_db);
         public IMediaItemRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
         public ICredentialRepository Credentials => new UnitOfWorkCredentialRepository(_db, _serviceProvider.GetRequiredService<ICredentialEncryptionProvider>(), _serviceProvider.GetRequiredService<ILogger<ICredentialRepository>>());
@@ -1761,80 +1760,6 @@ namespace VideoForensics.Data.Database.Repositories
             if (occurrences != null && occurrences.Count > 0)
             {
                 _db.EventDetectionTypeOccurrences.AddRange(occurrences);
-            }
-
-            return Task.CompletedTask;
-        }
-    }
-
-    /// <summary>
-    /// Device-scoped ding id candidates and the doorbot-to-Events link. Candidates are read only from the string-id feeds
-    /// (location events and video search), because those feeds store the string ding id that a doorbot history id must equal.
-    /// </summary>
-    internal class UnitOfWorkDingIdLinkRepository : IDingIdLinkRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-
-        public UnitOfWorkDingIdLinkRepository(VideoForensicsDbContext db)
-        {
-            _db = db;
-        }
-
-        public Task<IReadOnlyList<string>> GetCandidateDingIdsAsync(long doorbotId, CancellationToken ct)
-        {
-            return Task.FromResult<IReadOnlyList<string>>(DingIdCandidates.ForDoorbot(_db, doorbotId));
-        }
-
-        public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
-        {
-            // Tracked entity: the unit of work saves the change when the transaction commits.
-            RingDoorbotHistoryEvent? row = _db.RingDoorbotHistoryEvents.FirstOrDefault(e => e.ProviderEventId == doorbotHistoryProviderEventId);
-            if (row is not null)
-            {
-                row.LinkedEventId = eventId;
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task<VideoForensics.Data.Common.Entities.Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct)
-        {
-            Guid? linkedId = _db.RingDoorbotHistoryEvents
-                .Where(e => e.ProviderEventId == doorbotHistoryProviderEventId)
-                .Select(e => e.LinkedEventId)
-                .FirstOrDefault();
-            VideoForensics.Data.Common.Entities.Event? linked = linkedId is { } id ? _db.Events.FirstOrDefault(e => e.Id == id) : null;
-            return Task.FromResult(linked);
-        }
-
-        public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
-        {
-            // Tracked entity: the unit of work saves the change when the transaction commits. The unique (DeviceId, ProviderEventId) index
-            // forbids two rows with one id, so when another row of the device already holds the ding id, the placeholder's doorbot rows
-            // move to that row instead and the placeholder is removed. Only a placeholder that was never matched and has no media is removed.
-            VideoForensics.Data.Common.Entities.Event? evt = _db.Events.FirstOrDefault(e => e.Id == eventId);
-            if (evt is null)
-            {
-                return Task.CompletedTask;
-            }
-
-            VideoForensics.Data.Common.Entities.Event? existing = _db.Events.FirstOrDefault(e =>
-                e.DeviceId == evt.DeviceId && e.ProviderEventId == newProviderEventId && e.Id != eventId);
-            if (existing is null)
-            {
-                evt.ProviderEventId = newProviderEventId;
-                evt.AwaitingDingId = false;
-                return Task.CompletedTask;
-            }
-
-            foreach (RingDoorbotHistoryEvent doorbotRow in _db.RingDoorbotHistoryEvents.Where(r => r.LinkedEventId == evt.Id))
-            {
-                doorbotRow.LinkedEventId = existing.Id;
-            }
-
-            if (evt.AwaitingDingId && evt.DownloadedAtUtc is null && evt.DownloadStatus == EventDownloadStatus.NotAttempted)
-            {
-                _ = _db.Events.Remove(evt);
             }
 
             return Task.CompletedTask;
