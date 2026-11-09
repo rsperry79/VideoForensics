@@ -226,6 +226,13 @@ namespace VideoForensics.Data.Database.Repositories
                     {
                         VideoForensicsDbContext db = context.Db();
 
+                        // Generate under the gate: a number chosen before the gate can be taken by a parallel create that
+                        // writes first, and the retries would run out. Inside the write, the read sees every committed number.
+                        if (wasGenerated)
+                        {
+                            finalCaseNumber = await GenerateCaseNumber(generatedPrefix, ct);
+                        }
+
                         // Check for duplicate case number
                         bool exists = await db.Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct);
                         if (exists)

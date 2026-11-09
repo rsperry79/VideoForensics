@@ -1,26 +1,27 @@
 using Microsoft.EntityFrameworkCore;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.ReferenceData;
 
 namespace VideoForensics.Data.Database.Repositories
 {
-    /// <summary>Writes discovered provider device models through a short-lived DbContext per call.</summary>
+    /// <summary>Writes discovered provider device models through a short-lived unit of work per call.</summary>
     public class DeviceModelRepository : IDeviceModelRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
 
         /// <summary>Creates the repository.</summary>
-        public DeviceModelRepository(IDbContextFactory<VideoForensicsDbContext> factory)
+        public DeviceModelRepository(IUnitOfWork unitOfWork)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
         }
 
         /// <inheritdoc />
         public Task EnsureDiscoveredAsync(string provider, string kind, string family, CancellationToken ct)
         {
-            return ReferenceDataSeeder.EnsureDiscoveredModelAsync(_factory, provider, kind, family, ct);
+            return ReferenceDataSeeder.EnsureDiscoveredModelAsync(_unitOfWork, provider, kind, family, ct);
         }
     }
 }

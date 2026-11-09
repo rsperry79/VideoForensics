@@ -10,24 +10,28 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for the append-only DeviceSettingChange history.</summary>
     public class DeviceSettingChangeRepository : IDeviceSettingChangeRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceSettingChangeRepository> _logger;
 
         /// <summary>Initializes a new instance of the DeviceSettingChangeRepository.</summary>
-        public DeviceSettingChangeRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<DeviceSettingChangeRepository> logger)
+        public DeviceSettingChangeRepository(IUnitOfWork unitOfWork, ILogger<DeviceSettingChangeRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Appends one or more device setting change records.</summary>
         public async Task AddRangeAsync(IEnumerable<DeviceSettingChange> changes, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.DeviceSettingChanges.AddRange(changes);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    db.DeviceSettingChanges.AddRange(changes);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -39,12 +43,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists the change records for a device, newest first.</summary>
         public async Task<IReadOnlyList<DeviceSettingChange>> ListByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceSettingChanges
+            return await _unitOfWork.ReadAsync(context => context.Db().DeviceSettingChanges
                 .AsNoTracking()
                 .Where(dsc => dsc.DeviceId == deviceId)
                 .OrderByDescending(dsc => dsc.ChangedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
     }
 }

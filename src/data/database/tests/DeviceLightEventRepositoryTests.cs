@@ -26,8 +26,9 @@ namespace VideoForensics.Data.Database.Tests
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = LoggerFactory.Create(b => { });
-            _details = new DeviceDetailsRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceDetailsRepository>());
-            _events = new DeviceLightEventRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceLightEventRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _details = new DeviceDetailsRepository(unitOfWork, loggerFactory.CreateLogger<DeviceDetailsRepository>());
+            _events = new DeviceLightEventRepository(unitOfWork, loggerFactory.CreateLogger<DeviceLightEventRepository>());
             var locationRepository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
             var deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
             Location location = TestDataBuilder.BuildLocation();
