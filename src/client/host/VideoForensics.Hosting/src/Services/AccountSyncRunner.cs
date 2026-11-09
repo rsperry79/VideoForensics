@@ -185,14 +185,19 @@ namespace VideoForensics.Client.Hosting.Services
             catch (Exception ex)
             {
                 // Record the failure, then rethrow the original exception; recording never replaces it.
-                _activity.Append($"{provider}: sync failed: {ex.Message}");
+                _activity.AppendError($"{provider}: sync failed: {ex.Message}");
                 await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, ex.Message, syncType);
                 throw;
             }
 
-            _activity.Append(outcome.Error is null
-                ? $"{provider}: sync finished"
-                : $"{provider}: sync failed: {outcome.Error}");
+            if (outcome.Error is null)
+            {
+                _activity.Append($"{provider}: sync finished");
+            }
+            else
+            {
+                _activity.AppendError($"{provider}: sync failed: {outcome.Error}");
+            }
             // Only a clean sync moves the display timestamp. LastDownloadTimeUtc is never written here (see MarkSyncCompletedAsync).
             if (outcome.Error is null)
             {

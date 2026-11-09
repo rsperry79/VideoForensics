@@ -10,6 +10,9 @@ namespace VideoForensics.Client.Common.Contracts
         /// <summary>Adds one line. Safe to call from any thread.</summary>
         void Append(string line);
 
+        /// <summary>Adds one failure line, logged at Error so failed syncs stand out in the server log. Safe to call from any thread.</summary>
+        void AppendError(string line);
+
         /// <summary>Returns and removes every pending line, oldest first. Only the hub broadcaster calls this.</summary>
         IReadOnlyList<string> Drain();
 
