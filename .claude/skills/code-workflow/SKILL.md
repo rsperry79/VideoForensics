@@ -31,7 +31,8 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 1. Commit the batch on its worktree branch.
 2. Confirm `wip` contains `origin/dev`, merging first if not.
 3. Merge the batch branch into `wip` in the main checkout.
-4. List `git log origin/wip..wip` and confirm each commit, then `git push origin wip`. Do not push the work branch unless asked.
+4. List `git log origin/wip..wip` and confirm each commit, then `git push origin wip`.
+- Plan units: when a unit's checks pass, commit and push its work branch to `origin` (see the `implement-plan` global skill). Other work branches are not pushed unless asked.
 5. Start the next batch in a new worktree from updated `wip`.
 - Stop and report instead when: a gate fails, merges conflict, the main checkout has unrelated changes, or a product decision is needed.
 - "wip" from the user (e.g. "wip it", "to wip") means steps 2–4 with no question. Any other push needs one "push?" question, named after the commit: a yes means steps 2–4, a no means no push. Never push `dev` or `main`. Before either, mention unpushed commits on `wip` that the push would also send.
