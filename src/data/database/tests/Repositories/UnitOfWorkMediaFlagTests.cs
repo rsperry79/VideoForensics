@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             var services = new ServiceCollection();
             _ = services.AddSingleton<ILogger<UnitOfWork>>(new Logger<UnitOfWork>(loggerFactory));
             _unitOfWork = new UnitOfWork(_fixture.Factory, services.BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>());
-            _repository = new MediaFlagRepository(_fixture.Factory, NullLogger<MediaFlagRepository>.Instance);
+            _repository = new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -11,13 +10,13 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for MediaFlag review state, with chain-of-custody logging on every review.</summary>
     public class MediaFlagRepository : IMediaFlagRepository, IMediaFlagDeviationRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<MediaFlagRepository> _logger;
 
         /// <summary>Initializes a new instance of the MediaFlagRepository.</summary>
-        public MediaFlagRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<MediaFlagRepository> logger)
+        public MediaFlagRepository(IUnitOfWork unitOfWork, ILogger<MediaFlagRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -30,12 +29,15 @@ namespace VideoForensics.Data.Database.Repositories
             // them, and the retry then finds the winner's row.
             for (int attempt = 1; ; attempt++)
             {
-                await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
                 try
                 {
-                    MediaFlag result = await MediaFlagOperations.StageUpsertAsync(db, raised, ct);
-                    _ = await db.SaveChangesAsync(ct);
-                    return result;
+                    return await _unitOfWork.ExecuteAsync(async context =>
+                    {
+                        VideoForensicsDbContext db = context.Db();
+                        MediaFlag staged = await MediaFlagOperations.StageUpsertAsync(db, raised, ct);
+                        _ = await db.SaveChangesAsync(ct);
+                        return staged;
+                    }, ct);
                 }
                 catch (DbUpdateException ex) when (attempt == 1)
                 {
@@ -53,10 +55,16 @@ namespace VideoForensics.Data.Database.Repositories
         /// <inheritdoc />
         public async Task<int> ReconcileForMediaAsync(Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                int removed = await MediaFlagOperations.ReconcileAsync(db, mediaItemId, raised, ct);
+                int removed = await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    int count = await MediaFlagOperations.ReconcileAsync(db, mediaItemId, raised, ct);
+                    _ = await db.SaveChangesAsync(ct);
+                    return count;
+                }, ct);
+
                 if (removed > 0)
                 {
                     _logger.LogInformation("Removed {Count} stale unreviewed flags for media item {MediaItemId}", removed, mediaItemId);
@@ -72,58 +80,76 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <inheritdoc />
-        public async Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
+        public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await MediaFlagOperations.FindWithEventTypeAsync(db, db.MediaFlags.AsNoTracking().Where(f => f.Id == flagId), ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                return await MediaFlagOperations.FindWithEventTypeAsync(db, db.MediaFlags.AsNoTracking().Where(f => f.Id == flagId), ct);
+            }, ct);
         }
 
         /// <inheritdoc />
-        public async Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct)
+        public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await MediaFlagOperations.ListPageAsync(db, filter, skip, take, ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                return await MediaFlagOperations.ListPageAsync(context.Db(), filter, skip, take, ct);
+            }, ct);
         }
 
         /// <inheritdoc />
-        public async Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct)
+        public Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await MediaFlagOperations.CountAsync(db, filter, ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                return await MediaFlagOperations.CountAsync(context.Db(), filter, ct);
+            }, ct);
         }
 
         /// <inheritdoc />
-        public async Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct)
+        public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await MediaFlagOperations.GetNeighbourAsync(db, flagId, filter, direction, ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                return await MediaFlagOperations.GetNeighbourAsync(context.Db(), flagId, filter, direction, ct);
+            }, ct);
         }
 
         /// <inheritdoc />
-        public async Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
+        public Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await MediaFlagOperations.GetPositionAsync(db, flagId, filter, ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                return await MediaFlagOperations.GetPositionAsync(context.Db(), flagId, filter, ct);
+            }, ct);
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<MediaFlag>> ListWithoutDeviationSigmaAsync(MediaFlagType flagType, CancellationToken ct)
+        public Task<IReadOnlyList<MediaFlag>> ListWithoutDeviationSigmaAsync(MediaFlagType flagType, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.MediaFlags.AsNoTracking()
-                .Where(f => f.FlagType == flagType && f.DeviationSigma == null)
-                .OrderBy(f => f.Id)
-                .ToListAsync(ct);
+            return _unitOfWork.ReadAsync<IReadOnlyList<MediaFlag>>(async context =>
+            {
+                return await context.Db().MediaFlags.AsNoTracking()
+                    .Where(f => f.FlagType == flagType && f.DeviationSigma == null)
+                    .OrderBy(f => f.Id)
+                    .ToListAsync(ct);
+            }, ct);
         }
 
         /// <inheritdoc />
         public async Task SetDeviationSigmaAsync(Guid flagId, double deviationSigma, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            // Only fills a null: a value stored by the raise path, or by an earlier pass, is never overwritten here.
-            _ = await db.MediaFlags
-                .Where(f => f.Id == flagId && f.DeviationSigma == null)
-                .ExecuteUpdateAsync(s => s.SetProperty(f => f.DeviationSigma, deviationSigma), ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                // Only fills a null: a value stored by the raise path, or by an earlier pass, is never overwritten here.
+                _ = await db.MediaFlags
+                    .Where(f => f.Id == flagId && f.DeviationSigma == null)
+                    .ExecuteUpdateAsync(s => s.SetProperty(f => f.DeviationSigma, deviationSigma), ct);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
         /// <inheritdoc />
@@ -141,29 +167,24 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>
-        /// Runs one review in a transaction that holds the shared chain gate from the chain-tail read through commit, so the
-        /// status change and its audit entry commit together or not at all.
+        /// Runs one review in a unit of work, so the status change and its audit entry commit together or not at all.
+        /// The unit of work holds the chain gate from the chain-tail read through commit.
         /// </summary>
         private async Task<MediaFlag> ReviewAsync(Guid flagId, MediaFlagStatus expected, MediaFlagStatus target, string? reason, string operatorName, string action, CancellationToken ct)
         {
-            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
-            if (entered)
-            {
-                await ActionLogAppendGate.WaitAsync(ct);
-                ActionLogAppendGate.IsHeldByCurrentFlow = true;
-            }
-
             try
             {
                 MediaFlag result;
                 try
                 {
-                    await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-                    using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
-                    var actionLog = new UnitOfWorkActionLogRepository(db, _logger);
-                    result = await MediaFlagOperations.StageReviewAsync(db, actionLog, flagId, expected, target, reason, operatorName, action, ct);
-                    _ = await db.SaveChangesAsync(ct);
-                    await transaction.CommitAsync(ct);
+                    result = await _unitOfWork.ExecuteAsync(async context =>
+                    {
+                        VideoForensicsDbContext db = context.Db();
+                        var actionLog = new UnitOfWorkActionLogRepository(db, _logger);
+                        MediaFlag staged = await MediaFlagOperations.StageReviewAsync(db, actionLog, flagId, expected, target, reason, operatorName, action, ct);
+                        _ = await db.SaveChangesAsync(ct);
+                        return staged;
+                    }, ct);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -190,14 +211,6 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 throw;
-            }
-            finally
-            {
-                if (entered)
-                {
-                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
-                    ActionLogAppendGate.Release();
-                }
             }
         }
     }

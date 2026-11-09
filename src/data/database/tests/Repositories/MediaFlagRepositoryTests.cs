@@ -30,7 +30,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
             _actionLog = new ActionLogRepository(unitOfWork, NullLogger<ActionLogRepository>.Instance);
-            _repository = new MediaFlagRepository(_fixture.Factory, NullLogger<MediaFlagRepository>.Instance);
+            _repository = new MediaFlagRepository(unitOfWork, NullLogger<MediaFlagRepository>.Instance);
             _media = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
         }
 
