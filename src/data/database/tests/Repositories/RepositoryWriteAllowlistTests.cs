@@ -8,11 +8,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
     /// </summary>
     public class RepositoryWriteAllowlistTests
     {
-        // Files that legitimately keep the factory: the gate itself and the unit of work that owns the factory.
+        // Files that legitimately keep the factory: the gate itself, the unit of work that owns the factory, and the
+        // repositories for logs.db. logs.db is a separate SQLite file, so the main-database gate does not cover it.
         private static readonly HashSet<string> AllowedFiles = new(StringComparer.OrdinalIgnoreCase)
         {
             "UnitOfWork.cs",
             "ActionLogAppendGate.cs",
+            "CameraBitrateBaselineRepository.cs",
+            "LiveViewTelemetryRepository.cs",
+            "ProviderApiCallLogRepository.cs",
+            "ProviderApiErrorLogRepository.cs",
         };
 
         [Fact]
