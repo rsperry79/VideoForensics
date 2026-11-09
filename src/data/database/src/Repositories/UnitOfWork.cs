@@ -29,6 +29,13 @@ namespace VideoForensics.Data.Database.Repositories
         private readonly ILogger<UnitOfWork> _logger;
         private readonly TimeSpan _slowTransactionThreshold;
         private readonly InFlightTransactions _inFlight;
+        private readonly TimeSpan _queueTimeout;
+
+        /// <summary>
+        /// How long a write waits for the gate before it fails. Set below SQLite's Default Timeout (5 seconds), so a queued
+        /// write fails with a queue error rather than a lock error.
+        /// </summary>
+        private static readonly TimeSpan DefaultQueueTimeout = TimeSpan.FromSeconds(3);
 
         /// <summary>Initializes a new instance of the UnitOfWork.</summary>
         public UnitOfWork(
@@ -36,13 +43,15 @@ namespace VideoForensics.Data.Database.Repositories
             IServiceProvider serviceProvider,
             ILogger<UnitOfWork> logger,
             TimeSpan? slowTransactionThreshold = null,
-            InFlightTransactions? inFlight = null)
+            InFlightTransactions? inFlight = null,
+            TimeSpan? queueTimeout = null)
         {
             _factory = factory;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _slowTransactionThreshold = slowTransactionThreshold ?? DefaultSlowTransactionThreshold;
             _inFlight = inFlight ?? new InFlightTransactions();
+            _queueTimeout = queueTimeout ?? DefaultQueueTimeout;
         }
 
         /// <summary>
@@ -52,6 +61,13 @@ namespace VideoForensics.Data.Database.Repositories
         /// <inheritdoc />
         public async Task<T> ReadAsync<T>(Func<IUnitOfWorkContext, Task<T>> read, CancellationToken ct)
         {
+            // Inside a write, the read must see the write's uncommitted rows, so it uses the open context.
+            VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
+            if (ambient is not null)
+            {
+                return await read(new UnitOfWorkContext(ambient, _serviceProvider));
+            }
+
             // Why: no transaction and no append gate. A read that took either would wait behind every slow write in the process.
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var context = new UnitOfWorkContext(db, _serviceProvider);
@@ -60,6 +76,13 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
         {
+            // Why: a nested write joins the open transaction on its context. A second connection would wait on the outer write lock.
+            VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
+            if (ambient is not null)
+            {
+                return await work(new UnitOfWorkContext(ambient, _serviceProvider));
+            }
+
             // Read the caller before the first await: its frames are only on the stack until then.
             string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
             var clock = Stopwatch.StartNew();
@@ -71,7 +94,8 @@ namespace VideoForensics.Data.Database.Repositories
             bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
             if (entered)
             {
-                await ActionLogAppendGate.WaitAsync(ct);
+                await EnterGateAsync(caller, ct);
+                // Why: set here, not in EnterGateAsync, because an async helper's AsyncLocal write is not seen by its caller.
                 ActionLogAppendGate.IsHeldByCurrentFlow = true;
             }
 
@@ -86,6 +110,66 @@ namespace VideoForensics.Data.Database.Repositories
                     ActionLogAppendGate.IsHeldByCurrentFlow = false;
                     ActionLogAppendGate.Release();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Runs work on a fresh context with no transaction, under the gate. For statements SQLite refuses inside a
+        /// transaction, such as VACUUM and wal_checkpoint. Must not be called from inside a unit of work.
+        /// </summary>
+        public async Task<T> ExecuteWithoutTransactionAsync<T>(Func<VideoForensicsDbContext, CancellationToken, Task<T>> work, CancellationToken ct)
+        {
+            if (AmbientUnitOfWork.DbContext is not null)
+            {
+                throw new InvalidOperationException("A transaction-less write cannot run inside a unit of work.");
+            }
+
+            string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
+            using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
+
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            if (entered)
+            {
+                await EnterGateAsync(caller, ct);
+                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+            }
+
+            try
+            {
+                await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+                return await work(db, ct);
+            }
+            finally
+            {
+                if (entered)
+                {
+                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
+                    ActionLogAppendGate.Release();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Waits for the gate for at most the queue timeout, and logs how long the write queued. A write that times out is
+        /// refused, so a stalled transaction cannot hold every caller indefinitely.
+        /// </summary>
+        private async Task EnterGateAsync(string caller, CancellationToken ct)
+        {
+            var wait = Stopwatch.StartNew();
+            if (!await ActionLogAppendGate.TryWaitAsync(_queueTimeout, ct))
+            {
+                _logger.LogError("Write for {Caller} gave up waiting for the write queue after {TimeoutMs} ms", caller, (long)_queueTimeout.TotalMilliseconds);
+                throw new TimeoutException($"Write for {caller} timed out waiting for the write queue after {(long)_queueTimeout.TotalMilliseconds} ms.");
+            }
+
+            long waitMs = (long)wait.Elapsed.TotalMilliseconds;
+            if (wait.Elapsed >= _slowTransactionThreshold)
+            {
+                _logger.LogWarning("Write for {Caller} waited {WaitMs} ms in the write queue", caller, waitMs);
+            }
+            else
+            {
+                _logger.LogDebug("Write for {Caller} waited {WaitMs} ms in the write queue", caller, waitMs);
             }
         }
 

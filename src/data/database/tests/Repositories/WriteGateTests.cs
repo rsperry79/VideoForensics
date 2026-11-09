@@ -132,6 +132,53 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.True(seen);
         }
 
+        [Fact]
+        public async Task QueuedWrite_WaitingPastQueueTimeout_FailsInsteadOfWaiting()
+        {
+            // Red until U2: the gate must give up after the queue timeout, so a stalled write cannot hold callers indefinitely.
+            var queued = new UnitOfWork(_factory, new ServiceCollection().AddLogging().BuildServiceProvider(),
+                Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<UnitOfWork>(),
+                queueTimeout: TimeSpan.FromMilliseconds(200));
+
+            var holderStarted = new TaskCompletionSource();
+            Task holder = queued.ExecuteAsync<object?>(async context =>
+            {
+                holderStarted.TrySetResult();
+                await Task.Delay(1500);
+                return null;
+            }, CancellationToken.None);
+            await holderStarted.Task;
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            _ = await Assert.ThrowsAsync<TimeoutException>(() => queued.ExecuteAsync<object?>(async context => null, CancellationToken.None));
+            Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(1), $"queued write waited {stopwatch.Elapsed.TotalSeconds:F1}s past its timeout");
+
+            await holder;
+        }
+
+        [Fact]
+        public async Task ExecuteWithoutTransaction_RunsVacuumAndReleasesTheGate()
+        {
+            // Red until U2: VACUUM cannot run inside a transaction, so maintenance needs a gated entry that opens none.
+            await _unitOfWork.ExecuteWithoutTransactionAsync(async (db, ct) =>
+            {
+                _ = await db.Database.ExecuteSqlRawAsync("VACUUM;", ct);
+                return 0;
+            }, CancellationToken.None);
+
+            var userId = Guid.NewGuid();
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                User user = TestDataBuilder.BuildUser();
+                user.Id = userId;
+                await context.Users.AddAsync(user, CancellationToken.None);
+                return null;
+            }, CancellationToken.None);
+
+            await using VideoForensicsDbContext ctx = _factory.CreateDbContext();
+            Assert.True(await ctx.Users.AnyAsync(u => u.Id == userId));
+        }
+
         /// <summary>Creates a fresh context, and so a fresh pooled connection, per call, as the application does.</summary>
         private sealed class PooledDbContextFactory : IDbContextFactory<VideoForensicsDbContext>
         {
