@@ -30,7 +30,7 @@ namespace VideoForensics.Data.Database.Tests
             _details = new DeviceDetailsRepository(unitOfWork, loggerFactory.CreateLogger<DeviceDetailsRepository>());
             _events = new DeviceLightEventRepository(unitOfWork, loggerFactory.CreateLogger<DeviceLightEventRepository>());
             var locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<LocationRepository>());
-            var deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
+            var deviceRepository = new DeviceRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<DeviceRepository>());
             Location location = TestDataBuilder.BuildLocation();
             await locationRepository.AddAsync(location, CancellationToken.None);
             _device = TestDataBuilder.BuildDevice(locationId: location.Id);

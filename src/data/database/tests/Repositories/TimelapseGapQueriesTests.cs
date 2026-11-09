@@ -97,7 +97,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task SnapshotCaptures_EarliestCapture_IsOldestAttemptForTheDevice()
         {
             var locations = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance), NullLogger<LocationRepository>.Instance);
-            var devices = new DeviceRepository(_fixture.Factory, NullLogger<DeviceRepository>.Instance);
+            var devices = new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance), NullLogger<DeviceRepository>.Instance);
             Location location = TestDataBuilder.BuildLocation(name: "Gap Site");
             await locations.AddAsync(location, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Gap Camera");

@@ -25,7 +25,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
             _repository = new DeviceHealthRepository(unitOfWork, loggerFactory.CreateLogger<DeviceHealthRepository>());
             _locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<LocationRepository>());
-            _deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
+            _deviceRepository = new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<DeviceRepository>());
         }
 
         public async ValueTask DisposeAsync()

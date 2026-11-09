@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _cases = new CaseRepository(unitOfWork, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
             _snapshots = new SnapshotCaptureRepository(unitOfWork,_loggerFactory.CreateLogger<SnapshotCaptureRepository>());
             _locations = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
-            _devices = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());
+            _devices = new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<DeviceRepository>());
         }
 
         public async ValueTask DisposeAsync()

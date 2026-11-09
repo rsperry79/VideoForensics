@@ -56,7 +56,7 @@ namespace VideoForensics.Data.Database.Tests
             Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
             await new LocationRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
-            await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
+            await new DeviceRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
@@ -296,7 +296,7 @@ namespace VideoForensics.Data.Database.Tests
             // Seed the device in the in-memory connection
             var plainFactory = new SimpleFactory(plain);
             var locRepo = new LocationRepository(new UnitOfWork(plainFactory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
-            var devRepo = new DeviceRepository(plainFactory, _loggerFactory.CreateLogger<DeviceRepository>());
+            var devRepo = new DeviceRepository(new UnitOfWork(plainFactory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<DeviceRepository>());
             Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
             await locRepo.AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
