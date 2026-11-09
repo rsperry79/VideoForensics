@@ -55,9 +55,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             Guid id = await _unitOfWork.ExecuteAsync(async ctx =>
             {
-                MediaFlag flag = await ctx.MediaFlags.UpsertRaisedAsync(Raised(device), CancellationToken.None);
-                _ = await ctx.MediaFlags.UpsertRaisedAsync(Raised(device), CancellationToken.None);
-                _ = await ctx.MediaFlags.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
+                MediaFlag flag = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpsertRaisedAsync(Raised(device), CancellationToken.None);
+                _ = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpsertRaisedAsync(Raised(device), CancellationToken.None);
+                _ = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
                 return flag.Id;
             }, CancellationToken.None);
 
@@ -75,8 +75,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(() => _unitOfWork.ExecuteAsync<int>(async ctx =>
             {
-                MediaFlag flag = await ctx.MediaFlags.UpsertRaisedAsync(Raised(device), CancellationToken.None);
-                _ = await ctx.MediaFlags.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
+                MediaFlag flag = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpsertRaisedAsync(Raised(device), CancellationToken.None);
+                _ = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
                 throw new InvalidOperationException("boom");
             }, CancellationToken.None));
 

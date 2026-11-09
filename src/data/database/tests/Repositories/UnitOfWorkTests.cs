@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -46,11 +48,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                 return null;
             }, CancellationToken.None);
@@ -80,30 +82,30 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
                 device.FirmwareVersion = originalFirmware;
                 device.LightBrightness = 1;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(() => _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                Device device = (await context.Devices.GetAsync(deviceId, CancellationToken.None))!;
+                Device device = (await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).GetAsync(deviceId, CancellationToken.None))!;
                 device.FirmwareVersion = "2.0.0";
-                await context.Devices.UpdateAsync(device, CancellationToken.None);
-                await context.DeviceSettingChanges.AddRangeAsync(
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).UpdateAsync(device, CancellationToken.None);
+                await new DeviceSettingChangeRepository(_unitOfWork, NullLogger<DeviceSettingChangeRepository>.Instance).AddRangeAsync(
                 [
                     new DeviceSettingChange { Id = Guid.NewGuid(), DeviceId = deviceId, FieldName = "LightBrightness", OldValue = "1", NewValue = "2", ChangedAtUtc = DateTime.UtcNow }
                 ], CancellationToken.None);
@@ -132,11 +134,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 {
                     User user = TestDataBuilder.BuildUser();
                     user.Id = userId;
-                    await context.Users.AddAsync(user, CancellationToken.None);
+                    await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                     ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                     account.Id = accountId;
-                    await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                    await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                     throw new InvalidOperationException("Simulated failure");
                 }, CancellationToken.None);
@@ -161,7 +163,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             string result = await _unitOfWork.ExecuteAsync(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return expectedResult;
             }, CancellationToken.None);
 
@@ -178,7 +180,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId1;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return user;
             }, CancellationToken.None);
 
@@ -186,7 +188,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId2;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return user;
             }, CancellationToken.None);
 
@@ -200,13 +202,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             ActionLogEntry entry1 = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ActionLog.AppendAsync(
+                return await new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance).AppendAsync(
                     "A1", ActorType.Human, "Act1", "Ent", null, null, CancellationToken.None);
             }, CancellationToken.None);
 
             ActionLogEntry entry2 = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ActionLog.AppendAsync(
+                return await new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance).AppendAsync(
                     "A2", ActorType.Human, "Act2", "Ent", null, null, CancellationToken.None);
             }, CancellationToken.None);
 
@@ -229,17 +231,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
-                ActionLogEntry logEntry = await context.ActionLog.AppendAsync(
+                ActionLogEntry logEntry = await new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance).AppendAsync(
                     "TestUser", ActorType.Human, "UserAndLocationCreated", "Location", locationId, null, CancellationToken.None);
 
                 return logEntry;
@@ -270,11 +272,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 {
                     User user = TestDataBuilder.BuildUser();
                     user.Id = userId;
-                    await context.Users.AddAsync(user, CancellationToken.None);
+                    await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                     ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                     account.Id = accountId;
-                    await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                    await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                     throw new DbUpdateException("Simulated constraint violation");
                 }, CancellationToken.None);
@@ -305,11 +307,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                 return null;
             }, CancellationToken.None);
@@ -318,7 +320,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Location? location1 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                IReadOnlyList<Location> locations = await context.Locations.ListAsync(CancellationToken.None);
+                IReadOnlyList<Location> locations = await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).ListAsync(CancellationToken.None);
                 Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
@@ -330,7 +332,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                         Name = locationName,
                         Address = address
                     };
-                    await context.Locations.AddAsync(location, CancellationToken.None);
+                    await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
                     location1 = location;
                 }
                 else
@@ -345,7 +347,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Location? location2 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                IReadOnlyList<Location> locations = await context.Locations.ListAsync(CancellationToken.None);
+                IReadOnlyList<Location> locations = await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).ListAsync(CancellationToken.None);
                 Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
@@ -357,7 +359,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                         Name = locationName,
                         Address = address
                     };
-                    await context.Locations.AddAsync(location, CancellationToken.None);
+                    await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
                     location2 = location;
                 }
                 else
@@ -396,15 +398,15 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
 
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 return null;
             }, CancellationToken.None);
@@ -413,7 +415,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Device? device1 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                IReadOnlyList<Device> devices = await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
+                IReadOnlyList<Device> devices = await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).GetByLocationIdAsync(locationId, CancellationToken.None);
                 Device? existing = devices.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
 
                 if (existing == null)
@@ -427,7 +429,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                         Type = initialType,
                         IsOnline = true
                     };
-                    await context.Devices.AddAsync(device, CancellationToken.None);
+                    await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                     device1 = device;
                 }
                 else
@@ -442,7 +444,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Device? device2 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                IReadOnlyList<Device> devices = await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
+                IReadOnlyList<Device> devices = await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).GetByLocationIdAsync(locationId, CancellationToken.None);
                 Device? existing = devices.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
 
                 if (existing == null)
@@ -456,7 +458,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                         Type = updatedType,
                         IsOnline = false
                     };
-                    await context.Devices.AddAsync(device, CancellationToken.None);
+                    await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                     device2 = device;
                 }
                 else
@@ -465,7 +467,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                     existing.Name = updatedName;
                     existing.Type = updatedType;
                     existing.IsOnline = false;
-                    await context.Devices.UpdateAsync(existing, CancellationToken.None);
+                    await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).UpdateAsync(existing, CancellationToken.None);
                     device2 = existing;
                 }
 
@@ -541,7 +543,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return user;
             }, CancellationToken.None);
 
@@ -560,13 +562,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             User? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Users.GetAsync(userId, CancellationToken.None);
+                return await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).GetAsync(userId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -580,13 +582,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser(providerKey);
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             User? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Users.GetByProviderKeyAsync(providerKey, CancellationToken.None);
+                return await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).GetByProviderKeyAsync(providerKey, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -605,14 +607,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 user1.Id = user1Id;
                 User user2 = TestDataBuilder.BuildUser();
                 user2.Id = user2Id;
-                await context.Users.AddAsync(user1, CancellationToken.None);
-                await context.Users.AddAsync(user2, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user1, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<User> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Users.ListAsync(CancellationToken.None);
+                return await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).ListAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(results);
@@ -630,17 +632,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                User? user = await context.Users.GetAsync(userId, CancellationToken.None);
+                User? user = await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).GetAsync(userId, CancellationToken.None);
                 if (user != null)
                 {
                     user.DisplayName = newDisplayName;
-                    await context.Users.UpdateAsync(user, CancellationToken.None);
+                    await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).UpdateAsync(user, CancellationToken.None);
                 }
 
                 return null;
@@ -661,13 +663,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Users.DeleteAsync(userId, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).DeleteAsync(userId, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -708,7 +710,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -716,7 +718,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -737,20 +739,20 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account1 = TestDataBuilder.BuildProviderAccount(userId, "Ring");
                 account1.Id = accountId1;
                 ProviderAccount account2 = TestDataBuilder.BuildProviderAccount(userId, "Wyze");
                 account2.Id = accountId2;
-                await context.ProviderAccounts.AddAsync(account1, CancellationToken.None);
-                await context.ProviderAccounts.AddAsync(account2, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account1, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ProviderAccount> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ProviderAccounts.GetByUserIdAsync(userId, CancellationToken.None);
+                return await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).GetByUserIdAsync(userId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
@@ -768,17 +770,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId, "Ring");
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             ProviderAccount? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ProviderAccounts.GetByUserAndProviderAsync(userId, "Ring", CancellationToken.None);
+                return await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).GetByUserAndProviderAsync(userId, "Ring", CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -795,20 +797,20 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount active = TestDataBuilder.BuildProviderAccount(userId, "Ring");
                 active.IsActive = true;
                 ProviderAccount inactive = TestDataBuilder.BuildProviderAccount(userId, "Wyze");
                 inactive.IsActive = false;
-                await context.ProviderAccounts.AddAsync(active, CancellationToken.None);
-                await context.ProviderAccounts.AddAsync(inactive, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(active, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(inactive, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ProviderAccount> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ProviderAccounts.ListActiveAsync(CancellationToken.None);
+                return await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).ListActiveAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.True(results.All(a => a.IsActive));
@@ -826,22 +828,22 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
                 account.IsActive = true;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                ProviderAccount? account = await context.ProviderAccounts.GetAsync(accountId, CancellationToken.None);
+                ProviderAccount? account = await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).GetAsync(accountId, CancellationToken.None);
                 if (account != null)
                 {
                     account.IsActive = false;
-                    await context.ProviderAccounts.UpdateAsync(account, CancellationToken.None);
+                    await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).UpdateAsync(account, CancellationToken.None);
                 }
 
                 return null;
@@ -885,13 +887,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation(providerLocationId);
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             Location? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Locations.GetByProviderLocationIdAsync(providerLocationId, CancellationToken.None);
+                return await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).GetByProviderLocationIdAsync(providerLocationId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -911,14 +913,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 loc1.Id = loc1Id;
                 Location loc2 = TestDataBuilder.BuildLocation();
                 loc2.Id = loc2Id;
-                await context.Locations.AddAsync(loc1, CancellationToken.None);
-                await context.Locations.AddAsync(loc2, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(loc1, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(loc2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<Location> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Locations.ListAsync(CancellationToken.None);
+                return await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).ListAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(results);
@@ -936,17 +938,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                Location? location = await context.Locations.GetAsync(locationId, CancellationToken.None);
+                Location? location = await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).GetAsync(locationId, CancellationToken.None);
                 if (location != null)
                 {
                     location.Name = newName;
-                    await context.Locations.UpdateAsync(location, CancellationToken.None);
+                    await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).UpdateAsync(location, CancellationToken.None);
                 }
 
                 return null;
@@ -967,13 +969,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Locations.DeleteAsync(locationId, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).DeleteAsync(locationId, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1015,17 +1017,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId, providerDeviceId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             Device? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Devices.GetByProviderDeviceIdAsync(locationId, providerDeviceId, CancellationToken.None);
+                return await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).GetByProviderDeviceIdAsync(locationId, providerDeviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -1044,20 +1046,20 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device1 = TestDataBuilder.BuildDevice(locationId);
                 device1.Id = device1Id;
                 Device device2 = TestDataBuilder.BuildDevice(locationId);
                 device2.Id = device2Id;
-                await context.Devices.AddAsync(device1, CancellationToken.None);
-                await context.Devices.AddAsync(device2, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device1, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<Device> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
+                return await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).GetByLocationIdAsync(locationId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
@@ -1076,17 +1078,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Devices.UpdateLastSuccessfulPullAsync(deviceId, pulledTime, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).UpdateLastSuccessfulPullAsync(deviceId, pulledTime, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1110,21 +1112,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 loc1.Id = loc1Id;
                 Location loc2 = TestDataBuilder.BuildLocation();
                 loc2.Id = loc2Id;
-                await context.Locations.AddAsync(loc1, CancellationToken.None);
-                await context.Locations.AddAsync(loc2, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(loc1, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(loc2, CancellationToken.None);
 
                 Device dev1 = TestDataBuilder.BuildDevice(loc1Id);
                 dev1.Id = dev1Id;
                 Device dev2 = TestDataBuilder.BuildDevice(loc2Id);
                 dev2.Id = dev2Id;
-                await context.Devices.AddAsync(dev1, CancellationToken.None);
-                await context.Devices.AddAsync(dev2, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(dev1, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(dev2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<Device> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Devices.ListAsync(CancellationToken.None);
+                return await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).ListAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.True(results.Count >= 2);
@@ -1166,24 +1168,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media1 = TestDataBuilder.BuildMediaItem(deviceId);
                 media1.Id = media1Id;
                 MediaItem media2 = TestDataBuilder.BuildMediaItem(deviceId);
                 media2.Id = media2Id;
-                await context.MediaItems.AddAsync(media1, CancellationToken.None);
-                await context.MediaItems.AddAsync(media2, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media1, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<MediaItem> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.MediaItems.GetByDeviceIdAsync(deviceId, CancellationToken.None);
+                return await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).GetByDeviceIdAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
@@ -1203,21 +1205,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media = TestDataBuilder.BuildMediaItem(deviceId, null, null, hash);
                 media.Id = mediaId;
-                await context.MediaItems.AddAsync(media, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             MediaItem? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.MediaItems.GetByHashAsync(hash, CancellationToken.None);
+                return await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).GetByHashAsync(hash, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -1237,22 +1239,22 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media = TestDataBuilder.BuildMediaItem(deviceId);
                 media.Id = mediaId;
                 media.ApiSourceHash = apiHash;
-                await context.MediaItems.AddAsync(media, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             MediaItem? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.MediaItems.GetByApiSourceHashAsync(apiHash, CancellationToken.None);
+                return await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).GetByApiSourceHashAsync(apiHash, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -1272,21 +1274,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media = TestDataBuilder.BuildMediaItem(deviceId, downloadEventId);
                 media.Id = media1Id;
-                await context.MediaItems.AddAsync(media, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<MediaItem> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.MediaItems.GetByDownloadEventIdAsync(downloadEventId, CancellationToken.None);
+                return await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).GetByDownloadEventIdAsync(downloadEventId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(results);
@@ -1305,25 +1307,25 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media = TestDataBuilder.BuildMediaItem(deviceId);
                 media.Id = mediaId;
-                await context.MediaItems.AddAsync(media, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                MediaItem? media = await context.MediaItems.GetAsync(mediaId, CancellationToken.None);
+                MediaItem? media = await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).GetAsync(mediaId, CancellationToken.None);
                 if (media != null)
                 {
                     media.FileName = newFileName;
-                    await context.MediaItems.UpdateAsync(media, CancellationToken.None);
+                    await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).UpdateAsync(media, CancellationToken.None);
                 }
 
                 return null;
@@ -1369,24 +1371,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 DownloadEvent evt1 = TestDataBuilder.BuildDownloadEvent(deviceId);
                 evt1.Id = event1Id;
                 DownloadEvent evt2 = TestDataBuilder.BuildDownloadEvent(deviceId);
                 evt2.Id = event2Id;
-                await context.DownloadEvents.AddAsync(evt1, CancellationToken.None);
-                await context.DownloadEvents.AddAsync(evt2, CancellationToken.None);
+                await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).AddAsync(evt1, CancellationToken.None);
+                await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).AddAsync(evt2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<DownloadEvent> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DownloadEvents.GetByDeviceIdAsync(deviceId, CancellationToken.None);
+                return await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).GetByDeviceIdAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
@@ -1406,21 +1408,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 DownloadEvent evt = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId);
                 evt.Id = eventId;
-                await context.DownloadEvents.AddAsync(evt, CancellationToken.None);
+                await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).AddAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             DownloadEvent? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DownloadEvents.GetByProviderEventIdAsync(deviceId, providerEventId, CancellationToken.None);
+                return await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).GetByProviderEventIdAsync(deviceId, providerEventId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -1439,20 +1441,20 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 DownloadEvent evt = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId);
-                await context.DownloadEvents.AddAsync(evt, CancellationToken.None);
+                await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).AddAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             bool exists = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DownloadEvents.ExistsForProviderEventIdAsync(deviceId, providerEventId, CancellationToken.None);
+                return await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).ExistsForProviderEventIdAsync(deviceId, providerEventId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.True(exists);
@@ -1469,24 +1471,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 DownloadEvent evt1 = TestDataBuilder.BuildDownloadEvent(deviceId, $"evt_1", true);
                 evt1.EventOccurredAtUtc = now.AddHours(-2);
                 DownloadEvent evt2 = TestDataBuilder.BuildDownloadEvent(deviceId, $"evt_2", true);
                 evt2.EventOccurredAtUtc = now.AddHours(-1);
-                await context.DownloadEvents.AddAsync(evt1, CancellationToken.None);
-                await context.DownloadEvents.AddAsync(evt2, CancellationToken.None);
+                await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).AddAsync(evt1, CancellationToken.None);
+                await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).AddAsync(evt2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             DateTime? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DownloadEvents.GetLatestSuccessfulEventTimeAsync(deviceId, CancellationToken.None);
+                return await new DownloadEventRepository(_unitOfWork, NullLogger<DownloadEventRepository>.Instance).GetLatestSuccessfulEventTimeAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             _ = Assert.NotNull(result);
@@ -1499,6 +1501,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
     {
         private SqliteInMemoryFixture _fixture = null!;
         private UnitOfWork _unitOfWork = null!;
+        private ICredentialEncryptionProvider _credentialEncryption = null!;
 
         public async ValueTask InitializeAsync()
         {
@@ -1507,6 +1510,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             var serviceProvider = new TestServiceProvider(_fixture, loggerFactory);
             _unitOfWork = new UnitOfWork(_fixture.Factory, serviceProvider, loggerFactory.CreateLogger<UnitOfWork>());
+            _credentialEncryption = serviceProvider.GetRequiredService<ICredentialEncryptionProvider>();
         }
 
         public async ValueTask DisposeAsync()
@@ -1526,17 +1530,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.SetAsync(accountId, "AccessToken", plainValue, CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "AccessToken", plainValue, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1557,23 +1561,23 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.SetAsync(accountId, "AccessToken", plainValue, CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "AccessToken", plainValue, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             (string CredentialType, string DecryptedValue)? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Credentials.GetAsync(accountId, "AccessToken", CancellationToken.None);
+                return await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).GetAsync(accountId, "AccessToken", CancellationToken.None);
             }, CancellationToken.None);
 
             _ = Assert.NotNull(result);
@@ -1590,24 +1594,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
-                await context.Credentials.SetAsync(accountId, "RefreshToken", "refresh_value", CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "RefreshToken", "refresh_value", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<Credential> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Credentials.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
+                return await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).GetByProviderAccountIdAsync(accountId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
@@ -1625,23 +1629,23 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.DeleteAsync(accountId, "AccessToken", CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).DeleteAsync(accountId, "AccessToken", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1660,24 +1664,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
 
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
-                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+                await new ProviderAccountRepository(_unitOfWork, NullLogger<ProviderAccountRepository>.Instance).AddAsync(account, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
-                await context.Credentials.SetAsync(accountId, "RefreshToken", "refresh_value", CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).SetAsync(accountId, "RefreshToken", "refresh_value", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Credentials.DeleteByProviderAccountIdAsync(accountId, CancellationToken.None);
+                await new CredentialRepository(_unitOfWork, _credentialEncryption, NullLogger<CredentialRepository>.Instance).DeleteByProviderAccountIdAsync(accountId, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1719,11 +1723,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1731,7 +1735,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Event evt = TestDataBuilder.BuildEvent(deviceId);
                 evt.Id = eventId;
-                return await context.Events.CreateAsync(evt, CancellationToken.None);
+                return await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).CreateAsync(evt, CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -1751,18 +1755,18 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             Event upsertedEvent = await _unitOfWork.ExecuteAsync(async context =>
             {
                 Event evt = TestDataBuilder.BuildEvent(deviceId, providerEventId);
-                return await context.Events.UpsertAsync(evt, CancellationToken.None);
+                return await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).UpsertAsync(evt, CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -1782,15 +1786,15 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId, providerEventId);
                 evt.EventType = "Motion";
-                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1798,7 +1802,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Event evt = TestDataBuilder.BuildEvent(deviceId, providerEventId);
                 evt.EventType = "Person";
-                return await context.Events.UpsertAsync(evt, CancellationToken.None);
+                return await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).UpsertAsync(evt, CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -1818,20 +1822,20 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId, providerEventId);
-                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             Event? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Events.GetByProviderEventIdAsync(deviceId, providerEventId, CancellationToken.None);
+                return await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).GetByProviderEventIdAsync(deviceId, providerEventId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -1849,21 +1853,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId);
                 evt.ApiSourceHash = apiHash;
-                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             Event? result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.Events.GetByApiSourceHashAsync(apiHash, CancellationToken.None);
+                return await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).GetByApiSourceHashAsync(apiHash, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -1882,21 +1886,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId);
                 evt.Id = eventId;
-                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.Events.UpdateDownloadFailureAsync(eventId, failureTime, CancellationToken.None);
+                await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).UpdateDownloadFailureAsync(eventId, failureTime, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1939,11 +1943,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1951,7 +1955,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 DeviceConfigSnapshot snapshot = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
                 snapshot.Id = snapshotId;
-                return await context.DeviceConfig.AppendSnapshotAsync(snapshot, CancellationToken.None);
+                return await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).AppendSnapshotAsync(snapshot, CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -1970,11 +1974,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1983,17 +1987,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
                 snap1.CapturedAtUtc = now.AddHours(-2);
-                _ = await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
+                _ = await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).AppendSnapshotAsync(snap1, CancellationToken.None);
 
                 DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
                 snap2.CapturedAtUtc = now;
-                _ = await context.DeviceConfig.AppendSnapshotAsync(snap2, CancellationToken.None);
+                _ = await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).AppendSnapshotAsync(snap2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             DeviceConfigSnapshot? latest = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DeviceConfig.GetLatestAsync(deviceId, CancellationToken.None);
+                return await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).GetLatestAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotNull(latest);
@@ -2010,27 +2014,27 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
-                _ = await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
+                _ = await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).AppendSnapshotAsync(snap1, CancellationToken.None);
 
                 DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
-                _ = await context.DeviceConfig.AppendSnapshotAsync(snap2, CancellationToken.None);
+                _ = await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).AppendSnapshotAsync(snap2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<DeviceConfigSnapshot> history = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DeviceConfig.GetHistoryAsync(deviceId, CancellationToken.None);
+                return await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).GetHistoryAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, history.Count);
@@ -2046,24 +2050,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = loc1Id;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(loc1Id);
                 device.Id = dev1Id;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(dev1Id);
-                _ = await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
+                _ = await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).AppendSnapshotAsync(snap1, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<DeviceConfigSnapshot> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.DeviceConfig.ListAsync(CancellationToken.None);
+                return await new DeviceConfigRepository(_unitOfWork, NullLogger<DeviceConfigRepository>.Instance).ListAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(results);
@@ -2102,11 +2106,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2114,7 +2118,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 ProviderReconciliationRecord record = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
                 record.Id = recordId;
-                return await context.ProviderReconciliation.AppendAsync(record, CancellationToken.None);
+                return await new ProviderReconciliationRepository(_unitOfWork, NullLogger<ProviderReconciliationRepository>.Instance).AppendAsync(record, CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -2133,11 +2137,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2145,14 +2149,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 ProviderReconciliationRecord record1 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
                 ProviderReconciliationRecord record2 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
-                _ = await context.ProviderReconciliation.AppendAsync(record1, CancellationToken.None);
-                _ = await context.ProviderReconciliation.AppendAsync(record2, CancellationToken.None);
+                _ = await new ProviderReconciliationRepository(_unitOfWork, NullLogger<ProviderReconciliationRepository>.Instance).AppendAsync(record1, CancellationToken.None);
+                _ = await new ProviderReconciliationRepository(_unitOfWork, NullLogger<ProviderReconciliationRepository>.Instance).AppendAsync(record2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ProviderReconciliationRecord> history = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ProviderReconciliation.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
+                return await new ProviderReconciliationRepository(_unitOfWork, NullLogger<ProviderReconciliationRepository>.Instance).GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, history.Count);
@@ -2168,24 +2172,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ProviderReconciliationRecord record = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
-                _ = await context.ProviderReconciliation.AppendAsync(record, CancellationToken.None);
+                _ = await new ProviderReconciliationRepository(_unitOfWork, NullLogger<ProviderReconciliationRepository>.Instance).AppendAsync(record, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ProviderReconciliationRecord> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ProviderReconciliation.ListAsync(CancellationToken.None);
+                return await new ProviderReconciliationRepository(_unitOfWork, NullLogger<ProviderReconciliationRepository>.Instance).ListAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(results);
@@ -2226,15 +2230,15 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media = TestDataBuilder.BuildMediaItem(deviceId);
                 media.Id = mediaId;
-                await context.MediaItems.AddAsync(media, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2246,7 +2250,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 ExportRecordItem item = TestDataBuilder.BuildExportRecordItem(recordId, mediaId);
                 item.Id = itemId;
 
-                return await context.ExportRecords.AppendAsync(record, [item], CancellationToken.None);
+                return await new ExportRecordRepository(_unitOfWork, NullLogger<ExportRecordRepository>.Instance).AppendAsync(record, [item], CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -2270,15 +2274,15 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
-                await context.Locations.AddAsync(location, CancellationToken.None);
+                await new LocationRepository(_unitOfWork, NullLogger<LocationRepository>.Instance).AddAsync(location, CancellationToken.None);
 
                 Device device = TestDataBuilder.BuildDevice(locationId);
                 device.Id = deviceId;
-                await context.Devices.AddAsync(device, CancellationToken.None);
+                await new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).AddAsync(device, CancellationToken.None);
 
                 MediaItem media = TestDataBuilder.BuildMediaItem(deviceId);
                 media.Id = mediaId;
-                await context.MediaItems.AddAsync(media, CancellationToken.None);
+                await new MediaItemRepository(_unitOfWork, NullLogger<MediaItemRepository>.Instance).AddAsync(media, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2288,13 +2292,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 record.Id = recordId;
 
                 ExportRecordItem item = TestDataBuilder.BuildExportRecordItem(recordId, mediaId);
-                _ = await context.ExportRecords.AppendAsync(record, [item], CancellationToken.None);
+                _ = await new ExportRecordRepository(_unitOfWork, NullLogger<ExportRecordRepository>.Instance).AppendAsync(record, [item], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ExportRecordItem> items = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportRecords.GetItemsForRecordAsync(recordId, CancellationToken.None);
+                return await new ExportRecordRepository(_unitOfWork, NullLogger<ExportRecordRepository>.Instance).GetItemsForRecordAsync(recordId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(items);
@@ -2307,13 +2311,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ExportRecord record = TestDataBuilder.BuildExportRecord();
-                _ = await context.ExportRecords.AppendAsync(record, [], CancellationToken.None);
+                _ = await new ExportRecordRepository(_unitOfWork, NullLogger<ExportRecordRepository>.Instance).AppendAsync(record, [], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ExportRecord> results = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportRecords.ListAsync(CancellationToken.None);
+                return await new ExportRecordRepository(_unitOfWork, NullLogger<ExportRecordRepository>.Instance).ListAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(results);
@@ -2349,7 +2353,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             AccessAuditLogEntity recorded = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.AccessAuditLogs.RecordAccessAsync(
+                return await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     evidenceId, userId, "View", "192.168.1.1", "Investigation", CancellationToken.None);
             }, CancellationToken.None);
 
@@ -2368,16 +2372,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     evidenceId, "user1", "View", "192.168.1.1", "Investigation", CancellationToken.None);
-                _ = await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     evidenceId, "user2", "Download", "192.168.1.2", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<AccessAuditLogEntity> entries = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.AccessAuditLogs.GetForEvidenceAsync(evidenceId, CancellationToken.None);
+                return await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).GetForEvidenceAsync(evidenceId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, entries.Count);
@@ -2392,16 +2396,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     Guid.NewGuid(), userId, "View", "192.168.1.1", "Investigation", CancellationToken.None);
-                _ = await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     Guid.NewGuid(), userId, "Download", "192.168.1.1", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<AccessAuditLogEntity> entries = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.AccessAuditLogs.GetByUserAsync(userId, CancellationToken.None);
+                return await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).GetByUserAsync(userId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, entries.Count);
@@ -2417,14 +2421,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     Guid.NewGuid(), "user1", "View", "192.168.1.1", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<AccessAuditLogEntity> entries = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.AccessAuditLogs.GetByDateRangeAsync(fromUtc, toUtc, CancellationToken.None);
+                return await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).GetByDateRangeAsync(fromUtc, toUtc, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(entries);
@@ -2436,14 +2440,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).RecordAccessAsync(
                     Guid.NewGuid(), "user1", "View", "192.168.1.1", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<AccessAuditLogEntity> entries = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.AccessAuditLogs.ListAsync(0, 10, CancellationToken.None);
+                return await new AccessAuditLogRepository(_unitOfWork, NullLogger<AccessAuditLogRepository>.Instance).ListAsync(0, 10, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(entries);
@@ -2478,7 +2482,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             ExportAuditRecordEntity recorded = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportAuditRecords.RecordExportAsync(
+                return await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     locationId, "TestUser", 10, "AES256Archive", "CaseFile", CancellationToken.None);
             }, CancellationToken.None);
 
@@ -2497,16 +2501,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     locationId, "user1", 10, "AES256Archive", "CaseFile", CancellationToken.None);
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     locationId, "user2", 5, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ExportAuditRecordEntity> records = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportAuditRecords.GetForLocationAsync(locationId, CancellationToken.None);
+                return await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).GetForLocationAsync(locationId, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, records.Count);
@@ -2520,16 +2524,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     Guid.NewGuid(), exportedBy, 10, "AES256Archive", "CaseFile", CancellationToken.None);
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     Guid.NewGuid(), exportedBy, 5, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ExportAuditRecordEntity> records = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportAuditRecords.GetByUserAsync(exportedBy, CancellationToken.None);
+                return await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).GetByUserAsync(exportedBy, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, records.Count);
@@ -2545,14 +2549,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     Guid.NewGuid(), "TestUser", 10, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ExportAuditRecordEntity> records = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportAuditRecords.GetByDateRangeAsync(fromUtc, toUtc, CancellationToken.None);
+                return await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).GetByDateRangeAsync(fromUtc, toUtc, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(records);
@@ -2564,16 +2568,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     Guid.NewGuid(), "user1", 10, "AES256Archive", "CaseFile", CancellationToken.None);
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     Guid.NewGuid(), "user2", 5, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             ExportStatistics stats = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportAuditRecords.GetStatisticsAsync(CancellationToken.None);
+                return await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).GetStatisticsAsync(CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.Equal(2, stats.TotalExports);
@@ -2586,14 +2590,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.ExportAuditRecords.RecordExportAsync(
+                _ = await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).RecordExportAsync(
                     Guid.NewGuid(), "TestUser", 10, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             IReadOnlyList<ExportAuditRecordEntity> records = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return await context.ExportAuditRecords.ListAsync(0, 10, CancellationToken.None);
+                return await new ExportAuditRecordRepository(_unitOfWork, NullLogger<ExportAuditRecordRepository>.Instance).ListAsync(0, 10, CancellationToken.None);
             }, CancellationToken.None);
 
             Assert.NotEmpty(records);

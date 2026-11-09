@@ -18,11 +18,13 @@ namespace VideoForensics.Data.Database.Repositories
     /// </summary>
     public class EventBackfillService
     {
+        private readonly IDeviceRepository _devices;
         private readonly IDingIdLinkRepository _dingIdLinks;
 
         /// <summary>Initializes a new instance of the EventBackfillService.</summary>
-        public EventBackfillService(IDingIdLinkRepository dingIdLinks)
+        public EventBackfillService(IDeviceRepository devices, IDingIdLinkRepository dingIdLinks)
         {
+            _devices = devices;
             _dingIdLinks = dingIdLinks;
         }
 
@@ -92,9 +94,9 @@ namespace VideoForensics.Data.Database.Repositories
         {
             if (!candidatesByDevice.TryGetValue(downloadEvent.DeviceId, out IReadOnlyList<string>? candidates))
             {
-                candidates = await unitOfWork.ExecuteAsync(async ctx =>
+                candidates = await unitOfWork.ExecuteAsync(async _ =>
                 {
-                    Device? device = await ctx.Devices.GetAsync(downloadEvent.DeviceId, ct);
+                    Device? device = await _devices.GetAsync(downloadEvent.DeviceId, ct);
                     return await ProviderEventIdResolver.CandidatesForDeviceAsync(device, _dingIdLinks, ct);
                 }, ct);
                 candidatesByDevice[downloadEvent.DeviceId] = candidates;

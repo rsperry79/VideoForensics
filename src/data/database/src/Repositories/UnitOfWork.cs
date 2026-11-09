@@ -25,7 +25,6 @@ namespace VideoForensics.Data.Database.Repositories
         private static readonly TimeSpan DefaultSlowTransactionThreshold = TimeSpan.FromSeconds(1);
 
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<UnitOfWork> _logger;
         private readonly TimeSpan _slowTransactionThreshold;
         private readonly InFlightTransactions _inFlight;
@@ -47,7 +46,6 @@ namespace VideoForensics.Data.Database.Repositories
             TimeSpan? queueTimeout = null)
         {
             _factory = factory;
-            _serviceProvider = serviceProvider;
             _logger = logger;
             _slowTransactionThreshold = slowTransactionThreshold ?? DefaultSlowTransactionThreshold;
             _inFlight = inFlight ?? new InFlightTransactions();
@@ -65,12 +63,12 @@ namespace VideoForensics.Data.Database.Repositories
             VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
             if (ambient is not null)
             {
-                return await read(new UnitOfWorkContext(ambient, _serviceProvider));
+                return await read(new UnitOfWorkContext(ambient, _logger));
             }
 
             // Why: no transaction and no append gate. A read that took either would wait behind every slow write in the process.
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var context = new UnitOfWorkContext(db, _serviceProvider);
+            var context = new UnitOfWorkContext(db, _logger);
             return await read(context);
         }
 
@@ -80,7 +78,7 @@ namespace VideoForensics.Data.Database.Repositories
             VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
             if (ambient is not null)
             {
-                return await work(new UnitOfWorkContext(ambient, _serviceProvider));
+                return await work(new UnitOfWorkContext(ambient, _logger));
             }
 
             // Read the caller before the first await: its frames are only on the stack until then.
@@ -185,7 +183,7 @@ namespace VideoForensics.Data.Database.Repositories
             AmbientUnitOfWork.DbContext = db;
             try
             {
-                var context = new UnitOfWorkContext(db, _serviceProvider);
+                var context = new UnitOfWorkContext(db, _logger);
                 T? result = await work(context);
                 _ = await db.SaveChangesAsync(ct);
                 worked = clock.Elapsed;
@@ -297,14 +295,12 @@ namespace VideoForensics.Data.Database.Repositories
     internal class UnitOfWorkContext : IUnitOfWorkContext
     {
         private readonly VideoForensicsDbContext _db;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<UnitOfWork> _logger;
 
-        public UnitOfWorkContext(VideoForensicsDbContext db, IServiceProvider serviceProvider)
+        public UnitOfWorkContext(VideoForensicsDbContext db, ILogger<UnitOfWork> logger)
         {
             _db = db;
-            _serviceProvider = serviceProvider;
-            _logger = serviceProvider.GetRequiredService<ILogger<UnitOfWork>>();
+            _logger = logger;
         }
 
         /// <summary>The open context of this unit of work.</summary>
@@ -313,20 +309,9 @@ namespace VideoForensics.Data.Database.Repositories
         public IUserRepository Users => new UnitOfWorkUserRepository(_db, _logger);
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
-        public IDeviceRepository Devices => new UnitOfWorkDeviceRepository(_db, _logger);
         public IMediaItemRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
-        public ICredentialRepository Credentials => new UnitOfWorkCredentialRepository(_db, _serviceProvider.GetRequiredService<ICredentialEncryptionProvider>(), _serviceProvider.GetRequiredService<ILogger<ICredentialRepository>>());
-        public IActionLogRepository ActionLog => new UnitOfWorkActionLogRepository(_db, _logger);
         public IEventRepository Events => new UnitOfWorkEventRepository(_db, _logger);
-        public IDeviceConfigRepository DeviceConfig => new UnitOfWorkDeviceConfigRepository(_db, _logger);
-        public IDeviceSettingChangeRepository DeviceSettingChanges => new UnitOfWorkDeviceSettingChangeRepository(_db, _logger);
-        public IProviderReconciliationRepository ProviderReconciliation => new UnitOfWorkProviderReconciliationRepository(_db, _logger);
-        public IExportRecordRepository ExportRecords => new UnitOfWorkExportRecordRepository(_db, _logger);
-        public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
-        public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
-        public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
-        public IMediaFlagRepository MediaFlags => new UnitOfWorkMediaFlagRepository(_db, _logger);
 
         public async Task SaveChangesAsync(CancellationToken ct)
         {
@@ -553,61 +538,6 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkDeviceRepository : IDeviceRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkDeviceRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<Device?> GetAsync(Guid deviceId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.Id == deviceId));
-        }
-
-        public Task<IReadOnlyList<Device>> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<Device>)_db.Devices.AsNoTracking().Where(d => d.LocationId == locationId).ToList());
-        }
-
-        public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId));
-        }
-
-        public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
-        {
-            var devices = _db.Devices.AsNoTracking().ToList();
-            var links = _db.ProviderAccountLocations
-                .AsNoTracking()
-                .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
-                .AsEnumerable()
-                .Select(x => (x.LocationId, x.ProviderName))
-                .ToList();
-            DeviceProviderNames.Assign(devices, links);
-            return Task.FromResult((IReadOnlyList<Device>)devices);
-        }
-
-        public Task AddAsync(Device device, CancellationToken ct) { _ = _db.Devices.Add(device); return Task.CompletedTask; }
-        public Task UpdateAsync(Device device, CancellationToken ct) { _ = _db.Devices.Update(device); return Task.CompletedTask; }
-        public Task UpdateLastSuccessfulPullAsync(Guid deviceId, DateTime pulledAtUtc, CancellationToken ct)
-        {
-            Device? device = _db.Devices.FirstOrDefault(d => d.Id == deviceId);
-            device?.LastSuccessfulPullAtUtc = pulledAtUtc;
-            return Task.CompletedTask;
-        }
-        public Task DeleteAsync(Guid deviceId, CancellationToken ct)
-        {
-            Device? device = _db.Devices.FirstOrDefault(d => d.Id == deviceId);
-            if (device != null)
-            {
-                _ = _db.Devices.Remove(device);
-            }
-
-            return Task.CompletedTask;
-        }
-    }
-
     internal class UnitOfWorkMediaItemRepository : IMediaItemRepository
     {
         private readonly VideoForensicsDbContext _db;
@@ -826,71 +756,6 @@ namespace VideoForensics.Data.Database.Repositories
             if (downloadEvent != null)
             {
                 _ = _db.DownloadEvents.Remove(downloadEvent);
-            }
-
-            return Task.CompletedTask;
-        }
-    }
-
-    internal class UnitOfWorkCredentialRepository : ICredentialRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ICredentialEncryptionProvider _encryptionProvider;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkCredentialRepository(VideoForensicsDbContext db, ICredentialEncryptionProvider encryptionProvider, ILogger logger) { _db = db; _encryptionProvider = encryptionProvider; _logger = logger; }
-
-        public async Task<(string CredentialType, string DecryptedValue)?> GetAsync(Guid providerAccountId, string credentialType, CancellationToken ct)
-        {
-            Credential? credential = _db.Credentials.AsNoTracking().FirstOrDefault(c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType);
-            if (credential == null)
-            {
-                return null;
-            }
-
-            string decryptedValue = await _encryptionProvider.DecryptAsync(credential.EncryptedValue, ct);
-            return (credential.CredentialType, decryptedValue);
-        }
-
-        public Task<IReadOnlyList<Credential>> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<Credential>)_db.Credentials.AsNoTracking().Where(c => c.ProviderAccountId == providerAccountId).ToList());
-        }
-
-        public async Task SetAsync(Guid providerAccountId, string credentialType, string plainValue, CancellationToken ct)
-        {
-            string encryptedValue = await _encryptionProvider.EncryptAsync(plainValue, ct);
-            Credential? credential = _db.Credentials.FirstOrDefault(c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType);
-            if (credential == null)
-            {
-                credential = new Credential { Id = Guid.NewGuid(), ProviderAccountId = providerAccountId, CredentialType = credentialType, EncryptedValue = encryptedValue, EncryptionProvider = "DataProtection", CreatedUtc = DateTime.UtcNow };
-                _ = _db.Credentials.Add(credential);
-            }
-            else
-            {
-                credential.EncryptedValue = encryptedValue;
-                credential.RotatedUtc = DateTime.UtcNow;
-                _ = _db.Credentials.Update(credential);
-            }
-        }
-
-        public Task DeleteAsync(Guid providerAccountId, string credentialType, CancellationToken ct)
-        {
-            Credential? credential = _db.Credentials.FirstOrDefault(c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType);
-            if (credential != null)
-            {
-                _ = _db.Credentials.Remove(credential);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
-        {
-            var credentials = _db.Credentials.Where(c => c.ProviderAccountId == providerAccountId).ToList();
-            if (credentials.Count > 0)
-            {
-                _db.Credentials.RemoveRange(credentials);
             }
 
             return Task.CompletedTask;
@@ -1254,512 +1119,6 @@ namespace VideoForensics.Data.Database.Repositories
                 @event.DownloadStatus = EventDownloadStatus.DownloadFailed;
                 @event.DownloadFailedAtUtc = failureTime;
                 _ = _db.Events.Update(@event);
-            }
-
-            return Task.CompletedTask;
-        }
-    }
-
-    internal class UnitOfWorkDeviceSettingChangeRepository : IDeviceSettingChangeRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkDeviceSettingChangeRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        // Synchronous add on the transaction's DbContext: the rows commit with the Device update that produced them.
-        public Task AddRangeAsync(IEnumerable<DeviceSettingChange> changes, CancellationToken ct)
-        {
-            _db.DeviceSettingChanges.AddRange(changes);
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<DeviceSettingChange>> ListByDeviceAsync(Guid deviceId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<DeviceSettingChange>)_db.DeviceSettingChanges.AsNoTracking()
-                .Where(dsc => dsc.DeviceId == deviceId)
-                .OrderByDescending(dsc => dsc.ChangedAtUtc)
-                .ToList());
-        }
-    }
-
-    internal class UnitOfWorkDeviceConfigRepository : IDeviceConfigRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkDeviceConfigRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<DeviceConfigSnapshot?> GetAsync(Guid snapshotId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.DeviceConfigSnapshots.AsNoTracking().FirstOrDefault(dcs => dcs.Id == snapshotId));
-        }
-
-        public Task<DeviceConfigSnapshot> AppendSnapshotAsync(DeviceConfigSnapshot snapshot, CancellationToken ct)
-        {
-            _ = _db.DeviceConfigSnapshots.Add(snapshot);
-            return Task.FromResult(snapshot);
-        }
-
-        public Task<DeviceConfigSnapshot?> GetLatestAsync(Guid deviceId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.DeviceConfigSnapshots.AsNoTracking()
-                .Where(dcs => dcs.DeviceId == deviceId)
-                .OrderByDescending(dcs => dcs.CapturedAtUtc)
-                .FirstOrDefault());
-        }
-
-        public Task<IReadOnlyList<DeviceConfigSnapshot>> GetHistoryAsync(Guid deviceId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<DeviceConfigSnapshot>)_db.DeviceConfigSnapshots.AsNoTracking()
-                .Where(dcs => dcs.DeviceId == deviceId)
-                .OrderByDescending(dcs => dcs.CapturedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<DeviceConfigSnapshot>> ListAsync(CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<DeviceConfigSnapshot>)_db.DeviceConfigSnapshots.AsNoTracking().ToList());
-        }
-    }
-
-    internal class UnitOfWorkProviderReconciliationRepository : IProviderReconciliationRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkProviderReconciliationRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<ProviderReconciliationRecord?> GetAsync(Guid recordId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.ProviderReconciliationRecords.AsNoTracking().FirstOrDefault(prr => prr.Id == recordId));
-        }
-
-        public Task<ProviderReconciliationRecord> AppendAsync(ProviderReconciliationRecord record, CancellationToken ct)
-        {
-            _ = _db.ProviderReconciliationRecords.Add(record);
-            return Task.FromResult(record);
-        }
-
-        public Task<IReadOnlyList<ProviderReconciliationRecord>> GetHistoryForDeviceAsync(Guid deviceId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ProviderReconciliationRecord>)_db.ProviderReconciliationRecords.AsNoTracking()
-                .Where(prr => prr.DeviceId == deviceId)
-                .OrderByDescending(prr => prr.RanAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ProviderReconciliationRecord>> GetOpenDiscrepanciesAsync(CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ProviderReconciliationRecord>)_db.ProviderReconciliationRecords.AsNoTracking()
-                .OrderByDescending(prr => prr.RanAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ProviderReconciliationRecord>> ListAsync(CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ProviderReconciliationRecord>)_db.ProviderReconciliationRecords.AsNoTracking().ToList());
-        }
-    }
-
-    internal class UnitOfWorkExportRecordRepository : IExportRecordRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkExportRecordRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<ExportRecord?> GetAsync(Guid recordId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.ExportRecords.AsNoTracking().FirstOrDefault(er => er.Id == recordId));
-        }
-
-        public Task<IReadOnlyList<ExportRecordItem>> GetItemsForRecordAsync(Guid exportRecordId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportRecordItem>)_db.ExportRecordItems.AsNoTracking()
-                .Where(eri => eri.ExportRecordId == exportRecordId)
-                .ToList());
-        }
-
-        public Task<ExportRecord> AppendAsync(ExportRecord record, IReadOnlyList<ExportRecordItem> items, CancellationToken ct)
-        {
-            _ = _db.ExportRecords.Add(record);
-            _db.ExportRecordItems.AddRange(items);
-            return Task.FromResult(record);
-        }
-
-        public Task<IReadOnlyList<ExportRecord>> GetHistoryForMediaItemAsync(Guid mediaItemId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportRecord>)_db.ExportRecordItems.AsNoTracking()
-                .Where(eri => eri.MediaItemId == mediaItemId)
-                .Select(eri => eri.ExportRecordId)
-                .Distinct()
-                .Join(
-                    _db.ExportRecords.AsNoTracking(),
-                    recordId => recordId,
-                    record => record.Id,
-                    (_, record) => record)
-                .OrderByDescending(er => er.ExportedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ExportRecord>> GetHistoryForDeviceAsync(Guid deviceId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportRecord>)_db.ExportRecords.AsNoTracking()
-                .OrderByDescending(er => er.ExportedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ExportRecord>> ListAsync(CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportRecord>)_db.ExportRecords.AsNoTracking().ToList());
-        }
-    }
-
-    internal class UnitOfWorkAccessAuditLogRepository : IAccessAuditLogRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkAccessAuditLogRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<AccessAuditLogEntity> RecordAccessAsync(
-            Guid evidenceId,
-            string userId,
-            string action,
-            string ipAddress,
-            string purpose,
-            CancellationToken ct)
-        {
-            var entry = new AccessAuditLogEntity
-            {
-                Id = Guid.NewGuid(),
-                EvidenceId = evidenceId,
-                UserId = userId,
-                Action = action,
-                IpAddress = ipAddress,
-                Purpose = purpose,
-                AccessedAtUtc = DateTime.UtcNow,
-                CreatedAtUtc = DateTime.UtcNow
-            };
-            _ = _db.AccessAuditLogs.Add(entry);
-            return Task.FromResult(entry);
-        }
-
-        public Task<AccessAuditLogEntity?> GetAsync(Guid logId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.AccessAuditLogs.AsNoTracking().FirstOrDefault(l => l.Id == logId));
-        }
-
-        public Task<IReadOnlyList<AccessAuditLogEntity>> GetForEvidenceAsync(Guid evidenceId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
-                .Where(l => l.EvidenceId == evidenceId)
-                .OrderByDescending(l => l.AccessedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<AccessAuditLogEntity>> GetByUserAsync(string userId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
-                .Where(l => l.UserId == userId)
-                .OrderByDescending(l => l.AccessedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<AccessAuditLogEntity>> GetByDateRangeAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
-                .Where(l => l.AccessedAtUtc >= fromUtc && l.AccessedAtUtc <= toUtc)
-                .OrderByDescending(l => l.AccessedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<AccessAuditLogEntity>> ListAsync(int skip = 0, int take = 1000, CancellationToken ct = default)
-        {
-            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
-                .OrderByDescending(l => l.AccessedAtUtc)
-                .Skip(skip)
-                .Take(take)
-                .ToList());
-        }
-    }
-
-    internal class UnitOfWorkExportAuditRecordRepository : IExportAuditRecordRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkExportAuditRecordRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<ExportAuditRecordEntity> RecordExportAsync(
-            Guid locationId,
-            string exportedBy,
-            int eventsExported,
-            string exportFormat,
-            string purpose,
-            CancellationToken ct)
-        {
-            var record = new ExportAuditRecordEntity
-            {
-                Id = Guid.NewGuid(),
-                LocationId = locationId,
-                ExportedBy = exportedBy,
-                EventsExported = eventsExported,
-                ExportFormat = exportFormat,
-                Purpose = purpose,
-                ExportedAtUtc = DateTime.UtcNow
-            };
-            _ = _db.ExportAuditRecords.Add(record);
-            return Task.FromResult(record);
-        }
-
-        public Task<ExportAuditRecordEntity?> GetAsync(Guid recordId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.ExportAuditRecords.AsNoTracking().FirstOrDefault(r => r.Id == recordId));
-        }
-
-        public Task<IReadOnlyList<ExportAuditRecordEntity>> GetForLocationAsync(Guid locationId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
-                .Where(r => r.LocationId == locationId)
-                .OrderByDescending(r => r.ExportedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ExportAuditRecordEntity>> GetByUserAsync(string userId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
-                .Where(r => r.ExportedBy == userId)
-                .OrderByDescending(r => r.ExportedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ExportAuditRecordEntity>> GetByDateRangeAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
-                .Where(r => r.ExportedAtUtc >= fromUtc && r.ExportedAtUtc <= toUtc)
-                .OrderByDescending(r => r.ExportedAtUtc)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<ExportAuditRecordEntity>> ListAsync(int skip = 0, int take = 1000, CancellationToken ct = default)
-        {
-            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
-                .OrderByDescending(r => r.ExportedAtUtc)
-                .Skip(skip)
-                .Take(take)
-                .ToList());
-        }
-
-        public Task<ExportStatistics> GetStatisticsAsync(CancellationToken ct)
-        {
-            var records = _db.ExportAuditRecords.AsNoTracking().ToList();
-            var statistics = new ExportStatistics
-            {
-                TotalExports = records.Count,
-                TotalEventsExported = records.Sum(r => r.EventsExported),
-                FirstExportAtUtc = records.Count > 0 ? records.Min(r => r.ExportedAtUtc) : null,
-                LastExportAtUtc = records.Count > 0 ? records.Max(r => r.ExportedAtUtc) : null,
-                UniqueExporters = records.Select(r => r.ExportedBy).Distinct().Count(),
-                ExportsByFormat = records
-                    .GroupBy(r => r.ExportFormat)
-                    .ToDictionary(g => g.Key, g => g.Count())
-            };
-            return Task.FromResult(statistics);
-        }
-    }
-
-    /// <summary>Media flag repository on the unit of work's context: nothing commits until the unit does.</summary>
-    internal class UnitOfWorkMediaFlagRepository : IMediaFlagRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkMediaFlagRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<MediaFlag> UpsertRaisedAsync(MediaFlag raised, CancellationToken ct)
-        {
-            return MediaFlagOperations.StageUpsertAsync(_db, raised, ct);
-        }
-
-        public Task<int> ReconcileForMediaAsync(Guid mediaItemId, IReadOnlySet<MediaFlagType> raised, CancellationToken ct)
-        {
-            return MediaFlagOperations.ReconcileAsync(_db, mediaItemId, raised, ct);
-        }
-
-        public Task<MediaFlag?> GetAsync(Guid flagId, CancellationToken ct)
-        {
-            return MediaFlagOperations.FindWithEventTypeAsync(_db, _db.MediaFlags.AsNoTracking().Where(f => f.Id == flagId), ct);
-        }
-
-        public Task<MediaFlagPage> ListPageAsync(MediaFlagFilter filter, int skip, int take, CancellationToken ct)
-        {
-            return MediaFlagOperations.ListPageAsync(_db, filter, skip, take, ct);
-        }
-
-        public Task<int> CountAsync(MediaFlagFilter filter, CancellationToken ct)
-        {
-            return MediaFlagOperations.CountAsync(_db, filter, ct);
-        }
-
-        public Task<MediaFlag?> GetNeighbourAsync(Guid flagId, MediaFlagFilter filter, MediaFlagNeighbour direction, CancellationToken ct)
-        {
-            return MediaFlagOperations.GetNeighbourAsync(_db, flagId, filter, direction, ct);
-        }
-
-        public Task<int?> GetPositionAsync(Guid flagId, MediaFlagFilter filter, CancellationToken ct)
-        {
-            return MediaFlagOperations.GetPositionAsync(_db, flagId, filter, ct);
-        }
-
-        public Task<MediaFlag> UpdateStatusAsync(Guid flagId, MediaFlagStatus expectedStatus, MediaFlagStatus newStatus, string? reason, string operatorName, CancellationToken ct)
-        {
-            MediaFlagOperations.ValidateReview(expectedStatus, newStatus, reason, operatorName);
-            return MediaFlagOperations.StageReviewAsync(_db, new UnitOfWorkActionLogRepository(_db, _logger), flagId, expectedStatus, newStatus, reason, operatorName, MediaFlagOperations.ActionFor(newStatus), ct);
-        }
-
-        public Task<MediaFlag> ReopenAsync(Guid flagId, string operatorName, string reason, CancellationToken ct)
-        {
-            MediaFlagOperations.ValidateReopen(operatorName, reason);
-            return MediaFlagOperations.StageReviewAsync(_db, new UnitOfWorkActionLogRepository(_db, _logger), flagId, MediaFlagStatus.Dismissed, MediaFlagStatus.Unreviewed, reason, operatorName, MediaFlagOperations.ActionFor(MediaFlagStatus.Unreviewed), ct);
-        }
-    }
-
-    internal class DetectionEntityProvider : IDetectionEntityProvider
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public DetectionEntityProvider(VideoForensicsDbContext db, ILogger logger)
-        {
-            _db = db;
-            _logger = logger;
-        }
-
-        public Task AddMediaItemDetectionAsync(MediaItemDetection detection, CancellationToken ct)
-        {
-            if (detection != null)
-            {
-                _ = _db.MediaItemDetections.Add(detection);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task AddDetectedPersonsAsync(List<DetectedPerson> persons, CancellationToken ct)
-        {
-            if (persons != null && persons.Count > 0)
-            {
-                _db.DetectedPersons.AddRange(persons);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task AddDetectionTypeOccurrencesAsync(List<DetectionTypeOccurrence> occurrences, CancellationToken ct)
-        {
-            if (occurrences != null && occurrences.Count > 0)
-            {
-                _db.DetectionTypeOccurrences.AddRange(occurrences);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task AddEventDetectionAsync(EventDetection detection, CancellationToken ct)
-        {
-            if (detection != null)
-            {
-                _ = _db.EventDetections.Add(detection);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public async Task<Guid> UpsertEventDetectionAsync(EventDetection detection, CancellationToken ct)
-        {
-            // One detection row per event: key on EventId. Check unsaved rows first so two upserts in
-            // the same transaction don't both insert.
-            EventDetection? existing = _db.EventDetections.Local.FirstOrDefault(d => d.EventId == detection.EventId)
-                ?? await _db.EventDetections.FirstOrDefaultAsync(d => d.EventId == detection.EventId, ct);
-
-            if (existing == null)
-            {
-                _ = _db.EventDetections.Add(detection);
-                return detection.Id;
-            }
-
-            if (!ReferenceEquals(existing, detection))
-            {
-                existing.PersonDetected = detection.PersonDetected;
-                existing.StreamBroken = detection.StreamBroken;
-                existing.DetectionType = detection.DetectionType;
-                existing.FullDescription = detection.FullDescription;
-                existing.ShortDescription = detection.ShortDescription;
-                existing.Similarity = detection.Similarity;
-                existing.Anomaly = detection.Anomaly;
-                existing.Confidence = detection.Confidence;
-                existing.ModelVersion = detection.ModelVersion;
-            }
-
-            // Children are re-added by the caller from the latest data, so drop the previous set.
-            Guid detectionId = existing.Id;
-            _db.EventDetectionZones.RemoveRange(await _db.EventDetectionZones.Where(z => z.EventDetectionId == detectionId).ToListAsync(ct));
-            _db.EventDetectionTypeOccurrences.RemoveRange(await _db.EventDetectionTypeOccurrences.Where(o => o.EventDetectionId == detectionId).ToListAsync(ct));
-
-            detection.Id = detectionId;
-            return detectionId;
-        }
-
-        public async Task ClearEventAlertsAndPersonsAsync(Guid eventId, bool clearAlerts, bool clearPersons, CancellationToken ct)
-        {
-            if (clearAlerts)
-            {
-                _db.EventSecurityAlerts.RemoveRange(await _db.EventSecurityAlerts.Where(a => a.EventId == eventId).ToListAsync(ct));
-            }
-
-            if (clearPersons)
-            {
-                _db.EventDetectedPersons.RemoveRange(await _db.EventDetectedPersons.Where(p => p.EventId == eventId).ToListAsync(ct));
-            }
-        }
-
-        public Task AddEventDetectionZonesAsync(List<EventDetectionZone> zones, CancellationToken ct)
-        {
-            if (zones != null && zones.Count > 0)
-            {
-                _db.EventDetectionZones.AddRange(zones);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task AddEventSecurityAlertsAsync(List<EventSecurityAlert> alerts, CancellationToken ct)
-        {
-            if (alerts != null && alerts.Count > 0)
-            {
-                _db.EventSecurityAlerts.AddRange(alerts);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task AddEventDetectedPersonsAsync(List<EventDetectedPerson> persons, CancellationToken ct)
-        {
-            if (persons != null && persons.Count > 0)
-            {
-                _db.EventDetectedPersons.AddRange(persons);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task AddEventDetectionTypeOccurrencesAsync(List<EventDetectionTypeOccurrence> occurrences, CancellationToken ct)
-        {
-            if (occurrences != null && occurrences.Count > 0)
-            {
-                _db.EventDetectionTypeOccurrences.AddRange(occurrences);
             }
 
             return Task.CompletedTask;

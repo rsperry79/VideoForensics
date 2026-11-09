@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -52,7 +53,7 @@ namespace VideoForensics.Data.Database.Tests
                 _ = await db.SaveChangesAsync();
             }
 
-            IReadOnlyList<Device> devices = await _unitOfWork.ExecuteAsync(ctx => ctx.Devices.ListAsync(CancellationToken.None), CancellationToken.None);
+            IReadOnlyList<Device> devices = await _unitOfWork.ExecuteAsync(ctx => new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance).ListAsync(CancellationToken.None), CancellationToken.None);
 
             Assert.Equal("Ring", Assert.Single(devices, d => d.Id == device.Id).ProviderName);
         }

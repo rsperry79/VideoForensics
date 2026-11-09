@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
@@ -37,7 +38,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _eventRepository = new EventRepository(_unitOfWork, _loggerFactory.CreateLogger<EventRepository>());
             _mediaItemRepository = new MediaItemRepository(_unitOfWork, _loggerFactory.CreateLogger<MediaItemRepository>());
             _downloadEventRepository = new DownloadEventRepository(_unitOfWork, _loggerFactory.CreateLogger<DownloadEventRepository>());
-            _backfillService = new EventBackfillService(new DingIdLinkRepository(_unitOfWork));
+            _backfillService = new EventBackfillService(new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance), new DingIdLinkRepository(_unitOfWork));
         }
 
         public async ValueTask DisposeAsync()

@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -89,7 +90,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 await context.SaveChangesAsync(CancellationToken.None);
 
                 _ = await _unitOfWork.ExecuteAsync<object?>(async nested =>
@@ -122,7 +123,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 await context.SaveChangesAsync(CancellationToken.None);
 
                 seen = await _unitOfWork.ReadAsync(async read => await read.Users.GetAsync(userId, CancellationToken.None) is not null, CancellationToken.None);
@@ -171,7 +172,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
-                await context.Users.AddAsync(user, CancellationToken.None);
+                await new UserRepository(_unitOfWork, NullLogger<UserRepository>.Instance).AddAsync(user, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
