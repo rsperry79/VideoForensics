@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
 
             // Create the ActionLogRepository first since LegalHoldRepository depends on it
-            _actionLogRepository = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
+            _actionLogRepository = new ActionLogRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>());
             var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
             _repository = new LegalHoldRepository(unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<LegalHoldRepository>());
         }

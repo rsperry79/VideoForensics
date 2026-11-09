@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await db.Database.EnsureCreatedAsync();
 
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _repository = new ActionLogRepository(_factory, loggerFactory.CreateLogger<ActionLogRepository>());
+            _repository = new ActionLogRepository(new UnitOfWork(_factory, new ServiceCollection().AddLogging().BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<ActionLogRepository>());
             _unitOfWork = new UnitOfWork(_factory, new ServiceCollection().AddLogging().BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>());
         }
 

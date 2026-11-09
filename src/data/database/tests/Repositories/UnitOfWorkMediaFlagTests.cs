@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             MediaFlag? stored = await _repository.GetAsync(id, CancellationToken.None);
             Assert.Equal(MediaFlagStatus.Kept, stored?.Status);
             Assert.Equal(1, await _repository.CountAsync(new MediaFlagFilter(), CancellationToken.None));
-            var actionLog = new ActionLogRepository(_fixture.Factory, NullLogger<ActionLogRepository>.Instance);
+            var actionLog = new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance);
             _ = Assert.Single(await actionLog.GetHistoryForEntityAsync("MediaFlag", id, CancellationToken.None));
         }
 
@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             }, CancellationToken.None));
 
             Assert.Equal(0, await _repository.CountAsync(new MediaFlagFilter(), CancellationToken.None));
-            var actionLog = new ActionLogRepository(_fixture.Factory, NullLogger<ActionLogRepository>.Instance);
+            var actionLog = new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance);
             Assert.Empty(await actionLog.ListAsync(CancellationToken.None));
         }
     }

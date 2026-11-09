@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Database.Tests
         private CaseRepository BuildRepo(IDbContextFactory<VideoForensicsDbContext> factory)
         {
             return new(new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()),
-                new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
+                new ActionLogRepository(new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
         }
@@ -327,7 +327,7 @@ namespace VideoForensics.Data.Database.Tests
 
             DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
             CaseRepository racingRepo = new(new UnitOfWork(new SimpleFactory(racing), new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()),
-                new ActionLogRepository(new SimpleFactory(racing), _loggerFactory.CreateLogger<ActionLogRepository>()),
+                new ActionLogRepository(new UnitOfWork(new SimpleFactory(racing), new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 fakeTime);
 

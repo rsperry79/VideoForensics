@@ -36,7 +36,7 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
 
-            var actionLogRepo = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
+            var actionLogRepo = new ActionLogRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>());
             var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
             _caseRepo = new CaseRepository(unitOfWork, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));

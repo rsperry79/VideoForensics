@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             var serviceProvider = new TestServiceProvider(_fixture, loggerFactory);
 
             _unitOfWork = new UnitOfWork(_fixture.Factory, serviceProvider, loggerFactory.CreateLogger<UnitOfWork>());
-            _verifier = new ActionLogRepository(_fixture.Factory, loggerFactory.CreateLogger<ActionLogRepository>());
+            _verifier = new ActionLogRepository(_unitOfWork, loggerFactory.CreateLogger<ActionLogRepository>());
         }
 
         public async ValueTask DisposeAsync()

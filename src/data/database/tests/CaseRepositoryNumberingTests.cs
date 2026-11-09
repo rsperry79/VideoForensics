@@ -37,7 +37,7 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
 
             _unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
-            _actionLogRepository = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
+            _actionLogRepository = new ActionLogRepository(_unitOfWork, _loggerFactory.CreateLogger<ActionLogRepository>());
             _locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
             _deviceRepository = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());
             _repository = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>());
@@ -645,7 +645,7 @@ namespace VideoForensics.Data.Database.Tests
             DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(connectionString).AddInterceptors(interceptor).Options;
             var factory = new SimpleFactory(racing);
             var unitOfWork = new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
-            var repo = new CaseRepository(unitOfWork, new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
+            var repo = new CaseRepository(unitOfWork, new ActionLogRepository(unitOfWork, _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(), new FakeTimeProvider(RaceNow));
             return (repo, conn, interceptor);
         }
