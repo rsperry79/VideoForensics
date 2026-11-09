@@ -10,14 +10,14 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for camera bitrate baselines.</summary>
     public class CameraBitrateBaselineRepository : ICameraBitrateBaselineRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IDbContextFactory<VideoForensicsLogsDbContext> _logsFactory;
         private readonly ILogger<CameraBitrateBaselineRepository> _logger;
 
         /// <summary>Initializes a new instance of the CameraBitrateBaselineRepository.</summary>
-        public CameraBitrateBaselineRepository(IDbContextFactory<VideoForensicsDbContext> factory, IDbContextFactory<VideoForensicsLogsDbContext> logsFactory, ILogger<CameraBitrateBaselineRepository> logger)
+        public CameraBitrateBaselineRepository(IUnitOfWork unitOfWork, IDbContextFactory<VideoForensicsLogsDbContext> logsFactory, ILogger<CameraBitrateBaselineRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logsFactory = logsFactory;
             _logger = logger;
         }
@@ -25,103 +25,109 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the baseline statistics for a specific hour/weekend bucket of a device.</summary>
         public async Task<CameraBitrateBaseline?> GetBucketAsync(Guid deviceId, int hourOfDay, bool isWeekend, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.CameraBitrateBaselines
-                .FirstOrDefaultAsync(b => b.DeviceId == deviceId && b.HourOfDay == hourOfDay && b.IsWeekend == isWeekend, ct);
+            return await _unitOfWork.ReadAsync(context => context.Db().CameraBitrateBaselines
+                .FirstOrDefaultAsync(b => b.DeviceId == deviceId && b.HourOfDay == hourOfDay && b.IsWeekend == isWeekend, ct), ct);
         }
 
         /// <summary>Gets the device-global fallback baseline (average across all buckets) for cold-start scenarios.</summary>
         public async Task<CameraBitrateBaseline?> GetDeviceGlobalAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<CameraBitrateBaseline> baselines = await db.CameraBitrateBaselines
-                .Where(b => b.DeviceId == deviceId)
-                .ToListAsync(ct);
-
-            if (baselines.Count == 0)
+            return await _unitOfWork.ReadAsync<CameraBitrateBaseline?>(async context =>
             {
-                return null;
-            }
+                List<CameraBitrateBaseline> baselines = await context.Db().CameraBitrateBaselines
+                    .Where(b => b.DeviceId == deviceId)
+                    .ToListAsync(ct);
 
-            // Compute an artificial "global" baseline as the average across all buckets
-            var global = new CameraBitrateBaseline
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                HourOfDay = -1,
-                IsWeekend = false,
-                SampleCount = (int)baselines.Average(b => b.SampleCount),
-                MedianBitrateBps = (long)baselines.Average(b => b.MedianBitrateBps),
-                StdDevBitrateBps = baselines.Average(b => b.StdDevBitrateBps),
-                MedianFractionLost = baselines.Average(b => b.MedianFractionLost),
-                MedianJitterTicks = baselines.Average(b => b.MedianJitterTicks),
-                LastRecomputedAtUtc = DateTime.UtcNow
-            };
+                if (baselines.Count == 0)
+                {
+                    return null;
+                }
 
-            return global;
+                // Compute an artificial "global" baseline as the average across all buckets
+                var global = new CameraBitrateBaseline
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    HourOfDay = -1,
+                    IsWeekend = false,
+                    SampleCount = (int)baselines.Average(b => b.SampleCount),
+                    MedianBitrateBps = (long)baselines.Average(b => b.MedianBitrateBps),
+                    StdDevBitrateBps = baselines.Average(b => b.StdDevBitrateBps),
+                    MedianFractionLost = baselines.Average(b => b.MedianFractionLost),
+                    MedianJitterTicks = baselines.Average(b => b.MedianJitterTicks),
+                    LastRecomputedAtUtc = DateTime.UtcNow
+                };
+
+                return global;
+            }, ct);
         }
 
         /// <summary>Recomputes and upserts the baseline statistics for a specific hour/weekend bucket from current telemetry.</summary>
         public async Task RecomputeBucketAsync(Guid deviceId, int hourOfDay, bool isWeekend, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                // Fetch all sessions for this device, then their samples for this hour/weekend bucket
-                List<Guid> deviceSessions = await db.LiveViewSessions
-                    .Where(s => s.DeviceId == deviceId)
-                    .Select(s => s.Id)
-                    .ToListAsync(ct);
-
-                // Sessions live in the main database; telemetry samples live in logs.db, so the two are read separately.
-                await using VideoForensicsLogsDbContext logs = await _logsFactory.CreateDbContextAsync(ct);
-                List<LiveViewTelemetrySample> samples = await logs.LiveViewTelemetrySamples
-                    .Where(t => deviceSessions.Contains(t.SessionId)
-                        && t.CapturedAtUtc.Hour == hourOfDay
-                        && ((t.CapturedAtUtc.DayOfWeek == DayOfWeek.Saturday || t.CapturedAtUtc.DayOfWeek == DayOfWeek.Sunday) == isWeekend))
-                    .ToListAsync(ct);
-
-                if (samples.Count == 0)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    _logger.LogDebug("No samples found for recomputing bucket: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}",
-                        deviceId, hourOfDay, isWeekend);
-                    return;
-                }
+                    VideoForensicsDbContext db = context.Db();
 
-                // Calculate statistics
-                var bitrateValues = samples.Where(s => s.BitrateBps.HasValue).Select(s => s.BitrateBps.Value).ToList();
-                var fractionLostValues = samples.Where(s => s.FractionLost.HasValue).Select(s => (double)s.FractionLost.Value).ToList();
-                var jitterValues = samples.Where(s => s.JitterTicks.HasValue).Select(s => (double)s.JitterTicks.Value).ToList();
+                    // Fetch all sessions for this device, then their samples for this hour/weekend bucket
+                    List<Guid> deviceSessions = await db.LiveViewSessions
+                        .Where(s => s.DeviceId == deviceId)
+                        .Select(s => s.Id)
+                        .ToListAsync(ct);
 
-                long medianBitrate = bitrateValues.Count > 0 ? GetMedian(bitrateValues) : 0;
-                double stdDevBitrate = bitrateValues.Count > 0 ? GetStdDev(bitrateValues.Select(v => (double)v).ToList()) : 0;
-                double medianFractionLost = fractionLostValues.Count > 0 ? GetMedian(fractionLostValues) : 0;
-                double medianJitter = jitterValues.Count > 0 ? GetMedian(jitterValues) : 0;
+                    // Sessions live in the main database; telemetry samples live in logs.db, so the two are read separately.
+                    await using VideoForensicsLogsDbContext logs = await _logsFactory.CreateDbContextAsync(ct);
+                    List<LiveViewTelemetrySample> samples = await logs.LiveViewTelemetrySamples
+                        .Where(t => deviceSessions.Contains(t.SessionId)
+                            && t.CapturedAtUtc.Hour == hourOfDay
+                            && ((t.CapturedAtUtc.DayOfWeek == DayOfWeek.Saturday || t.CapturedAtUtc.DayOfWeek == DayOfWeek.Sunday) == isWeekend))
+                        .ToListAsync(ct);
 
-                // Find or create the baseline record
-                CameraBitrateBaseline? existing = await db.CameraBitrateBaselines
-                    .FirstOrDefaultAsync(b => b.DeviceId == deviceId && b.HourOfDay == hourOfDay && b.IsWeekend == isWeekend, ct);
+                    if (samples.Count == 0)
+                    {
+                        _logger.LogDebug("No samples found for recomputing bucket: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}",
+                            deviceId, hourOfDay, isWeekend);
+                        return null;
+                    }
 
-                CameraBitrateBaseline baseline = existing ?? new CameraBitrateBaseline
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceId,
-                    HourOfDay = hourOfDay,
-                    IsWeekend = isWeekend
-                };
+                    // Calculate statistics
+                    var bitrateValues = samples.Where(s => s.BitrateBps.HasValue).Select(s => s.BitrateBps.Value).ToList();
+                    var fractionLostValues = samples.Where(s => s.FractionLost.HasValue).Select(s => (double)s.FractionLost.Value).ToList();
+                    var jitterValues = samples.Where(s => s.JitterTicks.HasValue).Select(s => (double)s.JitterTicks.Value).ToList();
 
-                baseline.SampleCount = samples.Count;
-                baseline.MedianBitrateBps = medianBitrate;
-                baseline.StdDevBitrateBps = stdDevBitrate;
-                baseline.MedianFractionLost = medianFractionLost;
-                baseline.MedianJitterTicks = medianJitter;
-                baseline.LastRecomputedAtUtc = DateTime.UtcNow;
+                    long medianBitrate = bitrateValues.Count > 0 ? GetMedian(bitrateValues) : 0;
+                    double stdDevBitrate = bitrateValues.Count > 0 ? GetStdDev(bitrateValues.Select(v => (double)v).ToList()) : 0;
+                    double medianFractionLost = fractionLostValues.Count > 0 ? GetMedian(fractionLostValues) : 0;
+                    double medianJitter = jitterValues.Count > 0 ? GetMedian(jitterValues) : 0;
 
-                _ = existing == null ? db.CameraBitrateBaselines.Add(baseline) : db.CameraBitrateBaselines.Update(baseline);
+                    // Find or create the baseline record
+                    CameraBitrateBaseline? existing = await db.CameraBitrateBaselines
+                        .FirstOrDefaultAsync(b => b.DeviceId == deviceId && b.HourOfDay == hourOfDay && b.IsWeekend == isWeekend, ct);
 
-                _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Recomputed bitrate baseline: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}, SampleCount {SampleCount}",
-                    deviceId, hourOfDay, isWeekend, samples.Count);
+                    CameraBitrateBaseline baseline = existing ?? new CameraBitrateBaseline
+                    {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceId,
+                        HourOfDay = hourOfDay,
+                        IsWeekend = isWeekend
+                    };
+
+                    baseline.SampleCount = samples.Count;
+                    baseline.MedianBitrateBps = medianBitrate;
+                    baseline.StdDevBitrateBps = stdDevBitrate;
+                    baseline.MedianFractionLost = medianFractionLost;
+                    baseline.MedianJitterTicks = medianJitter;
+                    baseline.LastRecomputedAtUtc = DateTime.UtcNow;
+
+                    _ = existing == null ? db.CameraBitrateBaselines.Add(baseline) : db.CameraBitrateBaselines.Update(baseline);
+
+                    _ = await db.SaveChangesAsync(ct);
+                    _logger.LogDebug("Recomputed bitrate baseline: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}, SampleCount {SampleCount}",
+                        deviceId, hourOfDay, isWeekend, samples.Count);
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -134,17 +140,19 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all buckets meeting calibration criteria (undersample or stale).</summary>
         public async Task<IReadOnlyList<(Guid DeviceId, int HourOfDay, bool IsWeekend)>> ListBucketsNeedingCalibrationAsync(int minSamples, TimeSpan staleness, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            DateTime staleCutoff = DateTime.UtcNow - staleness;
+            return await _unitOfWork.ReadAsync<IReadOnlyList<(Guid DeviceId, int HourOfDay, bool IsWeekend)>>(async context =>
+            {
+                DateTime staleCutoff = DateTime.UtcNow - staleness;
 
-            var bucketsNeedingCalibration = await db.CameraBitrateBaselines
-                .Where(b => b.SampleCount < minSamples || b.LastRecomputedAtUtc < staleCutoff)
-                .Select(b => new { b.DeviceId, b.HourOfDay, b.IsWeekend })
-                .ToListAsync(ct);
+                var bucketsNeedingCalibration = await context.Db().CameraBitrateBaselines
+                    .Where(b => b.SampleCount < minSamples || b.LastRecomputedAtUtc < staleCutoff)
+                    .Select(b => new { b.DeviceId, b.HourOfDay, b.IsWeekend })
+                    .ToListAsync(ct);
 
-            return bucketsNeedingCalibration
-                .Select(b => (b.DeviceId, b.HourOfDay, b.IsWeekend))
-                .ToList();
+                return bucketsNeedingCalibration
+                    .Select(b => (b.DeviceId, b.HourOfDay, b.IsWeekend))
+                    .ToList();
+            }, ct);
         }
 
         /// <summary>Calculates the median of a list of values.</summary>

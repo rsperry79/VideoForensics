@@ -31,7 +31,8 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
             _cases = BuildRepo(_fixture.Factory);
-            _alerts = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _alerts = new AlertRepository(unitOfWork, _loggerFactory.CreateLogger<AlertRepository>());
         }
 
         public async ValueTask DisposeAsync()
