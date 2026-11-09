@@ -279,6 +279,21 @@ namespace VideoForensics.Data.Database.Repositories
     }
 
     /// <summary>Internal unit of work context providing repository instances bound to a shared transaction.</summary>
+    /// <summary>Gives database-internal repositories the EF context of the unit of work they run in.</summary>
+    internal static class UnitOfWorkContextExtensions
+    {
+        /// <summary>
+        /// Returns the open DbContext. Only valid inside a unit of work's read or write callback, where the context is
+        /// the one the unit owns.
+        /// </summary>
+        internal static VideoForensicsDbContext Db(this IUnitOfWorkContext context)
+        {
+            return context is UnitOfWorkContext unitOfWorkContext
+                ? unitOfWorkContext.Db
+                : throw new InvalidOperationException("The database context is only available inside a unit of work.");
+        }
+    }
+
     internal class UnitOfWorkContext : IUnitOfWorkContext
     {
         private readonly VideoForensicsDbContext _db;
@@ -291,6 +306,9 @@ namespace VideoForensics.Data.Database.Repositories
             _serviceProvider = serviceProvider;
             _logger = serviceProvider.GetRequiredService<ILogger<UnitOfWork>>();
         }
+
+        /// <summary>The open context of this unit of work.</summary>
+        internal VideoForensicsDbContext Db => _db;
 
         public IUserRepository Users => new UnitOfWorkUserRepository(_db, _logger);
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
