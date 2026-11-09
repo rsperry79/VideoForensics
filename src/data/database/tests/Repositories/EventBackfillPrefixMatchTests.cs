@@ -32,10 +32,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _fixture.InitializeAsync();
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _eventRepository = new EventRepository(_fixture.Factory, _loggerFactory.CreateLogger<EventRepository>());
-            _downloadEventRepository = new DownloadEventRepository(_fixture.Factory, _loggerFactory.CreateLogger<DownloadEventRepository>());
             _mediaItemRepository = new MediaItemRepository(_fixture.Factory, _loggerFactory.CreateLogger<MediaItemRepository>());
             var serviceProvider = new TestServiceProvider(_fixture, _loggerFactory);
             _unitOfWork = new UnitOfWork(_fixture.Factory, serviceProvider, _loggerFactory.CreateLogger<UnitOfWork>());
+            _downloadEventRepository = new DownloadEventRepository(_unitOfWork, _loggerFactory.CreateLogger<DownloadEventRepository>());
         }
 
         public async ValueTask DisposeAsync()

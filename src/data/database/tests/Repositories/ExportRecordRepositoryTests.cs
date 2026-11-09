@@ -20,7 +20,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _repository = new ExportRecordRepository(_fixture.Factory, loggerFactory.CreateLogger<ExportRecordRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new ExportRecordRepository(unitOfWork, loggerFactory.CreateLogger<ExportRecordRepository>());
         }
 
         public async ValueTask DisposeAsync()
