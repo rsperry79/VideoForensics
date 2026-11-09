@@ -60,5 +60,9 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 2026-11-07 | TDD | unit 2 red run was a compile error (ProviderAccountFilter missing, CS0246), not a behavioural failure; tests were green after the component was added | component did not exist yet, as the brief asked | write a stub to get a behavioural red next time
 2026-11-07 | test flake | FolderPicker_Tests.FolderPicker_Cancel_InvokesOnClosedWithNull failed once in a full Ui.Shared run (Actual unset) | timing or order; passes alone and in the next full run | open: watch for recurrence
 2026-11-07 | line endings | the Edit tool wrote CRLF into LF-policy files (Ui.Shared units 3 and 4) | tool write behaviour on CRLF-checked-out files | converted the touched files to LF by script and checked CR count; verify after each Edit batch
->
 - 2026-11-08: Issue 25 follow-up agent ran sed -i on a CRLF test file (ExportRecord tests). Rule: no sed -i on CRLF files. Diff was checked and holds only the intended removals. Also normalised line endings across a file set that another agent was editing; the content was unchanged.
+2026-11-07 | haiku writes code | main model wrote implementation for shared filters unit 1, rekey collision, and Live View fill/sync directly, in multi-step plans | ignored the code-workflow Haiku rule | hand each independent plan step to a Haiku subagent with a brief; main model verifies
+2026-11-07 | plan review | implemented shared-filters unit 1 without the read-only Sonnet plan review first | skipped the review before implementing a plan | run the Sonnet review on the plan before the first unit
+2026-11-07 | merge | merged feature/shared-filters and two other branches into wip while the main checkout had an unrelated docs change | ignored the handoff stop rule | stop and report when the main checkout has unrelated changes
+2026-11-07 | line endings | sed -i used on working copies that were w/crlf (ScheduledSyncService, VideoForensicsHostingExtensions, Program.cs, MauiProgram.cs); committed content checked as LF, no stray CRs | ran sed -i without checking eol first | check git ls-files --eol before sed -i
+>

@@ -1,0 +1,334 @@
+BACKGROUND SERVICE RACE CONDITION AUDIT
+==============================================================
+
+Date: 2026-10-03
+Scope: Concurrent timer interactions, shared cache state
+Focus: Design review (no code changes unless race found)
+Status: AUDIT DOCUMENT (Testing deferred to Phase 1 Task)
+
+Services Under Review:
+==============================================================
+
+1. UpdateCheckService
+   - Checks for app updates
+   - Timer: Runs every X minutes
+   - Shared state: None identified yet
+
+2. DeviceHealthSyncService
+   - Synchronizes device health status from Ring API
+   - Timer: Runs every X minutes
+   - Shared state: Device list cache, health status cache
+
+3. LiveViewIdleTimeoutService
+   - Closes idle live-view sessions
+   - Timer: Runs every 30 seconds (configurable)
+   - Shared state: Active session list
+
+4. CameraBitrateCalibrationService
+   - Calibrates camera bitrate settings
+   - Timer: Runs on device change or periodic
+   - Shared state: Device settings cache
+
+5. ElevatedPollingWindowTracker
+   - Tracks elevated polling periods
+   - State: Polling window state machine
+   - Shared state: Polling configuration
+
+Identified Risks:
+==============================================================
+
+RISK #1: Device List Cache Corruption
+File: Likely in SyncScheduleRepository or device cache
+Scenario:
+1. UpdateCheckService fires at T=0
+2. Fetches device list for version check: lock acquired
+3. DeviceHealthSyncService fires at T=5ms
+4. Attempts to refresh device health: WAITS for lock
+5. Both services read/modify device list simultaneously
+
+Symptoms if race exists:
+- Device count mismatch
+- Missing devices after sync
+- Duplicate device entries
+- Null reference exceptions accessing device properties
+
+RISK #2: Session State Corruption
+File: LiveViewIdleTimeoutService
+Scenario:
+1. Active session list: [Session A, Session B, Session C]
+2. Timer fires at T=0: Iterates list to find idle sessions
+3. Timer fires at T=100ms: Another instance adds Session D
+4. First iteration reads stale list (3 items)
+5. Second iteration writes new list (4 items)
+6. Thread A sees 3, Thread B sees 4 - inconsistent state
+
+Symptoms:
+- Sessions not properly closed
+- Session list grows indefinitely
+- Memory leak (sessions never garbage collected)
+
+RISK #3: Health Status Data Loss
+File: DeviceHealthSyncService + Device entity
+Scenario:
+1. DeviceHealthSyncService fetches fresh health data
+2. Updates Device.HealthStatus field
+3. CameraBitrateCalibrationService reads HealthStatus
+4. Modifies Device.BitrateSettings (same entity)
+5. Both write back - one overwrites the other
+
+Symptoms:
+- Health status data lost
+- Bitrate settings reverted
+- Inconsistent state between services
+
+Lock Analysis:
+==============================================================
+
+Current Locking (Status: UNKNOWN - requires code review)
+- Does SyncScheduleRepository use locks? Unknown
+- Does device list cache use locks? Unknown
+- Does session list use ConcurrentList? Unknown
+- Does health status updates use locks? Unknown
+
+Questions to Answer:
+1. Which shared resources exist?
+2. Which are protected by locks?
+3. Which are NOT protected (race risk)?
+
+Example: Session List Race
+```csharp
+// UNSAFE (without lock):
+public class LiveViewIdleTimeoutService
+{
+    private List<Session> _activeSessions = new();
+
+    public void AddSession(Session session)
+    {
+        // RACE: Timer may fire and iterate here
+        _activeSessions.Add(session);
+    }
+
+    public void CheckIdleSessions()
+    {
+        // RACE: Another thread adds to list while iterating
+        foreach (var session in _activeSessions)
+        {
+            if (session.IsIdle)
+            {
+                _activeSessions.Remove(session); // Modifying during iteration!
+            }
+        }
+    }
+}
+
+// SAFE (with lock or ConcurrentCollection):
+public class LiveViewIdleTimeoutService
+{
+    private readonly List<Session> _activeSessions = new();
+
+    public void AddSession(Session session)
+    {
+        lock (_activeSessions)
+        {
+            _activeSessions.Add(session);
+        }
+    }
+
+    public void CheckIdleSessions()
+    {
+        lock (_activeSessions)
+        {
+            // Iterate on snapshot
+            var sessions = _activeSessions.ToList();
+            foreach (var session in sessions)
+            {
+                if (session.IsIdle)
+                {
+                    _activeSessions.Remove(session); // Now safe
+                }
+            }
+        }
+    }
+}
+
+// ALTERNATIVE (ConcurrentBag):
+private readonly ConcurrentBag<Session> _activeSessions = new();
+```
+
+Test Scenario Design:
+==============================================================
+
+Test Name: BackgroundServices_NoRaceConditions_WhenMultipleServicesFireSimultaneously()
+
+Test Approach:
+1. Create test instance of each service
+2. Inject test doubles for dependencies
+3. Manually trigger multiple timers simultaneously
+4. Verify no data corruption
+5. Repeat 100 times to increase chance of race detection
+
+Pseudo-code:
+```csharp
+[Fact]
+public async Task BackgroundServices_NoRaceConditions_WhenMultipleServicesFireSimultaneously()
+{
+    // Setup
+    var deviceCache = new TestDeviceCache();
+    var sessionList = new TestSessionList();
+    var healthCache = new TestHealthCache();
+
+    var updateCheckService = new UpdateCheckService(deviceCache);
+    var healthSyncService = new DeviceHealthSyncService(deviceCache, healthCache);
+    var liveViewService = new LiveViewIdleTimeoutService(sessionList);
+
+    // Stress test: Fire all services simultaneously 100 times
+    for (int iteration = 0; iteration < 100; iteration++)
+    {
+        var tasks = new[]
+        {
+            updateCheckService.CheckForUpdatesAsync(CancellationToken.None),
+            healthSyncService.SyncDeviceHealthAsync(CancellationToken.None),
+            liveViewService.CloseIdleSessionsAsync(CancellationToken.None)
+        };
+
+        // Fire at same time (as much as threads allow)
+        await Task.WhenAll(tasks);
+
+        // Verify consistency
+        Assert.True(deviceCache.IsConsistent(), $"Device cache corrupted on iteration {iteration}");
+        Assert.True(sessionList.IsValid(), $"Session list invalid on iteration {iteration}");
+        Assert.True(healthCache.IsConsistent(), $"Health cache corrupted on iteration {iteration}");
+    }
+}
+```
+
+Expected Outcomes:
+==============================================================
+
+If NO race conditions exist:
+- Test passes all 100 iterations
+- Data remains consistent throughout
+- No exceptions thrown
+
+If race conditions exist:
+- Test fails (usually within first 10 iterations)
+- AssertionError: Cache inconsistent
+- Possible: ObjectDisposedException, IndexOutOfRangeException, NullReferenceException
+
+Common Race Symptoms:
+- First run: Pass (coincidental ordering)
+- Second run: Fail (different timing, race manifests)
+- Intermittent failures (race condition signal)
+
+Design Review Findings (Pre-Testing):
+==============================================================
+
+Code Review Needed For:
+
+1. SyncScheduleRepository
+   - [ ] Does device list use lock?
+   - [ ] Is ConcurrentDictionary used?
+   - [ ] Are calls to Add/Remove atomic?
+
+2. Device Health Sync
+   - [ ] Are health updates atomic?
+   - [ ] Does single entity update fail if two services modify?
+   - [ ] EF Core change tracking race? (Should not be, EF is thread-safe but lazy-load isn't)
+
+3. LiveViewIdleTimeoutService
+   - [ ] List<Session> used (NOT safe)?
+   - [ ] ConcurrentBag<Session> used (safe)?
+   - [ ] Manual lock around iterations?
+
+4. Timer Interactions
+   - [ ] All timers fire on same dispatcher?
+   - [ ] Or on different threads?
+   - [ ] If threads, locks present?
+
+4. EF Core Context
+   - [ ] Single context shared across services?
+   - [ ] Context per operation?
+   - [ ] DbContext is thread-safe? (it's NOT - common mistake)
+
+Recommendations:
+==============================================================
+
+IMMEDIATE (Before Phase 1):
+1. Run concurrent service test
+2. Document any races found
+3. If found, fix before Task 2+ (hard to debug after Polly integration)
+
+PHASE 1:
+1. Add [Fact] test for concurrent operations
+2. Repeat 100+ times to detect intermittent races
+3. Use stress testing library (NBomber) for high concurrency
+
+PHASE 2-5:
+1. Consider service refactor if races found
+2. Use ConcurrentCollections instead of locks (less deadlock risk)
+3. Consider reactive pattern (Rx.NET) instead of timers (safer composition)
+
+Safety Practices for Multi-Threaded Background Services:
+==============================================================
+
+DON'T:
+- Use List<T> shared across threads (race condition)
+- Iterate list while another thread modifies (IndexOutOfRange)
+- Read field, modify, write back (read-modify-write race)
+- Share DbContext across operations (DbContext not thread-safe)
+- Assume startup order (Race with initialization)
+
+DO:
+- Use ConcurrentBag, ConcurrentDictionary, ConcurrentQueue
+- Use lock for simple/legacy scenarios
+- Use ReaderWriterLockSlim for read-heavy scenarios
+- Use interlocked operations for primitives (Interlocked.Increment)
+- Inject separate DbContext per operation
+- Document thread safety assumptions
+
+Test Execution Plan:
+==============================================================
+
+STEP 1: Code Review
+- [ ] Identify all shared state in background services
+- [ ] Check if state is protected (lock, concurrent collection, etc)
+- [ ] Document findings
+
+STEP 2: Test Design (Before running)
+- [ ] Identify all timer-fired methods
+- [ ] Create test doubles that can be triggered synchronously
+- [ ] Design test matrix: which services interact?
+
+STEP 3: Test Implementation
+- [ ] Add BackgroundServiceRaceTests.cs
+- [ ] Implement concurrent trigger mechanism
+- [ ] Run 100+ iterations
+- [ ] Document any failures found
+
+STEP 4: Bug Triage
+If races found:
+- [ ] Reproduce consistently
+- [ ] Fix with appropriate synchronization
+- [ ] Re-test 100+ iterations
+- [ ] Document fix in commit message
+
+Current Status:
+==============================================================
+
+AUDIT: ✓ DESIGN COMPLETE
+CODE REVIEW: ⏳ PENDING
+TESTING: ⏳ PENDING (Phase 1 Task)
+BLOCKING: None
+
+Expected Effort:
+- Design review: 2 hours
+- Test implementation: 2 hours
+- Bug fixes (if found): 1-4 hours
+- Total: 5-8 hours
+
+Risk Assessment:
+- Race probability: MEDIUM (5+ independent timers, shared state)
+- Impact if races exist: HIGH (data corruption, memory leaks)
+- Complexity if found: MEDIUM (standard lock/concurrent collection fixes)
+
+Recommendation: Run test before Phase 2 (before adding Polly complexity)

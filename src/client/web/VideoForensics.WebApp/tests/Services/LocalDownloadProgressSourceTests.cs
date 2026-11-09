@@ -32,6 +32,8 @@ namespace VideoForensics.Client.WebApp.Tests.Services
                 All.Add(line);
             }
 
+            public void AppendError(string line) => Append(line);
+
             public IReadOnlyList<string> Drain()
             {
                 DrainCount++;
