@@ -176,9 +176,9 @@ namespace VideoForensics.Utils.SelfTest.Tests
         }
 
         [Theory]
-        [InlineData("--siren-duration-seconds", "SirenDurationSeconds", "0")]
-        [InlineData("--dnd-seconds", "DndSeconds", "0")]
-        public void PositiveSeconds_RejectZero(string flag, string property, string value)
+        [InlineData("--siren-duration-seconds", "0")]
+        [InlineData("--dnd-seconds", "0")]
+        public void PositiveSeconds_RejectZero(string flag, string value)
         {
             Assert.Equal($"{flag} value '{value}' must be a positive integer", ErrorOf(flag, value));
         }

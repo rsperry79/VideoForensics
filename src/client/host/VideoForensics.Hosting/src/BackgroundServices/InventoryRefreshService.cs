@@ -23,6 +23,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>How often the inventory is refreshed. Fixed, not configurable.</summary>
         internal static readonly TimeSpan InventoryRefreshInterval = TimeSpan.FromMinutes(60);
 
+        /// <summary>How long to wait before retrying after a refresh threw, such as at startup before the database is ready.</summary>
+        internal static readonly TimeSpan InventoryRetryInterval = TimeSpan.FromMinutes(5);
+
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IOptionsMonitor<ScheduledTasksOptions> _options;
         private readonly ILogger<InventoryRefreshService> _logger;
@@ -52,8 +55,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 // Runs once at startup, then once per interval.
                 while (true)
                 {
-                    await RunRecordedRefreshAsync(stoppingToken);
-                    await Task.Delay(InventoryRefreshInterval, _time, stoppingToken);
+                    TimeSpan wait = await RunRecordedRefreshAsync(stoppingToken);
+                    await Task.Delay(wait, _time, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -63,7 +66,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Runs one refresh and records it: a beat when it starts, a run when it completes, or an error label when it fails.</summary>
-        private async Task RunRecordedRefreshAsync(CancellationToken ct)
+        /// <returns>How long to wait before the next refresh: the normal interval after a run, the short retry after a throw.</returns>
+        private async Task<TimeSpan> RunRecordedRefreshAsync(CancellationToken ct)
         {
             string name = nameof(InventoryRefreshService);
             _heartbeats?.Beat(name, _time.GetUtcNow(), InventoryRefreshInterval);
@@ -72,6 +76,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 int failedAccounts = await RefreshOnceAsync(ct);
                 _heartbeats?.RecordFailedItems(name, failedAccounts);
                 _heartbeats?.RecordRun(name, _time.GetUtcNow());
+                return InventoryRefreshInterval;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -80,7 +85,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _heartbeats?.RecordError(name, _time.GetUtcNow(), "refresh failed");
-                _logger.LogError("Inventory refresh failed; will retry after the next interval: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _logger.LogError("Inventory refresh failed; will retry in {RetrySeconds} s: {Message} ({ErrorType})", InventoryRetryInterval.TotalSeconds, ex.Message, ex.GetType().Name);
+                return InventoryRetryInterval;
             }
         }
 
