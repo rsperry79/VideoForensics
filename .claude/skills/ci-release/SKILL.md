@@ -34,7 +34,7 @@ Also: `build-ios.yml` (pull request to `main`/`dev`, manual), `codeql.yml`, `mai
 - Filters and test layout: `.claude/rules/tests.md`.
 
 ## Changing a workflow
-1. Edit on a worktree branch from `wip`. Keep LF line endings.
+1. Edit on a worktree branch from `wip`.
 2. Check the YAML parses. Read the job's `needs` and `if` conditions after the change.
 3. Open a PR to `dev`. Its CI run is the verification. Local builds do not prove a workflow works.
 4. Check the run's logs for the changed step before merging.
