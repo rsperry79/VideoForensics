@@ -102,7 +102,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Device other = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Other Camera");
             await devices.AddAsync(other, CancellationToken.None);
 
-            var captures = new SnapshotCaptureRepository(_fixture.Factory, NullLogger<SnapshotCaptureRepository>.Instance);
+            var captures = new SnapshotCaptureRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance), NullLogger<SnapshotCaptureRepository>.Instance);
             await captures.AddAsync(SnapshotCapture.Create(device.Id, new DateTimeOffset(Start.AddMinutes(20), TimeSpan.Zero), "fresh", 404, null, null), CancellationToken.None);
             await captures.AddAsync(SnapshotCapture.Create(device.Id, new DateTimeOffset(Start.AddMinutes(5), TimeSpan.Zero), "fresh", 200, "p.jpg", null), CancellationToken.None);
             await captures.AddAsync(SnapshotCapture.Create(other.Id, new DateTimeOffset(Start.AddMinutes(1), TimeSpan.Zero), "fresh", 200, "q.jpg", null), CancellationToken.None);

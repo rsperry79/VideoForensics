@@ -17,7 +17,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new SyncScheduleRepository(_fixture.Factory, NullLogger<SyncScheduleRepository>.Instance);
+            _repository = new SyncScheduleRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance),NullLogger<SyncScheduleRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()

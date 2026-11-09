@@ -10,20 +10,24 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for SecurityAuditLogEntry rows.</summary>
     public class SecurityAuditLogRepository : ISecurityAuditLogRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<SecurityAuditLogRepository> _logger;
 
-        public SecurityAuditLogRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<SecurityAuditLogRepository> logger)
+        public SecurityAuditLogRepository(IUnitOfWork unitOfWork, ILogger<SecurityAuditLogRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         public async Task<SecurityAuditLogEntry> AppendAsync(SecurityAuditLogEntry entry, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = db.SecurityAuditLogEntries.Add(entry);
-            _ = await db.SaveChangesAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = db.SecurityAuditLogEntries.Add(entry);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
 
             if (entry.IsUrgent)
             {
@@ -40,17 +44,20 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<SecurityAuditLogEntry>> ListAsync(Guid? operatorId, int maxResults, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<SecurityAuditLogEntry> query = db.SecurityAuditLogEntries.AsQueryable();
-            if (operatorId.HasValue)
+            return await _unitOfWork.ReadAsync<IReadOnlyList<SecurityAuditLogEntry>>(async context =>
             {
-                query = query.Where(e => e.OperatorId == operatorId.Value);
-            }
+                VideoForensicsDbContext db = context.Db();
+                IQueryable<SecurityAuditLogEntry> query = db.SecurityAuditLogEntries.AsQueryable();
+                if (operatorId.HasValue)
+                {
+                    query = query.Where(e => e.OperatorId == operatorId.Value);
+                }
 
-            return await query
-                .OrderByDescending(e => e.TimestampUtc)
-                .Take(maxResults)
-                .ToListAsync(ct);
+                return await query
+                    .OrderByDescending(e => e.TimestampUtc)
+                    .Take(maxResults)
+                    .ToListAsync(ct);
+            }, ct);
         }
     }
 }

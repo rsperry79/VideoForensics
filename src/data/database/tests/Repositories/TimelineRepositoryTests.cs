@@ -19,7 +19,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _eventRepository = new EventRepository(Fixture.Factory, CreateLogger<EventRepository>());
             _deviceRepository = new DeviceRepository(Fixture.Factory, CreateLogger<DeviceRepository>());
             _locationRepository = new LocationRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<LocationRepository>());
-            _repository = new TimelineRepository(Fixture.Factory, CreateLogger<TimelineRepository>(), _eventRepository, _deviceRepository);
+            _repository = new TimelineRepository(new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()),CreateLogger<TimelineRepository>(), _eventRepository, _deviceRepository);
         }
 
         [Fact]
