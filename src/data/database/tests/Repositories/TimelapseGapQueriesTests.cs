@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
@@ -23,9 +24,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _events = new EventRepository(_fixture.Factory, NullLogger<EventRepository>.Instance);
-            _media = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
-            _queries = new TimelapseGapQueries(_fixture.Factory, NullLogger<TimelapseGapQueries>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _events = new EventRepository(unitOfWork, NullLogger<EventRepository>.Instance);
+            _media = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
+            _queries = new TimelapseGapQueries(unitOfWork, NullLogger<TimelapseGapQueries>.Instance);
         }
 
         public async ValueTask DisposeAsync()

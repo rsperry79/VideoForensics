@@ -28,7 +28,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             // Create the ActionLogRepository first since LegalHoldRepository depends on it
             _actionLogRepository = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _repository = new LegalHoldRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<LegalHoldRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new LegalHoldRepository(unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<LegalHoldRepository>());
         }
 
         public async ValueTask DisposeAsync()

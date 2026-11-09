@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
@@ -26,9 +27,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
             _actionLog = new ActionLogRepository(_fixture.Factory, NullLogger<ActionLogRepository>.Instance);
             _repository = new MediaFlagRepository(_fixture.Factory, NullLogger<MediaFlagRepository>.Instance);
-            _media = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
+            _media = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()
