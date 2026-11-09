@@ -10,157 +10,171 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository for evidence integrity verification and audit trails.</summary>
     public class IntegrityRepository : IIntegrityRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<IntegrityRepository> _logger;
 
         public IntegrityRepository(
-            IDbContextFactory<VideoForensicsDbContext> factory,
+            IUnitOfWork unitOfWork,
             ILogger<IntegrityRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         public async Task<IReadOnlyList<DownloadAuditRecord>> GetDownloadHistoryAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            List<Event> events = await db.Events
-                .Where(e => e.DeviceId == deviceId &&
-                            e.OccurredAtUtc >= fromUtc &&
-                            e.OccurredAtUtc <= toUtc)
-                .ToListAsync(ct);
-
-            return events.Select(e => new DownloadAuditRecord
+            return await _unitOfWork.ReadAsync(async context =>
             {
-                EventId = e.Id,
-                DeviceId = deviceId,
-                DeviceName = device?.Name ?? "Unknown",
-                OccurredAtUtc = e.OccurredAtUtc,
-                DownloadedAtUtc = e.DownloadedAtUtc,
-                DelayMinutes = e.DownloadedAtUtc.HasValue ? (int)(e.DownloadedAtUtc.Value - e.OccurredAtUtc).TotalMinutes : 0,
-                EventType = e.EventType,
-                DownloadStatus = e.DownloadedAtUtc.HasValue ? "Downloaded" : "Missing"
-            }).ToList();
+                VideoForensicsDbContext db = context.Db();
+                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                List<Event> events = await db.Events
+                    .Where(e => e.DeviceId == deviceId &&
+                                e.OccurredAtUtc >= fromUtc &&
+                                e.OccurredAtUtc <= toUtc)
+                    .ToListAsync(ct);
+
+                return events.Select(e => new DownloadAuditRecord
+                {
+                    EventId = e.Id,
+                    DeviceId = deviceId,
+                    DeviceName = device?.Name ?? "Unknown",
+                    OccurredAtUtc = e.OccurredAtUtc,
+                    DownloadedAtUtc = e.DownloadedAtUtc,
+                    DelayMinutes = e.DownloadedAtUtc.HasValue ? (int)(e.DownloadedAtUtc.Value - e.OccurredAtUtc).TotalMinutes : 0,
+                    EventType = e.EventType,
+                    DownloadStatus = e.DownloadedAtUtc.HasValue ? "Downloaded" : "Missing"
+                }).ToList();
+            }, ct);
         }
 
         public async Task<IReadOnlyList<DownloadAuditRecord>> GetLocationDownloadHistoryAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
-                .Join(db.Devices.Where(d => d.LocationId == locationId),
-                      e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
-                .Where(x => x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
-                .OrderBy(x => x.Event.OccurredAtUtc)
-                .Select(x => new DownloadAuditRecord
-                {
-                    EventId = x.Event.Id,
-                    DeviceId = x.Device.Id,
-                    DeviceName = x.Device.Name,
-                    OccurredAtUtc = x.Event.OccurredAtUtc,
-                    DownloadedAtUtc = x.Event.DownloadedAtUtc,
-                    DelayMinutes = x.Event.DownloadedAtUtc.HasValue ? (int)(x.Event.DownloadedAtUtc.Value - x.Event.OccurredAtUtc).TotalMinutes : 0,
-                    EventType = x.Event.EventType,
-                    DownloadStatus = x.Event.DownloadedAtUtc.HasValue ? "Downloaded" : "Missing"
-                })
-                .ToListAsync(ct);
+            return await _unitOfWork.ReadAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                return await db.Events
+                    .Join(db.Devices.Where(d => d.LocationId == locationId),
+                          e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                    .Where(x => x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
+                    .OrderBy(x => x.Event.OccurredAtUtc)
+                    .Select(x => new DownloadAuditRecord
+                    {
+                        EventId = x.Event.Id,
+                        DeviceId = x.Device.Id,
+                        DeviceName = x.Device.Name,
+                        OccurredAtUtc = x.Event.OccurredAtUtc,
+                        DownloadedAtUtc = x.Event.DownloadedAtUtc,
+                        DelayMinutes = x.Event.DownloadedAtUtc.HasValue ? (int)(x.Event.DownloadedAtUtc.Value - x.Event.OccurredAtUtc).TotalMinutes : 0,
+                        EventType = x.Event.EventType,
+                        DownloadStatus = x.Event.DownloadedAtUtc.HasValue ? "Downloaded" : "Missing"
+                    })
+                    .ToListAsync(ct);
+            }, ct);
         }
 
         public async Task<IReadOnlyList<MissingDownloadRecord>> GetMissingDownloadsAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<MissingDownloadRecord> missing = await db.Events
-                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
-                .Where(x => x.Device.LocationId == locationId &&
-                            x.Event.OccurredAtUtc >= fromUtc &&
-                            x.Event.OccurredAtUtc <= toUtc &&
-                            x.Event.DownloadedAtUtc == null)
-                .Select(x => new MissingDownloadRecord
-                {
-                    EventId = x.Event.Id,
-                    DeviceId = x.Device.Id,
-                    DeviceName = x.Device.Name,
-                    OccurredAtUtc = x.Event.OccurredAtUtc,
-                    DiscoveredAtUtc = x.Event.DiscoveredAtUtc,
-                    EventType = x.Event.EventType,
-                    Reason = "NotRequested"
-                })
-                .ToListAsync(ct);
+            return await _unitOfWork.ReadAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                List<MissingDownloadRecord> missing = await db.Events
+                    .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                    .Where(x => x.Device.LocationId == locationId &&
+                                x.Event.OccurredAtUtc >= fromUtc &&
+                                x.Event.OccurredAtUtc <= toUtc &&
+                                x.Event.DownloadedAtUtc == null)
+                    .Select(x => new MissingDownloadRecord
+                    {
+                        EventId = x.Event.Id,
+                        DeviceId = x.Device.Id,
+                        DeviceName = x.Device.Name,
+                        OccurredAtUtc = x.Event.OccurredAtUtc,
+                        DiscoveredAtUtc = x.Event.DiscoveredAtUtc,
+                        EventType = x.Event.EventType,
+                        Reason = "NotRequested"
+                    })
+                    .ToListAsync(ct);
 
-            return missing;
+                return missing;
+            }, ct);
         }
 
         public async Task<DownloadCompletenessReport> VerifyDownloadCompletenessAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var allEvents = await db.Events
-                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
-                .Where(x => x.Device.LocationId == locationId &&
-                            x.Event.OccurredAtUtc >= fromUtc &&
-                            x.Event.OccurredAtUtc <= toUtc)
-                .ToListAsync(ct);
-
-            int downloaded = allEvents.Count(x => x.Event.DownloadedAtUtc.HasValue);
-            IReadOnlyList<MissingDownloadRecord> missing = await GetMissingDownloadsAsync(locationId, fromUtc, toUtc, ct);
-
-            decimal completeness = allEvents.Count > 0 ? (decimal)downloaded / allEvents.Count * 100 : 100m;
-
-            return new DownloadCompletenessReport
+            return await _unitOfWork.ReadAsync(async context =>
             {
-                LocationId = locationId,
-                AnalysisFromUtc = fromUtc,
-                AnalysisToUtc = toUtc,
-                TotalEvents = allEvents.Count,
-                DownloadedEvents = downloaded,
-                MissingEvents = missing.Count,
-                CompletenessPercentage = completeness,
-                MissingRecords = missing.ToList(),
-                Status = completeness < 50m ? "Critical" : completeness < 95m ? "Incomplete" : "Complete"
-            };
+                VideoForensicsDbContext db = context.Db();
+                var allEvents = await db.Events
+                    .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                    .Where(x => x.Device.LocationId == locationId &&
+                                x.Event.OccurredAtUtc >= fromUtc &&
+                                x.Event.OccurredAtUtc <= toUtc)
+                    .ToListAsync(ct);
+
+                int downloaded = allEvents.Count(x => x.Event.DownloadedAtUtc.HasValue);
+                IReadOnlyList<MissingDownloadRecord> missing = await GetMissingDownloadsAsync(locationId, fromUtc, toUtc, ct);
+
+                decimal completeness = allEvents.Count > 0 ? (decimal)downloaded / allEvents.Count * 100 : 100m;
+
+                return new DownloadCompletenessReport
+                {
+                    LocationId = locationId,
+                    AnalysisFromUtc = fromUtc,
+                    AnalysisToUtc = toUtc,
+                    TotalEvents = allEvents.Count,
+                    DownloadedEvents = downloaded,
+                    MissingEvents = missing.Count,
+                    CompletenessPercentage = completeness,
+                    MissingRecords = missing.ToList(),
+                    Status = completeness < 50m ? "Critical" : completeness < 95m ? "Incomplete" : "Complete"
+                };
+            }, ct);
         }
 
         public async Task<IReadOnlyList<TamperingIndicator>> VerifyEventHashesAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            List<Event> events = await db.Events
-                .Where(e => e.DeviceId == deviceId &&
-                            e.OccurredAtUtc >= fromUtc &&
-                            e.OccurredAtUtc <= toUtc &&
-                            e.ApiSourceHash != null)
-                .ToListAsync(ct);
-
-            var indicators = new List<TamperingIndicator>();
-            foreach (Event? e in events)
+            return await _unitOfWork.ReadAsync(async context =>
             {
-                if (e.ApiSourceHash != e.EventIntegrityHash && e.EventIntegrityHash != null)
-                {
-                    indicators.Add(new TamperingIndicator
-                    {
-                        EventId = e.Id,
-                        DeviceId = deviceId,
-                        DeviceName = device?.Name ?? "Unknown",
-                        OccurredAtUtc = e.OccurredAtUtc,
-                        IndicatorType = "HashMismatch",
-                        Description = $"Event hash mismatch: API={e.ApiSourceHash?[..8]}... vs Local={e.EventIntegrityHash?[..8]}...",
-                        TamperingScore = 85
-                    });
-                }
-            }
+                VideoForensicsDbContext db = context.Db();
+                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                List<Event> events = await db.Events
+                    .Where(e => e.DeviceId == deviceId &&
+                                e.OccurredAtUtc >= fromUtc &&
+                                e.OccurredAtUtc <= toUtc &&
+                                e.ApiSourceHash != null)
+                    .ToListAsync(ct);
 
-            return indicators;
+                var indicators = new List<TamperingIndicator>();
+                foreach (Event? e in events)
+                {
+                    if (e.ApiSourceHash != e.EventIntegrityHash && e.EventIntegrityHash != null)
+                    {
+                        indicators.Add(new TamperingIndicator
+                        {
+                            EventId = e.Id,
+                            DeviceId = deviceId,
+                            DeviceName = device?.Name ?? "Unknown",
+                            OccurredAtUtc = e.OccurredAtUtc,
+                            IndicatorType = "HashMismatch",
+                            Description = $"Event hash mismatch: API={e.ApiSourceHash?[..8]}... vs Local={e.EventIntegrityHash?[..8]}...",
+                            TamperingScore = 85
+                        });
+                    }
+                }
+
+                return indicators;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<TamperingIndicator>> GetTamperingIndicatorsAsync(
             Guid locationId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            List<Device> devices = await _unitOfWork.ReadAsync(context => context.Db().Devices.Where(d => d.LocationId == locationId).ToListAsync(ct), ct);
             var allIndicators = new List<TamperingIndicator>();
 
             foreach (Device? device in devices)
@@ -192,123 +206,132 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<AnomalousGap>> DetectMissingEventsByPatternAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            List<Event> events = await db.Events
-                .Where(e => e.DeviceId == deviceId &&
-                            e.OccurredAtUtc >= fromUtc &&
-                            e.OccurredAtUtc <= toUtc)
-                .OrderBy(e => e.OccurredAtUtc)
-                .ToListAsync(ct);
-
-            double baselineRate = events.Count / ((toUtc - fromUtc).TotalHours + 1);
-            var gaps = new List<AnomalousGap>();
-
-            for (int i = 0; i < events.Count - 1; i++)
+            return await _unitOfWork.ReadAsync(async context =>
             {
-                double gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
-                decimal expectedEvents = (decimal)(gapDuration / 60) * (decimal)baselineRate;
+                VideoForensicsDbContext db = context.Db();
+                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                List<Event> events = await db.Events
+                    .Where(e => e.DeviceId == deviceId &&
+                                e.OccurredAtUtc >= fromUtc &&
+                                e.OccurredAtUtc <= toUtc)
+                    .OrderBy(e => e.OccurredAtUtc)
+                    .ToListAsync(ct);
 
-                if (gapDuration > 30 && expectedEvents > 0)
+                double baselineRate = events.Count / ((toUtc - fromUtc).TotalHours + 1);
+                var gaps = new List<AnomalousGap>();
+
+                for (int i = 0; i < events.Count - 1; i++)
                 {
-                    gaps.Add(new AnomalousGap
-                    {
-                        DeviceId = deviceId,
-                        DeviceName = device?.Name ?? "Unknown",
-                        StartUtc = events[i].OccurredAtUtc,
-                        EndUtc = events[i + 1].OccurredAtUtc,
-                        DurationMinutes = (int)gapDuration,
-                        BaselineEventRate = (decimal)baselineRate,
-                        ExpectedEvents = expectedEvents,
-                        ActualEvents = 0,
-                        Anomaly = "Missing"
-                    });
-                }
-            }
+                    double gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
+                    decimal expectedEvents = (decimal)(gapDuration / 60) * (decimal)baselineRate;
 
-            return gaps;
+                    if (gapDuration > 30 && expectedEvents > 0)
+                    {
+                        gaps.Add(new AnomalousGap
+                        {
+                            DeviceId = deviceId,
+                            DeviceName = device?.Name ?? "Unknown",
+                            StartUtc = events[i].OccurredAtUtc,
+                            EndUtc = events[i + 1].OccurredAtUtc,
+                            DurationMinutes = (int)gapDuration,
+                            BaselineEventRate = (decimal)baselineRate,
+                            ExpectedEvents = expectedEvents,
+                            ActualEvents = 0,
+                            Anomaly = "Missing"
+                        });
+                    }
+                }
+
+                return gaps;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<RecordingFailure>> IdentifyRecordingFailuresAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var failures = new List<RecordingFailure>();
-            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
-
-            foreach (Device? device in devices)
+            return await _unitOfWork.ReadAsync(async context =>
             {
-                IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, fromUtc, toUtc, ct);
-                foreach (AnomalousGap gap in gaps)
+                VideoForensicsDbContext db = context.Db();
+                var failures = new List<RecordingFailure>();
+                List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+
+                foreach (Device? device in devices)
                 {
-                    DeviceHealth? health = await db.DeviceHealths
-                        .Where(h => h.DeviceId == device.Id &&
-                                    h.CapturedAtUtc >= gap.StartUtc &&
-                                    h.CapturedAtUtc <= gap.EndUtc)
-                        .FirstOrDefaultAsync(ct);
+                    IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, fromUtc, toUtc, ct);
+                    foreach (AnomalousGap gap in gaps)
+                    {
+                        DeviceHealth? health = await db.DeviceHealths
+                            .Where(h => h.DeviceId == device.Id &&
+                                        h.CapturedAtUtc >= gap.StartUtc &&
+                                        h.CapturedAtUtc <= gap.EndUtc)
+                            .FirstOrDefaultAsync(ct);
 
-                    string failureType = "Unknown";
-                    if (health?.IsOnline == false)
-                    {
-                        failureType = "DeviceOffline";
-                    }
-                    else if (health?.BatteryPercentage < 10m)
-                    {
-                        failureType = "LowBattery";
-                    }
-                    else if (health?.WifiSignalRssi < -80)
-                    {
-                        failureType = "NoConnectivity";
-                    }
+                        string failureType = "Unknown";
+                        if (health?.IsOnline == false)
+                        {
+                            failureType = "DeviceOffline";
+                        }
+                        else if (health?.BatteryPercentage < 10m)
+                        {
+                            failureType = "LowBattery";
+                        }
+                        else if (health?.WifiSignalRssi < -80)
+                        {
+                            failureType = "NoConnectivity";
+                        }
 
-                    failures.Add(new RecordingFailure
-                    {
-                        DeviceId = device.Id,
-                        DeviceName = device.Name,
-                        FailureAtUtc = gap.StartUtc,
-                        RecoveryAtUtc = gap.EndUtc,
-                        DurationMinutes = gap.DurationMinutes,
-                        FailureType = failureType,
-                        Evidence = health != null ? $"Battery={health.BatteryPercentage}% RSSI={health.WifiSignalRssi}" : "Unknown"
-                    });
+                        failures.Add(new RecordingFailure
+                        {
+                            DeviceId = device.Id,
+                            DeviceName = device.Name,
+                            FailureAtUtc = gap.StartUtc,
+                            RecoveryAtUtc = gap.EndUtc,
+                            DurationMinutes = gap.DurationMinutes,
+                            FailureType = failureType,
+                            Evidence = health != null ? $"Battery={health.BatteryPercentage}% RSSI={health.WifiSignalRssi}" : "Unknown"
+                        });
+                    }
                 }
-            }
 
-            return failures;
+                return failures;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<SuspiciousGap>> FlagSuspiciousGapsAsync(Guid locationId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var suspiciousGaps = new List<SuspiciousGap>();
-            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
-
-            foreach (Device? device in devices)
+            return await _unitOfWork.ReadAsync(async context =>
             {
-                IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
-                foreach (AnomalousGap gap in gaps)
+                VideoForensicsDbContext db = context.Db();
+                var suspiciousGaps = new List<SuspiciousGap>();
+                List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+
+                foreach (Device? device in devices)
                 {
-                    string suspicion = gap.StartUtc.Hour switch
+                    IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
+                    foreach (AnomalousGap gap in gaps)
                     {
-                        >= 22 or < 6 => "NightGap",
-                        _ => gap.StartUtc.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "WeekendGap" : "LongGap"
-                    };
+                        string suspicion = gap.StartUtc.Hour switch
+                        {
+                            >= 22 or < 6 => "NightGap",
+                            _ => gap.StartUtc.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "WeekendGap" : "LongGap"
+                        };
 
-                    suspiciousGaps.Add(new SuspiciousGap
-                    {
-                        LocationId = locationId,
-                        DeviceId = device.Id,
-                        DeviceName = device.Name,
-                        GapStartUtc = gap.StartUtc,
-                        GapEndUtc = gap.EndUtc,
-                        DurationMinutes = gap.DurationMinutes,
-                        Suspicion = suspicion,
-                        SuspicionScore = gap.DurationMinutes > 60 ? 75 : 50
-                    });
+                        suspiciousGaps.Add(new SuspiciousGap
+                        {
+                            LocationId = locationId,
+                            DeviceId = device.Id,
+                            DeviceName = device.Name,
+                            GapStartUtc = gap.StartUtc,
+                            GapEndUtc = gap.EndUtc,
+                            DurationMinutes = gap.DurationMinutes,
+                            Suspicion = suspicion,
+                            SuspicionScore = gap.DurationMinutes > 60 ? 75 : 50
+                        });
+                    }
                 }
-            }
 
-            return suspiciousGaps.OrderByDescending(g => g.SuspicionScore).ToList();
+                return suspiciousGaps.OrderByDescending(g => g.SuspicionScore).ToList();
+            }, ct);
         }
 
         public async Task<IntegritySummary> GetIntegritySummaryAsync(Guid locationId, CancellationToken ct)

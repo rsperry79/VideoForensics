@@ -10,34 +10,36 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for location metadata.</summary>
     public class LocationMetadataRepository : ILocationMetadataRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<LocationMetadataRepository> _logger;
 
-        public LocationMetadataRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<LocationMetadataRepository> logger)
+        public LocationMetadataRepository(IUnitOfWork unitOfWork, ILogger<LocationMetadataRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        public async Task<LocationMetadata?> GetAsync(Guid id, CancellationToken ct)
+        public Task<LocationMetadata?> GetAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.LocationMetadata.FirstOrDefaultAsync(m => m.Id == id, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().LocationMetadata.FirstOrDefaultAsync(m => m.Id == id, ct), ct);
         }
 
-        public async Task<LocationMetadata?> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
+        public Task<LocationMetadata?> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.LocationMetadata.FirstOrDefaultAsync(m => m.LocationId == locationId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().LocationMetadata.FirstOrDefaultAsync(m => m.LocationId == locationId, ct), ct);
         }
 
         public async Task AddAsync(LocationMetadata metadata, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.LocationMetadata.Add(metadata);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.LocationMetadata.Add(metadata);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Location metadata added for location {LocationId}", metadata.LocationId);
             }
             catch (Exception ex)
@@ -49,11 +51,15 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task UpdateAsync(LocationMetadata metadata, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.LocationMetadata.Update(metadata);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.LocationMetadata.Update(metadata);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Location metadata updated for location {LocationId}", metadata.LocationId);
             }
             catch (Exception ex)
@@ -65,14 +71,24 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task DeleteAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                LocationMetadata? metadata = await db.LocationMetadata.FirstOrDefaultAsync(m => m.Id == id, ct);
-                if (metadata != null)
+                bool deleted = await _unitOfWork.ExecuteAsync(async context =>
                 {
+                    VideoForensicsDbContext db = context.Db();
+                    LocationMetadata? metadata = await db.LocationMetadata.FirstOrDefaultAsync(m => m.Id == id, ct);
+                    if (metadata == null)
+                    {
+                        return false;
+                    }
+
                     _ = db.LocationMetadata.Remove(metadata);
                     _ = await db.SaveChangesAsync(ct);
+                    return true;
+                }, ct);
+
+                if (deleted)
+                {
                     _logger.LogDebug("Location metadata deleted: {MetadataId}", id);
                 }
             }

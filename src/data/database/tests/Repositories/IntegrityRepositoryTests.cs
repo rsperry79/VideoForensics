@@ -19,7 +19,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _eventRepository = new EventRepository(Fixture.Factory, CreateLogger<EventRepository>());
             _deviceRepository = new DeviceRepository(Fixture.Factory, CreateLogger<DeviceRepository>());
             _locationRepository = new LocationRepository(Fixture.Factory, CreateLogger<LocationRepository>());
-            _repository = new IntegrityRepository(Fixture.Factory, CreateLogger<IntegrityRepository>());
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
+            _repository = new IntegrityRepository(unitOfWork, CreateLogger<IntegrityRepository>());
         }
 
         [Fact]

@@ -55,7 +55,8 @@ namespace VideoForensics.Data.Database.Tests
 
         private JammingRepository BuildJammingRepo(ICaseRepository? caseRepository = null)
         {
-            return new(_fixture.Factory, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            return new(unitOfWork, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
         }
 
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
