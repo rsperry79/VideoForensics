@@ -9,42 +9,45 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for OperatorNotificationPreference entities (per-operator push notification settings).</summary>
     public class OperatorNotificationPreferenceRepository : IOperatorNotificationPreferenceRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _contextFactory;
+        private readonly IUnitOfWork _unitOfWork;
 
         /// <summary>Initializes a new instance of the OperatorNotificationPreferenceRepository.</summary>
-        public OperatorNotificationPreferenceRepository(IDbContextFactory<VideoForensicsDbContext> contextFactory)
+        public OperatorNotificationPreferenceRepository(IUnitOfWork unitOfWork)
         {
-            _contextFactory = contextFactory;
+            _unitOfWork = unitOfWork;
         }
 
         /// <summary>Gets the notification preferences for an operator, or null if not yet set.</summary>
-        public async Task<OperatorNotificationPreference?> GetAsync(Guid operatorId, CancellationToken ct)
+        public Task<OperatorNotificationPreference?> GetAsync(Guid operatorId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            return await db.OperatorNotificationPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().OperatorNotificationPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct), ct);
         }
 
         /// <summary>Inserts or updates the notification preferences for the given operator (keyed by OperatorId).</summary>
         public async Task UpsertAsync(OperatorNotificationPreference preferences, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            OperatorNotificationPreference? existing = await db.OperatorNotificationPreferences
-                .FirstOrDefaultAsync(p => p.OperatorId == preferences.OperatorId, ct);
-
-            if (existing != null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                existing.PushEnabled = preferences.PushEnabled;
-                existing.MinimumSeverity = preferences.MinimumSeverity;
-                existing.EmailEnabled = preferences.EmailEnabled;
-                existing.EmailEventTypes = preferences.EmailEventTypes;
-                _ = db.OperatorNotificationPreferences.Update(existing);
-            }
-            else
-            {
-                _ = await db.OperatorNotificationPreferences.AddAsync(preferences, ct);
-            }
+                VideoForensicsDbContext db = context.Db();
+                OperatorNotificationPreference? existing = await db.OperatorNotificationPreferences
+                    .FirstOrDefaultAsync(p => p.OperatorId == preferences.OperatorId, ct);
 
-            _ = await db.SaveChangesAsync(ct);
+                if (existing != null)
+                {
+                    existing.PushEnabled = preferences.PushEnabled;
+                    existing.MinimumSeverity = preferences.MinimumSeverity;
+                    existing.EmailEnabled = preferences.EmailEnabled;
+                    existing.EmailEventTypes = preferences.EmailEventTypes;
+                    _ = db.OperatorNotificationPreferences.Update(existing);
+                }
+                else
+                {
+                    _ = await db.OperatorNotificationPreferences.AddAsync(preferences, ct);
+                }
+
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
     }
 }

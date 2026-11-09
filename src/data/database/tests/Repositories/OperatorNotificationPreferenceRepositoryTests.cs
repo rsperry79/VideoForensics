@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
@@ -16,7 +18,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new OperatorNotificationPreferenceRepository(_fixture.Factory);
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var serviceProvider = new TestServiceProvider(_fixture, loggerFactory);
+            var unitOfWork = new UnitOfWork(_fixture.Factory, serviceProvider, loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new OperatorNotificationPreferenceRepository(unitOfWork);
         }
 
         public async ValueTask DisposeAsync()
