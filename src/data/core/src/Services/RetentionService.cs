@@ -14,6 +14,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILegalHoldRepository _legalHoldRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
+        private readonly IActionLogRepository _actionLogRepository;
         private readonly ILogger<RetentionService> _logger;
         private readonly int _retentionDays;
         private readonly IMediaPathResolver _paths;
@@ -24,6 +25,7 @@ namespace VideoForensics.Data.Core.Services
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<RetentionService> logger,
+            IActionLogRepository actionLogRepository,
             int retentionDays = 90,
             IMediaPathResolver? paths = null)
         {
@@ -32,6 +34,7 @@ namespace VideoForensics.Data.Core.Services
             _unitOfWork = unitOfWork;
             _actionLogger = actionLogger;
             _logger = logger;
+            _actionLogRepository = actionLogRepository;
             _retentionDays = retentionDays;
             _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
@@ -82,8 +85,8 @@ namespace VideoForensics.Data.Core.Services
                             item.PurgedAtUtc = DateTime.UtcNow;
                             item.PurgeReason = $"Retention policy: older than {_retentionDays} days";
 
-                            await context.MediaItems.UpdateAsync(item, ct);
-                            _ = await context.ActionLog.AppendAsync(
+                            await _mediaItemRepository.UpdateAsync(item, ct);
+                            _ = await _actionLogRepository.AppendAsync(
                                 Environment.UserName,
                                 ActorType.Human,
                                 "MediaPurged",

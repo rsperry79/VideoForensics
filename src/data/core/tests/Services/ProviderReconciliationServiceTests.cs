@@ -18,6 +18,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
+        private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<ProviderReconciliationService>> _mockLogger;
         private readonly ProviderReconciliationService _service;
 
@@ -27,6 +28,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             _mockEventRepository = new Mock<IEventRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
+            _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<ProviderReconciliationService>>();
 
             _service = new ProviderReconciliationService(
@@ -34,7 +36,8 @@ namespace VideoForensics.Data.Core.Tests.Services
                 _mockEventRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockActionLogger.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockActionLogRepository.Object);
         }
 
         [Fact]
@@ -49,11 +52,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockReconciliationRepoInContext = _mockReconciliationRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -126,11 +127,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockReconciliationRepoInContext = _mockReconciliationRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = mockReconciliationRepoInContext
                 .Setup(x => x.AppendAsync(It.IsAny<ProviderReconciliationRecord>(), It.IsAny<CancellationToken>()))
@@ -178,11 +177,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             var discrepancies = new List<ReconciliationDiscrepancy>();
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockReconciliationRepoInContext = _mockReconciliationRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             string? capturedDetails = null;
             _ = mockActionLogRepoInContext
@@ -290,11 +287,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockReconciliationRepoInContext = _mockReconciliationRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             ProviderReconciliationRecord? capturedRecord = null;
             _ = mockReconciliationRepoInContext
@@ -348,9 +343,8 @@ namespace VideoForensics.Data.Core.Tests.Services
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockEventRepoInContext = new Mock<IEventRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             var fetchedEvent = new Event
             {

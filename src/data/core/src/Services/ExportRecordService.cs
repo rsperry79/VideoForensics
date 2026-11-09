@@ -16,6 +16,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
+        private readonly IActionLogRepository _actionLogRepository;
         private readonly ILogger<ExportRecordService> _logger;
 
         public ExportRecordService(
@@ -23,13 +24,15 @@ namespace VideoForensics.Data.Core.Services
             IMediaItemRepository mediaItemRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
-            ILogger<ExportRecordService> logger)
+            ILogger<ExportRecordService> logger,
+            IActionLogRepository actionLogRepository)
         {
             _exportRecordRepository = exportRecordRepository;
             _mediaItemRepository = mediaItemRepository;
             _unitOfWork = unitOfWork;
             _actionLogger = actionLogger;
             _logger = logger;
+            _actionLogRepository = actionLogRepository;
         }
 
         public async Task<ExportRecord> RecordExportAsync(
@@ -68,7 +71,7 @@ namespace VideoForensics.Data.Core.Services
                         MediaItemSha256HashAtExport = item.HashAtExport
                     }).ToList();
 
-                    _ = await context.ExportRecords.AppendAsync(exportRecord, exportItems, ct);
+                    _ = await _exportRecordRepository.AppendAsync(exportRecord, exportItems, ct);
 
                     // Log the export event
                     var details = new
@@ -78,7 +81,7 @@ namespace VideoForensics.Data.Core.Services
                         WasEncrypted = wasEncrypted
                     };
 
-                    _ = await context.ActionLog.AppendAsync(
+                    _ = await _actionLogRepository.AppendAsync(
                         exportedByUserName,
                         ActorType.Human,
                         "EvidenceExported",
