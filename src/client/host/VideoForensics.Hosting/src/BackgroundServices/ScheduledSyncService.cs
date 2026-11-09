@@ -279,7 +279,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
                     if (ScheduleCalculator.IsEventDue(schedule, nowUtc))
                     {
-                        await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
+                        await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, mediaService, ct);
                     }
 
                     await RunTimelapseCheckAsync(sp, account, ct);
@@ -473,7 +473,6 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             ProviderAccount account,
             IEventAndConfigService eventService,
             IProviderAuthService authService,
-            IDeviceDiscoveryService deviceDiscovery,
             IMediaDownloadService mediaService,
             CancellationToken ct)
         {
@@ -546,22 +545,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     syncType = ProviderSyncRunRecorder.SyncTypeFor(from);
 
-                    // The scheduler is the place inventory and device configuration are refreshed from the provider. The pull below
-                    // then reads the stored inventory, so a failed refresh ends this run before any events are pulled.
+                    // Inventory and device configuration are refreshed by InventoryRefreshService, not here: the pull reads the stored devices.
                     IReferenceDataCache referenceCache = sp.GetRequiredService<IReferenceDataCache>();
-                    var inventorySync = new InventorySyncService(
-                        deviceDiscovery,
-                        eventService,
-                        sp.GetRequiredService<ILocationRepository>(),
-                        sp.GetRequiredService<IDeviceRepository>(),
-                        referenceCache,
-                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<InventorySyncService>(),
-                        sp.GetRequiredService<IDeviceConfigRepository>());
-                    InventorySyncResult inventory = await inventorySync.SyncAsync(accountId, ct);
-                    if (inventory.DeviceConfigFailures > 0)
-                    {
-                        _logger.LogWarning("Device configuration could not be read for {ProviderName} account: {Count} device(s); the inventory was synced", providerName, inventory.DeviceConfigFailures);
-                    }
 
                     // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(

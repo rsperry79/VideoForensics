@@ -298,6 +298,20 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public async Task RunOneTickAsync_DueAccount_DoesNotCallDeviceDiscoveryOrInventorySync()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, intervalMinutes: 30);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            // Inventory is refreshed by InventoryRefreshService on its own timer; the tick's event pull reads the stored devices.
+            h.Discovery["Ring"].Verify(d => d.GetLocationsAsync(account.Id, It.IsAny<CancellationToken>()), Times.Never);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Once);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_InitialSyncIncomplete_RunsInitialSyncInsteadOfPull()
         {
             var h = new Harness { InitialSyncEnabled = true };
@@ -677,22 +691,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_DeviceConfigReadFails_WarnsWithProviderNameAndCount()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring");
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.Events["Ring"].Setup(e => e.GetDeviceConfigAsync(account.Id, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("config boom"));
-            ScheduledSyncService service = h.Build();
-
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            // The inventory still syncs; the failed device configuration is counted and reported, not left to a debug line.
-            _ = Assert.Single(h.Logs.Lines, l => l.StartsWith("Warning") && l.Contains("Device configuration could not be read") && l.Contains("Ring") && l.Contains("1 device"));
-        }
-
-        [Fact]
         public async Task RunOneTickAsync_NoCompletedCapturePassThisProcess_LogsThatTheTimelapseCheckIsWaiting()
         {
             var h = new Harness();
@@ -859,16 +857,16 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             var h = new Harness();
             (_, ProviderAccount account) = h.AddAccount("Ring");
-            // The pull catches discovery failures and records them on the account instead of throwing.
-            _ = h.Discovery["Ring"].Setup(d => d.GetLocationsAsync(account.Id, It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("discovery boom"));
+            // The pull catches a failed media download and records it on the account instead of throwing.
+            _ = h.Media["Ring"].Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("media boom"));
             ScheduledSyncService service = h.Build();
 
             await service.RunOneTickAsync(CancellationToken.None);
 
             ProviderSyncRun run = Assert.Single(h.Runs);
             Assert.False(run.Success);
-            Assert.Equal("discovery boom", run.ErrorMessage);
+            Assert.Contains("media boom", run.ErrorMessage ?? string.Empty);
             _ = Assert.NotNull(run.CompletedUtc);
         }
 
