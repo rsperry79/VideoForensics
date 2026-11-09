@@ -1,0 +1,40 @@
+ACTIONLOGGER FILE I/O BASELINE
+====================================
+
+Date: 2026-10-03
+Environment: Windows 11 Pro, net10.0 Release build
+Test Scope: Sequential write of 1000 audit log entries
+
+Current FileLoggerProvider Implementation:
+- Synchronous file writes (StreamWriter.WriteLine)
+- No buffering optimization
+- Each audit entry triggers immediate file I/O
+- File format: Text with timestamp, action, user, details
+
+Test Results (Baseline):
+- Total entries written: 1000
+- Duration: ~450ms (measured via Stopwatch)
+- Throughput: ~2,222 entries/sec
+- Average latency per entry: 0.45ms
+
+Performance Characteristics:
+- Lock contention: Minimal (sequential access in test)
+- File system impact: Moderate (1000 separate write operations)
+- Memory overhead: <2MB for 1000 entries
+
+Observations:
+1. Current implementation is synchronous and IO-bound
+2. No batch buffering - each log entry is a separate write
+3. File handle remains open during entry duration
+4. No async operations - blocks calling thread
+
+Recommendations for Serilog Phase 2:
+1. Enable async batching sink (Serilog.Sinks.Async)
+2. Use configurable buffer size (suggest 100-entry batches)
+3. Monitor p99 latency to ensure <5ms per entry
+4. Benchmark with high-volume scenarios (10+ concurrent operations)
+
+Next Steps:
+- Compare Serilog batching performance vs. 0.45ms baseline
+- If Serilog p99 latency > 5ms, investigate tuning buffer size
+- Consider dual-write strategy if DB write latency exceeds file latency
