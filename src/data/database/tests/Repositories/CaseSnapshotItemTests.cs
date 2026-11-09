@@ -28,7 +28,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
             var actionLog = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _cases = new CaseRepository(_fixture.Factory, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _cases = new CaseRepository(unitOfWork, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
             _snapshots = new SnapshotCaptureRepository(_fixture.Factory, _loggerFactory.CreateLogger<SnapshotCaptureRepository>());
             _locations = new LocationRepository(_fixture.Factory, _loggerFactory.CreateLogger<LocationRepository>());
             _devices = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());

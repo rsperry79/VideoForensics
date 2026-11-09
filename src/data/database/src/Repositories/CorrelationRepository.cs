@@ -9,18 +9,18 @@ namespace VideoForensics.Data.Database.Repositories
 {
     public class CorrelationRepository : ICorrelationRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CorrelationRepository> _logger;
         private readonly ITimelineRepository _timelineRepository;
         private readonly IIntegrityRepository _integrityRepository;
 
         public CorrelationRepository(
-            IDbContextFactory<VideoForensicsDbContext> factory,
+            IUnitOfWork unitOfWork,
             ILogger<CorrelationRepository> logger,
             ITimelineRepository timelineRepository,
             IIntegrityRepository integrityRepository)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
             _timelineRepository = timelineRepository;
             _integrityRepository = integrityRepository;
@@ -29,27 +29,30 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<EventWithHealthCorrelation>> GetEventHealthCorrelationAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<EventWithHealthCorrelation> correlations = await db.Events
-                .Where(e => e.DeviceId == deviceId &&
-                            e.OccurredAtUtc >= fromUtc &&
-                            e.OccurredAtUtc <= toUtc)
-                .Join(db.DeviceHealths.Where(h => h.DeviceId == deviceId),
-                      e => e.DeviceId,
-                      h => h.DeviceId,
-                      (e, h) => new EventWithHealthCorrelation
-                      {
-                          EventId = e.Id,
-                          OccurredAtUtc = e.OccurredAtUtc,
-                          EventType = e.EventType,
-                          BatteryPercentage = h.BatteryPercentage,
-                          WifiSignalRssi = h.WifiSignalRssi,
-                          IsOnline = h.IsOnline,
-                          HealthStatus = DetermineHealthStatus(h.BatteryPercentage, h.WifiSignalRssi, h.IsOnline)
-                      })
-                .ToListAsync(ct);
+            return await _unitOfWork.ReadAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                List<EventWithHealthCorrelation> correlations = await db.Events
+                    .Where(e => e.DeviceId == deviceId &&
+                                e.OccurredAtUtc >= fromUtc &&
+                                e.OccurredAtUtc <= toUtc)
+                    .Join(db.DeviceHealths.Where(h => h.DeviceId == deviceId),
+                          e => e.DeviceId,
+                          h => h.DeviceId,
+                          (e, h) => new EventWithHealthCorrelation
+                          {
+                              EventId = e.Id,
+                              OccurredAtUtc = e.OccurredAtUtc,
+                              EventType = e.EventType,
+                              BatteryPercentage = h.BatteryPercentage,
+                              WifiSignalRssi = h.WifiSignalRssi,
+                              IsOnline = h.IsOnline,
+                              HealthStatus = DetermineHealthStatus(h.BatteryPercentage, h.WifiSignalRssi, h.IsOnline)
+                          })
+                    .ToListAsync(ct);
 
-            return correlations;
+                return correlations;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<HealthRelatedGap>> IdentifyHealthRelatedGapsAsync(
@@ -63,12 +66,11 @@ namespace VideoForensics.Data.Database.Repositories
                 return [];
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var gapDeviceIds = gaps.Select(g => g.DeviceId).Distinct().ToList();
-            List<DeviceHealth> healthRecords = await db.DeviceHealths
+            List<DeviceHealth> healthRecords = await _unitOfWork.ReadAsync(context => context.Db().DeviceHealths
                 .Where(h => gapDeviceIds.Contains(h.DeviceId))
                 .OrderByDescending(h => h.CapturedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
 
             var healthGaps = new List<HealthRelatedGap>();
             foreach (TimelineGap gap in gaps)
@@ -113,8 +115,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<DeviceReliabilityAnalysis> AnalyzeDeviceReliabilityAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            Device? device = await _unitOfWork.ReadAsync(context => context.Db().Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct), ct);
             IReadOnlyList<TimelineGap> gaps = await _timelineRepository.GetRecordingGapsAsync(
                 deviceId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, minGapMinutes: 5, ct);
             IReadOnlyList<HealthRelatedGap> healthGaps = await IdentifyHealthRelatedGapsAsync(device?.LocationId ?? Guid.Empty, ct);
@@ -193,8 +194,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<SyncHealthReport> AnalyzeSyncHealthAsync(Guid locationId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            List<Device> devices = await _unitOfWork.ReadAsync(context => context.Db().Devices.Where(d => d.LocationId == locationId).ToListAsync(ct), ct);
             var deviceStatus = new List<DeviceSyncStatus>();
 
             foreach (Device? device in devices)
@@ -224,8 +224,7 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyList<HealthRelatedGap> healthGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
             var locationChanges = new List<LocationChangeImpact>();
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            List<Device> devices = await _unitOfWork.ReadAsync(context => context.Db().Devices.Where(d => d.LocationId == locationId).ToListAsync(ct), ct);
             foreach (Device? device in devices)
             {
                 IReadOnlyList<LocationChangeImpact> changes = await GetLocationChangeHistoryAsync(device.Id, ct);

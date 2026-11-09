@@ -26,6 +26,9 @@ namespace VideoForensics.Data.Database.Tests
         private LocationRepository _locationRepository = null!;
         private DeviceRepository _deviceRepository = null!;
         private ILoggerFactory _loggerFactory = null!;
+        private UnitOfWork _unitOfWork = null!;
+        private readonly List<string> _racePaths = new();
+        private DbContextOptions<VideoForensicsDbContext>? _racePlain;
 
         public async ValueTask InitializeAsync()
         {
@@ -33,10 +36,11 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
 
+            _unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
             _actionLogRepository = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
             _locationRepository = new LocationRepository(_fixture.Factory, _loggerFactory.CreateLogger<LocationRepository>());
             _deviceRepository = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());
-            _repository = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>());
+            _repository = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>());
         }
 
         public async ValueTask DisposeAsync()
@@ -44,6 +48,20 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.DisposeAsync();
             _fixture.Dispose();
             _loggerFactory.Dispose();
+
+            // Pooled connections keep race database files open until the pool is cleared.
+            SqliteConnection.ClearAllPools();
+            foreach (string path in _racePaths)
+            {
+                try
+                {
+                    File.Delete(path);
+                }
+                catch (IOException)
+                {
+                    // A temp file is harmless to leave behind if Windows still holds it.
+                }
+            }
         }
 
         #region GenerateCaseNumber Tests
@@ -53,7 +71,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
             string caseNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
@@ -67,7 +85,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
             string caseNumber = await repo.GenerateCaseNumber("detected", CancellationToken.None);
@@ -81,7 +99,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
             string caseNumber = await repo.GenerateCaseNumber("suspected", CancellationToken.None);
@@ -95,7 +113,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Create a case with the first generated number
             string firstNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
@@ -114,7 +132,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Create a manual case
             string manualNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
@@ -133,7 +151,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Create cases with indices 0 and 2 (skip 1)
             _ = await repo.CreateAsync("manual-2026-10-07-14-35-0", "Title 0", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -151,7 +169,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime1 = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo1 = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime1);
+            var repo1 = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime1);
 
             // Create a case at 14:35
             string num1 = await repo1.GenerateCaseNumber("manual", CancellationToken.None);
@@ -159,7 +177,7 @@ namespace VideoForensics.Data.Database.Tests
 
             // Act - Move to next minute and generate
             var fakeTime2 = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 36, 10, DateTimeKind.Utc));
-            var repo2 = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime2);
+            var repo2 = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime2);
             string num2 = await repo2.GenerateCaseNumber("manual", CancellationToken.None);
 
             // Assert
@@ -176,7 +194,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             string title = "Test Case";
 
             // Act
@@ -193,7 +211,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
             ForensicCase created = await repo.CreateAsync(null, "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -209,7 +227,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
             ForensicCase created = await repo.CreateAsync(string.Empty, "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -224,7 +242,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
             ForensicCase created = await repo.CreateAsync("   ", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -275,7 +293,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act - Two concurrent CreateAsync calls with null case number
             Task<ForensicCase> task1 = repo.CreateAsync(null, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
@@ -308,7 +326,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
@@ -339,7 +357,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
@@ -368,7 +386,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
@@ -397,7 +415,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
@@ -426,7 +444,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var startTime = new DateTime(2026, 10, 7, 14, 30, 0, DateTimeKind.Utc);
             var endTime = new DateTime(2026, 10, 7, 14, 40, 0, DateTimeKind.Utc);
@@ -460,7 +478,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
@@ -488,7 +506,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
             Guid deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
@@ -564,7 +582,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange: Pre-seed a case that will collide with the FIRST generated candidate
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Pre-create the case that will collide with the first generated number
             string collidingNumber = "manual-2026-10-07-14-35-0";
@@ -583,7 +601,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
-            var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
+            var repo = new CaseRepository(_unitOfWork, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act - 10 parallel creates with null case number
             var tasks = Enumerable.Range(0, 10)
@@ -606,20 +624,50 @@ namespace VideoForensics.Data.Database.Tests
 
         private async Task<(CaseRepository Repo, SqliteConnection Conn, RaceInterceptor Interceptor)> BuildRacingRepoAsync(bool armed = true)
         {
-            var conn = new SqliteConnection("DataSource=:memory:");
-            await conn.OpenAsync();
-            DbContextOptions<VideoForensicsDbContext> plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            // File-backed, not in-memory: the competing writer must use its own connection and commit independently.
+            // On a shared in-memory connection its row would sit inside our transaction and roll back with it.
+            string path = Path.Combine(Path.GetTempPath(), $"race-{Guid.NewGuid():N}.db");
+            _racePaths.Add(path);
+            string connectionString = $"Data Source={path};Pooling=true;Default Timeout=5";
+            DbContextOptions<VideoForensicsDbContext> plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(connectionString).Options;
             await using (var setup = new VideoForensicsDbContext(plain))
             {
                 _ = await setup.Database.EnsureCreatedAsync();
+                // Production runs in WAL, where a reader does not block the competing writer's commit.
+                _ = await setup.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
             }
 
+            var conn = new SqliteConnection(connectionString);
+            await conn.OpenAsync();
+
+            _racePlain = plain;
             var interceptor = new RaceInterceptor(() => new VideoForensicsDbContext(plain), RaceNow) { Armed = armed };
-            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
+            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(connectionString).AddInterceptors(interceptor).Options;
             var factory = new SimpleFactory(racing);
-            var repo = new CaseRepository(factory, new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
+            var unitOfWork = new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            var repo = new CaseRepository(unitOfWork, new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(), new FakeTimeProvider(RaceNow));
             return (repo, conn, interceptor);
+        }
+
+        /// <summary>
+        /// Commits a case with the given number from a separate context, before the call under test. Inside a unit of work
+        /// the open transaction holds the write lock, so a competing write can only be committed before the call starts.
+        /// </summary>
+        private async Task CommitCompetingCaseAsync(string caseNumber)
+        {
+            await using var other = new VideoForensicsDbContext(_racePlain!);
+            _ = other.Cases.Add(new ForensicCase
+            {
+                Id = Guid.NewGuid(),
+                CaseNumber = caseNumber,
+                Title = "Competitor",
+                Status = CaseStatus.Open,
+                CreatedBy = "racer",
+                CreatedAtUtc = RaceNow,
+                UpdatedAtUtc = RaceNow
+            });
+            _ = await other.SaveChangesAsync();
         }
 
         private static async Task<List<string>> CaseNumbersAsync(SqliteConnection conn)
@@ -629,27 +677,28 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task CreateAsync_InsertTimeUniqueViolation_RetriesWithNextIndex()
+        public async Task CreateAsync_NumberTakenBeforeCall_RetriesWithNextIndex()
         {
-            (CaseRepository? repo, SqliteConnection? conn, RaceInterceptor? interceptor) = await BuildRacingRepoAsync();
+            (CaseRepository? repo, SqliteConnection? conn, _) = await BuildRacingRepoAsync(armed: false);
             await using (conn)
             {
+                await CommitCompetingCaseAsync("manual-2026-10-07-14-35-0");
+
                 ForensicCase created = await repo.CreateAsync(null, "Raced", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
-                Assert.True(interceptor.Fired);
                 Assert.Equal("manual-2026-10-07-14-35-1", created.CaseNumber);
                 Assert.Equal(new[] { "manual-2026-10-07-14-35-0", "manual-2026-10-07-14-35-1" }, await CaseNumbersAsync(conn));
             }
         }
 
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_InsertTimeUniqueViolation_KeepsDetectedPrefix()
+        public async Task CreateFromJammingDetectionAsync_NumberTakenBeforeCall_KeepsDetectedPrefix()
         {
-            (CaseRepository? repo, SqliteConnection? conn, RaceInterceptor? interceptor) = await BuildRacingRepoAsync(armed: false);
+            (CaseRepository? repo, SqliteConnection? conn, _) = await BuildRacingRepoAsync(armed: false);
             await using (conn)
             {
                 Guid deviceId = await SeedDeviceAsync(conn);
-                interceptor.Armed = true;
+                await CommitCompetingCaseAsync("detected-2026-10-07-14-35-0");
                 var incident = new JammingIncidentRecord
                 {
                     Id = Guid.NewGuid(),
@@ -665,7 +714,6 @@ namespace VideoForensics.Data.Database.Tests
 
                 ForensicCase created = await repo.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-                Assert.True(interceptor.Fired);
                 Assert.Equal("detected-2026-10-07-14-35-1", created.CaseNumber);
                 Assert.Equal(new[] { "detected-2026-10-07-14-35-0", "detected-2026-10-07-14-35-1" }, await CaseNumbersAsync(conn));
             }
@@ -685,15 +733,16 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task CreateAsync_ExplicitDuplicateAtInsertTime_ThrowsDbUpdateWithoutRetry()
+        public async Task CreateAsync_ExplicitNumberTaken_ThrowsWithoutRetry()
         {
-            (CaseRepository? repo, SqliteConnection? conn, RaceInterceptor? interceptor) = await BuildRacingRepoAsync();
+            (CaseRepository? repo, SqliteConnection? conn, _) = await BuildRacingRepoAsync(armed: false);
             await using (conn)
             {
-                _ = await Assert.ThrowsAsync<DbUpdateException>(
+                await CommitCompetingCaseAsync("EXPLICIT-RACE-1");
+
+                _ = await Assert.ThrowsAsync<InvalidOperationException>(
                     () => repo.CreateAsync("EXPLICIT-RACE-1", "Explicit", null, null, null, null, [], "user@example.com", CancellationToken.None));
 
-                Assert.True(interceptor.Fired);
                 Assert.Equal(new[] { "EXPLICIT-RACE-1" }, await CaseNumbersAsync(conn));
             }
         }

@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Database.Tests
 
         private CaseRepository BuildRepo(IDbContextFactory<VideoForensicsDbContext> factory)
         {
-            return new(factory,
+            return new(new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()),
                 new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
@@ -306,9 +306,26 @@ namespace VideoForensics.Data.Database.Tests
             incident.DeviceId = deviceId;
             await PersistIncidentAsync(plainFactory, incident);
 
-            var interceptor = new CollisionInterceptor(() => new VideoForensicsDbContext(plain), fakeTime.GetUtcNow().UtcDateTime);
-            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
-            CaseRepository racingRepo = new(new SimpleFactory(racing),
+            // Commit the competing case before the call. The unit of work holds the write lock, so a competitor cannot
+            // write between the number check and the insert; the retry path is exercised by the check itself.
+            await using (VideoForensicsDbContext competitor = new(plain))
+            {
+                DateTime now = fakeTime.GetUtcNow().UtcDateTime;
+                _ = competitor.Cases.Add(new ForensicCase
+                {
+                    Id = Guid.NewGuid(),
+                    CaseNumber = "detected-2026-10-07-14-35-0",
+                    Title = "Competitor",
+                    Status = CaseStatus.Open,
+                    CreatedBy = "racer",
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now
+                });
+                _ = await competitor.SaveChangesAsync();
+            }
+
+            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            CaseRepository racingRepo = new(new UnitOfWork(new SimpleFactory(racing), new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()),
                 new ActionLogRepository(new SimpleFactory(racing), _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 fakeTime);

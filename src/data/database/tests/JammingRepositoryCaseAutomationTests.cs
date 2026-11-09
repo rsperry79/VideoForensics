@@ -37,9 +37,9 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory = LoggerFactory.Create(b => { });
 
             var actionLogRepo = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _caseRepo = new CaseRepository(_fixture.Factory, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
-                new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
             var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _caseRepo = new CaseRepository(unitOfWork, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
+                new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
             _alertRepo = new AlertRepository(unitOfWork, _loggerFactory.CreateLogger<AlertRepository>());
 
             // Initialize a plain reader instance with no case repository for reading back test results

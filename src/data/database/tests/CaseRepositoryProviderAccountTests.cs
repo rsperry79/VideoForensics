@@ -29,7 +29,8 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
 
             var actionLog = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _repository = new CaseRepository(_fixture.Factory, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new CaseRepository(unitOfWork, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
         }
 
         public async ValueTask DisposeAsync()

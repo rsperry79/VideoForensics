@@ -10,40 +10,42 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for append-only DeviceConfigSnapshot entities.</summary>
     public class DeviceConfigRepository : IDeviceConfigRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceConfigRepository> _logger;
 
         /// <summary>Initializes a new instance of the DeviceConfigRepository.</summary>
-        public DeviceConfigRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<DeviceConfigRepository> logger)
+        public DeviceConfigRepository(IUnitOfWork unitOfWork, ILogger<DeviceConfigRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Gets a device config snapshot by ID.</summary>
-        public async Task<DeviceConfigSnapshot?> GetAsync(Guid snapshotId, CancellationToken ct)
+        public Task<DeviceConfigSnapshot?> GetAsync(Guid snapshotId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceConfigSnapshots.Include(dcs => dcs.CustomSettings).FirstOrDefaultAsync(dcs => dcs.Id == snapshotId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().DeviceConfigSnapshots.Include(dcs => dcs.CustomSettings).FirstOrDefaultAsync(dcs => dcs.Id == snapshotId, ct), ct);
         }
 
         /// <summary>Appends a new device configuration snapshot.</summary>
         public async Task<DeviceConfigSnapshot> AppendSnapshotAsync(DeviceConfigSnapshot snapshot, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                foreach (DeviceConfigSnapshotSetting setting in snapshot.CustomSettings)
+                return await _unitOfWork.ExecuteAsync<DeviceConfigSnapshot>(async context =>
                 {
-                    setting.Id = setting.Id == Guid.Empty ? Guid.NewGuid() : setting.Id;
-                    setting.SnapshotId = snapshot.Id;
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    foreach (DeviceConfigSnapshotSetting setting in snapshot.CustomSettings)
+                    {
+                        setting.Id = setting.Id == Guid.Empty ? Guid.NewGuid() : setting.Id;
+                        setting.SnapshotId = snapshot.Id;
+                    }
 
-                _ = db.DeviceConfigSnapshots.Add(snapshot);
-                _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Device config snapshot appended: {SnapshotId} (device: {DeviceId})",
-                    snapshot.Id, snapshot.DeviceId);
-                return snapshot;
+                    _ = db.DeviceConfigSnapshots.Add(snapshot);
+                    _ = await db.SaveChangesAsync(ct);
+                    _logger.LogDebug("Device config snapshot appended: {SnapshotId} (device: {DeviceId})",
+                        snapshot.Id, snapshot.DeviceId);
+                    return snapshot;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -53,32 +55,29 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Gets the latest device configuration snapshot for a device.</summary>
-        public async Task<DeviceConfigSnapshot?> GetLatestAsync(Guid deviceId, CancellationToken ct)
+        public Task<DeviceConfigSnapshot?> GetLatestAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceConfigSnapshots
+            return _unitOfWork.ReadAsync(context => context.Db().DeviceConfigSnapshots
                 .Include(dcs => dcs.CustomSettings)
                 .Where(dcs => dcs.DeviceId == deviceId)
                 .OrderByDescending(dcs => dcs.CapturedAtUtc)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets the full history of device configuration snapshots for a device.</summary>
         public async Task<IReadOnlyList<DeviceConfigSnapshot>> GetHistoryAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceConfigSnapshots
+            return await _unitOfWork.ReadAsync(context => context.Db().DeviceConfigSnapshots
                 .Include(dcs => dcs.CustomSettings)
                 .Where(dcs => dcs.DeviceId == deviceId)
                 .OrderByDescending(dcs => dcs.CapturedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         /// <summary>Lists all device config snapshots.</summary>
         public async Task<IReadOnlyList<DeviceConfigSnapshot>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceConfigSnapshots.Include(dcs => dcs.CustomSettings).ToListAsync(ct);
+            return await _unitOfWork.ReadAsync(context => context.Db().DeviceConfigSnapshots.Include(dcs => dcs.CustomSettings).ToListAsync(ct), ct);
         }
     }
 }
