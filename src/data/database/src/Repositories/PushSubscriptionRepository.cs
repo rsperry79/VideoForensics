@@ -10,42 +10,46 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for PushSubscription entities (Web Push API credentials per browser/device).</summary>
     public class PushSubscriptionRepository : IPushSubscriptionRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<PushSubscriptionRepository> _logger;
 
         /// <summary>Initializes a new instance of the PushSubscriptionRepository.</summary>
-        public PushSubscriptionRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<PushSubscriptionRepository> logger)
+        public PushSubscriptionRepository(IUnitOfWork unitOfWork, ILogger<PushSubscriptionRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Adds or updates a push subscription (upsert by Endpoint). Updates LastUsedUtc if the subscription already exists.</summary>
         public async Task AddOrUpdateAsync(PushSubscription subscription, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                PushSubscription? existing = await db.PushSubscriptions
-                    .FirstOrDefaultAsync(ps => ps.Endpoint == subscription.Endpoint, ct);
-
-                if (existing != null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    existing.P256dhKey = subscription.P256dhKey;
-                    existing.AuthKey = subscription.AuthKey;
-                    existing.LastUsedUtc = DateTime.UtcNow;
-                    _ = db.PushSubscriptions.Update(existing);
-                    _logger.LogDebug("Push subscription updated");
-                }
-                else
-                {
-                    subscription.Id = subscription.Id == Guid.Empty ? Guid.NewGuid() : subscription.Id;
-                    subscription.CreatedUtc = DateTime.UtcNow;
-                    _ = await db.PushSubscriptions.AddAsync(subscription, ct);
-                    _logger.LogDebug("Push subscription added");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    PushSubscription? existing = await db.PushSubscriptions
+                        .FirstOrDefaultAsync(ps => ps.Endpoint == subscription.Endpoint, ct);
 
-                _ = await db.SaveChangesAsync(ct);
+                    if (existing != null)
+                    {
+                        existing.P256dhKey = subscription.P256dhKey;
+                        existing.AuthKey = subscription.AuthKey;
+                        existing.LastUsedUtc = DateTime.UtcNow;
+                        _ = db.PushSubscriptions.Update(existing);
+                        _logger.LogDebug("Push subscription updated");
+                    }
+                    else
+                    {
+                        subscription.Id = subscription.Id == Guid.Empty ? Guid.NewGuid() : subscription.Id;
+                        subscription.CreatedUtc = DateTime.UtcNow;
+                        _ = await db.PushSubscriptions.AddAsync(subscription, ct);
+                        _logger.LogDebug("Push subscription added");
+                    }
+
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -57,12 +61,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all active push subscriptions for an operator.</summary>
         public async Task<IReadOnlyList<PushSubscription>> ListForOperatorAsync(Guid operatorId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                return await db.PushSubscriptions
+                return await _unitOfWork.ReadAsync(context => context.Db().PushSubscriptions
                     .Where(ps => ps.OperatorId == operatorId)
-                    .ToListAsync(ct);
+                    .ToListAsync(ct), ct);
             }
             catch (Exception ex)
             {
@@ -78,15 +81,18 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<PushSubscription>> ListForAdminsAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 // Same "at least Admin" rule as LiveHub (role >= OperatorRole.Admin). Deactivated or unapproved
                 // operators are excluded so they do not receive admin-only security pushes. Using a subquery keeps
                 // the result limited to PushSubscription rows, with no duplicates from a join.
-                return await db.PushSubscriptions
-                    .Where(ps => db.Operators.Any(o => o.Id == ps.OperatorId && o.Role >= OperatorRole.Admin && o.Active && o.IsApproved))
-                    .ToListAsync(ct);
+                return await _unitOfWork.ReadAsync(context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    return db.PushSubscriptions
+                        .Where(ps => db.Operators.Any(o => o.Id == ps.OperatorId && o.Role >= OperatorRole.Admin && o.Active && o.IsApproved))
+                        .ToListAsync(ct);
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -98,10 +104,9 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all push subscriptions across operators (for All-audience notifications).</summary>
         public async Task<IReadOnlyList<PushSubscription>> ListAllAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                return await db.PushSubscriptions.ToListAsync(ct);
+                return await _unitOfWork.ReadAsync(context => context.Db().PushSubscriptions.ToListAsync(ct), ct);
             }
             catch (Exception ex)
             {
@@ -113,18 +118,23 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Removes a push subscription by endpoint URL (e.g., when the browser unsubscribes or the subscription is invalid).</summary>
         public async Task RemoveAsync(string endpoint, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                PushSubscription? subscription = await db.PushSubscriptions
-                    .FirstOrDefaultAsync(ps => ps.Endpoint == endpoint, ct);
-
-                if (subscription != null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    _ = db.PushSubscriptions.Remove(subscription);
-                    _ = await db.SaveChangesAsync(ct);
-                    _logger.LogDebug("Push subscription removed");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    PushSubscription? subscription = await db.PushSubscriptions
+                        .FirstOrDefaultAsync(ps => ps.Endpoint == endpoint, ct);
+
+                    if (subscription != null)
+                    {
+                        _ = db.PushSubscriptions.Remove(subscription);
+                        _ = await db.SaveChangesAsync(ct);
+                        _logger.LogDebug("Push subscription removed");
+                    }
+
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {

@@ -10,34 +10,36 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for Ring account entities.</summary>
     public class RingAccountRepository : IRingAccountRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<RingAccountRepository> _logger;
 
-        public RingAccountRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<RingAccountRepository> logger)
+        public RingAccountRepository(IUnitOfWork unitOfWork, ILogger<RingAccountRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        public async Task<RingAccount?> GetAsync(Guid id, CancellationToken ct)
+        public Task<RingAccount?> GetAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.RingAccounts.FirstOrDefaultAsync(a => a.Id == id, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().RingAccounts.FirstOrDefaultAsync(a => a.Id == id, ct), ct);
         }
 
-        public async Task<RingAccount?> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
+        public Task<RingAccount?> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.RingAccounts.FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().RingAccounts.FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct), ct);
         }
 
         public async Task AddAsync(RingAccount account, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.RingAccounts.Add(account);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.RingAccounts.Add(account);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Ring account added: {AccountId} (subscription: {SubscriptionLevel})",
                     account.Id, account.SubscriptionLevel);
             }
@@ -50,11 +52,15 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task UpdateAsync(RingAccount account, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.RingAccounts.Update(account);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.RingAccounts.Update(account);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Ring account updated: {AccountId} (subscription: {SubscriptionLevel})",
                     account.Id, account.SubscriptionLevel);
             }
@@ -68,14 +74,24 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task DeleteAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                RingAccount? account = await db.RingAccounts.FirstOrDefaultAsync(a => a.Id == id, ct);
-                if (account != null)
+                bool deleted = await _unitOfWork.ExecuteAsync(async context =>
                 {
+                    VideoForensicsDbContext db = context.Db();
+                    RingAccount? account = await db.RingAccounts.FirstOrDefaultAsync(a => a.Id == id, ct);
+                    if (account == null)
+                    {
+                        return false;
+                    }
+
                     _ = db.RingAccounts.Remove(account);
                     _ = await db.SaveChangesAsync(ct);
+                    return true;
+                }, ct);
+
+                if (deleted)
+                {
                     _logger.LogDebug("Ring account deleted: {AccountId}", id);
                 }
             }

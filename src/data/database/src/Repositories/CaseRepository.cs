@@ -213,7 +213,9 @@ namespace VideoForensics.Data.Database.Repositories
             Action<VideoForensicsDbContext, ForensicCase>? onBeforeSave = null)
         {
             bool wasGenerated = string.IsNullOrWhiteSpace(explicitNumber);
-            string finalCaseNumber = wasGenerated ? await GenerateCaseNumber(generatedPrefix, ct) : explicitNumber!;
+            // A generated number is chosen inside the write gate below, not here: a read outside the gate runs in parallel
+            // with other creates and collides on the shared connection.
+            string finalCaseNumber = wasGenerated ? string.Empty : explicitNumber!;
 
             // For auto-generated numbers, retry up to 5 times on collision
             int maxRetries = wasGenerated ? 5 : 1;
