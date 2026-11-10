@@ -16,7 +16,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Unit of work implementation for executing multi-entity operations atomically within a single transaction.</summary>
-    public class UnitOfWork : IUnitOfWork
+    public class UnitOfWork : IUnitOfWork, ITransactionlessWriteGate
     {
         /// <summary>
         /// Transactions at or past this length log a Warning. Shorter ones log at Debug. The default is well above a normal

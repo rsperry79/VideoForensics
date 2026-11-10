@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
@@ -12,12 +13,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
     {
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<SqliteDatabaseMaintenanceService> _logger;
+        private readonly ITransactionlessWriteGate _gate;
 
         public SqliteDatabaseMaintenanceService(
             IDbContextFactory<VideoForensicsDbContext> factory,
+            ITransactionlessWriteGate gate,
             ILogger<SqliteDatabaseMaintenanceService> logger)
         {
             _factory = factory;
+            _gate = gate;
             _logger = logger;
         }
 
@@ -29,20 +33,23 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // and truncates the WAL back to zero bytes - a plain PASSIVE checkpoint (used by
                 // routine maintenance) can leave data in the WAL if a reader is active, which would
                 // still block deleting the file cleanly afterward.
-                await using (VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct))
+                // Checkpoints cannot run inside a transaction, so they go through the write gate on a transaction-less context.
+                _ = await _gate.ExecuteWithoutTransactionAsync(async (db, token) =>
                 {
                     if (db.Database.GetDbConnection() is SqliteConnection connection)
                     {
                         if (connection.State != System.Data.ConnectionState.Open)
                         {
-                            await connection.OpenAsync(ct);
+                            await connection.OpenAsync(token);
                         }
 
                         using SqliteCommand command = connection.CreateCommand();
                         command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
-                        _ = await command.ExecuteScalarAsync(ct);
+                        _ = await command.ExecuteScalarAsync(token);
                     }
-                }
+
+                    return 0;
+                }, ct);
 
                 // The connection above is returned to the ADO.NET pool on dispose, not actually
                 // closed at the OS level - ClearAllPools() is what actually releases every pooled

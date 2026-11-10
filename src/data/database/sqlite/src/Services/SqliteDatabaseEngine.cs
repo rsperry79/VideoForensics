@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.Sqlite.Services
 {
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Services
     /// SQLite implementation of <see cref="IDatabaseEngine"/>. Each call opens its own connection, so a VACUUM or REINDEX
     /// never runs inside a transaction the app holds open on its own context.
     /// </summary>
-    public sealed class SqliteDatabaseEngine(IDbContextFactory<VideoForensicsDbContext> factory) : IDatabaseEngine
+    public sealed class SqliteDatabaseEngine(IDbContextFactory<VideoForensicsDbContext> factory, ITransactionlessWriteGate gate) : IDatabaseEngine
     {
         /// <inheritdoc />
         public string Name => "SQLite";
@@ -35,7 +36,11 @@ namespace VideoForensics.Data.Database.Sqlite.Services
         /// <inheritdoc />
         public async Task CompactAsync(CancellationToken ct)
         {
-            await NonQueryAsync(await ConnectionStringAsync(ct), "VACUUM", ct);
+            _ = await gate.ExecuteWithoutTransactionAsync(async (db, token) =>
+            {
+                _ = await db.Database.ExecuteSqlRawAsync("VACUUM", token);
+                return 0;
+            }, ct);
         }
 
         /// <inheritdoc />
@@ -49,7 +54,11 @@ namespace VideoForensics.Data.Database.Sqlite.Services
         /// <inheritdoc />
         public async Task RebuildIndexesAsync(CancellationToken ct)
         {
-            await NonQueryAsync(await ConnectionStringAsync(ct), "REINDEX", ct);
+            _ = await gate.ExecuteWithoutTransactionAsync(async (db, token) =>
+            {
+                _ = await db.Database.ExecuteSqlRawAsync("REINDEX", token);
+                return 0;
+            }, ct);
         }
 
         private async Task<string> ConnectionStringAsync(CancellationToken ct)

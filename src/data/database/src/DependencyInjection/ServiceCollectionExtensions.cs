@@ -92,6 +92,8 @@ namespace VideoForensics.Data.Database.DependencyInjection
             // Register unit of work. One tracker is shared by every scope, so the watchdog sees transactions from all of them.
             services.TryAddSingleton<VideoForensics.Data.Common.Diagnostics.InFlightTransactions>();
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();
+            services.TryAddScoped<ITransactionlessWriteGate>(sp => sp.GetRequiredService<IUnitOfWork>() as ITransactionlessWriteGate
+                ?? throw new InvalidOperationException("IUnitOfWork must be the UnitOfWork implementation to provide ITransactionlessWriteGate."));
 
             return services;
         }
