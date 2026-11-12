@@ -379,5 +379,19 @@ namespace VideoForensics.Core.Logging.Tests.Providers
             LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.Equal(level.ToString(), parsed?.Level);
         }
+
+        [Fact]
+        public void WriteLog_ControlCharacterInMessage_RoundTripsThroughJson()
+        {
+            // Hand-built JSON escaped only \\ \" \r \n \t, so other control characters produced invalid JSON.
+            string message = "bell\u0007 form\u000C back\b unit\u001F";
+
+            _logger.LogInformation(message);
+
+            string[] buffered = _provider.GetBufferedEntries();
+            _ = Assert.Single(buffered);
+            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            Assert.Equal(message, parsed?.Message);
+        }
     }
 }

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Channels;
@@ -145,42 +146,17 @@ namespace VideoForensics.Core.Logging.Providers
             }
         }
 
+        // System.Text.Json escapes every control character, so each line stays valid JSON for the viewer.
+        // Omitted-when-default fields come from the LogEntry attributes.
         private static string SerializeLogEntry(LogEntry entry)
         {
-            // Manual JSON serialization to avoid source generation issues
-            var parts = new List<string>
-            {
-                $"\"timestamp\":\"{JsonEncode(entry.Timestamp)}\"",
-                $"\"level\":\"{JsonEncode(entry.Level)}\"",
-                $"\"category\":\"{JsonEncode(entry.Category)}\"",
-                $"\"message\":\"{JsonEncode(entry.Message)}\""
-            };
-
-            // Only include eventId if non-zero
-            if (entry.EventId != 0)
-            {
-                parts.Add($"\"eventId\":{entry.EventId}");
-            }
-
-            // Only include eventName if not null
-            if (!string.IsNullOrEmpty(entry.EventName))
-            {
-                parts.Add($"\"eventName\":\"{JsonEncode(entry.EventName)}\"");
-            }
-
-            return "{" + string.Join(",", parts) + "}";
+            return JsonSerializer.Serialize(entry, LogEntryJsonOptions);
         }
 
-        private static string JsonEncode(string value)
+        private static readonly JsonSerializerOptions LogEntryJsonOptions = new()
         {
-            // Basic JSON string escaping
-            return value
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\r", "\\r")
-                .Replace("\n", "\\n")
-                .Replace("\t", "\\t");
-        }
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        };
 
         // Keeps one instance waiting while fewer than MaxClients are connected, so several viewers can attach.
         private async Task AcceptLoopAsync(CancellationToken token)
@@ -399,6 +375,7 @@ namespace VideoForensics.Core.Logging.Providers
         public string Message { get; set; } = string.Empty;
 
         [JsonPropertyName("eventId")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int EventId { get; set; }
 
         [JsonPropertyName("eventName")]
