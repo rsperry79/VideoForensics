@@ -39,6 +39,52 @@ namespace VideoForensics.Client.Core.Tests.Architecture
             Assert.True(violations.Length == 0, $"{violations.Length} Ui.Shared file(s) inject a data-layer repository: {string.Join(", ", violations)}");
         }
 
+        [Fact]
+        public void ApiContracts_ProjectFile_HasNoDataLayerOrClientCommonReference()
+        {
+            string projectFile = Path.Combine(FindApiContractsFolder(), "src", "VideoForensics.Core.Api.Contracts.csproj");
+
+            string[] references = File.ReadAllLines(projectFile)
+                .Where(line => line.Contains("ProjectReference", StringComparison.Ordinal)
+                    && (line.Contains("data/", StringComparison.OrdinalIgnoreCase) || line.Contains("Client.Common", StringComparison.Ordinal)))
+                .ToArray();
+
+            Assert.True(references.Length == 0, $"Api.Contracts still references the data layer or Client.Common: {string.Join(" | ", references)}");
+        }
+
+        [Fact]
+        public void ApiContracts_Source_DoesNotUseDataLayerNamespaces()
+        {
+            string sourceFolder = Path.Combine(FindApiContractsFolder(), "src");
+
+            string[] violations = Directory.EnumerateFiles(sourceFolder, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                    && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                .Where(path => File.ReadAllText(path).Contains("VideoForensics.Data.", StringComparison.Ordinal))
+                .Select(path => Path.GetRelativePath(sourceFolder, path))
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.True(violations.Length == 0, $"{violations.Length} Api.Contracts file(s) use VideoForensics.Data.*: {string.Join(", ", violations)}");
+        }
+
+        private static string FindApiContractsFolder()
+        {
+            string? directory = AppContext.BaseDirectory;
+            while (directory is not null)
+            {
+                string candidate = Path.Combine(directory, "src", "core", "api");
+                if (Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                directory = Path.GetDirectoryName(directory);
+            }
+
+            throw new DirectoryNotFoundException("Could not find src/core/api above the test output folder.");
+        }
+
         private static readonly System.Text.RegularExpressions.Regex RepositoryInjection =
             new(@"\bI[A-Za-z]+Repository\b", System.Text.RegularExpressions.RegexOptions.Compiled);
 

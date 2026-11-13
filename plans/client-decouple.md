@@ -24,7 +24,8 @@ Client hosts (Ui.Shared, MauiApp, and any MCP bridge) reference only `Api.Contra
 
 ## Units (each: failing test, then implement, then lite gate, then commit)
 - [ ] D0. Boundary test: Ui.Shared csproj has no `Client.Core` or `data/` reference; no Ui.Shared `.cs` or `.razor` file injects a data-layer repository interface. Red now. Recorded red run required.
-- [ ] D1. Device and media group: `IDeviceRepository`, `IMediaItemRepository`, `IMediaFlagRepository`. Endpoints, DTOs, `Remote*` classes, DI swap.
+- [ ] D1-pre. Api.Contracts becomes data-free (decided 2026-11-13). Move the 22 `ToDto()`/`ToDomain()` mapping files that use `VideoForensics.Data.*` out of Api.Contracts into WebApp/Hosting, and drop its `data/common`, `data/core` and `Client.Common` ProjectReferences. Red run recorded 2026-11-13: `ApiContracts_ProjectFile_HasNoDataLayerOrClientCommonReference` and `ApiContracts_Source_DoesNotUseDataLayerNamespaces` fail (22 files; 3 csproj references).
+- [ ] D1. Device and media group: `IDeviceRepository`, `IMediaItemRepository`, `IMediaFlagRepository`. Decided 2026-11-13: interfaces move to Api.Contracts with DTO signatures, not entities. The entity-typed signatures cannot move, since `Device`, `MediaItem` and `MediaFlag` live in the data layer. Consumers switch to DTOs. Endpoints, `Remote*` classes, DI swap. Starts after D1-pre.
 - [ ] D2. Event and review group: `IEventRepository`, review loaders.
 - [ ] D3. Case, legal hold, and user group: `ICaseRepository`, `ILegalHoldRepository`, `IUserRepository`.
 - [ ] D4. Location, provider account, operator preferences, jamming: the remaining repositories.
