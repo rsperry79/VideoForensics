@@ -46,7 +46,14 @@ C. `VACUUM` and `wal_checkpoint(TRUNCATE)` use a **transaction-less gate entry**
 - [ ] U2. Extend the gate: re-entrancy, queue-wait telemetry, queue timeout (value below `Default Timeout`), transaction-less entry.
 - [ ] U3. Move standalone repository writes to context injection, one commit per repository group. Requires open decisions A and B. Tests green after each.
 - [ ] U4. Move non-repository writes (maintenance, backfills, seeders, Ring writers) through the gate. Batch the retention, backfill and Ring replace transactions.
-- [ ] U5. Replace `BackupImportOrchestrator` direct access with a server endpoint. Independent of U2–U4; can run in parallel after U1. Needs the auth, versioning and request-size decisions.
+- [ ] U5. Whole client split (decided 2026-11-13). Client hosts stop referencing `data.*`. Scope from inventory (non-test .cs files still using `VideoForensics.Data.*`): WebApp 83 (server, exempt), Hosting 73, Ui.Shared 48, Client.Core 11, Client.Common 6. csproj refs to `data/` remain in Client.Common, Client.Core, and Hosting. Backup import: client sends the zip in chunks under 1 MB; the server reassembles it, then imports through the gate. Media: the user copies media to a server-readable folder, picks it in a folder picker that lists server folders (`/api/v1/filesystem/fileoperations` exists), and the server copies and hashes it during import. Sub-units:
+  - U5a. Red run recorded 2026-11-13: `src/client/core/VideoForensics.Client.Core/tests/Architecture/ClientCommonDataBoundaryTests.cs` (2 tests fail: csproj reference, and 6 source files). Those 6 types are used in 135 .cs files (IForensicsConfiguration 94, IEvidenceValidationService 20, IEvidenceValidationJobs 15, ILiveViewSessionService 17, ILiveViewTelemetryPublisher 9, ExportedMediaItem 4). Client.Common: 6 interface/DTO files use `Data.Common.Entities` (IEvidenceValidationJobs, IForensicsConfiguration, ILiveViewSessionService, ExportedMediaItem, ILiveViewTelemetryPublisher, IEvidenceValidationService). Core.Providers.Common has no data refs. Dropping the csproj reference needs every consumer of these 6 types moved to Api.Contracts DTOs (`ToDto()` / `ToDomain()`) first.
+  - U5b. Client.Core (11 files + csproj ref), including BackupImportOrchestrator.
+  - U5c. Hosting (73 files + csproj ref): Remote* classes map DTOs.
+  - U5d. Ui.Shared (48 files): page bindings move to DTOs.
+  - U5e. Backup path: chunked zip upload endpoint, server-side media copy and hash, folder picker on `/api/v1/filesystem/fileoperations`.
+  - U5f. Client test projects (Core, Hosting, WebApp) switch to DTOs and drop data refs.
+Order: U5a → U5b → U5e (server side, needed by U5b) → U5c → U5d → U5f. Each step adds a failing test first.
 - [ ] U6. Shrink the allowlist to the permitted set (see Enforcement).
 - [ ] U7. Verify live: no `database is locked` under snapshot and backfill load, with queue-wait metrics attached.
 
