@@ -47,8 +47,8 @@ using VideoForensics.Client.WebApp.RateLimiting;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Logging.DependencyInjection;
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.DependencyInjection;
+using SperryDev.Logger.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -122,7 +122,7 @@ Log.Logger = new LoggerConfiguration()
         .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
         // Text format: human-readable with structured properties appended
         .WriteTo.File(
-            new VideoForensics.Core.Logging.Providers.UtcConsoleFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"),
+            new SperryDev.Logger.Providers.UtcConsoleFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"),
             path: Path.Combine(logsDir, "audit-.txt"),
             rollingInterval: RollingInterval.Day,
             // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
@@ -141,7 +141,7 @@ Log.Logger = new LoggerConfiguration()
             retainedFileCountLimit: 30,
             shared: true))
     // Console only: UTC time, the category on its own line above the message, the structured properties left out, and the level tag and message coloured by level.
-    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console())
+    .WriteTo.Sink(SperryDev.Logger.Providers.UtcTimestampSink.Console())
     .CreateLogger();
 
 // A fatal exception off the request path (async void, timer, thread pool) only reaches stderr, which a service or container
@@ -304,7 +304,7 @@ builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
 // The named pipe feeds VideoForensics.Utils.LogViewer. The gate starts closed; the saved Infrastructure setting opens it after build.
-var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate { Level = serverLogLevel.BufferLevel };
+var namedPipeGate = new SperryDev.Logger.Providers.NamedPipeLogGate { Level = serverLogLevel.BufferLevel };
 builder.Services.AddSingleton(namedPipeGate);
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
     enableNamedPipeLogger: true,

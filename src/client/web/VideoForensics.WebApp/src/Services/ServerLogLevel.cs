@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.Services;
 
 namespace VideoForensics.Client.WebApp.Services;
 

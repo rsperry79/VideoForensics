@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.Services;
 
 using Xunit;
 

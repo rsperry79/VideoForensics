@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <!-- Directory.Build.props (src/Directory.Build.props) sets a repo-wide single TargetFramework
@@ -100,7 +100,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\..\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
-    <ProjectReference Include="../../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
+    <PackageReference Include="SperryDev.Logger" Version="0.1.0" />
     <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
   </ItemGroup>
 
