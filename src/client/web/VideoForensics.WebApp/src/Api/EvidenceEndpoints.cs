@@ -268,7 +268,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static ReconciliationDiscrepancyDto ToDto(this ReconciliationDiscrepancy entity)
         {
             return new ReconciliationDiscrepancyDto(
-                Type: Enum.Parse<DiscrepancyTypeDto>(entity.Type.ToString()),
+                Type: entity.Type.ToDto(),
                 ProviderEventId: entity.ProviderEventId,
                 FieldName: entity.FieldName,
                 StoredValue: entity.StoredValue,
