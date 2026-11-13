@@ -68,6 +68,18 @@ namespace VideoForensics.Client.Core.Tests.Architecture
             Assert.True(violations.Length == 0, $"{violations.Length} Api.Contracts file(s) use VideoForensics.Data.*: {string.Join(", ", violations)}");
         }
 
+        [Fact]
+        public void DeviceRepositoryContract_IsInApiContracts_WithDtoSignatures()
+        {
+            string contractFile = Path.Combine(FindApiContractsFolder(), "src", "Repositories", "IDeviceRepository.cs");
+
+            Assert.True(File.Exists(contractFile), $"IDeviceRepository must live in Api.Contracts: {contractFile}");
+
+            string text = File.ReadAllText(contractFile);
+            Assert.False(text.Contains("VideoForensics.Data.", StringComparison.Ordinal), "IDeviceRepository must not use data-layer namespaces.");
+            Assert.True(text.Contains("DeviceDto", StringComparison.Ordinal), "IDeviceRepository must use DeviceDto signatures.");
+        }
+
         private static string FindApiContractsFolder()
         {
             string? directory = AppContext.BaseDirectory;
