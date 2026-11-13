@@ -2,18 +2,13 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
-    /// HTTP-backed, read-only <see cref="IDeviceRepository"/> that calls the server's Minimal API
-    /// (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs) instead of a local database - the MAUI
-    /// client's implementation of the "thin client talks to a server API" half of the plan's client/
-    /// server split (§4/M5). Only <see cref="ListAsync"/> and <see cref="GetAsync"/> (derived
-    /// client-side from it, since there's no single-device endpoint yet) are backed by a real
-    /// endpoint; every write and every other read throws <see cref="NotSupportedException"/>.
+    /// HTTP-backed <see cref="IDeviceRepository"/> that reads devices from the server's /api/v1/devices endpoint.
+    /// Writes are server-only and are not part of this interface.
     /// </summary>
     public class RemoteDeviceRepository : IDeviceRepository
     {
@@ -27,59 +22,36 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
+        public async Task<IReadOnlyList<DeviceDto>> ListAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/devices", ct);
             _ = response.EnsureSuccessStatusCode();
             List<DeviceDto>? dtos = await response.Content.ReadFromJsonAsync<List<DeviceDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
         /// <remarks>
-        /// No dedicated single-device server endpoint exists yet, so this filters the full
-        /// <see cref="ListAsync"/> result client-side rather than inventing a new endpoint.
+        /// No single-device endpoint exists yet, so this filters <see cref="ListAsync"/> client-side.
         /// </remarks>
-        public async Task<Device?> GetAsync(Guid deviceId, CancellationToken ct)
+        public async Task<DeviceDto?> GetAsync(Guid deviceId, CancellationToken ct)
         {
-            IReadOnlyList<Device> devices = await ListAsync(ct);
+            IReadOnlyList<DeviceDto> devices = await ListAsync(ct);
             return devices.FirstOrDefault(d => d.Id == deviceId);
         }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<Device>> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
+        public async Task<IReadOnlyList<DeviceDto>> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
         {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+            IReadOnlyList<DeviceDto> devices = await ListAsync(ct);
+            return devices.Where(d => d.LocationId == locationId).ToList();
         }
 
         /// <inheritdoc />
-        public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
+        public async Task<DeviceDto?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
         {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
-        }
-
-        /// <inheritdoc />
-        public Task AddAsync(Device device, CancellationToken ct)
-        {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
-        }
-
-        /// <inheritdoc />
-        public Task UpdateAsync(Device device, CancellationToken ct)
-        {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
-        }
-
-        /// <inheritdoc />
-        public Task UpdateLastSuccessfulPullAsync(Guid deviceId, DateTime pulledAtUtc, CancellationToken ct)
-        {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
-        }
-
-        /// <inheritdoc />
-        public Task DeleteAsync(Guid deviceId, CancellationToken ct)
-        {
-            throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+            IReadOnlyList<DeviceDto> devices = await ListAsync(ct);
+            return devices.FirstOrDefault(d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId);
         }
     }
 }

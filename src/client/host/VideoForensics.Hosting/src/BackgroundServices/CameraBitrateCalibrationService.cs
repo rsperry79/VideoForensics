@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             ICameraBitrateBaselineRepository baselineRepo = sp.GetRequiredService<ICameraBitrateBaselineRepository>();
             ILiveViewSessionService sessionService = sp.GetRequiredService<ILiveViewSessionService>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
 
             // Fetch buckets that need calibration (undersampled or stale)
             IReadOnlyList<(Guid DeviceId, int HourOfDay, bool IsWeekend)> bucketsNeedingCalibration;

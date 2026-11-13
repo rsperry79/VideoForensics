@@ -1,4 +1,7 @@
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 using System.Globalization;
 
@@ -42,9 +45,11 @@ public class SimpleHomeBuilderTests
                 ids.ToDictionary(i => i, i => "https://server/content/video"));
     }
 
-    private static Device Device(Guid id, string name)
+    private static Device Device(Guid id, string name) => MakeEntity(id, name).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid id, string name)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = id,
             LocationId = Guid.NewGuid(),

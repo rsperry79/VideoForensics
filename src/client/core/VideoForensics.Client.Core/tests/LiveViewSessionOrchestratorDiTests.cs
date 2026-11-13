@@ -32,7 +32,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Scoped in production (see data.database DI registrations and AddVideoForensicsServerCore).
             _ = services.AddScoped(_ => Mock.Of<ILiveViewSessionRepository>());
-            _ = services.AddScoped(_ => Mock.Of<IDeviceRepository>());
+            _ = services.AddScoped(_ => Mock.Of<IDeviceWriteRepository>());
             _ = services.AddScoped(_ => Mock.Of<IProviderApiBudgetGuard>());
             _ = services.AddScoped(_ => Mock.Of<INotificationDispatcher>());
 

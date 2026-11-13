@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
 
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
@@ -76,7 +78,7 @@ public abstract class ScopeRailTestContext : BunitContext
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(devices.ToList());
+            .ReturnsAsync(devices.Select(d => d.ToDto()).ToList());
         _ = Services.AddScoped(_ => deviceRepository.Object);
         return deviceRepository;
     }

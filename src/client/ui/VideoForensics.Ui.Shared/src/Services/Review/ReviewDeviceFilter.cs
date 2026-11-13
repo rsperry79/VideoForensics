@@ -1,5 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -27,13 +27,8 @@ public static class ReviewDeviceFilter
         }
 
         // The scope rule reads only each device's id, so a stub per id is enough to reuse it.
-        IEnumerable<Device> devices = allDeviceIds.Select(id => new Device
-        {
-            Id = id,
-            ProviderDeviceId = string.Empty,
-            Name = string.Empty,
-            Type = string.Empty,
-        });
+        IEnumerable<DeviceDto> devices = allDeviceIds.Select(id => new DeviceDto(
+            id, Guid.Empty, string.Empty, string.Empty, string.Empty, null, null, null, null, null, SyncStatusDto.Pending));
 
         return ScopeRailRules.VisibleDevices(devices, ownership, providerFilter, accountFilter, locationFilter)
             .Select(device => device.Id)

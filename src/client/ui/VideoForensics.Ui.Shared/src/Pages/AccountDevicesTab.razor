@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/accounts/{Id:guid}/devices"
 @inherits AccountTabPageBase
 @implements IDisposable
@@ -136,7 +137,7 @@ else
 
 @code {
     private sealed record DeviceRow(
-        VideoForensics.Data.Common.Entities.Device Device,
+        VideoForensics.Core.Api.Contracts.DeviceDto Device,
         DeviceUptimeStatus Status,
         DateTime? LastSeenUtc,
         string? SnapshotUrl,
@@ -186,7 +187,7 @@ else
         try
         {
             var now = DateTime.UtcNow;
-            var pending = new List<(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeen, VideoForensics.Client.Ui.Shared.Services.Devices.LatestDeviceMedia.Selection Media)>();
+            var pending = new List<(VideoForensics.Core.Api.Contracts.DeviceDto Device, DeviceUptimeStatus Status, DateTime? LastSeen, VideoForensics.Client.Ui.Shared.Services.Devices.LatestDeviceMedia.Selection Media)>();
             var locations = await LocationRepository.ListByProviderAccountIdAsync(Id, CancellationToken.None);
             foreach (var location in locations)
             {

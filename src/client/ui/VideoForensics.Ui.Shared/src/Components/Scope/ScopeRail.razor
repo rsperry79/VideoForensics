@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.Extensions.DependencyInjection
 @using VideoForensics.Data.Common.Contracts
@@ -140,8 +141,8 @@
     private const int QuickRange7DaysDaysBack = 7;
     private const int QuickRange30DaysDaysBack = 30;
 
-    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
-    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _devices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _visibleDevices = new();
     private List<ProviderAccount> _accounts = new();
     private Dictionary<Guid, string> _accountNames = new();
     private IReadOnlyList<DeviceOwnership> _ownership = Array.Empty<DeviceOwnership>();
@@ -528,7 +529,7 @@
 
             if (chosen.Count == 1)
             {
-                VideoForensics.Data.Common.Entities.Device? only = _devices.FirstOrDefault(d => d.Id == chosen[0]);
+                VideoForensics.Core.Api.Contracts.DeviceDto? only = _devices.FirstOrDefault(d => d.Id == chosen[0]);
                 return only?.Name ?? chosen[0].ToString("D");
             }
 

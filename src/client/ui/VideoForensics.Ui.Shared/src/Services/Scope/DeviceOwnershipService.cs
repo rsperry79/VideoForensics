@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
@@ -47,7 +48,7 @@ public sealed class DeviceOwnershipService
     /// Builds the snapshot for <paramref name="devices"/>. A failure while reading accounts or locations yields
     /// an empty snapshot, so callers keep showing every device instead of hiding the list.
     /// </summary>
-    public async Task<DeviceOwnershipSnapshot> LoadAsync(IReadOnlyList<Device> devices, CancellationToken ct)
+    public async Task<DeviceOwnershipSnapshot> LoadAsync(IReadOnlyList<DeviceDto> devices, CancellationToken ct)
     {
         try
         {

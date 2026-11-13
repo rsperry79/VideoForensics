@@ -50,7 +50,7 @@ namespace VideoForensics.Client.WebApp.Tests
         private sealed class Fixture
         {
             public Mock<IJammingRepository> Jamming { get; } = new();
-            public Mock<IDeviceRepository> Devices { get; } = new();
+            public Mock<IDeviceWriteRepository> Devices { get; } = new();
             public Mock<ISecurityAuditLogger> Audit { get; } = new();
             public Mock<INetworkTierResolver> Tier { get; } = new();
             public List<JammingIncidentRecord> Upserted { get; } = [];

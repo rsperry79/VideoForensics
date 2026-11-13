@@ -169,7 +169,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             return await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
         }
 
         private static async Task<byte[]> ExecuteResultAsync(IResult result, DefaultHttpContext context)

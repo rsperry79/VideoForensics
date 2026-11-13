@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -15,7 +16,8 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>An account whose filter matches no device must mark the scope as no-match, not as all devices.</summary>
@@ -42,7 +44,7 @@ public class ScopeRail_NoMatch_Tests : BunitContext
     {
         var idleAccount = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var otherLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "O", Name = "Other" };
-        var device = new Device { Id = Guid.NewGuid(), LocationId = otherLocation.Id, ProviderDeviceId = "d", Name = "Camera", Type = "camera" };
+        var device = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = otherLocation.Id, ProviderDeviceId = "d", Name = "Camera", Type = "camera" }.ToDto();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository

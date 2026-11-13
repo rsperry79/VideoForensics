@@ -20,7 +20,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     public class ReportGenerationServiceTests
     {
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
-        private readonly Mock<IDeviceRepository> _mockDeviceRepository;
+        private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<IEventRepository> _mockEventRepository;
@@ -36,7 +36,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             _mockNotificationDispatcher = new Mock<INotificationDispatcher>();
 
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
-            _mockDeviceRepository = new Mock<IDeviceRepository>();
+            _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockEventRepository = new Mock<IEventRepository>();

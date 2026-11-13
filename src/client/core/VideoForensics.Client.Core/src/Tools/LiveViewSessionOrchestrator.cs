@@ -366,7 +366,7 @@ namespace VideoForensics.Client.Core.Tools
 
             using IServiceScope scope = _scopeFactory.CreateScope();
             ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
-            IDeviceRepository deviceRepository = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = scope.ServiceProvider.GetRequiredService<IDeviceWriteRepository>();
             IProviderApiBudgetGuard budgetGuard = scope.ServiceProvider.GetRequiredService<IProviderApiBudgetGuard>();
 
             // Check for existing active session (idempotent)

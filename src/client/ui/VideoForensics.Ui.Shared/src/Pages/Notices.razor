@@ -142,7 +142,7 @@ else
             .Subscribe(notice => { _ = InvokeAsync(ReloadOnNewNoticeAsync); });
         SharedFilter.OnChange += OnSharedFilterChanged;
         await SharedFilter.EnsureLoadedAsync();
-        _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Data.Common.Entities.Device>(), CancellationToken.None);
+        _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Core.Api.Contracts.DeviceDto>(), CancellationToken.None);
 
         await LoadNoticesAsync();
     }

@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -16,7 +17,8 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Rail fixes: unchecking the last device under a filter means no device; an orphaned no-match flag is dropped on load.</summary>
@@ -43,7 +45,7 @@ public class ScopeRail_ReviewFixes_Tests : BunitContext
     {
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
-        var device = new Device { Id = Guid.NewGuid(), LocationId = location.Id, ProviderDeviceId = "d", Name = "Front", Type = "camera" };
+        var device = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = location.Id, ProviderDeviceId = "d", Name = "Front", Type = "camera" }.ToDto();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([device]);

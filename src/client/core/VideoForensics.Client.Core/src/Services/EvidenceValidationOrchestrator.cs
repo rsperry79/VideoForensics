@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly ILogger<EvidenceValidationOrchestrator> _logger;
         private readonly IEventAndConfigService _eventAndConfigService;
         private readonly Data.Common.Contracts.IEventRepository _eventRepository;
-        private readonly Data.Common.Contracts.IDeviceRepository _deviceRepository;
+        private readonly Data.Common.Contracts.IDeviceWriteRepository _deviceRepository;
         private readonly Data.Common.Contracts.IIntegrityVerificationService _integrityService;
         private readonly Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
         private readonly Data.Core.Contracts.IMediaThumbnailService _thumbnails;
@@ -32,7 +32,7 @@ namespace VideoForensics.Client.Core.Services
             ILogger<EvidenceValidationOrchestrator> logger,
             IEventAndConfigService eventAndConfigService,
             Data.Common.Contracts.IEventRepository eventRepository,
-            Data.Common.Contracts.IDeviceRepository deviceRepository,
+            Data.Common.Contracts.IDeviceWriteRepository deviceRepository,
             Data.Common.Contracts.IIntegrityVerificationService integrityService,
             Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
             Data.Core.Contracts.IMediaThumbnailService thumbnails,

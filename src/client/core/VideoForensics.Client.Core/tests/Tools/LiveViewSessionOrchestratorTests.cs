@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
         private readonly Mock<ILogger<LiveViewSessionOrchestrator>> _loggerMock;
         private readonly Mock<ILiveViewSessionRepository> _sessionRepositoryMock;
         private readonly Mock<ILiveViewInterferenceScorer> _scorerMock;
-        private readonly Mock<IDeviceRepository> _deviceRepositoryMock;
+        private readonly Mock<IDeviceWriteRepository> _deviceRepositoryMock;
         private readonly Mock<IForensicsConfiguration> _configMock;
         private readonly Mock<IProviderApiBudgetGuard> _budgetGuardMock;
         private readonly Mock<INotificationDispatcher> _notificationDispatcherMock;
@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             _loggerMock = new Mock<ILogger<LiveViewSessionOrchestrator>>();
             _sessionRepositoryMock = new Mock<ILiveViewSessionRepository>();
             _scorerMock = new Mock<ILiveViewInterferenceScorer>();
-            _deviceRepositoryMock = new Mock<IDeviceRepository>();
+            _deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             _configMock = new Mock<IForensicsConfiguration>();
             _budgetGuardMock = new Mock<IProviderApiBudgetGuard>();
             _notificationDispatcherMock = new Mock<INotificationDispatcher>();
@@ -49,7 +49,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             // provider resolves the repository and service mocks, mirroring the production registration.
             Mock<IServiceProvider> sp = serviceProviderMock ?? new Mock<IServiceProvider>();
             _ = sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
-            _ = sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
+            _ = sp.Setup(s => s.GetService(typeof(IDeviceWriteRepository))).Returns(_deviceRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(INotificationDispatcher))).Returns(_notificationDispatcherMock.Object);
 

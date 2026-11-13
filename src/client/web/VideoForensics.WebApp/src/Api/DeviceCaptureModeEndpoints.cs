@@ -30,13 +30,13 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>The account's devices in name order, with their current mode.</summary>
-        internal static async Task<IResult> ListAsync(Guid providerAccountId, ILocationRepository locations, IDeviceRepository devices, CancellationToken ct)
+        internal static async Task<IResult> ListAsync(Guid providerAccountId, ILocationRepository locations, IDeviceWriteRepository devices, CancellationToken ct)
         {
             IReadOnlyList<DeviceCaptureModeDto> rows = await ListForAccountAsync(providerAccountId, locations, devices, ct);
             return Results.Ok(rows);
         }
 
-        internal static async Task<IReadOnlyList<DeviceCaptureModeDto>> ListForAccountAsync(Guid providerAccountId, ILocationRepository locations, IDeviceRepository devices, CancellationToken ct)
+        internal static async Task<IReadOnlyList<DeviceCaptureModeDto>> ListForAccountAsync(Guid providerAccountId, ILocationRepository locations, IDeviceWriteRepository devices, CancellationToken ct)
         {
             var rows = new List<DeviceCaptureModeDto>();
             foreach (Location location in await locations.ListByProviderAccountIdAsync(providerAccountId, ct))
@@ -50,7 +50,7 @@ namespace VideoForensics.Client.WebApp.Api
             return rows.OrderBy(row => row.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(row => row.ProviderDeviceId, StringComparer.Ordinal).ToList();
         }
 
-        internal static async Task<IResult> SetModeAsync(Guid deviceId, SetDeviceCaptureModeRequest request, IDeviceRepository devices, CancellationToken ct)
+        internal static async Task<IResult> SetModeAsync(Guid deviceId, SetDeviceCaptureModeRequest request, IDeviceWriteRepository devices, CancellationToken ct)
         {
             if (!Enum.TryParse(request.Mode, ignoreCase: true, out DeviceCaptureMode mode) || !Enum.IsDefined(mode))
             {

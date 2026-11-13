@@ -18,7 +18,7 @@ public class SignalAnalysisServiceTests
 
     private static SignalAnalysisService Create(Device[] devices, Dictionary<Guid, DeviceHealth[]> history)
     {
-        var deviceRepo = new Mock<IDeviceRepository>();
+        var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
         var health = new Mock<IDeviceHealthRepository>();
         _ = health

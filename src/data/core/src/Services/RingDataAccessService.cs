@@ -10,7 +10,7 @@ namespace VideoForensics.Data.Core.Services
     {
         private readonly ILogger<RingDataAccessService> _logger;
         private readonly CacheFreshnessService _cacheFreshnessService;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IProviderAccountRepository _providerAccountRepository;
 
@@ -23,7 +23,7 @@ namespace VideoForensics.Data.Core.Services
         public RingDataAccessService(
             ILogger<RingDataAccessService> logger,
             CacheFreshnessService cacheFreshnessService,
-            IDeviceRepository deviceRepository,
+            IDeviceWriteRepository deviceRepository,
             ILocationRepository locationRepository,
             IProviderAccountRepository providerAccountRepository)
         {

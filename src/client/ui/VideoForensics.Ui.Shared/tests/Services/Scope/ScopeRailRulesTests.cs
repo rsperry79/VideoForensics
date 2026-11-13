@@ -3,7 +3,8 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
@@ -20,9 +21,11 @@ public class ScopeRailRulesTests
         };
     }
 
-    private static Device MakeDevice(Guid? id = null)
+    private static Device MakeDevice(Guid? id = null) => MakeEntity(id).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid? id = null)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = id ?? Guid.NewGuid(),
             LocationId = Guid.NewGuid(),

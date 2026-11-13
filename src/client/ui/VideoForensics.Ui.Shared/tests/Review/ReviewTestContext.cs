@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components.Review;
@@ -206,7 +208,7 @@ public abstract class ReviewTestContext : BunitContext
 
         _ = DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => Devices.ToList());
+            .ReturnsAsync(() => Devices.Select(d => d.ToDto()).ToList());
 
         SignInOperatorAsync().GetAwaiter().GetResult();
     }

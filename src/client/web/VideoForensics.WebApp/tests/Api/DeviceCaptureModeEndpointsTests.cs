@@ -33,7 +33,7 @@ public class DeviceCaptureModeEndpointsTests
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         var locations = new Mock<ILocationRepository>();
         _ = locations.Setup(l => l.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
-        var devices = new Mock<IDeviceRepository>();
+        var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(
         [
             Dev("2", "Porch", DeviceCaptureMode.HealthOnly),
@@ -52,7 +52,7 @@ public class DeviceCaptureModeEndpointsTests
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         var locations = new Mock<ILocationRepository>();
         _ = locations.Setup(l => l.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
-        var devices = new Mock<IDeviceRepository>();
+        var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(
         [
             Dev("1", "Driveway", DeviceCaptureMode.Capture, "stickup_cam"),
@@ -68,7 +68,7 @@ public class DeviceCaptureModeEndpointsTests
     public async Task Set_CaptureOnNonCamera_IsRejectedAndNothingIsSaved()
     {
         Device device = Dev("2", "Upstairs", DeviceCaptureMode.HealthOnly, "chime");
-        var devices = new Mock<IDeviceRepository>();
+        var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetAsync(device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
         IResult result = await DeviceCaptureModeEndpoints.SetModeAsync(device.Id, new SetDeviceCaptureModeRequest("Capture"), devices.Object, CancellationToken.None);
@@ -83,7 +83,7 @@ public class DeviceCaptureModeEndpointsTests
     public async Task Set_SavesTheModeOnTheDevice()
     {
         Device device = Dev("1", "Porch", DeviceCaptureMode.Capture);
-        var devices = new Mock<IDeviceRepository>();
+        var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetAsync(device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
         _ = await DeviceCaptureModeEndpoints.SetModeAsync(device.Id, new SetDeviceCaptureModeRequest("off"), devices.Object, CancellationToken.None);
@@ -96,7 +96,7 @@ public class DeviceCaptureModeEndpointsTests
     public async Task Set_UnknownMode_IsRejectedAndNothingIsSaved()
     {
         Device device = Dev("1", "Porch", DeviceCaptureMode.Capture);
-        var devices = new Mock<IDeviceRepository>();
+        var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetAsync(device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
         _ = await DeviceCaptureModeEndpoints.SetModeAsync(device.Id, new SetDeviceCaptureModeRequest("Everything"), devices.Object, CancellationToken.None);
@@ -108,7 +108,7 @@ public class DeviceCaptureModeEndpointsTests
     [Fact]
     public async Task Set_UnknownDevice_ReturnsNotFound()
     {
-        var devices = new Mock<IDeviceRepository>();
+        var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Device?)null);
 
         IResult result = await DeviceCaptureModeEndpoints.SetModeAsync(Guid.NewGuid(), new SetDeviceCaptureModeRequest("Off"), devices.Object, CancellationToken.None);

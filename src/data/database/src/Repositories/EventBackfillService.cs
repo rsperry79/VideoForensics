@@ -18,11 +18,11 @@ namespace VideoForensics.Data.Database.Repositories
     /// </summary>
     public class EventBackfillService
     {
-        private readonly IDeviceRepository _devices;
+        private readonly IDeviceWriteRepository _devices;
         private readonly IDingIdLinkRepository _dingIdLinks;
 
         /// <summary>Initializes a new instance of the EventBackfillService.</summary>
-        public EventBackfillService(IDeviceRepository devices, IDingIdLinkRepository dingIdLinks)
+        public EventBackfillService(IDeviceWriteRepository devices, IDingIdLinkRepository dingIdLinks)
         {
             _devices = devices;
             _dingIdLinks = dingIdLinks;

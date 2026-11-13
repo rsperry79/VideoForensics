@@ -10,12 +10,12 @@ namespace VideoForensics.Client.Hosting.Signal
     /// Computes the bit rate figures on the server from each camera's measured clip bitrates. Only stream-reported values
     /// count: the query leaves out estimated and missing ones. Readings are fed to the shared signal maths as kbps.
     /// </summary>
-    public sealed class BitrateAnalysisService(IDeviceRepository devices, IMediaItemRepository mediaItems, IMediaFlagRepository flags) : IBitrateAnalysisService
+    public sealed class BitrateAnalysisService(IDeviceWriteRepository devices, IMediaItemRepository mediaItems, IMediaFlagRepository flags) : IBitrateAnalysisService
     {
         /// <summary>Red-flag token <c>MediaAnalysisService</c> stores (the <c>RedFlag.BitrateCollapse</c> name) when bit rate collapsed.</summary>
         private const string CollapseFlag = "BitrateCollapse";
 
-        private readonly IDeviceRepository _devices = devices;
+        private readonly IDeviceWriteRepository _devices = devices;
         private readonly IMediaItemRepository _mediaItems = mediaItems;
         private readonly IMediaFlagRepository _flags = flags;
 

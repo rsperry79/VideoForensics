@@ -17,7 +17,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly ILogger<BackupImportOrchestrator> _logger;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMediaPathResolver _paths;
-        private readonly IDeviceRepository _devices;
+        private readonly IDeviceWriteRepository _devices;
         private readonly IDingIdLinkRepository _dingIdLinks;
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Core.Services
         public BackupImportOrchestrator(
             ILogger<BackupImportOrchestrator> logger,
             IUnitOfWork unitOfWork,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             IDingIdLinkRepository dingIdLinks,
             IMediaPathResolver? paths = null)
         {

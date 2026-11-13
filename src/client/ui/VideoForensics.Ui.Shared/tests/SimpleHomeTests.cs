@@ -3,6 +3,9 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 using System.Text.RegularExpressions;
 
@@ -56,9 +59,11 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         _ = Services.AddScoped(_ => new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, TestLocalizer.Create(), Zone));
     }
 
-    private static Device Device(Guid id, string name)
+    private static Device Device(Guid id, string name) => MakeEntity(id, name).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid id, string name)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = id,
             LocationId = Guid.NewGuid(),

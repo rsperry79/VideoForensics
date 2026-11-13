@@ -98,7 +98,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> UpsertIncidentAsync(
             UpsertJammingIncidentRequest request,
             IJammingRepository jamming,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -153,7 +153,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> RecomputeStatsAsync(
             Guid deviceId,
             IJammingRepository jamming,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             CancellationToken ct)
         {
             if (await devices.GetAsync(deviceId, ct) == null)

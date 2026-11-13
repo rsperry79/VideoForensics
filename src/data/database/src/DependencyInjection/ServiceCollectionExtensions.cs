@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IRingEventHistoryWriter, RingEventHistoryWriter>();
             services.TryAddScoped<ILocationRepository, LocationRepository>();
             services.TryAddScoped<ILocationMetadataRepository, LocationMetadataRepository>();
-            services.TryAddScoped<IDeviceRepository, DeviceRepository>();
+            services.TryAddScoped<IDeviceWriteRepository, DeviceRepository>();
             services.TryAddScoped<IMediaItemRepository, MediaItemRepository>();
             services.TryAddScoped<IDownloadEventRepository, DownloadEventRepository>();
             services.TryAddScoped<ICredentialRepository, CredentialRepository>();

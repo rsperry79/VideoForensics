@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Core.Tests
     public class LiveViewSessionOrchestratorPublisherTests
     {
         private readonly Mock<ILiveViewSessionRepository> _sessionRepositoryMock;
-        private readonly Mock<IDeviceRepository> _deviceRepositoryMock;
+        private readonly Mock<IDeviceWriteRepository> _deviceRepositoryMock;
         private readonly Mock<IForensicsConfiguration> _configMock;
         private readonly Mock<IProviderApiBudgetGuard> _budgetGuardMock;
         private readonly Mock<INotificationDispatcher> _notificationDispatcherMock;
@@ -32,7 +32,7 @@ namespace VideoForensics.Client.Core.Tests
         public LiveViewSessionOrchestratorPublisherTests()
         {
             _sessionRepositoryMock = new Mock<ILiveViewSessionRepository>();
-            _deviceRepositoryMock = new Mock<IDeviceRepository>();
+            _deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             _configMock = new Mock<IForensicsConfiguration>();
             _budgetGuardMock = new Mock<IProviderApiBudgetGuard>();
             _notificationDispatcherMock = new Mock<INotificationDispatcher>();
@@ -50,7 +50,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             Mock<IServiceProvider> sp = serviceProviderMock ?? new Mock<IServiceProvider>();
             _ = sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
-            _ = sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
+            _ = sp.Setup(s => s.GetService(typeof(IDeviceWriteRepository))).Returns(_deviceRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(INotificationDispatcher))).Returns(_notificationDispatcherMock.Object);
 

@@ -32,7 +32,7 @@ namespace VideoForensics.Client.Hosting.Tests
                 SnapshotCaptureEnabled = false
             };
 
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([device]);
 
             var healthSource = new Mock<IProviderHealthSource>();

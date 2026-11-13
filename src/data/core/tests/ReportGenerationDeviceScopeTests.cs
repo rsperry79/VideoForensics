@@ -33,7 +33,7 @@ namespace VideoForensics.Data.Core.Tests
 
             return new ReportGenerationService(
                 new Mock<IMediaItemRepository>().Object,
-                new Mock<IDeviceRepository>().Object,
+                new Mock<IDeviceWriteRepository>().Object,
                 new Mock<IDownloadEventRepository>().Object,
                 _actionLog.Object,
                 new Mock<IEventRepository>().Object,

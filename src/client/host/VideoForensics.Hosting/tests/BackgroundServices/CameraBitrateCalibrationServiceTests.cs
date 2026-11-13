@@ -25,13 +25,13 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             CameraBitrateCalibrationService Service,
             Mock<ICameraBitrateBaselineRepository> BaselineRepo,
             Mock<ILiveViewSessionService> SessionService,
-            Mock<IDeviceRepository> DeviceRepo,
+            Mock<IDeviceWriteRepository> DeviceRepo,
             Mock<IProviderApiBudgetGuard> BudgetGuard
         ) CreateService(IForensicsConfiguration? config = null)
         {
             var baselineRepo = new Mock<ICameraBitrateBaselineRepository>();
             var sessionService = new Mock<ILiveViewSessionService>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
@@ -79,7 +79,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_BucketNotForCurrentHour_SkipsDevice()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -98,7 +98,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_UndersampledCurrentHourBucket_StartsCalibrationSession()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -133,7 +133,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_DeviceHasActiveSession_SkipsCalibration()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -165,7 +165,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_BudgetExceeded_SkipsWithoutCallingProvider()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -191,7 +191,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_StartAsyncThrowsForOneDevice_ContinuesToNextDevice()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device1 = MakeDevice("ring-123");
             Device device2 = MakeDevice("ring-456");

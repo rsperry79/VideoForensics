@@ -19,7 +19,7 @@ namespace VideoForensics.Data.Core.Services
     internal class ReportGenerationService : IReportGenerationService
     {
         private readonly IMediaItemRepository _mediaItemRepository;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly IEventRepository _eventRepository;
@@ -36,7 +36,7 @@ namespace VideoForensics.Data.Core.Services
 
         public ReportGenerationService(
             IMediaItemRepository mediaItemRepository,
-            IDeviceRepository deviceRepository,
+            IDeviceWriteRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
             IActionLogRepository actionLogRepository,
             IEventRepository eventRepository,

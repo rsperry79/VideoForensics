@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for device entities.</summary>
-    public interface IDeviceRepository
+    public interface IDeviceWriteRepository
     {
         /// <summary>Gets a device by ID.</summary>
         Task<Device?> GetAsync(Guid deviceId, CancellationToken ct);

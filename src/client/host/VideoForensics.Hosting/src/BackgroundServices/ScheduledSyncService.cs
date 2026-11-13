@@ -367,7 +367,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
-            IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository devices = sp.GetRequiredService<IDeviceWriteRepository>();
             bool deviceFailed = false;
             foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, ct))
             {
@@ -551,7 +551,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(
                         eventService,
-                        sp.GetRequiredService<IDeviceRepository>(),
+                        sp.GetRequiredService<IDeviceWriteRepository>(),
                         sp.GetRequiredService<ILocationRepository>(),
                         sp.GetRequiredService<IProviderAccountRepository>(),
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),

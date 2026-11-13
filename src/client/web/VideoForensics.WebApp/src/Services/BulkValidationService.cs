@@ -12,12 +12,12 @@ namespace VideoForensics.Client.WebApp.Services
     {
         private readonly ILogger<BulkValidationService> _logger;
         private readonly IEvidenceValidationService _validationService;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
 
         public BulkValidationService(
             ILogger<BulkValidationService> logger,
             IEvidenceValidationService validationService,
-            IDeviceRepository deviceRepository)
+            IDeviceWriteRepository deviceRepository)
         {
             _logger = logger;
             _validationService = validationService;

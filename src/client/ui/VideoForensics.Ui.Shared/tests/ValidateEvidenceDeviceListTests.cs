@@ -5,6 +5,7 @@ using Bunit.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -13,7 +14,8 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
@@ -32,8 +34,8 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
     {
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var ownLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "O", Name = "Own" };
-        var ownDevice = new Device { Id = Guid.NewGuid(), LocationId = ownLocation.Id, ProviderDeviceId = "o", Name = "Own", Type = "camera" };
-        var otherDevice = new Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "x", Name = "Other", Type = "camera" };
+        var ownDevice = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = ownLocation.Id, ProviderDeviceId = "o", Name = "Own", Type = "camera" }.ToDto();
+        var otherDevice = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "x", Name = "Other", Type = "camera" }.ToDto();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([ownDevice, otherDevice]);
@@ -67,8 +69,8 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var frontLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "F", Name = "Front" };
         var backLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "B", Name = "Back" };
-        var front = new Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" };
-        var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
+        var front = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" }.ToDto();
+        var back = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" }.ToDto();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([front, back]);
@@ -101,8 +103,8 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var frontLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "F", Name = "Front" };
         var backLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "B", Name = "Back" };
-        var front = new Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" };
-        var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
+        var front = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" }.ToDto();
+        var back = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" }.ToDto();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([front, back]);

@@ -16,7 +16,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     {
         private readonly Mock<IUserRepository> _mockUserRepository;
         private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository;
-        private readonly Mock<IDeviceRepository> _mockDeviceRepository;
+        private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             _mockUserRepository = new Mock<IUserRepository>();
             _mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
             _mockLocationRepository = new Mock<ILocationRepository>();
-            _mockDeviceRepository = new Mock<IDeviceRepository>();
+            _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockEventRepository = new Mock<IEventRepository>();
             // DefaultValue.Mock: the list query returns an empty result, as the old per-context mock did.

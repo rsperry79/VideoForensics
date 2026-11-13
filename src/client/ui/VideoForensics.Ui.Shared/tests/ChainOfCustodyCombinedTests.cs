@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -17,7 +18,8 @@ using VideoForensics.Data.Core.Models;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Filtering to several devices yields one combined audit list and one verdict covering all of them.</summary>
@@ -63,8 +65,8 @@ public class ChainOfCustody_Combined_Tests : BunitContext
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var frontLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "F", Name = "Front" };
         var backLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "B", Name = "Back" };
-        var front = new Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" };
-        var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
+        var front = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" }.ToDto();
+        var back = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" }.ToDto();
 
         _ = _deviceRepository
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))

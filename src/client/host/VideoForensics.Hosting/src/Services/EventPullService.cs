@@ -45,7 +45,7 @@ namespace VideoForensics.Client.Hosting.Services
     public class EventPullService : IEventPullService
     {
         private readonly IEventAndConfigService _eventAndConfigService;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ILogger<EventPullService> _logger;
@@ -79,7 +79,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// </summary>
         public EventPullService(
             IEventAndConfigService eventAndConfigService,
-            IDeviceRepository deviceRepository,
+            IDeviceWriteRepository deviceRepository,
             ILocationRepository locationRepository,
             IProviderAccountRepository providerAccountRepository,
             ILogger<EventPullService>? logger = null,

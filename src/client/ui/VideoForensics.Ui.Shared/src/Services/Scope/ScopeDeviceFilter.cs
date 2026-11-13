@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
@@ -6,7 +7,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 public sealed record DeviceOwnership(Guid DeviceId, Guid ProviderAccountId, string ProviderName, Guid LocationId);
 
 /// <summary>The devices left after a Provider/Account filter, and whether any filter is set.</summary>
-public sealed record DeviceFilterResult(IReadOnlyList<Device> Devices, bool IsFiltered);
+public sealed record DeviceFilterResult(IReadOnlyList<DeviceDto> Devices, bool IsFiltered);
 
 /// <summary>
 /// Narrows the device list for the right-rail Provider and Account filters. Devices belong to accounts
@@ -20,7 +21,7 @@ public static class ScopeDeviceFilter
     /// linked to that account. Accounts missing from <paramref name="accounts"/> are ignored.
     /// </summary>
     public static IReadOnlyList<DeviceOwnership> BuildOwnership(
-        IEnumerable<Device> devices,
+        IEnumerable<DeviceDto> devices,
         IEnumerable<ProviderAccount> accounts,
         IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> locationIdsByAccount)
     {
@@ -48,7 +49,7 @@ public static class ScopeDeviceFilter
         }
 
         var result = new List<DeviceOwnership>();
-        foreach (Device device in devices)
+        foreach (DeviceDto device in devices)
         {
             if (!accountsByLocation.TryGetValue(device.LocationId, out List<ProviderAccount>? owners))
             {
@@ -68,8 +69,8 @@ public static class ScopeDeviceFilter
     /// Returns the devices visible under the filters. A null filter matches everything; with all null the
     /// input is returned unchanged. A device with no ownership row is excluded whenever a filter is set.
     /// </summary>
-    public static IReadOnlyList<Device> Filter(
-        IEnumerable<Device> devices,
+    public static IReadOnlyList<DeviceDto> Filter(
+        IEnumerable<DeviceDto> devices,
         IEnumerable<DeviceOwnership> ownership,
         string? providerName,
         Guid? providerAccountId,

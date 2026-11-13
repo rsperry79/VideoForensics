@@ -1,5 +1,6 @@
 using System.Globalization;
 
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
@@ -15,8 +16,8 @@ public static class ScopeRailRules
     public const string DateInputFormat = "yyyy-MM-dd";
 
     /// <summary>The devices visible under the Provider/Account filters. Delegates to <see cref="ScopeDeviceFilter.Filter"/>.</summary>
-    public static IReadOnlyList<Device> VisibleDevices(
-        IEnumerable<Device> devices,
+    public static IReadOnlyList<DeviceDto> VisibleDevices(
+        IEnumerable<DeviceDto> devices,
         IReadOnlyList<DeviceOwnership> ownership,
         string? providerFilter,
         Guid? accountFilter,

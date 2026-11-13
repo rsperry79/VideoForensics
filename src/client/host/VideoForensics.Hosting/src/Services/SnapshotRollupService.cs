@@ -36,7 +36,7 @@ namespace VideoForensics.Client.Hosting.Services
         private static readonly TimeSpan MinimumHold = TimeSpan.FromSeconds(1);
 
         private readonly ILocationRepository _locations;
-        private readonly IDeviceRepository _devices;
+        private readonly IDeviceWriteRepository _devices;
         private readonly IMediaItemRepository _mediaItems;
         private readonly IProviderAccountRepository _accounts;
         private readonly IStorageLocationProvider _storage;
@@ -54,7 +54,7 @@ namespace VideoForensics.Client.Hosting.Services
 
         public SnapshotRollupService(
             ILocationRepository locations,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             IMediaItemRepository mediaItems,
             IProviderAccountRepository accounts,
             IStorageLocationProvider storage,

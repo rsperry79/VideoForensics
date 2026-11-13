@@ -22,7 +22,7 @@ public class BitrateAnalysisServiceTests
 
     private static BitrateAnalysisService Create(Device[] devices, Dictionary<Guid, MeasuredBitrate[]> history, MediaFlag[]? flags = null)
     {
-        var deviceRepo = new Mock<IDeviceRepository>();
+        var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
         var media = new Mock<IMediaItemRepository>();
         _ = media

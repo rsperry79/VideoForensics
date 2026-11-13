@@ -27,11 +27,11 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             };
         }
 
-        private static (DeviceHealthSyncService Service, Mock<IProviderHealthSource> HealthSource, Mock<IDeviceRepository> DeviceRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<IProviderApiBudgetGuard> BudgetGuard)
+        private static (DeviceHealthSyncService Service, Mock<IProviderHealthSource> HealthSource, Mock<IDeviceWriteRepository> DeviceRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<IProviderApiBudgetGuard> BudgetGuard)
             CreateService(IForensicsConfiguration? config = null, IBatteryStatusProvider? batteryProvider = null, ElevatedPollingWindowTracker? elevatedTracker = null)
         {
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var healthRepository = new Mock<IDeviceHealthRepository>();
             _ = healthRepository.Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -84,7 +84,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_MatchesReadingToDeviceAndPersistsSnapshot()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -114,7 +114,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_ReadingWithTelemetry_PersistsVoltagePowerOtaHeartbeatAndLinksHealthId()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device device = MakeDevice("ring-456");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -145,7 +145,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_ReadingWithRingHealthIdAndRpcCommands_PersistsThemOnHealthRow()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device device = MakeDevice("ring-456");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -173,7 +173,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_ReadingWithDetailFields_PersistsDetailColumns()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device device = MakeDevice("ring-789");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -208,7 +208,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_SnapshotCamera_PollSkipsItBecauseCaptureRecordsItsHealth()
         {
             // A camera with snapshot capture on gets its health from each capture, so the base poll must not record it too.
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device camera = MakeDevice("ring-cam");
             camera.Type = "doorbot";
@@ -229,7 +229,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_NonCameraDevice_PollStillRecordsIt()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device chime = MakeDevice("ring-chime");
             chime.Type = "chime";
@@ -250,7 +250,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_HealthCaptureOff_SkipsDeviceReadings()
         {
             // HealthCaptureEnabled is the per-device "off" and "snapshots only" choices: no health row is written for it.
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device device = MakeDevice("ring-off");
             device.HealthCaptureEnabled = false;
@@ -270,7 +270,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_ReadingForUnknownDevice_IsSkipped()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([MakeDevice("ring-known")]);
@@ -289,7 +289,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_HealthSourceThrows_IsSwallowedAndDoesNotPropagate()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([MakeDevice("ring-1")]);
@@ -306,7 +306,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_DeviceRepositoryThrows_IsSwallowedAndDoesNotPropagate()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("db unavailable"));
@@ -319,7 +319,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_NoDevices_DoesNotCallHealthSource()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, _, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, _, _) = CreateService();
 
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
@@ -332,7 +332,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         [Fact]
         public async Task RunOneTickAsync_BudgetExceeded_SkipsHealthSourceWithoutThrowing()
         {
-            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
 
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([MakeDevice("ring-1")]);
@@ -353,7 +353,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -407,7 +407,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -460,7 +460,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             var jammingOrchestrator = new JammingToolsOrchestrator(
                 Mock.Of<ILogger<JammingToolsOrchestrator>>(),
@@ -503,7 +503,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -592,7 +592,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -681,7 +681,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -760,7 +760,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
             var jammingOrchestrator = new JammingToolsOrchestrator(

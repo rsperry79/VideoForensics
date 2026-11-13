@@ -228,7 +228,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, null!,
-                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<NotFound>(result);
         }
@@ -249,7 +249,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, null!,
-                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -270,7 +270,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "invalid_ticket", ticketService.Object, mediaItems.Object, operators.Object, null!,
-                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -311,7 +311,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -352,7 +352,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -381,7 +381,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -435,7 +435,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             // Should be a stream result
             _ = Assert.IsType<FileStreamHttpResult>(result);
@@ -497,7 +497,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
@@ -553,7 +553,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
@@ -618,7 +618,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
@@ -679,7 +679,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             ProblemHttpResult problemResult = Assert.IsType<ProblemHttpResult>(result);
             Assert.Equal(StatusCodes.Status500InternalServerError, problemResult.StatusCode);
@@ -706,7 +706,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, null!, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<NotFound>(result);
 
@@ -757,7 +757,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -805,7 +805,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -866,7 +866,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             // Should serve content even though authenticated user has no OperatorId claim (falls back to ticket)
             _ = Assert.IsType<FileStreamHttpResult>(result);

@@ -80,7 +80,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // The device must already be synced into the database, because the loop and its snapshot rows belong to that row.
             string providerDeviceId = doorbot.Id.ToString(CultureInfo.InvariantCulture);
             ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             Device? device = null;
             Location? location = null;
             foreach (Location candidate in await locations.ListByProviderAccountIdAsync(account.Id, ct))

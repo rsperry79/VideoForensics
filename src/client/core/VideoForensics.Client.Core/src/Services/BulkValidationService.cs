@@ -13,12 +13,12 @@ namespace VideoForensics.Client.Core.Services
     public class BulkValidationService
     {
         private readonly IEvidenceValidationService _evidenceValidationService;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILogger<BulkValidationService> _logger;
 
         public BulkValidationService(
             IEvidenceValidationService evidenceValidationService,
-            IDeviceRepository deviceRepository,
+            IDeviceWriteRepository deviceRepository,
             ILogger<BulkValidationService> logger)
         {
             _evidenceValidationService = evidenceValidationService;

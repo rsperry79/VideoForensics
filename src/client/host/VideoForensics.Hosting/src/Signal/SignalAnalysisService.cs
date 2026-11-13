@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
@@ -12,12 +13,12 @@ namespace VideoForensics.Client.Hosting.Signal
     /// account's real capture spacing, so the missed-check overlay matches what the poll actually ran at.
     /// </summary>
     public sealed class SignalAnalysisService(
-        IDeviceRepository devices,
+        IDeviceWriteRepository devices,
         IDeviceHealthRepository health,
         ISyncScheduleRepository schedules,
         DeviceOwnershipService ownership) : ISignalAnalysisService
     {
-        private readonly IDeviceRepository _devices = devices;
+        private readonly IDeviceWriteRepository _devices = devices;
         private readonly IDeviceHealthRepository _health = health;
         private readonly ISyncScheduleRepository _schedules = schedules;
         private readonly DeviceOwnershipService _ownership = ownership;
@@ -33,15 +34,16 @@ namespace VideoForensics.Client.Hosting.Signal
 
             // Ids the caller asked for that do not exist are simply not in the result.
             var wanted = new HashSet<Guid>(deviceIds);
-            List<Device> devices = [.. (await _devices.ListAsync(ct))
+            List<VideoForensics.Core.Api.Contracts.DeviceDto> devices = [.. (await _devices.ListAsync(ct))
                 .Where(d => wanted.Contains(d.Id))
-                .OrderBy(d => d.Name)];
+                .OrderBy(d => d.Name)
+                .Select(d => d.ToDto())];
 
             DeviceOwnershipSnapshot ownership = await _ownership.LoadAsync(devices, ct);
             var schedulesByAccount = new Dictionary<Guid, SyncSchedule?>();
 
             var analyses = new List<SignalDeviceAnalysis>(devices.Count);
-            foreach (Device device in devices)
+            foreach (VideoForensics.Core.Api.Contracts.DeviceDto device in devices)
             {
                 Func<DateTime, TimeSpan> expected = await ExpectedIntervalAsync(device.Id, ownership.Ownership, schedulesByAccount, ct);
 
@@ -105,7 +107,7 @@ namespace VideoForensics.Client.Hosting.Signal
             return utc => TimeSpan.FromSeconds(SnapshotIntervals.CaptureSpacing(schedule, utc));
         }
 
-        private static string DisplayName(Device device)
+        private static string DisplayName(VideoForensics.Core.Api.Contracts.DeviceDto device)
         {
             return string.IsNullOrWhiteSpace(device.Name) ? DeviceLabel.For(device.Name, device.ProviderDeviceId) : device.Name;
         }

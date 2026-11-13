@@ -27,7 +27,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
-            _ = builder.Services.AddSingleton(new Mock<IDeviceRepository>().Object);
+            _ = builder.Services.AddSingleton(new Mock<IDeviceWriteRepository>().Object);
             _ = builder.Services.AddSingleton(new Mock<IDeviceControlService>().Object);
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddRateLimiter(options =>

@@ -21,7 +21,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IUserRepository Users { get; set; } = null!;
         public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
         public ILocationRepository Locations { get; set; } = null!;
-        public IDeviceRepository Devices { get; set; } = null!;
+        public IDeviceWriteRepository Devices { get; set; } = null!;
         public IMediaItemRepository MediaItems { get; set; } = null!;
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;
@@ -48,7 +48,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<IUserRepository> _mockUsers = new();
         private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
         private readonly Mock<ILocationRepository> _mockLocations = new();
-        private readonly Mock<IDeviceRepository> _mockDevices = new();
+        private readonly Mock<IDeviceWriteRepository> _mockDevices = new();
         private readonly Mock<IEventRepository> _mockEvents = new();
         private readonly Mock<IDownloadEventRepository> _mockDownloadEvents = new();
         private readonly Mock<IMediaItemRepository> _mockMediaItems = new();

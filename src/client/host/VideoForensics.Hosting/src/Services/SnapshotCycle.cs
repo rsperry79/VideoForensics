@@ -128,7 +128,7 @@ namespace VideoForensics.Client.Hosting.Services
                 : SnapshotIntervals.CaptureSpacing(schedule, _time.GetUtcNow().UtcDateTime);
             var interval = TimeSpan.FromSeconds(seconds);
 
-            IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository devices = sp.GetRequiredService<IDeviceWriteRepository>();
             ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
             IProviderDeviceStatus deviceStatus = sp.GetRequiredKeyedService<IProviderDeviceStatus>(RingProviderName);
             var candidates = new List<(Device Device, TimeSpan Window)>();
@@ -435,7 +435,7 @@ namespace VideoForensics.Client.Hosting.Services
                 _logger.LogInformation("Snapshot capture set {DeviceName} on {AccountName} to {OnlineState} from its health reading",
                     device.Name, accountName, connected ? "online" : "offline");
                 device.IsOnline = connected;
-                await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
+                await sp.GetRequiredService<IDeviceWriteRepository>().UpdateAsync(device, ct);
             }
 
             if (attempt.Connected == false && previousHealth is { IsOnline: true })

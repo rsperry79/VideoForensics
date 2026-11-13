@@ -1,6 +1,7 @@
 using VideoForensics.Client.Ui.Shared.Services.Events;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
@@ -28,7 +29,7 @@ public class EvidenceLoader
     /// <returns>An EvidenceLoadResult with merged items, holds, integrity records, and errors.</returns>
     public async Task<EvidenceLoadResult> LoadAsync(
         ForensicScope scope,
-        IReadOnlyList<Device> allDevices,
+        IReadOnlyList<DeviceDto> allDevices,
         CancellationToken ct)
     {
         IReadOnlyList<Guid> allDeviceIds = scope.IncludesAllDevices
@@ -48,7 +49,7 @@ public class EvidenceLoader
         // Add event items and collect attached media
         foreach (EventRow row in eventLoadResult.Rows)
         {
-            string deviceName = devicesByIdMap.TryGetValue(row.DeviceId, out Device? device)
+            string deviceName = devicesByIdMap.TryGetValue(row.DeviceId, out DeviceDto? device)
                 ? device.Name
                 : row.DeviceId.ToString("D")[..8];
 
@@ -101,7 +102,7 @@ public class EvidenceLoader
                     scope.ToUtc,
                     ct);
 
-                string deviceName = devicesByIdMap.TryGetValue(deviceId, out Device? device)
+                string deviceName = devicesByIdMap.TryGetValue(deviceId, out DeviceDto? device)
                     ? device.Name
                     : deviceId.ToString("D")[..8];
 

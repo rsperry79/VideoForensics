@@ -14,6 +14,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
+using VideoForensics.Core.Api.Contracts;
 using Device = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Components.Analysis;
@@ -34,7 +35,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
     {
         return Render<JammingPanel>(p => p
             .Add(c => c.Scope, new ForensicScope([device.Id], FixedNowUtc.AddDays(-1), FixedNowUtc, null))
-            .Add(c => c.Devices, [device]));
+            .Add(c => c.Devices, [device.ToDto()]));
     }
 
     /// <summary>Builds the row-select event the grid raises for a clicked row. Syncfusion keeps the row data read-only.</summary>

@@ -30,14 +30,14 @@
 @code {
     /// <summary>The devices the filters narrow. Changing the list reloads the ownership snapshot.</summary>
     [Parameter, EditorRequired]
-    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = Array.Empty<VideoForensics.Data.Common.Entities.Device>();
+    public IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto> Devices { get; set; } = Array.Empty<VideoForensics.Core.Api.Contracts.DeviceDto>();
 
     /// <summary>Raised after each filter change with the devices that remain visible.</summary>
     [Parameter]
     public EventCallback<DeviceFilterResult> VisibleDevicesChanged { get; set; }
 
     private DeviceOwnershipSnapshot? _snapshot;
-    private IReadOnlyList<VideoForensics.Data.Common.Entities.Device>? _loadedFor;
+    private IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto>? _loadedFor;
     private string? _providerFilter;
     private Guid? _accountFilter;
 

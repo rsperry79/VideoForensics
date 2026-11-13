@@ -9,6 +9,8 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 
+using VideoForensics.Core.Api.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
@@ -76,7 +78,7 @@ public class EvidenceLoader_LoadAsync_EventItems_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -155,7 +157,7 @@ public class EvidenceLoader_LoadAsync_MediaItems_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -231,7 +233,7 @@ public class EvidenceLoader_LoadAsync_MediaItems_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -296,7 +298,7 @@ public class EvidenceLoader_LoadAsync_MediaItems_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -385,7 +387,7 @@ public class EvidenceLoader_LoadAsync_Deduplication_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -480,7 +482,7 @@ public class EvidenceLoader_LoadAsync_AllDevices_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device1, device2 }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device1.ToDto(), device2.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -567,7 +569,7 @@ public class EvidenceLoader_LoadAsync_Search_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -648,7 +650,7 @@ public class EvidenceLoader_LoadAsync_DeviceErrors_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device1, device2 }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device1.ToDto(), device2.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -672,7 +674,7 @@ public class EvidenceLoader_LoadAsync_DeviceNameFallback_Tests
             Search: null);
 
         // allDevices is empty, so unknownDeviceId won't be found
-        var allDevices = new List<Device>();
+        var allDevices = new List<VideoForensics.Core.Api.Contracts.DeviceDto>();
 
         var testEvent = new Event
         {
@@ -731,7 +733,7 @@ public class EvidenceLoader_LoadAsync_DeviceNameFallback_Tests
             Search: null);
 
         // allDevices is empty
-        var allDevices = new List<Device>();
+        var allDevices = new List<VideoForensics.Core.Api.Contracts.DeviceDto>();
 
         var mediaItem = new MediaItem
         {
@@ -868,7 +870,7 @@ public class EvidenceLoader_LoadAsync_SearchFiltering_Tests
         var loader = new EvidenceLoader(eventRowLoader, mockMediaRepo.Object);
 
         // Act
-        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device1, device2 }, CancellationToken.None);
+        EvidenceLoadResult result = await loader.LoadAsync(scope, new[] { device1.ToDto(), device2.ToDto() }, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);

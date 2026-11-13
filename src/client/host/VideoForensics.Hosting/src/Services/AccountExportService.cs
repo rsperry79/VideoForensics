@@ -222,7 +222,7 @@ namespace VideoForensics.Client.Hosting.Services
             IReadOnlyList<Location> locations = await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(account.Id, ct);
             IReadOnlyList<ProviderSyncRun> syncRuns = await sp.GetRequiredService<IProviderSyncRunRepository>().ListByProviderAccountIdAsync(account.Id, ct);
 
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             IEventRepository eventRepository = sp.GetRequiredService<IEventRepository>();
             IMediaItemRepository mediaRepository = sp.GetRequiredService<IMediaItemRepository>();
             IDownloadEventRepository downloadRepository = sp.GetRequiredService<IDownloadEventRepository>();

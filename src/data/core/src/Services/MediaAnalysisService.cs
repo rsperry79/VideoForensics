@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Core.Services
         private const int AudioBaselineMinimumSamples = 10;
 
         private readonly IMediaItemRepository _items;
-        private readonly IDeviceRepository _devices;
+        private readonly IDeviceWriteRepository _devices;
         private readonly Hemisphere _hemisphere;
         private readonly IMediaBitrateAnalyzer _bitrate;
         private readonly IClipColorAnalyzer _color;
@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
             IMediaItemRepository items,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             IMediaBitrateAnalyzer bitrate,
             IClipColorAnalyzer color,
             IAudioClipAnalyzer audio,

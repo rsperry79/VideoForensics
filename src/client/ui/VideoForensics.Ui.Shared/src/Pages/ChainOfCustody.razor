@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/analyze/chain-of-custody"
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Core.Contracts
@@ -107,7 +108,7 @@ else
 @code {
     private bool _isLoading = true;
     private bool _isAuthenticated;
-    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _devices = new();
     private string[] _selectedDeviceIds = Array.Empty<string>();
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
@@ -130,7 +131,7 @@ else
 
     // Provider/Account filters narrow the device list. With no explicit selection, a filter means every device it
     // leaves visible; a filter that leaves none shows no report.
-    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _visibleDevices = new();
     private bool _isFiltered;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>

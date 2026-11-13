@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using Microsoft.Extensions.Localization;
 
 using System.Globalization;
@@ -69,13 +70,13 @@ public sealed class SimpleHomeBuilder
         DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         DateTime fromUtc = nowUtc - window;
 
-        IReadOnlyList<Device> deviceList = await devices.ListAsync(ct);
+        IReadOnlyList<DeviceDto> deviceList = await devices.ListAsync(ct);
         var names = deviceList.ToDictionary(d => d.Id, d => string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim());
 
         var entries = new List<SimpleTimelineEntry>();
         var mediaItems = new List<(MediaItem Item, string? Name)>();
 
-        foreach (Device device in deviceList)
+        foreach (DeviceDto device in deviceList)
         {
             string? name = names[device.Id];
 

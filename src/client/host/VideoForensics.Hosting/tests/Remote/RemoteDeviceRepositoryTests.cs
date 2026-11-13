@@ -4,6 +4,7 @@ using System.Text.Json;
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
@@ -70,7 +71,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            IReadOnlyList<Device> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<DeviceDto> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -100,7 +101,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            IReadOnlyList<Device> result = await repo.ListAsync(cts.Token);
+            IReadOnlyList<DeviceDto> result = await repo.ListAsync(cts.Token);
 
             _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
@@ -123,7 +124,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            IReadOnlyList<Device> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<DeviceDto> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.Empty(result);
         }
@@ -149,7 +150,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            Device? result = await repo.GetAsync(deviceId, CancellationToken.None);
+            DeviceDto? result = await repo.GetAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(deviceId, result.Id);
@@ -176,121 +177,69 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            Device? result = await repo.GetAsync(nonExistentId, CancellationToken.None);
+            DeviceDto? result = await repo.GetAsync(nonExistentId, CancellationToken.None);
 
             Assert.Null(result);
         }
 
         [Fact]
-        public async Task GetByLocationIdAsync_Throws_NotSupportedException()
+        public async Task GetByLocationIdAsync_CallsListAsyncAndFilters_ByLocationId()
         {
-            var handler = new FakeHttpMessageHandler(async _ =>
+            var locationId = Guid.NewGuid();
+            DeviceDto atLocation = CreateDeviceDto(locationId: locationId);
+            DeviceDto elsewhere = CreateDeviceDto();
+            string json = JsonSerializer.Serialize(new List<DeviceDto> { atLocation, elsewhere }, JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async _ =>
             {
                 await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
             });
 
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByLocationIdAsync(Guid.NewGuid(), CancellationToken.None));
+            IReadOnlyList<DeviceDto> result = await repo.GetByLocationIdAsync(locationId, CancellationToken.None);
 
-            Assert.Contains("Not supported on a remote", ex.Message);
+            Assert.Single(result);
+            Assert.Equal(atLocation.Id, result[0].Id);
+            Assert.Equal("/api/v1/devices", handler.CapturedRequest?.RequestUri?.PathAndQuery);
         }
 
         [Fact]
-        public async Task GetByProviderDeviceIdAsync_Throws_NotSupportedException()
+        public async Task GetByProviderDeviceIdAsync_CallsListAsyncAndFilters_ByLocationAndProviderId()
         {
-            var handler = new FakeHttpMessageHandler(async _ =>
+            var locationId = Guid.NewGuid();
+            DeviceDto match = CreateDeviceDto(locationId: locationId);
+            string json = JsonSerializer.Serialize(new List<DeviceDto> { match }, JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async _ =>
             {
                 await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
             });
 
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByProviderDeviceIdAsync(Guid.NewGuid(), "provider-123", CancellationToken.None));
+            DeviceDto? found = await repo.GetByProviderDeviceIdAsync(locationId, "ring-device-123", CancellationToken.None);
+            DeviceDto? missing = await repo.GetByProviderDeviceIdAsync(locationId, "no-such-device", CancellationToken.None);
 
-            Assert.Contains("Not supported on a remote", ex.Message);
+            Assert.NotNull(found);
+            Assert.Equal(match.Id, found.Id);
+            Assert.Null(missing);
         }
 
         [Fact]
-        public async Task AddAsync_Throws_NotSupportedException()
+        public void RemoteDeviceRepository_IsNotAWriteRepository()
         {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteDeviceRepository(httpClient);
-
-            var device = new Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), Name = "Test", ProviderDeviceId = "test-device", Type = "camera" };
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.AddAsync(device, CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
-
-        [Fact]
-        public async Task UpdateAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteDeviceRepository(httpClient);
-
-            var device = new Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), Name = "Test", ProviderDeviceId = "test-device", Type = "camera" };
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.UpdateAsync(device, CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
-
-        [Fact]
-        public async Task UpdateLastSuccessfulPullAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteDeviceRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.UpdateLastSuccessfulPullAsync(Guid.NewGuid(), DateTime.UtcNow, CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
-
-        [Fact]
-        public async Task DeleteAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteDeviceRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
+            Assert.False(typeof(IDeviceWriteRepository).IsAssignableFrom(typeof(RemoteDeviceRepository)));
         }
 
         [Fact]
@@ -324,9 +273,9 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            IReadOnlyList<Device> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<DeviceDto> result = await repo.ListAsync(CancellationToken.None);
 
-            Device device = result[0];
+            DeviceDto device = result[0];
             Assert.Equal(deviceDto.Id, device.Id);
             Assert.Equal(deviceDto.LocationId, device.LocationId);
             Assert.Equal(deviceDto.ProviderDeviceId, device.ProviderDeviceId);

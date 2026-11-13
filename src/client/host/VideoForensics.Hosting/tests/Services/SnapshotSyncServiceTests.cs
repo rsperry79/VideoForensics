@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
     {
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly LocationEntity _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
 

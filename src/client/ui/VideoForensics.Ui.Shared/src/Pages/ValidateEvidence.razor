@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @implements IDisposable
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Common.Contracts
@@ -148,7 +149,7 @@ else
 
     private bool _isLoading = true;
     private bool _isAuthenticated;
-    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _devices = new();
     private string _selectedDeviceId = string.Empty;
     private string _providerDeviceId = string.Empty;
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
@@ -167,7 +168,7 @@ else
 
     // Provider/Account filters narrow the device picker. Switching tabs recreates the filter controls, so the
     // visible list is reset to every device to keep the page and its controls in step.
-    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _visibleDevices = new();
     private bool _isFiltered;
     private string[] _integrityDeviceIds = Array.Empty<string>();
     private string? _verifyError;
@@ -199,10 +200,10 @@ else
     [Parameter]
     public Guid? AccountId { get; set; }
 
-    private async Task<IReadOnlyList<VideoForensics.Data.Common.Entities.Device>> ListAccountDevicesAsync(Guid accountId)
+    private async Task<IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto>> ListAccountDevicesAsync(Guid accountId)
     {
         var locations = await LocationRepository.ListByProviderAccountIdAsync(accountId, CancellationToken.None);
-        var devices = new List<VideoForensics.Data.Common.Entities.Device>();
+        var devices = new List<VideoForensics.Core.Api.Contracts.DeviceDto>();
         foreach (var location in locations)
         {
             devices.AddRange(await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None));

@@ -325,7 +325,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public Mock<IRingAccountSettingsWriter> Writer { get; } = CreateWriter();
 
-            public Mock<IDeviceRepository> Devices { get; } = CreateDeviceRepository();
+            public Mock<IDeviceWriteRepository> Devices { get; } = CreateDeviceRepository();
 
             public Mock<ILocationRepository> Locations { get; } = CreateLocationRepository();
 
@@ -380,7 +380,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>Lists the front door, the garage cam and the hall chime as stored rows. The chime is stored so its linked doorbots are written.</summary>
-        private static Mock<IDeviceRepository> CreateDeviceRepository()
+        private static Mock<IDeviceWriteRepository> CreateDeviceRepository()
         {
             var rows = new List<DbDevice>
             {
@@ -389,7 +389,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 new() { Id = ChimeGuid, ProviderDeviceId = "3003", Name = ChimeName, Type = "chime", LocationId = DbLocationId },
             };
 
-            var repository = new Mock<IDeviceRepository>();
+            var repository = new Mock<IDeviceWriteRepository>();
             _ = repository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<IReadOnlyList<DbDevice>>(rows));
             return repository;

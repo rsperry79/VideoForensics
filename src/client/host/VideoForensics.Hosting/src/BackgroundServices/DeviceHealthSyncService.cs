@@ -193,7 +193,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             bool itemFailed = false;
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IDeviceHealthRepository healthRepository = sp.GetRequiredService<IDeviceHealthRepository>();
             INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
@@ -395,7 +395,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
             ISecurityAuditLogger auditLog = sp.GetRequiredService<ISecurityAuditLogger>();

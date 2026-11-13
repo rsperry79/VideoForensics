@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Guid _deviceId = Guid.NewGuid();
         private readonly Mock<ILogger<LiveViewSessionOrchestrator>> _loggerMock = new();
         private readonly Mock<ILiveViewSessionRepository> _sessionRepositoryMock = new();
-        private readonly Mock<IDeviceRepository> _deviceRepositoryMock = new();
+        private readonly Mock<IDeviceWriteRepository> _deviceRepositoryMock = new();
         private readonly Mock<IProviderApiBudgetGuard> _budgetGuardMock = new();
         private readonly Mock<IForensicsConfiguration> _configMock = new();
         private readonly Mock<ILiveViewTelemetryRepository> _telemetryRepositoryMock = new();
@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var sp = new Mock<IServiceProvider>();
             _ = sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
-            _ = sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
+            _ = sp.Setup(s => s.GetService(typeof(IDeviceWriteRepository))).Returns(_deviceRepositoryMock.Object);
             _ = sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
             LiveViewProviderWiring.Register(sp, _providerMock);
             _ = sp.Setup(s => s.GetService(typeof(ILiveViewTelemetryRepository))).Returns(_telemetryRepositoryMock.Object);

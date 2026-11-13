@@ -7,7 +7,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
     public class EventPullServiceTests
     {
         private readonly Mock<IEventAndConfigService> _mockEventAndConfigService;
-        private readonly Mock<IDeviceRepository> _mockDeviceRepository;
+        private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<ILocationRepository> _mockLocationRepository;
         private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository;
         private readonly Mock<IDeviceDiscoveryService> _mockDiscovery;
@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         public EventPullServiceTests()
         {
             _mockEventAndConfigService = new Mock<IEventAndConfigService>();
-            _mockDeviceRepository = new Mock<IDeviceRepository>();
+            _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockLocationRepository = new Mock<ILocationRepository>();
             _mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
             _mockDiscovery = new Mock<IDeviceDiscoveryService>();

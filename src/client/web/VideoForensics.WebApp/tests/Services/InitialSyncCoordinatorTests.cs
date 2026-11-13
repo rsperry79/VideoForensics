@@ -101,7 +101,7 @@ public class InitialSyncCoordinatorTests
         var validation = new BulkValidationService(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<BulkValidationService>.Instance,
             _validation.Object,
-            new Mock<IDeviceRepository>().Object);
+            new Mock<IDeviceWriteRepository>().Object);
 
         return new InitialSyncCoordinator(
             _runner.Object,

@@ -117,7 +117,7 @@ else
     public ForensicScope Scope { get; set; } = new ForensicScope(new List<Guid>(), DateTime.UtcNow.AddDays(-90), DateTime.UtcNow, null);
 
     [Parameter]
-    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = new List<VideoForensics.Data.Common.Entities.Device>();
+    public IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto> Devices { get; set; } = new List<VideoForensics.Core.Api.Contracts.DeviceDto>();
 
     private bool _isLoading = true;
     private int _loadVersion;

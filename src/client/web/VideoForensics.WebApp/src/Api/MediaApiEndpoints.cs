@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1");
 
-            _ = group.MapGet("/devices", async (IDeviceRepository devices, CancellationToken ct) =>
+            _ = group.MapGet("/devices", async (IDeviceWriteRepository devices, CancellationToken ct) =>
                 Results.Ok((await devices.ListAsync(ct)).Select(x => x.ToDto())))
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -176,7 +176,7 @@ namespace VideoForensics.Client.WebApp.Api
             ILogger<Program> logger,
             INotificationDispatcher dispatcher,
             INoticeRepository notices,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             HttpContext context,
             CancellationToken ct)
@@ -257,7 +257,7 @@ namespace VideoForensics.Client.WebApp.Api
             MediaItem item,
             INotificationDispatcher dispatcher,
             INoticeRepository notices,
-            IDeviceRepository devices,
+            IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             ILogger<Program> logger,
             CancellationToken ct)

@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 
@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 public static class DeviceConfigFilter
 {
     /// <summary>The distinct linked provider names, sorted, for the provider filter's options.</summary>
-    public static IReadOnlyList<string> ProviderOptions(IEnumerable<Device> devices)
+    public static IReadOnlyList<string> ProviderOptions(IEnumerable<DeviceDto> devices)
     {
         return devices
             .Select(d => d.ProviderName)
@@ -21,7 +21,7 @@ public static class DeviceConfigFilter
     }
 
     /// <summary>Devices linked to <paramref name="providerName"/>, or every device when it is null or empty.</summary>
-    public static IReadOnlyList<Device> Filter(IEnumerable<Device> devices, string? providerName)
+    public static IReadOnlyList<DeviceDto> Filter(IEnumerable<DeviceDto> devices, string? providerName)
     {
         return string.IsNullOrEmpty(providerName)
             ? devices.ToList()

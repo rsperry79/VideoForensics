@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/media"
 @page "/media/review"
 @using Microsoft.Extensions.Localization
@@ -10,7 +11,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @using VideoForensics.Data.Common.Contracts
-@using Device = VideoForensics.Data.Common.Entities.Device
+@using Device = VideoForensics.Core.Api.Contracts.DeviceDto
 @using VideoForensics.Client.Common.Viewer
 @implements IDisposable
 @inject ReviewSettingsStore SettingsStore

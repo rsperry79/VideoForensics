@@ -15,14 +15,14 @@ namespace VideoForensics.Client.Core.Tests.Services
     {
         private readonly Mock<ILogger<BulkValidationService>> _loggerMock;
         private readonly Mock<IEvidenceValidationService> _validationServiceMock;
-        private readonly Mock<IDeviceRepository> _deviceRepositoryMock;
+        private readonly Mock<IDeviceWriteRepository> _deviceRepositoryMock;
         private readonly BulkValidationService _service;
 
         public BulkValidationServiceTests()
         {
             _loggerMock = new Mock<ILogger<BulkValidationService>>();
             _validationServiceMock = new Mock<IEvidenceValidationService>();
-            _deviceRepositoryMock = new Mock<IDeviceRepository>();
+            _deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             _service = new BulkValidationService(
                 _validationServiceMock.Object,
                 _deviceRepositoryMock.Object,

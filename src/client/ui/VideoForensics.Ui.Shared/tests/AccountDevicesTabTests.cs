@@ -45,7 +45,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
     {
         var device = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = name, Name = name, Type = "stickup_cam" };
         _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([device]);
+            .ReturnsAsync([device.ToDto()]);
         return device;
     }
 
@@ -114,7 +114,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
         var chime = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "chime", Name = "Hall Chime", Type = "chime" };
-        _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chime]);
+        _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chime.ToDto()]);
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
 

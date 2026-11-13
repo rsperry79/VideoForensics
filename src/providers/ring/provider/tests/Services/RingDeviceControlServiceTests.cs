@@ -58,7 +58,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session.Object);
 
-            var deviceRepository = new Mock<IDeviceRepository>();
+            var deviceRepository = new Mock<IDeviceWriteRepository>();
             _ = deviceRepository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(deviceRows ?? BuildDeviceRows());
 
             var locationRepository = new Mock<ILocationRepository>();
@@ -228,7 +228,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             var session = new Mock<Session>("testuser", "testpass", null, null, null);
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns((Session?)null);
-            var deviceRepository = new Mock<IDeviceRepository>();
+            var deviceRepository = new Mock<IDeviceWriteRepository>();
             _ = deviceRepository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(BuildDeviceRows());
             var locationRepository = new Mock<ILocationRepository>();
             _ = locationRepository.Setup(r => r.ListProviderAccountsForLocationAsync(LocationId, It.IsAny<CancellationToken>()))

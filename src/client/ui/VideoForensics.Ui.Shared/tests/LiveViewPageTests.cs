@@ -9,6 +9,7 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -35,7 +36,7 @@ public class LiveViewPageTests : BunitContext
 
     private void AddCamera()
     {
-        var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" };
+        var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto();
         _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([device]);
     }
 
@@ -98,8 +99,8 @@ public class LiveViewPageTests : BunitContext
         var flood = Guid.Parse("33333333-3333-3333-3333-333333333333");
         _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(
         [
-            new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" },
-            new Device { Id = flood, LocationId = Guid.NewGuid(), ProviderDeviceId = "flood", Name = "Flood", Type = "camera" },
+            new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto(),
+            new Device { Id = flood, LocationId = Guid.NewGuid(), ProviderDeviceId = "flood", Name = "Flood", Type = "camera" }.ToDto(),
         ]);
         var media = new MediaItem { Id = Snapshot, DeviceId = flood, FileName = "f.jpg", FilePath = "f.jpg", MediaFormat = "jpg", RecordedAtUtc = DateTime.UtcNow, Sha256Hash = "h" };
         _mediaItems
@@ -123,8 +124,8 @@ public class LiveViewPageTests : BunitContext
     public async Task LiveView_CameraChosenOnSharedReviewState_IsTheCameraShown()
     {
         // Arrange: two cameras; Live View starts on the first one
-        var porch = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" };
-        var garage = new Device { Id = Garage, LocationId = Guid.NewGuid(), ProviderDeviceId = "garage", Name = "Garage", Type = "camera" };
+        var porch = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto();
+        var garage = new Device { Id = Garage, LocationId = Guid.NewGuid(), ProviderDeviceId = "garage", Name = "Garage", Type = "camera" }.ToDto();
         _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([porch, garage]);
         IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
         cut.WaitForAssertion(() => Assert.Equal(Camera.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id")));
@@ -154,7 +155,7 @@ public class LiveViewPageTests : BunitContext
         _deviceRepository = new Mock<IDeviceRepository>();
         _ = _deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>()))
-            .ReturnsAsync(Array.Empty<Device>());
+            .ReturnsAsync(Array.Empty<VideoForensics.Core.Api.Contracts.DeviceDto>());
         Mock<IDeviceRepository> deviceRepository = _deviceRepository;
 
         _mediaItems = new Mock<IMediaItemRepository>();

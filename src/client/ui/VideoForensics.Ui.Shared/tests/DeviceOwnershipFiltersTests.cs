@@ -11,7 +11,8 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The shared Provider/Account filter reports which devices remain visible after each change.</summary>
@@ -30,8 +31,8 @@ public class DeviceOwnershipFilters_Tests : BunitContext
         var wyze = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Wyze", LinkedUtc = DateTime.UtcNow };
         var ringLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "R", Name = "R" };
         var wyzeLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "W", Name = "W" };
-        var ringDevice = new Device { Id = Guid.NewGuid(), LocationId = ringLocation.Id, ProviderDeviceId = "r", Name = "Ring Front", Type = "camera" };
-        var wyzeDevice = new Device { Id = Guid.NewGuid(), LocationId = wyzeLocation.Id, ProviderDeviceId = "w", Name = "Wyze Garage", Type = "camera" };
+        var ringDevice = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = ringLocation.Id, ProviderDeviceId = "r", Name = "Ring Front", Type = "camera" }.ToDto();
+        var wyzeDevice = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = wyzeLocation.Id, ProviderDeviceId = "w", Name = "Wyze Garage", Type = "camera" }.ToDto();
 
         ScopeOwnershipTestDoubles.Register(
             Services,

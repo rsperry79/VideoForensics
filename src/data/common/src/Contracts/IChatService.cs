@@ -4,7 +4,7 @@ namespace VideoForensics.Data.Common.Contracts
     /// Sends a message to the embedded MCP-backed chat assistant and gets a reply. The server-side
     /// implementation drives an LLM tool-use loop against this app's own MCP tools; a Remote*
     /// implementation (client hosts) proxies this over HTTP using VideoForensics.Core.Api.Contracts DTOs,
-    /// following the same pattern as every other Remote* client (see IDeviceRepository / RemoteDeviceRepository).
+    /// following the same pattern as every other Remote* client (see IDeviceWriteRepository / RemoteDeviceRepository).
     /// </summary>
     public interface IChatService
     {

@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             var loggerMock = new Mock<ILogger<BackupExportOrchestrator>>();
             var providerAccountRepositoryMock = new Mock<IProviderAccountRepository>();
             var locationRepositoryMock = new Mock<ILocationRepository>();
-            var deviceRepositoryMock = new Mock<IDeviceRepository>();
+            var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             var eventRepositoryMock = new Mock<IEventRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
             var mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
@@ -101,7 +101,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             var loggerMock = new Mock<ILogger<BackupExportOrchestrator>>();
             var providerAccountRepositoryMock = new Mock<IProviderAccountRepository>();
             var locationRepositoryMock = new Mock<ILocationRepository>();
-            var deviceRepositoryMock = new Mock<IDeviceRepository>();
+            var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             var eventRepositoryMock = new Mock<IEventRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
             var mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
