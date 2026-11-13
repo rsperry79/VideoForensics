@@ -67,7 +67,8 @@ public class ReviewEventFilter_Tests : ReviewTestContext
         await cut.InvokeAsync(() => cut.Find(Toggle("signal_anomaly")).Change(true));
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Equal(["motion", "signal_anomaly"], ReviewState.EventTypes));
+        // The state is written only after the debounce, which can outlast bUnit's default one-second wait under load.
+        cut.WaitForAssertion(() => Assert.Equal(["motion", "signal_anomaly"], ReviewState.EventTypes), TimeSpan.FromSeconds(10));
     }
 
     [Fact]

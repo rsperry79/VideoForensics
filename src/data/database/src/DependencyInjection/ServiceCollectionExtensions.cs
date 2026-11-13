@@ -61,6 +61,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IIntegrityRecordRepository, IntegrityRecordRepository>();
             services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
             services.TryAddScoped<IMediaFlagRepository, MediaFlagRepository>();
+            services.TryAddScoped<IMediaFlagDeviationRepository, MediaFlagRepository>();
             services.TryAddScoped<ICaseRepository, CaseRepository>();
             services.TryAddScoped<INoteRepository, NoteRepository>();
             services.TryAddScoped<ICaseNoteRepository, CaseNoteAdapter>();
@@ -81,6 +82,9 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IBannedIpRangeRepository, BannedIpRangeRepository>();
             services.TryAddScoped<ILockoutPolicySettingsRepository, LockoutPolicySettingsRepository>();
             services.TryAddScoped<ITwoFactorRoleRequirementRepository, TwoFactorRoleRequirementRepository>();
+            services.TryAddScoped<IDingIdLinkRepository, DingIdLinkRepository>();
+            services.TryAddScoped<EventBackfillService>();
+            services.TryAddScoped<IDetectionEntityProvider, DetectionEntityRepository>();
 
             // Register security audit service (Phase 0.5)
             services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
@@ -88,6 +92,8 @@ namespace VideoForensics.Data.Database.DependencyInjection
             // Register unit of work. One tracker is shared by every scope, so the watchdog sees transactions from all of them.
             services.TryAddSingleton<VideoForensics.Data.Common.Diagnostics.InFlightTransactions>();
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();
+            services.TryAddScoped<ITransactionlessWriteGate>(sp => sp.GetRequiredService<IUnitOfWork>() as ITransactionlessWriteGate
+                ?? throw new InvalidOperationException("IUnitOfWork must be the UnitOfWork implementation to provide ITransactionlessWriteGate."));
 
             return services;
         }

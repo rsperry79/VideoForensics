@@ -10,12 +10,12 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for the append-only DeviceLightEvent history.</summary>
     public class DeviceLightEventRepository : IDeviceLightEventRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceLightEventRepository> _logger;
 
-        public DeviceLightEventRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<DeviceLightEventRepository> logger)
+        public DeviceLightEventRepository(IUnitOfWork unitOfWork, ILogger<DeviceLightEventRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -26,16 +26,19 @@ namespace VideoForensics.Data.Database.Repositories
                 return false;
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                if (!await AddObservedIfTransitionAsync(db, deviceId, secondsRemaining, observedAtUtc, ct))
+                return await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    return false;
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    if (!await AddObservedIfTransitionAsync(db, deviceId, secondsRemaining, observedAtUtc, ct))
+                    {
+                        return false;
+                    }
 
-                _ = await db.SaveChangesAsync(ct);
-                return true;
+                    _ = await db.SaveChangesAsync(ct);
+                    return true;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -46,16 +49,19 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<bool> RecordObservedStateAsync(Guid deviceId, bool on, DateTime observedAtUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                if (!await AddObservedStateIfChangedAsync(db, deviceId, on, observedAtUtc, ct))
+                return await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    return false;
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    if (!await AddObservedStateIfChangedAsync(db, deviceId, on, observedAtUtc, ct))
+                    {
+                        return false;
+                    }
 
-                _ = await db.SaveChangesAsync(ct);
-                return true;
+                    _ = await db.SaveChangesAsync(ct);
+                    return true;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -132,19 +138,23 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task AddCommandAsync(Guid deviceId, DateTime occurredAtUtc, int? secondsRemaining, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.DeviceLightEvents.Add(new DeviceLightEvent
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceId,
-                    OccurredAtUtc = occurredAtUtc,
-                    Source = DeviceLightEventSource.Command,
-                    IsOn = true,
-                    SecondsRemaining = secondsRemaining
-                });
-                _ = await db.SaveChangesAsync(ct);
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.DeviceLightEvents.Add(new DeviceLightEvent
+                    {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceId,
+                        OccurredAtUtc = occurredAtUtc,
+                        Source = DeviceLightEventSource.Command,
+                        IsOn = true,
+                        SecondsRemaining = secondsRemaining
+                    });
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -155,12 +165,11 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<DeviceLightEvent>> ListByDeviceAsync(Guid deviceId, CancellationToken ct, bool onEventsOnly = false)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceLightEvents
+            return await _unitOfWork.ReadAsync(context => context.Db().DeviceLightEvents
                 .AsNoTracking()
                 .Where(e => e.DeviceId == deviceId && (!onEventsOnly || e.IsOn))
                 .OrderByDescending(e => e.OccurredAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
     }
 }

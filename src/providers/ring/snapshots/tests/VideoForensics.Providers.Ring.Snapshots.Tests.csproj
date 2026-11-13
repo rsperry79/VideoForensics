@@ -30,6 +30,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Snapshots.csproj" />
     <ProjectReference Include="../../core/src/VideoForensics.Providers.Ring.Core.csproj" />
   </ItemGroup>

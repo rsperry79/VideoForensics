@@ -17,12 +17,25 @@ namespace VideoForensics.Client.Core.Services
         private readonly ILogger<BackupImportOrchestrator> _logger;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMediaPathResolver _paths;
+        private readonly IDeviceRepository _devices;
+        private readonly IDingIdLinkRepository _dingIdLinks;
 
-        public BackupImportOrchestrator(ILogger<BackupImportOrchestrator> logger, IUnitOfWork unitOfWork, IMediaPathResolver? paths = null)
+        /// <summary>
+        /// The device and link repositories read through the unit of work's open write context, so they see the rows this
+        /// import has written but not yet committed.
+        /// </summary>
+        public BackupImportOrchestrator(
+            ILogger<BackupImportOrchestrator> logger,
+            IUnitOfWork unitOfWork,
+            IDeviceRepository devices,
+            IDingIdLinkRepository dingIdLinks,
+            IMediaPathResolver? paths = null)
         {
             _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _logger = logger;
             _unitOfWork = unitOfWork;
+            _devices = devices;
+            _dingIdLinks = dingIdLinks;
         }
 
         public async Task<BackupImportResult> ImportBackupAsync(string backupZipPath, string mediaRootPath, CancellationToken ct)
@@ -125,7 +138,7 @@ namespace VideoForensics.Client.Core.Services
                     var importedDeviceIds = new HashSet<Guid>();
                     foreach (Device device in devices)
                     {
-                        if (await ctx.Devices.GetAsync(device.Id, ct) != null)
+                        if (await _devices.GetAsync(device.Id, ct) != null)
                         {
                             importResult.Devices.SkippedExisting++;
                             _ = importedDeviceIds.Add(device.Id);
@@ -141,7 +154,7 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        await ctx.Devices.AddAsync(device, ct);
+                        await _devices.AddAsync(device, ct);
                         importResult.Devices.Inserted++;
                         _ = importedDeviceIds.Add(device.Id);
                     }
@@ -162,7 +175,7 @@ namespace VideoForensics.Client.Core.Services
                         }
 
                         bool deviceOk = importedDeviceIds.Contains(evt.DeviceId) ||
-                            await ctx.Devices.GetAsync(evt.DeviceId, ct) != null;
+                            await _devices.GetAsync(evt.DeviceId, ct) != null;
                         if (!deviceOk)
                         {
                             importResult.Events.SkippedOrphaned++;
@@ -170,7 +183,7 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        string? resolvedEventId = await ResolveProviderEventIdAsync(evt.ProviderEventId, evt.DeviceId, backupDevices, ctx, candidatesByDevice, ct);
+                        string? resolvedEventId = await ResolveProviderEventIdAsync(evt.ProviderEventId, evt.DeviceId, backupDevices, candidatesByDevice, ct);
                         if (resolvedEventId is null)
                         {
                             importResult.Details.Add($"Skipped Event {evt.Id}: its id did not resolve to one ding id");
@@ -194,7 +207,7 @@ namespace VideoForensics.Client.Core.Services
                         }
 
                         bool deviceOk = importedDeviceIds.Contains(de.DeviceId) ||
-                            await ctx.Devices.GetAsync(de.DeviceId, ct) != null;
+                            await _devices.GetAsync(de.DeviceId, ct) != null;
                         if (!deviceOk)
                         {
                             importResult.DownloadEvents.SkippedOrphaned++;
@@ -202,7 +215,7 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        string? resolvedDownloadId = await ResolveProviderEventIdAsync(de.ProviderEventId, de.DeviceId, backupDevices, ctx, candidatesByDevice, ct);
+                        string? resolvedDownloadId = await ResolveProviderEventIdAsync(de.ProviderEventId, de.DeviceId, backupDevices, candidatesByDevice, ct);
                         if (resolvedDownloadId is null)
                         {
                             importResult.Details.Add($"Skipped DownloadEvent {de.Id}: its id did not resolve to one ding id");
@@ -226,7 +239,7 @@ namespace VideoForensics.Client.Core.Services
                         }
 
                         bool deviceOk = importedDeviceIds.Contains(mediaItem.DeviceId) ||
-                            await ctx.Devices.GetAsync(mediaItem.DeviceId, ct) != null;
+                            await _devices.GetAsync(mediaItem.DeviceId, ct) != null;
                         bool downloadEventOk = mediaItem.DownloadEventId == null ||
                             importedDownloadEventIds.Contains(mediaItem.DownloadEventId.Value) ||
                             await ctx.DownloadEvents.GetAsync(mediaItem.DownloadEventId.Value, ct) != null;
@@ -304,11 +317,10 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <summary>Returns the event id to store for a backup row, or null when it does not resolve to one ding id.</summary>
-        private static async Task<string?> ResolveProviderEventIdAsync(
+        private async Task<string?> ResolveProviderEventIdAsync(
             string providerEventId,
             Guid deviceId,
             IReadOnlyDictionary<Guid, Device> backupDevices,
-            IUnitOfWorkContext ctx,
             Dictionary<Guid, IReadOnlyList<string>> candidatesByDevice,
             CancellationToken ct)
         {
@@ -317,8 +329,8 @@ namespace VideoForensics.Client.Core.Services
                 // A device in this backup may not be written yet, so its provider id comes from the backup first.
                 Device? device = backupDevices.TryGetValue(deviceId, out Device? fromBackup)
                     ? fromBackup
-                    : await ctx.Devices.GetAsync(deviceId, ct);
-                candidates = await ProviderEventIdResolver.CandidatesForDeviceAsync(device, ctx.DingIdLinks, ct);
+                    : await _devices.GetAsync(deviceId, ct);
+                candidates = await ProviderEventIdResolver.CandidatesForDeviceAsync(device, _dingIdLinks, ct);
                 candidatesByDevice[deviceId] = candidates;
             }
 

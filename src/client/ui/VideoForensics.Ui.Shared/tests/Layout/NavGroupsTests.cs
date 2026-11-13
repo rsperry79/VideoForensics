@@ -280,6 +280,18 @@ public class NavGroups_Tests
     }
 
     [Fact]
+    public void MyNotifications_IsInGeneralSection_VisibleToReadOnlyOperator()
+    {
+        // Any signed-in operator manages their own notification preferences, so the item carries no restricting policy.
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem item = group.Items.First(i => i.Path == "/settings/my-notifications");
+
+        Assert.Equal("My Notifications", item.Text);
+        Assert.Equal("General", item.Section);
+        Assert.True(item.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false)));
+    }
+
+    [Fact]
     public void AppLock_RequiresAppLockSupport()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");

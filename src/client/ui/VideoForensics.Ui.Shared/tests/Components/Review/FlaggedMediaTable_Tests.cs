@@ -31,7 +31,7 @@ public class FlaggedMediaTable_Tests : BunitContext
         _ = Services.AddSingleton(_repository.Object);
     }
 
-    private static MediaFlag Flag(MediaFlagType type)
+    private static MediaFlag Flag(MediaFlagType type, string? eventType = null, double? sigma = null)
     {
         return new MediaFlag
         {
@@ -41,7 +41,68 @@ public class FlaggedMediaTable_Tests : BunitContext
             WindowStartUtc = new DateTime(2026, 10, 30, 12, 0, 0, DateTimeKind.Utc),
             WindowEndUtc = new DateTime(2026, 10, 30, 12, 5, 0, DateTimeKind.Utc),
             RaisedAtUtc = new DateTime(2026, 10, 30, 12, 6, 0, DateTimeKind.Utc),
+            EventType = eventType,
+            DeviationSigma = sigma,
         };
+    }
+
+    [Fact]
+    public void FlaggedMediaTable_EventType_ShowsEventTypeWithFlagTypeOnSecondLine()
+    {
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([Flag(MediaFlagType.RssiDeviation, eventType: "person")], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
+
+        IElement eventCell = cut.WaitForElement("[data-testid=flagged-media-event]");
+        Assert.Equal("person", eventCell.TextContent.Trim());
+        IElement flagTypeLine = cut.Find("[data-testid=flagged-media-flag-type]");
+        Assert.Equal(TestLocalizer.Create()["FlaggedMediaType_RssiDeviation"].Value, flagTypeLine.TextContent.Trim());
+    }
+
+    [Fact]
+    public void FlaggedMediaTable_NullEventType_ShowsLocalizedNoEventPlaceholder()
+    {
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([Flag(MediaFlagType.RssiDeviation, eventType: null)], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
+
+        IElement eventCell = cut.WaitForElement("[data-testid=flagged-media-event]");
+        Assert.Equal(TestLocalizer.Create()["FlaggedMediaNoEvent"].Value, eventCell.TextContent.Trim());
+    }
+
+    [Fact]
+    public void FlaggedMediaTable_DeviationSigma_ShowsOneDecimal()
+    {
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([Flag(MediaFlagType.RssiDeviation, sigma: 1.456)], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
+
+        IElement devCell = cut.WaitForElement("[data-testid=flagged-media-dev]");
+        Assert.Equal((1.456).ToString("F1", System.Globalization.CultureInfo.CurrentCulture), devCell.TextContent.Trim());
+        Assert.Equal(TestLocalizer.Create()["FlaggedMediaDevTooltip"].Value, devCell.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void FlaggedMediaTable_NullDeviationSigma_ShowsDash()
+    {
+        _ = _repository
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, 200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage([Flag(MediaFlagType.BitrateCollapse, sigma: null)], 1));
+
+        IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
+            .Add(c => c.Types, new[] { MediaFlagType.BitrateCollapse }));
+
+        IElement devCell = cut.WaitForElement("[data-testid=flagged-media-dev]");
+        Assert.Equal("-", devCell.TextContent.Trim());
     }
 
     [Fact]
@@ -117,7 +178,7 @@ public class FlaggedMediaTable_Tests : BunitContext
 
         IRenderedComponent<FlaggedMediaTable> cut = Render<FlaggedMediaTable>(p => p
             .Add(c => c.Types, new[] { MediaFlagType.RssiDeviation }));
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=flagged-media-table] tbody tr")), TimeSpan.FromSeconds(10));
 
         await cut.InvokeAsync(() => cut.Instance.OpenFlag(flag));
 

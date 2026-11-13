@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
@@ -21,7 +22,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -86,6 +89,27 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.Equal(new long[] { 1_000_000 }, rows.Select(r => r.VideoBitrateBps).ToArray());
             Assert.Equal(clip.Id, rows[0].MediaItemId);
+        }
+
+        [Fact]
+        public async Task GetBitrateBaselineByDeviceAsync_CountsReadingsOutsideAnyWindow_WithSampleStdDev()
+        {
+            var device = Guid.NewGuid();
+            // Two readings are more than a year before the others, so no date window could hold all three.
+            await _repository.AddAsync(Row(device, "old", Start.AddDays(-400), 2_000_000, false), CancellationToken.None);
+            await _repository.AddAsync(Row(device, "early", new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), 1_000_000, false), CancellationToken.None);
+            await _repository.AddAsync(Row(device, "recent", Start, 3_000_000, false), CancellationToken.None);
+            await _repository.AddAsync(Row(device, "estimated", Start.AddMinutes(2), 9_000_000, true), CancellationToken.None);
+            await _repository.AddAsync(Row(device, "unmeasured", Start.AddMinutes(3), null, null), CancellationToken.None);
+            await _repository.AddAsync(Row(Guid.NewGuid(), "other-device", Start.AddMinutes(4), 9_000_000, false), CancellationToken.None);
+
+            AllTimeBitrateBaseline baseline = await _repository.GetBitrateBaselineByDeviceAsync(device, CancellationToken.None);
+
+            // Readings 1, 2 and 3 million bps: mean 2 million, sample sd (divides by n - 1) exactly 1 million.
+            Assert.Equal(3, baseline.Count);
+            Assert.Equal(2_000_000.0, baseline.MeanBps, precision: 3);
+            Assert.NotNull(baseline.StdDevBps);
+            Assert.Equal(1_000_000.0, baseline.StdDevBps!.Value, precision: 3);
         }
     }
 }

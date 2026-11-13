@@ -22,9 +22,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _repository = new DeviceHealthRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceHealthRepository>());
-            _locationRepository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
-            _deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new DeviceHealthRepository(unitOfWork, loggerFactory.CreateLogger<DeviceHealthRepository>());
+            _locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<LocationRepository>());
+            _deviceRepository = new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<DeviceRepository>());
         }
 
         public async ValueTask DisposeAsync()
@@ -43,7 +44,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             var mockLogger = new Mock<ILogger<DeviceHealthRepository>>();
-            var repository = new DeviceHealthRepository(_fixture.Factory, mockLogger.Object);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            var repository = new DeviceHealthRepository(unitOfWork, mockLogger.Object);
 
             DeviceHealth health = TestDataBuilder.BuildDeviceHealth(device.Id);
             _ = await repository.AddAsync(health, CancellationToken.None);

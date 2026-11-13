@@ -14,7 +14,7 @@ namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
     /// Tests for EvidenceExportOrchestrator (Phase 4).
-    /// Verifies secure evidence export into password-protected archives.
+    /// Verifies evidence export: integrity filtering, archive contents and output-path containment.
     /// </summary>
     public class EvidenceExportOrchestratorTests
     {
@@ -44,7 +44,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -68,8 +67,6 @@ namespace VideoForensics.Providers.Ring.Tests
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     [],
                     relativeExportPath,
-                    null,
-                    null,
                     null,
                     CancellationToken.None);
 
@@ -148,7 +145,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -172,8 +168,6 @@ namespace VideoForensics.Providers.Ring.Tests
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { failedItemId, validItemId },
                     relativeExportPath,
-                    null,
-                    null,
                     null,
                     CancellationToken.None);
 
@@ -234,7 +228,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -259,8 +252,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     new[] { mediaItemId },
                     relativeExportPath,
                     "Case-2026-001",
-                    "Law Enforcement",
-                    null, // No password
                     CancellationToken.None);
 
                 // Assert
@@ -271,99 +262,6 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.Equal(1, result.ItemsIncluded);
                 Assert.Empty(result.ItemsExcludedForFailedIntegrity);
                 Assert.NotNull(result.ArchiveSha256Hash);
-            }
-            finally
-            {
-                if (Directory.Exists(tempDir))
-                {
-                    Directory.Delete(tempDir, true);
-                }
-            }
-        }
-
-        [Fact]
-        public async Task ExportEvidenceAsync_WithEncryption_CreatesPasswordProtectedArchive()
-        {
-            // Arrange
-            string tempDir = CreateTempDirectory();
-            string relativeExportPath = "test-export-encryption";
-            var mediaItemId = Guid.NewGuid();
-            string filePath = Path.Combine(tempDir, "test.mp4");
-            File.WriteAllText(filePath, "dummy content");
-
-            try
-            {
-                var mediaItem = new MediaItem
-                {
-                    Id = mediaItemId,
-                    DeviceId = Guid.NewGuid(),
-                    FileName = "test.mp4",
-                    FilePath = filePath,
-                    MediaFormat = "video/mp4",
-                    Sha256Hash = "abc123",
-                    FileSizeBytes = 13,
-                    RecordedAtUtc = DateTime.UtcNow.AddHours(-1),
-                    DownloadedAtUtc = DateTime.UtcNow
-                };
-
-                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(mediaItem);
-
-                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(true);
-
-                _ = _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<Guid>(),
-                    It.IsAny<CancellationToken>()))
-                    .ReturnsAsync([]);
-
-                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<IReadOnlyList<(Guid, string)>>(),
-                    It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new ExportRecord
-                    {
-                        Id = Guid.NewGuid(),
-                        ExportedByUserName = "TestUser",
-                        ArchiveFileName = "test_archive.zip",
-                        ArchiveSha256Hash = "testhash",
-                        AppVersion = "1.0.0"
-                    });
-
-                var orchestrator = new EvidenceExportOrchestrator(
-                    _mockLogger.Object,
-                    _mockMediaItemRepository.Object,
-                    _mockIntegrityService.Object,
-                    _mockActionLogRepository.Object,
-                    _mockExportRecordService.Object);
-
-                // Act
-                ExportResult result = await orchestrator.ExportEvidenceAsync(
-                    new[] { mediaItemId },
-                    relativeExportPath,
-                    "Case-2026-001",
-                    "Law Enforcement",
-                    "SecurePassword123", // With password
-                    CancellationToken.None);
-
-                // Assert
-                Assert.True(result.Success);
-                Assert.NotNull(result.ArchivePath);
-                Assert.True(File.Exists(result.ArchivePath));
-                Assert.EndsWith(".zip", result.ArchivePath);
-                Assert.Equal(1, result.ItemsIncluded);
-                Assert.NotNull(result.ArchiveSha256Hash);
-
-                // Verify the archive is password protected by checking file size
-                // (encrypted archives have different sizes than unencrypted)
-                var fileInfo = new FileInfo(result.ArchivePath);
-                Assert.True(fileInfo.Length > 0);
             }
             finally
             {
@@ -434,7 +332,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -459,8 +356,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     new[] { mediaItemId1, mediaItemId2 },
                     relativeExportPath,
                     "Case-2026-001",
-                    "Law Enforcement",
-                    null,
                     CancellationToken.None);
 
                 // Assert
@@ -538,7 +433,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(),
                     It.IsAny<bool>(),
                     It.IsAny<IReadOnlyList<(Guid, string)>>(),
                     It.IsAny<CancellationToken>()))
@@ -563,8 +457,6 @@ namespace VideoForensics.Providers.Ring.Tests
                     new[] { validItemId, invalidItemId },
                     relativeExportPath,
                     "Case-2026-001",
-                    "Law Enforcement",
-                    null,
                     CancellationToken.None);
 
                 // Assert

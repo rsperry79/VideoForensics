@@ -146,7 +146,6 @@ public class ReconciliationAndExportEntityTests
         DateTime exportedAtUtc = DateTime.UtcNow;
         string exportedByUserName = "operator";
         string caseReference = "CASE-2024-001";
-        string recipientDescription = "Law Enforcement Agency";
         string archiveFileName = "evidence_export_2024-01-15.zip";
         string archiveSha256Hash = "abcdef123456789";
         bool wasEncrypted = true;
@@ -160,7 +159,6 @@ public class ReconciliationAndExportEntityTests
             ExportedAtUtc = exportedAtUtc,
             ExportedByUserName = exportedByUserName,
             CaseReference = caseReference,
-            RecipientDescription = recipientDescription,
             ArchiveFileName = archiveFileName,
             ArchiveSha256Hash = archiveSha256Hash,
             WasEncrypted = wasEncrypted,
@@ -173,7 +171,6 @@ public class ReconciliationAndExportEntityTests
         Assert.Equal(exportedAtUtc, record.ExportedAtUtc);
         Assert.Equal(exportedByUserName, record.ExportedByUserName);
         Assert.Equal(caseReference, record.CaseReference);
-        Assert.Equal(recipientDescription, record.RecipientDescription);
         Assert.Equal(archiveFileName, record.ArchiveFileName);
         Assert.Equal(archiveSha256Hash, record.ArchiveSha256Hash);
         Assert.True(record.WasEncrypted);
@@ -191,7 +188,6 @@ public class ReconciliationAndExportEntityTests
             ExportedAtUtc = DateTime.UtcNow,
             ExportedByUserName = "operator",
             CaseReference = null,
-            RecipientDescription = null,
             ArchiveFileName = "export.zip",
             ArchiveSha256Hash = "hash123",
             WasEncrypted = false,
@@ -201,7 +197,6 @@ public class ReconciliationAndExportEntityTests
 
         // Assert
         Assert.Null(record.CaseReference);
-        Assert.Null(record.RecipientDescription);
         Assert.False(record.WasEncrypted);
     }
 
@@ -215,7 +210,6 @@ public class ReconciliationAndExportEntityTests
             ExportedAtUtc = DateTime.UtcNow,
             ExportedByUserName = "operator",
             CaseReference = "CASE-2024-002",
-            RecipientDescription = "Internal Investigation",
             ArchiveFileName = "internal_export.zip",
             ArchiveSha256Hash = "unencrypted_hash",
             WasEncrypted = false,

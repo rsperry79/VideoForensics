@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Common.Matching;
@@ -147,7 +149,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             int confirmCalls = 0;
             var service = new DingIdRepairService();
             DingIdRepairReport report = await service.RunAsync(
-                _fixture.Factory,
+                UnitOfWorkFor(_fixture),
                 apply: true,
                 backup: _ => Task.CompletedTask,
                 ct: CancellationToken.None,
@@ -177,7 +179,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             int beforeWritesCalls = 0;
             var service = new DingIdRepairService();
             DingIdRepairReport report = await service.RunAsync(
-                _fixture.Factory,
+                UnitOfWorkFor(_fixture),
                 apply: true,
                 backup: _ => Task.CompletedTask,
                 ct: CancellationToken.None,
@@ -195,10 +197,18 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.Null((await db.RingDoorbotHistoryEvents.SingleAsync(e => e.Id == historyId)).LinkedEventId);
         }
 
+        private static VideoForensics.Data.Database.Repositories.UnitOfWork UnitOfWorkFor(SqliteInMemoryFixture fixture)
+        {
+            return new VideoForensics.Data.Database.Repositories.UnitOfWork(
+                fixture.Factory,
+                new Microsoft.Extensions.DependencyInjection.ServiceCollection().AddLogging().BuildServiceProvider(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Data.Database.Repositories.UnitOfWork>.Instance);
+        }
+
         private async Task<DingIdRepairReport> RunAsync(bool apply, Func<CancellationToken, Task> backup)
         {
             var service = new DingIdRepairService();
-            return await service.RunAsync(_fixture.Factory, apply, backup, CancellationToken.None);
+            return await service.RunAsync(UnitOfWorkFor(_fixture), apply, backup, CancellationToken.None);
         }
 
         private async Task<Device> SeedDeviceAsync()

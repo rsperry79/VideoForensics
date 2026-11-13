@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -18,6 +20,14 @@ namespace VideoForensics.Data.Database.Tests.ReferenceData
         public async ValueTask InitializeAsync()
         {
             await _fixture.InitializeAsync();
+        }
+
+        private static VideoForensics.Data.Database.Repositories.UnitOfWork UnitOfWorkFor(SqliteInMemoryFixture fixture)
+        {
+            return new VideoForensics.Data.Database.Repositories.UnitOfWork(
+                fixture.Factory,
+                new Microsoft.Extensions.DependencyInjection.ServiceCollection().AddLogging().BuildServiceProvider(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Data.Database.Repositories.UnitOfWork>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -188,7 +198,7 @@ namespace VideoForensics.Data.Database.Tests.ReferenceData
         [Fact]
         public async Task EnsureDiscoveredModel_UnknownKind_InsertsDiscoveredRowWithoutName()
         {
-            await ReferenceDataSeeder.EnsureDiscoveredModelAsync(_fixture.Factory, "Ring", "doorbell_brand_new", "Doorbell", CancellationToken.None);
+            await ReferenceDataSeeder.EnsureDiscoveredModelAsync(UnitOfWorkFor(_fixture), "Ring", "doorbell_brand_new", "Doorbell", CancellationToken.None);
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
             DeviceModel row = await db.DeviceModels.SingleAsync(m => m.Kind == "doorbell_brand_new");
@@ -203,7 +213,7 @@ namespace VideoForensics.Data.Database.Tests.ReferenceData
         {
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, Set("Chime Pro (2nd Gen)", "chime"))], CancellationToken.None);
 
-            await ReferenceDataSeeder.EnsureDiscoveredModelAsync(_fixture.Factory, "Ring", "chime_pro_v2", "Doorbell", CancellationToken.None);
+            await ReferenceDataSeeder.EnsureDiscoveredModelAsync(UnitOfWorkFor(_fixture), "Ring", "chime_pro_v2", "Doorbell", CancellationToken.None);
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
             DeviceModel row = await db.DeviceModels.SingleAsync();

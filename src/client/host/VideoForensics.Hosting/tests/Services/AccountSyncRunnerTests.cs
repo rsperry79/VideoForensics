@@ -32,7 +32,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
             _mockAccounts.Object,
             _mockRuns.Object,
-            Mock.Of<ISnapshotSyncService>(),
             _mockLogger.Object,
             _activity);
         }

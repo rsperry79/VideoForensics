@@ -18,12 +18,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _eventRepository = new EventRepository(Fixture.Factory, CreateLogger<EventRepository>());
-            _deviceRepository = new DeviceRepository(Fixture.Factory, CreateLogger<DeviceRepository>());
-            _locationRepository = new LocationRepository(Fixture.Factory, CreateLogger<LocationRepository>());
-            _timelineRepository = new TimelineRepository(Fixture.Factory, CreateLogger<TimelineRepository>(), _eventRepository, _deviceRepository);
-            _integrityRepository = new IntegrityRepository(Fixture.Factory, CreateLogger<IntegrityRepository>());
-            _repository = new CorrelationRepository(Fixture.Factory, CreateLogger<CorrelationRepository>(), _timelineRepository, _integrityRepository);
+            _eventRepository = new EventRepository(new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<EventRepository>());
+            _deviceRepository = new DeviceRepository(new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<DeviceRepository>());
+            _locationRepository = new LocationRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<LocationRepository>());
+            _timelineRepository = new TimelineRepository(new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()),CreateLogger<TimelineRepository>(), _eventRepository, _deviceRepository);
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
+            _integrityRepository = new IntegrityRepository(unitOfWork, CreateLogger<IntegrityRepository>());
+            _repository = new CorrelationRepository(unitOfWork, CreateLogger<CorrelationRepository>(), _timelineRepository, _integrityRepository);
         }
 
         [Fact]

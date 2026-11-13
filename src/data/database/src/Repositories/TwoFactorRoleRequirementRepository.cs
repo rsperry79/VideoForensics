@@ -10,71 +10,79 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for TwoFactorRoleRequirement entities (per-role two-factor authentication requirement).</summary>
     public class TwoFactorRoleRequirementRepository : ITwoFactorRoleRequirementRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TwoFactorRoleRequirementRepository> _logger;
 
-        public TwoFactorRoleRequirementRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<TwoFactorRoleRequirementRepository> logger)
+        public TwoFactorRoleRequirementRepository(IUnitOfWork unitOfWork, ILogger<TwoFactorRoleRequirementRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         public async Task<IReadOnlyList<TwoFactorRoleRequirement>> GetAllAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<TwoFactorRoleRequirement> requirements = await db.TwoFactorRoleRequirements.ToListAsync(ct);
-
-            // If table is empty, synthesize defaults for all four roles with RequireTwoFactor=true (secure-by-default)
-            if (requirements.Count == 0)
+            return await _unitOfWork.ReadAsync<IReadOnlyList<TwoFactorRoleRequirement>>(async context =>
             {
-                OperatorRole[] allRoles = new[] { OperatorRole.ReadOnly, OperatorRole.Review, OperatorRole.Admin, OperatorRole.SuperAdmin };
-                requirements = allRoles.Select(role => new TwoFactorRoleRequirement
-                {
-                    Id = Guid.NewGuid(),
-                    Role = role,
-                    RequireTwoFactor = true,
-                    UpdatedAtUtc = DateTime.UtcNow,
-                    UpdatedByOperatorId = null
-                }).ToList();
-            }
+                List<TwoFactorRoleRequirement> requirements = await context.Db().TwoFactorRoleRequirements.ToListAsync(ct);
 
-            return requirements.AsReadOnly();
+                // If table is empty, synthesize defaults for all four roles with RequireTwoFactor=true (secure-by-default)
+                if (requirements.Count == 0)
+                {
+                    OperatorRole[] allRoles = new[] { OperatorRole.ReadOnly, OperatorRole.Review, OperatorRole.Admin, OperatorRole.SuperAdmin };
+                    requirements = allRoles.Select(role => new TwoFactorRoleRequirement
+                    {
+                        Id = Guid.NewGuid(),
+                        Role = role,
+                        RequireTwoFactor = true,
+                        UpdatedAtUtc = DateTime.UtcNow,
+                        UpdatedByOperatorId = null
+                    }).ToList();
+                }
+
+                return requirements.AsReadOnly();
+            }, ct);
         }
 
         public async Task<bool> GetRequirementForRoleAsync(OperatorRole role, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            TwoFactorRoleRequirement? requirement = await db.TwoFactorRoleRequirements
-                .FirstOrDefaultAsync(r => r.Role == role, ct);
+            return await _unitOfWork.ReadAsync<bool>(async context =>
+            {
+                TwoFactorRoleRequirement? requirement = await context.Db().TwoFactorRoleRequirements
+                    .FirstOrDefaultAsync(r => r.Role == role, ct);
 
-            // Fall back to true (secure-by-default) if no explicit row exists
-            return requirement?.RequireTwoFactor ?? true;
+                // Fall back to true (secure-by-default) if no explicit row exists
+                return requirement?.RequireTwoFactor ?? true;
+            }, ct);
         }
 
         public async Task UpsertAsync(TwoFactorRoleRequirement requirement, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-
-            TwoFactorRoleRequirement? existing = await db.TwoFactorRoleRequirements
-                .FirstOrDefaultAsync(r => r.Role == requirement.Role, ct);
-
-            if (existing == null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                // Insert new row
-                _ = db.TwoFactorRoleRequirements.Add(requirement);
-                _logger.LogDebug("Two-factor role requirement created: {Role}", requirement.Role);
-            }
-            else
-            {
-                // Update existing row
-                existing.RequireTwoFactor = requirement.RequireTwoFactor;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
-                existing.UpdatedByOperatorId = requirement.UpdatedByOperatorId;
+                VideoForensicsDbContext db = context.Db();
 
-                _logger.LogDebug("Two-factor role requirement updated: {Role}", requirement.Role);
-            }
+                TwoFactorRoleRequirement? existing = await db.TwoFactorRoleRequirements
+                    .FirstOrDefaultAsync(r => r.Role == requirement.Role, ct);
 
-            _ = await db.SaveChangesAsync(ct);
+                if (existing == null)
+                {
+                    // Insert new row
+                    _ = db.TwoFactorRoleRequirements.Add(requirement);
+                    _logger.LogDebug("Two-factor role requirement created: {Role}", requirement.Role);
+                }
+                else
+                {
+                    // Update existing row
+                    existing.RequireTwoFactor = requirement.RequireTwoFactor;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                    existing.UpdatedByOperatorId = requirement.UpdatedByOperatorId;
+
+                    _logger.LogDebug("Two-factor role requirement updated: {Role}", requirement.Role);
+                }
+
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
     }
 }

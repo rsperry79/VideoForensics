@@ -26,6 +26,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Utils.DbRepair.csproj" />
     <ProjectReference Include="../../../data/common/src/VideoForensics.Data.Common.csproj" />
     <ProjectReference Include="..\..\dbsetup\src\VideoForensics.Utils.DbSetup.csproj" />

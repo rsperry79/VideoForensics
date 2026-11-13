@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Utils.Testing;
 
 using Xunit;
 
@@ -12,7 +13,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new IntegrityRecordRepository(Fixture.Factory, CreateLogger<IntegrityRecordRepository>());
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
+            _repository = new IntegrityRecordRepository(unitOfWork, CreateLogger<IntegrityRecordRepository>());
         }
 
         #region AddAsync Tests

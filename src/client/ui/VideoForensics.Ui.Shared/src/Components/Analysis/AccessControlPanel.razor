@@ -73,14 +73,6 @@ else if (_report is not null)
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="@L["ColRecipient"]" MinWidth="100">
-                    <Template>
-                        @{
-                            var row = (AccessControlReport.ExportEvent)context;
-                            @(row.RecipientDescription ?? "-")
-                        }
-                    </Template>
-                </GridColumn>
                 <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ItemCount)" HeaderText="@L["ColItemCount"]" MinWidth="100" />
             </GridColumns>
         </SfGrid>

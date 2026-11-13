@@ -10,33 +10,36 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for devices visible to a provider account.</summary>
     public class AccountDeviceRepository : IAccountDeviceRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AccountDeviceRepository> _logger;
 
         /// <summary>Creates the repository.</summary>
-        public AccountDeviceRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<AccountDeviceRepository> logger)
+        public AccountDeviceRepository(IUnitOfWork unitOfWork, ILogger<AccountDeviceRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<Device>> ListByProviderAccountAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await _unitOfWork.ReadAsync<IReadOnlyList<Device>>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
 
-            // A device is visible when its location is linked to the account. Joined in the query so the account's
-            // devices come back in one round trip, not one per location.
-            IQueryable<Guid> linkedLocationIds = db.ProviderAccountLocations
-                .Where(pal => pal.ProviderAccountId == providerAccountId)
-                .Select(pal => pal.LocationId);
+                // A device is visible when its location is linked to the account. Joined in the query so the account's
+                // devices come back in one round trip, not one per location.
+                IQueryable<Guid> linkedLocationIds = db.ProviderAccountLocations
+                    .Where(pal => pal.ProviderAccountId == providerAccountId)
+                    .Select(pal => pal.LocationId);
 
-            List<Device> devices = await db.Devices
-                .Where(d => linkedLocationIds.Contains(d.LocationId))
-                .ToListAsync(ct);
+                List<Device> devices = await db.Devices
+                    .Where(d => linkedLocationIds.Contains(d.LocationId))
+                    .ToListAsync(ct);
 
-            _logger.LogDebug("Listed {DeviceCount} device(s) for provider account", devices.Count);
-            return devices;
+                _logger.LogDebug("Listed {DeviceCount} device(s) for provider account", devices.Count);
+                return devices;
+            }, ct);
         }
     }
 }

@@ -16,7 +16,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IEventPullService> _pull = new();
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IProviderSyncRunRepository> _runs = new();
-        private readonly Mock<ISnapshotSyncService> _snapshots = new();
         private readonly Guid _id = Guid.NewGuid();
         private readonly List<ProviderSyncRun> _recorded = [];
 
@@ -44,7 +43,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private AccountSyncRunner Sut()
         {
-            return new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
+            return new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
         }
 
         [Fact]
@@ -74,13 +73,5 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             Assert.Equal("Full", Assert.Single(_recorded).SyncType);
         }
 
-        [Fact]
-        public async Task RunAsync_Snapshots_SkipsEventPullAndRecordsSnapshots()
-        {
-            await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Snapshots, DateTime.UtcNow.AddDays(-7), null, false), CancellationToken.None);
-
-            _pull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
-            Assert.Equal("Snapshots", Assert.Single(_recorded).SyncType);
-        }
     }
 }

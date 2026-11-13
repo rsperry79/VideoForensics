@@ -148,13 +148,30 @@ else
                     <Template>
                         @{
                             var cred = (PendingCredentialDisplay)context;
-                            @if (_approvingCredentialId == cred.Id)
+                            <div class="d-flex flex-row flex-wrap align-items-center gap-2">
+                                @if (_approvingCredentialId == cred.Id)
+                                {
+                                    <SfButton Content="@L["ApprovingButton"]" Disabled="true" CssClass="e-primary" />
+                                }
+                                else
+                                {
+                                    <SfButton Content="@L["ApproveButton"]" OnClick="() => ApproveCredential(cred.Id)" CssClass="e-primary" />
+                                }
+                                @if (_revokeCredentialId == cred.Id)
+                                {
+                                    <SfButton Content="@L["CancelButton"]" OnClick="CancelCredentialRevoke" CssClass="e-flat" />
+                                }
+                                else
+                                {
+                                    <SfButton Content="@L["RevokeButton"]" OnClick="() => BeginCredentialRevoke(cred.Id)" CssClass="e-danger" />
+                                }
+                            </div>
+                            @if (_revokeCredentialId == cred.Id)
                             {
-                                <SfButton Content="@L["ApprovingButton"]" Disabled="true" CssClass="e-primary" />
-                            }
-                            else
-                            {
-                                <SfButton Content="@L["ApproveButton"]" OnClick="() => ApproveCredential(cred.Id)" CssClass="e-primary" />
+                                <div class="d-flex flex-row align-items-center gap-2 mt-2">
+                                    <SfTextBox @bind-Value="_credentialRevokeReason" Placeholder="@L["ReasonPlaceholder"].Value" Style="max-width: 260px;" />
+                                    <SfButton Content="@(_isRevokingCredential ? L["RevokingButton"] : L["ConfirmButton"])" OnClick="() => ConfirmCredentialRevoke(cred.Id)" CssClass="e-primary e-danger" Disabled="@(_isRevokingCredential || string.IsNullOrWhiteSpace(_credentialRevokeReason))" />
+                                </div>
                             }
                         }
                     </Template>
@@ -173,6 +190,11 @@ else
 @if (_credentialsActionError is not null)
 {
     <div class="alert alert-danger mt-4">@_credentialsActionError</div>
+}
+
+@if (_credentialsSuccessMessage is not null)
+{
+    <div class="alert alert-success mt-4">@_credentialsSuccessMessage</div>
 }
 
 @code {
@@ -195,6 +217,10 @@ else
     private string? _credentialsLoadError;
     private string? _credentialsActionError;
     private Guid? _approvingCredentialId;
+    private Guid? _revokeCredentialId;
+    private string _credentialRevokeReason = string.Empty;
+    private bool _isRevokingCredential;
+    private string? _credentialsSuccessMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -304,6 +330,7 @@ else
         }
 
         _credentialsActionError = null;
+        _credentialsSuccessMessage = null;
         _approvingCredentialId = credentialId;
         try
         {
@@ -327,6 +354,7 @@ else
                 return;
             }
 
+            _credentialsSuccessMessage = L["CredentialApproved"];
             await LoadPendingCredentialsAsync();
         }
         catch (Exception ex)
@@ -336,6 +364,65 @@ else
         finally
         {
             _approvingCredentialId = null;
+        }
+    }
+
+    private void BeginCredentialRevoke(Guid credentialId)
+    {
+        _revokeCredentialId = credentialId;
+        _credentialRevokeReason = string.Empty;
+        _credentialsActionError = null;
+    }
+
+    private void CancelCredentialRevoke()
+    {
+        _revokeCredentialId = null;
+        _credentialRevokeReason = string.Empty;
+    }
+
+    private async Task ConfirmCredentialRevoke(Guid credentialId)
+    {
+        if (string.IsNullOrWhiteSpace(_credentialRevokeReason))
+        {
+            return;
+        }
+
+        if (SessionState.SessionToken is null)
+        {
+            _credentialsActionError = L["SignInFirstError"];
+            return;
+        }
+
+        _credentialsActionError = null;
+        _credentialsSuccessMessage = null;
+        _isRevokingCredential = true;
+        try
+        {
+            // Revocation is high-risk (plan §5.7) - a fresh passkey assertion is required
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync($"api/devices-management/operator-credentials/{credentialId}/revoke",
+                new { Reason = _credentialRevokeReason });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _credentialsActionError = body ?? L["RevokeFailed", response.StatusCode];
+                return;
+            }
+
+            _credentialsSuccessMessage = L["CredentialRevoked"];
+            CancelCredentialRevoke();
+            await LoadPendingCredentialsAsync();
+        }
+        catch (Exception ex)
+        {
+            _credentialsActionError = L["RevokeFailed", ex.Message];
+        }
+        finally
+        {
+            _isRevokingCredential = false;
         }
     }
 

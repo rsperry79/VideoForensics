@@ -17,7 +17,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new SyncScheduleRepository(_fixture.Factory, NullLogger<SyncScheduleRepository>.Instance);
+            _repository = new SyncScheduleRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance),NullLogger<SyncScheduleRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -97,8 +97,6 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(row);
             Assert.Equal(ran, row.EventLastRunUtc);
             Assert.Equal(next, row.EventNextRunUtc);
-            Assert.Null(row.SnapshotLastRunUtc);
-            Assert.Null(row.SnapshotNextRunUtc);
             Assert.Equal(30, row.EventPollIntervalMinutes);
             Assert.Equal(45, row.SnapshotRssiIntervalSeconds);
             Assert.True(row.IsEnabled);
@@ -123,38 +121,9 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task RecordSnapshotRunAsync_ExistingRow_UpdatesOnlySnapshotRunFields()
-        {
-            var account = Guid.NewGuid();
-            await _repository.UpsertAsync(Build(account), CancellationToken.None);
-            var ran = new DateTime(2026, 5, 1, 11, 0, 0, DateTimeKind.Utc);
-            DateTime next = ran.AddMinutes(45);
-
-            await _repository.RecordSnapshotRunAsync(account, ran, next, CancellationToken.None);
-
-            SyncSchedule? row = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
-            Assert.NotNull(row);
-            Assert.Equal(ran, row.SnapshotLastRunUtc);
-            Assert.Equal(next, row.SnapshotNextRunUtc);
-            Assert.Null(row.EventLastRunUtc);
-            Assert.Null(row.EventNextRunUtc);
-            Assert.Equal(30, row.EventPollIntervalMinutes);
-            Assert.Equal(45, row.SnapshotRssiIntervalSeconds);
-            Assert.True(row.IsEnabled);
-        }
-
-        [Fact]
         public async Task RecordEventRunAsync_MissingRow_IsNoOp()
         {
             await _repository.RecordEventRunAsync(Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddMinutes(5), CancellationToken.None);
-
-            Assert.Empty(await _repository.ListEnabledAsync(CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task RecordSnapshotRunAsync_MissingRow_IsNoOp()
-        {
-            await _repository.RecordSnapshotRunAsync(Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddMinutes(5), CancellationToken.None);
 
             Assert.Empty(await _repository.ListEnabledAsync(CancellationToken.None));
         }

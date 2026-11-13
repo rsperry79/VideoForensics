@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace VideoForensics.Client.Hosting.Tests.Services
 {
     public class SyncActivityLogTests
@@ -53,6 +55,44 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             log.Append("second");
 
             Assert.Equal(new[] { "second" }, log.ReadSince(position, out _));
+        }
+
+        [Fact]
+        public void SyncActivityLog_AppendError_LogsAtErrorLevel()
+        {
+            var logger = new CapturingLogger<SyncActivityLog>();
+            var log = new SyncActivityLog(logger);
+
+            log.AppendError("Ring: sync failed: rate limited");
+
+            Assert.Equal(new[] { LogLevel.Error }, logger.Levels);
+            Assert.Equal(new[] { "Ring: sync failed: rate limited" }, log.Drain());
+        }
+
+        [Fact]
+        public void SyncActivityLog_Append_LogsAtInformationLevel()
+        {
+            var logger = new CapturingLogger<SyncActivityLog>();
+            var log = new SyncActivityLog(logger);
+
+            log.Append("Ring: sync finished");
+
+            Assert.Equal(new[] { LogLevel.Information }, logger.Levels);
+        }
+
+        /// <summary>Records the level of every log entry written through it.</summary>
+        private sealed class CapturingLogger<T> : ILogger<T>
+        {
+            public List<LogLevel> Levels { get; } = [];
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                Levels.Add(logLevel);
+            }
         }
     }
 }

@@ -8,76 +8,83 @@ namespace VideoForensics.Data.Database.Repositories
 {
     public class OperatorPreferencesRepository : IOperatorPreferencesRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _contextFactory;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public OperatorPreferencesRepository(IDbContextFactory<VideoForensicsDbContext> contextFactory)
+        public OperatorPreferencesRepository(IUnitOfWork unitOfWork)
         {
-            _contextFactory = contextFactory;
+            _unitOfWork = unitOfWork;
         }
 
-        public async Task<OperatorPreferences?> GetAsync(Guid operatorId, CancellationToken ct)
+        public Task<OperatorPreferences?> GetAsync(Guid operatorId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            return await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct), ct);
         }
 
         public async Task UpsertAsync(OperatorPreferences preferences, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == preferences.OperatorId, ct);
-
-            if (existing != null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                // If the row is locked and UiMode is being changed, throw
-                if (existing.UiModeLocked && existing.UiMode != preferences.UiMode)
+                VideoForensicsDbContext db = context.Db();
+                OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == preferences.OperatorId, ct);
+
+                if (existing != null)
                 {
-                    throw new InvalidOperationException("The display mode is locked by an administrator.");
+                    // If the row is locked and UiMode is being changed, throw
+                    if (existing.UiModeLocked && existing.UiMode != preferences.UiMode)
+                    {
+                        throw new InvalidOperationException("The display mode is locked by an administrator.");
+                    }
+
+                    existing.ThemeMode = preferences.ThemeMode;
+                    existing.CultureName = preferences.CultureName;
+                    existing.UiMode = preferences.UiMode;
+                    existing.TimeFormat = preferences.TimeFormat;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                    // NOTE: UiModeLocked is NEVER changed by UpsertAsync; it is always left as-is
+                    _ = db.OperatorPreferences.Update(existing);
+                }
+                else
+                {
+                    preferences.Id = preferences.Id == Guid.Empty ? Guid.NewGuid() : preferences.Id;
+                    preferences.UpdatedAtUtc = DateTime.UtcNow;
+                    // NOTE: New rows are always created with UiModeLocked = false, regardless of incoming value
+                    preferences.UiModeLocked = false;
+                    _ = await db.OperatorPreferences.AddAsync(preferences, ct);
                 }
 
-                existing.ThemeMode = preferences.ThemeMode;
-                existing.CultureName = preferences.CultureName;
-                existing.UiMode = preferences.UiMode;
-                existing.TimeFormat = preferences.TimeFormat;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
-                // NOTE: UiModeLocked is NEVER changed by UpsertAsync; it is always left as-is
-                _ = db.OperatorPreferences.Update(existing);
-            }
-            else
-            {
-                preferences.Id = preferences.Id == Guid.Empty ? Guid.NewGuid() : preferences.Id;
-                preferences.UpdatedAtUtc = DateTime.UtcNow;
-                // NOTE: New rows are always created with UiModeLocked = false, regardless of incoming value
-                preferences.UiModeLocked = false;
-                _ = await db.OperatorPreferences.AddAsync(preferences, ct);
-            }
-
-            _ = await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
         public async Task SetEncryptionWarningDismissedAsync(Guid operatorId, bool dismissed, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
 
-            if (existing != null)
-            {
-                existing.EncryptionWarningDismissed = dismissed;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
-            }
-            else
-            {
-                _ = await db.OperatorPreferences.AddAsync(new OperatorPreferences
+                if (existing != null)
                 {
-                    Id = Guid.NewGuid(),
-                    OperatorId = operatorId,
-                    ThemeMode = "System",
-                    UiMode = "Standard",
-                    EncryptionWarningDismissed = dismissed,
-                    UpdatedAtUtc = DateTime.UtcNow
-                }, ct);
-            }
+                    existing.EncryptionWarningDismissed = dismissed;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                }
+                else
+                {
+                    _ = await db.OperatorPreferences.AddAsync(new OperatorPreferences
+                    {
+                        Id = Guid.NewGuid(),
+                        OperatorId = operatorId,
+                        ThemeMode = "System",
+                        UiMode = "Standard",
+                        EncryptionWarningDismissed = dismissed,
+                        UpdatedAtUtc = DateTime.UtcNow
+                    }, ct);
+                }
 
-            _ = await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
         public async Task<OperatorPreferences> SetUiModeAsync(Guid operatorId, string uiMode, bool locked, CancellationToken ct)
@@ -88,33 +95,36 @@ namespace VideoForensics.Data.Database.Repositories
                 throw new ArgumentException($"UiMode must be either 'Standard' or 'Simple', but got '{uiMode}'.", nameof(uiMode));
             }
 
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
+            return await _unitOfWork.ExecuteAsync<OperatorPreferences>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                OperatorPreferences? existing = await db.OperatorPreferences.FirstOrDefaultAsync(p => p.OperatorId == operatorId, ct);
 
-            if (existing != null)
-            {
-                existing.UiMode = uiMode;
-                existing.UiModeLocked = locked;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
-                _ = db.OperatorPreferences.Update(existing);
-            }
-            else
-            {
-                existing = new OperatorPreferences
+                if (existing != null)
                 {
-                    Id = Guid.NewGuid(),
-                    OperatorId = operatorId,
-                    ThemeMode = "System",
-                    CultureName = null,
-                    UiMode = uiMode,
-                    UiModeLocked = locked,
-                    UpdatedAtUtc = DateTime.UtcNow
-                };
-                _ = await db.OperatorPreferences.AddAsync(existing, ct);
-            }
+                    existing.UiMode = uiMode;
+                    existing.UiModeLocked = locked;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                    _ = db.OperatorPreferences.Update(existing);
+                }
+                else
+                {
+                    existing = new OperatorPreferences
+                    {
+                        Id = Guid.NewGuid(),
+                        OperatorId = operatorId,
+                        ThemeMode = "System",
+                        CultureName = null,
+                        UiMode = uiMode,
+                        UiModeLocked = locked,
+                        UpdatedAtUtc = DateTime.UtcNow
+                    };
+                    _ = await db.OperatorPreferences.AddAsync(existing, ct);
+                }
 
-            _ = await db.SaveChangesAsync(ct);
-            return existing;
+                _ = await db.SaveChangesAsync(ct);
+                return existing;
+            }, ct);
         }
     }
 }

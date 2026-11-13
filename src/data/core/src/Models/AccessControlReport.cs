@@ -24,7 +24,6 @@ namespace VideoForensics.Data.Core.Models
             public DateTime ExportedAtUtc { get; set; }
             public string ExportedByUserName { get; set; } = string.Empty;
             public string? CaseReference { get; set; }
-            public string? RecipientDescription { get; set; }
             public int ItemCount { get; set; }
         }
     }

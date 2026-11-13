@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
@@ -31,7 +32,8 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
             _cases = BuildRepo(_fixture.Factory);
-            _alerts = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _alerts = new AlertRepository(unitOfWork, _loggerFactory.CreateLogger<AlertRepository>());
         }
 
         public async ValueTask DisposeAsync()
@@ -43,8 +45,8 @@ namespace VideoForensics.Data.Database.Tests
 
         private CaseRepository BuildRepo(IDbContextFactory<VideoForensicsDbContext> factory)
         {
-            return new(factory,
-                new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
+            return new(new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()),
+                new ActionLogRepository(new UnitOfWork(factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
         }
@@ -52,9 +54,9 @@ namespace VideoForensics.Data.Database.Tests
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
             Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
-            await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            await new LocationRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
-            await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
+            await new DeviceRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
@@ -293,8 +295,8 @@ namespace VideoForensics.Data.Database.Tests
 
             // Seed the device in the in-memory connection
             var plainFactory = new SimpleFactory(plain);
-            var locRepo = new LocationRepository(plainFactory, _loggerFactory.CreateLogger<LocationRepository>());
-            var devRepo = new DeviceRepository(plainFactory, _loggerFactory.CreateLogger<DeviceRepository>());
+            var locRepo = new LocationRepository(new UnitOfWork(plainFactory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<LocationRepository>());
+            var devRepo = new DeviceRepository(new UnitOfWork(plainFactory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<DeviceRepository>());
             Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
             await locRepo.AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
@@ -305,10 +307,27 @@ namespace VideoForensics.Data.Database.Tests
             incident.DeviceId = deviceId;
             await PersistIncidentAsync(plainFactory, incident);
 
-            var interceptor = new CollisionInterceptor(() => new VideoForensicsDbContext(plain), fakeTime.GetUtcNow().UtcDateTime);
-            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
-            CaseRepository racingRepo = new(new SimpleFactory(racing),
-                new ActionLogRepository(new SimpleFactory(racing), _loggerFactory.CreateLogger<ActionLogRepository>()),
+            // Commit the competing case before the call. The unit of work holds the write lock, so a competitor cannot
+            // write between the number check and the insert; the retry path is exercised by the check itself.
+            await using (VideoForensicsDbContext competitor = new(plain))
+            {
+                DateTime now = fakeTime.GetUtcNow().UtcDateTime;
+                _ = competitor.Cases.Add(new ForensicCase
+                {
+                    Id = Guid.NewGuid(),
+                    CaseNumber = "detected-2026-10-07-14-35-0",
+                    Title = "Competitor",
+                    Status = CaseStatus.Open,
+                    CreatedBy = "racer",
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now
+                });
+                _ = await competitor.SaveChangesAsync();
+            }
+
+            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            CaseRepository racingRepo = new(new UnitOfWork(new SimpleFactory(racing), new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()),
+                new ActionLogRepository(new UnitOfWork(new SimpleFactory(racing), new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 fakeTime);
 

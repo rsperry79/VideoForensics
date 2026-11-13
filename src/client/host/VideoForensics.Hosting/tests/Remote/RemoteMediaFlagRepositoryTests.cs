@@ -46,7 +46,7 @@ public class RemoteMediaFlagRepositoryTests
     {
         return new MediaFlagDto(
             id ?? FlagId, "BitrateCollapse", DeviceId, null, From, From.AddMinutes(5), From.AddMinutes(6),
-            "Warn", "Unreviewed", null, null, null, null, 0);
+            "Warn", "Unreviewed", null, null, null, null, 0, null, null);
     }
 
     private static MediaFlagFilter Filter()
@@ -92,6 +92,19 @@ public class RemoteMediaFlagRepositoryTests
 
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => repo.ListPageAsync(new MediaFlagFilter(), 0, 5, cts.Token));
         Assert.All(handler.Tokens, t => Assert.True(t.IsCancellationRequested));
+    }
+
+    [Fact]
+    public async Task ListPageAsync_MapsEventTypeAndDeviationSigma()
+    {
+        MediaFlagDto flagDto = SampleDto() with { EventType = "person", DeviationSigma = 2.25 };
+        (RemoteMediaFlagRepository repo, _) = Create(_ => Json(new MediaFlagPageDto([flagDto], 1)));
+
+        MediaFlagPage page = await repo.ListPageAsync(Filter(), 0, 10, CancellationToken.None);
+
+        MediaFlag flag = Assert.Single(page.Items);
+        Assert.Equal("person", flag.EventType);
+        Assert.Equal(2.25, flag.DeviationSigma);
     }
 
     [Fact]

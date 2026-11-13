@@ -168,7 +168,7 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime? SharedAtUtc { get; set; }
 
         /// <summary>
-        /// Local kill switch for server-side snapshot capture (SnapshotCaptureService). Not a Ring setting: Ring syncs update an
+        /// Local kill switch for server-side snapshot capture (SnapshotSyncBackgroundService). Not a Ring setting: Ring syncs update an
         /// existing row in place and leave it alone. A device moved to another location gets a new row, and EnsureDeviceAsync copies this flag onto it.
         /// </summary>
         public bool SnapshotCaptureEnabled { get; set; } = true;

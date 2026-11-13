@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.ReferenceData
 {
@@ -95,30 +96,33 @@ namespace VideoForensics.Data.Database.ReferenceData
         /// Records a provider kind the catalog does not list, so the database knows it exists. The row has no product name and
         /// is marked <see cref="DeviceModelSources.Discovered"/>. An existing row for the kind (catalog or discovered) is left alone.
         /// </summary>
-        public static async Task EnsureDiscoveredModelAsync(
-            IDbContextFactory<VideoForensicsDbContext> factory,
+        public static Task EnsureDiscoveredModelAsync(
+            IUnitOfWork unitOfWork,
             string provider,
             string kind,
             string family,
             CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-
-            if (await db.DeviceModels.AnyAsync(m => m.Kind == kind, ct))
+            return unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                return;
-            }
+                VideoForensicsDbContext db = context.Db();
+                if (await db.DeviceModels.AnyAsync(m => m.Kind == kind, ct))
+                {
+                    return null;
+                }
 
-            _ = db.DeviceModels.Add(new DeviceModel
-            {
-                Kind = kind,
-                Provider = provider,
-                Family = family,
-                ModelName = null,
-                Generation = null,
-                Source = DeviceModelSources.Discovered,
-            });
-            _ = await db.SaveChangesAsync(ct);
+                _ = db.DeviceModels.Add(new DeviceModel
+                {
+                    Kind = kind,
+                    Provider = provider,
+                    Family = family,
+                    ModelName = null,
+                    Generation = null,
+                    Source = DeviceModelSources.Discovered,
+                });
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
     }
 }

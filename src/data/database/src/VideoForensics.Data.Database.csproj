@@ -27,5 +27,7 @@
     </ItemGroup>
 
   <ItemGroup>
+    <!-- Why: the SQLite provider's batch writes need the EF context from UnitOfWorkContextExtensions.Db(). -->
+    <InternalsVisibleTo Include="VideoForensics.Data.Database.Sqlite" />
   </ItemGroup>
 </Project>

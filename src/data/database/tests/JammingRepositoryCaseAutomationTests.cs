@@ -36,10 +36,11 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
 
-            var actionLogRepo = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _caseRepo = new CaseRepository(_fixture.Factory, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
+            var actionLogRepo = new ActionLogRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _caseRepo = new CaseRepository(unitOfWork, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
-            _alertRepo = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
+            _alertRepo = new AlertRepository(unitOfWork, _loggerFactory.CreateLogger<AlertRepository>());
 
             // Initialize a plain reader instance with no case repository for reading back test results
             _jammingRepo = BuildJammingRepo();
@@ -54,15 +55,16 @@ namespace VideoForensics.Data.Database.Tests
 
         private JammingRepository BuildJammingRepo(ICaseRepository? caseRepository = null)
         {
-            return new(_fixture.Factory, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            return new(unitOfWork, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
         }
 
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
             Location loc = TestDataBuilder.BuildLocation(name: "Test Location");
-            await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            await new LocationRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Test Device");
-            await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
+            await new DeviceRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 

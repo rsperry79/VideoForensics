@@ -19,6 +19,7 @@
     <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Core.Helpers.csproj" />
   </ItemGroup>
   <ItemGroup>

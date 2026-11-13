@@ -17,6 +17,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<ILegalHoldRepository> _mockLegalHoldRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
+        private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<RetentionService>> _mockLogger;
         private readonly int _retentionDays = 90;
 
@@ -28,6 +29,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 _mockUnitOfWork.Object,
                 _mockActionLogger.Object,
                 _mockLogger.Object,
+                _mockActionLogRepository.Object,
                 _retentionDays);
         }
 
@@ -40,6 +42,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([]);
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
+            _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<RetentionService>>();
         }
 
@@ -80,11 +83,9 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([expiredItem, recentItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -151,11 +152,9 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([expiredItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
@@ -226,10 +225,8 @@ namespace VideoForensics.Data.Core.Tests.Services
                     .ReturnsAsync([expiredItem]);
 
                 var mockContext = new Mock<IUnitOfWorkContext>();
-                var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-                var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
-                _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-                _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+                var mockMediaItemRepoInContext = _mockMediaItemRepository;
+                var mockActionLogRepoInContext = _mockActionLogRepository;
                 _ = mockActionLogRepoInContext
                     .Setup(x => x.AppendAsync(
                         It.IsAny<string>(),
@@ -286,11 +283,9 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([alreadyPurgedItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
@@ -332,7 +327,6 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([recentItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            _ = mockContext.Setup(x => x.MediaItems).Returns(new Mock<IMediaItemRepository>().Object);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
@@ -372,11 +366,9 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([expiredItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
@@ -450,11 +442,9 @@ namespace VideoForensics.Data.Core.Tests.Services
                 ]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(

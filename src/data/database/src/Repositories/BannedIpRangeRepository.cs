@@ -10,45 +10,59 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for BannedIpRange entities (manual IP address range bans for login prevention).</summary>
     public class BannedIpRangeRepository : IBannedIpRangeRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<BannedIpRangeRepository> _logger;
 
-        public BannedIpRangeRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<BannedIpRangeRepository> logger)
+        public BannedIpRangeRepository(IUnitOfWork unitOfWork, ILogger<BannedIpRangeRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         public async Task<IReadOnlyList<BannedIpRange>> GetActiveAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<BannedIpRange> activeBans = await db.BannedIpRanges
-                .Where(b => b.ExpiresAtUtc == null || b.ExpiresAtUtc > DateTime.UtcNow)
-                .ToListAsync(ct);
+            return await _unitOfWork.ReadAsync<IReadOnlyList<BannedIpRange>>(async context =>
+            {
+                List<BannedIpRange> activeBans = await context.Db().BannedIpRanges
+                    .Where(b => b.ExpiresAtUtc == null || b.ExpiresAtUtc > DateTime.UtcNow)
+                    .ToListAsync(ct);
 
-            return activeBans.AsReadOnly();
+                return activeBans.AsReadOnly();
+            }, ct);
         }
 
         public async Task AddAsync(BannedIpRange range, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = db.BannedIpRanges.Add(range);
-            _ = await db.SaveChangesAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = db.BannedIpRanges.Add(range);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
             _logger.LogDebug("IP range banned (expires: {ExpiresAtUtc})", range.ExpiresAtUtc);
         }
 
         public async Task RemoveAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            BannedIpRange? ban = await db.BannedIpRanges.FirstOrDefaultAsync(b => b.Id == id, ct);
-            if (ban == null)
+            bool removed = await _unitOfWork.ExecuteAsync(async context =>
             {
-                return;
-            }
+                VideoForensicsDbContext db = context.Db();
+                BannedIpRange? ban = await db.BannedIpRanges.FirstOrDefaultAsync(b => b.Id == id, ct);
+                if (ban == null)
+                {
+                    return false;
+                }
 
-            _ = db.BannedIpRanges.Remove(ban);
-            _ = await db.SaveChangesAsync(ct);
-            _logger.LogDebug("IP range ban removed");
+                _ = db.BannedIpRanges.Remove(ban);
+                _ = await db.SaveChangesAsync(ct);
+                return true;
+            }, ct);
+
+            if (removed)
+            {
+                _logger.LogDebug("IP range ban removed");
+            }
         }
     }
 }

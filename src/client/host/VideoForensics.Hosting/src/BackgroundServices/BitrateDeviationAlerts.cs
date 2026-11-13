@@ -59,6 +59,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             // The baseline is the camera's all-time mean and std dev; only the look-back window is checked against it.
             var baseline = SignalStats.Compute(samples);
+
+            // The sigma stored on each flag comes from the server's all-time bit rate baseline (an SQL aggregate). It is in bps,
+            // so it is divided to kbps to match the worst reading, which is kbps like the samples.
+            AllTimeBitrateBaseline allTime = await _mediaItems.GetBitrateBaselineByDeviceAsync(device.Id, ct);
             int raised = 0;
             foreach (SignalDeviationWindow window in SignalDeviation
                 .Windows(samples, now - LookBack, now, baseline)
@@ -104,7 +108,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     WindowEndUtc = hourEndUtc,
                     RaisedAtUtc = now,
                     Severity = MediaFlagSeverity.Alert,
-                    NoticeId = noticeId
+                    NoticeId = noticeId,
+                    DeviationSigma = SignalDeviation.DeviationSigma(window.WorstRssiDbm, allTime.MeanBps / 1000.0, allTime.StdDevBps / 1000.0)
                 }, ct);
 
                 await _dispatcher.DispatchAsync(new NotificationEvent(

@@ -214,6 +214,24 @@ public class RssiReview_Tests : BunitContext
     }
 
     [Fact]
+    public void RssiReview_FlagWithEventType_PassesEventTypeToTimeline()
+    {
+        MediaFlag flag = Flag(MediaFlagType.RssiDeviation);
+        flag.EventType = "person";
+        MediaItem covering = Clip(flag.DeviceId, FlagStartUtc.AddMinutes(-30), 3600, purged: false);
+        IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [covering.Id] = "/clips/covering.mp4?ticket=test" };
+        _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
+        _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { covering });
+        _ = _items.Setup(r => r.GetAsync(covering.Id, It.IsAny<CancellationToken>())).ReturnsAsync(covering);
+        _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
+
+        IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
+
+        cut.WaitForAssertion(() => Assert.Equal("person", cut.FindComponent<HistogramTimeline>().Instance.EventType));
+    }
+
+    [Fact]
     public void RssiReview_NextClick_NavigatesToNeighbourReview()
     {
         MediaFlag flag = Flag(MediaFlagType.RssiDeviation);

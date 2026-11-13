@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Utils.Testing;
@@ -15,9 +17,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _fixture = fixture;
         }
 
+        private AppSettingRepository CreateRepository()
+        {
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var serviceProvider = new TestServiceProvider(_fixture, loggerFactory);
+            var unitOfWork = new UnitOfWork(_fixture.Factory, serviceProvider, loggerFactory.CreateLogger<UnitOfWork>());
+            return new AppSettingRepository(unitOfWork);
+        }
+
         private async Task ClearSettingsAsync()
         {
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
             await repository.ClearAllAsync(CancellationToken.None);
         }
 
@@ -25,7 +35,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task SetAsync_CreatesNewSetting()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("TestKey", "TestValue", CancellationToken.None);
 
@@ -37,7 +47,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task SetAsync_UpdatesExistingSetting()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
             await repository.SetAsync("TestKey", "Value2", CancellationToken.None);
@@ -50,7 +60,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task GetAsync_ReturnsNullForMissingSetting()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             string? value = await repository.GetAsync("NonExistent", CancellationToken.None);
             Assert.Null(value);
@@ -60,7 +70,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ListAsync_ReturnsAllSettings()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("Key1", "Value1", CancellationToken.None);
             await repository.SetAsync("Key2", "Value2", CancellationToken.None);
@@ -77,7 +87,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task DeleteAsync_RemovesSetting()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("TestKey", "TestValue", CancellationToken.None);
             await repository.DeleteAsync("TestKey", CancellationToken.None);
@@ -90,7 +100,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task DeleteAsync_IgnoresMissingSettings()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.DeleteAsync("NonExistent", CancellationToken.None);
             // Should not throw
@@ -100,7 +110,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ClearAllAsync_RemovesAllSettings()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("Key1", "Value1", CancellationToken.None);
             await repository.SetAsync("Key2", "Value2", CancellationToken.None);
@@ -114,7 +124,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task UpdatedAtUtc_IsSetOnCreate()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
             DateTime beforeTime = DateTime.UtcNow;
 
             await repository.SetAsync("TestKey", "TestValue", CancellationToken.None);
@@ -129,7 +139,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task UpdatedAtUtc_IsUpdatedOnModify()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
             IReadOnlyList<AppSetting> settings1 = await repository.ListAsync(CancellationToken.None);
@@ -148,7 +158,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task SetAsync_SameValue_DoesNotBumpUpdatedAtUtc()
         {
             await ClearSettingsAsync();
-            var repository = new AppSettingRepository(_fixture.Factory);
+            var repository = CreateRepository();
 
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
             IReadOnlyList<AppSetting> settings1 = await repository.ListAsync(CancellationToken.None);

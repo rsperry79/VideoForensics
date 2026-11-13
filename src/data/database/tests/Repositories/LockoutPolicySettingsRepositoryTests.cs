@@ -12,7 +12,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new LockoutPolicySettingsRepository(Fixture.Factory, CreateLogger<LockoutPolicySettingsRepository>());
+            _repository = new LockoutPolicySettingsRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<LockoutPolicySettingsRepository>());
         }
 
         [Fact]

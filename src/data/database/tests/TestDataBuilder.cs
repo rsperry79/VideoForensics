@@ -188,7 +188,6 @@ namespace VideoForensics.Data.Database.Tests
                 ExportedAtUtc = DateTime.UtcNow,
                 ExportedByUserName = exportedByUserName ?? "TestUser",
                 CaseReference = "CASE-2026-001",
-                RecipientDescription = "Law Enforcement",
                 ArchiveFileName = $"export_{Guid.NewGuid():N}.zip",
                 ArchiveSha256Hash = $"{Guid.NewGuid():N}{Guid.NewGuid():N}",
                 WasEncrypted = false,

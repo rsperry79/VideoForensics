@@ -15,7 +15,7 @@ html[data-theme="dark"] body {
     --vf-input-text: #ffffff;
 }
 
-/* Outline buttons (Play, Speed, Previous/Next flag) rendered #868e96 on #1e1e1e in dark mode, about
+/* Outline buttons (Play, Speed, Previous/Next) rendered #868e96 on #1e1e1e in dark mode, about
    5:1 contrast and hard to read. Lift their text to the dark body color, about 12:1. */
 html[data-theme="dark"] .e-btn.e-outline,
 html[data-theme="dark"] .e-btn.e-flat,

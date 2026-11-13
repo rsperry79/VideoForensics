@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [InlineData("floodlight_cam")]
         public void CameraTypes_HaveSnapshots(string type)
         {
-            Assert.True(SnapshotCaptureService.HasCamera(type));
+            Assert.True(SnapshotSyncBackgroundService.HasCamera(type));
         }
 
         [Theory]
@@ -25,7 +25,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [InlineData("")]
         public void NonCameraTypes_AreSkippedForSnapshots(string type)
         {
-            Assert.False(SnapshotCaptureService.HasCamera(type));
+            Assert.False(SnapshotSyncBackgroundService.HasCamera(type));
         }
     }
 }

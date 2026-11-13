@@ -75,16 +75,20 @@ namespace VideoForensics.Data.Database.Repositories
                 return existing;
             }
 
+            // A null sigma does not clear a stored one: bit rate collapse flags never carry a sigma, and the backfill fills
+            // existing rows, so a repeat raise without one must keep what is there.
             bool changed = existing.Severity != raised.Severity
                 || existing.WindowStartUtc != raised.WindowStartUtc
                 || existing.WindowEndUtc != raised.WindowEndUtc
-                || (raised.NoticeId is not null && existing.NoticeId != raised.NoticeId);
+                || (raised.NoticeId is not null && existing.NoticeId != raised.NoticeId)
+                || (raised.DeviationSigma is not null && existing.DeviationSigma != raised.DeviationSigma);
             if (changed)
             {
                 existing.Severity = raised.Severity;
                 existing.WindowStartUtc = raised.WindowStartUtc;
                 existing.WindowEndUtc = raised.WindowEndUtc;
                 existing.NoticeId = raised.NoticeId ?? existing.NoticeId;
+                existing.DeviationSigma = raised.DeviationSigma ?? existing.DeviationSigma;
                 existing.RowVersion++;
             }
 
@@ -134,6 +138,49 @@ namespace VideoForensics.Data.Database.Repositories
             return query;
         }
 
+        /// <summary>A flag with both candidate event types, looked up in the same SQL statement as the flag.</summary>
+        internal sealed record FlagWithEventType(MediaFlag Flag, string? ClipEventType, string? OverlapEventType);
+
+        /// <summary>Half-width of the window in which a clip counts as covering a clip-less RSSI flag. Same as the RSSI review page's ClipSearchPad (one hour).</summary>
+        private const int ClipSearchPadHours = 1;
+
+        /// <summary>
+        /// Adds the two event-type candidates to each flag as correlated subqueries, so the paging, filtering and sorting stay
+        /// in SQL. The clip candidate is the flag's own clip's download event. The overlap candidate is the earliest clip on the
+        /// same camera recorded within the search pad of the flag window that has a download event. <see cref="ToFlag"/> then
+        /// picks one, so a clip-less RSSI flag never reads its own (missing) clip.
+        /// </summary>
+        public static IQueryable<FlagWithEventType> WithEventType(VideoForensicsDbContext db, IQueryable<MediaFlag> flags)
+        {
+            return flags.Select(f => new FlagWithEventType(
+                f,
+                db.MediaItems
+                    .Where(m => m.Id == f.MediaItemId)
+                    .Join(db.DownloadEvents, m => m.DownloadEventId, d => d.Id, (m, d) => d.EventType)
+                    .FirstOrDefault(),
+                db.MediaItems
+                    .Where(m => m.DeviceId == f.DeviceId
+                        && m.RecordedAtUtc >= f.WindowStartUtc.AddHours(-ClipSearchPadHours)
+                        && m.RecordedAtUtc <= f.WindowEndUtc.AddHours(ClipSearchPadHours))
+                    .Join(db.DownloadEvents, m => m.DownloadEventId, d => d.Id, (m, d) => new { m.RecordedAtUtc, d.EventType })
+                    .OrderBy(x => x.RecordedAtUtc)
+                    .Select(x => x.EventType)
+                    .FirstOrDefault()));
+        }
+
+        /// <summary>Sets the event type on the flag from the candidates: the clip's type for a flag with a clip, else the overlap's.</summary>
+        public static MediaFlag ToFlag(FlagWithEventType row)
+        {
+            row.Flag.EventType = row.Flag.MediaItemId is not null ? row.ClipEventType : row.OverlapEventType;
+            return row.Flag;
+        }
+
+        public static async Task<MediaFlag?> FindWithEventTypeAsync(VideoForensicsDbContext db, IQueryable<MediaFlag> query, CancellationToken ct)
+        {
+            FlagWithEventType? row = await WithEventType(db, query).FirstOrDefaultAsync(ct);
+            return row is null ? null : ToFlag(row);
+        }
+
         public static async Task<MediaFlagPage> ListPageAsync(VideoForensicsDbContext db, MediaFlagFilter filter, int skip, int take, CancellationToken ct)
         {
             IQueryable<MediaFlag> query = ApplyFilter(db.MediaFlags.AsNoTracking(), filter);
@@ -143,11 +190,11 @@ namespace VideoForensics.Data.Database.Repositories
                 return new MediaFlagPage([], total);
             }
 
-            List<MediaFlag> items = await query
+            List<FlagWithEventType> rows = await WithEventType(db, query
                 .OrderByDescending(f => f.RaisedAtUtc).ThenByDescending(f => f.Id)
-                .Skip(Math.Max(skip, 0)).Take(take)
+                .Skip(Math.Max(skip, 0)).Take(take))
                 .ToListAsync(ct);
-            return new MediaFlagPage(items, total);
+            return new MediaFlagPage(rows.Select(ToFlag).ToList(), total);
         }
 
         public static Task<int> CountAsync(VideoForensicsDbContext db, MediaFlagFilter filter, CancellationToken ct)
@@ -167,15 +214,14 @@ namespace VideoForensics.Data.Database.Repositories
             DateTime at = anchor.RaisedAtUtc;
             Guid id = anchor.Id;
             IQueryable<MediaFlag> query = ApplyFilter(db.MediaFlags.AsNoTracking(), filter);
-            return direction == MediaFlagNeighbour.Next
-                ? await query
+            IQueryable<MediaFlag> neighbour = direction == MediaFlagNeighbour.Next
+                ? query
                     .Where(f => f.RaisedAtUtc < at || (f.RaisedAtUtc == at && f.Id.CompareTo(id) < 0))
                     .OrderByDescending(f => f.RaisedAtUtc).ThenByDescending(f => f.Id)
-                    .FirstOrDefaultAsync(ct)
-                : await query
-                .Where(f => f.RaisedAtUtc > at || (f.RaisedAtUtc == at && f.Id.CompareTo(id) > 0))
-                .OrderBy(f => f.RaisedAtUtc).ThenBy(f => f.Id)
-                .FirstOrDefaultAsync(ct);
+                : query
+                    .Where(f => f.RaisedAtUtc > at || (f.RaisedAtUtc == at && f.Id.CompareTo(id) > 0))
+                    .OrderBy(f => f.RaisedAtUtc).ThenBy(f => f.Id);
+            return await FindWithEventTypeAsync(db, neighbour.Take(1), ct);
         }
 
         /// <summary>

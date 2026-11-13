@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.Services;
 
 namespace VideoForensics.Client.Hosting.Local
 {

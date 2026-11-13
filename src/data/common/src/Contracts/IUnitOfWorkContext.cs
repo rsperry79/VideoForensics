@@ -14,50 +14,14 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets the location repository.</summary>
         ILocationRepository Locations { get; }
 
-        /// <summary>Gets the device repository.</summary>
-        IDeviceRepository Devices { get; }
-
-        /// <summary>Gets the doorbot-to-ding link repository.</summary>
-        IDingIdLinkRepository DingIdLinks { get; }
-
         /// <summary>Gets the media item repository.</summary>
         IMediaItemRepository MediaItems { get; }
 
         /// <summary>Gets the download event repository.</summary>
         IDownloadEventRepository DownloadEvents { get; }
 
-        /// <summary>Gets the credential repository.</summary>
-        ICredentialRepository Credentials { get; }
-
-        /// <summary>Gets the action log repository.</summary>
-        IActionLogRepository ActionLog { get; }
-
         /// <summary>Gets the event repository.</summary>
         IEventRepository Events { get; }
-
-        /// <summary>Gets the device config repository.</summary>
-        IDeviceConfigRepository DeviceConfig { get; }
-
-        /// <summary>Gets the device setting change history repository.</summary>
-        IDeviceSettingChangeRepository DeviceSettingChanges { get; }
-
-        /// <summary>Gets the provider reconciliation repository.</summary>
-        IProviderReconciliationRepository ProviderReconciliation { get; }
-
-        /// <summary>Gets the export record repository.</summary>
-        IExportRecordRepository ExportRecords { get; }
-
-        /// <summary>Gets the access audit log repository (compliance: evidence access tracking).</summary>
-        IAccessAuditLogRepository AccessAuditLogs { get; }
-
-        /// <summary>Gets the export audit record repository (compliance: export operation tracking).</summary>
-        IExportAuditRecordRepository ExportAuditRecords { get; }
-
-        /// <summary>Exposes DbSets for detection-related entities to enable direct persistence in transactions.</summary>
-        IDetectionEntityProvider DetectionEntities { get; }
-
-        /// <summary>Gets the media flag repository, bound to the unit of work's transaction. Writes commit with the unit.</summary>
-        IMediaFlagRepository MediaFlags { get; }
 
         /// <summary>Flushes pending changes to the database within the shared transaction. The transaction still commits or rolls back as a whole.</summary>
         Task SaveChangesAsync(CancellationToken ct);

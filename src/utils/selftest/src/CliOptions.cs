@@ -1,3 +1,5 @@
+using System.CommandLine;
+
 namespace VideoForensics.Utils.SelfTest
 {
     /// <summary>
@@ -150,466 +152,261 @@ namespace VideoForensics.Utils.SelfTest
             return false;
         }
 
+        /// <summary>
+        /// Parses the selftest command line with System.CommandLine. Each option's custom parser applies its value to the
+        /// returned options and reports the same error text the hand-written parser used, so Program's exit-code rules and
+        /// the characterization tests still hold. A bare word that is not an option is ignored, as before.
+        /// </summary>
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
             var options = new CliOptions();
-            int i = 0;
+            var words = new Argument<string[]>("words") { Arity = ArgumentArity.ZeroOrMore, Hidden = true };
+            RootCommand root = BuildRoot(options, words);
+            ParseResult result = root.Parse(args);
 
-            while (i < args.Length)
+            // A dashed word that matched no option is unrecognized. Other bare words are ignored, as they always were.
+            foreach (string word in result.GetValue(words) ?? [])
             {
-                string arg = args[i];
-
-                switch (arg)
+                if (word.StartsWith('-'))
                 {
-                    case "-h" or "--help":
-                        options.ShowHelp = true;
-                        break;
-
-                    case "--list" or "--list-endpoints":
-                        options.ListEndpoints = true;
-                        break;
-
-                    case "--list-endpoints-json":
-                        options.ListEndpoints = true;
-                        options.ListEndpointsJson = true;
-                        break;
-
-                    case "--auth":
-                        options.InteractiveAuth = true;
-                        break;
-
-                    case "--all":
-                        options.Endpoints.Add("all");
-                        break;
-
-                    case "--endpoints":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --endpoints");
-                        }
-
-                        string endpoints = args[++i];
-                        options.Endpoints.AddRange(endpoints.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                        break;
-
-                    case "--output-dir":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --output-dir");
-                        }
-
-                        options.OutputDir = args[++i];
-                        break;
-
-                    case "--location-id":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --location-id");
-                        }
-
-                        if (!Guid.TryParse(args[++i], out Guid locGuid))
-                        {
-                            return (null, $"--location-id value '{args[i]}' is not a valid GUID");
-                        }
-
-                        options.LocationId = locGuid;
-                        break;
-
-                    case "--doorbot-id":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --doorbot-id");
-                        }
-
-                        if (!long.TryParse(args[++i], out long dbId))
-                        {
-                            return (null, $"--doorbot-id value '{args[i]}' is not a valid integer");
-                        }
-
-                        options.DoorbotId = dbId;
-                        break;
-
-                    case "--chime-id":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --chime-id");
-                        }
-
-                        if (!long.TryParse(args[++i], out long chId))
-                        {
-                            return (null, $"--chime-id value '{args[i]}' is not a valid integer");
-                        }
-
-                        options.ChimeId = chId;
-                        break;
-
-                    case "--history-limit":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --history-limit");
-                        }
-
-                        if (!int.TryParse(args[++i], out int hl) || hl <= 0)
-                        {
-                            return (null, $"--history-limit value '{args[i]}' must be a positive integer");
-                        }
-
-                        options.HistoryLimit = hl;
-                        break;
-
-                    case "--destructive":
-                        options.Destructive = true;
-                        break;
-
-                    case "--no-physical":
-                        options.NoPhysical = true;
-                        break;
-
-                    case "--siren-duration-seconds":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --siren-duration-seconds");
-                        }
-
-                        if (!int.TryParse(args[++i], out int sd) || sd <= 0)
-                        {
-                            return (null, $"--siren-duration-seconds value '{args[i]}' must be a positive integer");
-                        }
-
-                        options.SirenDurationSeconds = sd;
-                        break;
-
-                    case "--volume-level":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --volume-level");
-                        }
-
-                        if (!int.TryParse(args[++i], out int vol) || vol < 0)
-                        {
-                            return (null, $"--volume-level value '{args[i]}' must be a non-negative integer");
-                        }
-
-                        options.VolumeLevel = vol;
-                        break;
-
-                    case "--chime-type-value":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --chime-type-value");
-                        }
-
-                        if (!int.TryParse(args[++i], out int ct) || ct is < 0 or > 2)
-                        {
-                            return (null, $"--chime-type-value value '{args[i]}' must be 0, 1 or 2");
-                        }
-
-                        options.ChimeTypeValue = ct;
-                        break;
-
-                    case "--dnd-seconds":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --dnd-seconds");
-                        }
-
-                        if (!int.TryParse(args[++i], out int dnd) || dnd <= 0)
-                        {
-                            return (null, $"--dnd-seconds value '{args[i]}' must be a positive integer");
-                        }
-
-                        options.DndSeconds = dnd;
-                        break;
-
-                    case "--location-mode-value":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --location-mode-value");
-                        }
-
-                        string locationMode = args[++i];
-                        if (locationMode is not ("home" or "away" or "disarmed"))
-                        {
-                            return (null, $"--location-mode-value value '{locationMode}' must be one of: home, away, disarmed");
-                        }
-
-                        options.LocationModeValue = locationMode;
-                        break;
-
-                    case "--ding-id":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --ding-id");
-                        }
-
-                        options.DingId = args[++i];
-                        break;
-
-                    case "--asset-uuid":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --asset-uuid");
-                        }
-
-                        options.AssetUuid = args[++i];
-                        break;
-
-                    case "--push-token":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --push-token");
-                        }
-
-                        options.PushToken = args[++i];
-                        break;
-
-                    case "--username":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --username");
-                        }
-
-                        options.UserName = args[++i];
-                        break;
-
-                    case "--password":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --password");
-                        }
-
-                        options.Password = args[++i];
-                        break;
-
-                    case "--refresh-token":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --refresh-token");
-                        }
-
-                        options.RefreshToken = args[++i];
-                        break;
-
-                    case "--quiet":
-                        options.Quiet = true;
-                        break;
-
-                    case "--verify-db":
-                        options.VerifyDb = true;
-                        break;
-
-                    case "--check-dir":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --check-dir");
-                        }
-
-                        options.CheckDir = args[++i];
-                        break;
-
-                    case "--list-unknown":
-                        options.ListUnknown = true;
-                        break;
-
-                    case "--strip-raw-payload":
-                        options.StripRawPayload = true;
-                        break;
-
-                    case "--dump-file":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --dump-file");
-                        }
-
-                        options.DumpFile = args[++i];
-                        break;
-
-                    case "--yes":
-                        options.Yes = true;
-                        break;
-
-                    case "--db-path":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --db-path");
-                        }
-
-                        options.DbPath = args[++i];
-                        break;
-
-                    case "--clients-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --clients-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? clientsUrl))
-                        {
-                            return (null, $"--clients-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.ClientsApiBaseUrl = clientsUrl;
-                        break;
-
-                    case "--app-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --app-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? appUrl))
-                        {
-                            return (null, $"--app-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.AppApiBaseUrl = appUrl;
-                        break;
-
-                    case "--mode-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --mode-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? modeUrl))
-                        {
-                            return (null, $"--mode-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.ModeApiBaseUrl = modeUrl;
-                        break;
-
-                    case "--monitoring-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --monitoring-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? monitoringUrl))
-                        {
-                            return (null, $"--monitoring-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.MonitoringApiBaseUrl = monitoringUrl;
-                        break;
-
-                    case "--devices-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --devices-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? devicesUrl))
-                        {
-                            return (null, $"--devices-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.DevicesApiBaseUrl = devicesUrl;
-                        break;
-
-                    case "--commands-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --commands-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? commandsUrl))
-                        {
-                            return (null, $"--commands-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.CommandsApiBaseUrl = commandsUrl;
-                        break;
-
-                    case "--groups-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --groups-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? groupsUrl))
-                        {
-                            return (null, $"--groups-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.GroupsApiBaseUrl = groupsUrl;
-                        break;
-
-                    case "--evm-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --evm-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? evmUrl))
-                        {
-                            return (null, $"--evm-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.EvmApiBaseUrl = evmUrl;
-                        break;
-
-                    case "--integrations-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --integrations-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? integrationsUrl))
-                        {
-                            return (null, $"--integrations-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.IntegrationsApiBaseUrl = integrationsUrl;
-                        break;
-
-                    case "--recordings-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --recordings-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? recordingsUrl))
-                        {
-                            return (null, $"--recordings-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.RecordingsApiBaseUrl = recordingsUrl;
-                        break;
-
-                    case "--app-snaps-api-base-url":
-                        if (i + 1 >= args.Length)
-                        {
-                            return (null, "Missing value for --app-snaps-api-base-url");
-                        }
-
-                        if (!TryParseHttpUrl(args[++i], out Uri? appSnapsUrl))
-                        {
-                            return (null, $"--app-snaps-api-base-url value '{args[i]}' is not a valid absolute URL");
-                        }
-
-                        options.AppSnapsApiBaseUrl = appSnapsUrl;
-                        break;
-
-                    default:
-                        if (arg.StartsWith("--") || arg.StartsWith("-"))
-                        {
-                            return (null, $"Unrecognized argument: {arg}");
-                        }
-
-                        break;
+                    return (null, $"Unrecognized argument: {word}");
                 }
-
-                i++;
             }
 
-            // Default to "all" if no endpoints specified
+            // -h and --help are the library's own help option; a help token on the command line is a help request.
+            if (result.Tokens.Any(t => t.Value is "-h" or "--help"))
+            {
+                options.ShowHelp = true;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                return (null, TranslateError(result.Errors[0].Message));
+            }
+
             if (options.Endpoints.Count == 0)
             {
                 options.Endpoints.Add("all");
             }
 
             return (options, null);
+        }
+
+        /// <summary>Turns a System.CommandLine missing-argument message into the selftest's own wording.</summary>
+        private static string TranslateError(string message)
+        {
+            const string MissingPrefix = "Required argument missing for option: '";
+            if (message.StartsWith(MissingPrefix, StringComparison.Ordinal))
+            {
+                int start = MissingPrefix.Length;
+                int end = message.IndexOf('\'', start);
+                if (end > start)
+                {
+                    return $"Missing value for {message[start..end]}";
+                }
+            }
+
+            // A value option given twice. The library reports it as "Option '--x' expects a single argument ...".
+            const string RepeatPrefix = "Option '";
+            const string RepeatSuffix = "' expects a single argument";
+            if (message.StartsWith(RepeatPrefix, StringComparison.Ordinal) && message.Contains(RepeatSuffix, StringComparison.Ordinal))
+            {
+                int start = RepeatPrefix.Length;
+                int end = message.IndexOf('\'', start);
+                if (end > start)
+                {
+                    return $"{message[start..end]} may be given only once";
+                }
+            }
+
+            return message;
+        }
+
+        private static RootCommand BuildRoot(CliOptions model, Argument<string[]> words)
+        {
+            var root = new RootCommand("Ring API SelfTester - API validation and smoke testing");
+            root.Arguments.Add(words);
+
+            AddFlag(root, model, ["--list", "--list-endpoints"], o => o.ListEndpoints = true);
+            AddFlag(root, model, ["--list-endpoints-json"], o => { o.ListEndpoints = true; o.ListEndpointsJson = true; });
+            AddFlag(root, model, ["--auth"], o => o.InteractiveAuth = true);
+            AddFlag(root, model, ["--all"], o => o.Endpoints.Add("all"));
+            AddFlag(root, model, ["--destructive"], o => o.Destructive = true);
+            AddFlag(root, model, ["--no-physical"], o => o.NoPhysical = true);
+            AddFlag(root, model, ["--quiet"], o => o.Quiet = true);
+            AddFlag(root, model, ["--verify-db"], o => o.VerifyDb = true);
+            AddFlag(root, model, ["--list-unknown"], o => o.ListUnknown = true);
+            AddFlag(root, model, ["--strip-raw-payload"], o => o.StripRawPayload = true);
+            AddFlag(root, model, ["--yes"], o => o.Yes = true);
+
+            AddValue(root, model, "--endpoints", (o, v) =>
+            {
+                o.Endpoints.AddRange(v.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                return null;
+            });
+            AddValue(root, model, "--output-dir", (o, v) => { o.OutputDir = v; return null; });
+            AddValue(root, model, "--location-id", (o, v) =>
+            {
+                if (!Guid.TryParse(v, out Guid id))
+                {
+                    return $"--location-id value '{v}' is not a valid GUID";
+                }
+
+                o.LocationId = id;
+                return null;
+            });
+            AddValue(root, model, "--doorbot-id", (o, v) =>
+            {
+                if (!long.TryParse(v, out long id))
+                {
+                    return $"--doorbot-id value '{v}' is not a valid integer";
+                }
+
+                o.DoorbotId = id;
+                return null;
+            });
+            AddValue(root, model, "--chime-id", (o, v) =>
+            {
+                if (!long.TryParse(v, out long id))
+                {
+                    return $"--chime-id value '{v}' is not a valid integer";
+                }
+
+                o.ChimeId = id;
+                return null;
+            });
+            AddValue(root, model, "--history-limit", (o, v) =>
+            {
+                if (!int.TryParse(v, out int n) || n <= 0)
+                {
+                    return $"--history-limit value '{v}' must be a positive integer";
+                }
+
+                o.HistoryLimit = n;
+                return null;
+            });
+            AddValue(root, model, "--siren-duration-seconds", (o, v) =>
+            {
+                if (!int.TryParse(v, out int n) || n <= 0)
+                {
+                    return $"--siren-duration-seconds value '{v}' must be a positive integer";
+                }
+
+                o.SirenDurationSeconds = n;
+                return null;
+            });
+            AddValue(root, model, "--volume-level", (o, v) =>
+            {
+                if (!int.TryParse(v, out int n) || n < 0)
+                {
+                    return $"--volume-level value '{v}' must be a non-negative integer";
+                }
+
+                o.VolumeLevel = n;
+                return null;
+            });
+            AddValue(root, model, "--chime-type-value", (o, v) =>
+            {
+                if (!int.TryParse(v, out int n) || n is < 0 or > 2)
+                {
+                    return $"--chime-type-value value '{v}' must be 0, 1 or 2";
+                }
+
+                o.ChimeTypeValue = n;
+                return null;
+            });
+            AddValue(root, model, "--dnd-seconds", (o, v) =>
+            {
+                if (!int.TryParse(v, out int n) || n <= 0)
+                {
+                    return $"--dnd-seconds value '{v}' must be a positive integer";
+                }
+
+                o.DndSeconds = n;
+                return null;
+            });
+            AddValue(root, model, "--location-mode-value", (o, v) =>
+            {
+                if (v is not ("home" or "away" or "disarmed"))
+                {
+                    return $"--location-mode-value value '{v}' must be one of: home, away, disarmed";
+                }
+
+                o.LocationModeValue = v;
+                return null;
+            });
+            AddValue(root, model, "--ding-id", (o, v) => { o.DingId = v; return null; });
+            AddValue(root, model, "--asset-uuid", (o, v) => { o.AssetUuid = v; return null; });
+            AddValue(root, model, "--push-token", (o, v) => { o.PushToken = v; return null; });
+            AddValue(root, model, "--username", (o, v) => { o.UserName = v; return null; });
+            AddValue(root, model, "--password", (o, v) => { o.Password = v; return null; });
+            AddValue(root, model, "--refresh-token", (o, v) => { o.RefreshToken = v; return null; });
+            AddValue(root, model, "--check-dir", (o, v) => { o.CheckDir = v; return null; });
+            AddValue(root, model, "--dump-file", (o, v) => { o.DumpFile = v; return null; });
+            AddValue(root, model, "--db-path", (o, v) => { o.DbPath = v; return null; });
+
+            AddUrl(root, model, "--clients-api-base-url", (o, u) => o.ClientsApiBaseUrl = u);
+            AddUrl(root, model, "--app-api-base-url", (o, u) => o.AppApiBaseUrl = u);
+            AddUrl(root, model, "--mode-api-base-url", (o, u) => o.ModeApiBaseUrl = u);
+            AddUrl(root, model, "--monitoring-api-base-url", (o, u) => o.MonitoringApiBaseUrl = u);
+            AddUrl(root, model, "--devices-api-base-url", (o, u) => o.DevicesApiBaseUrl = u);
+            AddUrl(root, model, "--commands-api-base-url", (o, u) => o.CommandsApiBaseUrl = u);
+            AddUrl(root, model, "--groups-api-base-url", (o, u) => o.GroupsApiBaseUrl = u);
+            AddUrl(root, model, "--evm-api-base-url", (o, u) => o.EvmApiBaseUrl = u);
+            AddUrl(root, model, "--integrations-api-base-url", (o, u) => o.IntegrationsApiBaseUrl = u);
+            AddUrl(root, model, "--recordings-api-base-url", (o, u) => o.RecordingsApiBaseUrl = u);
+            AddUrl(root, model, "--app-snaps-api-base-url", (o, u) => o.AppSnapsApiBaseUrl = u);
+
+            return root;
+        }
+
+        private static void AddFlag(RootCommand root, CliOptions model, string[] names, Action<CliOptions> apply)
+        {
+            var option = new Option<bool>(names[0]) { Arity = ArgumentArity.Zero };
+            for (int i = 1; i < names.Length; i++)
+            {
+                option.Aliases.Add(names[i]);
+            }
+
+            option.CustomParser = _ =>
+            {
+                apply(model);
+                return true;
+            };
+            root.Options.Add(option);
+        }
+
+        /// <summary>Registers a value option. <paramref name="apply"/> returns the error text, or null when the value was accepted.</summary>
+        private static void AddValue(RootCommand root, CliOptions model, string name, Func<CliOptions, string, string?> apply)
+        {
+            // A collection-typed option accepts the same option more than once, as the hand-written parser did.
+            var option = new Option<string[]>(name) { Arity = ArgumentArity.ExactlyOne };
+            option.CustomParser = result =>
+            {
+                string token = result.Tokens[0].Value;
+                string? error = apply(model, token);
+                if (error is not null)
+                {
+                    result.AddError(error);
+                }
+
+                return [token];
+            };
+            root.Options.Add(option);
+        }
+
+        private static void AddUrl(RootCommand root, CliOptions model, string name, Action<CliOptions, Uri> set)
+        {
+            AddValue(root, model, name, (o, v) =>
+            {
+                if (!TryParseHttpUrl(v, out Uri? uri))
+                {
+                    return $"{name} value '{v}' is not a valid absolute URL";
+                }
+
+                set(o, uri!);
+                return null;
+            });
         }
 
         public const string HelpText = """

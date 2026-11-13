@@ -101,6 +101,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             [
                 new("General", "/settings", Section: "General"),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported, Section: "General"),
+                new("My Notifications", "/settings/my-notifications", Section: "General"),
 
                 new("Provider Accounts", "/accounts", Section: "Sources"),
                 new("Manual Sync", "/accounts/manual-sync", Section: "Sources"),
@@ -118,7 +119,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("LLM API", "/settings/llm", Section: "Integrations"),
                 new("Email", "/settings/integrations/email", Section: "Integrations"),
 
-                new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
                 new("Permissions", "/settings/permissions", Section: "Security"),

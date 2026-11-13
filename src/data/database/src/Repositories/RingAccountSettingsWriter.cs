@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -14,11 +13,11 @@ namespace VideoForensics.Data.Database.Repositories
     /// </summary>
     public class RingAccountSettingsWriter : IRingAccountSettingsWriter
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public RingAccountSettingsWriter(IDbContextFactory<VideoForensicsDbContext> factory)
+        public RingAccountSettingsWriter(IUnitOfWork unitOfWork)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
         }
 
         public Task ReplaceProfileAsync(RingAccountProfile profile, CancellationToken ct)
@@ -198,10 +197,11 @@ namespace VideoForensics.Data.Database.Repositories
 
         private async Task ReplaceAsync(Func<VideoForensicsDbContext, CancellationToken, Task> replace, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
-            await replace(db, ct);
-            await transaction.CommitAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                await replace(context.Db(), ct);
+                return null;
+            }, ct);
         }
 
         // Deletes first and saves, then inserts: a unique index on the parent key (one profile per account,

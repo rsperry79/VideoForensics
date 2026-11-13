@@ -32,6 +32,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.Configure<ScheduledTasksOptions>(configuration.GetSection(ScheduledTasksOptions.SectionName));
             services.TryAddSingleton(TimeProvider.System);
             _ = services.AddHostedService<ScheduledSyncService>();
+            _ = services.AddHostedService<InventoryRefreshService>();
             return services;
         }
 

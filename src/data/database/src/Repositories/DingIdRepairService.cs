@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Common.Matching;
 using VideoForensics.Data.Database.DbContext;
@@ -32,25 +32,89 @@ namespace VideoForensics.Data.Database.Repositories
         /// Matches every doorbot history row to its device's ding ids. When <paramref name="apply"/> is true, takes a
         /// backup first, then applies all links in one transaction.
         /// </summary>
-        /// <param name="factory">Creates the context used for reads and, on apply, the single write transaction.</param>
+        /// <param name="unitOfWork">Runs the reads, and on apply the single write transaction.</param>
         /// <param name="apply">False for a dry run: counts only, no backup, no writes.</param>
         /// <param name="backup">Invoked once before any write when applying. An exception stops the run before changes.</param>
         /// <param name="ct">Cancellation token for the run.</param>
         /// <param name="confirmHold">Invoked once on apply, after all writes and before the commit. Returning false rolls back and reports <see cref="DingIdRepairReport.Aborted"/>. Null means no check (dry runs take no hold).</param>
         /// <param name="beforeWrites">Invoked once on apply, after the backup and before the first write. Returning false stops the run with <see cref="DingIdRepairReport.Aborted"/> and nothing written. Null means no check.</param>
         public async Task<DingIdRepairReport> RunAsync(
-            IDbContextFactory<VideoForensicsDbContext> factory,
+            IUnitOfWork unitOfWork,
             bool apply,
             Func<CancellationToken, Task> backup,
             CancellationToken ct,
             Func<CancellationToken, Task<bool>>? confirmHold = null,
             Func<CancellationToken, Task<bool>>? beforeWrites = null)
         {
-            ArgumentNullException.ThrowIfNull(factory);
+            ArgumentNullException.ThrowIfNull(unitOfWork);
             ArgumentNullException.ThrowIfNull(backup);
 
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            (DingIdMatchCounts counts, List<(Guid HistoryId, Guid DeviceId, string DingId)> matched) =
+                await unitOfWork.ReadAsync(context => MatchAsync(context.Db(), ct), ct);
 
+            if (!apply)
+            {
+                return new DingIdRepairReport(counts, 0, 0, false);
+            }
+
+            await backup(ct);
+
+            // Why: the backup can take a long time on a large database, so the hold is checked again once it is done and before any write starts.
+            if (beforeWrites is not null && !await beforeWrites(ct))
+            {
+                return new DingIdRepairReport(counts, 0, 0, Applied: false, Aborted: true);
+            }
+
+            try
+            {
+                // One unit of work: a failure part-way, or a lost hold, leaves the database as it was before the run.
+                return await unitOfWork.ExecuteAsync(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    int eventsLinked = 0;
+                    int noEventRow = 0;
+
+                    foreach ((Guid historyId, Guid deviceId, string dingId) in matched)
+                    {
+                        // Why: Events rows already hold the string ding id, so the link is found by equality, never by renaming a row.
+                        Guid? eventId = await db.Events.AsNoTracking()
+                            .Where(e => e.DeviceId == deviceId && e.ProviderEventId == dingId)
+                            .Select(e => (Guid?)e.Id)
+                            .FirstOrDefaultAsync(ct);
+                        if (eventId is null)
+                        {
+                            noEventRow++;
+                            continue;
+                        }
+
+                        RingDoorbotHistoryEvent history = await db.RingDoorbotHistoryEvents.FirstAsync(h => h.Id == historyId, ct);
+                        history.LinkedEventId = eventId.Value;
+                        eventsLinked++;
+                    }
+
+                    _ = await db.SaveChangesAsync(ct);
+
+                    // Why: the hold can end while the writes are staged. Checking right before the commit means a lost hold leaves nothing committed.
+                    if (confirmHold is not null && !await confirmHold(ct))
+                    {
+                        // Thrown so the unit of work rolls back; the catch below reports the abort.
+                        throw new HoldLostException();
+                    }
+
+                    return new DingIdRepairReport(counts, eventsLinked, noEventRow, true);
+                }, ct);
+            }
+            catch (HoldLostException)
+            {
+                return new DingIdRepairReport(counts, 0, 0, Applied: false, Aborted: true);
+            }
+        }
+
+        /// <summary>Matches each doorbot history row to its device's ding ids. Reads only; nothing is written.</summary>
+        private static async Task<(DingIdMatchCounts Counts, List<(Guid HistoryId, Guid DeviceId, string DingId)> Matched)> MatchAsync(
+            VideoForensicsDbContext db,
+            CancellationToken ct)
+        {
             // Two flat reads, then the nested device id is joined in memory. Reading the nested row as a correlated
             // subquery per history row would be one SQL round trip per row; the repair runs once, so a flat read is simpler.
             List<(Guid Id, string ProviderEventId)> historyRows = (await db.RingDoorbotHistoryEvents.AsNoTracking()
@@ -101,64 +165,12 @@ namespace VideoForensics.Data.Database.Repositories
                 }
             }
 
-            DingIdMatchCounts counts = DingIdPrefixMatcher.CountOutcomes(results);
-            if (!apply)
-            {
-                return new DingIdRepairReport(counts, 0, 0, false);
-            }
+            return (DingIdPrefixMatcher.CountOutcomes(results), matched);
+        }
 
-            await backup(ct);
-
-            // Why: the backup can take a long time on a large database, so the hold is checked again once it is done and before any write starts.
-            if (beforeWrites is not null && !await beforeWrites(ct))
-            {
-                return new DingIdRepairReport(counts, 0, 0, Applied: false, Aborted: true);
-            }
-
-            // One transaction: a failure part-way leaves the database as it was before the run.
-            await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
-            try
-            {
-                int eventsLinked = 0;
-                int noEventRow = 0;
-
-                foreach ((Guid historyId, Guid deviceId, string dingId) in matched)
-                {
-                    // Why: Events rows already hold the string ding id, so the link is found by equality, never by renaming a row.
-                    Guid? eventId = await db.Events.AsNoTracking()
-                        .Where(e => e.DeviceId == deviceId && e.ProviderEventId == dingId)
-                        .Select(e => (Guid?)e.Id)
-                        .FirstOrDefaultAsync(ct);
-                    if (eventId is null)
-                    {
-                        noEventRow++;
-                        continue;
-                    }
-
-                    RingDoorbotHistoryEvent history = await db.RingDoorbotHistoryEvents.FirstAsync(h => h.Id == historyId, ct);
-                    history.LinkedEventId = eventId.Value;
-                    eventsLinked++;
-                }
-
-                _ = await db.SaveChangesAsync(ct);
-
-                // Why: the hold can end while the writes are staged. Checking right before the commit means a lost hold leaves nothing committed.
-                if (confirmHold is not null && !await confirmHold(ct))
-                {
-                    await transaction.RollbackAsync(CancellationToken.None);
-                    return new DingIdRepairReport(counts, 0, 0, Applied: false, Aborted: true);
-                }
-
-                await transaction.CommitAsync(ct);
-
-                return new DingIdRepairReport(counts, eventsLinked, noEventRow, true);
-            }
-            catch
-            {
-                // Roll back with a token that cannot be cancelled, so a cancelled run still leaves no partial writes.
-                await transaction.RollbackAsync(CancellationToken.None);
-                throw;
-            }
+        /// <summary>Signals that the hold was lost before the commit. Thrown inside the unit of work so it rolls back.</summary>
+        private sealed class HoldLostException : Exception
+        {
         }
     }
 }

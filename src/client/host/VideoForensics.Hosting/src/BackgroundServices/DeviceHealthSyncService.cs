@@ -216,10 +216,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            // A camera with snapshot capture on gets its health from each capture (SnapshotCaptureService), so this poll leaves
+            // A camera with snapshot capture on gets its health from each capture (SnapshotSyncBackgroundService), so this poll leaves
             // it out. Cameras with capture off, chimes and other non-cameras are still polled.
             var devicesByProviderId = devices
-                .Where(d => !(d.SnapshotCaptureEnabled && SnapshotCaptureService.HasCamera(d.Type)))
+                .Where(d => !(d.SnapshotCaptureEnabled && SnapshotSyncBackgroundService.HasCamera(d.Type)))
                 .GroupBy(d => d.ProviderDeviceId)
                 .ToDictionary(g => g.Key, g => g.First());
             if (devicesByProviderId.Count == 0)

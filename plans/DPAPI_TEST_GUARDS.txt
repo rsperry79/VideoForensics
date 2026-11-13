@@ -1,0 +1,204 @@
+DPAPI TEST PLATFORM GUARDS AUDIT
+===========================================================
+
+Date: 2026-10-03
+Test File: src/core/core/core.security/tests/DpapiKeyStorageProviderTests.cs
+Implementation: DpapiKeyStorageProvider.cs (Windows DPAPI wrapper)
+
+Test Status:
+===========================================================
+
+CRITICAL FINDING: DpapiKeyStorageProviderTests.cs does NOT exist yet
+- This is placeholder/stub status per DEEP_CODE_REVIEW.md
+- Implementation: Not yet started (Task 1.1 in Phase 1)
+- Status: BLOCKING on DPAPI implementation
+
+Current DPAPI Implementation Status:
+===========================================================
+
+File: src/core/core/core.security/DpapiKeyStorageProvider.cs
+Status: Placeholder/stub
+Class exists: DpapiKeyStorageProvider : IKeyStorageProvider
+Methods: Basic structure, not fully functional
+
+Issue: No tests exist to guard platform compatibility
+- No platform skip attributes
+- No conditional compilation (#if NET5_0_OR_GREATER)
+- No test isolation for Windows-only code
+
+Platform Support Matrix:
+===========================================================
+
+WINDOWS (✓ PRIMARY TARGET)
+- OS: Windows 7+ (NT 6.1+)
+- API: System.Security.Cryptography.ProtectedData (DPAPI)
+- Supported: Yes, full functionality
+- Status: Should be tested on CI Windows agents
+- Expected test result: All tests pass
+
+LINUX (✗ NOT SUPPORTED)
+- OS: Ubuntu, Fedora, Debian, etc.
+- API: No direct DPAPI equivalent
+- Alternatives: libsecret, gnome-keyring, pass, encrypted file storage
+- Status: DPAPI-specific tests should skip on Linux
+- Expected test result: Tests should skip gracefully
+
+macOS (✗ NOT SUPPORTED)
+- OS: macOS 10.12+
+- API: Keychain (different API than Windows DPAPI)
+- Alternatives: Native macOS Keychain integration
+- Status: DPAPI-specific tests should skip on macOS
+- Expected test result: Tests should skip gracefully
+
+Test Guard Requirements:
+===========================================================
+
+Recommended Approach: Platform Conditional Skip with xUnit
+
+Pattern 1: Skip Attribute with Reason
+```csharp
+[Fact(Skip = "DPAPI is Windows-only; skipping on non-Windows platforms")]
+[Trait("Platform", "Windows")]
+public void DpapiKeyStorageProvider_StoresKey_OnWindows()
+{
+    // Test implementation
+}
+```
+
+Pattern 2: RuntimeInformation Check
+```csharp
+[Fact]
+public void DpapiKeyStorageProvider_StoresKey_OnWindows()
+{
+    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+    {
+        throw new SkipTestException("DPAPI is Windows-only");
+    }
+    // Test implementation
+}
+```
+
+Pattern 3: Custom Trait + CI Configuration (RECOMMENDED)
+```csharp
+[Fact]
+[Trait("Platform", "Windows")]
+public void DpapiKeyStorageProvider_StoresKey_OnWindows()
+{
+    // Test implementation
+}
+```
+
+Then in CI (.github/workflows/test.yml):
+```yaml
+# Run all tests on Windows (including [Trait("Platform", "Windows")])
+- name: Run all tests on Windows
+  run: dotnet test --filter "Category!=Linux"
+  if: runner.os == 'Windows'
+
+# Skip Windows-only tests on Linux/macOS
+- name: Run cross-platform tests on Linux/macOS
+  run: dotnet test --filter "Trait!=Platform&Platform!=Windows"
+  if: runner.os != 'Windows'
+```
+
+Implementation Checklist for Task 1.1:
+===========================================================
+
+When implementing DpapiKeyStorageProvider and tests:
+
+□ 1. Verify implementation uses System.Security.Cryptography.ProtectedData
+     Location: System.Security.Cryptography namespace
+
+□ 2. Add guard to class (conditional compilation):
+     ```csharp
+     #if WINDOWS
+     public class DpapiKeyStorageProvider : IKeyStorageProvider
+     {
+         // Implementation
+     }
+     #else
+     public class DpapiKeyStorageProvider : IKeyStorageProvider
+     {
+         public void StoreKey(string keyId, byte[] keyMaterial)
+         {
+             throw new PlatformNotSupportedException("DPAPI is only available on Windows");
+         }
+         // ... other methods throw similar
+     }
+     #endif
+     ```
+
+□ 3. Create DpapiKeyStorageProviderTests.cs with platform guards:
+     Location: src/core/core/core.security/tests/DpapiKeyStorageProviderTests.cs
+
+□ 4. Add [Trait("Platform", "Windows")] to all tests
+
+□ 5. Tests to add:
+     - DpapiKeyStorageProvider_StoresKey_OnWindows()
+     - DpapiKeyStorageProvider_RetrievesKey_OnWindows()
+     - DpapiKeyStorageProvider_DeletesKey_OnWindows()
+     - DpapiKeyStorageProvider_EncryptsWithUserScope_OnWindows()
+     - DpapiKeyStorageProvider_EncryptsWithMachineScope_OnWindows()
+     - DpapiKeyStorageProvider_ThrowsOnNonWindows()
+
+□ 6. Add integration test for platform compatibility:
+     ```csharp
+     [Fact]
+     [Trait("Platform", "Windows")]
+     public void DpapiKeyStorageProvider_IsAvailable_OnWindows()
+     {
+         var provider = new DpapiKeyStorageProvider();
+         Assert.NotNull(provider);
+         // Verify Windows DPAPI available
+     }
+     ```
+
+Expected Test Results After Implementation:
+===========================================================
+
+Windows CI Agent (e.g., windows-latest):
+- All 6+ DPAPI tests: PASS
+- Full test suite including cross-platform tests: PASS
+
+Linux CI Agent (e.g., ubuntu-latest):
+- DPAPI tests: SKIP (via Trait filter)
+- Cross-platform tests: PASS
+- DpapiKeyStorageProvider runtime: Throws PlatformNotSupportedException if called
+
+macOS CI Agent (e.g., macos-latest):
+- DPAPI tests: SKIP (via Trait filter)
+- Cross-platform tests: PASS
+- DpapiKeyStorageProvider runtime: Throws PlatformNotSupportedException if called
+
+Future Recommendations:
+===========================================================
+
+1. MULTI-PLATFORM SUPPORT (Phase 3-4):
+   - Implement alternatives for Linux/macOS
+   - FileBasedKeyStorageProvider: Already exists as fallback
+   - TpmKeyStorageProvider: Exists but untested (see DEEP_CODE_REVIEW.md)
+   - macOS Keychain: Consider native integration
+
+2. PLATFORM-SPECIFIC IMPLEMENTATIONS:
+   - Keep DPAPI for Windows (most secure)
+   - Use libsecret binding for Linux
+   - Use Keychain API for macOS
+   - Unified IKeyStorageProvider interface across all platforms
+
+3. TESTING MATRIX:
+   - Expand CI to include all three platforms
+   - Run platform-specific tests on respective agents
+   - Maintain 100% coverage across all platforms
+
+Current Status:
+===========================================================
+
+BLOCKING ITEMS (Before Phase 1):
+- [ ] Create DpapiKeyStorageProviderTests.cs with proper guards
+- [ ] Ensure all DPAPI tests have [Trait("Platform", "Windows")]
+- [ ] Verify tests skip gracefully on non-Windows CI
+- [ ] Document skip behavior in test output
+
+IMPLEMENTATION READY: Yes
+TESTING READY: Partially (guards structure defined)
+BLOCKING: Awaiting Task 1.1 implementation

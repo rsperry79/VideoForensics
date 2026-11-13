@@ -16,6 +16,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IEventRepository _eventRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
+        private readonly IActionLogRepository _actionLogRepository;
         private readonly ILogger<ProviderReconciliationService> _logger;
 
         public ProviderReconciliationService(
@@ -23,13 +24,15 @@ namespace VideoForensics.Data.Core.Services
             IEventRepository eventRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
-            ILogger<ProviderReconciliationService> logger)
+            ILogger<ProviderReconciliationService> logger,
+            IActionLogRepository actionLogRepository)
         {
             _reconciliationRepository = reconciliationRepository;
             _eventRepository = eventRepository;
             _unitOfWork = unitOfWork;
             _actionLogger = actionLogger;
             _logger = logger;
+            _actionLogRepository = actionLogRepository;
         }
 
         public async Task RecordReconciliationRunAsync(
@@ -59,7 +62,7 @@ namespace VideoForensics.Data.Core.Services
                     // Append all records
                     foreach (ProviderReconciliationRecord? record in records)
                     {
-                        _ = await context.ProviderReconciliation.AppendAsync(record, ct);
+                        _ = await _reconciliationRepository.AppendAsync(record, ct);
                     }
 
                     // Count discrepancies by type
@@ -79,7 +82,7 @@ namespace VideoForensics.Data.Core.Services
                         NewEventFoundOnProvider = newCount
                     };
 
-                    _ = await context.ActionLog.AppendAsync(
+                    _ = await _actionLogRepository.AppendAsync(
                         Environment.UserName,
                         ActorType.Human,
                         "ProviderReconciliationRun",
@@ -178,7 +181,7 @@ namespace VideoForensics.Data.Core.Services
                                 SanitizeForLog(discrepancy.ProviderEventId), deviceId);
 
                             // Log to action log
-                            _ = await context.ActionLog.AppendAsync(
+                            _ = await _actionLogRepository.AppendAsync(
                                 "System",
                                 ActorType.System,
                                 "AutoFixNewEvent",
@@ -242,7 +245,7 @@ namespace VideoForensics.Data.Core.Services
                                 SanitizeForLog(discrepancy.ProviderEventId), SanitizeForLog(fieldName), deviceId);
 
                             // Log to action log
-                            _ = await context.ActionLog.AppendAsync(
+                            _ = await _actionLogRepository.AppendAsync(
                                 "System",
                                 ActorType.System,
                                 "AutoFixMetadata",

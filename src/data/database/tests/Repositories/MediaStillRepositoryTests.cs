@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new MediaStillRepository(Fixture.Factory, CreateLogger<MediaStillRepository>());
+            _repository = new MediaStillRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<MediaStillRepository>());
         }
 
         private static MediaItem NewMediaItem(Guid? id = null, string sha = "sha-source")

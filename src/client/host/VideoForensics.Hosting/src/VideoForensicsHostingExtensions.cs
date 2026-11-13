@@ -121,7 +121,7 @@ namespace VideoForensics.Client.Hosting
         }
 
         /// <summary>
-        /// Registers <see cref="SnapshotCaptureService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
+        /// Registers <see cref="SnapshotSyncBackgroundService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
         /// registers nothing. Server tier only (VideoForensics.Client.WebApp); never call this from a client host.
         /// </summary>
         public static IServiceCollection AddVideoForensicsSnapshotCapture(this IServiceCollection services, IConfiguration configuration)
@@ -137,7 +137,9 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddKeyedScoped<IProviderSnapshotCapture>("Ring", (provider, key) => BuildRingMediaDownloadService(provider));
             _ = services.AddKeyedSingleton<IProviderDeviceStatus, RingDeviceOnlineStatus>("Ring");
             services.TryAddSingleton(TimeProvider.System);
-            _ = services.AddHostedService<SnapshotCaptureService>();
+            // Singleton: the cycle holds the account pauses and device holds across ticks.
+            _ = services.AddSingleton<SnapshotCycle>();
+            _ = services.AddHostedService<SnapshotSyncBackgroundService>();
 
             // Daily trim of operational tables (error rows, call log, telemetry). Audit tables are not pruned.
             _ = services.AddHostedService<OperationalLogPruneService>();
@@ -490,7 +492,9 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IBackupImportService>(serviceProvider =>
                 new BackupImportOrchestrator(
                     serviceProvider.GetRequiredService<ILogger<BackupImportOrchestrator>>(),
-                    serviceProvider.GetRequiredService<IUnitOfWork>()
+                    serviceProvider.GetRequiredService<IUnitOfWork>(),
+                    serviceProvider.GetRequiredService<IDeviceRepository>(),
+                    serviceProvider.GetRequiredService<IDingIdLinkRepository>()
                 )
             );
 
@@ -534,6 +538,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHostedService<JammingAnalysisBackfillService>();
             _ = services.AddHostedService<MediaCodecBackfillService>();
             _ = services.AddHostedService<MediaFlagBackfillService>();
+            _ = services.AddScoped<MediaFlagDeviationBackfill>();
+            _ = services.AddHostedService<MediaFlagDeviationBackfillService>();
 
             // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
             // orchestrator, and background services for idle timeouts and bitrate calibration.
@@ -610,6 +616,7 @@ namespace VideoForensics.Client.Hosting
             // is now also implemented - MAUI toast remains deliberately not yet implemented (see
             // INotificationProvider's doc comment for why the extensibility point exists regardless).
             _ = services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
+            _ = services.AddScoped<ISmtpMailSender, MailKitSmtpMailSender>();
             _ = services.AddScoped<IAuthMethodSettingsService, AuthMethodSettingsService>();
             _ = services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
             _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
@@ -799,6 +806,7 @@ namespace VideoForensics.Client.Hosting
             // Hosting project (Hosting already depends on Ui.Shared for PairedSessionState) without a cycle.
             _ = services.AddHttpClient<IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<INotificationPreferencesService, Remote.RemoteNotificationPreferencesService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILogViewerService, Remote.RemoteLogViewerService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILiveViewSessionService, Remote.RemoteLiveViewSessionService>(c => c.BaseAddress = serverAddress);
@@ -864,7 +872,8 @@ namespace VideoForensics.Client.Hosting
                 IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
                 IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
                 IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
-                int count = await EventBackfillService.BackfillFromDownloadEventsAsync(
+                EventBackfillService backfillService = sp.GetRequiredService<EventBackfillService>();
+                int count = await backfillService.BackfillFromDownloadEventsAsync(
                     downloadEventRepo, mediaItemRepo, eventRepo, unitOfWork, logger, ct);
                 await appSettingRepo.SetAsync(backfillFlagKey, "true", ct);
                 logger.LogInformation("Events backfill completed: {Count} record(s).", count);

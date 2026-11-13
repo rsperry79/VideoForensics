@@ -17,6 +17,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
+        private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<ExportRecordService>> _mockLogger;
         private readonly ExportRecordService _service;
 
@@ -26,6 +27,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
+            _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<ExportRecordService>>();
 
             _service = new ExportRecordService(
@@ -33,7 +35,8 @@ namespace VideoForensics.Data.Core.Tests.Services
                 _mockMediaItemRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockActionLogger.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockActionLogRepository.Object);
         }
 
         [Fact]
@@ -42,7 +45,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Arrange
             string exportedByUserName = "test_user";
             string caseReference = "Case-2024-001";
-            string recipientDescription = "Law Enforcement";
             string archiveFileName = "evidence_export.zip";
             string archiveSha256Hash = "abc123def456";
             bool wasEncrypted = true;
@@ -54,11 +56,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockExportRecordRepoInContext = new Mock<IExportRecordRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockExportRecordRepoInContext = _mockExportRecordRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ExportRecords).Returns(mockExportRecordRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -98,7 +98,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReference,
-                recipientDescription,
                 archiveFileName,
                 archiveSha256Hash,
                 wasEncrypted,
@@ -132,7 +131,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Arrange
             string exportedByUserName = "analyst_123";
             string caseReference = "Case-2024-002";
-            string recipientDescription = "District Attorney";
             string archiveFileName = "evidence_2024.zip";
             string archiveSha256Hash = "xyz789";
             bool wasEncrypted = false;
@@ -143,11 +141,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockExportRecordRepoInContext = new Mock<IExportRecordRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockExportRecordRepoInContext = _mockExportRecordRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ExportRecords).Returns(mockExportRecordRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             ExportRecord? capturedRecord = null;
             _ = mockExportRecordRepoInContext
@@ -177,7 +173,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             _ = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReference,
-                recipientDescription,
                 archiveFileName,
                 archiveSha256Hash,
                 wasEncrypted,
@@ -188,7 +183,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             Assert.NotNull(capturedRecord);
             Assert.Equal(exportedByUserName, capturedRecord.ExportedByUserName);
             Assert.Equal(caseReference, capturedRecord.CaseReference);
-            Assert.Equal(recipientDescription, capturedRecord.RecipientDescription);
             Assert.Equal(archiveFileName, capturedRecord.ArchiveFileName);
             Assert.Equal(archiveSha256Hash, capturedRecord.ArchiveSha256Hash);
             Assert.False(capturedRecord.WasEncrypted);
@@ -197,7 +191,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         }
 
         [Fact]
-        public async Task RecordExportAsync_WithNullCaseReferenceAndRecipient_StillLogsEntry()
+        public async Task RecordExportAsync_WithNullCaseReference_StillLogsEntry()
         {
             // Arrange
             string exportedByUserName = "analyst";
@@ -206,11 +200,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             var items = new List<(Guid, string)> { (Guid.NewGuid(), "hash") };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockExportRecordRepoInContext = new Mock<IExportRecordRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockExportRecordRepoInContext = _mockExportRecordRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ExportRecords).Returns(mockExportRecordRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = mockExportRecordRepoInContext
                 .Setup(x => x.AppendAsync(It.IsAny<ExportRecord>(), It.IsAny<IReadOnlyList<ExportRecordItem>>(), It.IsAny<CancellationToken>()))
@@ -238,7 +230,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 null,
-                null,
                 archiveFileName,
                 archiveSha256Hash,
                 false,
@@ -248,7 +239,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Assert
             Assert.NotNull(result);
             Assert.Null(result.CaseReference);
-            Assert.Null(result.RecipientDescription);
 
             mockActionLogRepoInContext.Verify(
                 x => x.AppendAsync(
@@ -274,11 +264,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockExportRecordRepoInContext = new Mock<IExportRecordRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockExportRecordRepoInContext = _mockExportRecordRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ExportRecords).Returns(mockExportRecordRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             IReadOnlyList<ExportRecordItem>? capturedItems = null;
             _ = mockExportRecordRepoInContext
@@ -307,7 +295,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Act
             _ = await _service.RecordExportAsync(
                 "user",
-                null,
                 null,
                 "export.zip",
                 "archive_hash",
@@ -428,11 +415,9 @@ namespace VideoForensics.Data.Core.Tests.Services
             var items = new List<(Guid, string)> { (Guid.NewGuid(), "item_hash") };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockExportRecordRepoInContext = new Mock<IExportRecordRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockExportRecordRepoInContext = _mockExportRecordRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.ExportRecords).Returns(mockExportRecordRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             ExportRecord? capturedRecord = null;
             _ = mockExportRecordRepoInContext
@@ -462,7 +447,6 @@ namespace VideoForensics.Data.Core.Tests.Services
             ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReferenceWithNewlines,
-                null,
                 archiveFileNameWithNewlines,
                 archiveSha256Hash,
                 false,

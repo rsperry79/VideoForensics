@@ -8,6 +8,10 @@ on:
       - 'src/client/maui/VideoForensics.Client.MauiApp/**'
       - '.github/workflows/build-ios.yml'
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   build-ios:
     runs-on: macos-latest
@@ -34,6 +38,8 @@ jobs:
         run: dotnet workload install maui-ios --version 10.0.401
 
       - name: Restore
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet restore src/client/maui/VideoForensics.Client.MauiApp/src/VideoForensics.Client.MauiApp.csproj -p:TargetFramework=net10.0-ios -p:BuildIOS=true
 
       # Unsigned build for the iOS Simulator target - no Apple Developer certificate

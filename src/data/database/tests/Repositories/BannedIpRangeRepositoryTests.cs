@@ -14,7 +14,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new BannedIpRangeRepository(Fixture.Factory, CreateLogger<BannedIpRangeRepository>());
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
+            _repository = new BannedIpRangeRepository(unitOfWork, CreateLogger<BannedIpRangeRepository>());
 
             // Create a test operator for FK
             await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync();

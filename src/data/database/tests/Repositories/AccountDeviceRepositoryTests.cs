@@ -13,7 +13,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new AccountDeviceRepository(Fixture.Factory, CreateLogger<AccountDeviceRepository>());
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
+            _repository = new AccountDeviceRepository(unitOfWork, CreateLogger<AccountDeviceRepository>());
         }
 
         [Fact]

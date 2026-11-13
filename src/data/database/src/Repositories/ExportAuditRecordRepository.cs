@@ -10,14 +10,14 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for export audit trail tracking.</summary>
     public class ExportAuditRecordRepository : IExportAuditRecordRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<ExportAuditRecordRepository> _logger;
 
         public ExportAuditRecordRepository(
-            IDbContextFactory<VideoForensicsDbContext> factory,
+            IUnitOfWork unitOfWork,
             ILogger<ExportAuditRecordRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -29,7 +29,6 @@ namespace VideoForensics.Data.Database.Repositories
             string purpose,
             CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var record = new ExportAuditRecordEntity
@@ -43,8 +42,13 @@ namespace VideoForensics.Data.Database.Repositories
                     ExportedAtUtc = DateTime.UtcNow
                 };
 
-                _ = db.ExportAuditRecords.Add(record);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.ExportAuditRecords.Add(record);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
 
                 _logger.LogDebug(
                     "Recorded export audit: LocationId={LocationId}, EventsExported={EventsExported}, Format={ExportFormat}",
@@ -61,26 +65,23 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<ExportAuditRecordEntity?> GetAsync(Guid recordId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ExportAuditRecords.FirstOrDefaultAsync(r => r.Id == recordId, ct);
+            return await _unitOfWork.ReadAsync(context => context.Db().ExportAuditRecords.FirstOrDefaultAsync(r => r.Id == recordId, ct), ct);
         }
 
         public async Task<IReadOnlyList<ExportAuditRecordEntity>> GetForLocationAsync(Guid locationId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ExportAuditRecords
+            return await _unitOfWork.ReadAsync(context => context.Db().ExportAuditRecords
                 .Where(r => r.LocationId == locationId)
                 .OrderByDescending(r => r.ExportedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         public async Task<IReadOnlyList<ExportAuditRecordEntity>> GetByUserAsync(string userId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ExportAuditRecords
+            return await _unitOfWork.ReadAsync(context => context.Db().ExportAuditRecords
                 .Where(r => r.ExportedBy == userId)
                 .OrderByDescending(r => r.ExportedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         public async Task<IReadOnlyList<ExportAuditRecordEntity>> GetByDateRangeAsync(
@@ -88,50 +89,50 @@ namespace VideoForensics.Data.Database.Repositories
             DateTime toUtc,
             CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ExportAuditRecords
+            return await _unitOfWork.ReadAsync(context => context.Db().ExportAuditRecords
                 .Where(r => r.ExportedAtUtc >= fromUtc && r.ExportedAtUtc <= toUtc)
                 .OrderByDescending(r => r.ExportedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         public async Task<IReadOnlyList<ExportAuditRecordEntity>> ListAsync(int skip = 0, int take = 1000, CancellationToken ct = default)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ExportAuditRecords
+            return await _unitOfWork.ReadAsync(context => context.Db().ExportAuditRecords
                 .OrderByDescending(r => r.ExportedAtUtc)
                 .Skip(skip)
                 .Take(take)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         public async Task<ExportStatistics> GetStatisticsAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                List<ExportAuditRecordEntity> records = await db.ExportAuditRecords.ToListAsync(ct);
-
-                var statistics = new ExportStatistics
+                return await _unitOfWork.ReadAsync<ExportStatistics>(async context =>
                 {
-                    TotalExports = records.Count,
-                    TotalEventsExported = records.Sum(r => r.EventsExported),
-                    FirstExportAtUtc = records.Count > 0 ? records.Min(r => r.ExportedAtUtc) : null,
-                    LastExportAtUtc = records.Count > 0 ? records.Max(r => r.ExportedAtUtc) : null,
-                    UniqueExporters = records.Select(r => r.ExportedBy).Distinct().Count(),
-                    ExportsByFormat = records
-                        .GroupBy(r => r.ExportFormat)
-                        .ToDictionary(g => g.Key, g => g.Count())
-                };
+                    List<ExportAuditRecordEntity> records = await context.Db().ExportAuditRecords.ToListAsync(ct);
 
-                _logger.LogDebug(
-                    "Export statistics: Total={Total}, Events={Events}, Formats={Formats}, Exporters={Exporters}",
-                    statistics.TotalExports,
-                    statistics.TotalEventsExported,
-                    statistics.ExportsByFormat.Count,
-                    statistics.UniqueExporters);
+                    var statistics = new ExportStatistics
+                    {
+                        TotalExports = records.Count,
+                        TotalEventsExported = records.Sum(r => r.EventsExported),
+                        FirstExportAtUtc = records.Count > 0 ? records.Min(r => r.ExportedAtUtc) : null,
+                        LastExportAtUtc = records.Count > 0 ? records.Max(r => r.ExportedAtUtc) : null,
+                        UniqueExporters = records.Select(r => r.ExportedBy).Distinct().Count(),
+                        ExportsByFormat = records
+                            .GroupBy(r => r.ExportFormat)
+                            .ToDictionary(g => g.Key, g => g.Count())
+                    };
 
-                return statistics;
+                    _logger.LogDebug(
+                        "Export statistics: Total={Total}, Events={Events}, Formats={Formats}, Exporters={Exporters}",
+                        statistics.TotalExports,
+                        statistics.TotalEventsExported,
+                        statistics.ExportsByFormat.Count,
+                        statistics.UniqueExporters);
+
+                    return statistics;
+                }, ct);
             }
             catch (Exception ex)
             {

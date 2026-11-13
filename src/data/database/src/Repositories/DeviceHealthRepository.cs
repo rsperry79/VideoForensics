@@ -10,29 +10,32 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for DeviceHealth time-series entities.</summary>
     public class DeviceHealthRepository : IDeviceHealthRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceHealthRepository> _logger;
 
-        public DeviceHealthRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<DeviceHealthRepository> logger)
+        public DeviceHealthRepository(IUnitOfWork unitOfWork, ILogger<DeviceHealthRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Records a new device health metric.</summary>
         public async Task<DeviceHealth> AddAsync(DeviceHealth health, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.DeviceHealths.Add(health);
-                _ = await db.SaveChangesAsync(ct);
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.DeviceHealths.Add(health);
+                    _ = await db.SaveChangesAsync(ct);
 
-                (string? DeviceName, string? LocationName) = await GetDeviceAndLocationNamesAsync(db, health.DeviceId, ct);
-                _logger.LogDebug(
-                    "Device health metric recorded: {HealthId} (device: {DeviceName} @ {LocationName}, online: {IsOnline})",
-                    health.Id, DeviceName ?? "unknown", LocationName ?? "unknown", health.IsOnline);
-                return health;
+                    (string? DeviceName, string? LocationName) = await GetDeviceAndLocationNamesAsync(db, health.DeviceId, ct);
+                    _logger.LogDebug(
+                        "Device health metric recorded: {HealthId} (device: {DeviceName} @ {LocationName}, online: {IsOnline})",
+                        health.Id, DeviceName ?? "unknown", LocationName ?? "unknown", health.IsOnline);
+                    return health;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -76,33 +79,30 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Gets the latest health metric for a device.</summary>
-        public async Task<DeviceHealth?> GetLatestAsync(Guid deviceId, CancellationToken ct)
+        public Task<DeviceHealth?> GetLatestAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceHealths
+            return _unitOfWork.ReadAsync(context => context.Db().DeviceHealths
                 .Where(dh => dh.DeviceId == deviceId)
                 .OrderByDescending(dh => dh.CapturedAtUtc)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets the full health history for a device, newest first.</summary>
         public async Task<IReadOnlyList<DeviceHealth>> GetHistoryAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceHealths
+            return await _unitOfWork.ReadAsync(context => context.Db().DeviceHealths
                 .Where(dh => dh.DeviceId == deviceId)
                 .OrderByDescending(dh => dh.CapturedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         /// <summary>Gets a device's health history within a date range (inclusive of both ends), oldest first.</summary>
         public async Task<IReadOnlyList<DeviceHealth>> GetHistoryAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceHealths
+            return await _unitOfWork.ReadAsync(context => context.Db().DeviceHealths
                 .Where(dh => dh.DeviceId == deviceId && dh.CapturedAtUtc >= fromUtc && dh.CapturedAtUtc <= toUtc)
                 .OrderBy(dh => dh.CapturedAtUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
     }
 }

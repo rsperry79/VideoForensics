@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -15,7 +16,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new PushSubscriptionRepository(Fixture.Factory, CreateLogger<PushSubscriptionRepository>());
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), LoggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new PushSubscriptionRepository(unitOfWork, CreateLogger<PushSubscriptionRepository>());
         }
 
         [Fact]

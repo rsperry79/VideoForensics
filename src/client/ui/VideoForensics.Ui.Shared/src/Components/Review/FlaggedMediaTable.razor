@@ -36,7 +36,19 @@
                 </GridColumn>
                 <GridColumn HeaderText="@L["FlaggedMediaColType"].Value" Width="180">
                     <Template>
-                        <span>@TypeName(((MediaFlag)context).FlagType)</span>
+                        @{
+                            MediaFlag typeFlag = (MediaFlag)context;
+                        }
+                        <span class="d-block" data-testid="flagged-media-event">@EventName(typeFlag.EventType)</span>
+                        <span class="d-block small text-muted" data-testid="flagged-media-flag-type">@TypeName(typeFlag.FlagType)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["FlaggedMediaColDev"].Value" Width="90">
+                    <Template>
+                        @{
+                            MediaFlag devFlag = (MediaFlag)context;
+                        }
+                        <span data-testid="flagged-media-dev" title="@L["FlaggedMediaDevTooltip"].Value">@DevText(devFlag.DeviationSigma)</span>
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["FlaggedMediaColCamera"].Value" Width="180">
@@ -197,6 +209,20 @@
     {
         LocalizedString text = L[$"FlaggedMediaType_{type}"];
         return text.ResourceNotFound ? type.ToString() : text.Value;
+    }
+
+    /// <summary>The clip's event type, or the placeholder when the flag has no clip with an event (for example an RSSI flag).</summary>
+    private string EventName(string? eventType)
+    {
+        return string.IsNullOrEmpty(eventType) ? L["FlaggedMediaNoEvent"].Value : eventType;
+    }
+
+    /// <summary>The deviation in standard deviations to one decimal, or the placeholder when the flag has no value.</summary>
+    private string DevText(double? sigma)
+    {
+        return sigma is null
+            ? L["FlaggedMediaDevEmpty"].Value
+            : sigma.Value.ToString("F1", System.Globalization.CultureInfo.CurrentCulture);
     }
 
     private string StatusName(MediaFlagStatus status)

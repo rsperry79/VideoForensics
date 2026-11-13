@@ -1583,10 +1583,72 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             IResult result = await InvokeUsernameAssertionCompleteAsync(
                 request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
                 twoFactorCache.Object, new Mock<ISecurityAuditLogger>().Object, MockNetworkTierResolver(NetworkTier.Network).Object,
-                CreateHttpContext(), fido2.Object);
+                CreateHttpContext(), fido2.Object, new Mock<ISecurityAuditService>().Object);
 
             Assert.False(GetOkPayloadBool(result, "mustChangePassword"));
             Assert.True(GetOkPayloadBool(result, "hasPasskey"));
+        }
+
+        [Fact]
+        public async Task UsernameAssertionComplete_UnknownUsernameUnknownPasskey_RecordsUnknownUserLogin()
+        {
+            // Passkey sign-in is username-first. A passkey that matches no operator, for a typed name that matches no
+            // operator, is recorded as an unknown-user login with that name.
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>())).ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            _ = credentials.Setup(c => c.GetByWebAuthnCredentialIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((OperatorCredential?)null);
+
+            var ceremonyCache = new Mock<IWebAuthnCeremonyCache>();
+            _ = ceremonyCache.Setup(c => c.TryTake("nonce-1")).Returns(AssertionOptionsJson);
+
+            var auditService = new Mock<ISecurityAuditService>();
+            var request = new UsernameAssertionCompleteRequest(
+                "nonce-1",
+                System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(AssertionResponseJson),
+                null,
+                "zumba");
+
+            IResult result = await InvokeUsernameAssertionCompleteAsync(
+                request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
+                new Mock<ITwoFactorPendingAuthCache>().Object, new Mock<ISecurityAuditLogger>().Object,
+                MockNetworkTierResolver(NetworkTier.Network).Object, CreateHttpContext(), new Mock<IFido2>().Object, auditService.Object);
+
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Unknown or revoked passkey", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task UsernameAssertionComplete_KnownOperatorRevokedPasskey_DoesNotRecordUnknownUserLogin()
+        {
+            // A revoked passkey for a real operator is a failed sign-in for that operator, not an unknown user.
+            Operator op = CreateOperator(username: "alice", role: OperatorRole.ReadOnly);
+
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("alice", It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            _ = credentials.Setup(c => c.GetByWebAuthnCredentialIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((OperatorCredential?)null);
+
+            var ceremonyCache = new Mock<IWebAuthnCeremonyCache>();
+            _ = ceremonyCache.Setup(c => c.TryTake("nonce-1")).Returns(AssertionOptionsJson);
+
+            var auditService = new Mock<ISecurityAuditService>();
+            var request = new UsernameAssertionCompleteRequest(
+                "nonce-1",
+                System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(AssertionResponseJson),
+                null,
+                "alice");
+
+            _ = await InvokeUsernameAssertionCompleteAsync(
+                request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
+                new Mock<ITwoFactorPendingAuthCache>().Object, new Mock<ISecurityAuditLogger>().Object,
+                MockNetworkTierResolver(NetworkTier.Network).Object, CreateHttpContext(), new Mock<IFido2>().Object, auditService.Object);
+
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         private const string AssertionOptionsJson =
@@ -1605,7 +1667,8 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
-            IFido2 fido2)
+            IFido2 fido2,
+            ISecurityAuditService auditService)
         {
             MethodInfo? method = typeof(OperatorAuthEndpoints).GetMethod(
                 "UsernameAssertionCompleteAsync",
@@ -1613,13 +1676,13 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 null,
                 [typeof(ILogger<Program>), typeof(UsernameAssertionCompleteRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
                  typeof(IWebAuthnCeremonyCache), typeof(ITwoFactorPendingAuthCache), typeof(ISecurityAuditLogger), typeof(INetworkTierResolver),
-                 typeof(INotificationDispatcher), typeof(HttpContext), typeof(IFido2), typeof(CancellationToken)],
+                 typeof(INotificationDispatcher), typeof(HttpContext), typeof(IFido2), typeof(ISecurityAuditService), typeof(CancellationToken)],
                 null);
             Assert.NotNull(method);
 
             return (Task<IResult>)method!.Invoke(null,
                 [Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, request, operators, credentials, sessionTokens, ceremonyCache, twoFactorPendingAuthCache, auditLog, tierResolver,
-                 null, context, fido2, CancellationToken.None])!;
+                 null, context, fido2, auditService, CancellationToken.None])!;
         }
 
         /// <summary>

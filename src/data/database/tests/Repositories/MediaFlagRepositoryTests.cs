@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
@@ -26,9 +27,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _actionLog = new ActionLogRepository(_fixture.Factory, NullLogger<ActionLogRepository>.Instance);
-            _repository = new MediaFlagRepository(_fixture.Factory, NullLogger<MediaFlagRepository>.Instance);
-            _media = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _actionLog = new ActionLogRepository(unitOfWork, NullLogger<ActionLogRepository>.Instance);
+            _repository = new MediaFlagRepository(unitOfWork, NullLogger<MediaFlagRepository>.Instance);
+            _media = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -536,6 +539,112 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _repository.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "x", "alice", Ct);
 
             _ = await Assert.ThrowsAsync<ArgumentException>(() => _repository.ReopenAsync(flag.Id, "admin", "", Ct));
+        }
+
+        /// <summary>Stores a clip whose download event carries the given event type, recorded at the given instant.</summary>
+        private async Task<MediaItem> AddClipWithEventTypeAsync(Guid deviceId, string eventType, DateTime recordedAtUtc)
+        {
+            DownloadEvent download = TestDataBuilder.BuildDownloadEvent(deviceId: deviceId);
+            download.EventType = eventType;
+            await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(Ct))
+            {
+                _ = db.DownloadEvents.Add(download);
+                _ = await db.SaveChangesAsync(Ct);
+            }
+
+            MediaItem item = TestDataBuilder.BuildMediaItem(deviceId: deviceId, downloadEventId: download.Id);
+            item.RecordedAtUtc = recordedAtUtc;
+            await _media.AddAsync(item, Ct);
+            return item;
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_GetAsync_FlagWithClip_ReturnsClipEventType()
+        {
+            Guid deviceId = Guid.NewGuid();
+            MediaItem clip = await AddClipWithEventTypeAsync(deviceId, "person", T0);
+            MediaFlag flag = await _repository.UpsertRaisedAsync(Raised(deviceId, clip.Id, MediaFlagType.BitrateCollapse), Ct);
+
+            MediaFlag? loaded = await _repository.GetAsync(flag.Id, Ct);
+
+            Assert.Equal("person", loaded!.EventType);
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_GetAsync_RssiFlagWithOverlappingClip_ReturnsOverlappingEventType()
+        {
+            Guid deviceId = Guid.NewGuid();
+            _ = await AddClipWithEventTypeAsync(deviceId, "vehicle", T0.AddMinutes(30));
+            MediaFlag flag = await _repository.UpsertRaisedAsync(Raised(deviceId, null, MediaFlagType.RssiDeviation), Ct);
+
+            MediaFlag? loaded = await _repository.GetAsync(flag.Id, Ct);
+
+            Assert.Equal("vehicle", loaded!.EventType);
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_GetAsync_RssiFlagWithNoOverlappingClip_ReturnsNullEventType()
+        {
+            Guid deviceId = Guid.NewGuid();
+            _ = await AddClipWithEventTypeAsync(deviceId, "person", T0.AddHours(3));
+            MediaFlag flag = await _repository.UpsertRaisedAsync(Raised(deviceId, null, MediaFlagType.RssiDeviation), Ct);
+
+            MediaFlag? loaded = await _repository.GetAsync(flag.Id, Ct);
+
+            Assert.Null(loaded!.EventType);
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_ListPageAsync_RssiFlagWithOverlappingClip_ReturnsOverlappingEventType()
+        {
+            Guid deviceId = Guid.NewGuid();
+            _ = await AddClipWithEventTypeAsync(deviceId, "vehicle", T0.AddMinutes(30));
+            _ = await _repository.UpsertRaisedAsync(Raised(deviceId, null, MediaFlagType.RssiDeviation), Ct);
+
+            MediaFlagPage page = await _repository.ListPageAsync(new MediaFlagFilter(), 0, 10, Ct);
+
+            Assert.Equal("vehicle", Assert.Single(page.Items).EventType);
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_UpsertRaisedAsync_DeviationSigma_RoundTrips()
+        {
+            MediaFlag raised = Raised(Guid.NewGuid(), null, MediaFlagType.RssiDeviation);
+            raised.DeviationSigma = 2.4;
+            MediaFlag stored = await _repository.UpsertRaisedAsync(raised, Ct);
+
+            MediaFlag? loaded = await _repository.GetAsync(stored.Id, Ct);
+
+            Assert.Equal(2.4, loaded!.DeviationSigma);
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_SetDeviationSigmaAsync_FillsNullOnly()
+        {
+            IMediaFlagDeviationRepository deviation = _repository;
+            MediaFlag flag = await RaiseAsync(Guid.NewGuid(), 0);
+            Assert.Single(await deviation.ListWithoutDeviationSigmaAsync(MediaFlagType.RssiDeviation, Ct));
+
+            await deviation.SetDeviationSigmaAsync(flag.Id, 2.2, Ct);
+            await deviation.SetDeviationSigmaAsync(flag.Id, 9.9, Ct);
+
+            Assert.Equal(2.2, (await _repository.GetAsync(flag.Id, Ct))!.DeviationSigma);
+            Assert.Empty(await deviation.ListWithoutDeviationSigmaAsync(MediaFlagType.RssiDeviation, Ct));
+        }
+
+        [Fact]
+        public async Task MediaFlagRepository_UpsertRaisedAsync_UnreviewedRow_RefreshesDeviationSigma()
+        {
+            MediaFlag first = Raised(Guid.NewGuid(), null, MediaFlagType.RssiDeviation);
+            first.DeviationSigma = 2.1;
+            _ = await _repository.UpsertRaisedAsync(first, Ct);
+
+            MediaFlag second = Raised(first.DeviceId, null, MediaFlagType.RssiDeviation);
+            second.DeviationSigma = 3.7;
+            MediaFlag refreshed = await _repository.UpsertRaisedAsync(second, Ct);
+
+            Assert.Equal(3.7, refreshed.DeviationSigma);
+            Assert.Equal(3.7, (await _repository.GetAsync(refreshed.Id, Ct))!.DeviationSigma);
         }
     }
 }
