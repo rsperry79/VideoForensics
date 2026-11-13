@@ -33,10 +33,10 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             // Arrange
             var dtos = new List<TwoFactorRoleRequirementDto>
             {
-                new(OperatorRole.ReadOnly, true, DateTime.UtcNow),
-                new(OperatorRole.Review, true, DateTime.UtcNow),
-                new(OperatorRole.Admin, true, DateTime.UtcNow),
-                new(OperatorRole.SuperAdmin, true, DateTime.UtcNow)
+                new(OperatorRoleDto.ReadOnly, true, DateTime.UtcNow),
+                new(OperatorRoleDto.Review, true, DateTime.UtcNow),
+                new(OperatorRoleDto.Admin, true, DateTime.UtcNow),
+                new(OperatorRoleDto.SuperAdmin, true, DateTime.UtcNow)
             };
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)

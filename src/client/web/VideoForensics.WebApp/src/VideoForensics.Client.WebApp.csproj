@@ -72,6 +72,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
+    <ProjectReference Include="../../../../core/api/mapping/src/VideoForensics.Core.Api.Mapping.csproj" />
     <ProjectReference Include="..\..\..\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj" />
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\..\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />

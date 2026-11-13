@@ -20,9 +20,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../../data/common/src/VideoForensics.Data.Common.csproj" />
-        <ProjectReference Include="../../../data/core/src/VideoForensics.Data.Core.csproj" />
-        <ProjectReference Include="../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="../../providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
+        <ProjectReference Include="../../providers/core/src/VideoForensics.Core.Providers.Core.csproj" />
         <ProjectReference Include="../../helpers/src/VideoForensics.Core.Helpers.csproj" />
     </ItemGroup>
 

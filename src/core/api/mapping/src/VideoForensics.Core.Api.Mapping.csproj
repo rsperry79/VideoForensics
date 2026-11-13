@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <AssemblyName>VideoForensics.Core.Api.Mapping</AssemblyName>
+        <RootNamespace>VideoForensics.Core.Api.Contracts</RootNamespace>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Server-side mapping between Api.Contracts DTOs and data-layer entities. Not referenced by client hosts.</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/VideoForensics.Core.Api.Contracts.csproj" />
+        <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../../../data/core/src/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
+    </ItemGroup>
+
+</Project>

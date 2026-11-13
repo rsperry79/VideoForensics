@@ -54,6 +54,7 @@
     <ItemGroup>
         <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
         <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
+        <ProjectReference Include="../../../../core/api/mapping/src/VideoForensics.Core.Api.Mapping.csproj" />
         <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />
         <ProjectReference Include="../../../../data/core/src/VideoForensics.Data.Core.csproj" />
         <ProjectReference Include="../../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />

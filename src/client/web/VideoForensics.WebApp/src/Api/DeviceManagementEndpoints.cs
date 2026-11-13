@@ -400,7 +400,7 @@ namespace VideoForensics.Client.WebApp.Api
             op.LastName,
             op.Email,
             op.Phone,
-            op.Role,
+            Enum.Parse<OperatorRoleDto>(op.Role.ToString()),
             op.Active,
             op.IsApproved,
             op.CreatedAtUtc,
@@ -408,7 +408,7 @@ namespace VideoForensics.Client.WebApp.Api
             op.PasswordUpdatedAtUtc,
             op.FailedLoginAttemptCount,
             op.LockedOutUntilUtc,
-            op.TwoFactorRequirementOverride,
+            Enum.Parse<TwoFactorRequirementOverrideDto>(op.TwoFactorRequirementOverride.ToString()),
             op.IsPrimarySuperAdmin,
             op.PasskeyRequired);
         }

@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Hosting.Remote
             return result.Select(dto => new TwoFactorRoleRequirement
             {
                 Id = Guid.NewGuid(),
-                Role = dto.Role,
+                Role = Enum.Parse<OperatorRole>(dto.Role.ToString()),
                 RequireTwoFactor = dto.RequireTwoFactor,
                 UpdatedAtUtc = dto.UpdatedAtUtc,
                 UpdatedByOperatorId = null
@@ -52,7 +52,7 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         public async Task UpdateOperatorOverrideAsync(Guid operatorId, TwoFactorRequirementOverride @override, CancellationToken ct)
         {
-            var request = new UpdateOperatorTwoFactorOverrideRequest(@override);
+            var request = new UpdateOperatorTwoFactorOverrideRequest(Enum.Parse<TwoFactorRequirementOverrideDto>(@override.ToString()));
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync($"/api/v1/two-factor-policy/operators/{operatorId}/override", request, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();
         }

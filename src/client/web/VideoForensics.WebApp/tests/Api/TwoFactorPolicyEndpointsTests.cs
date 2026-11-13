@@ -133,7 +133,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 TwoFactorRequirementOverride = TwoFactorRequirementOverride.Inherit
             };
 
-            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverride.Required);
+            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverrideDto.Required);
 
             var operatorRepository = new Mock<IOperatorRepository>();
             _ = operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
@@ -167,7 +167,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // Arrange
             var operatorId = Guid.NewGuid();
             var actingOperatorId = Guid.NewGuid();
-            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverride.Required);
+            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverrideDto.Required);
 
             var operatorRepository = new Mock<IOperatorRepository>();
             _ = operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))

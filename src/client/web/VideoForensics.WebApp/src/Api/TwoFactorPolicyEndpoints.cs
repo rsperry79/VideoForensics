@@ -79,7 +79,7 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.NotFound(new { error = "Operator not found" });
             }
 
-            await operators.SetTwoFactorRequirementOverrideAsync(id, request.Override, ct);
+            await operators.SetTwoFactorRequirementOverrideAsync(id, Enum.Parse<VideoForensics.Data.Common.Entities.TwoFactorRequirementOverride>(request.Override.ToString()), ct);
 
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             string details = $"Operator: {op.DisplayName}, Override: {request.Override}";

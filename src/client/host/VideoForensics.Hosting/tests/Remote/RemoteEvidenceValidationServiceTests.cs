@@ -146,8 +146,8 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 var response = new HttpResponseMessage(HttpStatusCode.OK);
                 var dtos = new List<ReconciliationDiscrepancyDto>
                 {
-                    new(DiscrepancyType.MetadataChanged, "event-123", "timestamp", "2024-01-15T10:00:00Z", "2024-01-15T10:05:00Z"),
-                    new(DiscrepancyType.MissingFromProvider, "event-456", null, null, null)
+                    new(DiscrepancyTypeDto.MetadataChanged, "event-123", "timestamp", "2024-01-15T10:00:00Z", "2024-01-15T10:05:00Z"),
+                    new(DiscrepancyTypeDto.MissingFromProvider, "event-456", null, null, null)
                 };
                 response.Content = new StringContent(JsonSerializer.Serialize(dtos), System.Text.Encoding.UTF8, "application/json");
                 return response;
@@ -172,8 +172,8 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 var response = new HttpResponseMessage(HttpStatusCode.OK);
                 var dtos = new List<ReconciliationDiscrepancyDto>
                 {
-                    new(DiscrepancyType.MetadataChanged, "event-123", "duration_seconds", "300", "400"),
-                    new(DiscrepancyType.MissingFromProvider, "event-456", null, null, null)
+                    new(DiscrepancyTypeDto.MetadataChanged, "event-123", "duration_seconds", "300", "400"),
+                    new(DiscrepancyTypeDto.MissingFromProvider, "event-456", null, null, null)
                 };
                 response.Content = new StringContent(JsonSerializer.Serialize(dtos), System.Text.Encoding.UTF8, "application/json");
                 return response;

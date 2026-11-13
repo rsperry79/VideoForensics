@@ -25,45 +25,12 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="StoredValue">Value stored locally.</param>
     /// <param name="ProviderValue">Current value from the provider.</param>
     public record ReconciliationDiscrepancyDto(
-        VideoForensics.Data.Common.Entities.DiscrepancyType Type,
+        DiscrepancyTypeDto Type,
         string ProviderEventId,
         string? FieldName,
         string? StoredValue,
         string? ProviderValue
     );
-
-    /// <summary>Extension methods for mapping ReconciliationDiscrepancy entities to/from ReconciliationDiscrepancyDtos.</summary>
-    public static class ReconciliationDiscrepancyDtoMapping
-    {
-        /// <summary>
-        /// Converts a ReconciliationDiscrepancy entity to a ReconciliationDiscrepancyDto.
-        /// </summary>
-        public static ReconciliationDiscrepancyDto ToDto(this VideoForensics.Data.Common.Entities.ReconciliationDiscrepancy entity)
-        {
-            return new ReconciliationDiscrepancyDto(
-                Type: entity.Type,
-                ProviderEventId: entity.ProviderEventId,
-                FieldName: entity.FieldName,
-                StoredValue: entity.StoredValue,
-                ProviderValue: entity.ProviderValue
-            );
-        }
-
-        /// <summary>
-        /// Converts a ReconciliationDiscrepancyDto to a ReconciliationDiscrepancy entity.
-        /// </summary>
-        public static VideoForensics.Data.Common.Entities.ReconciliationDiscrepancy ToDomain(this ReconciliationDiscrepancyDto dto)
-        {
-            return new VideoForensics.Data.Common.Entities.ReconciliationDiscrepancy
-            {
-                Type = dto.Type,
-                ProviderEventId = dto.ProviderEventId,
-                FieldName = dto.FieldName,
-                StoredValue = dto.StoredValue,
-                ProviderValue = dto.ProviderValue
-            };
-        }
-    }
 
     /// <summary>
     /// Snapshot of an evidence validation job. Kind and State travel as strings

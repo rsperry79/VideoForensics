@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
@@ -9,7 +7,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="RequireTwoFactor">Whether two-factor authentication is required for this role.</param>
     /// <param name="UpdatedAtUtc">Timestamp of the last update to this requirement, in UTC.</param>
     public record TwoFactorRoleRequirementDto(
-        OperatorRole Role,
+        OperatorRoleDto Role,
         bool RequireTwoFactor,
         DateTime UpdatedAtUtc
     );
@@ -27,37 +25,6 @@ namespace VideoForensics.Core.Api.Contracts
     /// </summary>
     /// <param name="Override">The override setting (Inherit, Required, or NotRequired).</param>
     public record UpdateOperatorTwoFactorOverrideRequest(
-        TwoFactorRequirementOverride Override
+        TwoFactorRequirementOverrideDto Override
     );
-
-    /// <summary>Extension methods for mapping two-factor policy domain types to/from DTOs.</summary>
-    public static class TwoFactorPolicyDtoMapping
-    {
-        /// <summary>
-        /// Converts a domain TwoFactorRoleRequirement to a TwoFactorRoleRequirementDto.
-        /// </summary>
-        public static TwoFactorRoleRequirementDto ToDto(this TwoFactorRoleRequirement requirement)
-        {
-            return new TwoFactorRoleRequirementDto(
-                Role: requirement.Role,
-                RequireTwoFactor: requirement.RequireTwoFactor,
-                UpdatedAtUtc: requirement.UpdatedAtUtc
-            );
-        }
-
-        /// <summary>
-        /// Converts a TwoFactorRoleRequirementDto to a domain TwoFactorRoleRequirement.
-        /// </summary>
-        public static TwoFactorRoleRequirement ToDomain(this TwoFactorRoleRequirementDto dto, Guid? operatorId = null)
-        {
-            return new TwoFactorRoleRequirement
-            {
-                Id = Guid.NewGuid(),
-                Role = dto.Role,
-                RequireTwoFactor = dto.RequireTwoFactor,
-                UpdatedAtUtc = DateTime.UtcNow,
-                UpdatedByOperatorId = operatorId
-            };
-        }
-    }
 }

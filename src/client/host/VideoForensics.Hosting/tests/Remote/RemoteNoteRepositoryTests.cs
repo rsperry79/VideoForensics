@@ -37,7 +37,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         public async Task RemoteNoteRepository_Add_MapsCreatedNote()
         {
             var flagId = Guid.NewGuid();
-            var dto = new NoteDto(Guid.NewGuid(), NoteTargetKind.MediaFlag, flagId, "Checked the clip.", "operator-1", DateTime.UtcNow);
+            var dto = new NoteDto(Guid.NewGuid(), NoteTargetKindDto.MediaFlag, flagId, "Checked the clip.", "operator-1", DateTime.UtcNow);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -104,7 +104,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         public async Task RemoteNoteRepository_List_MapsOkNotes()
         {
             var incidentId = Guid.NewGuid();
-            var dto = new NoteDto(Guid.NewGuid(), NoteTargetKind.JammingIncident, incidentId, "First note.", "operator-1", DateTime.UtcNow);
+            var dto = new NoteDto(Guid.NewGuid(), NoteTargetKindDto.JammingIncident, incidentId, "First note.", "operator-1", DateTime.UtcNow);
             string json = JsonSerializer.Serialize(new List<NoteDto> { dto }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>

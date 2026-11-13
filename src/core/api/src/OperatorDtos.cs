@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
@@ -29,7 +27,7 @@ namespace VideoForensics.Core.Api.Contracts
         string LastName,
         string Email,
         string? Phone,
-        OperatorRole Role,
+        OperatorRoleDto Role,
         bool Active,
         bool IsApproved,
         DateTime CreatedAtUtc,
@@ -37,7 +35,7 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime? PasswordUpdatedAtUtc,
         int FailedLoginAttemptCount,
         DateTime? LockedOutUntilUtc,
-        TwoFactorRequirementOverride TwoFactorRequirementOverride,
+        TwoFactorRequirementOverrideDto TwoFactorRequirementOverride,
         bool IsPrimarySuperAdmin,
         bool PasskeyRequired
     );

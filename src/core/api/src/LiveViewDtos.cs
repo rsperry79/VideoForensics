@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
@@ -7,8 +5,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// </summary>
     /// <param name="Id">Unique identifier for the session.</param>
     /// <param name="DeviceId">The device the session is streaming from.</param>
-    /// <param name="TriggerReason">Name of the <see cref="LiveViewTriggerReason"/> that started the session.</param>
-    /// <param name="State">Name of the <see cref="LiveViewSessionState"/> the session is currently in.</param>
+    /// <param name="TriggerReason">Name of the <c>LiveViewTriggerReason</c> that started the session.</param>
+    /// <param name="State">Name of the <c>LiveViewSessionState</c> the session is currently in.</param>
     /// <param name="StartedAtUtc">Timestamp when the session started, in UTC.</param>
     /// <param name="EndedAtUtc">Timestamp when the session ended, in UTC. Null while the session is still open.</param>
     /// <param name="LastExtendedAtUtc">Timestamp of the most recent idle-timeout extension, in UTC.</param>
@@ -61,7 +59,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// never from the client, so no operator identifier is sent.
     /// </summary>
     /// <param name="DeviceId">The device to start live view for.</param>
-    /// <param name="Reason">Name of the <see cref="LiveViewTriggerReason"/> (e.g., "Manual").</param>
+    /// <param name="Reason">Name of the <c>LiveViewTriggerReason</c> (e.g., "Manual").</param>
     public record StartLiveViewRequestDto(
         Guid DeviceId,
         string Reason
@@ -74,43 +72,4 @@ namespace VideoForensics.Core.Api.Contracts
     public record StopLiveViewRequestDto(
         string StopReason
     );
-
-    /// <summary>Extension methods for mapping live-view session entities to wire DTOs.</summary>
-    public static class LiveViewDtoMapping
-    {
-        /// <summary>Converts a LiveViewSession entity to a LiveViewSessionDto, sending enums as their names.</summary>
-        public static LiveViewSessionDto ToDto(this LiveViewSession session)
-        {
-            return new LiveViewSessionDto(
-                Id: session.Id,
-                DeviceId: session.DeviceId,
-                TriggerReason: session.TriggerReason.ToString(),
-                State: session.State.ToString(),
-                StartedAtUtc: session.StartedAtUtc,
-                EndedAtUtc: session.EndedAtUtc,
-                LastExtendedAtUtc: session.LastExtendedAtUtc,
-                IsSustained: session.IsSustained,
-                SustainedSinceUtc: session.SustainedSinceUtc,
-                PromotionReason: session.PromotionReason,
-                OperatorId: session.OperatorId,
-                StopReason: session.StopReason,
-                ProviderSessionRef: session.ProviderSessionRef
-            );
-        }
-
-        /// <summary>Converts a LiveViewTelemetrySample entity to a LiveViewTelemetrySampleDto.</summary>
-        public static LiveViewTelemetrySampleDto ToDto(this LiveViewTelemetrySample sample)
-        {
-            return new LiveViewTelemetrySampleDto(
-                Id: sample.Id,
-                SessionId: sample.SessionId,
-                CapturedAtUtc: sample.CapturedAtUtc,
-                FractionLost: sample.FractionLost,
-                CumulativePacketsLost: sample.CumulativePacketsLost,
-                JitterTicks: sample.JitterTicks,
-                BitrateBps: sample.BitrateBps,
-                InterferenceScore: sample.InterferenceScore
-            );
-        }
-    }
 }

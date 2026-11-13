@@ -256,7 +256,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             IEnumerable<NoteDto> dtos = Assert.IsAssignableFrom<IEnumerable<NoteDto>>(ok.Value);
             NoteDto dto = Assert.Single(dtos);
             Assert.Equal(stored.Id, dto.Id);
-            Assert.Equal(NoteTargetKind.JammingIncident, dto.TargetKind);
+            Assert.Equal(NoteTargetKindDto.JammingIncident, dto.TargetKind);
             Assert.Equal("First note.", dto.Body);
         }
     }
