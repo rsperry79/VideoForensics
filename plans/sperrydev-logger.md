@@ -21,7 +21,7 @@
 - Step 6 done: residual `VideoForensics.Core.Logging` keeps only `ActionLogger`, `IActionLogger`, and `AddActionLogger`, and references the package. Hosting, MAUI, WebApp, and Data.Core reference the package. Data.Core keeps its project reference because it uses `IActionLogger`. 12 .cs files repointed (usings only).
 - Step 7 done: logviewer removed from `VideoForensics.sln`. CI publish steps for the viewer removed from `build-windows.yml` and `release-installers.yml`. The installer's Log Viewer entry is guarded by `#if LogViewerExeExists`, so it is simply omitted now.
 - Step 8 done: full `VideoForensics.sln` build, 0 errors. Tests pass: Hosting 1263, WebApp 1127, Core.Api.Contracts 45, Data.Core 261, Core.Logging 9. SperryDev.Logger tests: 118.
-- Open, needs the user: (a) publish `SperryDev.Logger` 0.1.0 to GitHub Packages so CI can restore it. This is an outward publish, so it is not done. (b) `deploy/windows/VideoForensics.iss` comment and `ToolsReadme.txt` still describe the viewer as shipped with VideoForensics.
+- Done: `SperryDev.Logger` 0.1.0 pushed to GitHub Packages (rsperry79 index). (b) `deploy/windows/VideoForensics.iss` comment and `ToolsReadme.txt` still describe the viewer as shipped with VideoForensics.
 - Step 9: commits made on `main` (SperryDev.Logger) and on `feature/sperrydev-logger` (VideoForensics). Not pushed.
 
 ## Steps
