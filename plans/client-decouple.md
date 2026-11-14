@@ -29,7 +29,7 @@ Client hosts (Ui.Shared, MauiApp, and any MCP bridge) reference only `Api.Contra
 - [ ] D2. Event and review group: `IEventRepository`, review loaders.
 - [ ] D3. Case, legal hold, and user group: `ICaseRepository`, `ILegalHoldRepository`, `IUserRepository`.
 - [ ] D4. Location, provider account, operator preferences, jamming: the remaining repositories.
-- [ ] D5 (partial 2026-11-14: config, report, jamming, notes, case notes done; still injected by name: INoticeRepository, INoticeDismissalRepository, ISyncScheduleRepository, IDeviceHealthRepository, IEventDetailRepository, ISnapshotCaptureRepository, IOperatorRepository. Notices, sync schedule, snapshot and operator need new /api/v1 routes. Gate: 9 files red.). `Client.Core` services used by Ui.Shared (`ConfigTools`, `DeviceControlService`, `ReportGenerationService`, `StepUpService`, others). One unit per service.
+- [ ] D5 (partial 2026-11-14: config, report, jamming, notes, case notes, event detail, device health, snapshot capture done; still injected by name: INoticeRepository, INoticeDismissalRepository (MainLayout, MobileLayout, Notices), ISyncScheduleRepository (AccountDetails, AccountSyncSchedule), IOperatorRepository (Pair). Gate: 6 files red. Open: the sync schedule DTO has no JammingWindows, so a DTO upsert would drop them; decision pending.). `Client.Core` services used by Ui.Shared (`ConfigTools`, `DeviceControlService`, `ReportGenerationService`, `StepUpService`, others). One unit per service.
 - [ ] D6. Remove the `Client.Core` and `data/` references from Ui.Shared's csproj. D0 goes green.
 - [ ] D7. MauiApp: remove its data-layer references. Verify the MAUI build.
 
