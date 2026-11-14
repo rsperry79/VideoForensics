@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Append-only repository for notes on a case, jamming incident or media flag. There are deliberately no edit or delete operations.</summary>
-    public class NoteRepository : INoteRepository
+    public class NoteRepository : INoteWriteRepository
     {
         /// <summary>Maximum note length in characters, matching the database column limit.</summary>
         public const int MaxBodyLength = 4000;

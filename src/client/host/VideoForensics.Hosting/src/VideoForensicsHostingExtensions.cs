@@ -324,6 +324,8 @@ namespace VideoForensics.Client.Hosting
         public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // Server-side event reads and commands for Ui.Shared: DTO view over the write repository (see EventDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository, VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.INoteRepository, VideoForensics.Core.Api.Contracts.Repositories.NoteDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventRepository, VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository>();
             // Server-side flag reads and review commands for Ui.Shared: DTO view over the write repository (see MediaFlagDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository>();
@@ -798,8 +800,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IEventDetailRepository, RemoteEventDetailRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);            services.AddScoped<IJammingWriteRepository, Remote.RemoteJammingWriteRepository>();
 
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, Remote.RemoteMediaFlagRepository>(c => c.BaseAddress = serverAddress);

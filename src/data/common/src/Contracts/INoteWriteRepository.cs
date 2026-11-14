@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Append-only repository for notes on a case, jamming incident or media flag. Notes cannot be edited or deleted.</summary>
-    public interface INoteRepository
+    public interface INoteWriteRepository
     {
         /// <summary>
         /// Appends a note to a target and returns it with its write time set to UTC now.

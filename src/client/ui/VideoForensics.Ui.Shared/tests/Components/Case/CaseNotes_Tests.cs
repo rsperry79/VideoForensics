@@ -6,6 +6,8 @@ using Moq;
 
 using VideoForensics.Client.Ui.Shared.Components.Case;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -35,7 +37,7 @@ public class CaseNotes_Tests : BunitContext
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_notes.Object);
-        _ = _notes.Setup(n => n.ListForCaseAsync(_caseId, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
+        _ = _notes.Setup(n => n.ListForCaseAsync(_caseId, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<CaseNoteDto>());
 
         _ = JSInterop.Setup<NoteEntryCheck>("vfCaseNoteCheck", inv => inv.Arguments.Count > 0 && inv.Arguments[0] is string text && text.Trim().Length > 0)
             .SetResult(new NoteEntryCheck(true, 5, null));
@@ -49,9 +51,9 @@ public class CaseNotes_Tests : BunitContext
         _ = Services.AddScoped(_ => session);
     }
 
-    private static Note Note(Guid caseId, string author, string body)
+    private static CaseNoteDto Note(Guid caseId, string author, string body)
     {
-        return new Note { Id = Guid.NewGuid(), TargetKind = NoteTargetKind.Case, TargetId = caseId, Body = body, AddedBy = author, AddedAtUtc = new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc) };
+        return new CaseNoteDto(Guid.NewGuid(), caseId, body, author, new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc));
     }
 
     [Fact]

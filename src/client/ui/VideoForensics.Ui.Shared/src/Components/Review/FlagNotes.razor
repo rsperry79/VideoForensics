@@ -3,8 +3,8 @@
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts.Repositories
+@using VideoForensics.Core.Api.Contracts
 @inject INoteRepository NoteRepository
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<SharedResources> L
@@ -42,7 +42,7 @@
 
         _boundFlagId = FlagId;
         Guid flagId = FlagId;
-        _loadNotes = async ct => (await NoteRepository.ListAsync(NoteTargetKind.MediaFlag, flagId, ct))
+        _loadNotes = async ct => (await NoteRepository.ListAsync(NoteTargetKindDto.MediaFlag, flagId, ct))
             .Select(n => new NoteItem(n.Id, n.AddedBy, n.AddedAtUtc, n.Body))
             .ToList();
         _addNote = AddNoteAsync;
@@ -57,6 +57,6 @@
             throw new UnauthorizedAccessException("No operator is signed in.");
         }
 
-        return NoteRepository.AddAsync(NoteTargetKind.MediaFlag, FlagId, body.Trim(), actor, ct);
+        return NoteRepository.AddAsync(NoteTargetKindDto.MediaFlag, FlagId, body.Trim(), actor, ct);
     }
 }

@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Case-only view of <see cref="INoteRepository"/>, used by the case notes API and the remote case client. Notes cannot be edited or deleted.</summary>
-    public interface ICaseNoteRepository
+    public interface ICaseNoteWriteRepository
     {
         /// <summary>
         /// Appends a note to a case. Same rules as <see cref="INoteRepository.AddAsync"/> with kind <see cref="NoteTargetKind.Case"/>:

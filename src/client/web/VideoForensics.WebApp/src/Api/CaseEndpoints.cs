@@ -415,7 +415,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for GET /{id:guid}/notes</summary>
         public static async Task<IResult> ListCaseNotesAsync(
             Guid id,
-            INoteRepository notes,
+            INoteWriteRepository notes,
             CancellationToken ct)
         {
             IReadOnlyList<Note> result = await notes.ListAsync(NoteTargetKind.Case, id, ct);
@@ -426,7 +426,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> AddCaseNoteAsync(
             Guid id,
             AddCaseNoteRequest request,
-            INoteRepository notes,
+            INoteWriteRepository notes,
             HttpContext context,
             CancellationToken ct)
         {

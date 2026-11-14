@@ -39,7 +39,7 @@ namespace VideoForensics.Client.WebApp.Api
             ICaseWriteRepository cases,
             IJammingWriteRepository jamming,
             IMediaFlagWriteRepository flags,
-            INoteRepository notes,
+            INoteWriteRepository notes,
             CancellationToken ct)
         {
             if (!TryParseKind(kind, out NoteTargetKind parsedKind))
@@ -64,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Api
             ICaseWriteRepository cases,
             IJammingWriteRepository jamming,
             IMediaFlagWriteRepository flags,
-            INoteRepository notes,
+            INoteWriteRepository notes,
             HttpContext context,
             CancellationToken ct)
         {
