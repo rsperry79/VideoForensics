@@ -9,7 +9,7 @@ namespace VideoForensics.Data.Common.Contracts
         IUserWriteRepository Users { get; }
 
         /// <summary>Gets the provider account repository.</summary>
-        IProviderAccountRepository ProviderAccounts { get; }
+        IProviderAccountWriteRepository ProviderAccounts { get; }
 
         /// <summary>Gets the location repository.</summary>
         ILocationRepository Locations { get; }

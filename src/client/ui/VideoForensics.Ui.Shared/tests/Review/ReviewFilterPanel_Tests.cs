@@ -10,6 +10,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -52,7 +53,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
             new(Devices[1].LocationId, "Yard"),
             new(Devices[2].LocationId, "Garage"),
         ];
-        return new DeviceOwnershipSnapshot(Accounts.ToList(), names, ["Ring", "Wyze"], ownership, Locations: locations);
+        return new DeviceOwnershipSnapshot(Accounts.Select(a => a.ToDto()).ToList(), names, ["Ring", "Wyze"], ownership, Locations: locations);
     }
 
     private IRenderedComponent<ReviewFilterPanel> RenderPanel()

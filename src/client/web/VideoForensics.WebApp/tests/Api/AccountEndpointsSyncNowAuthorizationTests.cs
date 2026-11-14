@@ -132,7 +132,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             // Handlers take these as parameters; unregistered ones are inferred as request bodies and mapping throws.
             _ = builder.Services.AddScoped(_ => Mock.Of<IUserWriteRepository>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<IProviderAccountRepository>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<IProviderAccountWriteRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<IProviderSyncRunRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<Common.Contracts.IAccountExportService>());

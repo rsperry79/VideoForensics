@@ -292,7 +292,7 @@ public abstract class ReviewTestContext : BunitContext
             {
                 return OwnershipFails
                     ? throw new InvalidOperationException("ownership unavailable")
-                    : (IReadOnlyList<ProviderAccount>)Accounts.ToList();
+                    : (IReadOnlyList<ProviderAccountDto>)Accounts.Select(a => a.ToDto()).ToList();
             });
         return repository;
     }

@@ -178,8 +178,8 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = RingAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring" },
-                new() { Id = newId, UserId = newUserId, ProviderName = "Ring" },
+                new ProviderAccountEntity { Id = RingAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring" }.ToDto(),
+                new ProviderAccountEntity { Id = newId, UserId = newUserId, ProviderName = "Ring" }.ToDto(),
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(newUserId, It.IsAny<CancellationToken>()))
@@ -219,7 +219,7 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
     public void Accounts_DisposedDuringInitialLoad_DoesNotSubscribe()
     {
         // Hold the initial load open so the component is disposed while OnInitializedAsync is still awaiting it.
-        var gate = new TaskCompletionSource<IReadOnlyList<ProviderAccountEntity>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new TaskCompletionSource<IReadOnlyList<ProviderAccountDto>>(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .Returns(gate.Task);

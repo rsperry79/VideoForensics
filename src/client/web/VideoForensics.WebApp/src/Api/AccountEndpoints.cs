@@ -117,20 +117,20 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithDescription("Deletes a user account.");
 
             // Provider account endpoints
-            _ = group.MapGet("/provider-accounts", async (IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts", async (IProviderAccountWriteRepository accounts, CancellationToken ct) =>
                 Results.Ok((await accounts.ListAsync(ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
                 .WithSummary("List all provider accounts")
                 .WithDescription("Retrieves all provider accounts in the system.");
 
-            _ = group.MapGet("/provider-accounts/active", async (IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts/active", async (IProviderAccountWriteRepository accounts, CancellationToken ct) =>
                 Results.Ok((await accounts.ListActiveAsync(ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
                 .WithSummary("List active provider accounts")
                 .WithDescription("Retrieves all active provider accounts.");
 
             // Declared before the "{id:guid}" routes; the guid constraint already keeps "removed" from colliding.
-            _ = group.MapGet("/provider-accounts/removed", async (IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts/removed", async (IProviderAccountWriteRepository accounts, CancellationToken ct) =>
                 Results.Ok((await accounts.ListRemovedAsync(ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
                 .WithSummary("List removed provider accounts")
@@ -159,7 +159,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Get a sync run for a provider account")
                 .WithDescription("Retrieves a single sync attempt by ID. Returns 404 when the run does not belong to the account.");
 
-            _ = group.MapGet("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountWriteRepository accounts, CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
                 return account == null ? Results.NotFound() : Results.Ok(account.ToDto());
@@ -168,13 +168,13 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Get provider account by ID")
                 .WithDescription("Retrieves a provider account by its unique identifier.");
 
-            _ = group.MapGet("/provider-accounts/by-user/{userId:guid}", async (Guid userId, IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts/by-user/{userId:guid}", async (Guid userId, IProviderAccountWriteRepository accounts, CancellationToken ct) =>
                 Results.Ok((await accounts.GetByUserIdAsync(userId, ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
                 .WithSummary("Get provider accounts by user")
                 .WithDescription("Retrieves all provider accounts linked to a specific user.");
 
-            _ = group.MapGet("/provider-accounts/by-user-and-provider", async (Guid userId, string providerName, IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts/by-user-and-provider", async (Guid userId, string providerName, IProviderAccountWriteRepository accounts, CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetByUserAndProviderAsync(userId, providerName, ct);
                 return account == null ? Results.NotFound() : Results.Ok(account.ToDto());
@@ -185,7 +185,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapPost("/provider-accounts", async (
                 CreateProviderAccountRequest request,
-                IProviderAccountRepository accounts,
+                IProviderAccountWriteRepository accounts,
                 CancellationToken ct) =>
             {
                 var account = new ProviderAccount
@@ -215,7 +215,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapPut("/provider-accounts/{id:guid}", async (
                 Guid id,
                 UpdateProviderAccountRequest request,
-                IProviderAccountRepository accounts,
+                IProviderAccountWriteRepository accounts,
                 CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
@@ -250,7 +250,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Update a provider account")
                 .WithDescription("Updates an existing provider account's information.");
 
-            _ = sensitiveGroup.MapDelete("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = sensitiveGroup.MapDelete("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountWriteRepository accounts, CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
                 if (account == null)
@@ -266,7 +266,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Delete a provider account")
                 .WithDescription("Deletes a provider account link.");
 
-            _ = group.MapPost("/provider-accounts/{id:guid}/retire", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
+            _ = group.MapPost("/provider-accounts/{id:guid}/retire", async (Guid id, IProviderAccountWriteRepository accounts, CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
                 if (account == null)
@@ -292,7 +292,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = sensitiveGroup.MapPost("/provider-accounts/{id:guid}/exports", async (
                 Guid id,
                 QueueAccountExportRequest request,
-                IProviderAccountRepository accounts,
+                IProviderAccountWriteRepository accounts,
                 IAccountExportService exports,
                 CancellationToken ct) =>
             {
@@ -346,7 +346,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapPost("/provider-accounts/{id:guid}/initial-sync", async (
                 Guid id,
-                IProviderAccountRepository accounts,
+                IProviderAccountWriteRepository accounts,
                 CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
@@ -372,7 +372,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapPost("/provider-accounts/{id:guid}/sync-now", async (
                 Guid id,
                 SyncNowRequest? body,
-                IProviderAccountRepository accounts,
+                IProviderAccountWriteRepository accounts,
                 CancellationToken ct) =>
             {
                 // The body is optional: no body keeps the default incremental sync.
@@ -401,7 +401,7 @@ namespace VideoForensics.Client.WebApp.Api
                         using IServiceScope scope = scopeFactory.CreateScope();
 
                         // An account whose first sync never finished gets that sync instead of an incremental pull.
-                        IProviderAccountRepository accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+                        IProviderAccountWriteRepository accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountWriteRepository>();
                         ProviderAccount? current = await accountRepository.GetAsync(id, CancellationToken.None);
                         IInitialSyncDispatcher? initialSync = scope.ServiceProvider.GetService<IInitialSyncDispatcher>();
                         if (current is { InitialSyncCompleted: false } && initialSync is not null)

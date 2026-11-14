@@ -177,9 +177,9 @@ public class CircuitOperatorGate_Tests
 
 public class GuardedProviderAccountRepository_Tests
 {
-    private static (GuardedProviderAccountRepository Guarded, Mock<IProviderAccountRepository> Inner) Create(bool allowed)
+    private static (GuardedProviderAccountRepository Guarded, Mock<IProviderAccountWriteRepository> Inner) Create(bool allowed)
     {
-        var inner = new Mock<IProviderAccountRepository>();
+        var inner = new Mock<IProviderAccountWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(It.IsAny<AccessPolicy>())).Returns(allowed);
         return (new GuardedProviderAccountRepository(inner.Object, gate.Object, EditPolicyRequiring(AccessPolicy.Admin)), inner);
@@ -195,7 +195,7 @@ public class GuardedProviderAccountRepository_Tests
     [Fact]
     public async Task GuardedProviderAccountRepository_UpdateAsync_SuperAdminOnlyEdit_AdminDeniedAndInnerNotCalled()
     {
-        var inner = new Mock<IProviderAccountRepository>();
+        var inner = new Mock<IProviderAccountWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
         _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdmin)).Returns(false);
@@ -209,7 +209,7 @@ public class GuardedProviderAccountRepository_Tests
     public async Task GuardedProviderAccountRepository_DeleteAsync_AdminOpenEdit_StillRequiresSuperAdminLocal()
     {
         // Delete is SuperAdmin-only regardless of the edit setting: an edit setting open to Admin must not open delete.
-        var inner = new Mock<IProviderAccountRepository>();
+        var inner = new Mock<IProviderAccountWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
         _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
@@ -222,7 +222,7 @@ public class GuardedProviderAccountRepository_Tests
     [Fact]
     public async Task GuardedProviderAccountRepository_AddAsync_Denied_ThrowsAndDoesNotCallInner()
     {
-        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountRepository>? inner) = Create(allowed: false);
+        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountWriteRepository>? inner) = Create(allowed: false);
         var account = new ProviderAccount { ProviderName = "Ring" };
 
         _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.AddAsync(account, CancellationToken.None));
@@ -233,7 +233,7 @@ public class GuardedProviderAccountRepository_Tests
     [Fact]
     public async Task GuardedProviderAccountRepository_DeleteAsync_Allowed_CallsInner()
     {
-        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountRepository>? inner) = Create(allowed: true);
+        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountWriteRepository>? inner) = Create(allowed: true);
         var id = Guid.NewGuid();
 
         await guarded.DeleteAsync(id, CancellationToken.None);
@@ -245,7 +245,7 @@ public class GuardedProviderAccountRepository_Tests
     public async Task GuardedProviderAccountRepository_ListAsync_Denied_StillPassesThrough()
     {
         // Collect and Device Configuration read accounts for every operator, so reads are never gated here.
-        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountRepository>? inner) = Create(allowed: false);
+        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountWriteRepository>? inner) = Create(allowed: false);
         _ = inner.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
         _ = await guarded.ListAsync(CancellationToken.None);
@@ -330,7 +330,7 @@ public class CircuitGuardRegistration_Tests
     public async Task CircuitGuardRegistration_RegisteredAccountRepository_IsWrappedByGuard()
     {
         var services = new ServiceCollection();
-        _ = services.AddScoped<IProviderAccountRepository, ProviderAccountRepositoryStub>();
+        _ = services.AddScoped<IProviderAccountWriteRepository, ProviderAccountRepositoryStub>();
         // The other guarded services must be registered too, or the helper fails fast (see the test below).
         _ = services.AddScoped(_ => ProviderAccountEditPolicyStub.Admin());
         _ = services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
@@ -340,7 +340,7 @@ public class CircuitGuardRegistration_Tests
         _ = services.AddScoped(_ => new Mock<ICaseWriteRepository>().Object);
         _ = services.AddScoped(_ => new Mock<ILegalHoldWriteRepository>().Object);
         _ = services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
-        _ = services.AddScoped(_ => new Mock<IJammingRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<IJammingWriteRepository>().Object);
         _ = services.AddScoped(_ => new Mock<Core.Contracts.IConfigToolsOrchestrator>().Object);
         _ = services.AddCircuitOperatorGuards();
         // The gate is overridden so the test controls the decision without a circuit.
@@ -350,7 +350,7 @@ public class CircuitGuardRegistration_Tests
 
         await using ServiceProvider provider = services.BuildServiceProvider();
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
-        IProviderAccountRepository resolved = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+        IProviderAccountWriteRepository resolved = scope.ServiceProvider.GetRequiredService<IProviderAccountWriteRepository>();
 
         _ = Assert.IsType<GuardedProviderAccountRepository>(resolved);
         _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => resolved.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
@@ -365,7 +365,7 @@ public class CircuitGuardRegistration_Tests
     }
 
     /// <summary>Stand-in for the real data-layer repository, so the registration test needs no database.</summary>
-    public sealed class ProviderAccountRepositoryStub : IProviderAccountRepository
+    public sealed class ProviderAccountRepositoryStub : IProviderAccountWriteRepository
     {
         public Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct)
         {
@@ -497,9 +497,9 @@ public class GuardedMediaStillCaptureService_Tests
 
 public class GuardedJammingRepository_Tests
 {
-    private static (GuardedJammingRepository Guarded, Mock<IJammingRepository> Inner) Create(bool allowed)
+    private static (GuardedJammingRepository Guarded, Mock<IJammingWriteRepository> Inner) Create(bool allowed)
     {
-        var inner = new Mock<IJammingRepository>();
+        var inner = new Mock<IJammingWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(allowed);
         return (new GuardedJammingRepository(inner.Object, gate.Object), inner);
@@ -508,7 +508,7 @@ public class GuardedJammingRepository_Tests
     [Fact]
     public async Task GuardedJammingRepository_UpsertIncident_ReviewOperator_ThrowsAndDoesNotWrite()
     {
-        (GuardedJammingRepository? guarded, Mock<IJammingRepository>? inner) = Create(allowed: false);
+        (GuardedJammingRepository? guarded, Mock<IJammingWriteRepository>? inner) = Create(allowed: false);
 
         _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.UpsertIncidentAsync(new JammingIncidentRecord(), CancellationToken.None));
 
@@ -518,7 +518,7 @@ public class GuardedJammingRepository_Tests
     [Fact]
     public async Task GuardedJammingRepository_RecomputeStats_ReviewOperator_ThrowsAndDoesNotRecompute()
     {
-        (GuardedJammingRepository? guarded, Mock<IJammingRepository>? inner) = Create(allowed: false);
+        (GuardedJammingRepository? guarded, Mock<IJammingWriteRepository>? inner) = Create(allowed: false);
 
         _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RecomputeStatsAsync(Guid.NewGuid(), CancellationToken.None));
 
@@ -528,7 +528,7 @@ public class GuardedJammingRepository_Tests
     [Fact]
     public async Task GuardedJammingRepository_ListIncidents_ReviewOperator_StillPassesThrough()
     {
-        (GuardedJammingRepository? guarded, Mock<IJammingRepository>? inner) = Create(allowed: false);
+        (GuardedJammingRepository? guarded, Mock<IJammingWriteRepository>? inner) = Create(allowed: false);
         _ = inner.Setup(r => r.ListIncidentsAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
         _ = await guarded.ListIncidentsAsync(null, null, null, CancellationToken.None);

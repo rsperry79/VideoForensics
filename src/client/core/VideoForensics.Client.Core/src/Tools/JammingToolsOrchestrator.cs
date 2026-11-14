@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Core.Tools
     public class JammingToolsOrchestrator
     {
         private readonly ILogger<JammingToolsOrchestrator> _logger;
-        private readonly IJammingRepository _jammingRepository;
+        private readonly IJammingWriteRepository _jammingRepository;
         private readonly IDeviceHealthRepository _healthRepository;
         private readonly INotificationDispatcher? _notificationDispatcher;
 
@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Core.Tools
 
         public JammingToolsOrchestrator(
             ILogger<JammingToolsOrchestrator> logger,
-            IJammingRepository jammingRepository,
+            IJammingWriteRepository jammingRepository,
             IDeviceHealthRepository healthRepository,
             INotificationDispatcher? notificationDispatcher = null)
         {

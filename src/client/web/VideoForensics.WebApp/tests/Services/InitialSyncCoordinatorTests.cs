@@ -14,7 +14,7 @@ public class InitialSyncCoordinatorTests
 {
     private readonly Guid _accountId = Guid.NewGuid();
     private readonly Mock<IAccountSyncRunner> _runner = new();
-    private readonly Mock<IProviderAccountRepository> _accounts = new();
+    private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
     private readonly Mock<IAccountDeviceRepository> _accountDevices = new();
     private readonly Mock<IEvidenceValidationService> _validation = new();
     private readonly ProviderAccount _account;

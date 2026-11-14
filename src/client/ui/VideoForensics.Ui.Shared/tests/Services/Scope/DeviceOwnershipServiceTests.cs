@@ -24,15 +24,9 @@ public class DeviceOwnershipServiceTests
         return new(_accounts.Object, _locations.Object, _users.Object);
     }
 
-    private static ProviderAccount MakeAccount(string providerName, Guid userId)
+    private static ProviderAccountDto MakeAccount(string providerName, Guid userId)
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ProviderName = providerName,
-            LinkedUtc = DateTime.UtcNow,
-        };
+        return new(Guid.NewGuid(), userId, providerName, DateTime.UtcNow, null, true, null, null, null);
     }
 
     private static Device MakeDevice(Guid locationId) => MakeEntity(locationId).ToDto();
@@ -52,8 +46,8 @@ public class DeviceOwnershipServiceTests
     [Fact]
     public async Task LoadAsync_AccountsAndLocations_BuildsOwnershipAndSortedProviderNames()
     {
-        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
-        ProviderAccount wyze = MakeAccount("Wyze", Guid.NewGuid());
+        ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccountDto wyze = MakeAccount("Wyze", Guid.NewGuid());
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L1", Name = "Home" };
         Device device = MakeDevice(location.Id);
 
@@ -73,8 +67,8 @@ public class DeviceOwnershipServiceTests
     [Fact]
     public async Task LoadAsync_SharedAndBlankNamedLocations_AreDistinctSortedAndNamed()
     {
-        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
-        ProviderAccount wyze = MakeAccount("Wyze", Guid.NewGuid());
+        ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccountDto wyze = MakeAccount("Wyze", Guid.NewGuid());
         var shared = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L1", Name = "home" };
         var unnamed = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L2", Name = " " };
         var cabin = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L3", Name = "Cabin" };
@@ -93,7 +87,7 @@ public class DeviceOwnershipServiceTests
     [Fact]
     public async Task LoadAsync_UserLookupThrows_FallsBackToProviderName()
     {
-        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring });
         _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Location>());
         _ = _users.Setup(r => r.GetAsync(ring.UserId, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("db down"));

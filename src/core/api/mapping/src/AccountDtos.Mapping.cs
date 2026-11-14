@@ -77,7 +77,8 @@ namespace VideoForensics.Core.Api.Contracts
                 LastDownloadTimeUtc: entity.LastDownloadTimeUtc,
                 LastErrorUtc: entity.LastErrorUtc,
                 LastErrorMessage: entity.LastErrorMessage,
-                RemovedUtc: entity.RemovedUtc
+                RemovedUtc: entity.RemovedUtc,
+                LastSyncCompletedUtc: entity.LastSyncCompletedUtc
             );
         }
 
@@ -97,7 +98,8 @@ namespace VideoForensics.Core.Api.Contracts
                 LastDownloadTimeUtc = dto.LastDownloadTimeUtc,
                 LastErrorUtc = dto.LastErrorUtc,
                 LastErrorMessage = dto.LastErrorMessage,
-                RemovedUtc = dto.RemovedUtc
+                RemovedUtc = dto.RemovedUtc,
+                LastSyncCompletedUtc = dto.LastSyncCompletedUtc
             };
         }
     }

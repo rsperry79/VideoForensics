@@ -30,7 +30,7 @@ internal static class ScopeOwnershipTestDoubles
         var accountRepository = new Mock<IProviderAccountRepository>();
         _ = accountRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(accounts);
+            .ReturnsAsync(accounts.Select(a => a.ToDto()).ToList());
 
         var locationRepository = new Mock<ILocationRepository>();
         _ = locationRepository

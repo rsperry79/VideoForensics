@@ -74,7 +74,7 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ICredentialStore>(),
                 provider.GetRequiredService<ICredentialRepository>(),
                 provider.GetRequiredService<IRingAccountRepository>(),
-                provider.GetRequiredService<IProviderAccountRepository>(),
+                provider.GetRequiredService<IProviderAccountWriteRepository>(),
                 provider.GetRequiredService<IUserWriteRepository>(),
                 provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
                 endpoints: provider.GetService<VideoForensics.Providers.Ring.RingEndpointOptions>()
@@ -330,6 +330,8 @@ namespace VideoForensics.Client.Hosting
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository, VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IUserRepository, VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IProviderAccountRepository, VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository, VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository>();
             // Server-side media reads for Ui.Shared: DTO view over the write repository (see MediaItemDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository>();
             // Server-side device reads for Ui.Shared: DTO view over the write repository (see DeviceDtoRepository).
@@ -490,7 +492,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IBackupExportService>(serviceProvider =>
             {
                 ILogger<BackupExportOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<BackupExportOrchestrator>>();
-                IProviderAccountRepository providerAccountRepository = serviceProvider.GetRequiredService<IProviderAccountRepository>();
+                IProviderAccountWriteRepository providerAccountRepository = serviceProvider.GetRequiredService<IProviderAccountWriteRepository>();
                 ILocationRepository locationRepository = serviceProvider.GetRequiredService<ILocationRepository>();
                 IDeviceWriteRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceWriteRepository>();
                 IEventWriteRepository eventRepository = serviceProvider.GetRequiredService<IEventWriteRepository>();
@@ -679,7 +681,7 @@ namespace VideoForensics.Client.Hosting
                         {
                             ILogger<RingHealthSource> logger = provider.GetRequiredService<ILogger<RingHealthSource>>();
                             ISessionProvider sessionProvider = provider.GetRequiredService<ISessionProvider>();
-                            IProviderAccountRepository accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+                            IProviderAccountWriteRepository accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountWriteRepository>();
                             // Must be resolved keyed by "Ring", not the unkeyed IProviderAuthService - this loop
                             // registers Ring/Uniview/Wyze side by side, and the unkeyed overload only ever
                             // returns whichever provider's factory happened to run last in the loop above.
@@ -712,7 +714,7 @@ namespace VideoForensics.Client.Hosting
                     provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
                     provider.GetRequiredService<IDeviceWriteRepository>(),
                     provider.GetRequiredService<ILocationRepository>(),
-                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredService<IProviderAccountWriteRepository>(),
                     provider.GetService<ILogger<EventPullService>>(),
                     provider.GetKeyedService<IMediaDownloadService>(providerName),
                     storage: provider.GetService<IStorageLocationProvider>(),
@@ -794,11 +796,12 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);            services.AddScoped<IJammingWriteRepository, Remote.RemoteJammingWriteRepository>();
+
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, Remote.RemoteMediaFlagRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ISnapshotCaptureRepository, Remote.RemoteSnapshotCaptureRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IAccountExportService, Remote.RemoteAccountExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);

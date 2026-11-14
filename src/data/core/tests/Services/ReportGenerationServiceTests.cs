@@ -25,7 +25,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<IEventWriteRepository> _mockEventRepository;
-        private readonly Mock<IJammingRepository> _mockJammingRepository;
+        private readonly Mock<IJammingWriteRepository> _mockJammingRepository;
         private readonly Mock<IIntegrityRecordRepository> _mockIntegrityRecordRepository;
         private readonly Mock<ILogger<ReportGenerationService>> _mockLogger;
         private readonly Mock<IStorageLocationProvider> _mockStorageLocationProvider;
@@ -41,7 +41,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockEventRepository = new Mock<IEventWriteRepository>();
-            _mockJammingRepository = new Mock<IJammingRepository>();
+            _mockJammingRepository = new Mock<IJammingWriteRepository>();
             _mockIntegrityRecordRepository = new Mock<IIntegrityRecordRepository>();
             _mockLogger = new Mock<ILogger<ReportGenerationService>>();
             _mockStorageLocationProvider = new Mock<IStorageLocationProvider>();

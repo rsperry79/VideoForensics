@@ -1,6 +1,7 @@
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
@@ -27,7 +28,7 @@ public class SignalAnalysisServiceTests
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out DeviceHealth[]? rows) ? rows : []);
         var schedules = new Mock<ISyncScheduleRepository>();
         var accounts = new Mock<IProviderAccountRepository>();
-        _ = accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ProviderAccount>());
+        _ = accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ProviderAccountDto>());
         var locations = new Mock<ILocationRepository>();
         var users = new Mock<IUserRepository>();
         var ownership = new DeviceOwnershipService(accounts.Object, locations.Object, users.Object);

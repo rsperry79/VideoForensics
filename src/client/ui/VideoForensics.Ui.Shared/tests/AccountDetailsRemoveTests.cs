@@ -55,7 +55,7 @@ public abstract class AccountDetailsRemoveTestBase : BunitContext
         var ringUserId = Guid.NewGuid();
         _ = AccountRepositoryMock
             .Setup(r => r.GetAsync(RingAccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProviderAccountEntity { Id = RingAccountId, UserId = ringUserId, ProviderName = "Ring", LinkedUtc = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) });
+            .ReturnsAsync(new ProviderAccountEntity { Id = RingAccountId, UserId = ringUserId, ProviderName = "Ring", LinkedUtc = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) }.ToDto());
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(ringUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = ringUserId, ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());

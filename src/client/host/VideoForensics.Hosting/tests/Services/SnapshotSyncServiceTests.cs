@@ -14,7 +14,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
     /// <summary>The snapshot sync service runs the capture cycle for Ring accounts.</summary>
     public class SnapshotSyncServiceTests
     {
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<ILocationRepository> _locations = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Guid _accountId = Guid.NewGuid();

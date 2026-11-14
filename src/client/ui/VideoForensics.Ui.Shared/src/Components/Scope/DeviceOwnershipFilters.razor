@@ -1,4 +1,5 @@
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Scope
@@ -41,9 +42,9 @@
     private string? _providerFilter;
     private Guid? _accountFilter;
 
-    private IEnumerable<VideoForensics.Data.Common.Entities.ProviderAccount> AccountOptions =>
+    private IEnumerable<ProviderAccountDto> AccountOptions =>
         _snapshot is null
-            ? Enumerable.Empty<VideoForensics.Data.Common.Entities.ProviderAccount>()
+            ? Enumerable.Empty<ProviderAccountDto>()
             : ScopeDeviceFilter.AccountsForProvider(_snapshot.Accounts, _providerFilter);
 
     protected override async Task OnParametersSetAsync()
@@ -63,7 +64,7 @@
 
         // ScopeRailRules clears an account that the newly picked provider does not offer.
         (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(
-            _snapshot?.Accounts ?? Array.Empty<ProviderAccount>(), _accountFilter, value);
+            _snapshot?.Accounts ?? Array.Empty<ProviderAccountDto>(), _accountFilter, value);
 
         await PublishAsync();
     }

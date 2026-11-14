@@ -226,7 +226,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 string providerName = "unknown provider";
                 try
                 {
-                    ProviderAccount? account = await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(schedule.ProviderAccountId, ct);
+                    ProviderAccount? account = await sp.GetRequiredService<IProviderAccountWriteRepository>().GetAsync(schedule.ProviderAccountId, ct);
                     if (account == null)
                     {
                         _logger.LogWarning("Scheduled sync skipped: provider account for an enabled schedule no longer exists");
@@ -553,7 +553,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         eventService,
                         sp.GetRequiredService<IDeviceWriteRepository>(),
                         sp.GetRequiredService<ILocationRepository>(),
-                        sp.GetRequiredService<IProviderAccountRepository>(),
+                        sp.GetRequiredService<IProviderAccountWriteRepository>(),
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,
                         storage: sp.GetService<IStorageLocationProvider>(),
@@ -575,7 +575,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         DateTime windowEnd = AccountSyncRunner.NextBackfillEnd(windowStart, nowUtc);
                         counts = await pull.PullAccountEventsAsync(accountId, windowStart, windowEnd, ct);
                         backfillError = ProviderSyncRunRecorder.OutcomeAfterPull(
-                            await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
+                            await sp.GetRequiredService<IProviderAccountWriteRepository>().GetAsync(accountId, ct));
                         if (backfillError is null)
                         {
                             backfillInProgress = windowEnd < nowUtc;
@@ -586,7 +586,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     {
                         IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.WeeklyWindows(catchUpStart, runNowUtc);
                         _logger.LogInformation("Scheduled sync catching up {Windows} week(s) for {ProviderName} account", windows.Count, providerName);
-                        (counts, catchUpError) = await PullCatchUpAsync(pull, sp.GetRequiredService<IProviderAccountRepository>(), budgetGuard, providerName, accountId, windows, ct);
+                        (counts, catchUpError) = await PullCatchUpAsync(pull, sp.GetRequiredService<IProviderAccountWriteRepository>(), budgetGuard, providerName, accountId, windows, ct);
                     }
                     else
                     {
@@ -599,7 +599,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     // Same rule as the manual sync: the pull reports failures by recording them on the account.
                     outcome = backfillError ?? catchUpError ?? ProviderSyncRunRecorder.OutcomeAfterPull(
-                        await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
+                        await sp.GetRequiredService<IProviderAccountWriteRepository>().GetAsync(accountId, ct));
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -618,7 +618,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 // Why: the clean-pull time gates the time-lapse horizon, so it is set only when the completion is recorded.
                 // A failed write leaves it unset, and the next tick retries the write.
-                if (await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct))
+                if (await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountWriteRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct))
                 {
                     _cleanPullUtc[accountId] = _time.GetUtcNow().UtcDateTime;
                 }
@@ -638,7 +638,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         private async Task<(EventPullResult Counts, string? Error)> PullCatchUpAsync(
             EventPullService pull,
-            IProviderAccountRepository accounts,
+            IProviderAccountWriteRepository accounts,
             IProviderApiBudgetGuard budgetGuard,
             string providerName,
             Guid accountId,
@@ -673,7 +673,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>
         /// <returns>True when the completion is recorded, or the account no longer exists; false when the write failed.</returns>
-        private async Task<bool> MarkSyncCompletedAsync(IProviderAccountRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
+        private async Task<bool> MarkSyncCompletedAsync(IProviderAccountWriteRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
         {
             try
             {

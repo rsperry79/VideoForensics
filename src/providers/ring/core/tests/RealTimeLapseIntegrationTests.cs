@@ -59,7 +59,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             using IServiceScope scope = RealSessionHelper.Services.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
 
-            ProviderAccount? account = (await sp.GetRequiredService<IProviderAccountRepository>().ListActiveAsync(ct))
+            ProviderAccount? account = (await sp.GetRequiredService<IProviderAccountWriteRepository>().ListActiveAsync(ct))
                 .FirstOrDefault(a => string.Equals(a.ProviderName, "Ring", StringComparison.OrdinalIgnoreCase));
             if (account is null)
             {

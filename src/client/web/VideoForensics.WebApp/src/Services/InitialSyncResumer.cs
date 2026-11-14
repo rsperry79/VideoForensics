@@ -6,13 +6,13 @@ namespace VideoForensics.Client.WebApp.Services
     /// <summary>Re-runs the first sync for every active account whose first sync never finished.</summary>
     public class InitialSyncResumer
     {
-        private readonly IProviderAccountRepository _accounts;
+        private readonly IProviderAccountWriteRepository _accounts;
         private readonly IInitialSyncCoordinator _coordinator;
         private readonly ILogger<InitialSyncResumer> _logger;
 
         /// <summary>Creates the resumer.</summary>
         public InitialSyncResumer(
-            IProviderAccountRepository accounts,
+            IProviderAccountWriteRepository accounts,
             IInitialSyncCoordinator coordinator,
             ILogger<InitialSyncResumer> logger)
         {

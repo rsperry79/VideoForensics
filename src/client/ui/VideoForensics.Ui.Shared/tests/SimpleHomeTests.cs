@@ -47,7 +47,7 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => _mediaData.Select(m => m.ToDto()).ToList());
         _ = _jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => _jammingData);
+            .ReturnsAsync(() => _jammingData.Select(i => i.ToDto()).ToList());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyCollection<Guid> ids, CancellationToken _) =>
                 ids.ToDictionary(i => i, i => "https://server/content/video"));

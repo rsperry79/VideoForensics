@@ -1,4 +1,5 @@
 @page "/accounts/manual-sync"
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Contracts
@@ -109,7 +110,7 @@ else
 }
 
 @code {
-    private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName, string? Email);
+    private sealed record AccountRow(ProviderAccountDto Account, string DisplayName, string? Email);
 
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<AccountRow> _rows = new();

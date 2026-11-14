@@ -125,7 +125,7 @@ namespace VideoForensics.Client.Hosting.Services
     public class AccountSyncRunner : IAccountSyncRunner
     {
         private readonly IServiceProvider _services;
-        private readonly IProviderAccountRepository _accounts;
+        private readonly IProviderAccountWriteRepository _accounts;
         private readonly IProviderSyncRunRepository _syncRuns;
         private readonly ILogger<AccountSyncRunner> _logger;
         private readonly ISyncActivityLog _activity;
@@ -133,7 +133,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>Creates the runner.</summary>
         public AccountSyncRunner(
             IServiceProvider services,
-            IProviderAccountRepository accounts,
+            IProviderAccountWriteRepository accounts,
             IProviderSyncRunRepository syncRuns,
             ILogger<AccountSyncRunner> logger,
             ISyncActivityLog activity)

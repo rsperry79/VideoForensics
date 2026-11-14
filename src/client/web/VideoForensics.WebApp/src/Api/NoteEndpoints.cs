@@ -37,7 +37,7 @@ namespace VideoForensics.Client.WebApp.Api
             string kind,
             Guid targetId,
             ICaseWriteRepository cases,
-            IJammingRepository jamming,
+            IJammingWriteRepository jamming,
             IMediaFlagWriteRepository flags,
             INoteRepository notes,
             CancellationToken ct)
@@ -62,7 +62,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid targetId,
             AddNoteRequest request,
             ICaseWriteRepository cases,
-            IJammingRepository jamming,
+            IJammingWriteRepository jamming,
             IMediaFlagWriteRepository flags,
             INoteRepository notes,
             HttpContext context,
@@ -119,7 +119,7 @@ namespace VideoForensics.Client.WebApp.Api
             NoteTargetKind kind,
             Guid targetId,
             ICaseWriteRepository cases,
-            IJammingRepository jamming,
+            IJammingWriteRepository jamming,
             IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {

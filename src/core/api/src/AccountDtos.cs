@@ -30,6 +30,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="LastErrorUtc">Timestamp of the most recent failure surfaced to operators (e.g. credential decryption failure). Null if no error or cleared on next successful operation.</param>
     /// <param name="LastErrorMessage">Description of the most recent failure surfaced to operators (e.g. credential decryption failure). Null if no error or cleared on next successful operation.</param>
     /// <param name="RemovedUtc">When the account was retired (soft-removed); null while it is active.</param>
+    /// <param name="LastSyncCompletedUtc">When the last sync completed, in UTC. Null if no sync has completed.</param>
     public record ProviderAccountDto(
         Guid Id,
         Guid UserId,
@@ -40,7 +41,8 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime? LastDownloadTimeUtc,
         DateTime? LastErrorUtc,
         string? LastErrorMessage,
-        DateTime? RemovedUtc = null
+        DateTime? RemovedUtc = null,
+        DateTime? LastSyncCompletedUtc = null
     );
 
     /// <summary>Request body for queueing a background export of a provider account.</summary>

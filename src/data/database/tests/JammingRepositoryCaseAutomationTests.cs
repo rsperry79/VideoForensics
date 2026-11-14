@@ -326,8 +326,8 @@ namespace VideoForensics.Data.Database.Tests
 
             ServiceProvider sp = services.BuildServiceProvider();
 
-            // Verify IJammingRepository is resolved
-            IJammingRepository jammingRepo = sp.GetRequiredService<IJammingRepository>();
+            // Verify IJammingWriteRepository is resolved
+            IJammingWriteRepository jammingRepo = sp.GetRequiredService<IJammingWriteRepository>();
             Assert.NotNull(jammingRepo);
             _ = Assert.IsType<JammingRepository>(jammingRepo);
 

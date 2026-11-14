@@ -13,14 +13,14 @@ namespace VideoForensics.Client.Core.Tests.Tools
     public class JammingToolsOrchestratorTests
     {
         private readonly Mock<ILogger<JammingToolsOrchestrator>> _loggerMock;
-        private readonly Mock<IJammingRepository> _repositoryMock;
+        private readonly Mock<IJammingWriteRepository> _repositoryMock;
         private readonly Mock<IDeviceHealthRepository> _healthRepositoryMock;
         private readonly JammingToolsOrchestrator _orchestrator;
 
         public JammingToolsOrchestratorTests()
         {
             _loggerMock = new Mock<ILogger<JammingToolsOrchestrator>>();
-            _repositoryMock = new Mock<IJammingRepository>();
+            _repositoryMock = new Mock<IJammingWriteRepository>();
             _healthRepositoryMock = new Mock<IDeviceHealthRepository>();
             _orchestrator = new JammingToolsOrchestrator(
                 _loggerMock.Object,
@@ -324,7 +324,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
         /// Mimics the remote jamming API: the client's Source is preserved for new incidents, the server
         /// assigns the CaseId and DetectedAtUtc, and ListIncidentsAsync filters on the incident start.
         /// </summary>
-        private sealed class RemoteSemanticsJammingRepository : IJammingRepository
+        private sealed class RemoteSemanticsJammingRepository : IJammingWriteRepository
         {
             public List<JammingIncidentRecord> Stored { get; } = [];
             public int UpsertCalls { get; private set; }

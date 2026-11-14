@@ -1,4 +1,5 @@
 @page "/accounts"
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Api.Contracts.Repositories
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
@@ -156,7 +157,7 @@ else
 
     private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
 
-    private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
+    private sealed record AccountRow(ProviderAccountDto Account, string DisplayName);
 
     /// <summary>Permanent delete is SuperAdmin on the Local tier. The grid hides the button for everyone else.</summary>
     private bool CanDeletePermanently => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
@@ -308,7 +309,7 @@ else
         }
     }
 
-    private async Task<List<AccountRow>> BuildRowsAsync(IEnumerable<VideoForensics.Data.Common.Entities.ProviderAccount> accounts)
+    private async Task<List<AccountRow>> BuildRowsAsync(IEnumerable<ProviderAccountDto> accounts)
     {
         var rows = new List<AccountRow>();
         foreach (var account in accounts)

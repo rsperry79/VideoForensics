@@ -37,7 +37,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Mock<IAccountSyncRunner> _runner = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IRingAccountSyncState> _syncState = new();
         private readonly TaskCompletionSource<AccountSyncRequest> _ranWith = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _ranLegacy = new(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
         private readonly Guid _accountId = Guid.NewGuid();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IAccountExportService> _exports = new();
 
         private WebApplication _app = null!;

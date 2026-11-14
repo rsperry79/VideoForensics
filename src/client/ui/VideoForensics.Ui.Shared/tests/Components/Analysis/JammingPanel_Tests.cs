@@ -67,7 +67,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
     {
         // Arrange
         Device device = CreateTestDevice("Porch");
-        _ = JammingRepositoryMock
+        _ = JammingWriteRepositoryMock
             .Setup(m => m.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((JammingIncidentRecord r, CancellationToken _) => r);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);
@@ -77,7 +77,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
         await cut.InvokeAsync(() => cut.FindComponent<SfButton>().Find("button").Click());
 
         // Assert
-        cut.WaitForAssertion(() => JammingRepositoryMock.Verify(
+        cut.WaitForAssertion(() => JammingWriteRepositoryMock.Verify(
             m => m.UpsertIncidentAsync(It.Is<JammingIncidentRecord>(r => r.DeviceId == device.Id && r.Notes == null), It.IsAny<CancellationToken>()),
             Times.Once));
     }
@@ -98,7 +98,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
             Confidence = JammingConfidenceLevel.Medium,
             Source = JammingIncidentSource.AutoDetected,
         };
-        _ = JammingRepositoryMock
+        _ = JammingWriteRepositoryMock
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([incident]);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);

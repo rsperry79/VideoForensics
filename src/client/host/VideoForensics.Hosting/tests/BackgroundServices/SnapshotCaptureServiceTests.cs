@@ -33,7 +33,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Guid _locationId = Guid.NewGuid();
         private readonly MutableTimeProvider _time = new(T0);
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<ISyncScheduleRepository> _schedules = new();
         private readonly Mock<ILocationRepository> _locations = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
@@ -242,7 +242,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddSingleton(cycle ?? new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, _time, _storage.Object, new ForensicsConfiguration()));
             _ = services.AddScoped<ISnapshotSyncService>(sp => new SnapshotSyncService(
                 sp,
-                sp.GetRequiredService<IProviderAccountRepository>(),
+                sp.GetRequiredService<IProviderAccountWriteRepository>(),
                 NullLogger<SnapshotSyncService>.Instance));
             _ = services.AddSingleton(_accounts.Object);
             _ = services.AddSingleton(_schedules.Object);

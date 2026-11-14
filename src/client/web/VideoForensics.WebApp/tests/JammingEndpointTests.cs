@@ -49,7 +49,7 @@ namespace VideoForensics.Client.WebApp.Tests
 
         private sealed class Fixture
         {
-            public Mock<IJammingRepository> Jamming { get; } = new();
+            public Mock<IJammingWriteRepository> Jamming { get; } = new();
             public Mock<IDeviceWriteRepository> Devices { get; } = new();
             public Mock<ISecurityAuditLogger> Audit { get; } = new();
             public Mock<INetworkTierResolver> Tier { get; } = new();
@@ -88,7 +88,7 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task ListIncidents_PassesFiltersThroughAndMapsToDtos()
         {
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
             DateTime from = new(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
             DateTime to = new(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc);
             _ = jamming.Setup(j => j.ListIncidentsAsync(DeviceId, from, to, It.IsAny<CancellationToken>()))
@@ -106,7 +106,7 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task ListIncidents_LocalKindDates_AreConvertedToUtcBeforeQuerying()
         {
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
             _ = jamming.Setup(j => j.ListIncidentsAsync(null, It.IsAny<DateTime?>(), null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
             DateTime utc = new(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc);
             DateTime local = utc.ToLocalTime();
@@ -121,7 +121,7 @@ namespace VideoForensics.Client.WebApp.Tests
         {
             var id = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
             _ = jamming.Setup(j => j.GetIncidentAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new JammingIncidentRecord { Id = id, DeviceId = DeviceId, CaseId = caseId });
 
@@ -133,7 +133,7 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task GetIncident_Missing_Returns404()
         {
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
 
             IResult result = await JammingEndpoints.GetIncidentAsync(Guid.NewGuid(), jamming.Object, CancellationToken.None);
 
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task GetStats_Found_ReturnsDto()
         {
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
             _ = jamming.Setup(j => j.GetStatsAsync(DeviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new JammingStatsSummary { DeviceId = DeviceId, IncidentCount = 4 });
 
@@ -155,7 +155,7 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task GetStats_None_Returns404()
         {
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
 
             IResult result = await JammingEndpoints.GetStatsAsync(DeviceId, jamming.Object, CancellationToken.None);
 
@@ -165,7 +165,7 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task ListStats_ReturnsAllDtos()
         {
-            var jamming = new Mock<IJammingRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
             _ = jamming.Setup(j => j.ListStatsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new JammingStatsSummary { DeviceId = DeviceId }, new JammingStatsSummary { DeviceId = Guid.NewGuid() }]);
 

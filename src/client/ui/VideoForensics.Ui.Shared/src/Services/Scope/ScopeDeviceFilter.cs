@@ -22,23 +22,23 @@ public static class ScopeDeviceFilter
     /// </summary>
     public static IReadOnlyList<DeviceOwnership> BuildOwnership(
         IEnumerable<DeviceDto> devices,
-        IEnumerable<ProviderAccount> accounts,
+        IEnumerable<ProviderAccountDto> accounts,
         IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> locationIdsByAccount)
     {
         var accountById = accounts.ToDictionary(a => a.Id);
 
         // Invert account -> locations into location -> accounts so each device is a single lookup.
-        var accountsByLocation = new Dictionary<Guid, List<ProviderAccount>>();
+        var accountsByLocation = new Dictionary<Guid, List<ProviderAccountDto>>();
         foreach ((Guid accountId, IReadOnlyList<Guid>? locationIds) in locationIdsByAccount)
         {
-            if (!accountById.TryGetValue(accountId, out ProviderAccount? account))
+            if (!accountById.TryGetValue(accountId, out ProviderAccountDto? account))
             {
                 continue;
             }
 
             foreach (Guid locationId in locationIds)
             {
-                if (!accountsByLocation.TryGetValue(locationId, out List<ProviderAccount>? list))
+                if (!accountsByLocation.TryGetValue(locationId, out List<ProviderAccountDto>? list))
                 {
                     list = [];
                     accountsByLocation[locationId] = list;
@@ -51,12 +51,12 @@ public static class ScopeDeviceFilter
         var result = new List<DeviceOwnership>();
         foreach (DeviceDto device in devices)
         {
-            if (!accountsByLocation.TryGetValue(device.LocationId, out List<ProviderAccount>? owners))
+            if (!accountsByLocation.TryGetValue(device.LocationId, out List<ProviderAccountDto>? owners))
             {
                 continue;
             }
 
-            foreach (ProviderAccount owner in owners)
+            foreach (ProviderAccountDto owner in owners)
             {
                 result.Add(new DeviceOwnership(device.Id, owner.Id, owner.ProviderName, device.LocationId));
             }
@@ -92,7 +92,7 @@ public static class ScopeDeviceFilter
     }
 
     /// <summary>Accounts offered by the Account filter: all of them, or only those of <paramref name="providerName"/>.</summary>
-    public static IReadOnlyList<ProviderAccount> AccountsForProvider(IEnumerable<ProviderAccount> accounts, string? providerName)
+    public static IReadOnlyList<ProviderAccountDto> AccountsForProvider(IEnumerable<ProviderAccountDto> accounts, string? providerName)
     {
         return providerName is null
             ? accounts.ToList()

@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     public class VideoForensicsDataClientTests
     {
         private readonly Mock<IUserWriteRepository> _mockUserRepository;
-        private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository;
+        private readonly Mock<IProviderAccountWriteRepository> _mockProviderAccountRepository;
         private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
         private readonly Mock<IEventWriteRepository> _mockEventRepository;
@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         public VideoForensicsDataClientTests()
         {
             _mockUserRepository = new Mock<IUserWriteRepository>();
-            _mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
+            _mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             _mockLocationRepository = new Mock<ILocationRepository>();
             _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();

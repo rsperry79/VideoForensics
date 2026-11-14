@@ -144,7 +144,7 @@
 
     private List<VideoForensics.Core.Api.Contracts.DeviceDto> _devices = new();
     private List<VideoForensics.Core.Api.Contracts.DeviceDto> _visibleDevices = new();
-    private List<ProviderAccount> _accounts = new();
+    private List<ProviderAccountDto> _accounts = new();
     private Dictionary<Guid, string> _accountNames = new();
     private IReadOnlyList<DeviceOwnership> _ownership = Array.Empty<DeviceOwnership>();
     private IReadOnlyList<string> _providerNames = Array.Empty<string>();
@@ -384,7 +384,7 @@
         RecomputeVisibleDevices();
     }
 
-    private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);
+    private IReadOnlyList<ProviderAccountDto> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);
 
     private void RecomputeVisibleDevices()
     {

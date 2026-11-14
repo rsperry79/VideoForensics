@@ -56,7 +56,7 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
         foreach (Guid device in deviceIds.Distinct())
         {
             var rows = await _jamming.ListIncidentsAsync(device, fromUtc, toUtc, ct);
-            merged.AddRange(rows.Select(row => row.ToDto()));
+            merged.AddRange(rows);
         }
 
         return merged.OrderByDescending(incident => incident.StartUtc).ToList();

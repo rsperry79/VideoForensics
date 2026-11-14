@@ -10,15 +10,9 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
 public class ScopeDeviceFilterTests
 {
-    private static ProviderAccount MakeAccount(string providerName)
+    private static ProviderAccountDto MakeAccount(string providerName)
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            ProviderName = providerName,
-            LinkedUtc = DateTime.UtcNow,
-        };
+        return new(Guid.NewGuid(), Guid.NewGuid(), providerName, DateTime.UtcNow, null, true, null, null, null);
     }
 
     private static Location MakeLocation()
@@ -48,7 +42,7 @@ public class ScopeDeviceFilterTests
     [Fact]
     public void BuildOwnership_DeviceAtAccountLocation_LinksDeviceToAccount()
     {
-        ProviderAccount account = MakeAccount("Ring");
+        ProviderAccountDto account = MakeAccount("Ring");
         Location location = MakeLocation();
         Device device = MakeDevice(location.Id);
 
@@ -66,8 +60,8 @@ public class ScopeDeviceFilterTests
     [Fact]
     public void BuildOwnership_LocationSharedByTwoAccounts_ProducesOneRowPerAccount()
     {
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount wyze = MakeAccount("Wyze");
+        ProviderAccountDto ring = MakeAccount("Ring");
+        ProviderAccountDto wyze = MakeAccount("Wyze");
         Location location = MakeLocation();
         Device device = MakeDevice(location.Id);
 
@@ -94,7 +88,7 @@ public class ScopeDeviceFilterTests
         // The account id is in the location map but not in the accounts list, so no row may be produced.
         IReadOnlyList<DeviceOwnership> ownership = ScopeDeviceFilter.BuildOwnership(
             new[] { device },
-            Array.Empty<ProviderAccount>(),
+            Array.Empty<ProviderAccountDto>(),
             new Dictionary<Guid, IReadOnlyList<Guid>> { [Guid.NewGuid()] = new[] { location.Id } });
 
         Assert.Empty(ownership);
@@ -113,8 +107,8 @@ public class ScopeDeviceFilterTests
     [Fact]
     public void Filter_ProviderSet_ReturnsOnlyDevicesOfThatProviderIgnoringCase()
     {
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount wyze = MakeAccount("Wyze");
+        ProviderAccountDto ring = MakeAccount("Ring");
+        ProviderAccountDto wyze = MakeAccount("Wyze");
         Device ringDevice = MakeDevice(Guid.NewGuid());
         Device wyzeDevice = MakeDevice(Guid.NewGuid());
         DeviceOwnership[] ownership = new[]
@@ -131,8 +125,8 @@ public class ScopeDeviceFilterTests
     [Fact]
     public void Filter_AccountSet_ReturnsOnlyDevicesOfThatAccount()
     {
-        ProviderAccount first = MakeAccount("Ring");
-        ProviderAccount second = MakeAccount("Ring");
+        ProviderAccountDto first = MakeAccount("Ring");
+        ProviderAccountDto second = MakeAccount("Ring");
         Device firstDevice = MakeDevice(Guid.NewGuid());
         Device secondDevice = MakeDevice(Guid.NewGuid());
         DeviceOwnership[] ownership = new[]
@@ -159,9 +153,9 @@ public class ScopeDeviceFilterTests
     [Fact]
     public void AccountsForProvider_NoProvider_ReturnsAllAccounts()
     {
-        ProviderAccount[] accounts = new[] { MakeAccount("Ring"), MakeAccount("Wyze") };
+        ProviderAccountDto[] accounts = new[] { MakeAccount("Ring"), MakeAccount("Wyze") };
 
-        IReadOnlyList<ProviderAccount> options = ScopeDeviceFilter.AccountsForProvider(accounts, null);
+        IReadOnlyList<ProviderAccountDto> options = ScopeDeviceFilter.AccountsForProvider(accounts, null);
 
         Assert.Equal(2, options.Count);
     }
@@ -169,10 +163,10 @@ public class ScopeDeviceFilterTests
     [Fact]
     public void AccountsForProvider_ProviderSet_ReturnsOnlyThatProvidersAccounts()
     {
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount[] accounts = new[] { ring, MakeAccount("Wyze") };
+        ProviderAccountDto ring = MakeAccount("Ring");
+        ProviderAccountDto[] accounts = new[] { ring, MakeAccount("Wyze") };
 
-        IReadOnlyList<ProviderAccount> options = ScopeDeviceFilter.AccountsForProvider(accounts, "Ring");
+        IReadOnlyList<ProviderAccountDto> options = ScopeDeviceFilter.AccountsForProvider(accounts, "Ring");
 
         Assert.Equal(new[] { ring.Id }, options.Select(a => a.Id));
     }

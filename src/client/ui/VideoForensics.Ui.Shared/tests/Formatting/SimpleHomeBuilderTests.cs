@@ -115,7 +115,7 @@ public class SimpleHomeBuilderTests
     private void SetJamming(params JammingIncidentRecord[] items)
     {
         _ = _jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(items.ToList());
+            .ReturnsAsync(items.Select(i => i.ToDto()).ToList());
     }
 
     private Task<SimpleHomeModel> BuildAsync(TimeSpan? window = null, CancellationToken ct = default)

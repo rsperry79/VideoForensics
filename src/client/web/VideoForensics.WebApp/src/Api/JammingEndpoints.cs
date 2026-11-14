@@ -9,7 +9,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
-    /// Jamming / signal-interference API: lets client hosts (MAUI) use <see cref="IJammingRepository"/>
+    /// Jamming / signal-interference API: lets client hosts (MAUI) use <see cref="IJammingWriteRepository"/>
     /// through <c>RemoteJammingRepository</c>, which only the server data layer registers locally.
     ///
     /// Base policy is the default authenticated-user policy (any signed-in role may read); the write
@@ -66,7 +66,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid? deviceId,
             DateTime? fromUtc,
             DateTime? toUtc,
-            IJammingRepository jamming,
+            IJammingWriteRepository jamming,
             CancellationToken ct)
         {
             IReadOnlyList<JammingIncidentRecord> incidents = await jamming.ListIncidentsAsync(deviceId, ToUtc(fromUtc), ToUtc(toUtc), ct);
@@ -74,21 +74,21 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>Handler for GET /incidents/{id:guid}</summary>
-        public static async Task<IResult> GetIncidentAsync(Guid id, IJammingRepository jamming, CancellationToken ct)
+        public static async Task<IResult> GetIncidentAsync(Guid id, IJammingWriteRepository jamming, CancellationToken ct)
         {
             JammingIncidentRecord? incident = await jamming.GetIncidentAsync(id, ct);
             return incident == null ? Results.NotFound() : Results.Ok(incident.ToDto());
         }
 
         /// <summary>Handler for GET /stats/{deviceId:guid}</summary>
-        public static async Task<IResult> GetStatsAsync(Guid deviceId, IJammingRepository jamming, CancellationToken ct)
+        public static async Task<IResult> GetStatsAsync(Guid deviceId, IJammingWriteRepository jamming, CancellationToken ct)
         {
             JammingStatsSummary? stats = await jamming.GetStatsAsync(deviceId, ct);
             return stats == null ? Results.NotFound() : Results.Ok(stats.ToDto());
         }
 
         /// <summary>Handler for GET /stats</summary>
-        public static async Task<IResult> ListStatsAsync(IJammingRepository jamming, CancellationToken ct)
+        public static async Task<IResult> ListStatsAsync(IJammingWriteRepository jamming, CancellationToken ct)
         {
             IReadOnlyList<JammingStatsSummary> stats = await jamming.ListStatsAsync(ct);
             return Results.Ok(stats.Select(s => s.ToDto()).ToList());
@@ -97,7 +97,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for PUT /incidents</summary>
         public static async Task<IResult> UpsertIncidentAsync(
             UpsertJammingIncidentRequest request,
-            IJammingRepository jamming,
+            IJammingWriteRepository jamming,
             IDeviceWriteRepository devices,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -152,7 +152,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for POST /stats/{deviceId:guid}/recompute</summary>
         public static async Task<IResult> RecomputeStatsAsync(
             Guid deviceId,
-            IJammingRepository jamming,
+            IJammingWriteRepository jamming,
             IDeviceWriteRepository devices,
             CancellationToken ct)
         {

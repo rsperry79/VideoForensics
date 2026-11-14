@@ -28,7 +28,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<ITimelineVideoBuilder> _builder = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IForensicsConfiguration> _config = new();

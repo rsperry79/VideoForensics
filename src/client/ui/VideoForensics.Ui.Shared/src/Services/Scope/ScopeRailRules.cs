@@ -31,7 +31,7 @@ public static class ScopeRailRules
     /// offered by the newly picked provider, the account filter is cleared.
     /// </summary>
     public static (string? ProviderFilter, Guid? AccountFilter) ApplyProviderPick(
-        IEnumerable<ProviderAccount> accounts,
+        IEnumerable<ProviderAccountDto> accounts,
         Guid? currentAccountFilter,
         string? providerValue)
     {

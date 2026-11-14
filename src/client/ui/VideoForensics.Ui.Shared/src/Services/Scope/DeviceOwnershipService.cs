@@ -13,7 +13,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 /// <param name="Locations">Distinct provider locations across the accounts, sorted by name, for the Location filter.</param>
 /// <param name="LoadError">The exception that stopped the load, or null. Callers that must not hide devices on failure check this.</param>
 public sealed record DeviceOwnershipSnapshot(
-    IReadOnlyList<ProviderAccount> Accounts,
+    IReadOnlyList<ProviderAccountDto> Accounts,
     IReadOnlyDictionary<Guid, string> AccountNames,
     IReadOnlyList<string> ProviderNames,
     IReadOnlyList<DeviceOwnership> Ownership,
@@ -57,7 +57,7 @@ public sealed class DeviceOwnershipService
 
             var locationIdsByAccount = new Dictionary<Guid, IReadOnlyList<Guid>>();
             var locationsById = new Dictionary<Guid, FilterLocation>();
-            foreach (ProviderAccount? account in accounts)
+            foreach (ProviderAccountDto? account in accounts)
             {
                 IReadOnlyList<Location> locations = await _locations.ListByProviderAccountIdAsync(account.Id, ct);
                 locationIdsByAccount[account.Id] = locations.Select(l => l.Id).ToList();
@@ -86,7 +86,7 @@ public sealed class DeviceOwnershipService
         catch (Exception ex)
         {
             return new DeviceOwnershipSnapshot(
-                Array.Empty<ProviderAccount>(),
+                Array.Empty<ProviderAccountDto>(),
                 new Dictionary<Guid, string>(),
                 Array.Empty<string>(),
                 Array.Empty<DeviceOwnership>(),
@@ -96,11 +96,11 @@ public sealed class DeviceOwnershipService
     }
 
     private async Task<IReadOnlyDictionary<Guid, string>> LoadAccountNamesAsync(
-        IReadOnlyList<ProviderAccount> accounts,
+        IReadOnlyList<ProviderAccountDto> accounts,
         CancellationToken ct)
     {
         var names = new Dictionary<Guid, string>();
-        foreach (ProviderAccount account in accounts)
+        foreach (ProviderAccountDto account in accounts)
         {
             string name = account.ProviderName;
             try

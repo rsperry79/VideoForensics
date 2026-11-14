@@ -10,7 +10,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
-using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+using ProviderAccountEntity = VideoForensics.Core.Api.Contracts.ProviderAccountDto;
 
 namespace VideoForensics.Client.Ui.Shared.Pages;
 /// <summary>

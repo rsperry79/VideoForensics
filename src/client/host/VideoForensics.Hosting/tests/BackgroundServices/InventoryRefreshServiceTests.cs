@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             var scheduleRepository = new Mock<ISyncScheduleRepository>();
             _ = scheduleRepository.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(schedules);
 
-            var accounts = new Mock<IProviderAccountRepository>();
+            var accounts = new Mock<IProviderAccountWriteRepository>();
             _ = accounts.Setup(r => r.GetAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(account);
 
             var budget = new Mock<IProviderApiBudgetGuard>();

@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for provider account entities.</summary>
-    public interface IProviderAccountRepository
+    public interface IProviderAccountWriteRepository
     {
         /// <summary>Gets a provider account by ID.</summary>
         Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct);

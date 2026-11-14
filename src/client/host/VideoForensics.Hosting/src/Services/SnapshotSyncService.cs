@@ -11,13 +11,13 @@ namespace VideoForensics.Client.Hosting.Services
     public class SnapshotSyncService : ISnapshotSyncService
     {
         private readonly IServiceProvider _services;
-        private readonly IProviderAccountRepository _accounts;
+        private readonly IProviderAccountWriteRepository _accounts;
         private readonly ILogger<SnapshotSyncService> _logger;
 
         /// <summary>Creates the service.</summary>
         public SnapshotSyncService(
             IServiceProvider services,
-            IProviderAccountRepository accounts,
+            IProviderAccountWriteRepository accounts,
             ILogger<SnapshotSyncService> logger)
         {
             _services = services;

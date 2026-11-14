@@ -47,7 +47,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IEventAndConfigService _eventAndConfigService;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILocationRepository _locationRepository;
-        private readonly IProviderAccountRepository _providerAccountRepository;
+        private readonly IProviderAccountWriteRepository _providerAccountRepository;
         private readonly ILogger<EventPullService> _logger;
         private readonly IReferenceDataCache _referenceCache;
         private readonly IMediaDownloadService? _mediaDownloadService;
@@ -81,7 +81,7 @@ namespace VideoForensics.Client.Hosting.Services
             IEventAndConfigService eventAndConfigService,
             IDeviceWriteRepository deviceRepository,
             ILocationRepository locationRepository,
-            IProviderAccountRepository providerAccountRepository,
+            IProviderAccountWriteRepository providerAccountRepository,
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
             string? mediaRoot = null,

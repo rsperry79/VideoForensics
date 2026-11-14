@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Core.Services
     internal class BackupExportOrchestrator : IBackupExportService
     {
         private readonly ILogger<BackupExportOrchestrator> _logger;
-        private readonly IProviderAccountRepository _providerAccountRepository;
+        private readonly IProviderAccountWriteRepository _providerAccountRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IEventWriteRepository _eventRepository;
@@ -28,7 +28,7 @@ namespace VideoForensics.Client.Core.Services
 
         public BackupExportOrchestrator(
             ILogger<BackupExportOrchestrator> logger,
-            IProviderAccountRepository providerAccountRepository,
+            IProviderAccountWriteRepository providerAccountRepository,
             ILocationRepository locationRepository,
             IDeviceWriteRepository deviceRepository,
             IEventWriteRepository eventRepository,

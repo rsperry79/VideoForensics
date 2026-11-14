@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for jamming incident records and their aggregated per-device statistics.</summary>
-    public interface IJammingRepository
+    public interface IJammingWriteRepository
     {
         /// <summary>Upserts (inserts or updates) a jamming incident record.</summary>
         Task<JammingIncidentRecord> UpsertIncidentAsync(JammingIncidentRecord incident, CancellationToken ct);

@@ -44,6 +44,7 @@ public abstract class AnalyzePageTestBase : BunitContext
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
     protected Mock<IReportGenerationService> ReportGenerationServiceMock { get; } = new();
     protected Mock<IJammingRepository> JammingRepositoryMock { get; } = new();
+    protected Mock<IJammingWriteRepository> JammingWriteRepositoryMock { get; } = new();
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
     protected Mock<INoteRepository> NoteRepositoryMock { get; } = new();
 
@@ -81,12 +82,12 @@ public abstract class AnalyzePageTestBase : BunitContext
         _ = DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        _ = JammingRepositoryMock
+        _ = JammingWriteRepositoryMock
             .Setup(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new JammingStatsSummary());
         _ = JammingRepositoryMock
             .Setup(m => m.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((JammingStatsSummary?)null);
+            .ReturnsAsync((JammingStatsSummaryDto?)null);
         _ = JammingRepositoryMock
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
@@ -104,7 +105,7 @@ public abstract class AnalyzePageTestBase : BunitContext
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => new JammingToolsOrchestrator(
             Mock.Of<ILogger<JammingToolsOrchestrator>>(),
-            JammingRepositoryMock.Object,
+            JammingWriteRepositoryMock.Object,
             DeviceHealthRepositoryMock.Object));
 
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
@@ -442,7 +443,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
 
         Assert.Empty(component.FindAll("[data-testid='analysis-jamming']"));
         Assert.NotEmpty(component.FindAll("[data-testid='analysis-reports']"));
-        JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        JammingWriteRepositoryMock.Verify(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -455,7 +456,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
         IRenderedComponent<Analyze> component = RenderPage();
 
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
-        JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
+        JammingWriteRepositoryMock.Verify(m => m.RecomputeStatsAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Empty(component.FindAll(".alert-danger"));
     }
 

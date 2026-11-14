@@ -12,7 +12,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IEventAndConfigService> _events = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _download = new();
         private readonly Mock<IMediaItemWriteRepository> _mediaItems = new();

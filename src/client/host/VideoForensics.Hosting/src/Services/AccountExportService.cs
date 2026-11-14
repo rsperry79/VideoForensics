@@ -90,7 +90,7 @@ namespace VideoForensics.Client.Hosting.Services
                 string folder = await ResolveExportsFolderAsync(sp, ct);
                 _ = Directory.CreateDirectory(folder);
 
-                IProviderAccountRepository accounts = sp.GetRequiredService<IProviderAccountRepository>();
+                IProviderAccountWriteRepository accounts = sp.GetRequiredService<IProviderAccountWriteRepository>();
                 ProviderAccount? account = await accounts.GetAsync(job.AccountId, ct);
                 if (account == null)
                 {

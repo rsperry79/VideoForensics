@@ -19,7 +19,7 @@ namespace VideoForensics.Providers.Ring.Tests
     internal class FakeUnitOfWorkContext : IUnitOfWorkContext
     {
         public IUserWriteRepository Users { get; set; } = null!;
-        public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
+        public IProviderAccountWriteRepository ProviderAccounts { get; set; } = null!;
         public ILocationRepository Locations { get; set; } = null!;
         public IDeviceWriteRepository Devices { get; set; } = null!;
         public IMediaItemWriteRepository MediaItems { get; set; } = null!;
@@ -46,7 +46,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<ILogger<BackupImportOrchestrator>> _mockLogger = new();
         private readonly Mock<IUnitOfWork> _mockUnitOfWork = new();
         private readonly Mock<IUserWriteRepository> _mockUsers = new();
-        private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _mockAccounts = new();
         private readonly Mock<ILocationRepository> _mockLocations = new();
         private readonly Mock<IDeviceWriteRepository> _mockDevices = new();
         private readonly Mock<IEventWriteRepository> _mockEvents = new();

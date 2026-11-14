@@ -141,9 +141,9 @@ public class ReviewDetailLoader_Tests
             .Returns((Guid? device, DateTime? _, DateTime? _, CancellationToken _) =>
             {
                 asked.Add(device);
-                IReadOnlyList<JammingIncidentRecord> rows = device == first
-                    ? [Incident(first, From.AddHours(2)), Incident(first, From.AddHours(6))]
-                    : [Incident(second, From.AddHours(4))];
+                IReadOnlyList<JammingIncidentDto> rows = device == first
+                    ? [Incident(first, From.AddHours(2)).ToDto(), Incident(first, From.AddHours(6)).ToDto()]
+                    : [Incident(second, From.AddHours(4)).ToDto()];
                 return Task.FromResult(rows);
             });
         ReviewDetailLoader loader = CreateLoader(jamming: jamming);

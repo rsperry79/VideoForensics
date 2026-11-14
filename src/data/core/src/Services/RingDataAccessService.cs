@@ -12,7 +12,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly CacheFreshnessService _cacheFreshnessService;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILocationRepository _locationRepository;
-        private readonly IProviderAccountRepository _providerAccountRepository;
+        private readonly IProviderAccountWriteRepository _providerAccountRepository;
 
         // Default cache TTLs in minutes
         private const int AccountTtlMinutes = 1440; // 24 hours
@@ -25,7 +25,7 @@ namespace VideoForensics.Data.Core.Services
             CacheFreshnessService cacheFreshnessService,
             IDeviceWriteRepository deviceRepository,
             ILocationRepository locationRepository,
-            IProviderAccountRepository providerAccountRepository)
+            IProviderAccountWriteRepository providerAccountRepository)
         {
             _logger = logger;
             _cacheFreshnessService = cacheFreshnessService;

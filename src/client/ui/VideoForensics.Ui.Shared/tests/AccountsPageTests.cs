@@ -76,7 +76,7 @@ public abstract class AccountsPageTestBase : BunitContext
 
         _ = AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(accounts);
+            .ReturnsAsync(accounts.Select(a => a.ToDto()).ToList());
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(ringUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
@@ -129,7 +129,7 @@ public abstract class AccountsPageTestBase : BunitContext
             .Setup(r => r.ListRemovedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = id, UserId = userId, ProviderName = "Ring", RemovedUtc = RemovedUtc },
+                new ProviderAccountEntity { Id = id, UserId = userId, ProviderName = "Ring", RemovedUtc = RemovedUtc }.ToDto(),
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
@@ -269,7 +269,7 @@ public class AccountsPage_ErrorTooltip_Tests : AccountsPageTestBase
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = RingAccountId, UserId = userId, ProviderName = "Ring", LastErrorMessage = "Token expired" },
+                new ProviderAccountEntity { Id = RingAccountId, UserId = userId, ProviderName = "Ring", LastErrorMessage = "Token expired" }.ToDto(),
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))

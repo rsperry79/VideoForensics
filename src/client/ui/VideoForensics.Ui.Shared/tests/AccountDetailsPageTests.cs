@@ -130,13 +130,13 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         var accountRepository = new Mock<IProviderAccountRepository>();
         _ = accountRepository
             .Setup(r => r.GetAsync(AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
+            .ReturnsAsync(() => account.ToDto());
         _ = accountRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([account]);
+            .ReturnsAsync(() => [account.ToDto()]);
         _ = accountRepository
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([account]);
+            .ReturnsAsync(() => [account.ToDto()]);
 
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository
