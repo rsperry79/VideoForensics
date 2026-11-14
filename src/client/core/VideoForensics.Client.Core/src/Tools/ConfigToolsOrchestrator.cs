@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Tools
 {
-    public class ConfigToolsOrchestrator : VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator
+    public class ConfigToolsOrchestrator : VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator
     {
         private readonly ILogger<ConfigToolsOrchestrator> _logger;
         private readonly IForensicsConfigurationService _configService;

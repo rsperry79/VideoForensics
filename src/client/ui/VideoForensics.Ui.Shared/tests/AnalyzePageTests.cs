@@ -17,6 +17,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Utils.Testing;
@@ -103,7 +104,7 @@ public abstract class AnalyzePageTestBase : BunitContext
             .ReturnsAsync(Array.Empty<Note>());
         _ = Services.AddScoped(_ => NoteRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
-        _ = Services.AddScoped(_ => new JammingToolsOrchestrator(
+        _ = Services.AddScoped<VideoForensics.Client.Common.Contracts.IJammingToolsOrchestrator>(_ => new JammingToolsOrchestrator(
             Mock.Of<ILogger<JammingToolsOrchestrator>>(),
             JammingWriteRepositoryMock.Object,
             DeviceHealthRepositoryMock.Object));

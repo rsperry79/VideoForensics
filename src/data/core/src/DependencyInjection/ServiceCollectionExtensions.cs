@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
             _ = services.AddScoped<IIntegrityVerificationService, IntegrityVerificationService>();
 
             // Phase 2 reporting and retention services
-            _ = services.AddScoped<IReportGenerationService, ReportGenerationService>();
+            _ = services.AddScoped<VideoForensics.Core.Api.Contracts.IReportGenerationService, ReportGenerationService>();
             _ = services.AddScoped<IStorageSettingsService, StorageSettingsService>();
 
             // Register RetentionService with configurable retention days

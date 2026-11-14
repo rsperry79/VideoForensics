@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Client.Core.Contracts
+namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>
     /// Configuration changes made from the Settings and Infrastructure pages. Behind an interface so a host can check the

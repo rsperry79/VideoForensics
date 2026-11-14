@@ -1,12 +1,14 @@
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Core.Tools
 {
-    public class JammingToolsOrchestrator
+    public class JammingToolsOrchestrator : IJammingToolsOrchestrator
     {
         private readonly ILogger<JammingToolsOrchestrator> _logger;
         private readonly IJammingWriteRepository _jammingRepository;
@@ -176,6 +178,31 @@ namespace VideoForensics.Client.Core.Tools
         /// embedded Doorbot stub's Health is always null there), so per-event RSSI does not exist to
         /// analyze; the health-snapshot timeline is the actual signal-strength data this system has.
         /// </summary>
+        async Task<JammingAnalysisReportDto> IJammingToolsOrchestrator.AnalyzeJammingAsync(
+            Guid deviceId,
+            DateTime fromUtc,
+            DateTime toUtc,
+            CancellationToken ct)
+        {
+            JammingAnalysisReport report = await AnalyzeJammingAsync(deviceId, fromUtc, toUtc, ct);
+            return report.ToDto();
+        }
+
+        async Task<(bool Success, string Message, JammingIncidentDto? Record)> IJammingToolsOrchestrator.RecordJammingIncidentAsync(
+            Guid deviceId,
+            DateTime startUtc,
+            DateTime endUtc,
+            int affectedEventCount,
+            double averageDegradationDb,
+            JammingConfidenceLevelDto confidence,
+            string? notes,
+            CancellationToken ct)
+        {
+            (bool success, string message, JammingIncidentRecord? incident) = await RecordJammingIncidentAsync(
+                deviceId, startUtc, endUtc, affectedEventCount, averageDegradationDb, confidence.ToDomain(), notes, ct);
+            return (success, message, incident?.ToDto());
+        }
+
         public async Task<JammingAnalysisReport> AnalyzeJammingAsync(
             Guid deviceId,
             DateTime fromUtc,

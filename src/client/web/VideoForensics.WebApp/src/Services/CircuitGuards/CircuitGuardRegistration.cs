@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components.Server.Circuits;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;

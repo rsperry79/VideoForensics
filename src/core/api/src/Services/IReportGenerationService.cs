@@ -1,6 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Data.Core.Contracts
+namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>Service for generating forensic analysis reports from stored evidence data.</summary>
     public interface IReportGenerationService

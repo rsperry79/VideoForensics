@@ -1,11 +1,12 @@
-@using VideoForensics.Client.Core.Tools
-@using VideoForensics.Data.Core.Models
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Core.Api.Contracts
+
 @using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Scope
-@inject JammingToolsOrchestrator JammingTools
+@inject IJammingToolsOrchestrator JammingTools
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<JammingPanel> L
 
@@ -48,17 +49,17 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100">
+                <GridColumn Field="@nameof(JammingIncidentDto.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100">
                     <Template>
                         <LocalTimeText Value="@((context as JammingIncidentDto)!.StartUtc)" />
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100">
+                <GridColumn Field="@nameof(JammingIncidentDto.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100">
                     <Template>
                         <LocalTimeText Value="@((context as JammingIncidentDto)!.EndUtc)" />
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentDto.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColAvgDegradation"]" MinWidth="100">
                     <Template>
                         @{
@@ -67,9 +68,9 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(JammingIncidentRecord.Confidence)" HeaderText="@L["ColConfidence"]" MinWidth="100" />
-                <GridColumn Field="@nameof(JammingIncidentRecord.Source)" HeaderText="@L["ColSource"]" MinWidth="100" />
-                <GridColumn Field="@nameof(JammingIncidentRecord.Notes)" HeaderText="@L["ColNotes"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentDto.Confidence)" HeaderText="@L["ColConfidence"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentDto.Source)" HeaderText="@L["ColSource"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentDto.Notes)" HeaderText="@L["ColNotes"]" MinWidth="100" />
             </GridColumns>
         </SfGrid>
 
@@ -103,7 +104,7 @@ else
             <label>@L["LabelAvgDegradation"]</label>
             <SfNumericTextBox TValue="double" @bind-Value="_manualAverageDegradationDb" Step="0.1" Format="N1" />
         </div>
-        <SfDropDownList TValue="JammingConfidenceLevel" TItem="JammingConfidenceLevel" @bind-Value="_manualConfidence" DataSource="@(Enum.GetValues<JammingConfidenceLevel>().ToList())" />
+        <SfDropDownList TValue="JammingConfidenceLevelDto" TItem="JammingConfidenceLevelDto" @bind-Value="_manualConfidence" DataSource="@(Enum.GetValues<JammingConfidenceLevelDto>().ToList())" />
         <SfButton Content="@L["RecordIncident"]" OnClick="RecordIncidentAsync" CssClass="e-primary" Disabled="@_recording" />
 
         @if (!string.IsNullOrEmpty(_recordMessage))
@@ -135,7 +136,7 @@ else
     private DateTime _manualEndUtc = DateTime.UtcNow;
     private int _manualAffectedEventCount = 1;
     private double _manualAverageDegradationDb = 10;
-    private JammingConfidenceLevel _manualConfidence = JammingConfidenceLevel.Low;
+    private JammingConfidenceLevelDto _manualConfidence = JammingConfidenceLevelDto.Low;
     private bool _recording;
     private string? _recordMessage;
     private bool? _recordSuccess;
@@ -226,7 +227,7 @@ else
                 }
 
                 _analyzedCount++;
-                incidents.AddRange(report.Incidents.Select(incident => incident.ToDto()));
+                incidents.AddRange(report.Incidents);
             }
 
             if (_analyzedCount == 0)

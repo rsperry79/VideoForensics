@@ -22,6 +22,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Telemetry.Configuration;
 using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
 using VideoForensics.Data.Database.DbContext;
@@ -530,8 +531,9 @@ namespace VideoForensics.Client.Hosting
 
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
+            _ = services.AddScoped<VideoForensics.Client.Common.Contracts.IJammingToolsOrchestrator>(sp => sp.GetRequiredService<JammingToolsOrchestrator>());
             _ = services.AddScoped<ConfigToolsOrchestrator>();
-            _ = services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
+            _ = services.AddScoped<VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
 
             // RSSI/device-health background sync (plan §3). IProviderHealthSource is a per-provider
             // optional capability - Ring's is registered here the same way its other four services
@@ -833,6 +835,7 @@ namespace VideoForensics.Client.Hosting
             // the Remote* repositories. RSSI-history auto-detection uses the ranged IDeviceHealthRepository.GetHistoryAsync
             // overload, which RemoteDeviceHealthRepository supports; the unranged overload stays unsupported on remote clients.
             _ = services.AddScoped<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>();
+            _ = services.AddScoped<VideoForensics.Client.Common.Contracts.IJammingToolsOrchestrator>(sp => sp.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>());
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session

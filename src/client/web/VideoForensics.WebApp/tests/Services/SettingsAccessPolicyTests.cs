@@ -57,7 +57,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         [Fact]
         public async Task GuardedConfigToolsOrchestrator_ReportFormat_AdminWhenSettingAllowsAdmin_CallsInner()
         {
-            var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+            var inner = new Mock<VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator>();
             _ = inner.Setup(c => c.SetReportFormatAsync(It.IsAny<IForensicsConfiguration>(), "csv", It.IsAny<CancellationToken>())).ReturnsAsync((true, "ok"));
             var gate = new Mock<ICircuitOperatorGate>();
             _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
@@ -73,7 +73,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         [Fact]
         public async Task GuardedConfigToolsOrchestrator_ReportToggle_AdminWhenSettingIsSuperAdmin_ReturnsFailureAndDoesNotChange()
         {
-            var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+            var inner = new Mock<VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator>();
             var gate = new Mock<ICircuitOperatorGate>();
             _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
             _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdmin)).Returns(false);

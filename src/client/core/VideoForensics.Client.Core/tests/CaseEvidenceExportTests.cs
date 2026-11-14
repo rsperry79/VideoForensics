@@ -9,6 +9,7 @@ using VideoForensics.Client.Core.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Models;

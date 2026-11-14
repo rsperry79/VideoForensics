@@ -79,7 +79,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         _ = Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<Microsoft.JSInterop.IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
         _ = Services.AddScoped<StepUpService>();
         // The pages inject the interface; the host registers it over the concrete orchestrator.
-        _ = Services.AddScoped<Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
+        _ = Services.AddScoped<IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped(_ => Mock.Of<ICultureSwitcher>());
         _ = Services.AddScoped(_ => Mock.Of<IOperatorPreferencesRepository>());
