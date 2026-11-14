@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;
         public IActionLogRepository ActionLog { get; set; } = null!;
-        public IEventRepository Events { get; set; } = null!;
+        public IEventWriteRepository Events { get; set; } = null!;
         public IDeviceConfigRepository DeviceConfig { get; set; } = null!;
         public IDeviceSettingChangeRepository DeviceSettingChanges { get; set; } = null!;
         public IProviderReconciliationRepository ProviderReconciliation { get; set; } = null!;
@@ -49,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
         private readonly Mock<ILocationRepository> _mockLocations = new();
         private readonly Mock<IDeviceWriteRepository> _mockDevices = new();
-        private readonly Mock<IEventRepository> _mockEvents = new();
+        private readonly Mock<IEventWriteRepository> _mockEvents = new();
         private readonly Mock<IDownloadEventRepository> _mockDownloadEvents = new();
         private readonly Mock<IMediaItemWriteRepository> _mockMediaItems = new();
         private readonly Mock<IDingIdLinkRepository> _mockDingIdLinks = new();

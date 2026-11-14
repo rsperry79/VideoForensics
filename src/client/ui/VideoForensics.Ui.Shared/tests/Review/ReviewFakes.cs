@@ -73,10 +73,10 @@ public sealed class FakeReviewEventLoader : IReviewEventLoader
     public IReadOnlyList<EventLoadCall> Calls => _calls;
 
     /// <summary>Produces the result of a call. Defaults to an empty page.</summary>
-    public Func<EventLoadCall, CancellationToken, Task<EventPage>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPage([], 0));
+    public Func<EventLoadCall, CancellationToken, Task<EventPageDto>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPageDto([], 0));
 
     /// <inheritdoc />
-    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
+    public Task<EventPageDto> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
     {
         var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take, eventTypes);
         _calls.Add(call);

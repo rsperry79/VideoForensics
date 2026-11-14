@@ -36,7 +36,7 @@
         <p class="review-events-total" data-testid="review-events-total">@string.Format(L["EventsTotal"].Value, _loaded.Total)</p>
 
         <div class="list-group review-events-list" aria-label="@L["EventsListLabel"]">
-            @foreach (Event evt in _loaded.Items)
+            @foreach (EventDto evt in _loaded.Items)
             {
                 bool selected = evt.Id == State.SelectedEventId;
                 <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center @(selected ? "active" : string.Empty)"
@@ -45,7 +45,7 @@
                     <span class="review-event-time"><LocalTimeText Value="evt.OccurredAtUtc" Format="g" /></span>
                     <span class="review-event-camera">@CameraName(evt.DeviceId)</span>
                     <span class="review-event-type">@RowTypeLabel(evt)</span>
-                    @if (evt.DownloadStatus == EventDownloadStatus.Unavailable)
+                    @if (evt.DownloadStatus == EventDownloadStatusDto.Unavailable)
                     {
                         <span class="badge text-bg-warning" data-testid="review-event-unavailable">@L["EventUnavailable"]</span>
                     }
@@ -203,7 +203,7 @@
 
         try
         {
-            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, key.EventTypes, skip, take, ct);
+            EventPageDto page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, key.EventTypes, skip, take, ct);
             if (!IsCurrent(cts))
             {
                 return;
@@ -248,7 +248,7 @@
     /// Selects the event's camera, the event, and its time, then switches to the Timeline tab, where the player lives.
     /// The camera is only changed when it is not already the one and only selected camera.
     /// </summary>
-    private void OnRowClick(Event evt)
+    private void OnRowClick(EventDto evt)
     {
         bool alreadyOnlyCamera = State.CameraIds.Count == 1 && State.CameraIds[0] == evt.DeviceId;
         if (!alreadyOnlyCamera)
@@ -267,7 +267,7 @@
     }
 
     /// <summary>The row's label: the detection type (Person, Vehicle) when its detail names one, else the event's own type.</summary>
-    private string RowTypeLabel(Event evt)
+    private string RowTypeLabel(EventDto evt)
     {
         _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
         return ReviewEventLabels.RowLabel(L, evt, detail);
@@ -277,7 +277,7 @@
     /// Reads the detail for rows not yet read, in one batch. A failure here is logged and the rows keep their event-type
     /// label, so the list still shows.
     /// </summary>
-    private async Task LoadRowDetailsAsync(IReadOnlyList<Event> rows, CancellationToken ct)
+    private async Task LoadRowDetailsAsync(IReadOnlyList<EventDto> rows, CancellationToken ct)
     {
         Guid[] missing = rows.Select(row => row.Id).Where(id => !_details.ContainsKey(id)).ToArray();
         if (missing.Length == 0)
@@ -336,5 +336,5 @@
     }
 
     /// <summary>The rows shown, the total the server reported, and the query that produced them.</summary>
-    private sealed record LoadedEvents(LoadKey Key, IReadOnlyList<Event> Items, int Total);
+    private sealed record LoadedEvents(LoadKey Key, IReadOnlyList<EventDto> Items, int Total);
 }

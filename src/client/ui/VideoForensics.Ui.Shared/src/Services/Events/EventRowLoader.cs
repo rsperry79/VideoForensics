@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -51,7 +52,7 @@ public class EventRowLoader
         {
             try
             {
-                IReadOnlyList<Event> events = onlyUnansweredOrFlagged
+                IReadOnlyList<EventDto> events = onlyUnansweredOrFlagged
                     ? await _eventRepository.ListUnansweredOrFlaggedAsync(deviceId, ct)
                     : await _eventRepository.ListByDeviceAndDateRangeAsync(
                         deviceId,

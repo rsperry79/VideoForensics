@@ -14,6 +14,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="DownloadedAtUtc">Timestamp when associated media was downloaded, in UTC. Null if no media has been downloaded.</param>
     /// <param name="ApiSourceHash">Hash of the source API response for change detection; null if not applicable.</param>
     /// <param name="EventIntegrityHash">Hash value for event integrity verification; null if not set.</param>
+    /// <param name="DownloadFailedAtUtc">Timestamp of the last failed download attempt, in UTC. Null if no failure is recorded.</param>
     public record EventDto(
         Guid Id,
         Guid DeviceId,
@@ -25,7 +26,9 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime DiscoveredAtUtc,
         DateTime? DownloadedAtUtc,
         string? ApiSourceHash,
-        string? EventIntegrityHash
+        string? EventIntegrityHash,
+        DateTime? DownloadFailedAtUtc = null,
+        EventDownloadStatusDto DownloadStatus = EventDownloadStatusDto.NotAttempted
     );
 
     /// <summary>

@@ -21,7 +21,9 @@ namespace VideoForensics.Core.Api.Contracts
                 DiscoveredAtUtc: entity.DiscoveredAtUtc,
                 DownloadedAtUtc: entity.DownloadedAtUtc,
                 ApiSourceHash: entity.ApiSourceHash,
-                EventIntegrityHash: entity.EventIntegrityHash
+                EventIntegrityHash: entity.EventIntegrityHash,
+                DownloadFailedAtUtc: entity.DownloadFailedAtUtc,
+                DownloadStatus: Enum.Parse<EventDownloadStatusDto>(entity.DownloadStatus.ToString())
             );
         }
 
@@ -42,7 +44,9 @@ namespace VideoForensics.Core.Api.Contracts
                 DiscoveredAtUtc = dto.DiscoveredAtUtc,
                 DownloadedAtUtc = dto.DownloadedAtUtc,
                 ApiSourceHash = dto.ApiSourceHash,
-                EventIntegrityHash = dto.EventIntegrityHash
+                EventIntegrityHash = dto.EventIntegrityHash,
+                DownloadFailedAtUtc = dto.DownloadFailedAtUtc,
+                DownloadStatus = Enum.Parse<VideoForensics.Data.Common.Entities.EventDownloadStatus>(dto.DownloadStatus.ToString())
             };
         }
     }

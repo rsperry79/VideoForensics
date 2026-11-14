@@ -17,7 +17,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILocationRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
-        private readonly IEventRepository _eventRepository;
+        private readonly IEventWriteRepository _eventRepository;
         private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
         private readonly IDeviceDetailsRepository _deviceDetailsRepository;
@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Core.Services
             ILocationRepository locationRepository,
             IDeviceWriteRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
-            IEventRepository eventRepository,
+            IEventWriteRepository eventRepository,
             IMediaItemWriteRepository mediaItemRepository,
             IDeviceHealthRepository deviceHealthRepository,
             IDeviceDetailsRepository deviceDetailsRepository,

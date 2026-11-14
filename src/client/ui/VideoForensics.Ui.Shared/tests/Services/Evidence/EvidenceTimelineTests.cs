@@ -21,7 +21,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -31,7 +31,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item1 = new EvidenceItem
         {
@@ -81,7 +81,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -91,7 +91,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item1 = new EvidenceItem
         {
@@ -143,7 +143,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -153,7 +153,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item1 = new EvidenceItem
         {
@@ -244,7 +244,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     DiscoveredAtUtc = DateTime.UtcNow,
                     ProviderEventId = $"e{i}",
                     MetadataJson = "{}"
-                } : null,
+                }.ToDto() : null,
                 Media = null
             });
         }
@@ -408,7 +408,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     DiscoveredAtUtc = DateTime.UtcNow,
                     ProviderEventId = "e1",
                     MetadataJson = "{}"
-                },
+                }.ToDto(),
                 Media = null // No media = not viewable
             },
             new() {

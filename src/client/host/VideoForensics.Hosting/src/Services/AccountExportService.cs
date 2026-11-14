@@ -223,7 +223,7 @@ namespace VideoForensics.Client.Hosting.Services
             IReadOnlyList<ProviderSyncRun> syncRuns = await sp.GetRequiredService<IProviderSyncRunRepository>().ListByProviderAccountIdAsync(account.Id, ct);
 
             IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
-            IEventRepository eventRepository = sp.GetRequiredService<IEventRepository>();
+            IEventWriteRepository eventRepository = sp.GetRequiredService<IEventWriteRepository>();
             IMediaItemWriteRepository mediaRepository = sp.GetRequiredService<IMediaItemWriteRepository>();
             IDownloadEventRepository downloadRepository = sp.GetRequiredService<IDownloadEventRepository>();
 

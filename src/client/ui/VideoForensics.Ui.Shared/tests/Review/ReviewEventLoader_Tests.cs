@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Api.Contracts.Repositories;
 using Moq;
 
@@ -25,7 +26,7 @@ public class ReviewEventLoader_Tests
         public int Take { get; set; }
     }
 
-    private static Mock<IEventRepository> Repository(Capture capture, EventPage? page = null)
+    private static Mock<IEventRepository> Repository(Capture capture, EventPageDto? page = null)
     {
         var repository = new Mock<IEventRepository>();
         _ = repository
@@ -41,7 +42,7 @@ public class ReviewEventLoader_Tests
                     capture.Skip = skip;
                     capture.Take = take;
                 })
-            .ReturnsAsync(page ?? new EventPage([], 0));
+            .ReturnsAsync(page ?? new EventPageDto([], 0));
         return repository;
     }
 
@@ -78,11 +79,11 @@ public class ReviewEventLoader_Tests
     public async Task ReviewEventLoader_Load_ReturnsThePageFromTheRepository()
     {
         // Arrange
-        var evt = new Event { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), ProviderEventId = "p1", EventType = "motion", OccurredAtUtc = From };
-        var loader = new ReviewEventLoader(Repository(new Capture(), new EventPage([evt], 7)).Object);
+        var evt = new Event { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), ProviderEventId = "p1", EventType = "motion", OccurredAtUtc = From }.ToDto();
+        var loader = new ReviewEventLoader(Repository(new Capture(), new EventPageDto([evt], 7)).Object);
 
         // Act
-        EventPage page = await loader.LoadAsync([evt.DeviceId], From, To, null, 0, 100, CancellationToken.None);
+        EventPageDto page = await loader.LoadAsync([evt.DeviceId], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(7, page.TotalCount);
@@ -125,9 +126,9 @@ public class ReviewEventLoader_Tests
         return new ReviewCaseMode(new Mock<ICaseRepository>().Object, new Mock<IMediaItemRepository>().Object, new Mock<IEventRepository>().Object);
     }
 
-    private static Event Evt(Guid device, DateTime occurred)
+    private static EventDto Evt(Guid device, DateTime occurred)
     {
-        return new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = Guid.NewGuid().ToString(), EventType = "motion", OccurredAtUtc = occurred };
+        return new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = Guid.NewGuid().ToString(), EventType = "motion", OccurredAtUtc = occurred }.ToDto();
     }
 
     [Fact]
@@ -135,14 +136,14 @@ public class ReviewEventLoader_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        Event a = Evt(device, From.AddHours(1));
-        Event b = Evt(device, From.AddHours(2));
-        Event c = Evt(device, From.AddHours(3));
+        EventDto a = Evt(device, From.AddHours(1));
+        EventDto b = Evt(device, From.AddHours(2));
+        EventDto c = Evt(device, From.AddHours(3));
         ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [a, b, c]);
         var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
 
         // Act
-        EventPage page = await loader.LoadAsync([device], From, To, null, 1, 1, CancellationToken.None);
+        EventPageDto page = await loader.LoadAsync([device], From, To, null, 1, 1, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -155,14 +156,14 @@ public class ReviewEventLoader_Tests
         // Arrange
         var device = Guid.NewGuid();
         var other = Guid.NewGuid();
-        Event inside = Evt(device, From.AddHours(1));
-        Event wrongDevice = Evt(other, From.AddHours(1));
-        Event outsideRange = Evt(device, To.AddDays(1));
+        EventDto inside = Evt(device, From.AddHours(1));
+        EventDto wrongDevice = Evt(other, From.AddHours(1));
+        EventDto outsideRange = Evt(device, To.AddDays(1));
         ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [inside, wrongDevice, outsideRange]);
         var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
 
         // Act
-        EventPage page = await loader.LoadAsync([device], From, To, null, 0, 100, CancellationToken.None);
+        EventPageDto page = await loader.LoadAsync([device], From, To, null, 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(1, page.TotalCount);
@@ -234,15 +235,15 @@ public class ReviewEventLoader_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        Event motion = Evt(device, From.AddHours(1));
-        motion.EventType = "motion";
-        Event ding = Evt(device, From.AddHours(2));
-        ding.EventType = "ding";
+        EventDto motion = Evt(device, From.AddHours(1));
+        motion = motion with { EventType = "motion" };
+        EventDto ding = Evt(device, From.AddHours(2));
+        ding = ding with { EventType = "ding" };
         ReviewCaseMode caseMode = await CaseModeFakes.ActiveAsync([], [motion, ding]);
         var loader = new ReviewEventLoader(Repository(new Capture()).Object, caseMode);
 
         // Act
-        EventPage page = await loader.LoadAsync([device], From, To, ["motion"], 0, 100, CancellationToken.None);
+        EventPageDto page = await loader.LoadAsync([device], From, To, ["motion"], 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Equal(1, page.TotalCount);
@@ -257,7 +258,7 @@ public class ReviewEventLoader_Tests
         var loader = new ReviewEventLoader(repository.Object);
 
         // Act
-        EventPage page = await loader.LoadAsync([Guid.NewGuid()], From, To, [], 0, 100, CancellationToken.None);
+        EventPageDto page = await loader.LoadAsync([Guid.NewGuid()], From, To, [], 0, 100, CancellationToken.None);
 
         // Assert
         Assert.Empty(page.Items);

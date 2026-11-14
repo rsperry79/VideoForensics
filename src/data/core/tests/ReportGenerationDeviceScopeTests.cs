@@ -37,7 +37,7 @@ namespace VideoForensics.Data.Core.Tests
                 new Mock<IDeviceWriteRepository>().Object,
                 new Mock<IDownloadEventRepository>().Object,
                 _actionLog.Object,
-                new Mock<IEventRepository>().Object,
+                new Mock<IEventWriteRepository>().Object,
                 new Mock<IJammingRepository>().Object,
                 integrity.Object,
                 new Mock<ILogger<ReportGenerationService>>().Object,

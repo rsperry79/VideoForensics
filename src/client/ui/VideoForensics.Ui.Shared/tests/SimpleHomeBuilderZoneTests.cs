@@ -27,7 +27,7 @@ public class SimpleHomeBuilderZoneTests
         _ = events.Setup(e => e.ListByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = Guid.NewGuid(), DeviceId = DeviceId, ProviderEventId = "evt-1", EventType = "motion", OccurredAtUtc = new DateTime(2026, 10, 7, 19, 0, 0, DateTimeKind.Utc) }
+                new VideoForensics.Data.Common.Entities.Event { Id = Guid.NewGuid(), DeviceId = DeviceId, ProviderEventId = "evt-1", EventType = "motion", OccurredAtUtc = new DateTime(2026, 10, 7, 19, 0, 0, DateTimeKind.Utc) }.ToDto()
             ]);
         var devices = new Mock<IDeviceRepository>();
         _ = devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>()))

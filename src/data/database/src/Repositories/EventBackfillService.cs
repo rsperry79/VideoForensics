@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<int> BackfillFromDownloadEventsAsync(
             IDownloadEventRepository downloadEventRepository,
             IMediaItemWriteRepository mediaItemRepository,
-            IEventRepository eventRepository,
+            IEventWriteRepository eventRepository,
             IUnitOfWork unitOfWork,
             ILogger logger,
             CancellationToken ct)

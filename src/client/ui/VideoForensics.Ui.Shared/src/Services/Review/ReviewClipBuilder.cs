@@ -39,10 +39,10 @@ public static class ReviewClipBuilder
     /// The unavailable events of one device: each stored event with no downloaded media, drawn at its time and never played.
     /// Downloaded events are excluded, since their media is in <see cref="BuildClips"/>.
     /// </summary>
-    public static IReadOnlyList<ClipWindow> BuildUnavailableClips(IEnumerable<Event> events, Guid deviceId)
+    public static IReadOnlyList<ClipWindow> BuildUnavailableClips(IEnumerable<EventDto> events, Guid deviceId)
     {
         return events
-            .Where(evt => evt.DeviceId == deviceId && evt.DownloadStatus != EventDownloadStatus.Downloaded)
+            .Where(evt => evt.DeviceId == deviceId && evt.DownloadStatus != EventDownloadStatusDto.Downloaded)
             .OrderBy(evt => evt.OccurredAtUtc)
             .Select(evt => new ClipWindow("event:" + evt.Id.ToString("D"), evt.OccurredAtUtc, UnavailableMarkerSeconds, null, IsUnavailable: true))
             .ToList();

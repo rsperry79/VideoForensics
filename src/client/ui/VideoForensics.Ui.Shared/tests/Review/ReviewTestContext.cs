@@ -115,7 +115,7 @@ public abstract class ReviewTestContext : BunitContext
     protected Mock<IEventRepository> EventRepositoryMock { get; } = new();
 
     private readonly Dictionary<Guid, MediaItem> _mediaById = [];
-    private readonly Dictionary<Guid, Event> _eventsById = [];
+    private readonly Dictionary<Guid, EventDto> _eventsById = [];
 
     /// <summary>The case view service, resolved from the same scope the page uses.</summary>
     protected ReviewCaseMode CaseMode => Services.GetRequiredService<ReviewCaseMode>();
@@ -178,7 +178,7 @@ public abstract class ReviewTestContext : BunitContext
             .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItemDto?>(_mediaById.GetValueOrDefault(id)?.ToDto()));
         _ = EventRepositoryMock
             .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<EventDto?>(_eventsById.GetValueOrDefault(id)));
         _ = Services.AddScoped(_ => StillCaptureMock.Object);
         _ = StillCaptureMock
             .Setup(m => m.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -217,7 +217,7 @@ public abstract class ReviewTestContext : BunitContext
     /// Creates a case whose pins are the given media items and events, wires the case, pin, and row doubles, and
     /// returns the case id. Set the case repository double before rendering anything that resolves the case view.
     /// </summary>
-    protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
+    protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<EventDto>? events = null)
     {
         var caseId = Guid.NewGuid();
         var pins = new List<CaseItem>();
@@ -227,7 +227,7 @@ public abstract class ReviewTestContext : BunitContext
             pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = item.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
         }
 
-        foreach (Event evt in events ?? [])
+        foreach (EventDto evt in events ?? [])
         {
             _eventsById[evt.Id] = evt;
             pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = evt.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });

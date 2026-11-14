@@ -59,16 +59,16 @@ public class SimpleHomeBuilderTests
         };
     }
 
-    private static Event Evt(string type, DateTime occurredUtc, Guid? deviceId = null)
+    private static EventDto Evt(string type, DateTime occurredUtc, Guid? deviceId = null)
     {
-        return new()
+        return new Event
         {
             Id = Guid.NewGuid(),
             DeviceId = deviceId ?? FrontId,
             ProviderEventId = "ring-evt-" + Guid.NewGuid(),
             EventType = type,
             OccurredAtUtc = occurredUtc
-        };
+        }.ToDto();
     }
 
     private static MediaItem Media(DateTime recordedUtc, string format = "video/mp4", bool purged = false, Guid? deviceId = null)
@@ -100,7 +100,7 @@ public class SimpleHomeBuilderTests
         };
     }
 
-    private void SetEvents(params Event[] items)
+    private void SetEvents(params EventDto[] items)
     {
         _ = _events.Setup(e => e.ListByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(items.ToList());

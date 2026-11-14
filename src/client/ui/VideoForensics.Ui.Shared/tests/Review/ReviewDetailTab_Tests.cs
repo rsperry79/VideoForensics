@@ -29,16 +29,16 @@ public class ReviewDetailTab_Tests : ReviewTestContext
 
     private static readonly DateTime Base = FixedNowUtc.AddHours(-2);
 
-    private static Event EventAt(Guid device, DateTime utc, string type = "motion")
+    private static EventDto EventAt(Guid device, DateTime utc, string type = "motion")
     {
-        return new()
+        return new Event
         {
             Id = Guid.NewGuid(),
             DeviceId = device,
             ProviderEventId = Guid.NewGuid().ToString("N"),
             EventType = type,
             OccurredAtUtc = utc,
-        };
+        }.ToDto();
     }
 
     private static JammingIncidentRecord Jam(Guid device, DateTime startUtc)
@@ -80,12 +80,12 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     }
 
     /// <summary>Serves events from one list (newest first), keeping only the requested cameras and applying skip and take.</summary>
-    private void ServeFrom(List<Event> all)
+    private void ServeFrom(List<EventDto> all)
     {
         EventLoader.Responder = (call, _) =>
         {
             var matching = all.Where(e => call.DeviceIds.Contains(e.DeviceId)).ToList();
-            return Task.FromResult(new EventPage(matching.Skip(call.Skip).Take(call.Take).ToList(), matching.Count));
+            return Task.FromResult(new EventPageDto(matching.Skip(call.Skip).Take(call.Take).ToList(), matching.Count));
         };
     }
 
@@ -96,7 +96,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
             .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
     }
 
-    private static string Toggle(Event evt)
+    private static string Toggle(EventDto evt)
     {
         return $"[data-testid='review-event-toggle'][data-event-id='{evt.Id:D}']";
     }
@@ -106,7 +106,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
         DetailLoader.AnomalyResponder = (_, _) => Task.FromResult<IReadOnlyList<ReviewAnomaly>>(
@@ -132,10 +132,10 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange: the event has no media; its retries failed at a known time
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
-        evt.DownloadStatus = EventDownloadStatus.Unavailable;
-        evt.DiscoveredAtUtc = Base;
-        evt.DownloadFailedAtUtc = Base.AddHours(1);
+        EventDto evt = EventAt(Devices[0].Id, Base);
+        evt = evt with { DownloadStatus = EventDownloadStatusDto.Unavailable, DiscoveredAtUtc = Base, DownloadFailedAtUtc = Base.AddHours(1) };
+
+
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -237,8 +237,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event first = EventAt(Devices[0].Id, Base.AddMinutes(20));
-        Event second = EventAt(Devices[0].Id, Base.AddMinutes(10));
+        EventDto first = EventAt(Devices[0].Id, Base.AddMinutes(20));
+        EventDto second = EventAt(Devices[0].Id, Base.AddMinutes(10));
         ServeFrom([first, second]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -259,7 +259,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -279,7 +279,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
             new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
@@ -298,7 +298,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (ids, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
             new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
@@ -332,7 +332,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -349,7 +349,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
             new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
@@ -371,7 +371,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        Event evt = EventAt(Devices[1].Id, Base);
+        EventDto evt = EventAt(Devices[1].Id, Base);
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
             new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[1].Id) });
@@ -477,7 +477,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -503,12 +503,12 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        var all = new List<Event> { EventAt(Devices[0].Id, Base.AddMinutes(10)), EventAt(Devices[0].Id, Base.AddMinutes(5)) };
+        var all = new List<EventDto> { EventAt(Devices[0].Id, Base.AddMinutes(10)), EventAt(Devices[0].Id, Base.AddMinutes(5)) };
         ServeFrom(all);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(EventRow).Count));
-        Event fresh = EventAt(Devices[0].Id, Base.AddMinutes(15));
+        EventDto fresh = EventAt(Devices[0].Id, Base.AddMinutes(15));
         all.Insert(0, fresh);
 
         // Act
@@ -529,7 +529,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -569,7 +569,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([EventAt(Devices[0].Id, Base.AddMinutes(30)), evt]);
         DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
             new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
@@ -637,7 +637,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (_, _) =>
         {
@@ -698,7 +698,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base, "on_demand");
+        EventDto evt = EventAt(Devices[0].Id, Base, "on_demand");
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (_, _) =>
         {

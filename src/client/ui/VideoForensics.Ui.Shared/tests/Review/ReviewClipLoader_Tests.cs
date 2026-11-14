@@ -39,18 +39,18 @@ public class ReviewClipLoader_Tests
     {
         // Arrange: one stored event with no media, one with downloaded media
         Guid device = Guid.NewGuid();
-        var unavailable = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401464", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Unavailable };
-        var downloaded = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401465", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Downloaded };
+        var unavailable = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401464", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Unavailable }.ToDto();
+        var downloaded = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401465", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Downloaded }.ToDto();
         var events = new Mock<IEventRepository>();
         _ = events.Setup(e => e.ListByDeviceAndDateRangeAsync(device, FromUtc, ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Event> { unavailable, downloaded });
+            .ReturnsAsync(new List<EventDto> { unavailable, downloaded });
         var loader = new ReviewClipLoader(RepositoryServing([]).Object, events: events.Object);
 
         // Act
         ReviewClipSet set = await loader.LoadAsync([device], FromUtc, ToUtc, CancellationToken.None);
 
         // Assert
-        Event only = Assert.Single(set.UnavailableEvents!);
+        EventDto only = Assert.Single(set.UnavailableEvents!);
         Assert.Equal(unavailable.Id, only.Id);
     }
 

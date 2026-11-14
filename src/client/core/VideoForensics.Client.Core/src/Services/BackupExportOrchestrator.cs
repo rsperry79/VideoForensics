@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
-        private readonly IEventRepository _eventRepository;
+        private readonly IEventWriteRepository _eventRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IForensicsConfiguration _forensicsConfiguration;
@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Core.Services
             IProviderAccountRepository providerAccountRepository,
             ILocationRepository locationRepository,
             IDeviceWriteRepository deviceRepository,
-            IEventRepository eventRepository,
+            IEventWriteRepository eventRepository,
             IDownloadEventRepository downloadEventRepository,
             IMediaItemWriteRepository mediaItemRepository,
             IForensicsConfiguration forensicsConfiguration,

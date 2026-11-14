@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for event entities (independent of download status).</summary>
-    public interface IEventRepository
+    public interface IEventWriteRepository
     {
         /// <summary>Gets an event by ID.</summary>
         Task<Event?> GetAsync(Guid eventId, CancellationToken ct);

@@ -67,18 +67,18 @@ public sealed class ReviewClipLoader : IReviewClipLoader
     /// Reads the stored events of the cameras in the window that have no downloaded media. Downloaded events are left out,
     /// since their media is already in the clip list. Returns null when no event repository was given.
     /// </summary>
-    private async Task<IReadOnlyList<Event>?> ReadUnavailableEventsAsync(IReadOnlyList<Guid> devices, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    private async Task<IReadOnlyList<EventDto>?> ReadUnavailableEventsAsync(IReadOnlyList<Guid> devices, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         if (_events is null)
         {
             return null;
         }
 
-        var unavailable = new List<Event>();
+        var unavailable = new List<EventDto>();
         foreach (Guid device in devices)
         {
-            IReadOnlyList<Event> stored = await _events.ListByDeviceAndDateRangeAsync(device, fromUtc, toUtc, ct);
-            unavailable.AddRange(stored.Where(evt => evt.DownloadStatus != EventDownloadStatus.Downloaded));
+            IReadOnlyList<EventDto> stored = await _events.ListByDeviceAndDateRangeAsync(device, fromUtc, toUtc, ct);
+            unavailable.AddRange(stored.Where(evt => evt.DownloadStatus != EventDownloadStatusDto.Downloaded));
         }
 
         return unavailable;

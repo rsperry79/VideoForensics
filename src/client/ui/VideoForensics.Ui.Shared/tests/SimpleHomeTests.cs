@@ -35,7 +35,7 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
     private readonly Mock<IJammingRepository> _jamming = new();
     private readonly Mock<IMediaContentUrlProvider> _urls = new();
 
-    private List<Event> _eventData = [];
+    private List<EventDto> _eventData = [];
     private List<MediaItem> _mediaData = [];
     private List<JammingIncidentRecord> _jammingData = [];
 
@@ -73,16 +73,16 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         };
     }
 
-    private static Event Evt(string type, DateTime occurredUtc)
+    private static EventDto Evt(string type, DateTime occurredUtc)
     {
-        return new()
+        return new Event
         {
             Id = Guid.NewGuid(),
             DeviceId = FrontId,
             ProviderEventId = "ring-evt-" + Guid.NewGuid(),
             EventType = type,
             OccurredAtUtc = occurredUtc
-        };
+        }.ToDto();
     }
 
     private static MediaItem Media(DateTime recordedUtc, string format = "video/mp4", bool purged = false)

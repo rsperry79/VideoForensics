@@ -11,7 +11,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 public static class CaseModeFakes
 {
     /// <summary>Enters a new case whose pins are the given media items and events, and returns the active mode.</summary>
-    public static async Task<ReviewCaseMode> ActiveAsync(IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
+    public static async Task<ReviewCaseMode> ActiveAsync(IReadOnlyList<MediaItem> media, IReadOnlyList<EventDto>? events = null)
     {
         var caseId = Guid.NewGuid();
         DateTime added = new(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
@@ -26,7 +26,7 @@ public static class CaseModeFakes
             _ = mediaRepository.Setup(r => r.GetAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item.ToDto());
         }
 
-        foreach (Event evt in events ?? [])
+        foreach (EventDto evt in events ?? [])
         {
             pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = evt.Id, Reason = "r", AddedBy = "op", AddedAtUtc = added });
             _ = eventRepository.Setup(r => r.GetAsync(evt.Id, It.IsAny<CancellationToken>())).ReturnsAsync(evt);

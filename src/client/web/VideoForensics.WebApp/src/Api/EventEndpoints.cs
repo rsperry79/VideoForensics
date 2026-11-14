@@ -39,7 +39,7 @@ namespace VideoForensics.Client.WebApp.Api
             string[]? includeTypes,
             int? skip,
             int? take,
-            IEventRepository events,
+            IEventWriteRepository events,
             CancellationToken ct)
         {
             const int MaxDevices = 64;
@@ -98,7 +98,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapGet("/", async (
                 int? pageNumber,
                 int? pageSize,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 // If both pageNumber and pageSize are provided, use paginated read
@@ -131,7 +131,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Get event details")
                 .WithDescription("Returns the detection rows (detection, occurrences, zones, people, alerts) for up to 200 events, for the review page's Detail tab. Events with no detail rows are omitted.");
 
-            _ = group.MapGet("/{id:guid}", async (Guid id, IEventRepository events, CancellationToken ct) =>
+            _ = group.MapGet("/{id:guid}", async (Guid id, IEventWriteRepository events, CancellationToken ct) =>
             {
                 Event? @event = await events.GetAsync(id, ct);
                 return @event == null ? Results.NotFound() : Results.Ok(@event.ToDto());
@@ -144,7 +144,7 @@ namespace VideoForensics.Client.WebApp.Api
                 Guid deviceId,
                 DateTime? fromUtc,
                 DateTime? toUtc,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
@@ -160,7 +160,7 @@ namespace VideoForensics.Client.WebApp.Api
                 Guid locationId,
                 DateTime? fromUtc,
                 DateTime? toUtc,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
@@ -178,7 +178,7 @@ namespace VideoForensics.Client.WebApp.Api
                 Guid? locationId,
                 DateTime? fromUtc,
                 DateTime? toUtc,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
@@ -198,7 +198,7 @@ namespace VideoForensics.Client.WebApp.Api
                 Guid locationId,
                 DateTime? fromUtc,
                 DateTime? toUtc,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
@@ -212,7 +212,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapGet("/unanswered/{deviceId:guid}", async (
                 Guid deviceId,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 IReadOnlyList<Event> eventList = await events.ListUnansweredOrFlaggedAsync(deviceId, ct);
@@ -225,7 +225,7 @@ namespace VideoForensics.Client.WebApp.Api
             // Event write operations
             _ = group.MapPost("/", async (
                 EventDto dto,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 Event entity = dto.ToDomain();
@@ -239,7 +239,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapDelete("/{id:guid}", async (
                 Guid id,
-                IEventRepository events,
+                IEventWriteRepository events,
                 CancellationToken ct) =>
             {
                 await events.DeleteAsync(id, ct);

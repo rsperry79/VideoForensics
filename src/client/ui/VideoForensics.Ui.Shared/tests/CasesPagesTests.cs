@@ -182,7 +182,7 @@ public abstract class CasesPagesTestBase : BunitContext
         };
     }
 
-    protected static Event CreateTestEvent(Guid? id = null, Guid? deviceId = null, DateTime? occurredAtUtc = null)
+    protected static EventDto CreateTestEvent(Guid? id = null, Guid? deviceId = null, DateTime? occurredAtUtc = null)
     {
         DateTime occurred = occurredAtUtc ?? FixedNowUtc.AddDays(-1);
         return new Event
@@ -193,7 +193,7 @@ public abstract class CasesPagesTestBase : BunitContext
             ProviderEventId = Guid.NewGuid().ToString(),
             OccurredAtUtc = occurred,
             DiscoveredAtUtc = occurred.AddSeconds(2)
-        };
+        }.ToDto();
     }
 
     protected static MediaItem CreateTestMediaItem(Guid? id = null, string fileName = "test.mp4", string sha256Hash = "ABC123")
@@ -603,7 +603,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     {
         var caseId = Guid.NewGuid();
         ForensicCase testCase = CreateTestCase(id: caseId);
-        Event @event = CreateTestEvent();
+        EventDto @event = CreateTestEvent();
         MediaItem media = CreateTestMediaItem(sha256Hash: "ABC123");
         CaseItem eventPin = CreateEventPin(caseId, @event.Id);
         CaseItem mediaPin = CreateMediaPin(caseId, media.Id, media.Sha256Hash!);
@@ -659,7 +659,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         var caseId = Guid.NewGuid();
         ForensicCase testCase = CreateTestCase(id: caseId);
         CaseItem removedPin = CreateEventPin(caseId, Guid.NewGuid());
-        Event @event = CreateTestEvent(id: removedPin.EventId);
+        EventDto @event = CreateTestEvent(id: removedPin.EventId);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -684,7 +684,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         var caseId = Guid.NewGuid();
         ForensicCase testCase = CreateTestCase(id: caseId);
         CaseItem pin = CreateEventPin(caseId, Guid.NewGuid());
-        Event @event = CreateTestEvent(id: pin.EventId);
+        EventDto @event = CreateTestEvent(id: pin.EventId);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -718,7 +718,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         var caseId = Guid.NewGuid();
         ForensicCase testCase = CreateTestCase(id: caseId);
         CaseItem pin = CreateEventPin(caseId, Guid.NewGuid());
-        Event @event = CreateTestEvent(id: pin.EventId);
+        EventDto @event = CreateTestEvent(id: pin.EventId);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -772,7 +772,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         ForensicCase openCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
         ForensicCase closedCase = CreateTestCase(id: caseId, status: CaseStatus.Closed);
         CaseItem pin = CreateEventPin(caseId, Guid.NewGuid());
-        Event @event = CreateTestEvent(id: pin.EventId);
+        EventDto @event = CreateTestEvent(id: pin.EventId);
 
         _ = CaseRepositoryMock.SetupSequence(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(openCase)

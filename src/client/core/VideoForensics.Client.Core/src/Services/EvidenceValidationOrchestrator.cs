@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Core.Services
     {
         private readonly ILogger<EvidenceValidationOrchestrator> _logger;
         private readonly IEventAndConfigService _eventAndConfigService;
-        private readonly Data.Common.Contracts.IEventRepository _eventRepository;
+        private readonly Data.Common.Contracts.IEventWriteRepository _eventRepository;
         private readonly Data.Common.Contracts.IDeviceWriteRepository _deviceRepository;
         private readonly Data.Common.Contracts.IIntegrityVerificationService _integrityService;
         private readonly Data.Common.Contracts.IMediaItemWriteRepository _mediaItemRepository;
@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Core.Services
         public EvidenceValidationOrchestrator(
             ILogger<EvidenceValidationOrchestrator> logger,
             IEventAndConfigService eventAndConfigService,
-            Data.Common.Contracts.IEventRepository eventRepository,
+            Data.Common.Contracts.IEventWriteRepository eventRepository,
             Data.Common.Contracts.IDeviceWriteRepository deviceRepository,
             Data.Common.Contracts.IIntegrityVerificationService integrityService,
             Data.Common.Contracts.IMediaItemWriteRepository mediaItemRepository,

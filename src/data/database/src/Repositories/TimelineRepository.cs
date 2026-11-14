@@ -12,13 +12,13 @@ namespace VideoForensics.Data.Database.Repositories
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TimelineRepository> _logger;
-        private readonly IEventRepository _eventRepository;
+        private readonly IEventWriteRepository _eventRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
 
         public TimelineRepository(
             IUnitOfWork unitOfWork,
             ILogger<TimelineRepository> logger,
-            IEventRepository eventRepository,
+            IEventWriteRepository eventRepository,
             IDeviceWriteRepository deviceRepository)
         {
             _unitOfWork = unitOfWork;

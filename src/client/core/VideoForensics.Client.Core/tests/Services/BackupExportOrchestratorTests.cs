@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             var providerAccountRepositoryMock = new Mock<IProviderAccountRepository>();
             var locationRepositoryMock = new Mock<ILocationRepository>();
             var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
-            var eventRepositoryMock = new Mock<IEventRepository>();
+            var eventRepositoryMock = new Mock<IEventWriteRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
             var mediaItemRepositoryMock = new Mock<IMediaItemWriteRepository>();
             var configurationMock = new Mock<IForensicsConfiguration>();
@@ -102,7 +102,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             var providerAccountRepositoryMock = new Mock<IProviderAccountRepository>();
             var locationRepositoryMock = new Mock<ILocationRepository>();
             var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
-            var eventRepositoryMock = new Mock<IEventRepository>();
+            var eventRepositoryMock = new Mock<IEventWriteRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
             var mediaItemRepositoryMock = new Mock<IMediaItemWriteRepository>();
             var configurationMock = new Mock<IForensicsConfiguration>();

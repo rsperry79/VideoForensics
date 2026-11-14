@@ -91,6 +91,18 @@ namespace VideoForensics.Core.Api.Contracts
         /// <summary>An entry's PreviousEntryHash does not match the entry before it.</summary>
         PreviousHashMismatch,
         /// <summary>An entry's stored EntryHash does not match its contents.</summary>
-        EntryHashMismatch
+        EntryHashMismatch    }
+
+    /// <summary>Download status for an event, same member names as the data-layer EventDownloadStatus.</summary>
+    public enum EventDownloadStatusDto
+    {
+        /// <summary>No download attempt has been made.</summary>
+        NotAttempted = 0,
+        /// <summary>Download was attempted but failed.</summary>
+        DownloadFailed = 1,
+        /// <summary>Event was successfully downloaded.</summary>
+        Downloaded = 2,
+        /// <summary>Event has no downloadable media and the backfill queue has used all its retry passes.</summary>
+        Unavailable = 3
     }
 }

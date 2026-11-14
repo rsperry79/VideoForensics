@@ -69,7 +69,7 @@ public class EvidenceTimeLapseLabelTests
                 EventType = "timelapse",
                 OccurredAtUtc = DateTime.UtcNow,
                 DiscoveredAtUtc = DateTime.UtcNow,
-            },
+            }.ToDto(),
         };
 
         Assert.Equal("Time Lapse", item.Label);

@@ -32,7 +32,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IForensicsConfiguration> _config = new();
-        private readonly Mock<IEventRepository> _events = new();
+        private readonly Mock<IEventWriteRepository> _events = new();
         private readonly Mock<IUnitOfWorkContext> _context = new();
         private readonly FakeUnitOfWork _unitOfWork;
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };

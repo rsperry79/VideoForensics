@@ -80,10 +80,10 @@ public sealed class SimpleHomeBuilder
         {
             string? name = names[device.Id];
 
-            foreach (Event evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            foreach (EventDto evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
             {
                 DateTime when = AsUtc(evt.OccurredAtUtc);
-                entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt.ToDto(), name), SimpleEntryKind.Event));
+                entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt, name), SimpleEntryKind.Event));
             }
 
             foreach (MediaItemDto item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))

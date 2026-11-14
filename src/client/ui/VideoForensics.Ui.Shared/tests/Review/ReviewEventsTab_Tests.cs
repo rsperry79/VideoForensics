@@ -24,28 +24,28 @@ public class ReviewEventsTab_Tests : ReviewTestContext
 
     private static readonly DateTime Base = FixedNowUtc.AddHours(-2);
 
-    private static Event EventAt(Guid device, DateTime utc, string type = "motion")
+    private static EventDto EventAt(Guid device, DateTime utc, string type = "motion")
     {
-        return new()
+        return new Event
         {
             Id = Guid.NewGuid(),
             DeviceId = device,
             ProviderEventId = Guid.NewGuid().ToString("N"),
             EventType = type,
             OccurredAtUtc = utc,
-        };
+        }.ToDto();
     }
 
     /// <summary>
     /// Serves events from one list (given newest first), keeping only the requested cameras and applying skip and take.
     /// The list is read on every call, so a test can change it between calls.
     /// </summary>
-    private void ServeFrom(List<Event> all)
+    private void ServeFrom(List<EventDto> all)
     {
         EventLoader.Responder = (call, _) =>
         {
             var matching = all.Where(e => call.DeviceIds.Contains(e.DeviceId)).ToList();
-            return Task.FromResult(new EventPage(matching.Skip(call.Skip).Take(call.Take).ToList(), matching.Count));
+            return Task.FromResult(new EventPageDto(matching.Skip(call.Skip).Take(call.Take).ToList(), matching.Count));
         };
     }
 
@@ -66,8 +66,8 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        Event newest = EventAt(Devices[0].Id, Base.AddMinutes(30));
-        Event older = EventAt(Devices[0].Id, Base.AddMinutes(10));
+        EventDto newest = EventAt(Devices[0].Id, Base.AddMinutes(30));
+        EventDto older = EventAt(Devices[0].Id, Base.AddMinutes(10));
         ServeFrom([newest, EventAt(Devices[1].Id, Base.AddMinutes(20)), older]);
         ReviewState.SetCameras([Devices[0].Id]);
 
@@ -137,8 +137,8 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
-        evt.DownloadStatus = EventDownloadStatus.Unavailable;
+        EventDto evt = EventAt(Devices[0].Id, Base);
+        evt = evt with { DownloadStatus = EventDownloadStatusDto.Unavailable };
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
 
@@ -155,7 +155,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         var detection = new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "human", PersonDetected = true };
         DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
@@ -273,7 +273,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        var never = new TaskCompletionSource<EventPage>();
+        var never = new TaskCompletionSource<EventPageDto>();
         EventLoader.Responder = (_, _) => never.Task;
         ReviewState.SetCameras([Devices[0].Id]);
 
@@ -314,7 +314,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        Event target = EventAt(Devices[1].Id, Base.AddMinutes(20), "ding");
+        EventDto target = EventAt(Devices[1].Id, Base.AddMinutes(20), "ding");
         ServeFrom([EventAt(Devices[0].Id, Base.AddMinutes(30)), target]);
         ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
         IRenderedComponent<ReviewEventsTab> cut = RenderTab();
@@ -335,7 +335,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        Event target = EventAt(Devices[1].Id, Base.AddMinutes(20));
+        EventDto target = EventAt(Devices[1].Id, Base.AddMinutes(20));
         ServeFrom([EventAt(Devices[0].Id, Base.AddMinutes(30)), target]);
         ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
         IRenderedComponent<ReviewEventsTab> cut = RenderTab();
@@ -410,7 +410,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        Event evt = EventAt(Devices[0].Id, Base);
+        EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewEventsTab> cut = RenderTab();
@@ -433,12 +433,12 @@ public class ReviewEventsTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        var all = new List<Event> { EventAt(Devices[0].Id, Base.AddMinutes(10)), EventAt(Devices[0].Id, Base.AddMinutes(5)) };
+        var all = new List<EventDto> { EventAt(Devices[0].Id, Base.AddMinutes(10)), EventAt(Devices[0].Id, Base.AddMinutes(5)) };
         ServeFrom(all);
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewEventsTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(RowSelector).Count));
-        Event fresh = EventAt(Devices[0].Id, Base.AddMinutes(15));
+        EventDto fresh = EventAt(Devices[0].Id, Base.AddMinutes(15));
         all.Insert(0, fresh);
 
         // Act
@@ -481,18 +481,18 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         // Arrange
         AddDevices(2);
         ReviewState.SetCameras([Devices[0].Id]);
-        var slow = new TaskCompletionSource<EventPage>();
-        Event stale = EventAt(Devices[0].Id, Base.AddMinutes(10));
-        Event fast = EventAt(Devices[1].Id, Base.AddMinutes(5));
+        var slow = new TaskCompletionSource<EventPageDto>();
+        EventDto stale = EventAt(Devices[0].Id, Base.AddMinutes(10));
+        EventDto fast = EventAt(Devices[1].Id, Base.AddMinutes(5));
         int calls = 0;
-        EventLoader.Responder = (_, _) => ++calls == 1 ? slow.Task : Task.FromResult(new EventPage([fast], 1));
+        EventLoader.Responder = (_, _) => ++calls == 1 ? slow.Task : Task.FromResult(new EventPageDto([fast], 1));
         IRenderedComponent<ReviewEventsTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(EventLoader.Calls));
 
         // Act: the newer load finishes first, then the slow one completes
         ReviewState.SetCameras([Devices[1].Id]);
         cut.WaitForAssertion(() => Assert.Equal(new[] { fast.Id.ToString("D") }, RowIds(cut)));
-        slow.SetResult(new EventPage([stale], 1));
+        slow.SetResult(new EventPageDto([stale], 1));
 
         // Assert
         Assert.Equal(new[] { fast.Id.ToString("D") }, RowIds(cut));
@@ -505,7 +505,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         AddDevices(2);
         ReviewState.SetCameras([Devices[0].Id]);
         CancellationToken captured = default;
-        var never = new TaskCompletionSource<EventPage>();
+        var never = new TaskCompletionSource<EventPageDto>();
         EventLoader.Responder = (_, ct) =>
         {
             captured = ct;

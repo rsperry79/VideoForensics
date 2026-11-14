@@ -155,7 +155,7 @@
             <p class="review-events-total" data-testid="review-detail-events-total">@string.Format(L["DetailEventsTotal"].Value, _events.Total)</p>
 
             <div class="list-group review-detail-event-list">
-                @foreach (Event evt in _events.Items)
+                @foreach (EventDto evt in _events.Items)
                 {
                     bool selected = evt.Id == State.SelectedEventId;
                     bool expanded = _expandedIds.Contains(evt.Id);
@@ -174,7 +174,7 @@
                         @if (expanded)
                         {
                             <div class="review-detail-event-body p-2" data-testid="review-detail-event-body" data-event-id="@evt.Id.ToString("D")">
-                                @if (evt.DownloadStatus == EventDownloadStatus.Unavailable)
+                                @if (evt.DownloadStatus == EventDownloadStatusDto.Unavailable)
                                 {
                                     <div data-testid="review-detail-unavailable">
                                         <p class="fw-semibold mb-1">@L["DetailUnavailable"]</p>
@@ -675,7 +675,7 @@
 
         try
         {
-            EventPage page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, ReviewEventFilters.ProviderTypes(key.EventTypes), skip, take, ct);
+            EventPageDto page = await EventLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, ReviewEventFilters.ProviderTypes(key.EventTypes), skip, take, ct);
             if (!IsCurrent(cts))
             {
                 return;
@@ -688,7 +688,7 @@
 
             if (mode == LoadMode.Refresh)
             {
-                foreach (Event row in page.Items)
+                foreach (EventDto row in page.Items)
                 {
                     _details.Remove(row.Id);
                 }
@@ -890,7 +890,7 @@
     }
 
     /// <summary>The row's label: the detection type once its detail has loaded, else the event's own type.</summary>
-    private string RowTypeLabel(Event evt)
+    private string RowTypeLabel(EventDto evt)
     {
         _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
         return ReviewEventLabels.RowLabel(L, evt, detail);
@@ -973,5 +973,5 @@
     private sealed record Loaded<T>(DetailKey Key, IReadOnlyList<T> Items);
 
     /// <summary>The event rows shown, the total the server reported, and the query that produced them.</summary>
-    private sealed record LoadedEvents(DetailKey Key, IReadOnlyList<Event> Items, int Total);
+    private sealed record LoadedEvents(DetailKey Key, IReadOnlyList<EventDto> Items, int Total);
 }

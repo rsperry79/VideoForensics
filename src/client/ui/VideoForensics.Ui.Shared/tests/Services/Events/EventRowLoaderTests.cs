@@ -4,6 +4,7 @@ using Moq;
 using VideoForensics.Client.Ui.Shared.Services.Events;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -36,7 +37,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
             DownloadedAtUtc = new DateTime(2026, 9, 20, 12, 10, 0, DateTimeKind.Utc),
             ProviderEventId = "provider-event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -82,7 +83,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -93,7 +94,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -142,7 +143,7 @@ public class EventRowLoader_LoadAsync_MultiDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -153,7 +154,7 @@ public class EventRowLoader_LoadAsync_MultiDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -205,7 +206,7 @@ public class EventRowLoader_LoadAsync_AllDevices_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -256,7 +257,7 @@ public class EventRowLoader_LoadAsync_SearchFilter_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -267,7 +268,7 @@ public class EventRowLoader_LoadAsync_SearchFilter_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -314,7 +315,7 @@ public class EventRowLoader_LoadAsync_UnansweredMode_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -358,7 +359,7 @@ public class EventRowLoader_LoadAsync_ErrorHandling_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -408,7 +409,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "ring-evt-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mediaItem = new MediaItem
         {
@@ -466,7 +467,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "ring-evt-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mediaItem = new MediaItem
         {

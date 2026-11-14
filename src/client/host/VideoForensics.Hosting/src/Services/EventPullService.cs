@@ -66,7 +66,7 @@ namespace VideoForensics.Client.Hosting.Services
         // Why: events awaiting their ding id are retried this many passes; after that they are unavailable and stop holding the pull.
         private const int MaxRetryPasses = 3;
 
-        private readonly IEventRepository? _events;
+        private readonly IEventWriteRepository? _events;
         private readonly TimeSpan _progressPollInterval;
 
         // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
@@ -94,7 +94,7 @@ namespace VideoForensics.Client.Hosting.Services
             IMediaPathResolver? mediaPaths = null,
             IReferenceDataCache? referenceCache = null,
             IProviderApiBudgetGuard? budgetGuard = null,
-            IEventRepository? events = null)
+            IEventWriteRepository? events = null)
         {
             _events = events;
             _budgetGuard = budgetGuard;

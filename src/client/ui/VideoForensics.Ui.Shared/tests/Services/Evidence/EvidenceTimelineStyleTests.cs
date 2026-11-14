@@ -27,7 +27,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
                 DiscoveredAtUtc = OccurredAtUtc,
                 ProviderEventId = "p1",
                 MetadataJson = "{}"
-            },
+            }.ToDto(),
             Media = media?.ToDto()
         };
     }

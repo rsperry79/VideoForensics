@@ -1,5 +1,6 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -25,11 +26,11 @@ public sealed class ReviewEventLoader : IReviewEventLoader
     }
 
     /// <inheritdoc />
-    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
+    public Task<EventPageDto> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
     {
         if (eventTypes is { Count: 0 })
         {
-            return Task.FromResult(new EventPage([], 0));
+            return Task.FromResult(new EventPageDto([], 0));
         }
 
         if (_caseMode is { Active: true })
@@ -48,13 +49,13 @@ public sealed class ReviewEventLoader : IReviewEventLoader
     /// Filters the case's events to the requested devices and window, newest first, then cuts the page. The total is the
     /// full matching count, so the events tab's paging works the same as against the repository.
     /// </summary>
-    private static EventPage CaseEventPage(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take)
+    private static EventPageDto CaseEventPage(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take)
     {
         var devices = deviceIds.ToHashSet();
         var matching = caseMode.Events
             .Where(evt => devices.Contains(evt.DeviceId) && evt.OccurredAtUtc >= fromUtc && evt.OccurredAtUtc <= toUtc && (eventTypes is null || eventTypes.Contains(evt.EventType)))
             .OrderByDescending(evt => evt.OccurredAtUtc)
             .ToList();
-        return new EventPage(matching.Skip(skip).Take(take).ToList(), matching.Count);
+        return new EventPageDto(matching.Skip(skip).Take(take).ToList(), matching.Count);
     }
 }

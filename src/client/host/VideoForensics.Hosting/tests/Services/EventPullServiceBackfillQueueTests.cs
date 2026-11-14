@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _media = new();
-        private readonly Mock<IEventRepository> _eventRepository = new();
+        private readonly Mock<IEventWriteRepository> _eventRepository = new();
         private readonly ProviderAccountEntity _account;
         private readonly VideoForensics.Data.Common.Entities.Device _device;
 

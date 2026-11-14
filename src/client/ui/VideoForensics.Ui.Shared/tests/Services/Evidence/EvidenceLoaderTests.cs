@@ -49,7 +49,7 @@ public class EvidenceLoader_LoadAsync_EventItems_Tests
             DownloadedAtUtc = new DateTime(2026, 9, 20, 12, 10, 0, DateTimeKind.Utc),
             ProviderEventId = "provider-event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -356,7 +356,7 @@ public class EvidenceLoader_LoadAsync_Deduplication_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "provider-event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -438,7 +438,7 @@ public class EvidenceLoader_LoadAsync_AllDevices_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -449,7 +449,7 @@ public class EvidenceLoader_LoadAsync_AllDevices_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 13, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -617,7 +617,7 @@ public class EvidenceLoader_LoadAsync_DeviceErrors_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 13, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -681,7 +681,7 @@ public class EvidenceLoader_LoadAsync_DeviceNameFallback_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "provider-event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo

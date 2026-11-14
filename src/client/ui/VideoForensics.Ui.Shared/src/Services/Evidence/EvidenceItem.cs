@@ -54,7 +54,7 @@ public sealed class EvidenceItem
     /// <summary>
     /// The event, if this is an event-based item (null for media-only).
     /// </summary>
-    public Event? Event { get; init; }
+    public EventDto? Event { get; init; }
 
     /// <summary>
     /// The media item, if one is attached (optional even for events, null for pure events).

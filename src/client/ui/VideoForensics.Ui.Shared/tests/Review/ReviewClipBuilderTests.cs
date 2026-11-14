@@ -265,7 +265,7 @@ public class ReviewClipBuilder_Tests
             OccurredAtUtc = Start,
             DiscoveredAtUtc = Start,
             DownloadStatus = EventDownloadStatus.Unavailable,
-        };
+        }.ToDto();
 
         // Act
         IReadOnlyList<ClipWindow> windows = ReviewClipBuilder.BuildUnavailableClips([evt], device);
@@ -290,7 +290,7 @@ public class ReviewClipBuilder_Tests
             OccurredAtUtc = Start,
             DiscoveredAtUtc = Start,
             DownloadStatus = EventDownloadStatus.Downloaded,
-        };
+        }.ToDto();
 
         // Act / Assert
         Assert.Empty(ReviewClipBuilder.BuildUnavailableClips([evt], device));
@@ -309,7 +309,7 @@ public class ReviewClipBuilder_Tests
             OccurredAtUtc = Start,
             DiscoveredAtUtc = Start,
             DownloadStatus = EventDownloadStatus.NotAttempted,
-        };
+        }.ToDto();
 
         Assert.Empty(ReviewClipBuilder.BuildUnavailableClips([evt], device));
     }

@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IProviderAccountRepository _accounts;
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
-        private readonly IEventRepository _events;
+        private readonly IEventWriteRepository _events;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITimelineVideoBuilder _builder;
         private readonly ILogger<SnapshotRollupService> _logger;
@@ -60,7 +60,7 @@ namespace VideoForensics.Client.Hosting.Services
             IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
             ILogger<SnapshotRollupService> logger,
-            IEventRepository events,
+            IEventWriteRepository events,
             IUnitOfWork unitOfWork,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,

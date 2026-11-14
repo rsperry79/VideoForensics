@@ -19,7 +19,7 @@ public class EvidenceItem_Label_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "test",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item = new EvidenceItem
         {

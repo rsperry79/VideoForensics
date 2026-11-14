@@ -23,7 +23,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" }.ToDto(),
             Media = null
         };
         var holds = new Dictionary<Guid, LegalHold>();
@@ -49,7 +49,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" }.ToDto(),
             Media = null
         };
         var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
@@ -67,7 +67,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
     {
         // Arrange
         var deviceId = Guid.NewGuid();
-        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:2", MetadataJson = "{\"test\": true}" };
+        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:2", MetadataJson = "{\"test\": true}" }.ToDto();
         var eventItem = new EvidenceItem
         {
             Key = "event:123",
@@ -323,7 +323,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" },
+            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" }.ToDto(),
             Media = null
         };
         var holds = new Dictionary<Guid, LegalHold>();
@@ -365,7 +365,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" },
+            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" }.ToDto(),
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHold>();
@@ -478,7 +478,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" }.ToDto(),
             Media = null
         };
 
@@ -683,7 +683,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" }.ToDto(),
             Media = null
         };
 
@@ -696,7 +696,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
     [Fact]
     public void ToInspector_EventWithRemainder_RawJsonIsTheRemainderAndFlaggedAsNotTheRawPayload()
     {
-        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:3", MetadataJson = "{\"new_top_level\":\"hello\"}" };
+        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:3", MetadataJson = "{\"new_top_level\":\"hello\"}" }.ToDto();
         var eventItem = new EvidenceItem
         {
             Key = "event:3",
@@ -760,7 +760,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:4", MetadataJson = null },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:4", MetadataJson = null }.ToDto(),
             Media = null
         };
 

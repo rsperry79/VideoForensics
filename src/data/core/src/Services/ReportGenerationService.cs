@@ -23,7 +23,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IActionLogRepository _actionLogRepository;
-        private readonly IEventRepository _eventRepository;
+        private readonly IEventWriteRepository _eventRepository;
         private readonly IJammingRepository _jammingRepository;
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<ReportGenerationService> _logger;
@@ -40,7 +40,7 @@ namespace VideoForensics.Data.Core.Services
             IDeviceWriteRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
             IActionLogRepository actionLogRepository,
-            IEventRepository eventRepository,
+            IEventWriteRepository eventRepository,
             IJammingRepository jammingRepository,
             IIntegrityRecordRepository integrityRecordRepository,
             ILogger<ReportGenerationService> logger,

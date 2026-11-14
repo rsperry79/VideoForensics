@@ -107,7 +107,7 @@ public class EvidenceViewModel_Open_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -116,7 +116,7 @@ public class EvidenceViewModel_Open_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test2", ProviderEventId = "test:2", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test2", ProviderEventId = "test:2", MetadataJson = "{}" }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -145,7 +145,7 @@ public class EvidenceViewModel_Open_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -177,7 +177,7 @@ public class EvidenceViewModel_Close_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -439,7 +439,7 @@ public class EvidenceViewModel_GalleryItems_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto(),
             Media = null
         };
         var result = new EvidenceLoadResult

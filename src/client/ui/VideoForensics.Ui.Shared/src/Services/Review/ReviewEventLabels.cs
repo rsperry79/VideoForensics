@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Localization;
 
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -39,7 +39,7 @@ public static class ReviewEventLabels
     }
 
     /// <summary>The row's label: the detection type when the detail names one, else the event's own type.</summary>
-    public static string RowLabel(IStringLocalizer localizer, Event evt, EventDetail? detail)
+    public static string RowLabel(IStringLocalizer localizer, EventDto evt, EventDetail? detail)
     {
         return detail?.Detection is { DetectionType: { } detectionType } && !string.IsNullOrWhiteSpace(detectionType)
             ? DetectionLabel(localizer, detectionType, evt.EventType)

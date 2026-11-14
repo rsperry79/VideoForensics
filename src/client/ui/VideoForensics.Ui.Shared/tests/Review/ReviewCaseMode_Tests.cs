@@ -18,7 +18,7 @@ public class ReviewCaseMode_Tests
     private readonly Mock<IMediaItemRepository> _media = new();
     private readonly Mock<IEventRepository> _events = new();
     private readonly Dictionary<Guid, MediaItem> _mediaById = [];
-    private readonly Dictionary<Guid, Event> _eventsById = [];
+    private readonly Dictionary<Guid, EventDto> _eventsById = [];
 
     public ReviewCaseMode_Tests()
     {
@@ -27,7 +27,7 @@ public class ReviewCaseMode_Tests
             .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItemDto?>(_mediaById.GetValueOrDefault(id)?.ToDto()));
         _ = _events
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<EventDto?>(_eventsById.GetValueOrDefault(id)));
     }
 
     private ReviewCaseMode Create()
@@ -52,9 +52,9 @@ public class ReviewCaseMode_Tests
         return item;
     }
 
-    private Event AddEvent(Guid device, DateTime occurredUtc)
+    private EventDto AddEvent(Guid device, DateTime occurredUtc)
     {
-        var evt = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = Guid.NewGuid().ToString(), EventType = "motion", OccurredAtUtc = occurredUtc };
+        var evt = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = Guid.NewGuid().ToString(), EventType = "motion", OccurredAtUtc = occurredUtc }.ToDto();
         _eventsById[evt.Id] = evt;
         return evt;
     }
@@ -87,7 +87,7 @@ public class ReviewCaseMode_Tests
         // Arrange
         var device = Guid.NewGuid();
         MediaItem clip = AddMedia(device, Now.AddHours(-3), 60);
-        Event evt = AddEvent(device, Now.AddHours(-2));
+        EventDto evt = AddEvent(device, Now.AddHours(-2));
         Guid caseId = SetCase("Driveway", [MediaPin(Guid.Empty, clip.Id, Now), EventPin(Guid.Empty, evt.Id, Now)]);
         ReviewCaseMode mode = Create();
 
@@ -164,9 +164,9 @@ public class ReviewCaseMode_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        Event older = AddEvent(device, Now.AddHours(-5));
-        Event newer = AddEvent(device, Now.AddHours(-1));
-        Event middle = AddEvent(device, Now.AddHours(-3));
+        EventDto older = AddEvent(device, Now.AddHours(-5));
+        EventDto newer = AddEvent(device, Now.AddHours(-1));
+        EventDto middle = AddEvent(device, Now.AddHours(-3));
         Guid caseId = SetCase("Case", [EventPin(Guid.Empty, older.Id, Now), EventPin(Guid.Empty, newer.Id, Now), EventPin(Guid.Empty, middle.Id, Now)]);
         ReviewCaseMode mode = Create();
 

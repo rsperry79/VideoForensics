@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Common.Contracts
         IDownloadEventRepository DownloadEvents { get; }
 
         /// <summary>Gets the event repository.</summary>
-        IEventRepository Events { get; }
+        IEventWriteRepository Events { get; }
 
         /// <summary>Flushes pending changes to the database within the shared transaction. The transaction still commits or rolls back as a whole.</summary>
         Task SaveChangesAsync(CancellationToken ct);

@@ -311,7 +311,7 @@ namespace VideoForensics.Data.Database.Repositories
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IMediaItemWriteRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
-        public IEventRepository Events => new UnitOfWorkEventRepository(_db, _logger);
+        public IEventWriteRepository Events => new UnitOfWorkEventRepository(_db, _logger);
 
         public async Task SaveChangesAsync(CancellationToken ct)
         {
@@ -876,7 +876,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkEventRepository : IEventRepository
+    internal class UnitOfWorkEventRepository : IEventWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;

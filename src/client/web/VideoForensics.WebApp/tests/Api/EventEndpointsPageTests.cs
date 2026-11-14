@@ -26,7 +26,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var deviceId = Guid.NewGuid();
             var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "p1", EventType = "motion", OccurredAtUtc = From, DiscoveredAtUtc = From };
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 10, 25, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage([evt], 42));
@@ -43,7 +43,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListEventPageAsync_NoPaging_UsesDefaultPage()
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), 0, 100, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage([], 0));
@@ -60,7 +60,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task ListEventPageAsync_ExcludeTypes_ForwardsToRepository()
         {
             var device = Guid.NewGuid();
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Contains("person")), It.IsAny<IReadOnlyCollection<string>?>(), 0, 10, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage([], 0));
@@ -77,7 +77,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task ListEventPageAsync_IncludeTypes_ForwardsToRepository()
         {
             var device = Guid.NewGuid();
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
             _ = repository
                 .Setup(r => r.ListPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, It.IsAny<IReadOnlyCollection<string>?>(), It.Is<IReadOnlyCollection<string>?>(x => x != null && x.Count == 2 && x.Contains("person") && x.Contains("ring")), 0, 10, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPage([], 0));
@@ -93,7 +93,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListEventPageAsync_NoDevices_ReturnsBadRequest()
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 Array.Empty<Guid>(), From, To, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
@@ -106,7 +106,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListEventPageAsync_TooManyDevices_ReturnsBadRequest()
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
             Guid[] devices = Enumerable.Range(0, 65).Select(_ => Guid.NewGuid()).ToArray();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
@@ -120,7 +120,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListEventPageAsync_MissingRange_ReturnsBadRequest()
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { Guid.NewGuid() }, From, to: null, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
@@ -132,7 +132,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListEventPageAsync_FromAfterTo_ReturnsBadRequest()
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { Guid.NewGuid() }, To, From, null, null, skip: 0, take: 10, repository.Object, CancellationToken.None);
@@ -146,7 +146,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [InlineData(501)]
         public async Task ListEventPageAsync_TakeOutOfRange_ReturnsBadRequest(int take)
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { Guid.NewGuid() }, From, To, null, null, skip: 0, take: take, repository.Object, CancellationToken.None);
@@ -158,7 +158,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListEventPageAsync_NegativeSkip_ReturnsBadRequest()
         {
-            var repository = new Mock<IEventRepository>();
+            var repository = new Mock<IEventWriteRepository>();
 
             IResult result = await EventEndpoints.ListEventPageAsync(
                 new[] { Guid.NewGuid() }, From, To, null, null, skip: -1, take: 10, repository.Object, CancellationToken.None);

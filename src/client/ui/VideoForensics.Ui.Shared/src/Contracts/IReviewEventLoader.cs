@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Contracts;
 
@@ -16,5 +16,5 @@ public interface IReviewEventLoader
     /// <param name="skip">Rows to skip from the newest.</param>
     /// <param name="take">Rows to return (1 to 500).</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct);
+    Task<EventPageDto> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct);
 }

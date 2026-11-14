@@ -29,7 +29,7 @@ public sealed class ReviewCaseMode
     private readonly IEventRepository _events;
 
     private List<MediaItemDto> _mediaList = [];
-    private List<Event> _eventList = [];
+    private List<EventDto> _eventList = [];
     private List<Guid> _deviceIds = [];
 
     /// <summary>Creates the case view over the case and row repositories. It starts inactive.</summary>
@@ -62,7 +62,7 @@ public sealed class ReviewCaseMode
     public IReadOnlyList<MediaItemDto> MediaItems => _mediaList;
 
     /// <summary>The pinned events, newest first.</summary>
-    public IReadOnlyList<Event> Events => _eventList;
+    public IReadOnlyList<EventDto> Events => _eventList;
 
     /// <summary>The distinct devices of the pinned items, in the order the case lists them.</summary>
     public IReadOnlyList<Guid> DeviceIds => _deviceIds;
@@ -117,10 +117,10 @@ public sealed class ReviewCaseMode
             }
         }
 
-        var eventById = new Dictionary<Guid, Event>();
+        var eventById = new Dictionary<Guid, EventDto>();
         foreach (Guid id in eventPins.Select(pin => pin.EventId!.Value).Where(keptEvents.Contains))
         {
-            Event? evt = await _events.GetAsync(id, ct);
+            EventDto? evt = await _events.GetAsync(id, ct);
             if (evt is not null)
             {
                 eventById[id] = evt;
@@ -175,7 +175,7 @@ public sealed class ReviewCaseMode
     private static List<Guid> DistinctDevicesInPinOrder(
         IEnumerable<CaseItem> pins,
         IReadOnlyDictionary<Guid, MediaItemDto> mediaById,
-        IReadOnlyDictionary<Guid, Event> eventById)
+        IReadOnlyDictionary<Guid, EventDto> eventById)
     {
         var devices = new List<Guid>();
         var seen = new HashSet<Guid>();
@@ -183,7 +183,7 @@ public sealed class ReviewCaseMode
         {
             Guid? device = pin.Kind == CaseItemKind.Media && pin.MediaItemId is Guid mediaId && mediaById.TryGetValue(mediaId, out MediaItemDto? item)
                 ? item.DeviceId
-                : pin.Kind == CaseItemKind.Event && pin.EventId is Guid eventId && eventById.TryGetValue(eventId, out Event? evt)
+                : pin.Kind == CaseItemKind.Event && pin.EventId is Guid eventId && eventById.TryGetValue(eventId, out EventDto? evt)
                     ? evt.DeviceId
                     : null;
 
