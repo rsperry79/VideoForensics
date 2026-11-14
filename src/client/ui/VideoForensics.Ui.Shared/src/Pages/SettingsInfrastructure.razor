@@ -5,7 +5,8 @@
 @inject IForensicsConfiguration Config
 @inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 @using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @inject IOperatorPreferencesRepository PreferencesRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<SettingsInfrastructure> L
@@ -134,7 +135,7 @@ else
                 await LoadLogPipeAsync();
                 if (SessionState.OperatorId is Guid operatorId)
                 {
-                    OperatorPreferences? saved = await PreferencesRepository.GetAsync(operatorId, CancellationToken.None);
+                    OperatorPreferencesDto? saved = await PreferencesRepository.GetAsync(operatorId, CancellationToken.None);
                     _encryptionWarningDismissed = saved?.EncryptionWarningDismissed ?? false;
                 }
             }

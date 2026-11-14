@@ -16,12 +16,12 @@ namespace VideoForensics.Client.Core.Tests
         {
             _ = ringProvider.SetupGet(p => p.ProviderName).Returns("Ring");
 
-            var locations = new Mock<ILocationRepository>();
+            var locations = new Mock<ILocationWriteRepository>();
             _ = locations
                 .Setup(r => r.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new ProviderAccount { ProviderName = "Ring" }]);
 
-            _ = sp.Setup(s => s.GetService(typeof(ILocationRepository))).Returns(locations.Object);
+            _ = sp.Setup(s => s.GetService(typeof(ILocationWriteRepository))).Returns(locations.Object);
             _ = sp.Setup(s => s.GetService(typeof(IEnumerable<ILiveViewCapableProvider>))).Returns(new[] { ringProvider.Object });
         }
     }

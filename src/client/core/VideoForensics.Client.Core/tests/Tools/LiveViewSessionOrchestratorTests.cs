@@ -80,13 +80,13 @@ namespace VideoForensics.Client.Core.Tests.Tools
 
         private Mock<IServiceProvider> ProvidersFor(string accountProvider, params ILiveViewCapableProvider[] registered)
         {
-            var locationRepository = new Mock<ILocationRepository>();
+            var locationRepository = new Mock<ILocationWriteRepository>();
             _ = locationRepository
                 .Setup(r => r.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new ProviderAccount { Id = RingAccountId, ProviderName = accountProvider }]);
 
             var sp = new Mock<IServiceProvider>();
-            _ = sp.Setup(s => s.GetService(typeof(ILocationRepository))).Returns(locationRepository.Object);
+            _ = sp.Setup(s => s.GetService(typeof(ILocationWriteRepository))).Returns(locationRepository.Object);
             _ = sp.Setup(s => s.GetService(typeof(IEnumerable<ILiveViewCapableProvider>))).Returns(registered);
             return sp;
         }

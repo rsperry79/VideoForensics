@@ -219,7 +219,7 @@ namespace VideoForensics.Client.Hosting.Services
         private async Task WriteDocumentAsync(Stream stream, IServiceProvider sp, ProviderAccount account, CancellationToken ct)
         {
             // Credentials are deliberately never read: the export contains no secrets or tokens.
-            IReadOnlyList<Location> locations = await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(account.Id, ct);
+            IReadOnlyList<Location> locations = await sp.GetRequiredService<ILocationWriteRepository>().ListByProviderAccountIdAsync(account.Id, ct);
             IReadOnlyList<ProviderSyncRun> syncRuns = await sp.GetRequiredService<IProviderSyncRunRepository>().ListByProviderAccountIdAsync(account.Id, ct);
 
             IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();

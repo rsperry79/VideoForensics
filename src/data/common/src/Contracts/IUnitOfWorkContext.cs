@@ -12,7 +12,7 @@ namespace VideoForensics.Data.Common.Contracts
         IProviderAccountWriteRepository ProviderAccounts { get; }
 
         /// <summary>Gets the location repository.</summary>
-        ILocationRepository Locations { get; }
+        ILocationWriteRepository Locations { get; }
 
         /// <summary>Gets the media item repository.</summary>
         IMediaItemWriteRepository MediaItems { get; }

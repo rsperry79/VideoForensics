@@ -21,10 +21,10 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly IDeviceWriteRepository _devices;
-        private readonly ILocationRepository _locations;
+        private readonly ILocationWriteRepository _locations;
         private readonly IDeviceLightEventRepository _lightEvents;
 
-        public RingDeviceControlService(ILogger logger, ISessionProvider sessionProvider, IDeviceWriteRepository devices, ILocationRepository locations, IDeviceLightEventRepository lightEvents)
+        public RingDeviceControlService(ILogger logger, ISessionProvider sessionProvider, IDeviceWriteRepository devices, ILocationWriteRepository locations, IDeviceLightEventRepository lightEvents)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));

@@ -668,7 +668,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         [Fact]
         public async Task PersistLocationMetadataAsync_LocationRowMissing_WritesNoMetadata()
         {
-            var locationRepo = new Mock<Data.Common.Contracts.ILocationRepository>();
+            var locationRepo = new Mock<Data.Common.Contracts.ILocationWriteRepository>();
             _ = locationRepo.Setup(r => r.GetByProviderLocationIdAsync("loc-1", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Data.Common.Entities.Location?)null);
             var metadataRepo = new Mock<Data.Common.Contracts.ILocationMetadataRepository>();
@@ -684,9 +684,9 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             metadataRepo.Verify(r => r.UpdateAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
-        private static Mock<Data.Common.Contracts.ILocationRepository> CreateLocationRepository(string providerLocationId, Guid locationId)
+        private static Mock<Data.Common.Contracts.ILocationWriteRepository> CreateLocationRepository(string providerLocationId, Guid locationId)
         {
-            var repo = new Mock<Data.Common.Contracts.ILocationRepository>();
+            var repo = new Mock<Data.Common.Contracts.ILocationWriteRepository>();
             _ = repo.Setup(r => r.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Data.Common.Entities.Location
                 {

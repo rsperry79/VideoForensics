@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Hosting.Services
     {
         private readonly IDeviceDiscoveryService _deviceDiscovery;
         private readonly IEventAndConfigService _eventAndConfigService;
-        private readonly ILocationRepository _locationRepository;
+        private readonly ILocationWriteRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDeviceConfigRepository? _deviceConfigRepository;
         private readonly IReferenceDataCache _referenceCache;
@@ -49,7 +49,7 @@ namespace VideoForensics.Client.Hosting.Services
         public InventorySyncService(
             IDeviceDiscoveryService deviceDiscovery,
             IEventAndConfigService eventAndConfigService,
-            ILocationRepository locationRepository,
+            ILocationWriteRepository locationRepository,
             IDeviceWriteRepository deviceRepository,
             IReferenceDataCache referenceCache,
             ILogger<InventorySyncService> logger,

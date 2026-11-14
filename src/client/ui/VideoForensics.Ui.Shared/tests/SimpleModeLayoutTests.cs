@@ -99,7 +99,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         var opPrefRepoMock = new Mock<IOperatorPreferencesRepository>();
         _ = opPrefRepoMock
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
         _ = Services.AddScoped(_ => opPrefRepoMock.Object);
 
         // Register default IUiModeService mock (can be overridden by individual tests)

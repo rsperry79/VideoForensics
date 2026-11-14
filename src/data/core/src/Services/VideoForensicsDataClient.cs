@@ -14,7 +14,7 @@ namespace VideoForensics.Data.Core.Services
     {
         private readonly IUserWriteRepository _userRepository;
         private readonly IProviderAccountWriteRepository _providerAccountRepository;
-        private readonly ILocationRepository _locationRepository;
+        private readonly ILocationWriteRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IEventWriteRepository _eventRepository;
@@ -42,7 +42,7 @@ namespace VideoForensics.Data.Core.Services
         public VideoForensicsDataClient(
             IUserWriteRepository userRepository,
             IProviderAccountWriteRepository providerAccountRepository,
-            ILocationRepository locationRepository,
+            ILocationWriteRepository locationRepository,
             IDeviceWriteRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
             IEventWriteRepository eventRepository,

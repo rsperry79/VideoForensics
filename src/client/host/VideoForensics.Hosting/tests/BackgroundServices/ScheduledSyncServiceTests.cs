@@ -78,7 +78,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public Mock<IDeviceWriteRepository> Devices { get; } = new();
 
             public Mock<IDeviceConfigRepository> DeviceConfigs { get; } = new();
-            public Mock<ILocationRepository> Locations { get; } = new();
+            public Mock<ILocationWriteRepository> Locations { get; } = new();
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
             public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();

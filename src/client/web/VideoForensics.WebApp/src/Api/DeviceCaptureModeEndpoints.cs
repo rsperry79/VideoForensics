@@ -30,13 +30,13 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>The account's devices in name order, with their current mode.</summary>
-        internal static async Task<IResult> ListAsync(Guid providerAccountId, ILocationRepository locations, IDeviceWriteRepository devices, CancellationToken ct)
+        internal static async Task<IResult> ListAsync(Guid providerAccountId, ILocationWriteRepository locations, IDeviceWriteRepository devices, CancellationToken ct)
         {
             IReadOnlyList<DeviceCaptureModeDto> rows = await ListForAccountAsync(providerAccountId, locations, devices, ct);
             return Results.Ok(rows);
         }
 
-        internal static async Task<IReadOnlyList<DeviceCaptureModeDto>> ListForAccountAsync(Guid providerAccountId, ILocationRepository locations, IDeviceWriteRepository devices, CancellationToken ct)
+        internal static async Task<IReadOnlyList<DeviceCaptureModeDto>> ListForAccountAsync(Guid providerAccountId, ILocationWriteRepository locations, IDeviceWriteRepository devices, CancellationToken ct)
         {
             var rows = new List<DeviceCaptureModeDto>();
             foreach (Location location in await locations.ListByProviderAccountIdAsync(providerAccountId, ct))

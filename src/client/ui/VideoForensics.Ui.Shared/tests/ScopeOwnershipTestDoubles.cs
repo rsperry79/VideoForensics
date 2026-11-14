@@ -36,7 +36,7 @@ internal static class ScopeOwnershipTestDoubles
         _ = locationRepository
             .Setup(r => r.ListByProviderAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid accountId, CancellationToken _) =>
-                locationsByAccount.TryGetValue(accountId, out IReadOnlyList<Location>? locations) ? locations : Array.Empty<Location>());
+                locationsByAccount.TryGetValue(accountId, out IReadOnlyList<Location>? locations) ? (IReadOnlyList<LocationRecordDto>)locations.Select(l => l.ToDto()).ToList() : Array.Empty<LocationRecordDto>());
 
         // No user row: the rail falls back to the provider name for each account's label.
         var userRepository = new Mock<IUserRepository>();

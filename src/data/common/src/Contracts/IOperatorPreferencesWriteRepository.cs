@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for per-operator UI preferences (theme mode, language). One row per OperatorId.</summary>
-    public interface IOperatorPreferencesRepository
+    public interface IOperatorPreferencesWriteRepository
     {
         /// <summary>Gets the preferences row for an operator, or null if none has been saved yet.</summary>
         Task<OperatorPreferences?> GetAsync(Guid operatorId, CancellationToken ct);

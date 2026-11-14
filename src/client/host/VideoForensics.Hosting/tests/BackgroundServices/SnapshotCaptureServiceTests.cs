@@ -35,7 +35,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly MutableTimeProvider _time = new(T0);
         private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<ISyncScheduleRepository> _schedules = new();
-        private readonly Mock<ILocationRepository> _locations = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
         private readonly Mock<IMediaItemWriteRepository> _media = new();

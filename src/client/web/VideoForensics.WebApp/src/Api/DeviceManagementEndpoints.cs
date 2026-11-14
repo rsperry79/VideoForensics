@@ -314,7 +314,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> GetUiModeAsync(
             Guid id,
             IOperatorRepository operators,
-            IOperatorPreferencesRepository preferences,
+            IOperatorPreferencesWriteRepository preferences,
             CancellationToken ct)
         {
             Operator? op = await operators.GetAsync(id, ct);
@@ -337,7 +337,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             SetOperatorUiModeRequest request,
             IOperatorRepository operators,
-            IOperatorPreferencesRepository preferences,
+            IOperatorPreferencesWriteRepository preferences,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,

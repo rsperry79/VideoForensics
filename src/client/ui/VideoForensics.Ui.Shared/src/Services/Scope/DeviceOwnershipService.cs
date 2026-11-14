@@ -59,9 +59,9 @@ public sealed class DeviceOwnershipService
             var locationsById = new Dictionary<Guid, FilterLocation>();
             foreach (ProviderAccountDto? account in accounts)
             {
-                IReadOnlyList<Location> locations = await _locations.ListByProviderAccountIdAsync(account.Id, ct);
+                IReadOnlyList<LocationRecordDto> locations = await _locations.ListByProviderAccountIdAsync(account.Id, ct);
                 locationIdsByAccount[account.Id] = locations.Select(l => l.Id).ToList();
-                foreach (Location location in locations)
+                foreach (LocationRecordDto location in locations)
                 {
                     // A location shared by several accounts is listed once.
                     _ = locationsById.TryAdd(

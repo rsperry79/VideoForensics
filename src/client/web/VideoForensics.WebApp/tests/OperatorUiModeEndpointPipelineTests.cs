@@ -68,7 +68,7 @@ namespace VideoForensics.Client.WebApp.Tests
             public required WebApplication App { get; init; }
             public required HttpClient Client { get; init; }
             public required Mock<IOperatorRepository> Operators { get; init; }
-            public required Mock<IOperatorPreferencesRepository> Preferences { get; init; }
+            public required Mock<IOperatorPreferencesWriteRepository> Preferences { get; init; }
             public required Mock<ISecurityAuditLogger> AuditLog { get; init; }
             public required List<string> AuditDetails { get; init; }
 
@@ -86,7 +86,7 @@ namespace VideoForensics.Client.WebApp.Tests
             _ = builder.WebHost.UseTestServer();
 
             var operators = new Mock<IOperatorRepository>();
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             var auditDetails = new List<string>();
 

@@ -52,8 +52,8 @@ public class DeviceOwnershipServiceTests
         Device device = MakeDevice(location.Id);
 
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { wyze, ring });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { location });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Location>());
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { location.ToDto() });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<LocationRecordDto>());
         _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserDto?)null);
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(new[] { device }, CancellationToken.None);
@@ -74,8 +74,8 @@ public class DeviceOwnershipServiceTests
         var cabin = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L3", Name = "Cabin" };
 
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring, wyze });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, unnamed });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, cabin });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared.ToDto(), unnamed.ToDto() });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared.ToDto(), cabin.ToDto() });
         _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserDto?)null);
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(Array.Empty<Device>(), CancellationToken.None);
@@ -89,7 +89,7 @@ public class DeviceOwnershipServiceTests
     {
         ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Location>());
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<LocationRecordDto>());
         _ = _users.Setup(r => r.GetAsync(ring.UserId, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("db down"));
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(Array.Empty<Device>(), CancellationToken.None);

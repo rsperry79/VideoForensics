@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for location entities.</summary>
-    public interface ILocationRepository
+    public interface ILocationWriteRepository
     {
         /// <summary>Gets a location by ID.</summary>
         Task<Location?> GetAsync(Guid locationId, CancellationToken ct);

@@ -31,7 +31,7 @@ public class DeviceCaptureModeEndpointsTests
     public async Task List_ReturnsAccountDevicesWithModesInNameOrder()
     {
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
-        var locations = new Mock<ILocationRepository>();
+        var locations = new Mock<ILocationWriteRepository>();
         _ = locations.Setup(l => l.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
         var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(
@@ -50,7 +50,7 @@ public class DeviceCaptureModeEndpointsTests
     public async Task List_FlagsNonCameraDevices()
     {
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
-        var locations = new Mock<ILocationRepository>();
+        var locations = new Mock<ILocationWriteRepository>();
         _ = locations.Setup(l => l.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
         var devices = new Mock<IDeviceWriteRepository>();
         _ = devices.Setup(d => d.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(

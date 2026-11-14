@@ -106,7 +106,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             // Setup mocks with different behavior per account
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
             var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
             var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
@@ -251,7 +251,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
             var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
             var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
@@ -353,7 +353,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
             var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
             var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
@@ -440,7 +440,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
             var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
             var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 

@@ -302,7 +302,7 @@ public abstract class ReviewTestContext : BunitContext
         var repository = new Mock<ILocationRepository>();
         _ = repository
             .Setup(r => r.ListByProviderAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid accountId, CancellationToken _) => LocationsFor(accountId));
+            .ReturnsAsync((Guid accountId, CancellationToken _) => (IReadOnlyList<LocationRecordDto>)LocationsFor(accountId).Select(l => l.ToDto()).ToList());
         return repository;
     }
 

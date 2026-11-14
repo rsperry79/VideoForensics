@@ -589,7 +589,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         private static async Task<string?> SyncPagePathAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
-            ILocationRepository? locations = sp.GetService<ILocationRepository>();
+            ILocationWriteRepository? locations = sp.GetService<ILocationWriteRepository>();
             if (locations is null)
             {
                 return null;

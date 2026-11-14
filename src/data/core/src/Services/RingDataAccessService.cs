@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILogger<RingDataAccessService> _logger;
         private readonly CacheFreshnessService _cacheFreshnessService;
         private readonly IDeviceWriteRepository _deviceRepository;
-        private readonly ILocationRepository _locationRepository;
+        private readonly ILocationWriteRepository _locationRepository;
         private readonly IProviderAccountWriteRepository _providerAccountRepository;
 
         // Default cache TTLs in minutes
@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Core.Services
             ILogger<RingDataAccessService> logger,
             CacheFreshnessService cacheFreshnessService,
             IDeviceWriteRepository deviceRepository,
-            ILocationRepository locationRepository,
+            ILocationWriteRepository locationRepository,
             IProviderAccountWriteRepository providerAccountRepository)
         {
             _logger = logger;

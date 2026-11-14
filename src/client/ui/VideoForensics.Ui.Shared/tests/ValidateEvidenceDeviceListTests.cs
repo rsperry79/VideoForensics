@@ -46,7 +46,7 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
             new[] { account },
             new Dictionary<Guid, IReadOnlyList<Location>> { [account.Id] = new[] { ownLocation } });
         var locationRepository = new Mock<ILocationRepository>();
-        _ = locationRepository.Setup(m => m.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([ownLocation]);
+        _ = locationRepository.Setup(m => m.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([ownLocation.ToDto()]);
         _ = Services.AddScoped(_ => locationRepository.Object);
         await SignInOperatorAsync();
 

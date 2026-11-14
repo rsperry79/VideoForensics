@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<IDeviceHealthChangeNotifier> _mockDeviceHealthChangeNotifier = new();
         private readonly VideoForensicsDataClient _dataClient;
 
-        private readonly Mock<ILocationRepository> _mockLocationRepository;
+        private readonly Mock<ILocationWriteRepository> _mockLocationRepository;
         private readonly Mock<IDingIdLinkRepository> _mockDingIdLinkRepository = new();
         private readonly Mock<IDeviceSettingChangeRepository> _mockDeviceSettingChangeRepository = new();
         private readonly Mock<IDetectionEntityProvider> _mockDetectionEntityProvider = new();
@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         {
             _mockUserRepository = new Mock<IUserWriteRepository>();
             _mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
-            _mockLocationRepository = new Mock<ILocationRepository>();
+            _mockLocationRepository = new Mock<ILocationWriteRepository>();
             _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockEventRepository = new Mock<IEventWriteRepository>();

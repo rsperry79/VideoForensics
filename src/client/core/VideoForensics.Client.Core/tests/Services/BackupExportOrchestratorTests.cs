@@ -20,7 +20,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             // Arrange: Setup mocks to return empty collections
             var loggerMock = new Mock<ILogger<BackupExportOrchestrator>>();
             var providerAccountRepositoryMock = new Mock<IProviderAccountWriteRepository>();
-            var locationRepositoryMock = new Mock<ILocationRepository>();
+            var locationRepositoryMock = new Mock<ILocationWriteRepository>();
             var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             var eventRepositoryMock = new Mock<IEventWriteRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             // Arrange: Setup mocks to return empty collections
             var loggerMock = new Mock<ILogger<BackupExportOrchestrator>>();
             var providerAccountRepositoryMock = new Mock<IProviderAccountWriteRepository>();
-            var locationRepositoryMock = new Mock<ILocationRepository>();
+            var locationRepositoryMock = new Mock<ILocationWriteRepository>();
             var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             var eventRepositoryMock = new Mock<IEventWriteRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();

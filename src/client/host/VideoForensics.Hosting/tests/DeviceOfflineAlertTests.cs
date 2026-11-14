@@ -20,7 +20,7 @@ namespace VideoForensics.Client.Hosting.Tests
         private const string DeviceName = "Front Door";
 
         private static (DeviceHealthSyncService Service, Mock<IDeviceHealthRepository> HealthRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<INotificationDispatcher> Dispatcher)
-            CreateService(bool connectedNow, Mock<ILocationRepository>? locations = null)
+            CreateService(bool connectedNow, Mock<ILocationWriteRepository>? locations = null)
         {
             var device = new Device
             {
@@ -102,7 +102,7 @@ namespace VideoForensics.Client.Hosting.Tests
         {
             // The in-app link is relative, so it names the account's sync page, where the device's polling mode is set.
             var accountId = Guid.NewGuid();
-            var locations = new Mock<ILocationRepository>();
+            var locations = new Mock<ILocationWriteRepository>();
             _ = locations.Setup(l => l.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new ProviderAccount { Id = accountId, ProviderName = "Ring" }]);
             (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false, locations);

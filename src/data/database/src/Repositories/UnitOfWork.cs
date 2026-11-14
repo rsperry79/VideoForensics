@@ -308,7 +308,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public IUserWriteRepository Users => new UnitOfWorkUserRepository(_db, _logger);
         public IProviderAccountWriteRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
-        public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
+        public ILocationWriteRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IMediaItemWriteRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
         public IEventWriteRepository Events => new UnitOfWorkEventRepository(_db, _logger);
@@ -461,7 +461,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkLocationRepository : ILocationRepository
+    internal class UnitOfWorkLocationRepository : ILocationWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;

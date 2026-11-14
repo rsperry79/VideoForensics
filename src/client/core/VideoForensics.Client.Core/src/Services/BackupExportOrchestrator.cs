@@ -17,7 +17,7 @@ namespace VideoForensics.Client.Core.Services
     {
         private readonly ILogger<BackupExportOrchestrator> _logger;
         private readonly IProviderAccountWriteRepository _providerAccountRepository;
-        private readonly ILocationRepository _locationRepository;
+        private readonly ILocationWriteRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IEventWriteRepository _eventRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Core.Services
         public BackupExportOrchestrator(
             ILogger<BackupExportOrchestrator> logger,
             IProviderAccountWriteRepository providerAccountRepository,
-            ILocationRepository locationRepository,
+            ILocationWriteRepository locationRepository,
             IDeviceWriteRepository deviceRepository,
             IEventWriteRepository eventRepository,
             IDownloadEventRepository downloadEventRepository,

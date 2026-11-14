@@ -383,7 +383,7 @@ namespace VideoForensics.Client.Core.Tools
 
             // The provider comes from the account the device's location belongs to. Several providers register
             // ILiveViewCapableProvider, and a plain GetService returns only the last registration.
-            ILocationRepository locationRepository = scope.ServiceProvider.GetRequiredService<ILocationRepository>();
+            ILocationWriteRepository locationRepository = scope.ServiceProvider.GetRequiredService<ILocationWriteRepository>();
             IReadOnlyList<ProviderAccount> accounts = await locationRepository.ListProviderAccountsForLocationAsync(device.LocationId, ct);
             ILiveViewCapableProvider[] registered = scope.ServiceProvider.GetServices<ILiveViewCapableProvider>().ToArray();
 

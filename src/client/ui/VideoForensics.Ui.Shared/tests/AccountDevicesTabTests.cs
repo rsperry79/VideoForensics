@@ -33,7 +33,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         _ = MediaItemRepositoryMock.Setup(m => m.GetRecentByDeviceAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
         _ = LocationRepositoryMock.Setup(m => m.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([_location]);
+            .ReturnsAsync([_location.ToDto()]);
     }
 
     private IRenderedComponent<AccountDevicesTab> RenderDevices()

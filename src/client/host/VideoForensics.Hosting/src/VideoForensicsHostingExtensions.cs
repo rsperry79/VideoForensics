@@ -90,7 +90,7 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ILogger<RingDeviceControlService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceWriteRepository>(),
-                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationRepository>(),
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationWriteRepository>(),
                 provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceLightEventRepository>());
         }
 
@@ -103,7 +103,7 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 metadataRepository: provider.GetRequiredService<ILocationMetadataRepository>(),
-                locationRepository: provider.GetRequiredService<ILocationRepository>(),
+                locationRepository: provider.GetRequiredService<ILocationWriteRepository>(),
                 settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>(),
                 eventHistoryWriter: provider.GetService<IRingEventHistoryWriter>(),
                 syncState: provider.GetService<IRingAccountSyncState>()
@@ -332,6 +332,8 @@ namespace VideoForensics.Client.Hosting
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IUserRepository, VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IProviderAccountRepository, VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository, VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ILocationRepository, VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IOperatorPreferencesRepository, VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository>();
             // Server-side media reads for Ui.Shared: DTO view over the write repository (see MediaItemDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository>();
             // Server-side device reads for Ui.Shared: DTO view over the write repository (see DeviceDtoRepository).
@@ -493,7 +495,7 @@ namespace VideoForensics.Client.Hosting
             {
                 ILogger<BackupExportOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<BackupExportOrchestrator>>();
                 IProviderAccountWriteRepository providerAccountRepository = serviceProvider.GetRequiredService<IProviderAccountWriteRepository>();
-                ILocationRepository locationRepository = serviceProvider.GetRequiredService<ILocationRepository>();
+                ILocationWriteRepository locationRepository = serviceProvider.GetRequiredService<ILocationWriteRepository>();
                 IDeviceWriteRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceWriteRepository>();
                 IEventWriteRepository eventRepository = serviceProvider.GetRequiredService<IEventWriteRepository>();
                 IDownloadEventRepository downloadEventRepository = serviceProvider.GetRequiredService<IDownloadEventRepository>();
@@ -713,7 +715,7 @@ namespace VideoForensics.Client.Hosting
                 _ = services.AddKeyedScoped<IEventPullService>(providerName, (provider, key) => new EventPullService(
                     provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
                     provider.GetRequiredService<IDeviceWriteRepository>(),
-                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<ILocationWriteRepository>(),
                     provider.GetRequiredService<IProviderAccountWriteRepository>(),
                     provider.GetService<ILogger<EventPullService>>(),
                     provider.GetKeyedService<IMediaDownloadService>(providerName),
@@ -727,7 +729,7 @@ namespace VideoForensics.Client.Hosting
                 _ = services.AddKeyedScoped<IInventorySyncService>(providerName, (provider, key) => new InventorySyncService(
                     provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
                     provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
-                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<ILocationWriteRepository>(),
                     provider.GetRequiredService<IDeviceWriteRepository>(),
                     provider.GetRequiredService<IReferenceDataCache>(),
                     provider.GetRequiredService<ILogger<InventorySyncService>>(),

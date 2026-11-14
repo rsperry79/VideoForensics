@@ -33,7 +33,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IRingAccountSettingsWriter, RingAccountSettingsWriter>();
             services.TryAddScoped<IRingAccountSyncState, RingAccountSyncStateRepository>();
             services.TryAddScoped<IRingEventHistoryWriter, RingEventHistoryWriter>();
-            services.TryAddScoped<ILocationRepository, LocationRepository>();
+            services.TryAddScoped<ILocationWriteRepository, LocationRepository>();
             services.TryAddScoped<ILocationMetadataRepository, LocationMetadataRepository>();
             services.TryAddScoped<IDeviceWriteRepository, DeviceRepository>();
             services.TryAddScoped<IMediaItemWriteRepository, MediaItemRepository>();
@@ -72,7 +72,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<ISecurityAuditLogRepository, SecurityAuditLogRepository>();
             services.TryAddScoped<IProviderApiCallLogRepository, ProviderApiCallLogRepository>();
             services.TryAddScoped<IProviderApiErrorLogRepository, ProviderApiErrorLogRepository>();
-            services.TryAddScoped<IOperatorPreferencesRepository, OperatorPreferencesRepository>();
+            services.TryAddScoped<IOperatorPreferencesWriteRepository, OperatorPreferencesRepository>();
             services.TryAddScoped<IAccessAuditLogRepository, AccessAuditLogRepository>();
             services.TryAddScoped<IExportAuditRecordRepository, ExportAuditRecordRepository>();
             services.TryAddScoped<INoticeRepository, NoticeRepository>();

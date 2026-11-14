@@ -366,7 +366,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
+            ILocationWriteRepository locations = sp.GetRequiredService<ILocationWriteRepository>();
             IDeviceWriteRepository devices = sp.GetRequiredService<IDeviceWriteRepository>();
             bool deviceFailed = false;
             foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, ct))
@@ -552,7 +552,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     var pull = new EventPullService(
                         eventService,
                         sp.GetRequiredService<IDeviceWriteRepository>(),
-                        sp.GetRequiredService<ILocationRepository>(),
+                        sp.GetRequiredService<ILocationWriteRepository>(),
                         sp.GetRequiredService<IProviderAccountWriteRepository>(),
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,

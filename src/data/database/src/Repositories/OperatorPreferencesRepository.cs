@@ -6,7 +6,7 @@ using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Repositories
 {
-    public class OperatorPreferencesRepository : IOperatorPreferencesRepository
+    public class OperatorPreferencesRepository : IOperatorPreferencesWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
 

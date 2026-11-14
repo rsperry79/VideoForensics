@@ -35,7 +35,7 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>The loop's frames are each held at least this long; the builder rounds to whole seconds.</summary>
         private static readonly TimeSpan MinimumHold = TimeSpan.FromSeconds(1);
 
-        private readonly ILocationRepository _locations;
+        private readonly ILocationWriteRepository _locations;
         private readonly IDeviceWriteRepository _devices;
         private readonly IMediaItemWriteRepository _mediaItems;
         private readonly IProviderAccountWriteRepository _accounts;
@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IForensicsConfigurationService? _configurationService;
 
         public SnapshotRollupService(
-            ILocationRepository locations,
+            ILocationWriteRepository locations,
             IDeviceWriteRepository devices,
             IMediaItemWriteRepository mediaItems,
             IProviderAccountWriteRepository accounts,

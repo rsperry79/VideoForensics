@@ -327,7 +327,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public Mock<IDeviceWriteRepository> Devices { get; } = CreateDeviceRepository();
 
-            public Mock<ILocationRepository> Locations { get; } = CreateLocationRepository();
+            public Mock<ILocationWriteRepository> Locations { get; } = CreateLocationRepository();
 
             public Mock<ISyncRunOptions> RunOptions { get; } = CreateRunOptions();
 
@@ -395,9 +395,9 @@ namespace VideoForensics.Providers.Ring.Tests
             return repository;
         }
 
-        private static Mock<ILocationRepository> CreateLocationRepository()
+        private static Mock<ILocationWriteRepository> CreateLocationRepository()
         {
-            var repository = new Mock<ILocationRepository>();
+            var repository = new Mock<ILocationWriteRepository>();
             _ = repository.Setup(r => r.GetByProviderLocationIdAsync(LocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DbLocation { Id = DbLocationId, ProviderLocationId = LocationId, Name = LocationName });
             return repository;

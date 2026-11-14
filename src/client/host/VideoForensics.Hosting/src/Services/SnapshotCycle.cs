@@ -134,7 +134,7 @@ namespace VideoForensics.Client.Hosting.Services
             var candidates = new List<(Device Device, TimeSpan Window)>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (Location location in await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(accountId, ct))
+            foreach (Location location in await sp.GetRequiredService<ILocationWriteRepository>().ListByProviderAccountIdAsync(accountId, ct))
             {
                 foreach (Device device in await devices.GetByLocationIdAsync(location.Id, ct))
                 {
@@ -368,7 +368,7 @@ namespace VideoForensics.Client.Hosting.Services
 
                 try
                 {
-                    Location? location = await sp.GetRequiredService<ILocationRepository>().GetAsync(device.LocationId, ct);
+                    Location? location = await sp.GetRequiredService<ILocationWriteRepository>().GetAsync(device.LocationId, ct);
                     string mediaRoot = await ResolveMediaRootAsync(sp, ct);
                     mediaFilePath = WriteImage(mediaRoot, account.ProviderName, location?.Name ?? string.Empty, device.Name, device.ProviderDeviceId, attemptedAt, image);
                 }
