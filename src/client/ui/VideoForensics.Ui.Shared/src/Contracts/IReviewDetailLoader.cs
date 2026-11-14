@@ -13,7 +13,7 @@ public interface IReviewDetailLoader
     /// </summary>
     /// <param name="eventIds">Events to load. Duplicates are ignored; an empty set returns an empty dictionary.</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct);
+    Task<IReadOnlyDictionary<Guid, EventDetailDto>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct);
 
     /// <summary>
     /// Returns the suspected jamming incidents recorded by <paramref name="deviceIds"/> in the range, newest first.

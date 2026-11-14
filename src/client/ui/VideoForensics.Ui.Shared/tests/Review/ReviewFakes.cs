@@ -118,8 +118,8 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     public IReadOnlyList<WindowLoadCall> AnomalyCalls => _anomalyCalls;
 
     /// <summary>Produces the detail rows for a call. Defaults to none.</summary>
-    public Func<IReadOnlyCollection<Guid>, CancellationToken, Task<IReadOnlyDictionary<Guid, EventDetail>>> DetailResponder { get; set; } =
-        (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail>());
+    public Func<IReadOnlyCollection<Guid>, CancellationToken, Task<IReadOnlyDictionary<Guid, EventDetailDto>>> DetailResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(new Dictionary<Guid, EventDetailDto>());
 
     /// <summary>Produces the jamming incidents for a call. Defaults to none.</summary>
     public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<JammingIncidentDto>>> JammingResponder { get; set; } =
@@ -142,7 +142,7 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
+    public Task<IReadOnlyDictionary<Guid, EventDetailDto>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
     {
         _detailCalls.Add(eventIds.ToList());
         return DetailResponder(eventIds, ct);

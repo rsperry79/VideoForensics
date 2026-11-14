@@ -31,15 +31,15 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
+    public async Task<IReadOnlyDictionary<Guid, EventDetailDto>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, EventDetail>();
+        var result = new Dictionary<Guid, EventDetailDto>();
         var distinct = eventIds.Distinct().ToList();
         for (int start = 0; start < distinct.Count; start += DetailChunkSize)
         {
             List<Guid> chunk = distinct.GetRange(start, Math.Min(DetailChunkSize, distinct.Count - start));
-            IReadOnlyList<EventDetail> rows = await _details.GetDetailsAsync(chunk, ct);
-            foreach (EventDetail row in rows)
+            IReadOnlyList<EventDetailDto> rows = await _details.GetDetailsAsync(chunk, ct);
+            foreach (EventDetailDto row in rows)
             {
                 result[row.EventId] = row;
             }

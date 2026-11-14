@@ -77,7 +77,7 @@
     private LoadedEvents? _loaded;
 
     // Each row's detail, read once per page so a motion row can show its Person or Vehicle type.
-    private readonly Dictionary<Guid, EventDetail?> _details = [];
+    private readonly Dictionary<Guid, EventDetailDto?> _details = [];
     private LoadKey? _requested;
     private IReadOnlySet<Guid> _shownDeviceIds = new HashSet<Guid>();
     private CancellationTokenSource? _loadCts;
@@ -269,7 +269,7 @@
     /// <summary>The row's label: the detection type (Person, Vehicle) when its detail names one, else the event's own type.</summary>
     private string RowTypeLabel(EventDto evt)
     {
-        _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
+        _ = _details.TryGetValue(evt.Id, out EventDetailDto? detail);
         return ReviewEventLabels.RowLabel(L, evt, detail);
     }
 
@@ -287,10 +287,10 @@
 
         try
         {
-            IReadOnlyDictionary<Guid, EventDetail> found = await DetailLoader.LoadEventDetailsAsync(missing, ct);
+            IReadOnlyDictionary<Guid, EventDetailDto> found = await DetailLoader.LoadEventDetailsAsync(missing, ct);
             foreach (Guid id in missing)
             {
-                _details[id] = found.TryGetValue(id, out EventDetail? detail) ? detail : null;
+                _details[id] = found.TryGetValue(id, out EventDetailDto? detail) ? detail : null;
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

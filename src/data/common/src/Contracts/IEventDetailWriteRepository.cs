@@ -1,7 +1,7 @@
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Read-only access to the detection child rows behind events (the Detail tab's data).</summary>
-    public interface IEventDetailRepository
+    public interface IEventDetailWriteRepository
     {
         /// <summary>
         /// Returns one <see cref="EventDetail"/> per requested event that has any detail rows; events with none are omitted.

@@ -57,7 +57,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
             CaseId: null);
     }
 
-    private static EventDetail DetailWithAllFields(Guid eventId, Guid device)
+    private static EventDetailDto DetailWithAllFields(Guid eventId, Guid device)
     {
         var detection = new EventDetection
         {
@@ -78,7 +78,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         var zone = new EventDetectionZone { Id = Guid.NewGuid(), EventDetectionId = detection.Id, ZoneId = "zone-1", ZoneName = "Driveway", Confidence = 0.9m };
         var person = new EventDetectedPerson { Id = Guid.NewGuid(), EventId = eventId, ProfileId = "p-1", ProfileName = "Alex", Confidence = 0.8m };
         var alert = new EventSecurityAlert { Id = Guid.NewGuid(), EventId = eventId, Severity = "high", AlertText = "Loitering near door" };
-        return new EventDetail(eventId, detection, [later, earlier], [zone], [person], [alert]);
+        return new EventDetail(eventId, detection, [later, earlier], [zone], [person], [alert]).ToDto();
     }
 
     /// <summary>Serves events from one list (newest first), keeping only the requested cameras and applying skip and take.</summary>
@@ -283,8 +283,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         AddDevices(1);
         EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
-        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
-            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(
+            new Dictionary<Guid, EventDetailDto> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
@@ -302,8 +302,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         AddDevices(1);
         EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
-        DetailLoader.DetailResponder = (ids, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
-            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
+        DetailLoader.DetailResponder = (ids, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(
+            new Dictionary<Guid, EventDetailDto> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
@@ -353,8 +353,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         AddDevices(1);
         EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
-        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
-            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(
+            new Dictionary<Guid, EventDetailDto> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(EventRow)));
@@ -375,8 +375,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         AddDevices(2);
         EventDto evt = EventAt(Devices[1].Id, Base);
         ServeFrom([evt]);
-        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
-            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[1].Id) });
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(
+            new Dictionary<Guid, EventDetailDto> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[1].Id) });
         ReviewState.SetCameras([Devices[1].Id]);
         ReviewState.SetTab(ReviewTab.Detail);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -573,8 +573,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         AddDevices(1);
         EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([EventAt(Devices[0].Id, Base.AddMinutes(30)), evt]);
-        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
-            new Dictionary<Guid, EventDetail> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(
+            new Dictionary<Guid, EventDetailDto> { [evt.Id] = DetailWithAllFields(evt.Id, Devices[0].Id) });
         ReviewState.SetCameras([Devices[0].Id]);
         ReviewState.SelectEvent(evt.Id);
 
@@ -643,8 +643,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         ServeFrom([evt]);
         DetailLoader.DetailResponder = (_, _) =>
         {
-            EventDetail detail = new(evt.Id, new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "mystery-kind" }, [], [], [], []);
-            return Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail> { [evt.Id] = detail });
+            EventDetailDto detail = new EventDetail(evt.Id, new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "mystery-kind" }, [], [], [], []).ToDto();
+            return Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(new Dictionary<Guid, EventDetailDto> { [evt.Id] = detail });
         };
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -706,8 +706,8 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         {
             var detection = new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "motion" };
             var occurrence = new EventDetectionTypeOccurrence { Id = Guid.NewGuid(), EventDetectionId = detection.Id, DetectionType = "other_motion", DetectedAtUtc = Base.AddMinutes(1) };
-            EventDetail detail = new(evt.Id, detection, [occurrence], [], [], []);
-            return Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail> { [evt.Id] = detail });
+            EventDetailDto detail = new EventDetail(evt.Id, detection, [occurrence], [], [], []).ToDto();
+            return Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(new Dictionary<Guid, EventDetailDto> { [evt.Id] = detail });
         };
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();

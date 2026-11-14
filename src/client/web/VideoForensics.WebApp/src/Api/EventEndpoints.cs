@@ -75,7 +75,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         public static async Task<IResult> GetEventDetailsAsync(
             Guid[]? eventIds,
-            IEventDetailRepository details,
+            IEventDetailWriteRepository details,
             CancellationToken ct)
         {
             const int MaxEventIds = 200;

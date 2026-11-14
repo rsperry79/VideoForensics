@@ -158,8 +158,8 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
         var detection = new EventDetection { Id = Guid.NewGuid(), EventId = evt.Id, DetectionType = "human", PersonDetected = true };
-        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(
-            new Dictionary<Guid, EventDetail> { [evt.Id] = new EventDetail(evt.Id, detection, [], [], [], []) });
+        DetailLoader.DetailResponder = (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(
+            new Dictionary<Guid, EventDetailDto> { [evt.Id] = new EventDetail(evt.Id, detection, [], [], [], []).ToDto() });
         ReviewState.SetCameras([Devices[0].Id]);
 
         // Act

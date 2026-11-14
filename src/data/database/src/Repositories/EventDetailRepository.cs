@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Database.Repositories
     /// Reads the detection child rows for a batch of events. Each table is read with one <c>Contains</c> query, so the
     /// number of round trips is fixed (five) regardless of how many events are requested.
     /// </summary>
-    public class EventDetailRepository : IEventDetailRepository
+    public class EventDetailRepository : IEventDetailWriteRepository
     {
         private const int MaxEventIds = 200;
 

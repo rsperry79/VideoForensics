@@ -98,14 +98,14 @@ public class ReviewDetailLoader_Tests
             .Returns((IReadOnlyCollection<Guid> ids, CancellationToken _) =>
             {
                 sizes.Add(ids.Count);
-                IReadOnlyList<EventDetail> rows = ids.Select(id => new EventDetail(id, null, [], [], [], [])).ToList();
+                IReadOnlyList<EventDetailDto> rows = ids.Select(id => new EventDetail(id, null, [], [], [], []).ToDto()).ToList();
                 return Task.FromResult(rows);
             });
         ReviewDetailLoader loader = CreateLoader(details);
         Guid[] ids = Enumerable.Range(0, 450).Select(_ => Guid.NewGuid()).ToArray();
 
         // Act
-        IReadOnlyDictionary<Guid, EventDetail> result = await loader.LoadEventDetailsAsync(ids, CancellationToken.None);
+        IReadOnlyDictionary<Guid, EventDetailDto> result = await loader.LoadEventDetailsAsync(ids, CancellationToken.None);
 
         // Assert
         Assert.Equal(new[] { 200, 200, 50 }, sizes);
@@ -121,7 +121,7 @@ public class ReviewDetailLoader_Tests
         ReviewDetailLoader loader = CreateLoader(details);
 
         // Act
-        IReadOnlyDictionary<Guid, EventDetail> result = await loader.LoadEventDetailsAsync([], CancellationToken.None);
+        IReadOnlyDictionary<Guid, EventDetailDto> result = await loader.LoadEventDetailsAsync([], CancellationToken.None);
 
         // Assert
         Assert.Empty(result);

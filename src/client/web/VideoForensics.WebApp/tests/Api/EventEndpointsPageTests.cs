@@ -170,7 +170,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetEventDetailsAsync_MissingIds_ReturnsBadRequest()
         {
-            var details = new Mock<IEventDetailRepository>();
+            var details = new Mock<IEventDetailWriteRepository>();
 
             IResult result = await EventEndpoints.GetEventDetailsAsync(null, details.Object, CancellationToken.None);
 
@@ -182,7 +182,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetEventDetailsAsync_TooManyIds_ReturnsBadRequest()
         {
-            var details = new Mock<IEventDetailRepository>();
+            var details = new Mock<IEventDetailWriteRepository>();
             Guid[] ids = Enumerable.Range(0, 201).Select(_ => Guid.NewGuid()).ToArray();
 
             IResult result = await EventEndpoints.GetEventDetailsAsync(ids, details.Object, CancellationToken.None);
@@ -203,7 +203,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 [],
                 [],
                 []);
-            var repository = new Mock<IEventDetailRepository>();
+            var repository = new Mock<IEventDetailWriteRepository>();
             _ = repository
                 .Setup(r => r.GetDetailsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([detail]);

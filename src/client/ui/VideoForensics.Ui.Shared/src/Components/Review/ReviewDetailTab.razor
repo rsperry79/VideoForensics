@@ -249,7 +249,7 @@
                                     {
                                         <h6 class="small mt-2">@L["DetailFieldOccurrences"]</h6>
                                         <div class="list-group mb-2">
-                                            @foreach (EventDetectionTypeOccurrence occurrence in detail.Occurrences.OrderBy(o => o.DetectedAtUtc))
+                                            @foreach (EventDetailDto.EventOccurrenceDto occurrence in detail.Occurrences.OrderBy(o => o.DetectedAtUtc))
                                             {
                                                 <button type="button" class="list-group-item list-group-item-action py-1 small"
                                                         data-testid="review-detail-occurrence" @onclick="() => NavigateTo(evt.DeviceId, occurrence.DetectedAtUtc)">
@@ -264,7 +264,7 @@
                                     {
                                         <h6 class="small mt-2">@L["DetailFieldZones"]</h6>
                                         <ul class="small mb-2" data-testid="review-detail-zones">
-                                            @foreach (EventDetectionZone zone in detail.Zones)
+                                            @foreach (EventDetailDto.EventZoneDto zone in detail.Zones)
                                             {
                                                 <li>@(zone.ZoneName ?? zone.ZoneId) @Percent(zone.Confidence)</li>
                                             }
@@ -275,7 +275,7 @@
                                     {
                                         <h6 class="small mt-2">@L["DetailFieldPeople"]</h6>
                                         <ul class="small mb-2" data-testid="review-detail-people">
-                                            @foreach (EventDetectedPerson person in detail.People)
+                                            @foreach (EventDetailDto.EventPersonDto person in detail.People)
                                             {
                                                 <li>@(person.ProfileName ?? person.ProfileId) @Percent(person.Confidence)</li>
                                             }
@@ -286,7 +286,7 @@
                                     {
                                         <h6 class="small mt-2">@L["DetailFieldAlerts"]</h6>
                                         <ul class="small mb-2" data-testid="review-detail-alerts">
-                                            @foreach (EventSecurityAlert alert in detail.SecurityAlerts)
+                                            @foreach (EventDetailDto.EventSecurityAlertDto alert in detail.SecurityAlerts)
                                             {
                                                 <li>@alert.Severity @alert.AlertText</li>
                                             }
@@ -343,7 +343,7 @@
     private bool _eventsLoadingMore;
     private CancellationTokenSource? _eventsCts;
 
-    private readonly Dictionary<Guid, EventDetail?> _details = [];
+    private readonly Dictionary<Guid, EventDetailDto?> _details = [];
     private readonly HashSet<Guid> _detailInFlight = [];
     private readonly HashSet<Guid> _detailFailed = [];
     // Every loaded row is expanded by default, so its detection type and fields show without a click.
@@ -755,10 +755,10 @@
         _detailInFlight.UnionWith(missing);
         try
         {
-            IReadOnlyDictionary<Guid, EventDetail> rows = await DetailLoader.LoadEventDetailsAsync(missing, _disposeCts.Token);
+            IReadOnlyDictionary<Guid, EventDetailDto> rows = await DetailLoader.LoadEventDetailsAsync(missing, _disposeCts.Token);
             foreach (Guid id in missing)
             {
-                _details[id] = rows.TryGetValue(id, out EventDetail? detail) ? detail : null;
+                _details[id] = rows.TryGetValue(id, out EventDetailDto? detail) ? detail : null;
             }
         }
         catch (OperationCanceledException) when (_disposed)
@@ -817,8 +817,8 @@
         StateHasChanged();
         try
         {
-            IReadOnlyDictionary<Guid, EventDetail> rows = await DetailLoader.LoadEventDetailsAsync([id], _disposeCts.Token);
-            _details[id] = rows.TryGetValue(id, out EventDetail? detail) ? detail : null;
+            IReadOnlyDictionary<Guid, EventDetailDto> rows = await DetailLoader.LoadEventDetailsAsync([id], _disposeCts.Token);
+            _details[id] = rows.TryGetValue(id, out EventDetailDto? detail) ? detail : null;
         }
         catch (OperationCanceledException) when (_disposed)
         {
@@ -892,7 +892,7 @@
     /// <summary>The row's label: the detection type once its detail has loaded, else the event's own type.</summary>
     private string RowTypeLabel(EventDto evt)
     {
-        _ = _details.TryGetValue(evt.Id, out EventDetail? detail);
+        _ = _details.TryGetValue(evt.Id, out EventDetailDto? detail);
         return ReviewEventLabels.RowLabel(L, evt, detail);
     }
 
@@ -919,7 +919,7 @@
     }
 
     /// <summary>True when the event has at least one detail row to show.</summary>
-    private static bool HasAnyDetail(EventDetail detail)
+    private static bool HasAnyDetail(EventDetailDto detail)
     {
         return detail.Detection is not null
             || detail.Occurrences.Count > 0
