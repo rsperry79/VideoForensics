@@ -10,14 +10,7 @@ public class CaseItemIntegrity_Tests
     [Fact]
     public void Compare_WithSnapshotItem_ReturnsNotApplicable()
     {
-        var snapshotItem = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseItemKind.Snapshot,
-            SnapshotCaptureId = Guid.NewGuid(),
-            Reason = "Test snapshot",
-            AddedBy = "test"
-        };
+        var snapshotItem = new CaseItemDto(Guid.NewGuid(), Guid.NewGuid(), CaseItemKindDto.Snapshot.ToString(), Guid.NewGuid(), "Test snapshot", "test", DateTime.UtcNow, null, null, null, null);
 
         PinIntegrity result = CaseItemIntegrity.Compare(snapshotItem, null);
 
@@ -28,14 +21,7 @@ public class CaseItemIntegrity_Tests
     public void Compare_WithEventItem_ReturnsNotApplicable()
     {
         // Arrange
-        var eventItem = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseItemKind.Event,
-            EventId = Guid.NewGuid(),
-            Reason = "Test event",
-            AddedBy = "test"
-        };
+        var eventItem = new CaseItemDto(Guid.NewGuid(), Guid.NewGuid(), CaseItemKindDto.Event.ToString(), Guid.NewGuid(), "Test event", "test", DateTime.UtcNow, null, null, null, null);
 
         var currentMedia = new MediaItem
         {
@@ -60,15 +46,7 @@ public class CaseItemIntegrity_Tests
     public void Compare_WithMediaItemAndNullCurrentMedia_ReturnsMediaMissing()
     {
         // Arrange
-        var mediaItem = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseItemKind.Media,
-            MediaItemId = Guid.NewGuid(),
-            MediaSha256AtAdd = "abc123",
-            Reason = "Test media",
-            AddedBy = "test"
-        };
+        var mediaItem = new CaseItemDto(Guid.NewGuid(), Guid.NewGuid(), CaseItemKindDto.Media.ToString(), Guid.NewGuid(), "Test media", "test", DateTime.UtcNow, "abc123", null, null, null);
 
         // Act
         PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, null);
@@ -82,19 +60,11 @@ public class CaseItemIntegrity_Tests
     {
         // Arrange
         string hash = "ABC123DEF456";
-        var mediaItem = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseItemKind.Media,
-            MediaItemId = Guid.NewGuid(),
-            MediaSha256AtAdd = hash,
-            Reason = "Test media",
-            AddedBy = "test"
-        };
+        var mediaItem = new CaseItemDto(Guid.NewGuid(), Guid.NewGuid(), CaseItemKindDto.Media.ToString(), Guid.NewGuid(), "Test media", "test", DateTime.UtcNow, hash, null, null, null);
 
         var currentMedia = new MediaItem
         {
-            Id = mediaItem.MediaItemId.Value,
+            Id = mediaItem.TargetId,
             DeviceId = Guid.NewGuid(),
             FileName = "test.mp4",
             FilePath = "/path/to/test.mp4",
@@ -115,19 +85,11 @@ public class CaseItemIntegrity_Tests
     public void Compare_WithMismatchedHash_ReturnsMismatch()
     {
         // Arrange
-        var mediaItem = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseItemKind.Media,
-            MediaItemId = Guid.NewGuid(),
-            MediaSha256AtAdd = "ABC123",
-            Reason = "Test media",
-            AddedBy = "test"
-        };
+        var mediaItem = new CaseItemDto(Guid.NewGuid(), Guid.NewGuid(), CaseItemKindDto.Media.ToString(), Guid.NewGuid(), "Test media", "test", DateTime.UtcNow, "ABC123", null, null, null);
 
         var currentMedia = new MediaItem
         {
-            Id = mediaItem.MediaItemId.Value,
+            Id = mediaItem.TargetId,
             DeviceId = Guid.NewGuid(),
             FileName = "test.mp4",
             FilePath = "/path/to/test.mp4",
@@ -148,19 +110,11 @@ public class CaseItemIntegrity_Tests
     public void Compare_WithHashCaseInsensitivity_ReturnsMatch()
     {
         // Arrange
-        var mediaItem = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            Kind = CaseItemKind.Media,
-            MediaItemId = Guid.NewGuid(),
-            MediaSha256AtAdd = "aBc123DeF456",
-            Reason = "Test media",
-            AddedBy = "test"
-        };
+        var mediaItem = new CaseItemDto(Guid.NewGuid(), Guid.NewGuid(), CaseItemKindDto.Media.ToString(), Guid.NewGuid(), "Test media", "test", DateTime.UtcNow, "aBc123DeF456", null, null, null);
 
         var currentMedia = new MediaItem
         {
-            Id = mediaItem.MediaItemId.Value,
+            Id = mediaItem.TargetId,
             DeviceId = Guid.NewGuid(),
             FileName = "test.mp4",
             FilePath = "/path/to/test.mp4",

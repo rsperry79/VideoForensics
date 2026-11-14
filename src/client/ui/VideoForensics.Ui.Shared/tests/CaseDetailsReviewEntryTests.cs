@@ -63,10 +63,7 @@ public class CaseDetailsReviewEntry_Tests : CasesPagesTestBase
     {
         // Arrange
         var caseId = Guid.NewGuid();
-        CaseItem removed = CreateEventPin(caseId, Guid.NewGuid());
-        removed.RemovedAtUtc = FixedNowUtc;
-        removed.RemovedBy = "op";
-        removed.RemovalReason = "wrong case";
+        CaseItemDto removed = CreateEventPin(caseId, Guid.NewGuid()) with { RemovedAtUtc = FixedNowUtc, RemovedBy = "op", RemovalReason = "wrong case" };
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateTestCase(id: caseId));
         _ = CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))

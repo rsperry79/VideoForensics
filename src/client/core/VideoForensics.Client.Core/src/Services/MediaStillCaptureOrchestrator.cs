@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IMediaStorageProvider _storageProvider;
         private readonly IMediaFrameExtractor _frameExtractor;
         private readonly IActionLogRepository _actionLogRepository;
-        private readonly ICaseRepository _caseRepository;
+        private readonly ICaseWriteRepository _caseRepository;
         private readonly IMediaPathResolver _paths;
 
         public MediaStillCaptureOrchestrator(
@@ -49,7 +49,7 @@ namespace VideoForensics.Client.Core.Services
             IMediaStorageProvider storageProvider,
             IMediaFrameExtractor frameExtractor,
             IActionLogRepository actionLogRepository,
-            ICaseRepository caseRepository,
+            ICaseWriteRepository caseRepository,
             IMediaPathResolver? paths = null)
         {
             _paths = paths ?? PassThroughMediaPathResolver.Instance;

@@ -54,7 +54,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<IUserRepository>());
             _ = builder.Services.AddSingleton(_accounts.Object);
             _ = builder.Services.AddSingleton(_exports.Object);
-            _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());

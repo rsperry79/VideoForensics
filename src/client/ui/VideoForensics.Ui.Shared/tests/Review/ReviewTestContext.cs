@@ -220,23 +220,23 @@ public abstract class ReviewTestContext : BunitContext
     protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<EventDto>? events = null)
     {
         var caseId = Guid.NewGuid();
-        var pins = new List<CaseItem>();
+        var pins = new List<CaseItemDto>();
         foreach (MediaItem item in media)
         {
             _mediaById[item.Id] = item;
-            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = item.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+            pins.Add(new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Media.ToString(), item.Id, "r", "op", FixedNowUtc, null, null, null, null));
         }
 
         foreach (EventDto evt in events ?? [])
         {
             _eventsById[evt.Id] = evt;
-            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = evt.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+            pins.Add(new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Event.ToString(), evt.Id, "r", "op", FixedNowUtc, null, null, null, null));
         }
 
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = title, CreatedBy = "op" });
+            .ReturnsAsync(new ForensicCaseDto(caseId, "CASE-1", title, null, CaseStatusDto.Open.ToString(), null, "op", FixedNowUtc, FixedNowUtc, null, null, null, null, []));
         _ = caseRepository
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pins);

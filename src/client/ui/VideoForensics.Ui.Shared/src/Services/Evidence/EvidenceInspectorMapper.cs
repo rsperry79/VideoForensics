@@ -1,5 +1,6 @@
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
@@ -128,11 +129,11 @@ public static class EvidenceInspectorMapper
         PinTarget? pinTarget = null;
         if (item.Event is not null)
         {
-            pinTarget = new PinTarget(CaseItemKind.Event, item.Event.Id);
+            pinTarget = new PinTarget(CaseItemKindDto.Event, item.Event.Id);
         }
         else if (item.Media is not null)
         {
-            pinTarget = new PinTarget(CaseItemKind.Media, item.Media.Id);
+            pinTarget = new PinTarget(CaseItemKindDto.Media, item.Media.Id);
         }
 
         // Evidence actions: legal hold place/release, device integrity verification, export - all

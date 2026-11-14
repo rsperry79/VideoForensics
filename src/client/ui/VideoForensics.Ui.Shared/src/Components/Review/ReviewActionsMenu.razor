@@ -10,6 +10,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @implements IDisposable
 @inject ReviewSelection Selection
@@ -236,10 +237,10 @@
         string reason = L["TagDefaultReason"].Value;
         if (Selection.EventId is Guid eventId)
         {
-            return Tagger.TagAsync(CaseItemKind.Event, eventId, deviceId, Selection.AtUtc, reason, CancellationToken.None);
+            return Tagger.TagAsync(CaseItemKindDto.Event, eventId, deviceId, Selection.AtUtc, reason, CancellationToken.None);
         }
 
-        return Tagger.TagAsync(CaseItemKind.Media, Selection.MediaItemId!.Value, deviceId, Selection.AtUtc, reason, CancellationToken.None);
+        return Tagger.TagAsync(CaseItemKindDto.Media, Selection.MediaItemId!.Value, deviceId, Selection.AtUtc, reason, CancellationToken.None);
     }
 
     private LocalizedString OutcomeMessage(TagOutcome outcome)

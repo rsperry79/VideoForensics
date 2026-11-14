@@ -20,7 +20,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IIntegrityVerificationService _integrityVerificationService;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly IExportRecordService _exportRecordService;
-        private readonly ICaseRepository? _caseRepository;
+        private readonly ICaseWriteRepository? _caseRepository;
         private readonly IReportGenerationService? _reportService;
         private readonly IForensicsConfigurationService? _configurationService;
         private readonly IStorageLocationProvider? _storageLocationProvider;
@@ -42,7 +42,7 @@ namespace VideoForensics.Client.Core.Services
             IIntegrityVerificationService integrityVerificationService,
             IActionLogRepository actionLogRepository,
             IExportRecordService exportRecordService,
-            ICaseRepository? caseRepository = null,
+            ICaseWriteRepository? caseRepository = null,
             IReportGenerationService? reportService = null,
             IForensicsConfigurationService? configurationService = null,
             IStorageLocationProvider? storageLocationProvider = null,

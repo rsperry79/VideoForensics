@@ -1,5 +1,6 @@
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
@@ -122,7 +123,7 @@
                 {
                     <div class="muted-text">@L["InspectorSelectCase"]</div>
                 }
-                else if (CaseState.ActiveCase.Status == CaseStatus.Open && _role.HasValue && _role >= OperatorRole.Review)
+                else if (CaseState.ActiveCase.Status == CaseStatusDto.Open.ToString() && _role.HasValue && _role >= OperatorRole.Review)
                 {
                     <div class="mb-2">
                         <ReasonPicker TReason="EvidencePinReason" OtherValue="EvidencePinReason.Other" @bind-Value="_pinReason" @bind-Note="_pinNote" ValidityChanged="OnPinReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />

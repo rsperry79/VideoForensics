@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IIntegrityVerificationService> _integrity = new();
         private readonly Mock<IActionLogRepository> _actionLog = new();
         private readonly Mock<IExportRecordService> _exportRecords = new();
-        private readonly Mock<ICaseRepository> _cases = new();
+        private readonly Mock<ICaseWriteRepository> _cases = new();
         private readonly Mock<IReportGenerationService> _reports = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();

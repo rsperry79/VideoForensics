@@ -33,7 +33,7 @@ public class ScopeRail_ReviewFixes_Tests : BunitContext
 
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = Services.AddScoped(_ => caseRepository.Object);
         _ = Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));

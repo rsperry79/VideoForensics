@@ -337,7 +337,7 @@ public class CircuitGuardRegistration_Tests
         _ = services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
         _ = services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
         _ = services.AddScoped(_ => new Mock<IReleaseChannelService>().Object);
-        _ = services.AddScoped(_ => new Mock<ICaseRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<ICaseWriteRepository>().Object);
         _ = services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         _ = services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
         _ = services.AddScoped(_ => new Mock<IJammingRepository>().Object);
@@ -435,7 +435,7 @@ public class GuardedCaseRepository_Tests
     public async Task GuardedCaseRepository_CloseAsync_ReviewOnly_ThrowsAndDoesNotClose()
     {
         // Review is enough for case edits but not for close and reopen, which the server requires Admin for.
-        var inner = new Mock<ICaseRepository>();
+        var inner = new Mock<ICaseWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(true);
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
@@ -449,7 +449,7 @@ public class GuardedCaseRepository_Tests
     [Fact]
     public async Task GuardedCaseRepository_RemoveItemAsync_ReadOnlyOperator_ThrowsAndDoesNotRemove()
     {
-        var inner = new Mock<ICaseRepository>();
+        var inner = new Mock<ICaseWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
         var guarded = new GuardedCaseRepository(inner.Object, gate.Object);

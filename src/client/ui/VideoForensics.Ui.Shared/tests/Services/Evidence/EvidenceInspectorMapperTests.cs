@@ -334,7 +334,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
 
         // Assert
         Assert.NotNull(result.Pin);
-        Assert.Equal(CaseItemKind.Event, result.Pin!.Kind);
+        Assert.Equal(CaseItemKindDto.Event, result.Pin!.Kind);
         Assert.Equal(eventId, result.Pin.TargetId);
     }
 
@@ -376,7 +376,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
 
         // Assert
         Assert.NotNull(result.Pin);
-        Assert.Equal(CaseItemKind.Event, result.Pin!.Kind);
+        Assert.Equal(CaseItemKindDto.Event, result.Pin!.Kind);
         Assert.Equal(eventId, result.Pin.TargetId);
     }
 
@@ -417,7 +417,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
 
         // Assert
         Assert.NotNull(result.Pin);
-        Assert.Equal(CaseItemKind.Media, result.Pin!.Kind);
+        Assert.Equal(CaseItemKindDto.Media, result.Pin!.Kind);
         Assert.Equal(mediaId, result.Pin.TargetId);
     }
 

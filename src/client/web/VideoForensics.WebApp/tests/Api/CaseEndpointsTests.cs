@@ -19,11 +19,11 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     public class CaseEndpointsTests
     {
         private static (
-            Mock<ICaseRepository> Cases,
+            Mock<ICaseWriteRepository> Cases,
             Mock<ILogger<Program>> Logger
         ) CreateMocks()
         {
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var logger = new Mock<ILogger<Program>>();
             return (cases, logger);
         }
@@ -83,7 +83,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCasesAsync_WithoutStatus_ReturnsCases()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             ForensicCase case1 = CreateForensicCase();
             ForensicCase case2 = CreateForensicCase();
             _ = cases.Setup(c => c.ListAsync(null, It.IsAny<CancellationToken>()))
@@ -100,7 +100,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCasesAsync_WithStatus_FiltersCorrectly()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             ForensicCase closedCase = CreateForensicCase();
             closedCase.Status = CaseStatus.Closed;
             _ = cases.Setup(c => c.ListAsync(CaseStatus.Closed, It.IsAny<CancellationToken>()))
@@ -119,7 +119,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCaseAsync_NotFound_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var id = Guid.NewGuid();
             _ = cases.Setup(c => c.GetAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ForensicCase?)null);
@@ -132,7 +132,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCaseAsync_Found_ReturnsCaseWithDeviceIds()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             ForensicCase @case = CreateForensicCase();
             var deviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
             _ = cases.Setup(c => c.GetAsync(@case.Id, It.IsAny<CancellationToken>()))
@@ -154,7 +154,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCaseByNumberAsync_NotFound_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             _ = cases.Setup(c => c.GetByNumberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ForensicCase?)null);
 
@@ -166,7 +166,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCaseByNumberAsync_Found_ReturnsCaseWithDeviceIds()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             ForensicCase @case = CreateForensicCase();
             var deviceIds = new List<Guid> { Guid.NewGuid() };
             _ = cases.Setup(c => c.GetByNumberAsync(@case.CaseNumber, It.IsAny<CancellationToken>()))
@@ -187,7 +187,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCaseDevicesAsync_ReturnsDeviceIds()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var caseId = Guid.NewGuid();
             var deviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
             _ = cases.Setup(c => c.GetDeviceIdsAsync(caseId, It.IsAny<CancellationToken>()))
@@ -216,7 +216,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetCaseItemsAsync_WithIncludeRemoved_ReturnsItems()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var caseId = Guid.NewGuid();
             CaseItem item1 = CreateCaseItem(caseId: caseId);
             CaseItem item2 = CreateCaseItem(caseId: caseId);
@@ -237,7 +237,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListCasesContainingAsync_MissingParameters_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
 
             IResult result = await CaseEndpoints.ListCasesContainingAsync(null, null, cases.Object, CancellationToken.None);
 
@@ -247,7 +247,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListCasesContainingAsync_InvalidKind_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
 
             IResult result = await CaseEndpoints.ListCasesContainingAsync("InvalidKind", Guid.NewGuid(), cases.Object, CancellationToken.None);
 
@@ -257,7 +257,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListCasesContainingAsync_ValidParameters_ReturnsCases()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var targetId = Guid.NewGuid();
             ForensicCase @case = CreateForensicCase();
             _ = cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, targetId, It.IsAny<CancellationToken>()))
@@ -276,7 +276,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
             var context = new DefaultHttpContext();
 
@@ -288,7 +288,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_NullCaseNumber_PassesNullToRepository()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             ForensicCase @case = CreateForensicCase();
             var request = new CreateCaseRequestDto(null, "Test", null, null, null, null, []);
@@ -325,7 +325,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_EmptyStringCaseNumber_PassesEmptyToRepository()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             ForensicCase @case = CreateForensicCase();
             var request = new CreateCaseRequestDto(string.Empty, "Test", null, null, null, null, []);
@@ -362,7 +362,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_ExplicitCaseNumber_PassesThroughExactly()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             ForensicCase @case = CreateForensicCase();
             var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
@@ -399,7 +399,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_CaseNumberTooLong_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             string longNumber = new('A', 65);
             var request = new CreateCaseRequestDto(longNumber, "Test", null, null, null, null, []);
@@ -413,7 +413,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_EmptyTitle_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new CreateCaseRequestDto("CASE-001", string.Empty, null, null, null, null, []);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -426,7 +426,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_InvalidScopeRange_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             DateTime from = DateTime.UtcNow.AddDays(1);
             DateTime to = DateTime.UtcNow;
@@ -441,7 +441,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_DuplicateCaseNumber_ReturnsConflict()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
             _ = cases.Setup(c => c.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
@@ -458,7 +458,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateCaseAsync_Success_ReturnsCreated()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             ForensicCase @case = CreateForensicCase();
             var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
@@ -486,7 +486,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task UpdateCaseDetailsAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var request = new UpdateCaseDetailsRequestDto("New Title", null, null);
             var context = new DefaultHttpContext();
 
@@ -498,7 +498,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task UpdateCaseDetailsAsync_EmptyTitle_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new UpdateCaseDetailsRequestDto(string.Empty, null, null);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -511,7 +511,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task UpdateCaseDetailsAsync_Success_ReturnsNoContent()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             var request = new UpdateCaseDetailsRequestDto("New Title", "New Description", null);
@@ -531,7 +531,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetCaseScopeAsync_InvalidScopeRange_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             DateTime from = DateTime.UtcNow.AddDays(1);
             DateTime to = DateTime.UtcNow;
@@ -546,7 +546,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetCaseScopeAsync_Success_ReturnsNoContent()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             var request = new SetCaseScopeRequestDto(DateTime.UtcNow, DateTime.UtcNow.AddDays(1), [Guid.NewGuid()]);
@@ -566,7 +566,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task AddCaseItemAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var request = new AddCaseItemRequestDto("Media", Guid.NewGuid(), "Test reason");
             var context = new DefaultHttpContext();
 
@@ -578,7 +578,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task AddCaseItemAsync_EmptyReason_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new AddCaseItemRequestDto("Media", Guid.NewGuid(), string.Empty);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -591,7 +591,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task AddCaseItemAsync_InvalidKind_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new AddCaseItemRequestDto("InvalidKind", Guid.NewGuid(), "Test reason");
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -604,7 +604,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task AddCaseItemAsync_Success_ReturnsCreated()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             CaseItem item = CreateCaseItem(caseId: caseId);
@@ -626,7 +626,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task RemoveCaseItemAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var request = new RemoveCaseItemRequestDto("No longer relevant");
             var context = new DefaultHttpContext();
 
@@ -638,7 +638,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task RemoveCaseItemAsync_EmptyReason_ReturnsBadRequest()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new RemoveCaseItemRequestDto(string.Empty);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -651,7 +651,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task RemoveCaseItemAsync_Success_ReturnsNoContent()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var itemId = Guid.NewGuid();
             var request = new RemoveCaseItemRequestDto("No longer relevant");
@@ -671,7 +671,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CloseCaseAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.CloseCaseAsync(Guid.NewGuid(), cases.Object, context, CancellationToken.None);
@@ -682,7 +682,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CloseCaseAsync_AlreadyClosed_ReturnsConflict()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             _ = cases.Setup(c => c.CloseAsync(caseId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -697,7 +697,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CloseCaseAsync_Success_ReturnsNoContent()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             _ = cases.Setup(c => c.CloseAsync(caseId, operatorId.ToString(), It.IsAny<CancellationToken>()))
@@ -716,7 +716,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ReopenCaseAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.ReopenCaseAsync(Guid.NewGuid(), cases.Object, context, CancellationToken.None);
@@ -727,7 +727,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task UpdateCaseDetailsAsync_MissingCase_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new UpdateCaseDetailsRequestDto("New Title", null, null);
             _ = cases.Setup(c => c.UpdateDetailsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -742,7 +742,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetCaseScopeAsync_MissingCase_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new SetCaseScopeRequestDto(null, null, []);
             _ = cases.Setup(c => c.SetScopeAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -757,7 +757,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task AddCaseItemAsync_MissingCase_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new AddCaseItemRequestDto("Event", Guid.NewGuid(), "Test reason");
             _ = cases.Setup(c => c.AddItemAsync(It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -772,7 +772,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task AddCaseItemAsync_MissingMediaItem_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var mediaItemId = Guid.NewGuid();
             var request = new AddCaseItemRequestDto("Media", mediaItemId, "Test reason");
@@ -788,7 +788,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CloseCaseAsync_MissingCase_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             _ = cases.Setup(c => c.CloseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new KeyNotFoundException("Case not found."));
@@ -802,7 +802,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ReopenCaseAsync_MissingCase_ReturnsNotFound()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             _ = cases.Setup(c => c.ReopenAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new KeyNotFoundException("Case not found."));
@@ -816,7 +816,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ReopenCaseAsync_Success_ReturnsNoContent()
         {
-            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            (Mock<ICaseWriteRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             _ = cases.Setup(c => c.ReopenAsync(caseId, operatorId.ToString(), It.IsAny<CancellationToken>()))

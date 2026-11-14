@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts.Repositories;
+
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
@@ -537,7 +539,7 @@ public class ReviewPage_Tests : ReviewTestContext
         AddDevices(2);
         var caseRepository = new Mock<ICaseRepository>();
         var unknown = Guid.NewGuid();
-        _ = caseRepository.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        _ = caseRepository.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCaseDto?)null);
         CaseRepositoryDouble = caseRepository.Object;
         NavigateToReview("reviewcase=" + unknown.ToString("D"));
 

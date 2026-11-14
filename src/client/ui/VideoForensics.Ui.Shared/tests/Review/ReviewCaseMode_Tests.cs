@@ -59,22 +59,22 @@ public class ReviewCaseMode_Tests
         return evt;
     }
 
-    private static CaseItem MediaPin(Guid caseId, Guid mediaId, DateTime addedUtc)
+    private static CaseItemDto MediaPin(Guid caseId, Guid mediaId, DateTime addedUtc)
     {
-        return new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = mediaId, Reason = "r", AddedBy = "op", AddedAtUtc = addedUtc };
+        return new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Media.ToString(), mediaId, "r", "op", addedUtc, null, null, null, null);
     }
 
-    private static CaseItem EventPin(Guid caseId, Guid eventId, DateTime addedUtc)
+    private static CaseItemDto EventPin(Guid caseId, Guid eventId, DateTime addedUtc)
     {
-        return new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = eventId, Reason = "r", AddedBy = "op", AddedAtUtc = addedUtc };
+        return new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Event.ToString(), eventId, "r", "op", addedUtc, null, null, null, null);
     }
 
-    private Guid SetCase(string title, IReadOnlyList<CaseItem> pins)
+    private Guid SetCase(string title, IReadOnlyList<CaseItemDto> pins)
     {
         var caseId = Guid.NewGuid();
         _ = _cases
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = title, CreatedBy = "op" });
+            .ReturnsAsync(new ForensicCaseDto(caseId, "CASE-1", title, null, CaseStatusDto.Open.ToString(), null, "op", DateTime.UtcNow, DateTime.UtcNow, null, null, null, null, []));
         _ = _cases
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pins);
@@ -198,7 +198,7 @@ public class ReviewCaseMode_Tests
     {
         // Arrange
         var unknown = Guid.NewGuid();
-        _ = _cases.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        _ = _cases.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCaseDto?)null);
         ReviewCaseMode mode = Create();
 
         // Act
@@ -238,7 +238,7 @@ public class ReviewCaseMode_Tests
     {
         // Arrange: pins are added one minute apart, so pin 0 is the oldest
         var device = Guid.NewGuid();
-        var pins = new List<CaseItem>();
+        var pins = new List<CaseItemDto>();
         var caseId = Guid.NewGuid();
         for (int i = 0; i <= ReviewCaseMode.MaxItemsPerKind; i++)
         {
@@ -248,7 +248,7 @@ public class ReviewCaseMode_Tests
 
         _ = _cases
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = "Big", CreatedBy = "op" });
+            .ReturnsAsync(new ForensicCaseDto(caseId, "CASE-1", "Big", null, CaseStatusDto.Open.ToString(), null, "op", DateTime.UtcNow, DateTime.UtcNow, null, null, null, null, []));
         _ = _cases
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pins);
@@ -260,8 +260,8 @@ public class ReviewCaseMode_Tests
         // Assert
         Assert.Equal(ReviewCaseMode.MaxItemsPerKind, mode.MediaItems.Count);
         Assert.True(mode.Truncated);
-        Assert.DoesNotContain(pins[0].MediaItemId!.Value, mode.MediaItemIds);
-        Assert.Contains(pins[^1].MediaItemId!.Value, mode.MediaItemIds);
+        Assert.DoesNotContain(pins[0].TargetId, mode.MediaItemIds);
+        Assert.Contains(pins[^1].TargetId, mode.MediaItemIds);
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public class ReviewCaseMode_Tests
         // Arrange
         var device = Guid.NewGuid();
         var caseId = Guid.NewGuid();
-        var pins = new List<CaseItem>();
+        var pins = new List<CaseItemDto>();
         for (int i = 0; i < ReviewCaseMode.MaxItemsPerKind; i++)
         {
             MediaItem clip = AddMedia(device, Now.AddMinutes(i), 10);
@@ -279,7 +279,7 @@ public class ReviewCaseMode_Tests
 
         _ = _cases
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = "Full", CreatedBy = "op" });
+            .ReturnsAsync(new ForensicCaseDto(caseId, "CASE-1", "Full", null, CaseStatusDto.Open.ToString(), null, "op", DateTime.UtcNow, DateTime.UtcNow, null, null, null, null, []));
         _ = _cases
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pins);
@@ -367,7 +367,7 @@ public class ReviewCaseMode_Tests
         MediaItem clip = AddMedia(device, Now.AddHours(-1), 60);
         Guid known = SetCase("Known", [MediaPin(Guid.Empty, clip.Id, Now)]);
         var unknown = Guid.NewGuid();
-        _ = _cases.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        _ = _cases.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCaseDto?)null);
         ReviewCaseMode mode = Create();
         _ = await mode.EnterAsync(known, CancellationToken.None);
 

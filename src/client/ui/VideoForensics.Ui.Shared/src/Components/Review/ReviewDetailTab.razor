@@ -40,7 +40,7 @@
             else
             {
                 <div class="list-group">
-                    @foreach (JammingIncidentRecord incident in _jamming.Items)
+                    @foreach (JammingIncidentDto incident in _jamming.Items)
                     {
                         <button type="button" class="list-group-item list-group-item-action d-flex flex-wrap gap-2 align-items-center"
                                 data-testid="review-detail-jamming-row" @onclick="() => NavigateTo(incident.DeviceId, incident.StartUtc)">
@@ -326,7 +326,7 @@
     private bool _disposed;
     private readonly CancellationTokenSource _disposeCts = new();
 
-    private Loaded<JammingIncidentRecord>? _jamming;
+    private Loaded<JammingIncidentDto>? _jamming;
     private bool _jammingError;
     private CancellationTokenSource? _jammingCts;
 
@@ -464,13 +464,13 @@
 
         try
         {
-            IReadOnlyList<JammingIncidentRecord> rows = await DetailLoader.LoadJammingAsync(key.Cameras, key.FromUtc, key.ToUtc, ct);
+            IReadOnlyList<JammingIncidentDto> rows = await DetailLoader.LoadJammingAsync(key.Cameras, key.FromUtc, key.ToUtc, ct);
             if (!IsCurrent(cts))
             {
                 return;
             }
 
-            _jamming = new Loaded<JammingIncidentRecord>(key, rows);
+            _jamming = new Loaded<JammingIncidentDto>(key, rows);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -901,9 +901,9 @@
         return ReviewEventLabels.DetectionLabel(L, detectionType, eventType);
     }
 
-    private string ConfidenceLabel(JammingConfidenceLevel level)
+    private string ConfidenceLabel(string level)
     {
-        return L["JammingConfidence_" + level.ToString()].Value;
+        return L["JammingConfidence_" + level].Value;
     }
 
     private string LevelLabel(SignalDeviationLevel level)

@@ -72,8 +72,8 @@ public class BitrateReview_Tests : BunitContext
         _ = _notes.Setup(n => n.ListAsync(NoteTargetKind.MediaFlag, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
         _ = Services.AddScoped<RightPanelContentService>();
 
-        _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
-        _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
+        _ = _cases.Setup(c => c.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCaseDto>());
+        _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKindDto.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCaseDto>());
         _ = _devices.Setup(d => d.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((VideoForensics.Core.Api.Contracts.DeviceDto?)null);
         _ = _analysis.Setup(a => a.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new BitrateAnalysis([]));

@@ -122,8 +122,8 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
         (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail>());
 
     /// <summary>Produces the jamming incidents for a call. Defaults to none.</summary>
-    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<JammingIncidentRecord>>> JammingResponder { get; set; } =
-        (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([]);
+    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<JammingIncidentDto>>> JammingResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([]);
 
     /// <summary>Produces the anomalies for a call. Defaults to none.</summary>
     public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<ReviewAnomaly>>> AnomalyResponder { get; set; } =
@@ -149,7 +149,7 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    public Task<IReadOnlyList<JammingIncidentDto>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         var call = new WindowLoadCall(deviceIds.ToList(), fromUtc, toUtc);
         _jammingCalls.Add(call);

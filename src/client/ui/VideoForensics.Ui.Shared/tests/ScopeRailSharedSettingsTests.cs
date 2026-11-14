@@ -5,6 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
+
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
@@ -101,7 +104,7 @@ public class ScopeRail_SharedSettings_Tests : ScopeRailTestContext
     {
         // Arrange
         _ = RegisterDeviceRepository();
-        ForensicCase savedCase = MakeCase();
+        ForensicCaseDto savedCase = MakeCase();
         Mock<ICaseRepository> caseRepository = RegisterCaseRepository(savedCase);
         _ = caseRepository.Setup(r => r.GetAsync(savedCase.Id, It.IsAny<CancellationToken>())).ReturnsAsync(savedCase);
         _ = caseRepository.Setup(r => r.GetDeviceIdsAsync(savedCase.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);

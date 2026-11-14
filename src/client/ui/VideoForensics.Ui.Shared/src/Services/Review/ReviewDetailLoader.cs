@@ -50,13 +50,13 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
 
     /// <inheritdoc />
     /// <remarks>The repository filters one camera at a time, so each camera is one query and the results are merged here.</remarks>
-    public async Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    public async Task<IReadOnlyList<JammingIncidentDto>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
-        var merged = new List<JammingIncidentRecord>();
+        var merged = new List<JammingIncidentDto>();
         foreach (Guid device in deviceIds.Distinct())
         {
-            IReadOnlyList<JammingIncidentRecord> rows = await _jamming.ListIncidentsAsync(device, fromUtc, toUtc, ct);
-            merged.AddRange(rows);
+            var rows = await _jamming.ListIncidentsAsync(device, fromUtc, toUtc, ct);
+            merged.AddRange(rows.Select(row => row.ToDto()));
         }
 
         return merged.OrderByDescending(incident => incident.StartUtc).ToList();

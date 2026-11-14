@@ -2,8 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
@@ -13,7 +12,7 @@ namespace VideoForensics.Client.Hosting.Remote
     /// implementation of the "thin client talks to a server API" half of the client/server split.
     ///
     /// All methods delegate to the server's case endpoints, which enforce role-based authorization
-    /// for write operations.
+    /// for write operations. Responses are deserialized straight into DTOs; no entity conversion happens here.
     ///
     /// Note: The actor string parameters (createdBy, updatedBy, etc.) are ignored client-side;
     /// the server takes the actor from the paired-device bearer token. These parameters are kept
@@ -31,7 +30,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<ForensicCase> CreateAsync(
+        public async Task<ForensicCaseDto> CreateAsync(
             string? caseNumber,
             string title,
             string? description,
@@ -46,22 +45,22 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/cases", request, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();
             ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
 
         /// <inheritdoc />
-        public async Task<ForensicCase> CreateFromJammingDetectionAsync(
-            JammingIncidentRecord jammingIncident,
+        public async Task<ForensicCaseDto> CreateFromJammingDetectionAsync(
+            JammingIncidentDto jammingIncident,
             CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/cases/from-jamming-detection", jammingIncident, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();
             ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
 
         /// <inheritdoc />
-        public async Task<ForensicCase?> GetAsync(Guid id, CancellationToken ct)
+        public async Task<ForensicCaseDto?> GetAsync(Guid id, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/{id}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -70,12 +69,11 @@ namespace VideoForensics.Client.Hosting.Remote
             }
 
             _ = response.EnsureSuccessStatusCode();
-            ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        public async Task<ForensicCase?> GetByNumberAsync(string caseNumber, CancellationToken ct)
+        public async Task<ForensicCaseDto?> GetByNumberAsync(string caseNumber, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/by-number/{Uri.EscapeDataString(caseNumber)}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -84,12 +82,11 @@ namespace VideoForensics.Client.Hosting.Remote
             }
 
             _ = response.EnsureSuccessStatusCode();
-            ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ForensicCase>> ListAsync(CaseStatus? status, CancellationToken ct)
+        public async Task<IReadOnlyList<ForensicCaseDto>> ListAsync(CaseStatusDto? status, CancellationToken ct)
         {
             string url = "/api/v1/cases";
             if (status.HasValue)
@@ -100,21 +97,35 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
             _ = response.EnsureSuccessStatusCode();
             List<ForensicCaseDto>? dtos = await response.Content.ReadFromJsonAsync<List<ForensicCaseDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <summary>
         /// Calls the account-scoped case route. The server returns <see cref="AccountCaseDto"/> rows, which carry only
-        /// the list-view fields, so the returned entities leave CreatedBy empty, UpdatedAtUtc equal to CreatedAtUtc,
-        /// and Description, LeadOperatorId, and ClosedBy/ClosedAtUtc unset. Callers needing full details must call GetAsync.
+        /// the list-view fields, so each returned <see cref="ForensicCaseDto"/> leaves CreatedBy empty, UpdatedAtUtc equal to CreatedAtUtc,
+        /// and Description, LeadOperatorId, ScopeToUtc, DeviceIds, and ClosedBy/ClosedAtUtc unset. Callers needing full details must call GetAsync.
         /// </summary>
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ForensicCase>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct)
+        public async Task<IReadOnlyList<ForensicCaseDto>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/{providerAccountId}/cases", ct);
             _ = response.EnsureSuccessStatusCode();
             List<AccountCaseDto>? dtos = await response.Content.ReadFromJsonAsync<List<AccountCaseDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return (dtos ?? []).Select(x => new ForensicCaseDto(
+                Id: x.Id,
+                CaseNumber: x.CaseNumber,
+                Title: x.Title,
+                Description: null,
+                Status: x.Status,
+                LeadOperatorId: null,
+                CreatedBy: string.Empty,
+                CreatedAtUtc: x.CreatedAtUtc,
+                UpdatedAtUtc: x.CreatedAtUtc,
+                ClosedBy: null,
+                ClosedAtUtc: null,
+                ScopeFromUtc: x.ScopeFromUtc,
+                ScopeToUtc: null,
+                DeviceIds: Array.Empty<Guid>())).ToList();
         }
 
         /// <inheritdoc />
@@ -217,9 +228,9 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<CaseItem> AddItemAsync(
+        public async Task<CaseItemDto> AddItemAsync(
             Guid caseId,
-            CaseItemKind kind,
+            CaseItemKindDto kind,
             Guid targetId,
             string reason,
             string addedBy,
@@ -241,7 +252,7 @@ namespace VideoForensics.Client.Hosting.Remote
 
             _ = response.EnsureSuccessStatusCode();
             CaseItemDto? dto = await response.Content.ReadFromJsonAsync<CaseItemDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
 
         /// <inheritdoc />
@@ -260,23 +271,23 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<CaseItem>> ListItemsAsync(Guid caseId, bool includeRemoved, CancellationToken ct)
+        public async Task<IReadOnlyList<CaseItemDto>> ListItemsAsync(Guid caseId, bool includeRemoved, CancellationToken ct)
         {
             string url = $"/api/v1/cases/{caseId}/items?includeRemoved={includeRemoved}";
             HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
             _ = response.EnsureSuccessStatusCode();
             List<CaseItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<CaseItemDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ForensicCase>> ListCasesContainingAsync(CaseItemKind kind, Guid targetId, CancellationToken ct)
+        public async Task<IReadOnlyList<ForensicCaseDto>> ListCasesContainingAsync(CaseItemKindDto kind, Guid targetId, CancellationToken ct)
         {
             string url = $"/api/v1/cases/containing?kind={kind}&targetId={targetId}";
             HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
             _ = response.EnsureSuccessStatusCode();
             List<ForensicCaseDto>? dtos = await response.Content.ReadFromJsonAsync<List<ForensicCaseDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
     }
 }

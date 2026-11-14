@@ -111,7 +111,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for GET /</summary>
         public static async Task<IResult> GetCasesAsync(
             string? status,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             CancellationToken ct)
         {
             CaseStatus? statusFilter = null;
@@ -127,7 +127,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for GET /{id:guid}</summary>
         public static async Task<IResult> GetCaseAsync(
             Guid id,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             CancellationToken ct)
         {
             ForensicCase? @case = await cases.GetAsync(id, ct);
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for GET /by-number/{caseNumber}</summary>
         public static async Task<IResult> GetCaseByNumberAsync(
             string caseNumber,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             CancellationToken ct)
         {
             ForensicCase? @case = await cases.GetByNumberAsync(caseNumber, ct);
@@ -159,7 +159,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for GET /{id:guid}/devices</summary>
         public static async Task<IResult> GetCaseDevicesAsync(
             Guid id,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             CancellationToken ct)
         {
             IReadOnlyList<Guid> deviceIds = await cases.GetDeviceIdsAsync(id, ct);
@@ -170,12 +170,12 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> GetCaseItemsAsync(
             Guid id,
             bool includeRemoved = false,
-            ICaseRepository? cases = null,
+            ICaseWriteRepository? cases = null,
             CancellationToken ct = default)
         {
             if (cases == null)
             {
-                return Results.BadRequest("ICaseRepository not provided");
+                return Results.BadRequest("ICaseWriteRepository not provided");
             }
 
             IReadOnlyList<CaseItem> items = await cases.ListItemsAsync(id, includeRemoved, ct);
@@ -186,7 +186,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> ListCasesContainingAsync(
             string? kind,
             Guid? targetId,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(kind) || !targetId.HasValue)
@@ -207,7 +207,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for POST /</summary>
         public static async Task<IResult> CreateCaseAsync(
             CreateCaseRequestDto request,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {
@@ -265,7 +265,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> UpdateCaseDetailsAsync(
             Guid id,
             UpdateCaseDetailsRequestDto request,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {
@@ -305,7 +305,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> SetCaseScopeAsync(
             Guid id,
             SetCaseScopeRequestDto request,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {
@@ -340,7 +340,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> AddCaseItemAsync(
             Guid id,
             AddCaseItemRequestDto request,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {
@@ -385,7 +385,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> RemoveCaseItemAsync(
             Guid itemId,
             RemoveCaseItemRequestDto request,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {
@@ -458,7 +458,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for POST /{id:guid}/close</summary>
         public static async Task<IResult> CloseCaseAsync(
             Guid id,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {
@@ -486,7 +486,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Handler for POST /{id:guid}/reopen</summary>
         public static async Task<IResult> ReopenCaseAsync(
             Guid id,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             HttpContext context,
             CancellationToken ct)
         {

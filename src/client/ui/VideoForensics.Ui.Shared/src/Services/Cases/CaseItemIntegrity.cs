@@ -32,10 +32,10 @@ public static class CaseItemIntegrity
     /// Media items with null current media return MediaMissing.
     /// Media items with matching SHA256 (case-insensitive) return Match; otherwise Mismatch.
     /// </summary>
-    public static PinIntegrity Compare(CaseItem item, MediaItemDto? currentMedia)
+    public static PinIntegrity Compare(CaseItemDto item, MediaItemDto? currentMedia)
     {
         // Event and snapshot items have no hash to compare
-        if (item.Kind is CaseItemKind.Event or CaseItemKind.Snapshot)
+        if (item.Kind is nameof(CaseItemKindDto.Event) or nameof(CaseItemKindDto.Snapshot))
         {
             return PinIntegrity.NotApplicable;
         }

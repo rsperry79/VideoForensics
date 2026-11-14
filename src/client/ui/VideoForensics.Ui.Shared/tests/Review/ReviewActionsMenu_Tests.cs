@@ -18,7 +18,7 @@ using VideoForensics.Client.Ui.Shared.Services.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
+using VideoForensics.Core.Api.Contracts;using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
@@ -148,7 +148,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Assert
         PendingTag tag = Assert.Single(Services.GetRequiredService<PendingEvidenceTags>().Items);
-        Assert.Equal(CaseItemKind.Event, tag.Kind);
+        Assert.Equal(CaseItemKindDto.Event, tag.Kind);
         Assert.Equal(_eventId, tag.TargetId);
         Assert.Equal(_deviceId, tag.DeviceId);
         Assert.Equal(L["TagDefaultReason"].Value, tag.Reason);
@@ -167,7 +167,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Assert
         PendingTag tag = Assert.Single(Services.GetRequiredService<PendingEvidenceTags>().Items);
-        Assert.Equal(CaseItemKind.Media, tag.Kind);
+        Assert.Equal(CaseItemKindDto.Media, tag.Kind);
         Assert.Equal(_clipId, tag.TargetId);
     }
 
@@ -192,7 +192,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     {
         // Arrange
         SelectClipAtCursor();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var pinned = new List<Guid>();
         CaseRepositoryDouble = PendingTagFakes.CreateRepository(openCase, pinnedTargets: pinned).Object;
         _ = await Services.GetRequiredService<CaseState>().ActivateAsync(openCase.Id, CancellationToken.None);
@@ -212,19 +212,10 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     {
         // Arrange
         SelectClipAtCursor();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var existing = new List<CaseItem>
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
+        var existing = new List<CaseItemDto>
         {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CaseId = openCase.Id,
-                Kind = CaseItemKind.Media,
-                MediaItemId = _clipId,
-                Reason = PendingTagFakes.Reason,
-                AddedBy = "test",
-                AddedAtUtc = FixedNowUtc,
-            },
+            new CaseItemDto(Guid.NewGuid(), openCase.Id, CaseItemKindDto.Media.ToString(), _clipId, PendingTagFakes.Reason, "test", FixedNowUtc, null, null, null, null),
         };
         var pinned = new List<Guid>();
         CaseRepositoryDouble = PendingTagFakes.CreateRepository(openCase, existingItems: existing, pinnedTargets: pinned).Object;
@@ -244,7 +235,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     {
         // Arrange
         SelectClipAtCursor();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         CaseRepositoryDouble = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { _clipId }).Object;
         _ = await Services.GetRequiredService<CaseState>().ActivateAsync(openCase.Id, CancellationToken.None);
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();

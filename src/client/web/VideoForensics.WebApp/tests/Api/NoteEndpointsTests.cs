@@ -54,7 +54,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var incidentId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -78,7 +78,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var flagId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -102,7 +102,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var incidentId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -123,7 +123,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var flagId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task NoteEndpoints_AddWithUnknownKind_ReturnsBadRequest()
         {
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -161,7 +161,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task NoteEndpoints_AddWithNumericKind_ReturnsBadRequest()
         {
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -179,7 +179,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task NoteEndpoints_AddWithMissingOperatorClaim_ReturnsUnauthorized()
         {
             var incidentId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -200,7 +200,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var caseId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -221,7 +221,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task NoteEndpoints_ListForUnknownIncident_ReturnsNotFound()
         {
             var incidentId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
@@ -239,7 +239,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task NoteEndpoints_ListForKnownIncident_ReturnsOkWithNotes()
         {
             var incidentId = Guid.NewGuid();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             var jamming = new Mock<IJammingRepository>();
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();

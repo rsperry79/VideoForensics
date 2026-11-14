@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Inspector
@@ -10,7 +11,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Inspector
     /// <summary>
     /// Represents a pinning target (event or media item) that can be pinned to a case.
     /// </summary>
-    public sealed record PinTarget(CaseItemKind Kind, Guid TargetId);
+    public sealed record PinTarget(CaseItemKindDto Kind, Guid TargetId);
 
     /// <summary>
     /// Evidence-management actions available for the inspected item: legal hold placement/release,

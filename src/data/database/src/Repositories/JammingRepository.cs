@@ -12,10 +12,10 @@ namespace VideoForensics.Data.Database.Repositories
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<JammingRepository> _logger;
-        private readonly ICaseRepository? _caseRepository;
+        private readonly ICaseWriteRepository? _caseRepository;
 
         /// <summary>Initializes a new instance of the JammingRepository.</summary>
-        public JammingRepository(IUnitOfWork unitOfWork, ILogger<JammingRepository> logger, ICaseRepository? caseRepository = null)
+        public JammingRepository(IUnitOfWork unitOfWork, ILogger<JammingRepository> logger, ICaseWriteRepository? caseRepository = null)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;

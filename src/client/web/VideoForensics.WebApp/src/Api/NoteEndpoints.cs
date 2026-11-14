@@ -36,7 +36,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> ListNotesAsync(
             string kind,
             Guid targetId,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             IJammingRepository jamming,
             IMediaFlagWriteRepository flags,
             INoteRepository notes,
@@ -61,7 +61,7 @@ namespace VideoForensics.Client.WebApp.Api
             string kind,
             Guid targetId,
             AddNoteRequest request,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             IJammingRepository jamming,
             IMediaFlagWriteRepository flags,
             INoteRepository notes,
@@ -118,7 +118,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<bool> TargetExistsAsync(
             NoteTargetKind kind,
             Guid targetId,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             IJammingRepository jamming,
             IMediaFlagWriteRepository flags,
             CancellationToken ct)

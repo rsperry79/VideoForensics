@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for forensic cases with chain-of-custody logging for all mutations.</summary>
-    public interface ICaseRepository
+    public interface ICaseWriteRepository
     {
         /// <summary>
         /// Creates a new forensic case with optional scope and device set. If caseNumber is null or empty, a unique case number is auto-generated with the "manual-" prefix.

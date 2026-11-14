@@ -148,26 +148,29 @@ public abstract class CasesPagesTestBase : BunitContext
         return session;
     }
 
-    protected static ForensicCase CreateTestCase(
+    protected static ForensicCaseDto CreateTestCase(
         Guid? id = null,
         string caseNumber = "CASE-001",
         string title = "Test Case",
-        CaseStatus status = CaseStatus.Open,
+        CaseStatusDto status = CaseStatusDto.Open,
         DateTime? scopeFromUtc = null,
         DateTime? scopeToUtc = null)
     {
-        return new ForensicCase
-        {
-            Id = id ?? Guid.NewGuid(),
-            CaseNumber = caseNumber,
-            Title = title,
-            Status = status,
-            ScopeFromUtc = scopeFromUtc,
-            ScopeToUtc = scopeToUtc,
-            CreatedBy = TestOperatorId.ToString(),
-            CreatedAtUtc = FixedNowUtc,
-            UpdatedAtUtc = FixedNowUtc
-        };
+        return new ForensicCaseDto(
+            Id: id ?? Guid.NewGuid(),
+            CaseNumber: caseNumber,
+            Title: title,
+            Description: null,
+            Status: status.ToString(),
+            LeadOperatorId: null,
+            CreatedBy: TestOperatorId.ToString(),
+            CreatedAtUtc: FixedNowUtc,
+            UpdatedAtUtc: FixedNowUtc,
+            ClosedBy: null,
+            ClosedAtUtc: null,
+            ScopeFromUtc: scopeFromUtc,
+            ScopeToUtc: scopeToUtc,
+            DeviceIds: []);
     }
 
     protected static Device CreateTestDevice(Guid? id = null, string name = "Test Device")
@@ -211,33 +214,14 @@ public abstract class CasesPagesTestBase : BunitContext
         };
     }
 
-    protected static CaseItem CreateEventPin(Guid caseId, Guid eventId, string reason = "Suspected incident")
+    protected static CaseItemDto CreateEventPin(Guid caseId, Guid eventId, string reason = "Suspected incident")
     {
-        return new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            CaseId = caseId,
-            Kind = CaseItemKind.Event,
-            EventId = eventId,
-            Reason = reason,
-            AddedBy = TestOperatorId.ToString(),
-            AddedAtUtc = FixedNowUtc
-        };
+        return new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Event.ToString(), eventId, reason, TestOperatorId.ToString(), FixedNowUtc, null, null, null, null);
     }
 
-    protected static CaseItem CreateMediaPin(Guid caseId, Guid mediaId, string shaAtAdd, string reason = "Evidence video")
+    protected static CaseItemDto CreateMediaPin(Guid caseId, Guid mediaId, string shaAtAdd, string reason = "Evidence video")
     {
-        return new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            CaseId = caseId,
-            Kind = CaseItemKind.Media,
-            MediaItemId = mediaId,
-            MediaSha256AtAdd = shaAtAdd,
-            Reason = reason,
-            AddedBy = TestOperatorId.ToString(),
-            AddedAtUtc = FixedNowUtc
-        };
+        return new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Media.ToString(), mediaId, reason, TestOperatorId.ToString(), FixedNowUtc, shaAtAdd, null, null, null);
     }
 }
 
@@ -246,7 +230,7 @@ public class CasesPage_Tests : CasesPagesTestBase
 {
     public CasesPage_Tests()
     {
-        RegisterGridStub<ForensicCase>();
+        RegisterGridStub<ForensicCaseDto>();
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped<LeftPanelContentService>();
     }
@@ -264,26 +248,26 @@ public class CasesPage_Tests : CasesPagesTestBase
         return slot.Content!;
     }
 
-    private static IEnumerable<ForensicCase> GridData(IRenderedComponent<Cases> component)
+    private static IEnumerable<ForensicCaseDto> GridData(IRenderedComponent<Cases> component)
     {
-        return Assert.IsAssignableFrom<IEnumerable<ForensicCase>>(
-            component.FindComponent<ForensicGrid<ForensicCase>>().Instance.DataSource);
+        return Assert.IsAssignableFrom<IEnumerable<ForensicCaseDto>>(
+            component.FindComponent<ForensicGrid<ForensicCaseDto>>().Instance.DataSource);
     }
 
     [Fact]
     public void DefaultLoad_CallsListAsyncOpen_RendersBothCaseNumbers()
     {
-        ForensicCase openCase1 = CreateTestCase(caseNumber: "CASE-001", status: CaseStatus.Open);
-        ForensicCase openCase2 = CreateTestCase(caseNumber: "CASE-002", status: CaseStatus.Open);
+        ForensicCaseDto openCase1 = CreateTestCase(caseNumber: "CASE-001", status: CaseStatusDto.Open);
+        ForensicCaseDto openCase2 = CreateTestCase(caseNumber: "CASE-002", status: CaseStatusDto.Open);
 
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { openCase1, openCase2 });
 
         IRenderedComponent<Cases> component = RenderPage();
 
         // ScopeRail now lives in the right-panel slot, which the page render does not draw, so only the page loads.
-        CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()), Times.Once);
+        CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()), Times.Once);
 
         var cases = GridData(component).ToList();
         Assert.Equal(2, cases.Count);
@@ -295,8 +279,8 @@ public class CasesPage_Tests : CasesPagesTestBase
     public void Cases_RendersScopeFilter_InRightPanelSlot_NotInLeftPanel()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { CreateTestCase(caseNumber: "CASE-001", status: CaseStatus.Open) });
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { CreateTestCase(caseNumber: "CASE-001", status: CaseStatusDto.Open) });
 
         IRenderedComponent<Cases> component = RenderPage();
 
@@ -314,7 +298,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     public void StatusFilter_RendersInPageBody_NotInRightPanel()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         IRenderedComponent<Cases> component = RenderPage();
@@ -329,7 +313,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     public void StatusFilter_InPageBody_HasLocalizedLabel()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         IRenderedComponent<Cases> component = RenderPage();
@@ -340,11 +324,11 @@ public class CasesPage_Tests : CasesPagesTestBase
     [Fact]
     public void StatusFilterChangedToAll_InPageBody_CallsListAsyncWithNull_AndReRendersList()
     {
-        ForensicCase openCase = CreateTestCase(caseNumber: "CASE-OPEN", status: CaseStatus.Open);
-        ForensicCase closedCase = CreateTestCase(caseNumber: "CASE-CLOSED", status: CaseStatus.Closed);
+        ForensicCaseDto openCase = CreateTestCase(caseNumber: "CASE-OPEN", status: CaseStatusDto.Open);
+        ForensicCaseDto closedCase = CreateTestCase(caseNumber: "CASE-CLOSED", status: CaseStatusDto.Closed);
 
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { openCase });
         _ = CaseRepositoryMock
             .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
@@ -366,7 +350,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     public async Task ReadOnlyRole_HidesNewCaseButton()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = await RegisterRoleAsync(OperatorRole.ReadOnly);
 
@@ -379,7 +363,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     public async Task ReviewRole_ShowsNewCaseButton_AndNavigatesOnClick()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = await RegisterRoleAsync(OperatorRole.Review);
 
@@ -395,13 +379,13 @@ public class CasesPage_Tests : CasesPagesTestBase
     [Fact]
     public async Task RowSelected_NavigatesToCaseDetails()
     {
-        ForensicCase testCase = CreateTestCase();
+        ForensicCaseDto testCase = CreateTestCase();
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { testCase });
 
         IRenderedComponent<Cases> component = RenderPage();
-        IRenderedComponent<ForensicGrid<ForensicCase>> grid = component.FindComponent<ForensicGrid<ForensicCase>>();
+        IRenderedComponent<ForensicGrid<ForensicCaseDto>> grid = component.FindComponent<ForensicGrid<ForensicCaseDto>>();
 
         await component.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(testCase));
 
@@ -413,7 +397,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     public void LoadFailure_ShowsError()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("case store unreachable"));
 
         IRenderedComponent<Cases> component = RenderPage();
@@ -470,7 +454,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
         DateTime expectedFrom = ScopeState.Current.FromUtc;
         DateTime expectedTo = ScopeState.Current.ToUtc;
 
-        ForensicCase createdCase = CreateTestCase(caseNumber: "NEW-001", title: "New Investigation");
+        ForensicCaseDto createdCase = CreateTestCase(caseNumber: "NEW-001", title: "New Investigation");
 
         _ = CaseRepositoryMock
             .Setup(r => r.CreateAsync(
@@ -518,7 +502,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
         _ = await RegisterRoleAsync(OperatorRole.Review, TestOperatorId);
         ScopeState.Set(ScopeState.Current with { DeviceIds = [Guid.NewGuid()] });
 
-        ForensicCase createdCase = CreateTestCase(caseNumber: "NEW-002", title: "No Scope");
+        ForensicCaseDto createdCase = CreateTestCase(caseNumber: "NEW-002", title: "No Scope");
         _ = CaseRepositoryMock
             .Setup(r => r.CreateAsync(
                 "NEW-002", "No Scope", null, TestOperatorId,
@@ -602,11 +586,11 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public void PinnedItems_DisplayWithIntegrity_EventNotApplicable_MediaMatch()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId);
         EventDto @event = CreateTestEvent();
         MediaItem media = CreateTestMediaItem(sha256Hash: "ABC123");
-        CaseItem eventPin = CreateEventPin(caseId, @event.Id);
-        CaseItem mediaPin = CreateMediaPin(caseId, media.Id, media.Sha256Hash!);
+        CaseItemDto eventPin = CreateEventPin(caseId, @event.Id);
+        CaseItemDto mediaPin = CreateMediaPin(caseId, media.Id, media.Sha256Hash!);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -619,13 +603,13 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         List<CaseDetails.CaseItemRow> rows = GridRows(component);
 
         Assert.Equal(2, rows.Count);
-        CaseDetails.CaseItemRow eventRow = Assert.Single(rows, r => r.Kind == CaseItemKind.Event);
+        CaseDetails.CaseItemRow eventRow = Assert.Single(rows, r => r.Kind == CaseItemKindDto.Event);
         Assert.Equal(PinIntegrity.NotApplicable, eventRow.Integrity);
         // No user zone cascades here, so the page uses the machine zone.
         string expectedClock = TimeZoneInfo.ConvertTimeFromUtc(@event.OccurredAtUtc, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         Assert.Equal($"{@event.EventType} · {expectedClock}", eventRow.Label);
 
-        CaseDetails.CaseItemRow mediaRow = Assert.Single(rows, r => r.Kind == CaseItemKind.Media);
+        CaseDetails.CaseItemRow mediaRow = Assert.Single(rows, r => r.Kind == CaseItemKindDto.Media);
         Assert.Equal(PinIntegrity.Match, mediaRow.Integrity);
         Assert.Equal(media.FileName, mediaRow.Label);
     }
@@ -634,15 +618,15 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public void MediaLookupThrows_ShowsUnavailableLabel_PageStillRenders()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId, caseNumber: "CASE-XYZ");
-        CaseItem mediaPin = CreateMediaPin(caseId, Guid.NewGuid(), "ABC123");
+        ForensicCaseDto testCase = CreateTestCase(id: caseId, caseNumber: "CASE-XYZ");
+        CaseItemDto mediaPin = CreateMediaPin(caseId, Guid.NewGuid(), "ABC123");
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { mediaPin });
         _ = MediaItemRepositoryMock
-            .Setup(r => r.GetAsync(mediaPin.MediaItemId!.Value, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetAsync(mediaPin.TargetId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("media store unreachable"));
 
         IRenderedComponent<CaseDetails> component = RenderPage(caseId);
@@ -657,9 +641,9 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public void ShowRemoved_CallsListItemsAsyncWithIncludeRemovedTrue()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId);
-        CaseItem removedPin = CreateEventPin(caseId, Guid.NewGuid());
-        EventDto @event = CreateTestEvent(id: removedPin.EventId);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId);
+        CaseItemDto removedPin = CreateEventPin(caseId, Guid.NewGuid());
+        EventDto @event = CreateTestEvent(id: removedPin.TargetId);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -682,9 +666,9 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task RemoveWithReason_CallsRemoveItemAsync_ThenReloads()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId);
-        CaseItem pin = CreateEventPin(caseId, Guid.NewGuid());
-        EventDto @event = CreateTestEvent(id: pin.EventId);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId);
+        CaseItemDto pin = CreateEventPin(caseId, Guid.NewGuid());
+        EventDto @event = CreateTestEvent(id: pin.TargetId);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -716,9 +700,9 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task RemoveWithBlankReason_DoesNotCallRemoveItemAsync()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId);
-        CaseItem pin = CreateEventPin(caseId, Guid.NewGuid());
-        EventDto @event = CreateTestEvent(id: pin.EventId);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId);
+        CaseItemDto pin = CreateEventPin(caseId, Guid.NewGuid());
+        EventDto @event = CreateTestEvent(id: pin.TargetId);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock
@@ -743,7 +727,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task AdminRole_SeesCloseCaseButton()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId, status: CaseStatusDto.Open);
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
 
         _ = await RegisterRoleAsync(OperatorRole.Admin);
@@ -756,7 +740,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task ReviewRole_DoesNotSeeCloseCaseButton()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId, status: CaseStatusDto.Open);
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
 
         _ = await RegisterRoleAsync(OperatorRole.Review);
@@ -769,10 +753,10 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task CloseCase_CallsCloseAsync_BadgeShowsClosed_EditRemoveDisabled()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase openCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
-        ForensicCase closedCase = CreateTestCase(id: caseId, status: CaseStatus.Closed);
-        CaseItem pin = CreateEventPin(caseId, Guid.NewGuid());
-        EventDto @event = CreateTestEvent(id: pin.EventId);
+        ForensicCaseDto openCase = CreateTestCase(id: caseId, status: CaseStatusDto.Open);
+        ForensicCaseDto closedCase = CreateTestCase(id: caseId, status: CaseStatusDto.Closed);
+        CaseItemDto pin = CreateEventPin(caseId, Guid.NewGuid());
+        EventDto @event = CreateTestEvent(id: pin.TargetId);
 
         _ = CaseRepositoryMock.SetupSequence(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(openCase)
@@ -801,8 +785,8 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task ReopenCase_Admin_CallsReopenAsync()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase closedCase = CreateTestCase(id: caseId, status: CaseStatus.Closed);
-        ForensicCase reopenedCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
+        ForensicCaseDto closedCase = CreateTestCase(id: caseId, status: CaseStatusDto.Closed);
+        ForensicCaseDto reopenedCase = CreateTestCase(id: caseId, status: CaseStatusDto.Open);
 
         _ = CaseRepositoryMock.SetupSequence(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(closedCase)
@@ -826,7 +810,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task WorkOnThisCase_ActivatesCase_NavigatesToEvidenceWithCaseParam()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId, status: CaseStatusDto.Open);
         var deviceId = Guid.NewGuid();
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
@@ -851,7 +835,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public void UnknownId_ShowsCaseNotFound()
     {
         var caseId = Guid.NewGuid();
-        _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCaseDto?)null);
 
         IRenderedComponent<CaseDetails> component = RenderPage(caseId);
 
@@ -862,9 +846,9 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public async Task SelectingPinnedItemRow_ShowsInInspectorState_WithIntegrityInProvenance()
     {
         var caseId = Guid.NewGuid();
-        ForensicCase testCase = CreateTestCase(id: caseId);
+        ForensicCaseDto testCase = CreateTestCase(id: caseId);
         MediaItem media = CreateTestMediaItem(sha256Hash: "ABC123");
-        CaseItem pin = CreateMediaPin(caseId, media.Id, media.Sha256Hash!);
+        CaseItemDto pin = CreateMediaPin(caseId, media.Id, media.Sha256Hash!);
 
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(testCase);
         _ = CaseRepositoryMock

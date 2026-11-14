@@ -98,7 +98,7 @@ public sealed class SimpleHomeBuilder
         {
             try
             {
-                foreach (JammingIncidentRecord incident in await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct))
+                foreach (JammingIncidentDto incident in (await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct)).Select(row => row.ToDto()))
                 {
                     _ = names.TryGetValue(incident.DeviceId, out string? name);
                     DateTime start = AsUtc(incident.StartUtc);

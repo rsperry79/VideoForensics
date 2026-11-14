@@ -27,7 +27,7 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
         // Overrides the base's Open-only case repository: this rail test also queries with a nullable status.
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = Services.AddScoped(_ => caseRepository.Object);
     }

@@ -1,5 +1,6 @@
 using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Contracts;
@@ -21,7 +22,7 @@ public interface IReviewDetailLoader
     /// <param name="fromUtc">Start of the range (UTC).</param>
     /// <param name="toUtc">End of the range (UTC).</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+    Task<IReadOnlyList<JammingIncidentDto>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
     /// <summary>
     /// Returns the notable signal deviations (every level except normal) for <paramref name="deviceIds"/> in the range, newest first.

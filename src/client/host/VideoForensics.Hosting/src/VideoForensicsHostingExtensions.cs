@@ -326,6 +326,8 @@ namespace VideoForensics.Client.Hosting
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventRepository, VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository>();
             // Server-side flag reads and review commands for Ui.Shared: DTO view over the write repository (see MediaFlagDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository>();
+            // Server-side case reads and commands for Ui.Shared: DTO view over the write repository (see CaseDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository>();
             // Server-side media reads for Ui.Shared: DTO view over the write repository (see MediaItemDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository>();
             // Server-side device reads for Ui.Shared: DTO view over the write repository (see DeviceDtoRepository).
@@ -465,7 +467,7 @@ namespace VideoForensics.Client.Hosting
                 IIntegrityVerificationService integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
                 IActionLogRepository actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
                 IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
-                ICaseRepository caseRepository = serviceProvider.GetRequiredService<ICaseRepository>();
+                ICaseWriteRepository caseRepository = serviceProvider.GetRequiredService<ICaseWriteRepository>();
                 IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
                 IForensicsConfigurationService configurationService = serviceProvider.GetRequiredService<IForensicsConfigurationService>();
                 IStorageLocationProvider storageLocationProvider = serviceProvider.GetRequiredService<IStorageLocationProvider>();
@@ -595,7 +597,7 @@ namespace VideoForensics.Client.Hosting
                     serviceProvider.GetRequiredService<IMediaStorageProvider>(),
                     serviceProvider.GetRequiredService<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(),
                     serviceProvider.GetRequiredService<IActionLogRepository>(),
-                    serviceProvider.GetRequiredService<ICaseRepository>(),
+                    serviceProvider.GetRequiredService<ICaseWriteRepository>(),
                     serviceProvider.GetRequiredService<IMediaPathResolver>()));
 
             // IMemoryCache backs the short-lived auth caches registered below (WebAuthn ceremonies, 2FA pending
@@ -787,7 +789,7 @@ namespace VideoForensics.Client.Hosting
             services.AddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventRepository, Remote.RemoteEventDtoRepository>();
             _ = services.AddHttpClient<IEventDetailRepository, RemoteEventDetailRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);

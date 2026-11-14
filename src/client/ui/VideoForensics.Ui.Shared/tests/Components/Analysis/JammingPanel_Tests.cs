@@ -39,10 +39,10 @@ public class JammingPanel_Tests : AnalyzePageTestBase
     }
 
     /// <summary>Builds the row-select event the grid raises for a clicked row. Syncfusion keeps the row data read-only.</summary>
-    private static RowSelectEventArgs<JammingIncidentRecord> SelectArgs(JammingIncidentRecord row)
+    private static RowSelectEventArgs<JammingIncidentDto> SelectArgs(JammingIncidentDto row)
     {
-        var args = new RowSelectEventArgs<JammingIncidentRecord>();
-        typeof(RowSelectEventArgs<JammingIncidentRecord>)
+        var args = new RowSelectEventArgs<JammingIncidentDto>();
+        typeof(RowSelectEventArgs<JammingIncidentDto>)
             .GetField("<Data>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(args, row);
         return args;
@@ -102,12 +102,12 @@ public class JammingPanel_Tests : AnalyzePageTestBase
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([incident]);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);
-        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SfGrid<JammingIncidentRecord>>()));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SfGrid<JammingIncidentDto>>()));
         Assert.Empty(cut.FindComponents<JammingNotes>());
 
         // Act
-        GridEvents<JammingIncidentRecord> events = cut.FindComponent<GridEvents<JammingIncidentRecord>>().Instance;
-        await cut.InvokeAsync(() => events.RowSelected.InvokeAsync(SelectArgs(incident)));
+        GridEvents<JammingIncidentDto> events = cut.FindComponent<GridEvents<JammingIncidentDto>>().Instance;
+        await cut.InvokeAsync(() => events.RowSelected.InvokeAsync(SelectArgs(incident.ToDto())));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<JammingNotes>()));

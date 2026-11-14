@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Core.Tests.Services
         private readonly Mock<IMediaStorageProvider> _storageProviderMock = new();
         private readonly Mock<IMediaFrameExtractor> _frameExtractorMock = new();
         private readonly Mock<IActionLogRepository> _actionLogRepositoryMock = new();
-        private readonly Mock<ICaseRepository> _caseRepositoryMock = new();
+        private readonly Mock<ICaseWriteRepository> _caseRepositoryMock = new();
         private readonly MediaStillCaptureOrchestrator _orchestrator;
 
         private static readonly Guid SourceId = Guid.NewGuid();

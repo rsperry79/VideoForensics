@@ -41,18 +41,20 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         }.ToDto();
     }
 
-    private static JammingIncidentRecord Jam(Guid device, DateTime startUtc)
+    private static JammingIncidentDto Jam(Guid device, DateTime startUtc)
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            DeviceId = device,
-            StartUtc = startUtc,
-            EndUtc = startUtc.AddMinutes(5),
-            AffectedEventCount = 3,
-            Confidence = JammingConfidenceLevel.High,
-            Source = JammingIncidentSource.AutoDetected,
-        };
+        return new JammingIncidentDto(
+            Id: Guid.NewGuid(),
+            DeviceId: device,
+            StartUtc: startUtc,
+            EndUtc: startUtc.AddMinutes(5),
+            AffectedEventCount: 3,
+            AverageDegradationDb: 0,
+            Confidence: JammingConfidenceLevel.High.ToString(),
+            DetectedAtUtc: startUtc,
+            Notes: null,
+            Source: JammingIncidentSource.AutoDetected.ToString(),
+            CaseId: null);
     }
 
     private static EventDetail DetailWithAllFields(Guid eventId, Guid device)
@@ -108,7 +110,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         AddDevices(1);
         EventDto evt = EventAt(Devices[0].Id, Base);
         ServeFrom([evt]);
-        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([Jam(Devices[0].Id, Base)]);
         DetailLoader.AnomalyResponder = (_, _) => Task.FromResult<IReadOnlyList<ReviewAnomaly>>(
             [new ReviewAnomaly(Devices[0].Id, Base, Base.AddHours(1), SignalDeviationLevel.TwoSigma)]);
         ReviewState.SetCameras([Devices[0].Id]);
@@ -202,7 +204,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         // Arrange
         AddDevices(1);
         ServeFrom([EventAt(Devices[0].Id, Base)]);
-        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([Jam(Devices[0].Id, Base)]);
         DetailLoader.AnomalyResponder = (_, _) => throw new InvalidOperationException("signal down");
         ReviewState.SetCameras([Devices[0].Id]);
 
@@ -221,7 +223,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
         // Arrange
         AddDevices(1);
         EventLoader.Responder = (_, _) => throw new InvalidOperationException("events down");
-        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([Jam(Devices[0].Id, Base)]);
         ReviewState.SetCameras([Devices[0].Id]);
 
         // Act
@@ -396,7 +398,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[1].Id, Base.AddMinutes(30))]);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([Jam(Devices[1].Id, Base.AddMinutes(30))]);
         ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(JammingRow)));
@@ -590,14 +592,14 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(2);
-        var stale = new TaskCompletionSource<IReadOnlyList<JammingIncidentRecord>>();
+        var stale = new TaskCompletionSource<IReadOnlyList<JammingIncidentDto>>();
         int calls = 0;
         DetailLoader.JammingResponder = (call, _) =>
         {
             calls++;
             return calls == 1
                 ? stale.Task
-                : Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[1].Id, Base.AddMinutes(40))]);
+                : Task.FromResult<IReadOnlyList<JammingIncidentDto>>([Jam(Devices[1].Id, Base.AddMinutes(40))]);
         };
         ReviewState.SetCameras([Devices[0].Id]);
         IRenderedComponent<ReviewDetailTab> cut = RenderTab();
@@ -679,7 +681,7 @@ public class ReviewDetailTab_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([Jam(Devices[0].Id, Base)]);
+        DetailLoader.JammingResponder = (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([Jam(Devices[0].Id, Base)]);
         ReviewState.SetCameras([Devices[0].Id]);
         ReviewState.SetEventTypes(["jamming"]);
 

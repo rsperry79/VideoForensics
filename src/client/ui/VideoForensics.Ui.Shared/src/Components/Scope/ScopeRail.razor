@@ -1,6 +1,7 @@
 @using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.Extensions.DependencyInjection
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Common.Viewer
@@ -161,7 +162,7 @@
     // The settings Media shares with this rail. Resolved on demand, so a host that does not register the store just skips saving.
     private ReviewSettingsStore? _settings;
 
-    private List<ForensicCase> _openCases = new();
+    private List<ForensicCaseDto> _openCases = new();
     private bool _caseLoadError = false;
     private string? _saveScopeError;
     private OperatorRole? _role;
@@ -192,7 +193,7 @@
 
         try
         {
-            _openCases = (await CaseRepository.ListAsync(CaseStatus.Open, CancellationToken.None)).ToList();
+            _openCases = (await CaseRepository.ListAsync(CaseStatusDto.Open, CancellationToken.None)).ToList();
         }
         catch
         {

@@ -24,7 +24,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
+using VideoForensics.Core.Api.Contracts;using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
@@ -114,7 +114,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         // Register ICaseRepository mock
         var caseRepoMock = new Mock<ICaseRepository>();
         _ = caseRepoMock
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = Services.AddScoped(_ => caseRepoMock.Object);
 

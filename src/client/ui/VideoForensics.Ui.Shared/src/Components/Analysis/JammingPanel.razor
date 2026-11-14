@@ -1,5 +1,6 @@
 @using VideoForensics.Client.Core.Tools
 @using VideoForensics.Data.Core.Models
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services
@@ -34,34 +35,34 @@ else
 
     @if (_incidents.Count > 0)
     {
-        <SfGrid TValue="JammingIncidentRecord" DataSource="@_incidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="JammingIncidentDto" DataSource="@_incidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
-            <GridEvents TValue="JammingIncidentRecord" RowSelected="OnIncidentRowSelected"></GridEvents>
+            <GridEvents TValue="JammingIncidentDto" RowSelected="OnIncidentRowSelected"></GridEvents>
             <GridColumns>
                 <GridColumn HeaderText="@L["ColDevice"]" MinWidth="100">
                     <Template>
                         @{
-                            var incident = (JammingIncidentRecord)context;
+                            var incident = (JammingIncidentDto)context;
                             @(_deviceNames.GetValueOrDefault(incident.DeviceId, incident.DeviceId.ToString("D")[..8]))
                         }
                     </Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as JammingIncidentRecord)!.StartUtc)" />
+                        <LocalTimeText Value="@((context as JammingIncidentDto)!.StartUtc)" />
                     </Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as JammingIncidentRecord)!.EndUtc)" />
+                        <LocalTimeText Value="@((context as JammingIncidentDto)!.EndUtc)" />
                     </Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColAvgDegradation"]" MinWidth="100">
                     <Template>
                         @{
-                            var incident = (JammingIncidentRecord)context;
+                            var incident = (JammingIncidentDto)context;
                             @(incident.AverageDegradationDb.ToString("F1"))
                         }
                     </Template>
@@ -125,7 +126,7 @@ else
     private bool _readyForAnalysis;
     private int _analyzedCount;
     private readonly List<string> _failures = new();
-    private List<JammingIncidentRecord> _incidents = new();
+    private List<JammingIncidentDto> _incidents = new();
     private Dictionary<Guid, string> _deviceNames = new();
     private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
 
@@ -166,7 +167,7 @@ else
     }
 
     /// <summary>Opens the notes thread of the incident the operator selected in the grid.</summary>
-    private void OnIncidentRowSelected(RowSelectEventArgs<JammingIncidentRecord> args)
+    private void OnIncidentRowSelected(RowSelectEventArgs<JammingIncidentDto> args)
     {
         _selectedIncidentId = args.Data?.Id;
     }
@@ -191,7 +192,7 @@ else
         _readyForAnalysis = false;
         _analyzedCount = 0;
         _failures.Clear();
-        _incidents = new List<JammingIncidentRecord>();
+        _incidents = new List<JammingIncidentDto>();
         _selectedIncidentId = null;
 
         try
@@ -209,7 +210,7 @@ else
                 _recordDeviceValue = targets[0].ToString();
             }
 
-            var incidents = new List<JammingIncidentRecord>();
+            var incidents = new List<JammingIncidentDto>();
             foreach (var deviceId in targets)
             {
                 var report = await JammingTools.AnalyzeJammingAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None);
@@ -225,7 +226,7 @@ else
                 }
 
                 _analyzedCount++;
-                incidents.AddRange(report.Incidents);
+                incidents.AddRange(report.Incidents.Select(incident => incident.ToDto()));
             }
 
             if (_analyzedCount == 0)

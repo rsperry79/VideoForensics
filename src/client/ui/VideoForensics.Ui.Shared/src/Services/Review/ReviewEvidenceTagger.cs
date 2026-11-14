@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
@@ -47,7 +48,7 @@ public class ReviewEvidenceTagger
     }
 
     /// <summary>True when the item is waiting in memory for a case to open.</summary>
-    public bool IsPending(CaseItemKind kind, Guid targetId)
+    public bool IsPending(CaseItemKindDto kind, Guid targetId)
     {
         return _pending.Items.Any(i => i.Kind == kind && i.TargetId == targetId);
     }
@@ -57,7 +58,7 @@ public class ReviewEvidenceTagger
     /// the same fallback the inspector uses.
     /// </summary>
     public async Task<TagOutcome> TagAsync(
-        CaseItemKind kind,
+        CaseItemKindDto kind,
         Guid targetId,
         Guid deviceId,
         DateTime? occurredAtUtc,

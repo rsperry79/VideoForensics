@@ -103,6 +103,25 @@ namespace VideoForensics.Core.Api.Contracts
         /// <summary>Event was successfully downloaded.</summary>
         Downloaded = 2,
         /// <summary>Event has no downloadable media and the backfill queue has used all its retry passes.</summary>
-        Unavailable = 3
+        Unavailable = 3    }
+
+    /// <summary>Forensic case status, same member names as the data-layer CaseStatus.</summary>
+    public enum CaseStatusDto
+    {
+        /// <summary>The case is open.</summary>
+        Open = 0,
+        /// <summary>The case is closed.</summary>
+        Closed = 1
+    }
+
+    /// <summary>Kind of a case item, same member names as the data-layer CaseItemKind.</summary>
+    public enum CaseItemKindDto
+    {
+        /// <summary>An event.</summary>
+        Event = 0,
+        /// <summary>A media item.</summary>
+        Media = 1,
+        /// <summary>A snapshot capture.</summary>
+        Snapshot = 2
     }
 }

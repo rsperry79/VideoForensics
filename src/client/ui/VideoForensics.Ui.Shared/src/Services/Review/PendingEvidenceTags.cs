@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
@@ -15,7 +16,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Review;
 /// <param name="Reason">The reason stored on the pin when the tag attaches.</param>
 /// <param name="Actor">The operator who tagged the item.</param>
 public sealed record PendingTag(
-    CaseItemKind Kind,
+    CaseItemKindDto Kind,
     Guid TargetId,
     Guid DeviceId,
     DateTime? OccurredAtUtc,
@@ -116,7 +117,7 @@ public class PendingEvidenceTags
     }
 
     /// <summary>Removes the tag for the given kind and target. Returns false when none was pending.</summary>
-    public bool Remove(CaseItemKind kind, Guid targetId)
+    public bool Remove(CaseItemKindDto kind, Guid targetId)
     {
         bool removed;
         lock (_gate)

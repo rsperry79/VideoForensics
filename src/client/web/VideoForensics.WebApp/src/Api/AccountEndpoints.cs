@@ -136,7 +136,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("List removed provider accounts")
                 .WithDescription("Retrieves provider accounts that were retired (soft-removed) and still retain their data.");
 
-            _ = group.MapGet("/provider-accounts/{id:guid}/cases", async (Guid id, ICaseRepository cases, CancellationToken ct) =>
+            _ = group.MapGet("/provider-accounts/{id:guid}/cases", async (Guid id, ICaseWriteRepository cases, CancellationToken ct) =>
                 Results.Ok((await cases.ListForProviderAccountAsync(id, ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
                 .WithSummary("List cases attached to a provider account")

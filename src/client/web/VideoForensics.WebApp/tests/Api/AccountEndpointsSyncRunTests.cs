@@ -35,7 +35,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // inference treats it as a request body parameter.
             _ = builder.Services.AddSingleton(Mock.Of<IUserRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderAccountRepository>());
-            _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());

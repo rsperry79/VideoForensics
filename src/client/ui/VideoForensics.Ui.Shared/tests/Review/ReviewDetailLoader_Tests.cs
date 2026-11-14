@@ -149,7 +149,7 @@ public class ReviewDetailLoader_Tests
         ReviewDetailLoader loader = CreateLoader(jamming: jamming);
 
         // Act
-        IReadOnlyList<JammingIncidentRecord> result = await loader.LoadJammingAsync([first, second], From, To, CancellationToken.None);
+        IReadOnlyList<JammingIncidentDto> result = await loader.LoadJammingAsync([first, second], From, To, CancellationToken.None);
 
         // Assert
         Assert.Equal(new Guid?[] { first, second }, asked);
@@ -164,7 +164,7 @@ public class ReviewDetailLoader_Tests
         ReviewDetailLoader loader = CreateLoader(jamming: jamming);
 
         // Act
-        IReadOnlyList<JammingIncidentRecord> result = await loader.LoadJammingAsync([], From, To, CancellationToken.None);
+        IReadOnlyList<JammingIncidentDto> result = await loader.LoadJammingAsync([], From, To, CancellationToken.None);
 
         // Assert
         Assert.Empty(result);

@@ -53,7 +53,7 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory.Dispose();
         }
 
-        private JammingRepository BuildJammingRepo(ICaseRepository? caseRepository = null)
+        private JammingRepository BuildJammingRepo(ICaseWriteRepository? caseRepository = null)
         {
             var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
             return new(unitOfWork, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
@@ -226,7 +226,7 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         /// <summary>
-        /// Test (e): If ICaseRepository throws, UpsertIncidentAsync still returns the saved incident with CaseId=null and logs error.
+        /// Test (e): If ICaseWriteRepository throws, UpsertIncidentAsync still returns the saved incident with CaseId=null and logs error.
         /// </summary>
         [Fact]
         public async Task UpsertIncidentAsync_CaseRepositoryThrows_IncidentSavedWithNullCaseId()
@@ -234,8 +234,8 @@ namespace VideoForensics.Data.Database.Tests
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
 
-            // Mock ICaseRepository to throw
-            var mockCaseRepo = new Mock<ICaseRepository>();
+            // Mock ICaseWriteRepository to throw
+            var mockCaseRepo = new Mock<ICaseWriteRepository>();
             _ = mockCaseRepo
                 .Setup(r => r.CreateFromJammingDetectionAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Simulated case creation failure"));
@@ -289,8 +289,8 @@ namespace VideoForensics.Data.Database.Tests
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
 
-            // Mock ICaseRepository to throw OperationCanceledException
-            var mockCaseRepo = new Mock<ICaseRepository>();
+            // Mock ICaseWriteRepository to throw OperationCanceledException
+            var mockCaseRepo = new Mock<ICaseWriteRepository>();
             _ = mockCaseRepo
                 .Setup(r => r.CreateFromJammingDetectionAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new OperationCanceledException("Cancelled"));
@@ -331,8 +331,8 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(jammingRepo);
             _ = Assert.IsType<JammingRepository>(jammingRepo);
 
-            // Verify ICaseRepository is also resolved
-            ICaseRepository caseRepo = sp.GetRequiredService<ICaseRepository>();
+            // Verify ICaseWriteRepository is also resolved
+            ICaseWriteRepository caseRepo = sp.GetRequiredService<ICaseWriteRepository>();
             Assert.NotNull(caseRepo);
 
             // Behavioral test: seed a device, then upsert a NEW incident and verify case/alert creation
