@@ -1,22 +1,23 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @implements IDisposable
 @inject IStringLocalizer<SharedResources> L
 @inject IMediaFlagRepository MediaFlagRepository
 
 <div class="clip-navigator d-flex flex-wrap align-items-center gap-2" data-testid="clip-navigator" tabindex="0" role="group" aria-label="@L["ClipNavigatorLabel"].Value" @onkeydown="OnKeyDown">
     <span class="small" data-testid="clip-nav-total">@Readout</span>
-    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorPrevious"].Value" Disabled="@_previousDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Previous))" data-testid="clip-nav-prev" />
-    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorNext"].Value" Disabled="@_nextDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Next))" data-testid="clip-nav-next" />
+    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorPrevious"].Value" Disabled="@_previousDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbourDto.Previous))" data-testid="clip-nav-prev" />
+    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorNext"].Value" Disabled="@_nextDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbourDto.Next))" data-testid="clip-nav-next" />
     <div class="visually-hidden" aria-live="polite" data-testid="clip-nav-status">@_status</div>
 </div>
 
 @code {
     /// <summary>The flag list to move through. Its newest-first order is the order the arrows follow.</summary>
     [Parameter, EditorRequired]
-    public MediaFlagFilter Filter { get; set; } = new();
+    public MediaFlagFilterDto Filter { get; set; } = new(null, null, null, null, null);
 
     /// <summary>The flag the viewer is on now. Each move looks up its neighbour from this id.</summary>
     [Parameter, EditorRequired]
@@ -24,12 +25,12 @@
 
     /// <summary>Raised with the flag the viewer moved to. Not raised when there is no neighbour in that direction.</summary>
     [Parameter]
-    public EventCallback<MediaFlag> OnNavigate { get; set; }
+    public EventCallback<MediaFlagDto> OnNavigate { get; set; }
 
     private int _total;
     private int? _position;
     private bool _loadedOnce;
-    private MediaFlagFilter? _loadedFilter;
+    private MediaFlagFilterDto? _loadedFilter;
     private Guid _loadedFlagId;
     private bool _previousDisabled;
     private bool _nextDisabled;
@@ -72,9 +73,9 @@
         }
     }
 
-    private async Task MoveAsync(MediaFlagNeighbour direction)
+    private async Task MoveAsync(MediaFlagNeighbourDto direction)
     {
-        if (direction == MediaFlagNeighbour.Previous ? _previousDisabled : _nextDisabled)
+        if (direction == MediaFlagNeighbourDto.Previous ? _previousDisabled : _nextDisabled)
         {
             return;
         }
@@ -83,7 +84,7 @@
         var cts = new CancellationTokenSource();
         _moveCts = cts;
 
-        MediaFlag? neighbour;
+        MediaFlagDto? neighbour;
         try
         {
             neighbour = await MediaFlagRepository.GetNeighbourAsync(CurrentFlagId, Filter, direction, cts.Token);
@@ -112,15 +113,15 @@
     {
         return args.Key switch
         {
-            "ArrowLeft" => MoveAsync(MediaFlagNeighbour.Previous),
-            "ArrowRight" => MoveAsync(MediaFlagNeighbour.Next),
+            "ArrowLeft" => MoveAsync(MediaFlagNeighbourDto.Previous),
+            "ArrowRight" => MoveAsync(MediaFlagNeighbourDto.Next),
             _ => Task.CompletedTask,
         };
     }
 
-    private void SetSideDisabled(MediaFlagNeighbour direction, bool disabled)
+    private void SetSideDisabled(MediaFlagNeighbourDto direction, bool disabled)
     {
-        if (direction == MediaFlagNeighbour.Previous)
+        if (direction == MediaFlagNeighbourDto.Previous)
         {
             _previousDisabled = disabled;
         }
@@ -130,7 +131,7 @@
         }
     }
 
-    private static MediaFlagFilter Snapshot(MediaFlagFilter filter)
+    private static MediaFlagFilterDto Snapshot(MediaFlagFilterDto filter)
     {
         return filter with
         {
@@ -140,7 +141,7 @@
         };
     }
 
-    private static bool SameFilter(MediaFlagFilter current, MediaFlagFilter? loaded)
+    private static bool SameFilter(MediaFlagFilterDto current, MediaFlagFilterDto? loaded)
     {
         return loaded is not null
             && current.FromUtc == loaded.FromUtc

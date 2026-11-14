@@ -4,6 +4,8 @@ using System.Text.Json;
 
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote;
@@ -49,16 +51,14 @@ public class RemoteMediaFlagRepositoryTests
             "Warn", "Unreviewed", null, null, null, null, 0, null, null);
     }
 
-    private static MediaFlagFilter Filter()
+    private static MediaFlagFilterDto Filter()
     {
-        return new MediaFlagFilter
-        {
-            Types = [MediaFlagType.BitrateCollapse],
-            Statuses = [MediaFlagStatus.Unreviewed],
-            DeviceIds = [DeviceId],
-            FromUtc = From,
-            ToUtc = From.AddDays(7),
-        };
+        return new MediaFlagFilterDto(
+            ["BitrateCollapse"],
+            ["Unreviewed"],
+            [DeviceId],
+            From,
+            From.AddDays(7));
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class RemoteMediaFlagRepositoryTests
     {
         (RemoteMediaFlagRepository repo, FakeHandler handler) = Create(_ => Json(new MediaFlagPageDto([SampleDto()], 9)));
 
-        MediaFlagPage page = await repo.ListPageAsync(Filter(), 20, 10, CancellationToken.None);
+        MediaFlagPageDto page = await repo.ListPageAsync(Filter(), 20, 10, CancellationToken.None);
 
         HttpRequestMessage req = Assert.Single(handler.Seen);
         Assert.Equal(HttpMethod.Get, req.Method);
@@ -90,7 +90,7 @@ public class RemoteMediaFlagRepositoryTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => repo.ListPageAsync(new MediaFlagFilter(), 0, 5, cts.Token));
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => repo.ListPageAsync(new MediaFlagFilterDto(null, null, null, null, null), 0, 5, cts.Token));
         Assert.All(handler.Tokens, t => Assert.True(t.IsCancellationRequested));
     }
 
@@ -100,9 +100,9 @@ public class RemoteMediaFlagRepositoryTests
         MediaFlagDto flagDto = SampleDto() with { EventType = "person", DeviationSigma = 2.25 };
         (RemoteMediaFlagRepository repo, _) = Create(_ => Json(new MediaFlagPageDto([flagDto], 1)));
 
-        MediaFlagPage page = await repo.ListPageAsync(Filter(), 0, 10, CancellationToken.None);
+        MediaFlagPageDto page = await repo.ListPageAsync(Filter(), 0, 10, CancellationToken.None);
 
-        MediaFlag flag = Assert.Single(page.Items);
+        MediaFlagDto flag = Assert.Single(page.Items);
         Assert.Equal("person", flag.EventType);
         Assert.Equal(2.25, flag.DeviationSigma);
     }
@@ -125,7 +125,7 @@ public class RemoteMediaFlagRepositoryTests
     {
         (RemoteMediaFlagRepository repo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
-        MediaFlag? flag = await repo.GetAsync(FlagId, CancellationToken.None);
+        MediaFlagDto? flag = await repo.GetAsync(FlagId, CancellationToken.None);
 
         Assert.Null(flag);
     }
@@ -135,11 +135,11 @@ public class RemoteMediaFlagRepositoryTests
     {
         (RemoteMediaFlagRepository repo, FakeHandler handler) = Create(_ => Json(SampleDto()));
 
-        MediaFlag? flag = await repo.GetAsync(FlagId, CancellationToken.None);
+        MediaFlagDto? flag = await repo.GetAsync(FlagId, CancellationToken.None);
 
         Assert.Equal("/api/v1/media-flags/" + FlagId.ToString("D"), Assert.Single(handler.Seen).RequestUri!.AbsolutePath);
-        Assert.Equal(MediaFlagType.BitrateCollapse, flag!.FlagType);
-        Assert.Equal(MediaFlagStatus.Unreviewed, flag.Status);
+        Assert.Equal("BitrateCollapse", flag!.FlagType);
+        Assert.Equal("Unreviewed", flag.Status);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class RemoteMediaFlagRepositoryTests
     {
         (RemoteMediaFlagRepository repo, FakeHandler handler) = Create(_ => Json(SampleDto(Guid.NewGuid())));
 
-        MediaFlag? next = await repo.GetNeighbourAsync(FlagId, Filter(), MediaFlagNeighbour.Previous, CancellationToken.None);
+        MediaFlagDto? next = await repo.GetNeighbourAsync(FlagId, Filter(), MediaFlagNeighbourDto.Previous, CancellationToken.None);
 
         HttpRequestMessage req = Assert.Single(handler.Seen);
         Assert.Equal("/api/v1/media-flags/" + FlagId.ToString("D") + "/neighbour", req.RequestUri!.AbsolutePath);
@@ -161,7 +161,7 @@ public class RemoteMediaFlagRepositoryTests
     {
         (RemoteMediaFlagRepository repo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
 
-        MediaFlag? next = await repo.GetNeighbourAsync(FlagId, Filter(), MediaFlagNeighbour.Next, CancellationToken.None);
+        MediaFlagDto? next = await repo.GetNeighbourAsync(FlagId, Filter(), MediaFlagNeighbourDto.Next, CancellationToken.None);
 
         Assert.Null(next);
     }
@@ -188,7 +188,7 @@ public class RemoteMediaFlagRepositoryTests
     {
         (RemoteMediaFlagRepository repo, FakeHandler handler) = Create(_ => Json(SampleDto()));
 
-        _ = await repo.UpdateStatusAsync(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "false positive", "operator-name-xyz", CancellationToken.None);
+        _ = await repo.UpdateStatusAsync(FlagId, "Unreviewed", "Dismissed", "false positive", "operator-name-xyz", CancellationToken.None);
 
         HttpRequestMessage req = Assert.Single(handler.Seen);
         Assert.Equal(HttpMethod.Post, req.Method);
@@ -209,7 +209,7 @@ public class RemoteMediaFlagRepositoryTests
             new FlagStatusConflictDto("Unreviewed", "Kept", "reviewer-7", reviewedAt), HttpStatusCode.Conflict));
 
         FlagStatusConflictException ex = await Assert.ThrowsAsync<FlagStatusConflictException>(() =>
-            repo.UpdateStatusAsync(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "reason", "op", CancellationToken.None));
+            repo.UpdateStatusAsync(FlagId, "Unreviewed", "Dismissed", "reason", "op", CancellationToken.None));
 
         Assert.Equal(FlagId, ex.FlagId);
         Assert.Equal(MediaFlagStatus.Unreviewed, ex.ExpectedStatus);
@@ -224,7 +224,7 @@ public class RemoteMediaFlagRepositoryTests
         (RemoteMediaFlagRepository repo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
         _ = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            repo.UpdateStatusAsync(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "op", CancellationToken.None));
+            repo.UpdateStatusAsync(FlagId, "Unreviewed", "Kept", null, "op", CancellationToken.None));
     }
 
     [Fact]
@@ -233,7 +233,7 @@ public class RemoteMediaFlagRepositoryTests
         (RemoteMediaFlagRepository repo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
 
         _ = await Assert.ThrowsAsync<ArgumentException>(() =>
-            repo.UpdateStatusAsync(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, null, "op", CancellationToken.None));
+            repo.UpdateStatusAsync(FlagId, "Unreviewed", "Dismissed", null, "op", CancellationToken.None));
     }
 
     [Fact]
@@ -264,20 +264,8 @@ public class RemoteMediaFlagRepositoryTests
     }
 
     [Fact]
-    public async Task UpsertRaisedAsync_IsServerOnly_ThrowsNotSupported()
+    public void RemoteMediaFlagRepository_WriteContract_IsNotImplemented()
     {
-        (RemoteMediaFlagRepository repo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.OK));
-
-        _ = await Assert.ThrowsAsync<NotSupportedException>(() =>
-            repo.UpsertRaisedAsync(new MediaFlag { DeviceId = DeviceId }, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task ReconcileForMediaAsync_IsServerOnly_ThrowsNotSupported()
-    {
-        (RemoteMediaFlagRepository repo, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.OK));
-
-        _ = await Assert.ThrowsAsync<NotSupportedException>(() =>
-            repo.ReconcileForMediaAsync(Guid.NewGuid(), new HashSet<MediaFlagType>(), CancellationToken.None));
+        Assert.False(typeof(IMediaFlagWriteRepository).IsAssignableFrom(typeof(RemoteMediaFlagRepository)));
     }
 }

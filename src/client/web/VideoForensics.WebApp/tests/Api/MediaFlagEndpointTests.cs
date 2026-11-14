@@ -62,7 +62,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_ValidQuery_PassesFilterAndPagingAndReturnsPage()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.ListPageAsync(It.IsAny<MediaFlagFilter>(), 20, 10, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new MediaFlagPage([Flag()], 5));
             var query = new MediaFlagQueryParameters("BitrateCollapse", "Unreviewed", DeviceId.ToString("D"), From, From.AddDays(7), 20, 10, null);
@@ -83,7 +83,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_UnknownFlagType_ReturnsBadRequestWithoutQuerying()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var query = new MediaFlagQueryParameters("NotAType", null, null, null, null, null, null, null);
 
             IResult result = await MediaFlagEndpoints.ListAsync(query, flags.Object, CancellationToken.None);
@@ -95,7 +95,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_FromAfterTo_ReturnsBadRequest()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var query = new MediaFlagQueryParameters(null, null, null, From.AddDays(1), From, null, null, null);
 
             IResult result = await MediaFlagEndpoints.ListAsync(query, flags.Object, CancellationToken.None);
@@ -107,7 +107,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_TakeOutOfRange_ReturnsBadRequest()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
 
             IResult result = await MediaFlagEndpoints.ListAsync(NoFilter(take: 0), flags.Object, CancellationToken.None);
 
@@ -118,7 +118,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CountAsync_ValidFilter_ReturnsCount()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>())).ReturnsAsync(9);
 
             IResult result = await MediaFlagEndpoints.CountAsync(NoFilter(), flags.Object, CancellationToken.None);
@@ -130,7 +130,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetAsync_Missing_ReturnsNotFound()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.GetAsync(FlagId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaFlag?)null);
 
             IResult result = await MediaFlagEndpoints.GetAsync(FlagId, flags.Object, CancellationToken.None);
@@ -141,7 +141,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetAsync_Found_ReturnsDto()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.GetAsync(FlagId, It.IsAny<CancellationToken>())).ReturnsAsync(Flag());
 
             IResult result = await MediaFlagEndpoints.GetAsync(FlagId, flags.Object, CancellationToken.None);
@@ -154,7 +154,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task PositionAsync_FlagInFilter_ReturnsOkWithPosition()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.GetPositionAsync(FlagId, It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>())).ReturnsAsync(3);
 
             IResult result = await MediaFlagEndpoints.PositionAsync(FlagId, NoFilter(), flags.Object, CancellationToken.None);
@@ -166,7 +166,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task PositionAsync_FlagNotInFilter_ReturnsNotFound()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.GetPositionAsync(FlagId, It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>())).ReturnsAsync((int?)null);
 
             IResult result = await MediaFlagEndpoints.PositionAsync(FlagId, NoFilter(), flags.Object, CancellationToken.None);
@@ -177,7 +177,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task NeighbourAsync_AtEndOfList_ReturnsNoContent()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.GetAsync(FlagId, It.IsAny<CancellationToken>())).ReturnsAsync(Flag());
             _ = flags.Setup(f => f.GetNeighbourAsync(FlagId, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaFlag?)null);
@@ -190,7 +190,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task NeighbourAsync_UnknownDirection_ReturnsBadRequest()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
 
             IResult result = await MediaFlagEndpoints.NeighbourAsync(FlagId, NoFilter(direction: "Sideways"), flags.Object, CancellationToken.None);
 
@@ -201,7 +201,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task NeighbourAsync_FlagMissing_ReturnsNotFound()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             _ = flags.Setup(f => f.GetAsync(FlagId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaFlag?)null);
 
             IResult result = await MediaFlagEndpoints.NeighbourAsync(FlagId, NoFilter(direction: "Previous"), flags.Object, CancellationToken.None);
@@ -212,7 +212,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_Success_ReturnsOkAndPublishesChange()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.UpdateStatusAsync(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, "note", OperatorId.ToString(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Flag(MediaFlagStatus.Kept));
@@ -228,7 +228,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_OperatorComesFromTokenNotBody()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagStatus>(), It.IsAny<MediaFlagStatus>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Flag(MediaFlagStatus.Kept));
@@ -243,7 +243,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_Conflict_Returns409WithBodyAndDoesNotPublish()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             DateTime reviewedAt = From.AddHours(2);
             _ = flags.Setup(f => f.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagStatus>(), It.IsAny<MediaFlagStatus>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -263,7 +263,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_UnknownStatus_ReturnsBadRequestWithoutCalling()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
 
             IResult result = await MediaFlagEndpoints.SetStatusAsync(
@@ -276,7 +276,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_ToUnreviewed_ReturnsBadRequestAndPointsAtReopen()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
 
             IResult result = await MediaFlagEndpoints.SetStatusAsync(
@@ -289,7 +289,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_FlagMissing_ReturnsNotFound()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagStatus>(), It.IsAny<MediaFlagStatus>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new KeyNotFoundException());
@@ -304,7 +304,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_DismissWithoutReason_ReturnsBadRequest()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagStatus>(), It.IsAny<MediaFlagStatus>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new ArgumentException("Reason is required to dismiss a flag."));
@@ -319,7 +319,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetStatusAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
 
             IResult result = await MediaFlagEndpoints.SetStatusAsync(
@@ -332,7 +332,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ReopenAsync_Success_ReturnsOkAndPublishesChange()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.ReopenAsync(FlagId, OperatorId.ToString(), "new evidence", It.IsAny<CancellationToken>())).ReturnsAsync(Flag());
 
@@ -346,7 +346,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ReopenAsync_NotDismissed_Returns409AndDoesNotPublish()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.ReopenAsync(FlagId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new FlagStatusConflictException(FlagId, MediaFlagStatus.Dismissed, MediaFlagStatus.Kept, null, null));
@@ -362,7 +362,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ReopenAsync_EmptyReason_ReturnsBadRequest()
         {
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.ReopenAsync(FlagId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new ArgumentException("Reason is required."));

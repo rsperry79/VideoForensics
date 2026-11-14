@@ -1,3 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -67,11 +69,11 @@ public class ReviewDetailLoader_Tests
         var device = Guid.NewGuid();
         var older = new MediaFlag { Id = Guid.NewGuid(), DeviceId = device, FlagType = MediaFlagType.BitrateCollapse, WindowStartUtc = From.AddHours(1), WindowEndUtc = From.AddHours(1).AddMinutes(5) };
         var newer = new MediaFlag { Id = Guid.NewGuid(), DeviceId = device, FlagType = MediaFlagType.BitrateDeviation, WindowStartUtc = From.AddHours(3), WindowEndUtc = From.AddHours(3).AddMinutes(5) };
-        MediaFlagFilter? seen = null;
+        MediaFlagFilterDto? seen = null;
         var flags = new Mock<IMediaFlagRepository>();
-        _ = flags.Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Callback<MediaFlagFilter, int, int, CancellationToken>((filter, _, _, _) => seen = filter)
-            .ReturnsAsync(new MediaFlagPage([older, newer], 2));
+        _ = flags.Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), 0, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<MediaFlagFilterDto, int, int, CancellationToken>((filter, _, _, _) => seen = filter)
+            .ReturnsAsync(new MediaFlagPage([older, newer], 2).ToDto());
         ReviewDetailLoader loader = CreateLoader(flags: flags);
 
         // Act
@@ -80,8 +82,8 @@ public class ReviewDetailLoader_Tests
         // Assert
         Assert.Equal([newer.Id, older.Id], result.Select(r => r.FlagId).ToArray());
         Assert.NotNull(seen);
-        Assert.Contains(MediaFlagType.BitrateCollapse, seen!.Types!);
-        Assert.Contains(MediaFlagType.BitrateDeviation, seen.Types!);
+        Assert.Contains("BitrateCollapse", seen!.Types!);
+        Assert.Contains("BitrateDeviation", seen.Types!);
         Assert.Equal([device], seen.DeviceIds);
     }
 

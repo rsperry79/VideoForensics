@@ -328,7 +328,7 @@
 @if (!ScopeState.Current.MatchesNoDevices)
 {
     <h4 class="mt-4 mb-2" data-testid="bitrate-flags-heading">@L["BitrateFlagsHeading"]</h4>
-    <FlaggedMediaTable Types="@(new[] { VideoForensics.Data.Common.Entities.MediaFlagType.BitrateCollapse, VideoForensics.Data.Common.Entities.MediaFlagType.BitrateDeviation })" DeviceIds="@FlagDeviceIds" FromUtc="@_from" ToUtc="@_to" DeviceNames="@FlagDeviceNames" />
+    <FlaggedMediaTable Types="@(new[] { "BitrateCollapse", "BitrateDeviation" })" DeviceIds="@FlagDeviceIds" FromUtc="@_from" ToUtc="@_to" DeviceNames="@FlagDeviceNames" />
 }
 
 @code {

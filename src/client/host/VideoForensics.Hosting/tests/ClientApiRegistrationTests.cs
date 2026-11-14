@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
 
             using ServiceProvider provider = services.BuildServiceProvider();
-            IMediaFlagRepository repository = provider.GetRequiredService<IMediaFlagRepository>();
+            VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository repository = provider.GetRequiredService<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository>();
 
             _ = Assert.IsType<RemoteMediaFlagRepository>(repository);
         }

@@ -1,3 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using AngleSharp.Dom;
 
 using Bunit;
@@ -20,7 +22,7 @@ public class ClipNavigator_Tests : BunitContext
 {
     private readonly Mock<IMediaFlagRepository> _repository = new();
     private readonly Guid _currentId = Guid.NewGuid();
-    private readonly MediaFlagFilter _filter = new() { Types = new[] { MediaFlagType.RssiDeviation } };
+    private readonly MediaFlagFilterDto _filter = new(new[] { "RssiDeviation" }, null, null, null, null);
 
     public ClipNavigator_Tests()
     {
@@ -31,7 +33,7 @@ public class ClipNavigator_Tests : BunitContext
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_repository.Object);
         _ = _repository
-            .Setup(r => r.GetPositionAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetPositionAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((int?)null);
     }
 
@@ -39,7 +41,7 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_ButtonsAreLabelledPreviousAndNext()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
 
         IRenderedComponent<ClipNavigator> cut = Render();
@@ -53,7 +55,7 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_Readout_PrecedesButtons()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
 
         IRenderedComponent<ClipNavigator> cut = Render();
@@ -89,7 +91,7 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_Renders_TotalFromCount()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
 
         IRenderedComponent<ClipNavigator> cut = Render();
@@ -102,13 +104,13 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_Previous_CallsNeighbourPreviousAndNavigates()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
-        MediaFlag target = Flag();
+        MediaFlagDto target = Flag().ToDto();
         _ = _repository
-            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbourDto.Previous, It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);
-        MediaFlag? navigated = null;
+        MediaFlagDto? navigated = null;
 
         IRenderedComponent<ClipNavigator> cut = Render(p => p
             .Add(c => c.OnNavigate, flag => navigated = flag));
@@ -117,18 +119,18 @@ public class ClipNavigator_Tests : BunitContext
         cut.Find("[data-testid=clip-nav-prev]").Click();
 
         cut.WaitForAssertion(() => Assert.Same(target, navigated));
-        _repository.Verify(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbourDto.Previous, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public void ClipNavigator_NoNext_DisablesNextButton()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
         _ = _repository
-            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((MediaFlag?)null);
+            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbourDto.Next, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MediaFlagDto?)null);
 
         IRenderedComponent<ClipNavigator> cut = Render();
 
@@ -142,11 +144,11 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_ArrowLeft_MovesPrevious()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
         _ = _repository
-            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((MediaFlag?)null);
+            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbourDto.Previous, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MediaFlagDto?)null);
 
         IRenderedComponent<ClipNavigator> cut = Render();
 
@@ -154,7 +156,7 @@ public class ClipNavigator_Tests : BunitContext
         cut.Find("[data-testid=clip-navigator]").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
 
         cut.WaitForAssertion(() => _repository.Verify(
-            r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()),
+            r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbourDto.Previous, It.IsAny<CancellationToken>()),
             Times.Once));
     }
 
@@ -162,7 +164,7 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_Renders_PositionOfTotal()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
         _ = _repository
             .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
@@ -180,7 +182,7 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_PositionUnknown_ShowsTotalOnly()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
         _ = _repository
             .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
@@ -198,9 +200,9 @@ public class ClipNavigator_Tests : BunitContext
     public void ClipNavigator_AfterMove_RefreshesPosition()
     {
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
-        MediaFlag target = Flag();
+        MediaFlagDto target = Flag().ToDto();
         _ = _repository
             .Setup(r => r.GetPositionAsync(_currentId, _filter, It.IsAny<CancellationToken>()))
             .ReturnsAsync(3);
@@ -208,9 +210,9 @@ public class ClipNavigator_Tests : BunitContext
             .Setup(r => r.GetPositionAsync(target.Id, _filter, It.IsAny<CancellationToken>()))
             .ReturnsAsync(4);
         _ = _repository
-            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetNeighbourAsync(_currentId, _filter, MediaFlagNeighbourDto.Next, It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);
-        MediaFlag? navigated = null;
+        MediaFlagDto? navigated = null;
 
         IRenderedComponent<ClipNavigator> cut = Render(p => p
             .Add(c => c.OnNavigate, flag => navigated = flag));

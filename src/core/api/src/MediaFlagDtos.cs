@@ -51,3 +51,15 @@ namespace VideoForensics.Core.Api.Contracts
     /// </summary>
     public sealed record FlagStatusConflictDto(string ExpectedStatus, string ActualStatus, string? ReviewedBy, DateTime? ReviewedAtUtc);
 }
+
+namespace VideoForensics.Core.Api.Contracts
+{
+    /// <summary>Direction in the flag list order, as sent over the wire.</summary>
+    public enum MediaFlagNeighbourDto
+    {
+        /// <summary>The preceding, newer flag.</summary>
+        Previous,
+        /// <summary>The following, older flag.</summary>
+        Next
+    }
+}

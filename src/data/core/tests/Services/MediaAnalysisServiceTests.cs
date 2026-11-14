@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<IAudioClipAnalyzer> _audio = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<IMediaThumbnailService> _thumbnails = new();
-        private readonly Mock<IMediaFlagRepository> _flags = new();
+        private readonly Mock<IMediaFlagWriteRepository> _flags = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 
         private MediaAnalysisService CreateSut()

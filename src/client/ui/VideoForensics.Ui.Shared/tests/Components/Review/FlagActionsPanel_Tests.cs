@@ -146,11 +146,11 @@ public class FlagActionsPanel_Tests : BunitContext
         };
     }
 
-    private IRenderedComponent<FlagActionsPanel> RenderPanel(MediaFlag flag, List<MediaFlag> changes)
+    private IRenderedComponent<FlagActionsPanel> RenderPanel(MediaFlag flag, List<MediaFlagDto> changes)
     {
         return Render<FlagActionsPanel>(p => p
-            .Add(c => c.Flag, flag)
-            .Add(c => c.OnChanged, EventCallback.Factory.Create<MediaFlag>(this, changes.Add)));
+            .Add(c => c.Flag, flag.ToDto())
+            .Add(c => c.OnChanged, EventCallback.Factory.Create<MediaFlagDto>(this, changes.Add)));
     }
 
     private async Task ClickAsync(IRenderedComponent<FlagActionsPanel> cut, string selector)
@@ -172,10 +172,10 @@ public class FlagActionsPanel_Tests : BunitContext
         // Arrange
         Guid operatorId = await SignInAsync("Review");
         MediaFlag flag = Flag();
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         _ = _repository
-            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Kept, RowVersion = 2, ReviewedBy = operatorId.ToString() });
+            .Setup(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Kept", null, operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Kept, RowVersion = 2, ReviewedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
         // Act
@@ -183,8 +183,8 @@ public class FlagActionsPanel_Tests : BunitContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(changes));
-        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
-        Assert.Equal(MediaFlagStatus.Kept, changes[0].Status);
+        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Kept", null, operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("Kept", changes[0].Status);
     }
 
     [Fact]
@@ -208,10 +208,10 @@ public class FlagActionsPanel_Tests : BunitContext
         // Arrange
         Guid operatorId = await SignInAsync("Review");
         MediaFlag flag = Flag();
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         _ = _repository
-            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Duplicate", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Dismissed, RowVersion = 2, ReviewedBy = operatorId.ToString() });
+            .Setup(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Dismissed", "Duplicate", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Dismissed, RowVersion = 2, ReviewedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
         // Act and Assert: no reason chosen keeps Dismiss disabled
@@ -225,7 +225,7 @@ public class FlagActionsPanel_Tests : BunitContext
 
         // Assert: the reason is sent as the enum name
         cut.WaitForAssertion(() => Assert.Single(changes));
-        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Duplicate", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Dismissed", "Duplicate", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -234,10 +234,10 @@ public class FlagActionsPanel_Tests : BunitContext
         // Arrange
         Guid operatorId = await SignInAsync("Review");
         MediaFlag flag = Flag();
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         _ = _repository
-            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Dismissed, RowVersion = 2, ReviewedBy = operatorId.ToString() });
+            .Setup(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Dismissed", "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlag { Id = flag.Id, Status = MediaFlagStatus.Dismissed, RowVersion = 2, ReviewedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
         // Act: Other alone is not enough
@@ -253,7 +253,7 @@ public class FlagActionsPanel_Tests : BunitContext
 
         // Assert: the note is sent after the enum name, trimmed
         cut.WaitForAssertion(() => Assert.Single(changes));
-        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Dismissed", "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -262,9 +262,9 @@ public class FlagActionsPanel_Tests : BunitContext
         // Arrange
         _ = await SignInAsync("Review");
         MediaFlag flag = Flag();
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         _ = _repository
-            .Setup(r => r.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Kept", null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new FlagStatusConflictException(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "someone-else", FixedNowUtc));
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
@@ -282,7 +282,7 @@ public class FlagActionsPanel_Tests : BunitContext
     {
         // Arrange
         _ = await SignInAsync("ReadOnly");
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(Flag(), changes);
 
         // Act
@@ -319,7 +319,7 @@ public class FlagActionsPanel_Tests : BunitContext
         Guid operatorId = await SignInAsync("Review");
         MediaFlag clip = ClipFlag();
         ForensicCase alpha = OpenCase("Alpha");
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
         _ = _cases
             .Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clip.MediaItemId!.Value, TestLocalizer.Create()["FlagActionsPinReason"].Value, operatorId.ToString(), It.IsAny<CancellationToken>()))
@@ -467,7 +467,7 @@ public class FlagActionsPanel_Tests : BunitContext
         MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
         SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
         string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
-        var changes = new List<MediaFlag>();
+        var changes = new List<MediaFlagDto>();
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
         _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
         _ = _cases.Setup(c => c.AddItemAsync(alpha.Id, CaseItemKind.Media, clipA.Id, reason, operatorId.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync((CaseItem)null!);

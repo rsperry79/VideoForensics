@@ -56,7 +56,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = jamming.Setup(j => j.GetIncidentAsync(incidentId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateIncident(incidentId));
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = flags.Setup(f => f.GetAsync(flagId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFlag(flagId));
@@ -104,7 +104,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = jamming.Setup(j => j.GetIncidentAsync(incidentId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((JammingIncidentRecord?)null);
@@ -125,7 +125,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = flags.Setup(f => f.GetAsync(flagId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaFlag?)null);
@@ -145,7 +145,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
@@ -163,7 +163,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
@@ -181,7 +181,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var incidentId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = jamming.Setup(j => j.GetIncidentAsync(incidentId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateIncident(incidentId));
@@ -202,7 +202,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = cases.Setup(c => c.GetAsync(caseId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicCase { CaseNumber = "C-1", Title = "Closed case", CreatedBy = "operator-1" });
@@ -223,7 +223,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var incidentId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = jamming.Setup(j => j.GetIncidentAsync(incidentId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((JammingIncidentRecord?)null);
@@ -241,7 +241,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var incidentId = Guid.NewGuid();
             var cases = new Mock<ICaseRepository>();
             var jamming = new Mock<IJammingRepository>();
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notes = new Mock<INoteRepository>();
             _ = jamming.Setup(j => j.GetIncidentAsync(incidentId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateIncident(incidentId));

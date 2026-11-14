@@ -26,7 +26,7 @@ public class BitrateDeviationAlertsTests
         _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
         var written = new List<MediaFlag>();
         _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
@@ -65,7 +65,7 @@ public class BitrateDeviationAlertsTests
         var notices = new Mock<INoticeRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
 
         int raised = await CheckAsync(notices.Object, dispatcher.Object, flags.Object, Spike());
 
@@ -81,7 +81,7 @@ public class BitrateDeviationAlertsTests
         var notices = new Mock<INoticeRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
 
         int raised = await CheckAsync(notices.Object, dispatcher.Object, flags.Object, []);
 
@@ -110,7 +110,7 @@ public class BitrateDeviationAlertsTests
     private async Task<int> CheckAsync(
         INoticeRepository notices,
         INotificationDispatcher dispatcher,
-        IMediaFlagRepository flags,
+        IMediaFlagWriteRepository flags,
         List<MeasuredBitrate> rows)
     {
         var mediaItems = new Mock<IMediaItemWriteRepository>();

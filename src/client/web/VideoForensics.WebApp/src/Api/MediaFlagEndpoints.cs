@@ -67,7 +67,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Lists one page of flags matching the filter, newest first. Skip defaults to 0; take defaults to 100 and is 1..500.</summary>
         public static async Task<IResult> ListAsync(
             [AsParameters] MediaFlagQueryParameters query,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {
             MediaFlagFilter? filter = TryBuildFilter(query);
@@ -90,7 +90,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Counts the flags matching the filter.</summary>
         public static async Task<IResult> CountAsync(
             [AsParameters] MediaFlagQueryParameters query,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {
             MediaFlagFilter? filter = TryBuildFilter(query);
@@ -104,7 +104,7 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>Gets one flag, or 404.</summary>
-        public static async Task<IResult> GetAsync(Guid id, IMediaFlagRepository flags, CancellationToken ct)
+        public static async Task<IResult> GetAsync(Guid id, IMediaFlagWriteRepository flags, CancellationToken ct)
         {
             MediaFlag? flag = await flags.GetAsync(id, ct);
             return flag == null ? Results.NotFound() : Results.Ok(flag.ToDto());
@@ -117,7 +117,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> NeighbourAsync(
             Guid id,
             [AsParameters] MediaFlagQueryParameters query,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {
             if (!Enum.TryParse(query.Direction, out MediaFlagNeighbour direction) || !Enum.IsDefined(direction))
@@ -147,7 +147,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> PositionAsync(
             Guid id,
             [AsParameters] MediaFlagQueryParameters query,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {
             MediaFlagFilter? filter = TryBuildFilter(query);
@@ -167,7 +167,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> SetStatusAsync(
             Guid id,
             SetFlagStatusRequestDto request,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             IMediaFlagChangeNotifier notifier,
             HttpContext context,
             CancellationToken ct)
@@ -209,7 +209,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> ReopenAsync(
             Guid id,
             ReopenFlagRequestDto request,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             IMediaFlagChangeNotifier notifier,
             HttpContext context,
             CancellationToken ct)

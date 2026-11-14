@@ -1,5 +1,7 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -91,14 +93,8 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
             return [];
         }
 
-        var filter = new MediaFlagFilter
-        {
-            Types = [MediaFlagType.BitrateCollapse, MediaFlagType.BitrateDeviation],
-            DeviceIds = devices,
-            FromUtc = fromUtc,
-            ToUtc = toUtc,
-        };
-        MediaFlagPage page = await _flags.ListPageAsync(filter, 0, BitRateFlagPageSize, ct);
+        var filter = new MediaFlagFilterDto(["BitrateCollapse", "BitrateDeviation"], null, devices, fromUtc, toUtc);
+        MediaFlagPageDto page = await _flags.ListPageAsync(filter, 0, BitRateFlagPageSize, ct);
         return page.Items
             .OrderByDescending(flag => flag.WindowStartUtc)
             .Select(flag => new ReviewBitRateFlag(flag.Id, flag.DeviceId, flag.WindowStartUtc, flag.WindowEndUtc, flag.FlagType, flag.MediaItemId))

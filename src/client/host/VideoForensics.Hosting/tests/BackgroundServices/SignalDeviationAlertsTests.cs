@@ -102,7 +102,7 @@ public class SignalDeviationAlertsTests
         _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
         var written = new List<MediaFlag>();
         _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
@@ -129,7 +129,7 @@ public class SignalDeviationAlertsTests
         var notices = new Mock<INoticeRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
 
         _ = await CheckAsync(notices.Object, dispatcher.Object, flags.Object);
 
@@ -146,7 +146,7 @@ public class SignalDeviationAlertsTests
         _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .ThrowsAsync(new InvalidOperationException("boom"));
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
         var written = new List<MediaFlag>();
         _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
@@ -172,7 +172,7 @@ public class SignalDeviationAlertsTests
         var notices = new Mock<INoticeRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
         var written = new List<MediaFlag>();
         _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
@@ -190,7 +190,7 @@ public class SignalDeviationAlertsTests
     /// Ten readings alternating -50 and -70 (mean about -60), then one at -95 an hour ago. The -95 sits about 2.2 sample
     /// std devs below the mean, so it is an alert; the others are inside one std dev.
     /// </summary>
-    private async Task<int> CheckAsync(INoticeRepository notices, INotificationDispatcher dispatcher, IMediaFlagRepository? flags = null)
+    private async Task<int> CheckAsync(INoticeRepository notices, INotificationDispatcher dispatcher, IMediaFlagWriteRepository? flags = null)
     {
         DateTime now = DateTime.UtcNow;
         var rows = new List<DeviceHealth>();
@@ -207,7 +207,7 @@ public class SignalDeviationAlertsTests
         var checker = new SignalDeviationAlerts(
             health.Object,
             notices,
-            flags ?? new Mock<IMediaFlagRepository>().Object,
+            flags ?? new Mock<IMediaFlagWriteRepository>().Object,
             dispatcher,
             TimeProvider.System,
             NullLogger<SignalDeviationAlerts>.Instance);

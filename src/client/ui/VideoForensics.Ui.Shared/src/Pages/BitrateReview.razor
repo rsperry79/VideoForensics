@@ -88,12 +88,12 @@
     [Parameter]
     public Guid FlagId { get; set; }
 
-    private static readonly MediaFlagFilter BitrateFilter = new() { Types = [MediaFlagType.BitrateCollapse] };
+    private static readonly MediaFlagFilterDto BitrateFilter = new(["BitrateCollapse"], null, null, null, null);
 
     private readonly CancellationTokenSource _disposeCts = new();
     private Guid? _loadedFlagId;
     private bool _loaded;
-    private MediaFlag? _flag;
+    private MediaFlagDto? _flag;
     private MediaFitState _state = MediaFitState.FlagNotFound;
     private string? _source;
     private DateTime? _clipStartUtc;
@@ -136,8 +136,8 @@
         _state = MediaFitState.FlagNotFound;
         try
         {
-            MediaFlag? flag = await MediaFlagRepository.GetAsync(FlagId, ct);
-            if (flag is null || flag.FlagType != MediaFlagType.BitrateCollapse)
+            MediaFlagDto? flag = await MediaFlagRepository.GetAsync(FlagId, ct);
+            if (flag is null || flag.FlagType != "BitrateCollapse")
             {
                 return;
             }
@@ -200,17 +200,17 @@
     }
 
     /// <summary>Keep or Dismiss moves to the next unreviewed flag. Undoing a review stays on the flag.</summary>
-    private async Task OnFlagChanged(MediaFlag updated)
+    private async Task OnFlagChanged(MediaFlagDto updated)
     {
         _flag = updated;
-        if (updated.Status == MediaFlagStatus.Unreviewed)
+        if (updated.Status == "Unreviewed")
         {
             return;
         }
 
         try
         {
-            MediaFlag? next = await FlagAdvance.FindNextUnreviewedAsync(MediaFlagRepository, BitrateFilter, updated.Id, _disposeCts.Token);
+            MediaFlagDto? next = await FlagAdvance.FindNextUnreviewedAsync(MediaFlagRepository, BitrateFilter, updated.Id, _disposeCts.Token);
             if (next is { } found && FlaggedMediaTable.ReviewPath(found) is { } path)
             {
                 NavigationManager.NavigateTo(path);
@@ -225,7 +225,7 @@
         }
     }
 
-    private void OnNeighbourNavigate(MediaFlag neighbour)
+    private void OnNeighbourNavigate(MediaFlagDto neighbour)
     {
         string? path = FlaggedMediaTable.ReviewPath(neighbour);
         if (path is not null)

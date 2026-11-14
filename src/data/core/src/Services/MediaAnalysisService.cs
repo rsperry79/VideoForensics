@@ -40,7 +40,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaAnalysisService> _logger;
         private readonly IMediaPathResolver _paths;
-        private readonly IMediaFlagRepository _flags;
+        private readonly IMediaFlagWriteRepository _flags;
 
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
@@ -52,7 +52,7 @@ namespace VideoForensics.Data.Core.Services
             IMediaThumbnailService thumbnails,
             IOptions<MediaAnalysisOptions> options,
             ILogger<MediaAnalysisService> logger,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             IMediaPathResolver? paths = null)
         {
             _items = items;

@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         private readonly IDeviceHealthRepository _health;
         private readonly INoticeRepository _notices;
-        private readonly IMediaFlagRepository _flags;
+        private readonly IMediaFlagWriteRepository _flags;
         private readonly INotificationDispatcher _dispatcher;
         private readonly TimeProvider _time;
         private readonly ILogger<SignalDeviationAlerts> _logger;
@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public SignalDeviationAlerts(
             IDeviceHealthRepository health,
             INoticeRepository notices,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             INotificationDispatcher dispatcher,
             TimeProvider time,
             ILogger<SignalDeviationAlerts> logger)

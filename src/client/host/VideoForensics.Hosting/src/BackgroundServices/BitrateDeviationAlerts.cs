@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         private readonly IMediaItemWriteRepository _mediaItems;
         private readonly INoticeRepository _notices;
-        private readonly IMediaFlagRepository _flags;
+        private readonly IMediaFlagWriteRepository _flags;
         private readonly INotificationDispatcher _dispatcher;
         private readonly TimeProvider _time;
         private readonly ILogger<BitrateDeviationAlerts> _logger;
@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public BitrateDeviationAlerts(
             IMediaItemWriteRepository mediaItems,
             INoticeRepository notices,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             INotificationDispatcher dispatcher,
             TimeProvider time,
             ILogger<BitrateDeviationAlerts> logger)

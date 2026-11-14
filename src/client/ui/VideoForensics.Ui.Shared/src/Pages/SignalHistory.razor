@@ -340,7 +340,7 @@
 @if (!ScopeState.Current.MatchesNoDevices)
 {
     <h4 class="mt-4 mb-2" data-testid="signal-flags-heading">@L["SignalFlagsHeading"]</h4>
-    <FlaggedMediaTable Types="@(new[] { VideoForensics.Data.Common.Entities.MediaFlagType.RssiDeviation })" DeviceIds="@FlagDeviceIds" FromUtc="@_from" ToUtc="@_to" DeviceNames="@FlagDeviceNames" />
+    <FlaggedMediaTable Types="@(new[] { "RssiDeviation" })" DeviceIds="@FlagDeviceIds" FromUtc="@_from" ToUtc="@_to" DeviceNames="@FlagDeviceNames" />
 }
 
 @code {

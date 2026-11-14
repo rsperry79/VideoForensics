@@ -38,7 +38,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid targetId,
             ICaseRepository cases,
             IJammingRepository jamming,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             INoteRepository notes,
             CancellationToken ct)
         {
@@ -63,7 +63,7 @@ namespace VideoForensics.Client.WebApp.Api
             AddNoteRequest request,
             ICaseRepository cases,
             IJammingRepository jamming,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             INoteRepository notes,
             HttpContext context,
             CancellationToken ct)
@@ -120,7 +120,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid targetId,
             ICaseRepository cases,
             IJammingRepository jamming,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {
             return kind switch

@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for media review flags. Lists order by RaisedAtUtc then Id, newest first.</summary>
-    public interface IMediaFlagRepository
+    public interface IMediaFlagWriteRepository
     {
         /// <summary>
         /// Inserts the flag, or refreshes the existing Unreviewed row with the same key (MediaItemId + FlagType, or

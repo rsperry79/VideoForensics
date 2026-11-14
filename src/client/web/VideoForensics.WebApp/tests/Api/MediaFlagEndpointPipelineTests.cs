@@ -64,7 +64,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             public required WebApplication App { get; init; }
             public required HttpClient Client { get; init; }
-            public required Mock<IMediaFlagRepository> Flags { get; init; }
+            public required Mock<IMediaFlagWriteRepository> Flags { get; init; }
             public required Mock<IMediaFlagChangeNotifier> Notifier { get; init; }
 
             public async ValueTask DisposeAsync()
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
-            var flags = new Mock<IMediaFlagRepository>();
+            var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             var flag = new MediaFlag { Id = FlagId, DeviceId = DeviceId, FlagType = MediaFlagType.BitrateCollapse, Status = MediaFlagStatus.Kept };
             _ = flags.Setup(f => f.GetAsync(FlagId, It.IsAny<CancellationToken>())).ReturnsAsync(flag);

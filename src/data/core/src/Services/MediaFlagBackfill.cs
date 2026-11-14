@@ -20,11 +20,11 @@ namespace VideoForensics.Data.Core.Services
         public const int WindowDays = 7;
 
         private readonly IMediaItemWriteRepository _items;
-        private readonly IMediaFlagRepository _flags;
+        private readonly IMediaFlagWriteRepository _flags;
         private readonly TimeProvider _time;
         private readonly ILogger<MediaFlagBackfill> _logger;
 
-        public MediaFlagBackfill(IMediaItemWriteRepository items, IMediaFlagRepository flags, TimeProvider time, ILogger<MediaFlagBackfill> logger)
+        public MediaFlagBackfill(IMediaItemWriteRepository items, IMediaFlagWriteRepository flags, TimeProvider time, ILogger<MediaFlagBackfill> logger)
         {
             _items = items;
             _flags = flags;

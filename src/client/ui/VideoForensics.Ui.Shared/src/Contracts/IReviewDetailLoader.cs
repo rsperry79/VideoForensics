@@ -49,7 +49,7 @@ public interface IReviewDetailLoader
 /// <param name="EndUtc">End of the flagged window (UTC).</param>
 /// <param name="FlagType">Which bit-rate flag it is.</param>
 /// <param name="MediaItemId">The clip the flag is on, or null when it covers a window with no clip.</param>
-public sealed record ReviewBitRateFlag(Guid FlagId, Guid DeviceId, DateTime StartUtc, DateTime EndUtc, MediaFlagType FlagType, Guid? MediaItemId);
+public sealed record ReviewBitRateFlag(Guid FlagId, Guid DeviceId, DateTime StartUtc, DateTime EndUtc, string FlagType, Guid? MediaItemId);
 
 /// <summary>One notable signal deviation on a camera, spanning the hour it was flagged in.</summary>
 /// <param name="DeviceId">The camera.</param>

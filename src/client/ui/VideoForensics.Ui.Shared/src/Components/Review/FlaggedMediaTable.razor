@@ -1,10 +1,10 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
 @using Syncfusion.Blazor.Grids
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Time
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @implements IDisposable
 @inject IStringLocalizer<SharedResources> L
 @inject IMediaFlagRepository MediaFlagRepository
@@ -22,14 +22,14 @@
             <p class="small mb-2" data-testid="flagged-media-count">@L["FlaggedMediaShowingCount", PageSize, _total].Value</p>
         }
 
-        <SfGrid TValue="MediaFlag" DataSource="@_rows" AllowPaging="true" AllowResizing="true">
+        <SfGrid TValue="MediaFlagDto" DataSource="@_rows" AllowPaging="true" AllowResizing="true">
             <GridPageSettings PageSize="20"></GridPageSettings>
-            <GridEvents TValue="MediaFlag" RowSelected="OnRowSelected"></GridEvents>
+            <GridEvents TValue="MediaFlagDto" RowSelected="OnRowSelected"></GridEvents>
             <GridColumns>
                 <GridColumn HeaderText="@L["FlaggedMediaColRaised"].Value" Width="170">
                     <Template>
                         @{
-                            MediaFlag flag = (MediaFlag)context;
+                            MediaFlagDto flag = (MediaFlagDto)context;
                         }
                         <span>@Zone.Format(flag.RaisedAtUtc, "yyyy-MM-dd HH:mm")</span>
                     </Template>
@@ -37,7 +37,7 @@
                 <GridColumn HeaderText="@L["FlaggedMediaColType"].Value" Width="180">
                     <Template>
                         @{
-                            MediaFlag typeFlag = (MediaFlag)context;
+                            MediaFlagDto typeFlag = (MediaFlagDto)context;
                         }
                         <span class="d-block" data-testid="flagged-media-event">@EventName(typeFlag.EventType)</span>
                         <span class="d-block small text-muted" data-testid="flagged-media-flag-type">@TypeName(typeFlag.FlagType)</span>
@@ -46,27 +46,27 @@
                 <GridColumn HeaderText="@L["FlaggedMediaColDev"].Value" Width="90">
                     <Template>
                         @{
-                            MediaFlag devFlag = (MediaFlag)context;
+                            MediaFlagDto devFlag = (MediaFlagDto)context;
                         }
                         <span data-testid="flagged-media-dev" title="@L["FlaggedMediaDevTooltip"].Value">@DevText(devFlag.DeviationSigma)</span>
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["FlaggedMediaColCamera"].Value" Width="180">
                     <Template>
-                        <span>@CameraName(((MediaFlag)context).DeviceId)</span>
+                        <span>@CameraName(((MediaFlagDto)context).DeviceId)</span>
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["FlaggedMediaColWindow"].Value" Width="260">
                     <Template>
                         @{
-                            MediaFlag windowFlag = (MediaFlag)context;
+                            MediaFlagDto windowFlag = (MediaFlagDto)context;
                         }
                         <span>@L["FlaggedMediaWindowRange", Zone.Format(windowFlag.WindowStartUtc, "yyyy-MM-dd HH:mm"), Zone.Format(windowFlag.WindowEndUtc, "yyyy-MM-dd HH:mm")].Value</span>
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["FlaggedMediaColStatus"].Value" Width="130">
                     <Template>
-                        <span>@StatusName(((MediaFlag)context).Status)</span>
+                        <span>@StatusName(((MediaFlagDto)context).Status)</span>
                     </Template>
                 </GridColumn>
             </GridColumns>
@@ -85,24 +85,24 @@
     private const string RssiReviewPathPrefix = "/signal-history/review/";
 
     /// <summary>
-    /// The review page for a flag. <see cref="MediaFlagType.BitrateCollapse"/> maps to the bit rate review page and
-    /// <see cref="MediaFlagType.RssiDeviation"/> to the RSSI review page. Other flag types have no review page and return null.
+    /// The review page for a flag. BitrateCollapse maps to the bit rate review page and
+    /// RssiDeviation to the RSSI review page. Other flag types have no review page and return null.
     /// </summary>
     /// <param name="flag">The flag to open.</param>
     /// <returns>The relative review path for the flag, or null when its type has no review page.</returns>
-    public static string? ReviewPath(MediaFlag flag)
+    public static string? ReviewPath(MediaFlagDto flag)
     {
         return flag.FlagType switch
         {
-            MediaFlagType.BitrateCollapse => BitrateReviewPathPrefix + flag.Id,
-            MediaFlagType.RssiDeviation => RssiReviewPathPrefix + flag.Id,
+            "BitrateCollapse" => BitrateReviewPathPrefix + flag.Id,
+            "RssiDeviation" => RssiReviewPathPrefix + flag.Id,
             _ => null,
         };
     }
 
     /// <summary>Opens the review page for the clicked row. A flag type with no review page leaves the list where it is.</summary>
     /// <param name="flag">The flag on the clicked row.</param>
-    public void OpenFlag(MediaFlag flag)
+    public void OpenFlag(MediaFlagDto flag)
     {
         string? path = ReviewPath(flag);
         if (path is not null)
@@ -111,14 +111,14 @@
         }
     }
 
-    private void OnRowSelected(RowSelectEventArgs<MediaFlag> args)
+    private void OnRowSelected(RowSelectEventArgs<MediaFlagDto> args)
     {
         OpenFlag(args.Data);
     }
 
     /// <summary>The flag types to list. Each report page passes only its own type.</summary>
     [Parameter, EditorRequired]
-    public IReadOnlyCollection<MediaFlagType> Types { get; set; } = [];
+    public IReadOnlyCollection<string> Types { get; set; } = [];
 
     /// <summary>The cameras to list. Null means every camera.</summary>
     [Parameter]
@@ -142,11 +142,11 @@
 
     private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
 
-    private List<MediaFlag> _rows = [];
+    private List<MediaFlagDto> _rows = [];
     private int _total;
     private bool _loaded;
     private bool _loadedOnce;
-    private HashSet<MediaFlagType> _loadedTypes = [];
+    private HashSet<string> _loadedTypes = [];
     private HashSet<Guid>? _loadedDeviceIds;
     private DateTime? _loadedFromUtc;
     private DateTime? _loadedToUtc;
@@ -154,7 +154,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        HashSet<MediaFlagType> types = [.. Types];
+        HashSet<string> types = [.. Types];
         HashSet<Guid>? deviceIds = DeviceIds is null ? null : [.. DeviceIds];
         if (_loadedOnce && types.SetEquals(_loadedTypes) && SameDevices(deviceIds) && FromUtc == _loadedFromUtc && ToUtc == _loadedToUtc)
         {
@@ -171,15 +171,9 @@
         var cts = new CancellationTokenSource();
         _loadCts = cts;
 
-        var filter = new MediaFlagFilter
-        {
-            Types = Types,
-            DeviceIds = DeviceIds,
-            FromUtc = FromUtc,
-            ToUtc = ToUtc,
-        };
+        var filter = new MediaFlagFilterDto([.. Types], null, DeviceIds is null ? null : [.. DeviceIds], FromUtc, ToUtc);
 
-        MediaFlagPage page;
+        MediaFlagPageDto page;
         try
         {
             page = await MediaFlagRepository.ListPageAsync(filter, 0, PageSize, cts.Token);
@@ -205,7 +199,7 @@
         return deviceIds.SetEquals(_loadedDeviceIds);
     }
 
-    private string TypeName(MediaFlagType type)
+    private string TypeName(string type)
     {
         LocalizedString text = L[$"FlaggedMediaType_{type}"];
         return text.ResourceNotFound ? type.ToString() : text.Value;
@@ -225,7 +219,7 @@
             : sigma.Value.ToString("F1", System.Globalization.CultureInfo.CurrentCulture);
     }
 
-    private string StatusName(MediaFlagStatus status)
+    private string StatusName(string status)
     {
         LocalizedString text = L[$"FlaggedMediaStatus_{status}"];
         return text.ResourceNotFound ? status.ToString() : text.Value;

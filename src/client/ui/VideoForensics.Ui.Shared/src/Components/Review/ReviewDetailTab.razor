@@ -868,9 +868,9 @@
     private bool ShowBitRate => ReviewEventFilters.Shows(State.EventTypes, ReviewEventFilters.BitRate);
 
     /// <summary>The localized name of a bit-rate flag type.</summary>
-    private string BitRateLabel(MediaFlagType flagType)
+    private string BitRateLabel(string flagType)
     {
-        return flagType == MediaFlagType.BitrateDeviation ? L["DetailBitRateDeviation"].Value : L["DetailBitRateCollapse"].Value;
+        return flagType == "BitrateDeviation" ? L["DetailBitRateDeviation"].Value : L["DetailBitRateCollapse"].Value;
     }
 
     private DetailKey CurrentKey()

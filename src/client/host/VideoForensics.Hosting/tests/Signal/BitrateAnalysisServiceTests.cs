@@ -28,7 +28,7 @@ public class BitrateAnalysisServiceTests
         _ = media
             .Setup(r => r.GetMeasuredBitrateByDeviceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out MeasuredBitrate[]? rows) ? rows : []);
-        var flagRepo = new Mock<IMediaFlagRepository>();
+        var flagRepo = new Mock<IMediaFlagWriteRepository>();
         _ = flagRepo
             .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MediaFlagPage(flags ?? [], flags?.Length ?? 0));
