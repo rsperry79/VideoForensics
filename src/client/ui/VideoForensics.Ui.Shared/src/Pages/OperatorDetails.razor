@@ -2,6 +2,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using Operator = VideoForensics.Data.Common.Entities.Operator
 @inject NavigationManager NavigationManager
@@ -240,14 +241,14 @@ else
     private string? _uiModeSaveError;
 
     private bool IsAdminViewer => SessionState.IsSignedIn
-        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
-        && viewerRole >= OperatorRole.Admin;
+        && Enum.TryParse(SessionState.Role, out OperatorRoleDto viewerRole)
+        && viewerRole >= OperatorRoleDto.Admin;
 
     // The operator GET (api/devices-management/operators/{Id}) is SuperAdmin-only, so the details chain
     // is skipped for Admin viewers rather than rendering a 403 alert.
     private bool IsSuperAdminViewer => SessionState.IsSignedIn
-        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
-        && viewerRole >= OperatorRole.SuperAdmin;
+        && Enum.TryParse(SessionState.Role, out OperatorRoleDto viewerRole)
+        && viewerRole >= OperatorRoleDto.SuperAdmin;
 
     // Unlock state
     private bool _isUnlocking;

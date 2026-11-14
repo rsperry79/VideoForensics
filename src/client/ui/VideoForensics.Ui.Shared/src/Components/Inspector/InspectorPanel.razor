@@ -124,7 +124,7 @@
                 {
                     <div class="muted-text">@L["InspectorSelectCase"]</div>
                 }
-                else if (CaseState.ActiveCase.Status == CaseStatusDto.Open.ToString() && _role.HasValue && _role >= OperatorRole.Review)
+                else if (CaseState.ActiveCase.Status == CaseStatusDto.Open.ToString() && _role.HasValue && _role >= OperatorRoleDto.Review)
                 {
                     <div class="mb-2">
                         <ReasonPicker TReason="EvidencePinReason" OtherValue="EvidencePinReason.Other" @bind-Value="_pinReason" @bind-Note="_pinNote" ValidityChanged="OnPinReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
@@ -235,7 +235,7 @@
     private bool _pinReasonValid;
     private string? _pinError;
     private string? _pinSuccessMessage;
-    private OperatorRole? _role;
+    private OperatorRoleDto? _role;
 
     private PendingEvidenceAction _pendingAction = PendingEvidenceAction.None;
     private EvidenceHoldReason? _holdReason;
@@ -258,7 +258,7 @@
         CaseState.OnChange += OnCaseStateChanged;
 
         await SessionState.EnsureLoadedAsync();
-        _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+        _role = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out var role) ? role : null;
     }
 
     private void OnCloseClick()

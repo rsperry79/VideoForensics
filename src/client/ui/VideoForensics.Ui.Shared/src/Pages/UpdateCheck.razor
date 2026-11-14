@@ -4,6 +4,7 @@
 @using VideoForensics.Client.Common.Contracts
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @inject IUpdateCheckService UpdateCheckService
 @inject IReleaseChannelService ReleaseChannelService
@@ -169,13 +170,13 @@ else if (_state is not null)
 
     // Same role check as OperatorDetails: the server enforces SuperAdmin for changes, this only decides whether to show the control.
     private bool IsSuperAdminViewer => SessionState.IsSignedIn
-        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
-        && viewerRole >= OperatorRole.SuperAdmin;
+        && Enum.TryParse(SessionState.Role, out OperatorRoleDto viewerRole)
+        && viewerRole >= OperatorRoleDto.SuperAdmin;
 
     // Channel card is visible to Admin and above only. Viewers below Admin get no card and no channel request.
     private bool IsAdminOrAbove => SessionState.IsSignedIn
-        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
-        && viewerRole >= OperatorRole.Admin;
+        && Enum.TryParse(SessionState.Role, out OperatorRoleDto viewerRole)
+        && viewerRole >= OperatorRoleDto.Admin;
 
     protected override async Task OnInitializedAsync()
     {

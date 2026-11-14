@@ -116,25 +116,25 @@
     private bool _busy;
 
     /// <summary>The operator role parsed from the paired session, or null when no role is known.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>Why the tag and new-case actions do not apply, or null when they do.</summary>
     private LocalizedString? TagReason =>
         Selection.DeviceId is null || (Selection.EventId is null && Selection.MediaItemId is null)
             ? L["ReasonNoSelection"]
-            : RoleReason(OperatorRole.Review);
+            : RoleReason(OperatorRoleDto.Review);
 
     /// <summary>Why the hold action does not apply, or null when it does.</summary>
     private LocalizedString? HoldReason =>
-        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.Admin);
+        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRoleDto.Admin);
 
     /// <summary>Why the integrity check does not apply, or null when it does.</summary>
     private LocalizedString? VerifyReason =>
-        Selection.MediaItemId is null || Selection.DeviceId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.ReadOnly);
+        Selection.MediaItemId is null || Selection.DeviceId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRoleDto.ReadOnly);
 
     /// <summary>Why the export does not apply, or null when it does. Export needs SuperAdmin, as the export page does.</summary>
     private LocalizedString? ExportReason =>
-        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.SuperAdmin);
+        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRoleDto.SuperAdmin);
 
     /// <summary>The export link for the covering clip, or null while export does not apply.</summary>
     private string? ExportHref =>
@@ -149,9 +149,9 @@
     }
 
     /// <summary>Returns the reason a minimum role is refused, or null when the operator meets it.</summary>
-    private LocalizedString? RoleReason(OperatorRole minimum)
+    private LocalizedString? RoleReason(OperatorRoleDto minimum)
     {
-        OperatorRole? role = Role;
+        OperatorRoleDto? role = Role;
         if (role is null)
         {
             return L["ReasonSignInRequired"];
@@ -164,8 +164,8 @@
 
         return minimum switch
         {
-            OperatorRole.Review => L["ReasonRequiresReview"],
-            OperatorRole.Admin => L["ReasonRequiresAdmin"],
+            OperatorRoleDto.Review => L["ReasonRequiresReview"],
+            OperatorRoleDto.Admin => L["ReasonRequiresAdmin"],
             _ => L["ReasonRequiresSuperAdmin"],
         };
     }

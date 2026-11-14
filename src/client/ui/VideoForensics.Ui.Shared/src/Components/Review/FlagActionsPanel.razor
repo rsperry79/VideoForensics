@@ -157,13 +157,13 @@
     private LocalizedString? _error;
 
     /// <summary>The operator role parsed from the paired session, or null when no role is known.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>Why the operator cannot review, or null when the operator holds the Review role.</summary>
     private LocalizedString? RoleReason =>
         Role is null
             ? ReviewL["ReasonSignInRequired"]
-            : Role.Value >= OperatorRole.Review ? null : ReviewL["ReasonRequiresReview"];
+            : Role.Value >= OperatorRoleDto.Review ? null : ReviewL["ReasonRequiresReview"];
 
     /// <summary>True when the operator may act on this flag: the role is held and the flag is still Unreviewed.</summary>
     private bool CanAct => RoleReason is null && Flag.Status == "Unreviewed";

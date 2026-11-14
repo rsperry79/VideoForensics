@@ -155,10 +155,10 @@ else
     private Guid? _selectedIncidentId;
 
     /// <summary>The signed-in operator's role, or null when it is unknown or not a valid role.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>True when the operator holds the Review role or higher, so may record incidents and add notes.</summary>
-    private bool _canAdd => Role is { } role && role >= OperatorRole.Review;
+    private bool _canAdd => Role is { } role && role >= OperatorRoleDto.Review;
 
     protected override async Task OnInitializedAsync()
     {

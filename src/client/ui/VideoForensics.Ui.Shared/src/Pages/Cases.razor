@@ -26,7 +26,7 @@
 </PageRightPanelContent>
 
 <div class="mb-3 d-flex gap-2">
-    @if (SessionState.OperatorId.HasValue && Enum.TryParse(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Review)
+    @if (SessionState.OperatorId.HasValue && Enum.TryParse(SessionState.Role, out OperatorRoleDto role) && role >= OperatorRoleDto.Review)
     {
     <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">@L["NewCase"]</button>
     }

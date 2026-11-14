@@ -512,13 +512,13 @@ public class ScopeRailRulesTests
     [Fact]
     public void ShowSaveScopeToCase_NoActiveCase_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(false, true, OperatorRole.Admin, false));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(false, true, OperatorRoleDto.Admin, false));
     }
 
     [Fact]
     public void ShowSaveScopeToCase_ScopeMatchesCase_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, false, OperatorRole.Admin, false));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, false, OperatorRoleDto.Admin, false));
     }
 
     [Fact]
@@ -530,20 +530,20 @@ public class ScopeRailRulesTests
     [Fact]
     public void ShowSaveScopeToCase_ReadOnlyRole_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRole.ReadOnly, false));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRoleDto.ReadOnly, false));
     }
 
     [Fact]
     public void ShowSaveScopeToCase_MatchesNoDevices_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRole.Admin, true));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRoleDto.Admin, true));
     }
 
     [Theory]
-    [InlineData(OperatorRole.Review)]
-    [InlineData(OperatorRole.Admin)]
-    [InlineData(OperatorRole.SuperAdmin)]
-    public void ShowSaveScopeToCase_ReviewOrHigherWithDifferingScope_ReturnsTrue(OperatorRole role)
+    [InlineData(OperatorRoleDto.Review)]
+    [InlineData(OperatorRoleDto.Admin)]
+    [InlineData(OperatorRoleDto.SuperAdmin)]
+    public void ShowSaveScopeToCase_ReviewOrHigherWithDifferingScope_ReturnsTrue(OperatorRoleDto role)
     {
         Assert.True(ScopeRailRules.ShowSaveScopeToCase(true, true, role, false));
     }

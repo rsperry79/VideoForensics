@@ -35,12 +35,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     public sealed record NavSection(string? Title, IReadOnlyList<NavItem> Items);
 
     /// <summary>Role/session state needed to evaluate nav and page access.</summary>
-    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
+    public sealed record NavContext(bool IsSignedIn, OperatorRoleDto? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
     {
         /// <summary>Builds the access context for the current circuit's session, using the server-reported tier.</summary>
         public static NavContext FromSession(PairedSessionState session, bool appLockSupported)
         {
-            OperatorRole? role = session.Role is not null && Enum.TryParse<OperatorRole>(session.Role, out OperatorRole parsed)
+            OperatorRoleDto? role = session.Role is not null && Enum.TryParse<OperatorRoleDto>(session.Role, out OperatorRoleDto parsed)
                 ? parsed
                 : null;
 
@@ -54,7 +54,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         }
 
         /// <summary>True when signed in with a role at or above <paramref name="minimum"/>.</summary>
-        public bool HasRole(OperatorRole minimum)
+        public bool HasRole(OperatorRoleDto minimum)
         {
             return IsSignedIn && Role is not null && Role >= minimum;
         }

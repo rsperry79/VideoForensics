@@ -8,12 +8,13 @@ using Syncfusion.Blazor.Layouts;
 using VideoForensics.Client.Ui.Shared.Extensions;
 using VideoForensics.Client.Ui.Shared.Services.Time;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
     public partial class MainLayout : IDisposable
     {
-        private OperatorRole? _role;
+        private OperatorRoleDto? _role;
         private string _currentPath = "/";
         private string _currentQuery = string.Empty;
         private SfSplitter? _outerSplitter;
@@ -36,7 +37,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         private bool _noticesDropdownOpen = false;
         private List<Notice> _noticesList = [];
 
-        private bool IsAdmin => _role.HasValue && _role >= OperatorRole.Admin;
+        private bool IsAdmin => _role.HasValue && _role >= OperatorRoleDto.Admin;
 
         private readonly string _rightPanelHandleId = $"vf-right-handle-{Guid.NewGuid():N}";
         private readonly string _rightPanelId = $"vf-right-panel-{Guid.NewGuid():N}";
@@ -72,7 +73,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // IJSRuntime is unavailable during Blazor's static prerender pass, so session/layout
                 // state can only be resolved once the circuit is connected.
                 await SessionState.EnsureLoadedAsync();
-                _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+                _role = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
                 _passkeySetupOnly = SessionState.PasskeySetupOnly;
 
                 await LayoutPrefs.EnsureLoadedAsync();

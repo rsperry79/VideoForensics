@@ -172,9 +172,9 @@ public static class ScopeRailRules
     public static bool ShowSaveScopeToCase(
         bool hasActiveCase,
         bool scopeDiffersFromCase,
-        OperatorRole? role,
+        OperatorRoleDto? role,
         bool matchesNoDevices)
     {
-        return hasActiveCase && scopeDiffersFromCase && role.HasValue && role.Value >= OperatorRole.Review && !matchesNoDevices;
+        return hasActiveCase && scopeDiffersFromCase && role.HasValue && role.Value >= OperatorRoleDto.Review && !matchesNoDevices;
     }
 }

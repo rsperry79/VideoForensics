@@ -361,15 +361,15 @@
     }
 
     /// <summary>The operator role parsed from the paired session, or null when none is known.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>Why Grab still does not apply now, or null when it does. The reasons are checked in the order an operator can fix them.</summary>
     private LocalizedString? GrabStillReason
     {
         get
         {
-            OperatorRole? role = Role;
-            if (role is null || role.Value < OperatorRole.Review)
+            OperatorRoleDto? role = Role;
+            if (role is null || role.Value < OperatorRoleDto.Review)
             {
                 return L["GrabStillNeedsRole"];
             }

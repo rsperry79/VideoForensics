@@ -165,7 +165,7 @@
     private List<ForensicCaseDto> _openCases = new();
     private bool _caseLoadError = false;
     private string? _saveScopeError;
-    private OperatorRole? _role;
+    private OperatorRoleDto? _role;
 
     private DateTime TodayUtc => TimeProvider.GetUtcNow().UtcDateTime.Date;
 
@@ -201,7 +201,7 @@
         }
 
         await SessionState.EnsureLoadedAsync();
-        _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+        _role = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out var role) ? role : null;
 
         // Subscribe to location changes to apply query string
         Nav.LocationChanged += OnLocationChanged;

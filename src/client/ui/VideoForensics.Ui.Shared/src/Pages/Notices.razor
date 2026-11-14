@@ -208,7 +208,7 @@ else
         }
 
         _isLoading = true;
-        bool isAdmin = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Admin;
+        bool isAdmin = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) && role >= OperatorRoleDto.Admin;
         _allNotices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, isAdmin, _showDismissed, CancellationToken.None))
             .OrderByDescending(n => n.TimestampUtc)
             .ToList();

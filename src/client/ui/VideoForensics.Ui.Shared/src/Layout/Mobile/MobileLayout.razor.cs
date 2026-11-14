@@ -4,12 +4,13 @@ using Microsoft.AspNetCore.Components.Routing;
 using VideoForensics.Client.Ui.Shared.Extensions;
 using VideoForensics.Client.Ui.Shared.Services.Time;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
 {
     public partial class MobileLayout : IDisposable
     {
-        private OperatorRole? _role;
+        private OperatorRoleDto? _role;
         private string _currentPath = "/";
         private string _currentQuery = string.Empty;
 
@@ -22,7 +23,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
         private bool _navDrawerOpen = false;
         private bool _settingsSheetOpen = false;
 
-        private bool IsAdmin => _role.HasValue && _role >= OperatorRole.Admin;
+        private bool IsAdmin => _role.HasValue && _role >= OperatorRoleDto.Admin;
 
         private IReadOnlyList<NavGroup> VisibleGroups => _passkeySetupOnly ? [] : (IReadOnlyList<NavGroup>)NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
 
@@ -53,7 +54,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
                 // IJSRuntime is unavailable during Blazor's static prerender pass, so session/layout
                 // state can only be resolved once the circuit is connected.
                 await SessionState.EnsureLoadedAsync();
-                _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+                _role = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
                 _passkeySetupOnly = SessionState.PasskeySetupOnly;
 
                 await ThemeService.InitializeAsync();

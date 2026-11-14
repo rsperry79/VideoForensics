@@ -197,17 +197,17 @@ else
 
     private bool CanEdit =>
         SessionState.OperatorId.HasValue &&
-        Enum.TryParse(SessionState.Role, out OperatorRole role) &&
-        role >= OperatorRole.Review;
+        Enum.TryParse(SessionState.Role, out OperatorRoleDto role) &&
+        role >= OperatorRoleDto.Review;
 
     /// <summary>
-    /// Closing/reopening a case is an evidence-lifecycle action (see <see cref="OperatorRole"/>),
+    /// Closing/reopening a case is an evidence-lifecycle action (see <see cref="OperatorRoleDto"/>),
     /// which requires Admin or above - Review may pin/annotate but may not close or reopen a case.
     /// </summary>
     private bool CanClose =>
         SessionState.OperatorId.HasValue &&
-        Enum.TryParse(SessionState.Role, out OperatorRole role) &&
-        role >= OperatorRole.Admin;
+        Enum.TryParse(SessionState.Role, out OperatorRoleDto role) &&
+        role >= OperatorRoleDto.Admin;
 
     protected override async Task OnInitializedAsync()
     {

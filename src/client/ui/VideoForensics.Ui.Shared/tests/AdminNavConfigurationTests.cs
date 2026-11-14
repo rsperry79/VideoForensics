@@ -1,7 +1,7 @@
 
 using System.Resources;
 
-using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Data.Common.Entities;
 
@@ -14,7 +14,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// </summary>
 public class AdminNavConfiguration_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false)
+    private static NavContext Ctx(OperatorRoleDto? role, bool local = false, bool passkey = false)
     {
         return new(role is not null, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
     }
@@ -60,24 +60,24 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/infrastructure")]
     public void PageAccessRules_RemoteAdmin_CannotOpenLocalOnlyAdminPage(string path)
     {
-        Assert.False(PageAccessRules.IsAllowed(path, Ctx(OperatorRole.Admin)));
+        Assert.False(PageAccessRules.IsAllowed(path, Ctx(OperatorRoleDto.Admin)));
     }
 
     [Fact]
     public void PageAccessRules_JammingTab_ReadOnlyOperator_Denied_ButReportsTabAllowed()
     {
         // Analyze tabs are keyed by query, so one tab's rule must not leak to another.
-        Assert.False(PageAccessRules.IsAllowed("/analyze?analysis=jamming", Ctx(OperatorRole.ReadOnly)));
-        Assert.True(PageAccessRules.IsAllowed("/analyze?analysis=reports", Ctx(OperatorRole.ReadOnly)));
-        Assert.True(PageAccessRules.IsAllowed("/analyze", Ctx(OperatorRole.ReadOnly)));
+        Assert.False(PageAccessRules.IsAllowed("/analyze?analysis=jamming", Ctx(OperatorRoleDto.ReadOnly)));
+        Assert.True(PageAccessRules.IsAllowed("/analyze?analysis=reports", Ctx(OperatorRoleDto.ReadOnly)));
+        Assert.True(PageAccessRules.IsAllowed("/analyze", Ctx(OperatorRoleDto.ReadOnly)));
     }
 
     [Fact]
     public void PageAccessRules_OperatorDetailsTemplate_RemoteSuperAdmin_Denied()
     {
         // The guard checks the @page template, so the parameterized template must be listed.
-        Assert.False(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRole.SuperAdmin)));
-        Assert.True(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRole.SuperAdmin, local: true)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRoleDto.SuperAdmin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRoleDto.SuperAdmin, local: true)));
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class AdminNavConfiguration_Tests
         ];
         var group = new NavGroup("test", "Test", "/settings", items);
 
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, new NavContext(true, OperatorRole.SuperAdmin, false, IsLocalTier: true));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, new NavContext(true, OperatorRoleDto.SuperAdmin, false, IsLocalTier: true));
 
         Assert.Equal(2, sections.Count);
         Assert.Equal("Security", sections[0].Title);
