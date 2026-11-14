@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for time-series device health metrics.</summary>
-    public interface IDeviceHealthRepository
+    public interface IDeviceHealthWriteRepository
     {
         /// <summary>Records a new device health metric.</summary>
         Task<DeviceHealth> AddAsync(DeviceHealth health, CancellationToken ct);

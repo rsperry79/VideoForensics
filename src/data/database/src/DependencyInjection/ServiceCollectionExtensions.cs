@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IDeviceTypedSettingsReader, DeviceTypedSettingsReader>();
             services.TryAddScoped<IDeviceSettingChangeRepository, DeviceSettingChangeRepository>();
             services.TryAddScoped<IDeviceLightEventRepository, DeviceLightEventRepository>();
-            services.TryAddScoped<IDeviceHealthRepository, DeviceHealthRepository>();
+            services.TryAddScoped<IDeviceHealthWriteRepository, DeviceHealthRepository>();
             services.TryAddScoped<ISnapshotCaptureRepository, SnapshotCaptureRepository>();
             services.TryAddScoped<ITimelapseGapQueries, TimelapseGapQueries>();
             services.TryAddScoped<IDeviceDetailsRepository, DeviceDetailsRepository>();

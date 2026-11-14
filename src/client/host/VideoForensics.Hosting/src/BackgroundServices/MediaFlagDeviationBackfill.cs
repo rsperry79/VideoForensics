@@ -27,14 +27,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public const string BitrateMarkerKey = "MediaFlagBitrateDeviationSigmaBackfilled";
 
         private readonly IMediaFlagDeviationRepository _flags;
-        private readonly IDeviceHealthRepository _health;
+        private readonly IDeviceHealthWriteRepository _health;
         private readonly IMediaItemWriteRepository _media;
         private readonly IAppSettingRepository _settings;
         private readonly ILogger<MediaFlagDeviationBackfill> _logger;
 
         public MediaFlagDeviationBackfill(
             IMediaFlagDeviationRepository flags,
-            IDeviceHealthRepository health,
+            IDeviceHealthWriteRepository health,
             IMediaItemWriteRepository media,
             IAppSettingRepository settings,
             ILogger<MediaFlagDeviationBackfill> logger)

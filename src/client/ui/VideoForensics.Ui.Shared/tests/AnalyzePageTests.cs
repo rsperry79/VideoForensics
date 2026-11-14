@@ -35,7 +35,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <see cref="IReportGenerationService"/> mock stubbed to return empty (no-row) reports so no
 /// panel ever needs to render a Syncfusion grid, and a real <see cref="JammingToolsOrchestrator"/>
 /// (a concrete class - the testable seam is its constructor dependencies: <see
-/// cref="IJammingRepository"/> and <see cref="IDeviceHealthRepository"/>, both mocked) wired for
+/// cref="IJammingRepository"/> and <see cref="IDeviceHealthWriteRepository"/>, both mocked) wired for
 /// an empty health history (fewer than 3 readings -> no incidents detected, so JammingPanel's
 /// success branch renders with zero rows).
 /// </summary>
@@ -48,7 +48,7 @@ public abstract class AnalyzePageTestBase : BunitContext
     protected Mock<IReportGenerationService> ReportGenerationServiceMock { get; } = new();
     protected Mock<IJammingRepository> JammingRepositoryMock { get; } = new();
     protected Mock<IJammingWriteRepository> JammingWriteRepositoryMock { get; } = new();
-    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<IDeviceHealthWriteRepository> DeviceHealthRepositoryMock { get; } = new();
     protected Mock<INoteRepository> NoteRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }

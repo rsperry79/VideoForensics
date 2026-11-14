@@ -45,7 +45,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
         private readonly Mock<INotificationDispatcher> _dispatcher = new();
-        private readonly Mock<IDeviceHealthRepository> _health = new();
+        private readonly Mock<IDeviceHealthWriteRepository> _health = new();
         private readonly List<SnapshotCapture> _rows = [];
 
         // The provider's offline rule, resolved keyed by provider name. Tests can swap it before building the provider.

@@ -1088,7 +1088,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var deviceId = Guid.NewGuid();
             var toUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
                 deviceId, null, toUtc, deviceHealth.Object, CancellationToken.None);
@@ -1101,7 +1101,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
                 deviceId, fromUtc, null, deviceHealth.Object, CancellationToken.None);
@@ -1115,7 +1115,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
                 deviceId, fromUtc, toUtc, deviceHealth.Object, CancellationToken.None);
@@ -1140,7 +1140,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
             _ = deviceHealth
                 .Setup(d => d.GetHistoryAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(history);

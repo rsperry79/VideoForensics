@@ -568,7 +568,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             DateTime? from,
             DateTime? to,
-            IDeviceHealthRepository deviceHealth,
+            IDeviceHealthWriteRepository deviceHealth,
             CancellationToken ct)
         {
             if (!from.HasValue || !to.HasValue)

@@ -33,7 +33,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             var healthSource = new Mock<IProviderHealthSource>();
             var deviceRepo = new Mock<IDeviceWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
-            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var healthRepository = new Mock<IDeviceHealthWriteRepository>();
             _ = healthRepository.Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
@@ -349,7 +349,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_SingleDegradedReading_EntersElevatedPollingWindow()
         {
             var elevatedTracker = new ElevatedPollingWindowTracker();
-            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var healthRepository = new Mock<IDeviceHealthWriteRepository>();
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
@@ -403,7 +403,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_ReadingWithinBaseline_DoesNotEnterElevatedWindow()
         {
             var elevatedTracker = new ElevatedPollingWindowTracker();
-            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var healthRepository = new Mock<IDeviceHealthWriteRepository>();
 
             var services = new ServiceCollection();
             var healthSource = new Mock<IProviderHealthSource>();
@@ -465,7 +465,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             var jammingOrchestrator = new JammingToolsOrchestrator(
                 Mock.Of<ILogger<JammingToolsOrchestrator>>(),
                 Mock.Of<IJammingWriteRepository>(),
-                Mock.Of<IDeviceHealthRepository>(),
+                Mock.Of<IDeviceHealthWriteRepository>(),
                 null);
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
@@ -509,7 +509,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             // Create mocked dependencies for real JammingToolsOrchestrator
-            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var healthRepository = new Mock<IDeviceHealthWriteRepository>();
             var jammingRepository = new Mock<IJammingWriteRepository>();
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
@@ -598,7 +598,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             // Create mocked dependencies for real JammingToolsOrchestrator
-            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var healthRepository = new Mock<IDeviceHealthWriteRepository>();
             var jammingRepository = new Mock<IJammingWriteRepository>();
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
@@ -687,7 +687,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             // Create mocked dependencies for real JammingToolsOrchestrator
-            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var healthRepository = new Mock<IDeviceHealthWriteRepository>();
             var jammingRepository = new Mock<IJammingWriteRepository>();
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
@@ -766,7 +766,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             var jammingOrchestrator = new JammingToolsOrchestrator(
                 Mock.Of<ILogger<JammingToolsOrchestrator>>(),
                 Mock.Of<IJammingWriteRepository>(),
-                Mock.Of<IDeviceHealthRepository>(),
+                Mock.Of<IDeviceHealthWriteRepository>(),
                 null);
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();

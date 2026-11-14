@@ -201,7 +201,7 @@ public class SignalDeviationAlertsTests
 
         rows.Add(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = _device.Id, CapturedAtUtc = now.AddHours(-1), WifiSignalRssi = -95 });
 
-        var health = new Mock<IDeviceHealthRepository>();
+        var health = new Mock<IDeviceHealthWriteRepository>();
         _ = health.Setup(h => h.GetHistoryAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
         var checker = new SignalDeviationAlerts(

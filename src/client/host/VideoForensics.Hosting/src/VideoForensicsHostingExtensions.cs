@@ -324,6 +324,7 @@ namespace VideoForensics.Client.Hosting
         public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // Server-side event reads and commands for Ui.Shared: DTO view over the write repository (see EventDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceHealthRepository, VideoForensics.Core.Api.Contracts.Repositories.DeviceHealthDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventDetailRepository, VideoForensics.Core.Api.Contracts.Repositories.EventDetailDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository, VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.INoteRepository, VideoForensics.Core.Api.Contracts.Repositories.NoteDtoRepository>();
@@ -780,7 +781,8 @@ namespace VideoForensics.Client.Hosting
 
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IDeviceHealthRepository, RemoteDeviceHealthRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceHealthWriteRepository, RemoteDeviceHealthRepository>(c => c.BaseAddress = serverAddress);
+            services.AddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceHealthRepository, Remote.RemoteDeviceHealthDtoRepository>();
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, Remote.RemoteSignalAnalysisService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, Remote.RemoteBitrateAnalysisService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IMediaBitrateSeriesSource, Remote.RemoteMediaBitrateSeriesSource>(c => c.BaseAddress = serverAddress);
@@ -835,7 +837,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<ILiveViewSessionService, Remote.RemoteLiveViewSessionService>(c => c.BaseAddress = serverAddress);
 
             // Ui.Shared's JammingPanel (Analyze page) injects this orchestrator directly. In client mode it runs over
-            // the Remote* repositories. RSSI-history auto-detection uses the ranged IDeviceHealthRepository.GetHistoryAsync
+            // the Remote* repositories. RSSI-history auto-detection uses the ranged IDeviceHealthWriteRepository.GetHistoryAsync
             // overload, which RemoteDeviceHealthRepository supports; the unranged overload stays unsupported on remote clients.
             _ = services.AddScoped<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>();
             _ = services.AddScoped<VideoForensics.Client.Common.Contracts.IJammingToolsOrchestrator>(sp => sp.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>());

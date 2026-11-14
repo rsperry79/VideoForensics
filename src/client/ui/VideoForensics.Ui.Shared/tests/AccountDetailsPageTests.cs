@@ -92,7 +92,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
 
-    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<VideoForensics.Core.Api.Contracts.Repositories.IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
 
     protected Mock<ISyncScheduleRepository> SyncScheduleRepositoryMock { get; } = new();
 

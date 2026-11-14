@@ -55,8 +55,8 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         SetEmptyLists();
         Device device = AddDevice("Porch");
         _ = DeviceHealthRepositoryMock.SetupSequence(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow })
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) });
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow }.ToDto())
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) }.ToDto());
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='device-offline-warning']")));
@@ -72,7 +72,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         SetEmptyLists();
         Device device = AddDevice("Porch");
         _ = DeviceHealthRepositoryMock.Setup(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) });
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) }.ToDto());
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
 
@@ -85,7 +85,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         SetEmptyLists();
         Device device = AddDevice("Porch");
         _ = DeviceHealthRepositoryMock.Setup(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow });
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow }.ToDto());
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
 

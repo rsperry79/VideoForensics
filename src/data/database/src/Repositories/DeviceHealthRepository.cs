@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for DeviceHealth time-series entities.</summary>
-    public class DeviceHealthRepository : IDeviceHealthRepository
+    public class DeviceHealthRepository : IDeviceHealthWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceHealthRepository> _logger;

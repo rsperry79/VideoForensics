@@ -303,7 +303,7 @@ namespace VideoForensics.Client.Hosting.Services
 
             // Read before the call, because the call writes this attempt's health row. Offline is a health transition, so the
             // alert needs the reading that was current before this attempt.
-            DeviceHealth? previousHealth = sp.GetService<IDeviceHealthRepository>() is { } healthRepository
+            DeviceHealth? previousHealth = sp.GetService<IDeviceHealthWriteRepository>() is { } healthRepository
                 ? await healthRepository.GetLatestAsync(device.Id, ct)
                 : null;
 

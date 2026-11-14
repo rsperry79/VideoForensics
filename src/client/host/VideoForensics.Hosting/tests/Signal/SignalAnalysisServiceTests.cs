@@ -22,7 +22,7 @@ public class SignalAnalysisServiceTests
     {
         var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
-        var health = new Mock<IDeviceHealthRepository>();
+        var health = new Mock<IDeviceHealthWriteRepository>();
         _ = health
             .Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out DeviceHealth[]? rows) ? rows : []);

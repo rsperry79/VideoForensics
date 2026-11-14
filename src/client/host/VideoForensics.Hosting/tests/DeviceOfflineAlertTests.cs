@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Hosting.Tests
     {
         private const string DeviceName = "Front Door";
 
-        private static (DeviceHealthSyncService Service, Mock<IDeviceHealthRepository> HealthRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<INotificationDispatcher> Dispatcher)
+        private static (DeviceHealthSyncService Service, Mock<IDeviceHealthWriteRepository> HealthRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<INotificationDispatcher> Dispatcher)
             CreateService(bool connectedNow, Mock<ILocationWriteRepository>? locations = null)
         {
             var device = new Device
@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new DeviceHealthReading("ring-1", Connected: connectedNow, BatteryPercentage: null, Rssi: null, WifiName: null, FirmwareVersion: null)]);
 
-            var healthRepo = new Mock<IDeviceHealthRepository>();
+            var healthRepo = new Mock<IDeviceHealthWriteRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
             _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((DeviceHealth h, CancellationToken _) => h);
@@ -82,7 +82,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_OnlineToOffline_DispatchesDeviceOfflineAlert()
         {
-            (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false);
+            (DeviceHealthSyncService service, Mock<IDeviceHealthWriteRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false);
             _ = healthRepo.Setup(r => r.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(PriorReading(wasOnline: true));
 
@@ -105,7 +105,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var locations = new Mock<ILocationWriteRepository>();
             _ = locations.Setup(l => l.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new ProviderAccount { Id = accountId, ProviderName = "Ring" }]);
-            (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false, locations);
+            (DeviceHealthSyncService service, Mock<IDeviceHealthWriteRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false, locations);
             _ = healthRepo.Setup(r => r.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(PriorReading(wasOnline: true));
 
@@ -119,7 +119,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_StillOffline_DoesNotDispatch()
         {
-            (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false);
+            (DeviceHealthSyncService service, Mock<IDeviceHealthWriteRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false);
             _ = healthRepo.Setup(r => r.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(PriorReading(wasOnline: false));
 
@@ -131,7 +131,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_StillOnline_DoesNotDispatch()
         {
-            (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: true);
+            (DeviceHealthSyncService service, Mock<IDeviceHealthWriteRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: true);
             _ = healthRepo.Setup(r => r.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(PriorReading(wasOnline: true));
 
@@ -153,7 +153,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_DispatchFails_StillPersistsReading()
         {
-            (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, Mock<IVideoForensicsDataClient> dataClient, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false);
+            (DeviceHealthSyncService service, Mock<IDeviceHealthWriteRepository> healthRepo, Mock<IVideoForensicsDataClient> dataClient, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false);
             _ = healthRepo.Setup(r => r.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(PriorReading(wasOnline: true));
             _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))

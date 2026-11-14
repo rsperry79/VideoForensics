@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>How far back a poll looks for flagged hours. Older hours were checked by earlier polls.</summary>
         public static readonly TimeSpan LookBack = TimeSpan.FromHours(24);
 
-        private readonly IDeviceHealthRepository _health;
+        private readonly IDeviceHealthWriteRepository _health;
         private readonly INoticeRepository _notices;
         private readonly IMediaFlagWriteRepository _flags;
         private readonly INotificationDispatcher _dispatcher;
@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<SignalDeviationAlerts> _logger;
 
         public SignalDeviationAlerts(
-            IDeviceHealthRepository health,
+            IDeviceHealthWriteRepository health,
             INoticeRepository notices,
             IMediaFlagWriteRepository flags,
             INotificationDispatcher dispatcher,

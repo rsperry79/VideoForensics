@@ -14,14 +14,14 @@ namespace VideoForensics.Client.Core.Tests.Tools
     {
         private readonly Mock<ILogger<JammingToolsOrchestrator>> _loggerMock;
         private readonly Mock<IJammingWriteRepository> _repositoryMock;
-        private readonly Mock<IDeviceHealthRepository> _healthRepositoryMock;
+        private readonly Mock<IDeviceHealthWriteRepository> _healthRepositoryMock;
         private readonly JammingToolsOrchestrator _orchestrator;
 
         public JammingToolsOrchestratorTests()
         {
             _loggerMock = new Mock<ILogger<JammingToolsOrchestrator>>();
             _repositoryMock = new Mock<IJammingWriteRepository>();
-            _healthRepositoryMock = new Mock<IDeviceHealthRepository>();
+            _healthRepositoryMock = new Mock<IDeviceHealthWriteRepository>();
             _orchestrator = new JammingToolsOrchestrator(
                 _loggerMock.Object,
                 _repositoryMock.Object,

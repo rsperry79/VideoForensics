@@ -12,7 +12,7 @@ namespace VideoForensics.Client.Core.Tools
     {
         private readonly ILogger<JammingToolsOrchestrator> _logger;
         private readonly IJammingWriteRepository _jammingRepository;
-        private readonly IDeviceHealthRepository _healthRepository;
+        private readonly IDeviceHealthWriteRepository _healthRepository;
         private readonly INotificationDispatcher? _notificationDispatcher;
 
         // A drop of at least this many dB below the device's own baseline RSSI is treated as
@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Core.Tools
         public JammingToolsOrchestrator(
             ILogger<JammingToolsOrchestrator> logger,
             IJammingWriteRepository jammingRepository,
-            IDeviceHealthRepository healthRepository,
+            IDeviceHealthWriteRepository healthRepository,
             INotificationDispatcher? notificationDispatcher = null)
         {
             _logger = logger;
