@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Client.Core.Services
+namespace VideoForensics.Client.Platform.Windows.Services
 {
     /// <summary>
     /// Stages backup exports under <c>VideoForensics\Backups</c> in the user's documents folder.

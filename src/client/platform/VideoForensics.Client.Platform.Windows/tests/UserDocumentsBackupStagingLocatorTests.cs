@@ -1,8 +1,8 @@
-using VideoForensics.Client.Core.Services;
+using VideoForensics.Client.Platform.Windows.Services;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests.Services
+namespace VideoForensics.Client.Platform.Windows.Tests.Services
 {
     /// <summary>
     /// Tests for <see cref="UserDocumentsBackupStagingLocator"/>: where the backup export is staged before the save dialog.
