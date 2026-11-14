@@ -17,6 +17,8 @@ using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -181,7 +183,7 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(newUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "new-key", DisplayName = "Newly Linked Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "new-key", DisplayName = "Newly Linked Owner" }.ToDto());
 
         int before = ListActiveCalls();
         _ = cut.InvokeAsync(() => _linked.OnNext(newId));

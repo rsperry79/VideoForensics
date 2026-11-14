@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
@@ -40,7 +42,7 @@ internal static class ScopeOwnershipTestDoubles
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .ReturnsAsync((UserDto?)null);
 
         _ = services.AddScoped(_ => accountRepository.Object);
         _ = services.AddScoped(_ => locationRepository.Object);

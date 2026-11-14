@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for legal holds that exempt media items from retention-policy auto-deletion.</summary>
-    public interface ILegalHoldRepository
+    public interface ILegalHoldWriteRepository
     {
         /// <summary>Places a new legal hold on a media item, recording the reason and actor. Also appends a chain-of-custody ActionLog entry ("PlaceLegalHold") in the same operation.</summary>
         Task<LegalHold> PlaceAsync(Guid mediaItemId, string reason, string createdBy, CancellationToken ct);

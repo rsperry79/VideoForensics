@@ -30,13 +30,13 @@ namespace VideoForensics.Client.WebApp.Api
             RouteGroupBuilder sensitiveGroup = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
             // User endpoints
-            _ = group.MapGet("/users", async (IUserRepository users, CancellationToken ct) =>
+            _ = group.MapGet("/users", async (IUserWriteRepository users, CancellationToken ct) =>
                 Results.Ok((await users.ListAsync(ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
                 .WithSummary("List all users")
                 .WithDescription("Retrieves all users in the system.");
 
-            _ = group.MapGet("/users/{id:guid}", async (Guid id, IUserRepository users, CancellationToken ct) =>
+            _ = group.MapGet("/users/{id:guid}", async (Guid id, IUserWriteRepository users, CancellationToken ct) =>
             {
                 User? user = await users.GetAsync(id, ct);
                 return user == null ? Results.NotFound() : Results.Ok(user.ToDto());
@@ -45,7 +45,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Get user by ID")
                 .WithDescription("Retrieves a single user by its unique identifier.");
 
-            _ = group.MapGet("/users/by-provider-key/{providerUserKey}", async (string providerUserKey, IUserRepository users, CancellationToken ct) =>
+            _ = group.MapGet("/users/by-provider-key/{providerUserKey}", async (string providerUserKey, IUserWriteRepository users, CancellationToken ct) =>
             {
                 User? user = await users.GetByProviderKeyAsync(providerUserKey, ct);
                 return user == null ? Results.NotFound() : Results.Ok(user.ToDto());
@@ -56,7 +56,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = userGroup.MapPost("/users", async (
                 CreateUserRequest request,
-                IUserRepository users,
+                IUserWriteRepository users,
                 CancellationToken ct) =>
             {
                 var user = new User
@@ -78,7 +78,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = userGroup.MapPut("/users/{id:guid}", async (
                 Guid id,
                 UpdateUserRequest request,
-                IUserRepository users,
+                IUserWriteRepository users,
                 CancellationToken ct) =>
             {
                 User? user = await users.GetAsync(id, ct);
@@ -100,7 +100,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Update a user")
                 .WithDescription("Updates an existing user's information.");
 
-            _ = userGroup.MapDelete("/users/{id:guid}", async (Guid id, IUserRepository users, CancellationToken ct) =>
+            _ = userGroup.MapDelete("/users/{id:guid}", async (Guid id, IUserWriteRepository users, CancellationToken ct) =>
             {
                 User? user = await users.GetAsync(id, ct);
                 if (user == null)

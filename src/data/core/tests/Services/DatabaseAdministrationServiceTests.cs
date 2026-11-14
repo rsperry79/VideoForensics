@@ -14,7 +14,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     {
         private readonly Mock<IDatabaseEngine> _engine = new();
         private readonly Mock<IMediaItemWriteRepository> _mediaItems = new();
-        private readonly Mock<ILegalHoldRepository> _legalHolds = new();
+        private readonly Mock<ILegalHoldWriteRepository> _legalHolds = new();
         private readonly Mock<IUnitOfWork> _unitOfWork = new();
         private readonly Mock<IActionLogRepository> _actionLog = new();
         private readonly Mock<ILogger<DatabaseAdministrationService>> _logger = new();

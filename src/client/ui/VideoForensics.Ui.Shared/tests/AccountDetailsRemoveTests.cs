@@ -17,6 +17,8 @@ using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -56,7 +58,7 @@ public abstract class AccountDetailsRemoveTestBase : BunitContext
             .ReturnsAsync(new ProviderAccountEntity { Id = RingAccountId, UserId = ringUserId, ProviderName = "Ring", LinkedUtc = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) });
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(ringUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { Id = ringUserId, ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
 
         _ = Services.AddScoped(_ => AccountRepositoryMock.Object);
         _ = Services.AddScoped(_ => ExportServiceMock.Object);

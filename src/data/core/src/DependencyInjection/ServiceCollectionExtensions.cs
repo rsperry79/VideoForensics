@@ -72,7 +72,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
             {
                 ILogger<RetentionService> logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RetentionService>>();
                 IMediaItemWriteRepository mediaItemRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IMediaItemWriteRepository>();
-                ILegalHoldRepository legalHoldRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ILegalHoldRepository>();
+                ILegalHoldWriteRepository legalHoldRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ILegalHoldWriteRepository>();
                 IUnitOfWork unitOfWork = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUnitOfWork>();
                 IActionLogger actionLogger = sp.GetRequiredService<IActionLogger>();
                 IActionLogRepository actionLogRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IActionLogRepository>();

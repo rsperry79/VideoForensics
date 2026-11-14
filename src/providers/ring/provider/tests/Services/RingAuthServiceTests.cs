@@ -246,7 +246,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             var credentialStore = new Mock<ICredentialStore>();
             _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>())).Returns(new RingCredentials());
             var credentialRepository = new Mock<ICredentialRepository>();
-            var userRepository = new Mock<IUserRepository>();
+            var userRepository = new Mock<IUserWriteRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
             ILogger logger = new Mock<ILogger>().Object;
 
@@ -331,7 +331,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var userRepository = new Mock<IUserRepository>();
+            var userRepository = new Mock<IUserWriteRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
             IReadOnlyList<ProviderAccount> noAccounts = [];
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
@@ -380,7 +380,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             var credentialRepository = new Mock<ICredentialRepository>();
             _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ValueTuple<string, string>?)null);
-            var userRepository = new Mock<IUserRepository>();
+            var userRepository = new Mock<IUserWriteRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
             IReadOnlyList<ProviderAccount> accounts =
             [
@@ -420,7 +420,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var userRepository = new Mock<IUserRepository>();
+            var userRepository = new Mock<IUserWriteRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
             ILogger logger = new Mock<ILogger>().Object;
 

@@ -740,7 +740,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         var mediaItemId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
         Guid operatorId = await SignInOperatorAsync();
-        var placedHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "LegalHold", CreatedBy = "op" };
+        var placedHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "LegalHold", CreatedBy = "op" }.ToDto();
         _ = _legalHoldRepository
             .Setup(r => r.PlaceAsync(mediaItemId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(placedHold);
@@ -835,7 +835,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         Guid operatorId = await SignInOperatorAsync();
         _ = _legalHoldRepository
             .Setup(r => r.PlaceAsync(mediaItemId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "Other: camera was moved", CreatedBy = "op" });
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "Other: camera was moved", CreatedBy = "op" }.ToDto());
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
@@ -908,7 +908,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         _ = await SignInOperatorAsync();
         _ = _legalHoldRepository
             .Setup(r => r.PlaceAsync(mediaItemId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "r", CreatedBy = "op" });
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "r", CreatedBy = "op" }.ToDto());
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();

@@ -44,7 +44,7 @@ public class EventRowLoader
         IReadOnlyList<Guid> devicesToLoad = scope.IncludesAllDevices ? allDeviceIds : scope.DeviceIds;
         var allRows = new List<EventRow>();
         var perDeviceErrors = new Dictionary<Guid, string>();
-        var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
+        var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>();
         var integrityRecords = new List<IntegrityRecordDto>();
 
         // Load events per device
@@ -137,8 +137,8 @@ public class EventRowLoader
             var mediaItemIds = allRows.Where(r => r.MediaItem is not null).Select(r => r.MediaItem!.Id).ToList();
             if (mediaItemIds.Count > 0)
             {
-                IReadOnlyList<LegalHold> activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(mediaItemIds, ct);
-                foreach (LegalHold hold in activeHolds)
+                IReadOnlyList<LegalHoldDto> activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(mediaItemIds, ct);
+                foreach (LegalHoldDto hold in activeHolds)
                 {
                     activeHoldsByMediaItemId[hold.MediaItemId] = hold;
                 }

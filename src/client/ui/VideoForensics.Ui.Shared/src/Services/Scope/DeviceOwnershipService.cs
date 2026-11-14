@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
@@ -104,7 +105,7 @@ public sealed class DeviceOwnershipService
             string name = account.ProviderName;
             try
             {
-                User? user = await _users.GetAsync(account.UserId, ct);
+                UserDto? user = await _users.GetAsync(account.UserId, ct);
                 if (user is not null)
                 {
                     name = user.DisplayName;

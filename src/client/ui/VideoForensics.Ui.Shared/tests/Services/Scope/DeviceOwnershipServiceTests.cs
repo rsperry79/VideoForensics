@@ -9,6 +9,7 @@ using Xunit;
 
 using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
@@ -59,7 +60,7 @@ public class DeviceOwnershipServiceTests
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { wyze, ring });
         _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { location });
         _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Location>());
-        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserDto?)null);
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(new[] { device }, CancellationToken.None);
 
@@ -81,7 +82,7 @@ public class DeviceOwnershipServiceTests
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring, wyze });
         _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, unnamed });
         _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, cabin });
-        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserDto?)null);
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(Array.Empty<Device>(), CancellationToken.None);
 

@@ -20,6 +20,8 @@ using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Filters;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -77,10 +79,10 @@ public abstract class AccountsPageTestBase : BunitContext
             .ReturnsAsync(accounts);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(ringUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(wyzeUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "wyze-key", DisplayName = "Wyze Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "wyze-key", DisplayName = "Wyze Owner" }.ToDto());
 
         _ = AccountRepositoryMock
             .Setup(r => r.ListRemovedAsync(It.IsAny<CancellationToken>()))
@@ -131,7 +133,7 @@ public abstract class AccountsPageTestBase : BunitContext
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "retired-key", DisplayName = "Retired Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "retired-key", DisplayName = "Retired Owner" }.ToDto());
     }
 
     /// <summary>
@@ -271,7 +273,7 @@ public class AccountsPage_ErrorTooltip_Tests : AccountsPageTestBase
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
 
         IRenderedComponent<Accounts> cut = RenderPage();
 

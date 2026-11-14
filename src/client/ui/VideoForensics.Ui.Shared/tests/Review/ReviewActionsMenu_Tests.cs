@@ -324,7 +324,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         SelectClipAtCursor();
         _ = LegalHoldRepositoryMock
             .Setup(r => r.PlaceAsync(_clipId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "LegalHold", CreatedBy = operatorId.ToString() });
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "LegalHold", CreatedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
 
@@ -352,7 +352,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         SelectClipAtCursor();
         _ = LegalHoldRepositoryMock
             .Setup(r => r.PlaceAsync(_clipId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "Other: camera was moved", CreatedBy = operatorId.ToString() });
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "Other: camera was moved", CreatedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
         await PickReasonAsync(cut, EvidenceHoldReason.Other);
@@ -377,7 +377,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         // Arrange
         Guid operatorId = await SignInOperatorAsAsync("Admin");
         SelectClipAtCursor();
-        var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "r", CreatedBy = "op" };
+        var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "r", CreatedBy = "op" }.ToDto();
         _ = LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([activeHold]);

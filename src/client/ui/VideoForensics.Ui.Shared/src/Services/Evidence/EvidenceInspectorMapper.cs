@@ -13,7 +13,7 @@ public static class EvidenceInspectorMapper
     /// <param name="zone">The signed-in user's zone for the times shown. Null uses UTC, the zone before the browser's is known.</param>
     public static InspectorModel ToInspector(
         EvidenceItem item,
-        IReadOnlyDictionary<Guid, LegalHold> holds,
+        IReadOnlyDictionary<Guid, LegalHoldDto> holds,
         IReadOnlyList<IntegrityRecord> integrity,
         UserTimeZone? zone = null)
     {
@@ -138,7 +138,7 @@ public static class EvidenceInspectorMapper
 
         // Evidence actions: legal hold place/release, device integrity verification, export - all
         // gated on this item having a linked, downloaded media item (see EvidenceActions).
-        Guid? activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out LegalHold? activeHold)
+        Guid? activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out LegalHoldDto? activeHold)
             ? activeHold.Id
             : null;
         var actions = new EvidenceActionState(

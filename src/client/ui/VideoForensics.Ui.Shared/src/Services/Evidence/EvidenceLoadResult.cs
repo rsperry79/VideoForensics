@@ -16,7 +16,7 @@ public class EvidenceLoadResult
     /// <summary>
     /// Active legal holds indexed by media item ID.
     /// </summary>
-    public required IReadOnlyDictionary<Guid, LegalHold> ActiveHoldsByMediaItemId { get; init; }
+    public required IReadOnlyDictionary<Guid, LegalHoldDto> ActiveHoldsByMediaItemId { get; init; }
 
     /// <summary>
     /// Integrity records from the event load result.

@@ -317,7 +317,7 @@ public abstract class ReviewTestContext : BunitContext
         var repository = new Mock<IUserRepository>();
         _ = repository
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .ReturnsAsync((UserDto?)null);
         return repository;
     }
 

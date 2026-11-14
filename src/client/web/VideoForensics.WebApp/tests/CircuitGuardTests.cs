@@ -338,7 +338,7 @@ public class CircuitGuardRegistration_Tests
         _ = services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
         _ = services.AddScoped(_ => new Mock<IReleaseChannelService>().Object);
         _ = services.AddScoped(_ => new Mock<ICaseWriteRepository>().Object);
-        _ = services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<ILegalHoldWriteRepository>().Object);
         _ = services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
         _ = services.AddScoped(_ => new Mock<IJammingRepository>().Object);
         _ = services.AddScoped(_ => new Mock<Core.Contracts.IConfigToolsOrchestrator>().Object);
@@ -465,7 +465,7 @@ public class GuardedLegalHoldRepository_Tests
     [Fact]
     public async Task GuardedLegalHoldRepository_ReleaseAsync_ReviewOperator_ThrowsAndDoesNotRelease()
     {
-        var inner = new Mock<ILegalHoldRepository>();
+        var inner = new Mock<ILegalHoldWriteRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
         var guarded = new GuardedLegalHoldRepository(inner.Object, gate.Object);

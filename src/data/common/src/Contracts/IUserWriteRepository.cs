@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for user entities.</summary>
-    public interface IUserRepository
+    public interface IUserWriteRepository
     {
         /// <summary>Gets a user by ID.</summary>
         Task<User?> GetAsync(Guid userId, CancellationToken ct);

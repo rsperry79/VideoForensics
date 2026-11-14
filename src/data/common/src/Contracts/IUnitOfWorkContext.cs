@@ -6,7 +6,7 @@ namespace VideoForensics.Data.Common.Contracts
     public interface IUnitOfWorkContext
     {
         /// <summary>Gets the user repository.</summary>
-        IUserRepository Users { get; }
+        IUserWriteRepository Users { get; }
 
         /// <summary>Gets the provider account repository.</summary>
         IProviderAccountRepository ProviderAccounts { get; }

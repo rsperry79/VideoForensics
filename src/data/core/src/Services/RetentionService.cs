@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Core.Services
     internal class RetentionService : IRetentionService
     {
         private readonly IMediaItemWriteRepository _mediaItemRepository;
-        private readonly ILegalHoldRepository _legalHoldRepository;
+        private readonly ILegalHoldWriteRepository _legalHoldRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
         private readonly IActionLogRepository _actionLogRepository;
@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Core.Services
 
         public RetentionService(
             IMediaItemWriteRepository mediaItemRepository,
-            ILegalHoldRepository legalHoldRepository,
+            ILegalHoldWriteRepository legalHoldRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<RetentionService> logger,

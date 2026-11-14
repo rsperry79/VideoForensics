@@ -26,7 +26,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             _ = services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IReleaseChannelService>((inner, sp) => new GuardedReleaseChannelService(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<ISecurityAuditLogger>(), sp.GetRequiredService<SessionNetworkContext>()));
             _ = services.DecorateScoped<ICaseWriteRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            _ = services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<ILegalHoldWriteRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetService<ServerLogLevel>(), sp.GetService<ISettingsAccessPolicy>()));
             _ = services.DecorateScoped<IJammingRepository>((inner, sp) => new GuardedJammingRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));

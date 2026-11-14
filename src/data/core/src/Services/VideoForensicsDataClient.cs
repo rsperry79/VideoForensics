@@ -12,7 +12,7 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Top-level facade for accessing the VideoForensics data layer.</summary>
     internal class VideoForensicsDataClient : IVideoForensicsDataClient
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IUserWriteRepository _userRepository;
         private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IDeviceWriteRepository _deviceRepository;
@@ -40,7 +40,7 @@ namespace VideoForensics.Data.Core.Services
         public IActionLogRepository ActionLog { get; }
 
         public VideoForensicsDataClient(
-            IUserRepository userRepository,
+            IUserWriteRepository userRepository,
             IProviderAccountRepository providerAccountRepository,
             ILocationRepository locationRepository,
             IDeviceWriteRepository deviceRepository,

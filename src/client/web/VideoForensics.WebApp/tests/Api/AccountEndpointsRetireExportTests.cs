@@ -51,7 +51,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
-            _ = builder.Services.AddSingleton(Mock.Of<IUserRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<IUserWriteRepository>());
             _ = builder.Services.AddSingleton(_accounts.Object);
             _ = builder.Services.AddSingleton(_exports.Object);
             _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());

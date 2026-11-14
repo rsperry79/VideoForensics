@@ -1,6 +1,7 @@
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Signal;

@@ -75,7 +75,7 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ICredentialRepository>(),
                 provider.GetRequiredService<IRingAccountRepository>(),
                 provider.GetRequiredService<IProviderAccountRepository>(),
-                provider.GetRequiredService<IUserRepository>(),
+                provider.GetRequiredService<IUserWriteRepository>(),
                 provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
                 endpoints: provider.GetService<VideoForensics.Providers.Ring.RingEndpointOptions>()
             );
@@ -328,6 +328,8 @@ namespace VideoForensics.Client.Hosting
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository>();
             // Server-side case reads and commands for Ui.Shared: DTO view over the write repository (see CaseDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository, VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository>();
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IUserRepository, VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository>();
             // Server-side media reads for Ui.Shared: DTO view over the write repository (see MediaItemDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository>();
             // Server-side device reads for Ui.Shared: DTO view over the write repository (see DeviceDtoRepository).
@@ -788,14 +790,14 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IEventWriteRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             services.AddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventRepository, Remote.RemoteEventDtoRepository>();
             _ = services.AddHttpClient<IEventDetailRepository, RemoteEventDetailRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, Remote.RemoteMediaFlagRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ISnapshotCaptureRepository, Remote.RemoteSnapshotCaptureRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IAccountExportService, Remote.RemoteAccountExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);

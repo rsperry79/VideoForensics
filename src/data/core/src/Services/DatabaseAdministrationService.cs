@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Core.Services
 
         private readonly IDatabaseEngine _engine;
         private readonly IMediaItemWriteRepository _mediaItems;
-        private readonly ILegalHoldRepository _legalHolds;
+        private readonly ILegalHoldWriteRepository _legalHolds;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogRepository _actionLog;
         private readonly IMediaPathResolver _paths;
@@ -23,7 +23,7 @@ namespace VideoForensics.Data.Core.Services
         public DatabaseAdministrationService(
             IDatabaseEngine engine,
             IMediaItemWriteRepository mediaItems,
-            ILegalHoldRepository legalHolds,
+            ILegalHoldWriteRepository legalHolds,
             IUnitOfWork unitOfWork,
             IActionLogRepository actionLog,
             ILogger<DatabaseAdministrationService> logger,

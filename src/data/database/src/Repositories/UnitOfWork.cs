@@ -306,7 +306,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>The open context of this unit of work.</summary>
         internal VideoForensicsDbContext Db => _db;
 
-        public IUserRepository Users => new UnitOfWorkUserRepository(_db, _logger);
+        public IUserWriteRepository Users => new UnitOfWorkUserRepository(_db, _logger);
         public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
         public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
         public IMediaItemWriteRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
@@ -322,7 +322,7 @@ namespace VideoForensics.Data.Database.Repositories
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
     // Note: These use synchronous LINQ since the DbContext is already created within the transaction scope
 
-    internal class UnitOfWorkUserRepository : IUserRepository
+    internal class UnitOfWorkUserRepository : IUserWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;

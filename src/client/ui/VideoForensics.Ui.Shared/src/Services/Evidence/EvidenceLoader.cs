@@ -40,7 +40,7 @@ public class EvidenceLoader
         var devicesByIdMap = allDevices.ToDictionary(d => d.Id);
         var allItems = new List<EvidenceItem>();
         var perDeviceErrors = new Dictionary<Guid, string>();
-        var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
+        var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>();
         var integrityRecords = new List<IntegrityRecordDto>();
         var mediaItemsAttachedToEvents = new HashSet<Guid>();
 
@@ -74,7 +74,7 @@ public class EvidenceLoader
         }
 
         // Merge event holds and integrity records
-        foreach (KeyValuePair<Guid, LegalHold> kvp in eventLoadResult.ActiveHoldsByMediaItemId)
+        foreach (KeyValuePair<Guid, LegalHoldDto> kvp in eventLoadResult.ActiveHoldsByMediaItemId)
         {
             activeHoldsByMediaItemId[kvp.Key] = kvp.Value;
         }

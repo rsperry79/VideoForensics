@@ -141,7 +141,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
 
         _ = AuthServiceMock
             .Setup(a => a.RestoreFromSavedCredentialsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))

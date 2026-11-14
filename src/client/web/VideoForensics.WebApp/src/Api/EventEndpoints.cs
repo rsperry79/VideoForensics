@@ -255,7 +255,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = legalHoldGroup.MapGet("/", async (
                 string? mediaItemIds,
-                ILegalHoldRepository legalHolds,
+                ILegalHoldWriteRepository legalHolds,
                 CancellationToken ct) =>
             {
                 if (string.IsNullOrWhiteSpace(mediaItemIds))
@@ -279,7 +279,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = legalHoldGroup.MapPost("/", async (
                 PlaceLegalHoldRequestDto request,
-                ILegalHoldRepository legalHolds,
+                ILegalHoldWriteRepository legalHolds,
                 HttpContext context,
                 CancellationToken ct) =>
             {
@@ -295,7 +295,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = legalHoldGroup.MapPost("/release", async (
                 ReleaseLegalHoldRequestDto request,
-                ILegalHoldRepository legalHolds,
+                ILegalHoldWriteRepository legalHolds,
                 HttpContext context,
                 CancellationToken ct) =>
             {

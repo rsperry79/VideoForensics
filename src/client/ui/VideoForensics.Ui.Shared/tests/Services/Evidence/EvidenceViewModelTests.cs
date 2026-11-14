@@ -83,7 +83,7 @@ public class EvidenceViewModel_Constructor_Tests
             Items = [],
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         });
 
         // Assert
@@ -123,7 +123,7 @@ public class EvidenceViewModel_Open_Tests
             Items = new[] { item1, item2 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -152,7 +152,7 @@ public class EvidenceViewModel_Open_Tests
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -184,7 +184,7 @@ public class EvidenceViewModel_Close_Tests
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("event:1");
@@ -227,7 +227,7 @@ public class EvidenceViewModel_Navigation_Tests
             Items = new[] { item2, item1 },  // Descending order
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:2");
@@ -266,7 +266,7 @@ public class EvidenceViewModel_Navigation_Tests
             Items = new[] { item2, item1 },  // Descending order
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -305,7 +305,7 @@ public class EvidenceViewModel_Navigation_Tests
             Items = new[] { item2, item1 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:2");
@@ -335,7 +335,7 @@ public class EvidenceViewModel_Navigation_Tests
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -374,7 +374,7 @@ public class EvidenceViewModel_Navigation_Tests
             Items = new[] { item2, item1 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -404,7 +404,7 @@ public class EvidenceViewModel_Navigation_Tests
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -447,7 +447,7 @@ public class EvidenceViewModel_GalleryItems_Tests
             Items = new[] { viewableItem, nonViewableItem },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -501,7 +501,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             Items = new[] { item1, item2, item3 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -534,7 +534,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             Items = imageIds,
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
