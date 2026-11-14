@@ -1,6 +1,6 @@
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.QueryApi;
 
@@ -9,10 +9,7 @@ internal static class InspectorClock
 {
     internal const string Format = "yyyy-MM-dd HH:mm:ss";
 
-    internal static string Show(DateTime value, UserTimeZone? zone)
-    {
-        return (zone ?? UserTimeZone.Unavailable).Format(value, Format);
-    }
+    internal static string Show(DateTime value, UserTimeZone? zone) => (zone ?? UserTimeZone.Unavailable).Format(value, Format);
 }
 
 /// <summary>

@@ -413,7 +413,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 
             // Assert
             Assert.Equal(4, result.ChainEntriesChecked);
-            Assert.Equal("PreviousHashMismatch", result.ChainBreak);
+            Assert.Equal(VideoForensics.Core.Api.Contracts.ChainBreakKindDto.PreviousHashMismatch, result.ChainBreak);
             Assert.Equal(failedId, result.ChainFailedEntryId);
             Assert.Equal(failedAt, result.ChainFailedAtUtc);
         }

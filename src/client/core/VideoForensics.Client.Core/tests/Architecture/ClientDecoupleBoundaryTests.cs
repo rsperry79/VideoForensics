@@ -98,7 +98,36 @@ namespace VideoForensics.Client.Core.Tests.Architecture
         }
 
         private static readonly System.Text.RegularExpressions.Regex RepositoryInjection =
-            new(@"\bI[A-Za-z]+Repository\b", System.Text.RegularExpressions.RegexOptions.Compiled);
+            BuildDataLayerRepositoryPattern();
+
+        /// <summary>
+        /// Matches only the data-layer repository interfaces (one per I*Repository.cs under data.common Contracts). DTO
+        /// repository interfaces in Api.Contracts are allowed in Ui.Shared, so they are not matched.
+        /// </summary>
+        private static System.Text.RegularExpressions.Regex BuildDataLayerRepositoryPattern()
+        {
+            string contracts = FindDataCommonContractsFolder();
+            string alternation = string.Join('|', Directory.GetFiles(contracts, "I*Repository.cs")
+                .Select(path => System.Text.RegularExpressions.Regex.Escape(Path.GetFileNameWithoutExtension(path))));
+            return new System.Text.RegularExpressions.Regex(@"\b(" + alternation + @")\b", System.Text.RegularExpressions.RegexOptions.Compiled);
+        }
+
+        private static string FindDataCommonContractsFolder()
+        {
+            string? directory = AppContext.BaseDirectory;
+            while (directory is not null)
+            {
+                string candidate = Path.Combine(directory, "src", "data", "common", "src", "Contracts");
+                if (Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                directory = Path.GetDirectoryName(directory);
+            }
+
+            throw new DirectoryNotFoundException("Could not find src/data/common/src/Contracts above the test output folder.");
+        }
 
         private static string FindUiSharedFolder()
         {

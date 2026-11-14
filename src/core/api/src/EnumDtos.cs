@@ -81,6 +81,16 @@ namespace VideoForensics.Core.Api.Contracts
         Medium = 2,
 
         /// <summary>Heavy redaction.</summary>
-        Heavy = 3
+        Heavy = 3    }
+
+    /// <summary>Kind of chain-of-custody break, same member names as the data-layer ChainBreakKind.</summary>
+    public enum ChainBreakKindDto
+    {
+        /// <summary>No break: every entry verified.</summary>
+        None,
+        /// <summary>An entry's PreviousEntryHash does not match the entry before it.</summary>
+        PreviousHashMismatch,
+        /// <summary>An entry's stored EntryHash does not match its contents.</summary>
+        EntryHashMismatch
     }
 }

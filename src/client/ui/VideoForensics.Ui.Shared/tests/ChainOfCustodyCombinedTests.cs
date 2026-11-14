@@ -118,7 +118,7 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             .ReturnsAsync([]);
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, "Chain integrity check failed", 4, "EntryHashMismatch", failedId, new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc)));
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, "Chain integrity check failed", 4, ChainBreakKindDto.EntryHashMismatch, failedId, new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc)));
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
         IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();
@@ -137,7 +137,7 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             .ReturnsAsync([]);
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, null, ChainBreak: "PreviousHashMismatch"));
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, null, ChainBreak: ChainBreakKindDto.PreviousHashMismatch));
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
         IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();

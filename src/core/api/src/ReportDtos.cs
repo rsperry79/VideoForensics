@@ -266,7 +266,7 @@ namespace VideoForensics.Core.Api.Contracts
         bool ChainIntegrityVerified,
         string? ChainVerificationStatus,
         int ChainEntriesChecked = 0,
-        string ChainBreak = "None",
+        ChainBreakKindDto ChainBreak = ChainBreakKindDto.None,
         Guid? ChainFailedEntryId = null,
         DateTime? ChainFailedAtUtc = null
     );

@@ -217,7 +217,7 @@ namespace VideoForensics.Core.Api.Contracts
                 ChainIntegrityVerified: model.ChainIntegrityVerified,
                 ChainVerificationStatus: model.ChainVerificationStatus,
                 ChainEntriesChecked: model.ChainEntriesChecked,
-                ChainBreak: model.ChainBreak.ToString(),
+                ChainBreak: Enum.Parse<ChainBreakKindDto>(model.ChainBreak.ToString()),
                 ChainFailedEntryId: model.ChainFailedEntryId,
                 ChainFailedAtUtc: model.ChainFailedAtUtc
             );

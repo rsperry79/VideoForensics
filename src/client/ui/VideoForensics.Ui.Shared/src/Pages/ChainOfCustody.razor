@@ -60,7 +60,7 @@ else
         {
             <div class="alert alert-danger" data-testid="chain-integrity-failed">
                 <div>@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</div>
-                @if (_report.ChainBreak != "None")
+                @if (_report.ChainBreak != ChainBreakKindDto.None)
                 {
                     <div class="small mt-1">@BreakReason(_report.ChainBreak)</div>
                 }
@@ -245,10 +245,10 @@ else
     }
 
     /// <summary>Plain-language reason for a break, so the operator can tell an inserted or reordered entry from an altered one.</summary>
-    private string BreakReason(string kind) => kind switch
+    private string BreakReason(ChainBreakKindDto kind) => kind switch
     {
-        "PreviousHashMismatch" => L["ChainBreakPrevious"].Value,
-        "EntryHashMismatch" => L["ChainBreakEntryHash"].Value,
+        ChainBreakKindDto.PreviousHashMismatch => L["ChainBreakPrevious"].Value,
+        ChainBreakKindDto.EntryHashMismatch => L["ChainBreakEntryHash"].Value,
         _ => string.Empty,
     };
 
