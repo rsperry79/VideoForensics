@@ -324,6 +324,7 @@ namespace VideoForensics.Client.Hosting
         public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // Server-side event reads and commands for Ui.Shared: DTO view over the write repository (see EventDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ISnapshotCaptureRepository, VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceHealthRepository, VideoForensics.Core.Api.Contracts.Repositories.DeviceHealthDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventDetailRepository, VideoForensics.Core.Api.Contracts.Repositories.EventDetailDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository, VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository>();
@@ -482,7 +483,7 @@ namespace VideoForensics.Client.Hosting
                 IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
                 IForensicsConfigurationService configurationService = serviceProvider.GetRequiredService<IForensicsConfigurationService>();
                 IStorageLocationProvider storageLocationProvider = serviceProvider.GetRequiredService<IStorageLocationProvider>();
-                VideoForensics.Data.Common.Contracts.ISnapshotCaptureRepository snapshotCaptures = serviceProvider.GetRequiredService<VideoForensics.Data.Common.Contracts.ISnapshotCaptureRepository>();
+                VideoForensics.Data.Common.Contracts.ISnapshotCaptureWriteRepository snapshotCaptures = serviceProvider.GetRequiredService<VideoForensics.Data.Common.Contracts.ISnapshotCaptureWriteRepository>();
                 return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService, configurationService, storageLocationProvider, snapshotCaptures: snapshotCaptures);
             });
 
@@ -808,7 +809,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);            services.AddScoped<IJammingWriteRepository, Remote.RemoteJammingWriteRepository>();
 
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository, Remote.RemoteMediaFlagRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<ISnapshotCaptureRepository, Remote.RemoteSnapshotCaptureRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ISnapshotCaptureWriteRepository, Remote.RemoteSnapshotCaptureRepository>(c => c.BaseAddress = serverAddress);
+            services.AddScoped<VideoForensics.Core.Api.Contracts.Repositories.ISnapshotCaptureRepository, Remote.RemoteSnapshotCaptureDtoRepository>();
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IAccountExportService, Remote.RemoteAccountExportService>(c => c.BaseAddress = serverAddress);

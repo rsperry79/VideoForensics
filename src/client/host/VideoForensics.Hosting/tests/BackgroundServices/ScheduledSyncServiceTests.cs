@@ -86,7 +86,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public SnapshotCycle Cycle { get; }
             public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
             public Mock<ITimelapseGapQueries> TimelapseQueries { get; } = new();
-            public Mock<ISnapshotCaptureRepository> Captures { get; } = new();
+            public Mock<ISnapshotCaptureWriteRepository> Captures { get; } = new();
 
             /// <summary>The services-page settings. Defaults: 15-minute check, 60-minute segments.</summary>
             public Mock<IForensicsConfigurationService> Config { get; } = DefaultConfig();

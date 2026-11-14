@@ -248,7 +248,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         public async Task RollUp_WindowWithCapturesButNoUsableStill_LogsWhyNothingWasBuilt()
         {
             // Production symptom: roll-ups record success but write no loop. An empty window must say why, not stay silent.
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
             [
                 SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "gone.jpg", null),
@@ -288,7 +288,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         {
             // A 200 at +1 min, a failed attempt at +3 min, then a 200 at +10 min. The first still must end at the failure,
             // not run on to the next image, so the outage is a gap rather than a frame that looks current.
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
             [
                 SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "a.jpg", null),

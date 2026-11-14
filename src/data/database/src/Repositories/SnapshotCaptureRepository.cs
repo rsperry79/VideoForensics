@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for SnapshotCapture records.</summary>
-    public class SnapshotCaptureRepository : ISnapshotCaptureRepository
+    public class SnapshotCaptureRepository : ISnapshotCaptureWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<SnapshotCaptureRepository> _logger;

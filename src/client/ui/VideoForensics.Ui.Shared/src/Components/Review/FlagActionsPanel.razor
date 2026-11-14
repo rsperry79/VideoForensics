@@ -195,7 +195,7 @@
     private static readonly TimeSpan RssiPinPad = TimeSpan.FromHours(1);
 
     /// <summary>The clips and current snapshots of an RSSI flag's padded window, oldest first.</summary>
-    private sealed record RssiWindow(IReadOnlyList<MediaItemDto> Clips, IReadOnlyList<SnapshotCapture> Snapshots);
+    private sealed record RssiWindow(IReadOnlyList<MediaItemDto> Clips, IReadOnlyList<SnapshotCaptureDto> Snapshots);
 
     private IReadOnlyList<ForensicCaseDto> _openCases = [];
     private IReadOnlyList<ForensicCaseDto> _containing = [];
@@ -270,7 +270,7 @@
         DateTime fromUtc = Flag.WindowStartUtc - RssiPinPad;
         DateTime toUtc = Flag.WindowEndUtc + RssiPinPad;
         IReadOnlyList<MediaItemDto> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(Flag.DeviceId, fromUtc, toUtc, ct);
-        IReadOnlyList<SnapshotCapture> snapshots = await SnapshotCaptureRepository.GetCurrentForDeviceAsync(
+        IReadOnlyList<SnapshotCaptureDto> snapshots = await SnapshotCaptureRepository.GetCurrentForDeviceAsync(
             Flag.DeviceId,
             new DateTimeOffset(DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc)),
             new DateTimeOffset(DateTime.SpecifyKind(toUtc, DateTimeKind.Utc)),
@@ -535,7 +535,7 @@
                 }
             }
 
-            foreach (SnapshotCapture snapshot in window.Snapshots)
+            foreach (SnapshotCaptureDto snapshot in window.Snapshots)
             {
                 if (!pinned.Contains((CaseItemKindDto.Snapshot, snapshot.Id)))
                 {

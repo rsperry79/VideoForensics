@@ -26,7 +26,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IForensicsConfigurationService? _configurationService;
         private readonly IStorageLocationProvider? _storageLocationProvider;
         private readonly IMediaPathResolver _paths;
-        private readonly ISnapshotCaptureRepository? _snapshotCaptures;
+        private readonly ISnapshotCaptureWriteRepository? _snapshotCaptures;
 
         private static readonly JsonSerializerOptions ReportJsonOptions = new()
         {
@@ -48,7 +48,7 @@ namespace VideoForensics.Client.Core.Services
             IForensicsConfigurationService? configurationService = null,
             IStorageLocationProvider? storageLocationProvider = null,
             IMediaPathResolver? paths = null,
-            ISnapshotCaptureRepository? snapshotCaptures = null)
+            ISnapshotCaptureWriteRepository? snapshotCaptures = null)
         {
             _paths = paths ?? PassThroughMediaPathResolver.Instance;
             _snapshotCaptures = snapshotCaptures;

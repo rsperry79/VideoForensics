@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IReportGenerationService> _reports = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();
-        private readonly Mock<ISnapshotCaptureRepository> _snapshots = new();
+        private readonly Mock<ISnapshotCaptureWriteRepository> _snapshots = new();
         private readonly Mock<ILogger<EvidenceExportOrchestrator>> _logger = new();
         private readonly string _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private readonly string _defaultExportsRoot;

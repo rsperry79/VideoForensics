@@ -104,7 +104,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             _ = Directory.CreateDirectory(folder);
 
             IMediaItemWriteRepository mediaItems = sp.GetRequiredService<IMediaItemWriteRepository>();
-            ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
+            ISnapshotCaptureWriteRepository captures = sp.GetRequiredService<ISnapshotCaptureWriteRepository>();
 
             // Attempts are held to fixed slots, so the six are five seconds apart rather than five seconds after each one finishes.
             // The capture timeframe is fixed up front: it starts now and runs for six five-second slots (30 seconds).

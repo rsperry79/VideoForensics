@@ -45,7 +45,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 var storage = new Mock<IStorageLocationProvider>();
                 _ = storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(mediaRoot);
                 _ = storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>())).Returns(mediaRoot);
-                var captureRows = new Mock<ISnapshotCaptureRepository>();
+                var captureRows = new Mock<ISnapshotCaptureWriteRepository>();
                 _ = captureRows.Setup(r => r.GetDeviceIdsWithAttemptsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync((IReadOnlySet<Guid>)new HashSet<Guid>());
                 var auth = new Mock<IProviderAuthService>();

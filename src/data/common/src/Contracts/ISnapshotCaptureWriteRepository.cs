@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for per-attempt snapshot capture records.</summary>
-    public interface ISnapshotCaptureRepository
+    public interface ISnapshotCaptureWriteRepository
     {
         /// <summary>Records one snapshot attempt (current or not).</summary>
         Task<SnapshotCapture> AddAsync(SnapshotCapture capture, CancellationToken ct);

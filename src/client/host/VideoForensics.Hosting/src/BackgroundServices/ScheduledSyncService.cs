@@ -431,7 +431,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             IReadOnlyList<DateTime> events = await queries.ListEventTimesForGapsAsync(deviceId, cursor.Value, horizon, ct);
-            IReadOnlyList<SnapshotCapture> attempts = await sp.GetRequiredService<ISnapshotCaptureRepository>()
+            IReadOnlyList<SnapshotCapture> attempts = await sp.GetRequiredService<ISnapshotCaptureWriteRepository>()
                 .GetAttemptsForDeviceAsync(deviceId, new DateTimeOffset(cursor.Value, TimeSpan.Zero), new DateTimeOffset(horizon, TimeSpan.Zero), ct);
 
             // Only attempts that produced an image count as snapshots; failed attempts leave a gap, not a frame.

@@ -47,7 +47,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ILogger<SnapshotRollupService> _logger;
 
         // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
-        private readonly ISnapshotCaptureRepository? _captures;
+        private readonly ISnapshotCaptureWriteRepository? _captures;
         private readonly ISnapshotStillMapper? _stillMapper;
         private readonly IMediaPathResolver _mediaPaths;
         private readonly IForensicsConfigurationService? _configurationService;
@@ -63,7 +63,7 @@ namespace VideoForensics.Client.Hosting.Services
             IEventWriteRepository events,
             IUnitOfWork unitOfWork,
             IEvidenceChangeNotifier? evidenceChanges = null,
-            ISnapshotCaptureRepository? captures = null,
+            ISnapshotCaptureWriteRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
             IForensicsConfigurationService? configurationService = null,
             IMediaPathResolver? mediaPaths = null)

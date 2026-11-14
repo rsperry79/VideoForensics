@@ -61,7 +61,7 @@ public class FlagActionsPanel_Tests : BunitContext
         _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKindDto.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCaseDto>());
         _ = _cases.Setup(c => c.ListItemsAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<CaseItemDto>());
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<MediaItemDto>());
-        _ = _snapshots.Setup(s => s.GetCurrentForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<SnapshotCapture>());
+        _ = _snapshots.Setup(s => s.GetCurrentForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<SnapshotCaptureDto>());
     }
 
     /// <summary>A clip of the device recorded at the given UTC time.</summary>
@@ -81,13 +81,13 @@ public class FlagActionsPanel_Tests : BunitContext
     }
 
     /// <summary>A current snapshot capture of the device at the given UTC time.</summary>
-    private static SnapshotCapture Snapshot(Guid deviceId, DateTime capturedAtUtc)
+    private static SnapshotCaptureDto Snapshot(Guid deviceId, DateTime capturedAtUtc)
     {
-        return SnapshotCapture.Rehydrate(Guid.NewGuid(), deviceId, new DateTimeOffset(capturedAtUtc), "fresh", 200, true, "snap.jpg", null);
+        return new SnapshotCaptureDto(Guid.NewGuid(), deviceId, new DateTimeOffset(capturedAtUtc), "fresh", 200, true, "snap.jpg", null);
     }
 
     /// <summary>Sets the window reads for an RSSI flag: the clips and snapshots the device holds in the padded window.</summary>
-    private void SetupWindow(MediaFlag flag, IReadOnlyList<MediaItem> clips, IReadOnlyList<SnapshotCapture> snapshots)
+    private void SetupWindow(MediaFlag flag, IReadOnlyList<MediaItem> clips, IReadOnlyList<SnapshotCaptureDto> snapshots)
     {
         _ = _media
             .Setup(m => m.GetByDeviceAndDateRangeAsync(flag.DeviceId, flag.WindowStartUtc.AddHours(-1), flag.WindowEndUtc.AddHours(1), It.IsAny<CancellationToken>()))
@@ -460,7 +460,7 @@ public class FlagActionsPanel_Tests : BunitContext
         ForensicCaseDto alpha = OpenCase("Alpha");
         MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
         MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
-        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        SnapshotCaptureDto snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
         string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
         var changes = new List<MediaFlagDto>();
         _ = _cases.Setup(c => c.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
@@ -495,7 +495,7 @@ public class FlagActionsPanel_Tests : BunitContext
         ForensicCaseDto alpha = OpenCase("Alpha");
         MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
         MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
-        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        SnapshotCaptureDto snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
         string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
         _ = _cases.Setup(c => c.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
         _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
@@ -529,7 +529,7 @@ public class FlagActionsPanel_Tests : BunitContext
         ForensicCaseDto alpha = OpenCase("Alpha");
         MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
         MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
-        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        SnapshotCaptureDto snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
         string reason = TestLocalizer.Create()["FlagActionsPinReasonRssi"].Value;
         _ = _cases.Setup(c => c.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
         _ = _cases.Setup(c => c.GetAsync(alpha.Id, It.IsAny<CancellationToken>())).ReturnsAsync(alpha);
@@ -647,7 +647,7 @@ public class FlagActionsPanel_Tests : BunitContext
         ForensicCaseDto alpha = OpenCase("Alpha");
         MediaItem clipA = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-30));
         MediaItem clipB = Clip(flag.DeviceId, FixedNowUtc.AddMinutes(-20));
-        SnapshotCapture snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
+        SnapshotCaptureDto snap = Snapshot(flag.DeviceId, FixedNowUtc.AddMinutes(-25));
         _ = _cases.Setup(c => c.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>())).ReturnsAsync([alpha]);
         _ = _cases.Setup(c => c.ListItemsAsync(alpha.Id, false, It.IsAny<CancellationToken>())).ReturnsAsync(
         [

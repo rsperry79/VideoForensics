@@ -129,7 +129,7 @@ namespace VideoForensics.Client.Hosting.Services
             var interval = TimeSpan.FromSeconds(seconds);
 
             IDeviceWriteRepository devices = sp.GetRequiredService<IDeviceWriteRepository>();
-            ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
+            ISnapshotCaptureWriteRepository captures = sp.GetRequiredService<ISnapshotCaptureWriteRepository>();
             IProviderDeviceStatus deviceStatus = sp.GetRequiredKeyedService<IProviderDeviceStatus>(RingProviderName);
             var candidates = new List<(Device Device, TimeSpan Window)>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -387,7 +387,7 @@ namespace VideoForensics.Client.Hosting.Services
                     ? null
                     : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
                 var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: attempt.DeviceHealthId);
-                _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
+                _ = await sp.GetRequiredService<ISnapshotCaptureWriteRepository>().AddAsync(row, ct);
                 _logger.LogDebug("Snapshot attempt recorded for {DeviceName} on {AccountName}: HTTP {HttpStatus}", device.Name, accountName, status);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
