@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for MediaItem entities.</summary>
-    public class MediaItemRepository(IUnitOfWork unitOfWork, ILogger<MediaItemRepository> logger) : IMediaItemRepository
+    public class MediaItemRepository(IUnitOfWork unitOfWork, ILogger<MediaItemRepository> logger) : IMediaItemWriteRepository
     {
         /// <summary>Gets a media item by ID.</summary>
         public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)

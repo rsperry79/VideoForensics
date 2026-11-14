@@ -1,6 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
 /// <summary>
@@ -49,11 +50,11 @@ public sealed class ReviewUrlCache
     /// Requests URLs for the items that are missing, stale, or lack a preview URL they now need, in batches of <see cref="BatchSize"/>.
     /// Fresh entries are not requested again.
     /// </summary>
-    public async Task EnsureAsync(IEnumerable<MediaItem> items, CancellationToken ct)
+    public async Task EnsureAsync(IEnumerable<MediaItemDto> items, CancellationToken ct)
     {
         DateTimeOffset now = _time.GetUtcNow();
         var wanted = new Dictionary<Guid, bool>();
-        foreach (MediaItem item in items)
+        foreach (MediaItemDto item in items)
         {
             bool hasPreview = !string.IsNullOrEmpty(item.PreviewPath);
             if (NeedsRequest(item.Id, hasPreview, now))

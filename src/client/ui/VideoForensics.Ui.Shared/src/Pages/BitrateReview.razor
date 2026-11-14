@@ -149,7 +149,7 @@
             var device = await DeviceRepository.GetAsync(flag.DeviceId, ct);
             _cameraName = device?.Name ?? L["FlaggedMediaUnknownCamera"].Value;
 
-            MediaItem? clip = flag.MediaItemId is { } mediaItemId
+            MediaItemDto? clip = flag.MediaItemId is { } mediaItemId
                 ? await MediaItemRepository.GetAsync(mediaItemId, ct)
                 : null;
             if (clip is null)

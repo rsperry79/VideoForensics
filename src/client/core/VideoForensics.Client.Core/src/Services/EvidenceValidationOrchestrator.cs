@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly Data.Common.Contracts.IEventRepository _eventRepository;
         private readonly Data.Common.Contracts.IDeviceWriteRepository _deviceRepository;
         private readonly Data.Common.Contracts.IIntegrityVerificationService _integrityService;
-        private readonly Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
+        private readonly Data.Common.Contracts.IMediaItemWriteRepository _mediaItemRepository;
         private readonly Data.Core.Contracts.IMediaThumbnailService _thumbnails;
         private readonly Data.Core.Contracts.IProviderReconciliationService _reconciliationService;
         private readonly Data.Common.Contracts.IMediaPathResolver _paths;
@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Core.Services
             Data.Common.Contracts.IEventRepository eventRepository,
             Data.Common.Contracts.IDeviceWriteRepository deviceRepository,
             Data.Common.Contracts.IIntegrityVerificationService integrityService,
-            Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
+            Data.Common.Contracts.IMediaItemWriteRepository mediaItemRepository,
             Data.Core.Contracts.IMediaThumbnailService thumbnails,
             Data.Core.Contracts.IProviderReconciliationService reconciliationService,
             Data.Common.Contracts.IMediaPathResolver? paths = null)

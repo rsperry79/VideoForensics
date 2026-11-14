@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;using VideoForensics.Core.Api.Contracts;
 using AngleSharp.Dom;
 
 using Bunit;
@@ -57,7 +58,7 @@ public class FlagActionsPanel_Tests : BunitContext
         _ = _cases.Setup(c => c.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
         _ = _cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ForensicCase>());
         _ = _cases.Setup(c => c.ListItemsAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<CaseItem>());
-        _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<MediaItem>());
+        _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<MediaItemDto>());
         _ = _snapshots.Setup(s => s.GetCurrentForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<SnapshotCapture>());
     }
 
@@ -88,7 +89,7 @@ public class FlagActionsPanel_Tests : BunitContext
     {
         _ = _media
             .Setup(m => m.GetByDeviceAndDateRangeAsync(flag.DeviceId, flag.WindowStartUtc.AddHours(-1), flag.WindowEndUtc.AddHours(1), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(clips);
+            .ReturnsAsync(clips.Select(c => c.ToDto()).ToList());
         _ = _snapshots
             .Setup(s => s.GetCurrentForDeviceAsync(flag.DeviceId, new DateTimeOffset(flag.WindowStartUtc.AddHours(-1), TimeSpan.Zero), new DateTimeOffset(flag.WindowEndUtc.AddHours(1), TimeSpan.Zero), It.IsAny<CancellationToken>()))
             .ReturnsAsync(snapshots);

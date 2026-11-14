@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Components.Review;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -8,7 +8,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Components.Review;
 /// <summary>The still check: a clip whose file name or path is a JPEG or PNG image is a still, and every other clip is not.</summary>
 public class MediaStill_Tests
 {
-    private static MediaItem Clip(string fileName, string filePath)
+    private static MediaItemDto Clip(string fileName, string filePath)
     {
         return new MediaItem
         {
@@ -20,7 +20,7 @@ public class MediaStill_Tests
             Sha256Hash = "hash",
             RecordedAtUtc = DateTime.UtcNow,
             DownloadedAtUtc = DateTime.UtcNow,
-        };
+        }.ToDto();
     }
 
     [Fact]

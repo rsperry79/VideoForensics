@@ -73,7 +73,7 @@ public class MediaFlagDeviationBackfillTests
         _ = flags.Setup(f => f.ListWithoutDeviationSigmaAsync(MediaFlagType.BitrateCollapse, It.IsAny<CancellationToken>())).ReturnsAsync(collapse ?? []);
         var health = new Mock<IDeviceHealthRepository>();
         _ = health.Setup(h => h.GetHistoryAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(History());
-        var media = new Mock<IMediaItemRepository>();
+        var media = new Mock<IMediaItemWriteRepository>();
         _ = media.Setup(m => m.GetBitrateBaselineByDeviceAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(BitrateAllTime);
         _ = media.Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(clip);
         var settings = new Mock<IAppSettingRepository>();

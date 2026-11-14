@@ -31,7 +31,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Reconstructs Event rows from DownloadEvents and MediaItems. Returns the number of Events written.</summary>
         public async Task<int> BackfillFromDownloadEventsAsync(
             IDownloadEventRepository downloadEventRepository,
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             IEventRepository eventRepository,
             IUnitOfWork unitOfWork,
             ILogger logger,

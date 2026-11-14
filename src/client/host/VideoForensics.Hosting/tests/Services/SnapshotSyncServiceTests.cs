@@ -58,7 +58,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _ = services.AddSingleton(_devices.Object);
                 _ = services.AddSingleton(captureRows.Object);
                 _ = services.AddSingleton(Mock.Of<ISyncScheduleRepository>());
-                _ = services.AddSingleton(Mock.Of<IMediaItemRepository>());
+                _ = services.AddSingleton(Mock.Of<IMediaItemWriteRepository>());
                 _ = services.AddSingleton(sessions.Object);
                 _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", capture.Object);
                 _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);

@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Cases;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -50,7 +50,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        PinIntegrity result = CaseItemIntegrity.Compare(eventItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(eventItem, currentMedia?.ToDto());
 
         // Assert
         Assert.Equal(PinIntegrity.NotApplicable, result);
@@ -105,7 +105,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia?.ToDto());
 
         // Assert
         Assert.Equal(PinIntegrity.Match, result);
@@ -138,7 +138,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia?.ToDto());
 
         // Assert
         Assert.Equal(PinIntegrity.Mismatch, result);
@@ -171,7 +171,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia?.ToDto());
 
         // Assert
         Assert.Equal(PinIntegrity.Match, result);

@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services.Review;

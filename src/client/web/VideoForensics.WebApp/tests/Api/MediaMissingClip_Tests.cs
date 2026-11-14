@@ -32,7 +32,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private sealed class Harness
         {
-            public Mock<IMediaItemRepository> MediaItems { get; } = new();
+            public Mock<IMediaItemWriteRepository> MediaItems { get; } = new();
             public Mock<IMediaStorageProvider> Storage { get; } = new();
             public Mock<IAccessAuditLogRepository> AuditLog { get; } = new();
             public Mock<INetworkTierResolver> TierResolver { get; } = new();

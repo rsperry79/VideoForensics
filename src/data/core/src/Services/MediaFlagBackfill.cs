@@ -19,12 +19,12 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>How far back the backfill looks. A named constant for the testing phase; older clips get no flag.</summary>
         public const int WindowDays = 7;
 
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IMediaFlagRepository _flags;
         private readonly TimeProvider _time;
         private readonly ILogger<MediaFlagBackfill> _logger;
 
-        public MediaFlagBackfill(IMediaItemRepository items, IMediaFlagRepository flags, TimeProvider time, ILogger<MediaFlagBackfill> logger)
+        public MediaFlagBackfill(IMediaItemWriteRepository items, IMediaFlagRepository flags, TimeProvider time, ILogger<MediaFlagBackfill> logger)
         {
             _items = items;
             _flags = flags;

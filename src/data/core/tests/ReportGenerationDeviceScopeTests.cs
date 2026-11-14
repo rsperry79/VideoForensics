@@ -5,6 +5,7 @@ using Moq;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
 
@@ -32,7 +33,7 @@ namespace VideoForensics.Data.Core.Tests
             _ = integrity.Setup(x => x.GetLatestByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
             return new ReportGenerationService(
-                new Mock<IMediaItemRepository>().Object,
+                new Mock<IMediaItemWriteRepository>().Object,
                 new Mock<IDeviceWriteRepository>().Object,
                 new Mock<IDownloadEventRepository>().Object,
                 _actionLog.Object,
@@ -74,7 +75,7 @@ namespace VideoForensics.Data.Core.Tests
             ]);
             _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(ChainIntegrityResult.Valid(2));
 
-            ChainOfCustodyReport report = await CreateService().BuildChainOfCustodyReportAsync(device, From, To, CancellationToken.None);
+            ChainOfCustodyReportDto report = await CreateService().BuildChainOfCustodyReportAsync(device, From, To, CancellationToken.None);
 
             Assert.Equal(2, report.AuditTrail.Count);
             Assert.DoesNotContain(report.AuditTrail, e => e.EntityId == other);
@@ -87,7 +88,7 @@ namespace VideoForensics.Data.Core.Tests
             _ = _actionLog.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = _actionLog.Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
 
-            ChainOfCustodyReport report = await CreateService().BuildChainOfCustodyReportAsync(device, From, To, CancellationToken.None);
+            ChainOfCustodyReportDto report = await CreateService().BuildChainOfCustodyReportAsync(device, From, To, CancellationToken.None);
 
             Assert.False(report.ChainIntegrityVerified);
             _actionLog.Verify(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -105,7 +106,7 @@ namespace VideoForensics.Data.Core.Tests
                 Entry("MediaViewed", other, null, day.AddHours(1)),
             ]);
 
-            AccessControlReport report = await CreateService().BuildAccessControlReportAsync(device, From, To, CancellationToken.None);
+            AccessControlReportDto report = await CreateService().BuildAccessControlReportAsync(device, From, To, CancellationToken.None);
 
             _ = Assert.Single(report.AccessEvents);
             Assert.Equal(device, report.AccessEvents[0].EntityId);

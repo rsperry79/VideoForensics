@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;using VideoForensics.Core.Api.Contracts;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services.Review;
@@ -23,7 +24,7 @@ public class ReviewCaseMode_Tests
     {
         _ = _media
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItem?>(_mediaById.GetValueOrDefault(id)));
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItemDto?>(_mediaById.GetValueOrDefault(id)?.ToDto()));
         _ = _events
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));

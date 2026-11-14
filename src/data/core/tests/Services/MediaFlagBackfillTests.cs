@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     {
         private static readonly DateTime Now = new(2026, 10, 31, 12, 0, 0, DateTimeKind.Utc);
 
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaFlagRepository> _flags = new();
 
         private MediaFlagBackfill Sut()

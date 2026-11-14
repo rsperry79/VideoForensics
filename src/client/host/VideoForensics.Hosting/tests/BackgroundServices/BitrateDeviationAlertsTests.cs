@@ -113,7 +113,7 @@ public class BitrateDeviationAlertsTests
         IMediaFlagRepository flags,
         List<MeasuredBitrate> rows)
     {
-        var mediaItems = new Mock<IMediaItemRepository>();
+        var mediaItems = new Mock<IMediaItemWriteRepository>();
         _ = mediaItems.Setup(m => m.GetMeasuredBitrateByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         _ = mediaItems.Setup(m => m.GetBitrateBaselineByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(AllTimeBaseline);
 

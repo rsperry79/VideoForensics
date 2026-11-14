@@ -322,6 +322,8 @@ namespace VideoForensics.Client.Hosting
         /// <param name="telemetryOptions">Optional telemetry configuration; defaults to a disabled (no-op) <see cref="TelemetryOptions"/> instance when null, keeping telemetry opt-in and every existing caller unaffected.</param>
         public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
+            // Server-side media reads for Ui.Shared: DTO view over the write repository (see MediaItemDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository>();
             // Server-side device reads for Ui.Shared: DTO view over the write repository (see DeviceDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceRepository, VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository>();
             // MainLayout.razor (rendered by every host sharing Ui.Shared, WebApp included) @injects
@@ -431,7 +433,7 @@ namespace VideoForensics.Client.Hosting
 
             // Scoped, not Singleton, for these three: caught by a DI-graph smoke test during M1 -
             // every one of them transitively depends on a Scoped repository (IAppSettingRepository,
-            // IMediaItemRepository, IEventRepository, IDeviceWriteRepository, IActionLogRepository,
+            // IMediaItemWriteRepository, IEventRepository, IDeviceWriteRepository, IActionLogRepository,
             // IVideoForensicsDataClient are all registered TryAddScoped/AddScoped by the data layer).
             // A Singleton capturing a Scoped dependency is a captive-dependency bug: harmless today
             // because console/MCP never create child scopes and never run ValidateScopes, but it
@@ -445,7 +447,7 @@ namespace VideoForensics.Client.Hosting
                 IEventRepository eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
                 IDeviceWriteRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceWriteRepository>();
                 IIntegrityVerificationService integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                IMediaItemRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                IMediaItemWriteRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemWriteRepository>();
                 VideoForensics.Data.Core.Contracts.IMediaThumbnailService thumbnails = serviceProvider.GetRequiredService<VideoForensics.Data.Core.Contracts.IMediaThumbnailService>();
                 IProviderReconciliationService reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
                 return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, thumbnails, reconciliationService);
@@ -455,7 +457,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IEvidenceExportService>(serviceProvider =>
             {
                 ILogger<EvidenceExportOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
-                IMediaItemRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                IMediaItemWriteRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemWriteRepository>();
                 IIntegrityVerificationService integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
                 IActionLogRepository actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
                 IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
@@ -485,7 +487,7 @@ namespace VideoForensics.Client.Hosting
                 IDeviceWriteRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceWriteRepository>();
                 IEventRepository eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
                 IDownloadEventRepository downloadEventRepository = serviceProvider.GetRequiredService<IDownloadEventRepository>();
-                IMediaItemRepository backupMediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                IMediaItemWriteRepository backupMediaItemRepository = serviceProvider.GetRequiredService<IMediaItemWriteRepository>();
                 IForensicsConfiguration forensicsConfiguration = serviceProvider.GetRequiredService<IForensicsConfiguration>();
                 IMediaMetadataTagger metadataTagger = serviceProvider.GetRequiredService<IMediaMetadataTagger>();
                 return new BackupExportOrchestrator(logger, providerAccountRepository, locationRepository, deviceRepository, eventRepository, downloadEventRepository, backupMediaItemRepository, forensicsConfiguration, metadataTagger);
@@ -584,7 +586,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IMediaStillCaptureService>(serviceProvider =>
                 new MediaStillCaptureOrchestrator(
                     serviceProvider.GetRequiredService<ILogger<MediaStillCaptureOrchestrator>>(),
-                    serviceProvider.GetRequiredService<IMediaItemRepository>(),
+                    serviceProvider.GetRequiredService<IMediaItemWriteRepository>(),
                     serviceProvider.GetRequiredService<IMediaStillRepository>(),
                     serviceProvider.GetRequiredService<IMediaStorageProvider>(),
                     serviceProvider.GetRequiredService<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(),
@@ -760,7 +762,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.ConfigureHttpClientDefaults(http => http.AddHttpMessageHandler<PairedDeviceAuthHandler>());
 
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceHealthRepository, RemoteDeviceHealthRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, Remote.RemoteSignalAnalysisService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, Remote.RemoteBitrateAnalysisService>(c => c.BaseAddress = serverAddress);
@@ -856,7 +858,7 @@ namespace VideoForensics.Client.Hosting
             _ = await logsDb.Database.EnsureCreatedAsync(ct);
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
-            // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the
+            // IMediaItemWriteRepository, IEventRepository, IForensicsConfigurationService) - since the
             // registrations were fixed to be Scoped (see AddVideoForensicsServerCore), they can't be
             // resolved directly from the root `services` provider passed in here (that throws
             // "Cannot resolve scoped service ... from root provider" under strict scope validation,
@@ -871,7 +873,7 @@ namespace VideoForensics.Client.Hosting
             if (alreadyDone != "true")
             {
                 IDownloadEventRepository downloadEventRepo = sp.GetRequiredService<IDownloadEventRepository>();
-                IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
+                IMediaItemWriteRepository mediaItemRepo = sp.GetRequiredService<IMediaItemWriteRepository>();
                 IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
                 IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
                 EventBackfillService backfillService = sp.GetRequiredService<EventBackfillService>();

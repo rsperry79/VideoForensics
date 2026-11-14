@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Devices;
+using VideoForensics.Client.Ui.Shared.Services.Devices;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -35,10 +35,10 @@ public class LatestDeviceMediaTests
         MediaItem oldLoop = Item("mp4", Now.AddMinutes(-60), Loop);
         MediaItem newLoop = Item("mp4", Now.AddMinutes(-15), Loop);
 
-        LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(new[] { older, oldLoop, newest, newLoop });
+        LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(new[] { older.ToDto(), oldLoop.ToDto(), newest.ToDto(), newLoop.ToDto() });
 
-        Assert.Same(newest, selection.Snapshot);
-        Assert.Same(newLoop, selection.Loop);
+        Assert.Equal(newest.ToDto(), selection.Snapshot);
+        Assert.Equal(newLoop.ToDto(), selection.Loop);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class LatestDeviceMediaTests
         MediaItem eventVideo = Item("mp4", Now, "{\"eventId\":\"e1\"}");
         MediaItem thumbnail = Item("jpg", Now, "{\"type\":\"event\"}");
 
-        LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(new[] { eventVideo, thumbnail });
+        LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(new[] { eventVideo.ToDto(), thumbnail.ToDto() });
 
         Assert.Null(selection.Snapshot);
         Assert.Null(selection.Loop);
@@ -56,7 +56,7 @@ public class LatestDeviceMediaTests
     [Fact]
     public void Select_NoMedia_ReturnsNothing()
     {
-        LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(Array.Empty<MediaItem>());
+        LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(Array.Empty<MediaItemDto>());
 
         Assert.Null(selection.Snapshot);
         Assert.Null(selection.Loop);

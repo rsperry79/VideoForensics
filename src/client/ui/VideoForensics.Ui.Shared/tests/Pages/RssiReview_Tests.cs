@@ -1,4 +1,4 @@
-using Bunit;
+using Bunit;using VideoForensics.Core.Api.Contracts;
 using Bunit.Rendering;
 
 using Microsoft.AspNetCore.Components;
@@ -75,7 +75,7 @@ public class RssiReview_Tests : BunitContext
         _ = _snapshots.Setup(s => s.GetCurrentForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<SnapshotCapture>());
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<MediaItem>());
+            .ReturnsAsync(Array.Empty<MediaItemDto>());
     }
 
     private IStringLocalizer<SharedResources> Localizer => Services.GetRequiredService<IStringLocalizer<SharedResources>>();
@@ -148,7 +148,7 @@ public class RssiReview_Tests : BunitContext
         MediaItem second = Clip(flag.DeviceId, FlagStartUtc.AddMinutes(1), 60, purged: true);
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { first, second });
+            .ReturnsAsync(new[] { first.ToDto(), second.ToDto() });
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
 
@@ -166,7 +166,7 @@ public class RssiReview_Tests : BunitContext
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/x.jpg?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { clip });
+            .ReturnsAsync(new[] { clip.ToDto() });
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
@@ -191,8 +191,8 @@ public class RssiReview_Tests : BunitContext
                 FlagStartUtc.AddHours(-1),
                 FlagStartUtc.AddMinutes(5).AddHours(1),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { notCovering, covering });
-        _ = _items.Setup(r => r.GetAsync(covering.Id, It.IsAny<CancellationToken>())).ReturnsAsync(covering);
+            .ReturnsAsync(new[] { notCovering.ToDto(), covering.ToDto() });
+        _ = _items.Setup(r => r.GetAsync(covering.Id, It.IsAny<CancellationToken>())).ReturnsAsync(covering.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(covering.Id)), It.IsAny<CancellationToken>()))
             .ReturnsAsync(urls);
 
@@ -223,8 +223,8 @@ public class RssiReview_Tests : BunitContext
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [covering.Id] = "/clips/covering.mp4?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { covering });
-        _ = _items.Setup(r => r.GetAsync(covering.Id, It.IsAny<CancellationToken>())).ReturnsAsync(covering);
+            .ReturnsAsync(new[] { covering.ToDto() });
+        _ = _items.Setup(r => r.GetAsync(covering.Id, It.IsAny<CancellationToken>())).ReturnsAsync(covering.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
@@ -243,7 +243,7 @@ public class RssiReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
             .ReturnsAsync(neighbour);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { clip });
+            .ReturnsAsync(new[] { clip.ToDto() });
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
@@ -269,7 +269,7 @@ public class RssiReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
             .ReturnsAsync(neighbour);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { clip });
+            .ReturnsAsync(new[] { clip.ToDto() });
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
@@ -313,7 +313,7 @@ public class RssiReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfRssi(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
             .ReturnsAsync(next);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { clip });
+            .ReturnsAsync(new[] { clip.ToDto() });
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
@@ -337,7 +337,7 @@ public class RssiReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfRssi(), MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
             .ReturnsAsync((MediaFlag?)null);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { clip });
+            .ReturnsAsync(new[] { clip.ToDto() });
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);
@@ -359,7 +359,7 @@ public class RssiReview_Tests : BunitContext
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _items.Setup(r => r.GetByDeviceAndDateRangeAsync(flag.DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { clip });
+            .ReturnsAsync(new[] { clip.ToDto() });
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<RssiReview> cut = RenderFor(flag.Id);

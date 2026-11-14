@@ -54,7 +54,7 @@ public class LiveViewPageTests : BunitContext
         };
         _ = _mediaItems
             .Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(Camera, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
-            .ReturnsAsync([media]);
+            .ReturnsAsync([media.ToDto()]);
         _ = _contentUrls
             .Setup(c => c.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { [Snapshot] = url });
@@ -105,7 +105,7 @@ public class LiveViewPageTests : BunitContext
         var media = new MediaItem { Id = Snapshot, DeviceId = flood, FileName = "f.jpg", FilePath = "f.jpg", MediaFormat = "jpg", RecordedAtUtc = DateTime.UtcNow, Sha256Hash = "h" };
         _mediaItems
             .Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(flood, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
-            .ReturnsAsync([media]);
+            .ReturnsAsync([media.ToDto()]);
         _contentUrls
             .Setup(c => c.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { [Snapshot] = "https://example.test/flood.jpg" });

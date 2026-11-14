@@ -18,7 +18,7 @@
     <ItemGroup>
         <ProjectReference Include="../../src/VideoForensics.Core.Api.Contracts.csproj" />
         <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />
-        <ProjectReference Include="../../../../data/core/src/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../logging/src/VideoForensics.Core.Logging.csproj" />
         <ProjectReference Include="../../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
     </ItemGroup>
 

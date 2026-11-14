@@ -1,4 +1,4 @@
-using VideoForensics.Data.Core.Models;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Analysis;
 
@@ -9,10 +9,10 @@ namespace VideoForensics.Client.Ui.Shared.Services.Analysis;
 /// </summary>
 public static class AnalysisReportMerge
 {
-    public static ForensicAnalysisReport Merge(IReadOnlyList<ForensicAnalysisReport> reports)
+    public static ForensicAnalysisReportDto Merge(IReadOnlyList<ForensicAnalysisReportDto> reports)
     {
-        ForensicAnalysisReport first = reports[0];
-        return new ForensicAnalysisReport
+        ForensicAnalysisReportDto first = reports[0];
+        return first with
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
             ReportFromUtc = first.ReportFromUtc,
@@ -24,10 +24,10 @@ public static class AnalysisReportMerge
         };
     }
 
-    public static SignalAnomalyReport Merge(IReadOnlyList<SignalAnomalyReport> reports)
+    public static SignalAnomalyReportDto Merge(IReadOnlyList<SignalAnomalyReportDto> reports)
     {
-        SignalAnomalyReport first = reports[0];
-        return new SignalAnomalyReport
+        SignalAnomalyReportDto first = reports[0];
+        return first with
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
             ReportFromUtc = first.ReportFromUtc,
@@ -37,10 +37,10 @@ public static class AnalysisReportMerge
         };
     }
 
-    public static AccessControlReport Merge(IReadOnlyList<AccessControlReport> reports)
+    public static AccessControlReportDto Merge(IReadOnlyList<AccessControlReportDto> reports)
     {
-        AccessControlReport first = reports[0];
-        return new AccessControlReport
+        AccessControlReportDto first = reports[0];
+        return first with
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
             ReportFromUtc = first.ReportFromUtc,

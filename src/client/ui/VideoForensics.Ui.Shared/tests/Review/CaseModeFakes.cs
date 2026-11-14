@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;using VideoForensics.Core.Api.Contracts;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services.Review;
@@ -22,7 +23,7 @@ public static class CaseModeFakes
         foreach (MediaItem item in media)
         {
             pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = item.Id, Reason = "r", AddedBy = "op", AddedAtUtc = added });
-            _ = mediaRepository.Setup(r => r.GetAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+            _ = mediaRepository.Setup(r => r.GetAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item.ToDto());
         }
 
         foreach (Event evt in events ?? [])

@@ -47,7 +47,7 @@ namespace VideoForensics.Data.Core.Services
 
         private static readonly TimeSpan EncodeTimeout = ProcessRunner.DefaultAnalysisTimeout;
 
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IFfmpegToolLocation _tools;
         private readonly IPreviewProcessRunner _runner;
         private readonly IMediaPathResolver _paths;
@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Core.Services
 
         /// <summary>Creates the service. <paramref name="processRunner"/> defaults to the real ffmpeg runner when null.</summary>
         public MediaPreviewService(
-            IMediaItemRepository items,
+            IMediaItemWriteRepository items,
             IFfmpegToolLocation tools,
             ILogger<MediaPreviewService> logger,
             IPreviewProcessRunner? processRunner = null,

@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Common.Contracts
         ILocationRepository Locations { get; }
 
         /// <summary>Gets the media item repository.</summary>
-        IMediaItemRepository MediaItems { get; }
+        IMediaItemWriteRepository MediaItems { get; }
 
         /// <summary>Gets the download event repository.</summary>
         IDownloadEventRepository DownloadEvents { get; }

@@ -14,7 +14,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     /// <summary>The codec backfill fills codec fields from ffprobe and skips an item ffprobe cannot read, without re-probing it.</summary>
     public class MediaCodecBackfillTests
     {
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaBitrateAnalyzer> _bitrate = new();
         private readonly Mock<IMediaPathResolver> _paths = new();
 

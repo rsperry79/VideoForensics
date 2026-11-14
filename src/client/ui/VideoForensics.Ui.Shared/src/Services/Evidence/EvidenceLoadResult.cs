@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
@@ -20,7 +21,7 @@ public class EvidenceLoadResult
     /// <summary>
     /// Integrity records from the event load result.
     /// </summary>
-    public required IReadOnlyList<IntegrityRecord> IntegrityRecords { get; init; }
+    public required IReadOnlyList<IntegrityRecordDto> IntegrityRecords { get; init; }
 
     /// <summary>
     /// Per-device errors captured during loading (device ID → error message).

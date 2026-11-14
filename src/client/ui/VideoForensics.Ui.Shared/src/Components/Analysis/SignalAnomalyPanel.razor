@@ -1,5 +1,5 @@
 @using VideoForensics.Data.Core.Contracts
-@using VideoForensics.Data.Core.Models
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services.Analysis
@@ -27,19 +27,19 @@ else if (_report is not null)
         @foreach (var deviceFindings in _report.AnomaliesByDevice)
         {
             <h6>@deviceFindings.DeviceName</h6>
-            <SfGrid TValue="SignalAnomalyReport.SignalAnomaly" DataSource="@deviceFindings.Anomalies" AllowPaging="true" AllowSorting="true" AllowResizing="true">
+            <SfGrid TValue="SignalAnomalyDto" DataSource="@deviceFindings.Anomalies" AllowPaging="true" AllowSorting="true" AllowResizing="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" MinWidth="100">
+                    <GridColumn Field="@nameof(SignalAnomalyDto.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" MinWidth="100">
                         <Template>
-                            <LocalTimeText Value="@((context as SignalAnomalyReport.SignalAnomaly)!.OccurredAtUtc)" />
+                            <LocalTimeText Value="@((context as SignalAnomalyDto)!.OccurredAtUtc)" />
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" HeaderText="@L["ColAnomalyType"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyDto.AnomalyType)" HeaderText="@L["ColAnomalyType"]" MinWidth="100" />
                     <GridColumn HeaderText="@L["ColDescription"]" MinWidth="100">
                         <Template>
                             @{
-                                var anomaly = (SignalAnomalyReport.SignalAnomaly)context;
+                                var anomaly = (SignalAnomalyDto)context;
                                 @(anomaly.Description ?? L["NotAvailable"].Value)
                             }
                         </Template>
@@ -47,7 +47,7 @@ else if (_report is not null)
                     <GridColumn HeaderText="@L["ColRssi"]" MinWidth="100">
                         <Template>
                             @{
-                                var anomaly = (SignalAnomalyReport.SignalAnomaly)context;
+                                var anomaly = (SignalAnomalyDto)context;
                                 @(anomaly.RssiValue?.ToString() ?? L["NotAvailable"].Value)
                             }
                         </Template>
@@ -64,23 +64,23 @@ else if (_report is not null)
     }
     else
     {
-        <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_report.JammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="JammingSummaryEntryDto" DataSource="@_report.JammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" HeaderText="@L["ColDevice"]" MinWidth="100" />
-                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" HeaderText="@L["ColIncidentCount"]" MinWidth="100" />
-                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" HeaderText="@L["ColTotalJammedMin"]" MinWidth="100" />
-                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" HeaderText="@L["ColAvgDegradation"]" MinWidth="100" />
-                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" HeaderText="@L["ColMaxDegradation"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingSummaryEntryDto.DeviceName)" HeaderText="@L["ColDevice"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingSummaryEntryDto.IncidentCount)" HeaderText="@L["ColIncidentCount"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingSummaryEntryDto.TotalJammedDurationMinutes)" HeaderText="@L["ColTotalJammedMin"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingSummaryEntryDto.AverageDegradationDb)" HeaderText="@L["ColAvgDegradation"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingSummaryEntryDto.MaxDegradationDb)" HeaderText="@L["ColMaxDegradation"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColFirstIncident"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as SignalAnomalyReport.JammingSummaryEntry)!.FirstIncidentUtc)" Fallback="@L["NotAvailable"].Value" />
+                        <LocalTimeText Value="@((context as JammingSummaryEntryDto)!.FirstIncidentUtc)" Fallback="@L["NotAvailable"].Value" />
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["ColLastIncident"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as SignalAnomalyReport.JammingSummaryEntry)!.LastIncidentUtc)" Fallback="@L["NotAvailable"].Value" />
+                        <LocalTimeText Value="@((context as JammingSummaryEntryDto)!.LastIncidentUtc)" Fallback="@L["NotAvailable"].Value" />
                     </Template>
                 </GridColumn>
             </GridColumns>
@@ -97,7 +97,7 @@ else if (_report is not null)
 
     private bool _isLoading = true;
     private string? _error;
-    private SignalAnomalyReport? _report;
+    private SignalAnomalyReportDto? _report;
     private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
 
     protected override async Task OnParametersSetAsync()
@@ -125,7 +125,7 @@ else if (_report is not null)
             }
             else
             {
-                var reports = new List<SignalAnomalyReport>();
+                var reports = new List<SignalAnomalyReportDto>();
                 foreach (var deviceId in Scope.DeviceIds)
                 {
                     reports.Add(await ReportGenerationService.BuildSignalAnomalyReportAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None));

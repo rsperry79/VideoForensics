@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -28,7 +28,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
                 ProviderEventId = "p1",
                 MetadataJson = "{}"
             },
-            Media = media
+            Media = media?.ToDto()
         };
     }
 
@@ -51,7 +51,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
                 RecordedAtUtc = OccurredAtUtc,
                 DeviceId = Guid.NewGuid(),
                 IsPurged = false,
-            }
+            }.ToDto()
         };
     }
 
@@ -114,7 +114,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
     [Fact]
     public void EventWithPinnedAttachedMedia_IsRed()
     {
-        MediaItem media = MediaOnlyItem(Guid.NewGuid()).Media!;
+        MediaItem media = MediaOnlyItem(Guid.NewGuid()).Media!.ToDomain();
         var pinned = new HashSet<Guid> { media.Id };
 
         Assert.Equal("timeline-tone-in-case", EvidenceTimelineStyle.ToneClass(EventItem("motion", media: media), pinned));

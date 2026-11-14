@@ -24,7 +24,7 @@ public class BitrateAnalysisServiceTests
     {
         var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
-        var media = new Mock<IMediaItemRepository>();
+        var media = new Mock<IMediaItemWriteRepository>();
         _ = media
             .Setup(r => r.GetMeasuredBitrateByDeviceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out MeasuredBitrate[]? rows) ? rows : []);

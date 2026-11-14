@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -211,7 +211,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -220,7 +220,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -250,7 +250,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -259,7 +259,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -289,7 +289,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -298,7 +298,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -328,7 +328,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -358,7 +358,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -367,7 +367,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -397,7 +397,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -430,7 +430,7 @@ public class EvidenceViewModel_GalleryItems_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var nonViewableItem = new EvidenceItem
         {
@@ -476,7 +476,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = imageId1, FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = imageId1, FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -485,7 +485,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = imageId2, FileName = "b.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "b", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = imageId2, FileName = "b.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "b", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item3 = new EvidenceItem
         {
@@ -494,7 +494,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device3",
-            Media = new MediaItem { Id = videoId, FileName = "c.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "c", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = videoId, FileName = "c.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "c", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
@@ -527,7 +527,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
                 OccurredAtUtc = DateTime.UtcNow.AddHours(-i),
                 DeviceId = Guid.NewGuid(),
                 DeviceName = "Device",
-                Media = new MediaItem { Id = Guid.NewGuid(), FileName = $"{i}.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = $"h{i}", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-i), DownloadedAtUtc = DateTime.UtcNow }
+                Media = new MediaItem { Id = Guid.NewGuid(), FileName = $"{i}.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = $"h{i}", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-i), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
             }).ToList();
         var result = new EvidenceLoadResult
         {

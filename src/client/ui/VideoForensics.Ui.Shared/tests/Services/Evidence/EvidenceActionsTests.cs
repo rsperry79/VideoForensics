@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Data.Common.Entities;
 
@@ -188,7 +188,7 @@ public class EvidenceActions_GetExportMediaItemIds_Tests
             DeviceId = deviceId,
             DeviceName = "Device",
             Event = null,
-            Media = media
+            Media = media?.ToDto()
         };
     }
 }

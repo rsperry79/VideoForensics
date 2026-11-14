@@ -26,7 +26,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Mock<ILocationRepository> _locations = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
-        private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<ITimelineVideoBuilder> _builder = new();
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();

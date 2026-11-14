@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for media item entities.</summary>
-    public interface IMediaItemRepository
+    public interface IMediaItemWriteRepository
     {
         /// <summary>Gets a media item by ID.</summary>
         Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct);

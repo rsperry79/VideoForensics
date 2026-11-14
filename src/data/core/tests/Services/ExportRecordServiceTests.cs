@@ -14,7 +14,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     public class ExportRecordServiceTests
     {
         private readonly Mock<IExportRecordRepository> _mockExportRecordRepository;
-        private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItemRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         public ExportRecordServiceTests()
         {
             _mockExportRecordRepository = new Mock<IExportRecordRepository>();
-            _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            _mockMediaItemRepository = new Mock<IMediaItemWriteRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();

@@ -99,7 +99,7 @@
     private LoadKey? _requested;
     private IReadOnlyList<CameraTile> _tiles = [];
     private IReadOnlyList<Guid> _tileDeviceIds = [];
-    private Dictionary<string, MediaItem> _itemsByClipId = new(StringComparer.Ordinal);
+    private Dictionary<string, MediaItemDto> _itemsByClipId = new(StringComparer.Ordinal);
     private IReadOnlySet<Guid> _loadedDeviceIds = new HashSet<Guid>();
     private CancellationTokenSource? _loadCts;
     private readonly CancellationTokenSource _lifetime = new();
@@ -246,8 +246,8 @@
 
     private void Adopt(LoadKey key, IReadOnlyList<Guid> loadIds, ReviewClipSet set)
     {
-        _itemsByClipId = new Dictionary<string, MediaItem>(StringComparer.Ordinal);
-        foreach (MediaItem item in set.Items)
+        _itemsByClipId = new Dictionary<string, MediaItemDto>(StringComparer.Ordinal);
+        foreach (MediaItemDto item in set.Items)
         {
             _itemsByClipId[item.Id.ToString("D")] = item;
         }
@@ -296,14 +296,14 @@
             return;
         }
 
-        var wanted = new List<MediaItem>();
+        var wanted = new List<MediaItemDto>();
         foreach (CameraTile tile in _tiles)
         {
             IReadOnlyList<ClipWindow> clips = tile.Clips;
             int index = IndexAt(clips, cursor);
             for (int i = index; i < clips.Count && i <= index + 1; i++)
             {
-                if (_itemsByClipId.TryGetValue(clips[i].Id, out MediaItem? item))
+                if (_itemsByClipId.TryGetValue(clips[i].Id, out MediaItemDto? item))
                 {
                     wanted.Add(item);
                 }

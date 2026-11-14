@@ -23,7 +23,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_ValidRequest_ReturnsPageWithTotalCount()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
             _ = repository
                 .Setup(r => r.GetPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, 10, 25, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
                 .ReturnsAsync(new MediaItemPage([], 42));
@@ -39,7 +39,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_NoPaging_UsesDefaultPage()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
             _ = repository
                 .Setup(r => r.GetPageByDevicesAndDateRangeAsync(It.IsAny<IReadOnlyCollection<Guid>>(), From, To, 0, 100, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
                 .ReturnsAsync(new MediaItemPage([], 0));
@@ -55,7 +55,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_NoDevices_ReturnsBadRequest()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 Array.Empty<Guid>(), From, To, skip: 0, take: 10, videoOnly: null, repository.Object, CancellationToken.None);
@@ -68,7 +68,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_MissingRange_ReturnsBadRequest()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 new[] { Guid.NewGuid() }, From, to: null, skip: 0, take: 10, videoOnly: null, repository.Object, CancellationToken.None);
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_FromAfterTo_ReturnsBadRequest()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 new[] { Guid.NewGuid() }, To, From, skip: 0, take: 10, videoOnly: null, repository.Object, CancellationToken.None);
@@ -94,7 +94,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [InlineData(501)]
         public async Task ListMediaItemPageAsync_TakeOutOfRange_ReturnsBadRequest(int take)
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 new[] { Guid.NewGuid() }, From, To, skip: 0, take: take, videoOnly: null, repository.Object, CancellationToken.None);
@@ -106,7 +106,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_NegativeSkip_ReturnsBadRequest()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(
                 new[] { Guid.NewGuid() }, From, To, skip: -1, take: 10, videoOnly: null, repository.Object, CancellationToken.None);
@@ -118,7 +118,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListMediaItemPageAsync_TooManyDevices_ReturnsBadRequest()
         {
-            var repository = new Mock<IMediaItemRepository>();
+            var repository = new Mock<IMediaItemWriteRepository>();
             Guid[] devices = Enumerable.Range(0, 65).Select(_ => Guid.NewGuid()).ToArray();
 
             IResult result = await MediaApiEndpoints.ListMediaItemPageAsync(

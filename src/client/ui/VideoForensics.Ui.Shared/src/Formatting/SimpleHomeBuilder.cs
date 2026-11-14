@@ -74,7 +74,7 @@ public sealed class SimpleHomeBuilder
         var names = deviceList.ToDictionary(d => d.Id, d => string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim());
 
         var entries = new List<SimpleTimelineEntry>();
-        var mediaItems = new List<(MediaItem Item, string? Name)>();
+        var mediaItems = new List<(MediaItemDto Item, string? Name)>();
 
         foreach (DeviceDto device in deviceList)
         {
@@ -86,7 +86,7 @@ public sealed class SimpleHomeBuilder
                 entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt.ToDto(), name), SimpleEntryKind.Event));
             }
 
-            foreach (MediaItem item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            foreach (MediaItemDto item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
             {
                 mediaItems.Add((item, name));
             }
@@ -126,7 +126,7 @@ public sealed class SimpleHomeBuilder
         return new SimpleHomeModel(days, evidence, hasMore, fromUtc, blockedUnavailable);
     }
 
-    private async Task<IReadOnlyList<SimpleEvidenceItem>> BuildEvidenceAsync(List<(MediaItem Item, string? Name)> mediaItems, CancellationToken ct)
+    private async Task<IReadOnlyList<SimpleEvidenceItem>> BuildEvidenceAsync(List<(MediaItemDto Item, string? Name)> mediaItems, CancellationToken ct)
     {
         var top = mediaItems.OrderByDescending(m => m.Item.RecordedAtUtc).Take(MaxEvidenceItems).ToList();
         if (top.Count == 0)

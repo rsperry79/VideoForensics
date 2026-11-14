@@ -4,6 +4,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
@@ -43,7 +44,7 @@ public class EventRowLoader
         var allRows = new List<EventRow>();
         var perDeviceErrors = new Dictionary<Guid, string>();
         var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
-        var integrityRecords = new List<IntegrityRecord>();
+        var integrityRecords = new List<IntegrityRecordDto>();
 
         // Load events per device
         foreach (Guid deviceId in devicesToLoad)
@@ -63,7 +64,7 @@ public class EventRowLoader
                 // For date-range queries, fetch media and holds
                 if (!onlyUnansweredOrFlagged && events.Count > 0)
                 {
-                    EvidenceReviewReport report = await _reportGenerationService.BuildEvidenceReviewAsync(
+                    EvidenceReviewReportDto report = await _reportGenerationService.BuildEvidenceReviewAsync(
                         deviceId,
                         scope.FromUtc,
                         scope.ToUtc,
@@ -72,13 +73,13 @@ public class EventRowLoader
                     // Media is joined to events by ProviderEventId, not Event.Id: the report's links carry the
                     // provider event id per media item, and Event and DownloadEvent share ProviderEventId per device.
                     var providerEventIdByMediaItemId = new Dictionary<Guid, string>();
-                    foreach (MediaProviderEventLink link in report.MediaProviderEventLinks)
+                    foreach (MediaProviderEventLinkDto link in report.MediaProviderEventLinks ?? [])
                     {
                         _ = providerEventIdByMediaItemId.TryAdd(link.MediaItemId, link.ProviderEventId);
                     }
 
-                    var mediaByProviderEventId = new Dictionary<string, MediaItem>();
-                    foreach (MediaItem media in report.MediaItems)
+                    var mediaByProviderEventId = new Dictionary<string, MediaItemDto>();
+                    foreach (MediaItemDto media in report.MediaItems)
                     {
                         if (providerEventIdByMediaItemId.TryGetValue(media.Id, out string? providerEventId))
                         {
@@ -88,14 +89,14 @@ public class EventRowLoader
 
                     foreach (EventRow? row in rows)
                     {
-                        if (mediaByProviderEventId.TryGetValue(row.Event.ProviderEventId, out MediaItem? mediaItem))
+                        if (mediaByProviderEventId.TryGetValue(row.Event.ProviderEventId, out MediaItemDto? mediaItem))
                         {
                             row.MediaItem = mediaItem;
                         }
                     }
 
                     // Collect integrity records from all devices
-                    foreach (IntegrityRecord record in report.IntegrityRecords)
+                    foreach (IntegrityRecordDto record in report.IntegrityRecords)
                     {
                         if (!integrityRecords.Any(r => r.Id == record.Id))
                         {

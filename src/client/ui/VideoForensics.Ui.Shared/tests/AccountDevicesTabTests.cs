@@ -99,7 +99,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         Device device = AddDevice("Porch");
         var snapshot = new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "s.jpg", FilePath = "s", MediaFormat = "jpg", RecordedAtUtc = DateTime.UtcNow.AddMinutes(-1), Sha256Hash = "h", MetadataJson = "{\"type\":\"snapshot\"}" };
         var loop = new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "l.mp4", FilePath = "l", MediaFormat = "mp4", RecordedAtUtc = DateTime.UtcNow.AddMinutes(-2), Sha256Hash = "h", MetadataJson = "{\"type\":\"snapshot-rollup\"}" };
-        _ = MediaItemRepositoryMock.Setup(m => m.GetRecentByDeviceAsync(device.Id, It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([snapshot, loop]);
+        _ = MediaItemRepositoryMock.Setup(m => m.GetRecentByDeviceAsync(device.Id, It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([snapshot.ToDto(), loop.ToDto()]);
         _ = MediaUrlProviderMock.Setup(m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { [snapshot.Id] = "/snap.jpg", [loop.Id] = "/loop.mp4" });
 

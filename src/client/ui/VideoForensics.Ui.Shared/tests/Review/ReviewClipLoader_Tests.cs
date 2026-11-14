@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;using VideoForensics.Core.Api.Contracts;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -68,7 +69,7 @@ public class ReviewClipLoader_Tests
                     .Where(item => !videoOnly || MediaFormatHelper.IsVideo(item.MediaFormat))
                     .ToList();
                 IReadOnlyList<MediaItem> page = matching.Skip(skip).Take(take).ToList();
-                return Task.FromResult(new MediaItemPage(page, matching.Count));
+                return Task.FromResult(new MediaItemPageDto(page.Select(item => item.ToDto()).ToList(), matching.Count));
             });
         return repository;
     }

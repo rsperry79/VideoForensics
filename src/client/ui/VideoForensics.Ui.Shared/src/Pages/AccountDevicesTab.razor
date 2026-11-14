@@ -214,7 +214,7 @@ else
                     var recent = await MediaItemRepository.GetRecentByDeviceAsync(device.Id, RecentMediaLimit, CancellationToken.None);
                     // The newest loop is read by marker, so it shows even when snapshots have filled the recent window.
                     LatestDeviceMedia.Selection selection = LatestDeviceMedia.Select(recent);
-                    VideoForensics.Data.Common.Entities.MediaItem? loop = await MediaItemRepository.GetLatestRollupLoopAsync(device.Id, CancellationToken.None);
+                    VideoForensics.Core.Api.Contracts.MediaItemDto? loop = await MediaItemRepository.GetLatestRollupLoopAsync(device.Id, CancellationToken.None);
                     pending.Add((device, status, lastSeen, selection with { Loop = loop ?? selection.Loop }));
                 }
             }

@@ -175,7 +175,7 @@ public abstract class ReviewTestContext : BunitContext
             sp.GetRequiredService<IEventRepository>()));
         _ = MediaItemRepositoryMock
             .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItem?>(_mediaById.GetValueOrDefault(id)));
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItemDto?>(_mediaById.GetValueOrDefault(id)?.ToDto()));
         _ = EventRepositoryMock
             .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));

@@ -1,4 +1,4 @@
-using Bunit;
+using Bunit;using VideoForensics.Core.Api.Contracts;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -349,7 +349,7 @@ public class ReviewPage_Tests : ReviewTestContext
                 RecordedAtUtc = FixedNowUtc.AddHours(-1),
                 DurationSeconds = 120,
                 Sha256Hash = "hash",
-            }).ToList(),
+            }.ToDto()).ToList(),
             false));
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
         cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));

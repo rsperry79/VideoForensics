@@ -120,7 +120,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var mediaItemId = Guid.NewGuid();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new MediaItem
                 {

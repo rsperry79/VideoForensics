@@ -2,9 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Data.Core.Models;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
@@ -27,7 +25,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<EvidenceReviewReport> BuildEvidenceReviewAsync(
+        public async Task<EvidenceReviewReportDto> BuildEvidenceReviewAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -37,11 +35,11 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/evidence-review{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             EvidenceReviewReportDto? dto = await response.Content.ReadFromJsonAsync<EvidenceReviewReportDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Response was null");
         }
 
         /// <inheritdoc />
-        public async Task<ForensicAnalysisReport> BuildForensicAnalysisReportAsync(
+        public async Task<ForensicAnalysisReportDto> BuildForensicAnalysisReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -51,11 +49,11 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/forensic-analysis{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             ForensicAnalysisReportDto? dto = await response.Content.ReadFromJsonAsync<ForensicAnalysisReportDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Response was null");
         }
 
         /// <inheritdoc />
-        public async Task<SignalAnomalyReport> BuildSignalAnomalyReportAsync(
+        public async Task<SignalAnomalyReportDto> BuildSignalAnomalyReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -65,11 +63,11 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/signal-anomaly{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             SignalAnomalyReportDto? dto = await response.Content.ReadFromJsonAsync<SignalAnomalyReportDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Response was null");
         }
 
         /// <inheritdoc />
-        public async Task<AccessControlReport> BuildAccessControlReportAsync(
+        public async Task<AccessControlReportDto> BuildAccessControlReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -79,11 +77,11 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/access-control{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             AccessControlReportDto? dto = await response.Content.ReadFromJsonAsync<AccessControlReportDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Response was null");
         }
 
         /// <inheritdoc />
-        public async Task<ChainOfCustodyReport> BuildChainOfCustodyReportAsync(
+        public async Task<ChainOfCustodyReportDto> BuildChainOfCustodyReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -93,7 +91,7 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/chain-of-custody{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             ChainOfCustodyReportDto? dto = await response.Content.ReadFromJsonAsync<ChainOfCustodyReportDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Response was null");
         }
 
         /// <inheritdoc />
@@ -119,184 +117,6 @@ namespace VideoForensics.Client.Hosting.Remote
             parameters.Add($"fromUtc={fromUtc:O}");
             parameters.Add($"toUtc={toUtc:O}");
             return "?" + string.Join("&", parameters);
-        }
-    }
-
-    /// <summary>Extension methods for mapping report DTOs back to domain models.</summary>
-    internal static class ReportDtoToDomainMapping
-    {
-        /// <summary>Converts a DeviceHealthDto to a DeviceHealth entity.</summary>
-        internal static VideoForensics.Data.Common.Entities.DeviceHealth ToDomain(this DeviceHealthDto dto)
-        {
-            return new VideoForensics.Data.Common.Entities.DeviceHealth
-            {
-                Id = dto.Id,
-                DeviceId = dto.DeviceId,
-                BatteryPercentage = dto.BatteryPercentage,
-                BatteryVoltageValue = dto.BatteryVoltageValue,
-                WifiSignalRssi = dto.WifiSignalRssi,
-                WifiName = dto.WifiName,
-                IsExternalPowerConnected = dto.IsExternalPowerConnected,
-                OtaStatus = dto.OtaStatus,
-                IsOnline = dto.IsOnline,
-                LastHeartbeatUtc = dto.LastHeartbeatUtc,
-                FirmwareVersion = dto.FirmwareVersion,
-                CapturedAtUtc = dto.CapturedAtUtc
-            };
-        }
-
-        /// <summary>Converts an ActionLogEntryDto to an ActionLogEntry entity.</summary>
-        internal static VideoForensics.Data.Common.Entities.ActionLogEntry ToDomain(this ActionLogEntryDto dto)
-        {
-            return new VideoForensics.Data.Common.Entities.ActionLogEntry
-            {
-                Id = dto.Id,
-                Actor = dto.Actor,
-                ActorType = Enum.Parse<VideoForensics.Data.Common.Entities.ActorType>(dto.ActorType),
-                Action = dto.Action,
-                EntityType = dto.EntityType,
-                EntityId = dto.EntityId,
-                DetailsJson = dto.DetailsJson,
-                TimestampUtc = dto.TimestampUtc,
-                PreviousEntryHash = dto.PreviousEntryHash,
-                EntryHash = dto.EntryHash
-            };
-        }
-
-        /// <summary>Converts an EvidenceReviewReportDto to an EvidenceReviewReport model.</summary>
-        internal static EvidenceReviewReport ToDomain(this EvidenceReviewReportDto dto)
-        {
-            return new EvidenceReviewReport
-            {
-                GeneratedAtUtc = dto.GeneratedAtUtc,
-                ReportFromUtc = dto.ReportFromUtc,
-                ReportToUtc = dto.ReportToUtc,
-                MediaItems = dto.MediaItems.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                IntegrityRecords = dto.IntegrityRecords.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                TotalItemCount = dto.TotalItemCount,
-                VerifiedItemCount = dto.VerifiedItemCount,
-                FailedVerificationCount = dto.FailedVerificationCount,
-                MediaProviderEventLinks = (dto.MediaProviderEventLinks ?? []).Select(x => new MediaProviderEventLink(x.MediaItemId, x.ProviderEventId)).ToList().AsReadOnly()
-            };
-        }
-
-        /// <summary>Converts a ForensicAnalysisReportDto to a ForensicAnalysisReport model.</summary>
-        internal static ForensicAnalysisReport ToDomain(this ForensicAnalysisReportDto dto)
-        {
-            return new ForensicAnalysisReport
-            {
-                GeneratedAtUtc = dto.GeneratedAtUtc,
-                ReportFromUtc = dto.ReportFromUtc,
-                ReportToUtc = dto.ReportToUtc,
-                EvidenceItems = dto.EvidenceItems.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                AnomalousHealthSnapshots = dto.AnomalousHealthSnapshots.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                SignificantActions = dto.SignificantActions.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                Summary = dto.Summary
-            };
-        }
-
-        /// <summary>Converts a SignalAnomalyReportDto to a SignalAnomalyReport model.</summary>
-        internal static SignalAnomalyReport ToDomain(this SignalAnomalyReportDto dto)
-        {
-            return new SignalAnomalyReport
-            {
-                GeneratedAtUtc = dto.GeneratedAtUtc,
-                ReportFromUtc = dto.ReportFromUtc,
-                ReportToUtc = dto.ReportToUtc,
-                AnomaliesByDevice = dto.AnomaliesByDevice.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                JammingByDevice = dto.JammingByDevice.Select(x => x.ToDomain()).ToList().AsReadOnly()
-            };
-        }
-
-        private static SignalAnomalyReport.AnomalyFindings ToDomain(this AnomalyFindingsDto dto)
-        {
-            return new SignalAnomalyReport.AnomalyFindings
-            {
-                DeviceId = dto.DeviceId,
-                DeviceName = dto.DeviceName,
-                Anomalies = dto.Anomalies.Select(x => x.ToDomain()).ToList().AsReadOnly()
-            };
-        }
-
-        private static SignalAnomalyReport.SignalAnomaly ToDomain(this SignalAnomalyDto dto)
-        {
-            return new SignalAnomalyReport.SignalAnomaly
-            {
-                OccurredAtUtc = dto.OccurredAtUtc,
-                AnomalyType = dto.AnomalyType,
-                Description = dto.Description,
-                RssiValue = dto.RssiValue
-            };
-        }
-
-        private static SignalAnomalyReport.JammingSummaryEntry ToDomain(this JammingSummaryEntryDto dto)
-        {
-            return new SignalAnomalyReport.JammingSummaryEntry
-            {
-                DeviceId = dto.DeviceId,
-                DeviceName = dto.DeviceName,
-                IncidentCount = dto.IncidentCount,
-                TotalJammedDurationMinutes = dto.TotalJammedDurationMinutes,
-                AverageDegradationDb = dto.AverageDegradationDb,
-                MaxDegradationDb = dto.MaxDegradationDb,
-                FirstIncidentUtc = dto.FirstIncidentUtc,
-                LastIncidentUtc = dto.LastIncidentUtc
-            };
-        }
-
-        /// <summary>Converts an AccessControlReportDto to an AccessControlReport model.</summary>
-        internal static AccessControlReport ToDomain(this AccessControlReportDto dto)
-        {
-            return new AccessControlReport
-            {
-                GeneratedAtUtc = dto.GeneratedAtUtc,
-                ReportFromUtc = dto.ReportFromUtc,
-                ReportToUtc = dto.ReportToUtc,
-                AccessEvents = dto.AccessEvents.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                ExportEvents = dto.ExportEvents.Select(x => x.ToDomain()).ToList().AsReadOnly()
-            };
-        }
-
-        private static AccessControlReport.AccessEvent ToDomain(this AccessEventDto dto)
-        {
-            return new AccessControlReport.AccessEvent
-            {
-                AccessedAtUtc = dto.AccessedAtUtc,
-                Actor = dto.Actor,
-                Action = dto.Action,
-                EntityType = dto.EntityType,
-                EntityId = dto.EntityId,
-                Details = dto.Details
-            };
-        }
-
-        private static AccessControlReport.ExportEvent ToDomain(this ExportEventDto dto)
-        {
-            return new AccessControlReport.ExportEvent
-            {
-                ExportedAtUtc = dto.ExportedAtUtc,
-                ExportedByUserName = dto.ExportedByUserName,
-                CaseReference = dto.CaseReference,
-                ItemCount = dto.ItemCount
-            };
-        }
-
-        /// <summary>Converts a ChainOfCustodyReportDto to a ChainOfCustodyReport model.</summary>
-        internal static ChainOfCustodyReport ToDomain(this ChainOfCustodyReportDto dto)
-        {
-            return new ChainOfCustodyReport
-            {
-                GeneratedAtUtc = dto.GeneratedAtUtc,
-                ReportFromUtc = dto.ReportFromUtc,
-                ReportToUtc = dto.ReportToUtc,
-                AuditTrail = dto.AuditTrail.Select(x => x.ToDomain()).ToList().AsReadOnly(),
-                ChainIntegrityVerified = dto.ChainIntegrityVerified,
-                ChainVerificationStatus = dto.ChainVerificationStatus,
-                ChainEntriesChecked = dto.ChainEntriesChecked,
-                ChainBreak = Enum.TryParse(dto.ChainBreak, out ChainBreakKind chainBreak) ? chainBreak : ChainBreakKind.None,
-                ChainFailedEntryId = dto.ChainFailedEntryId,
-                ChainFailedAtUtc = dto.ChainFailedAtUtc
-            };
         }
     }
 }

@@ -22,7 +22,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
         public ILocationRepository Locations { get; set; } = null!;
         public IDeviceWriteRepository Devices { get; set; } = null!;
-        public IMediaItemRepository MediaItems { get; set; } = null!;
+        public IMediaItemWriteRepository MediaItems { get; set; } = null!;
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;
         public IActionLogRepository ActionLog { get; set; } = null!;
@@ -51,7 +51,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<IDeviceWriteRepository> _mockDevices = new();
         private readonly Mock<IEventRepository> _mockEvents = new();
         private readonly Mock<IDownloadEventRepository> _mockDownloadEvents = new();
-        private readonly Mock<IMediaItemRepository> _mockMediaItems = new();
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItems = new();
         private readonly Mock<IDingIdLinkRepository> _mockDingIdLinks = new();
 
         private static string CreateTempDirectory()

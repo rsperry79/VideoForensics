@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Cases;
 
 /// <summary>
@@ -31,7 +32,7 @@ public static class CaseItemIntegrity
     /// Media items with null current media return MediaMissing.
     /// Media items with matching SHA256 (case-insensitive) return Match; otherwise Mismatch.
     /// </summary>
-    public static PinIntegrity Compare(CaseItem item, MediaItem? currentMedia)
+    public static PinIntegrity Compare(CaseItem item, MediaItemDto? currentMedia)
     {
         // Event and snapshot items have no hash to compare
         if (item.Kind is CaseItemKind.Event or CaseItemKind.Snapshot)

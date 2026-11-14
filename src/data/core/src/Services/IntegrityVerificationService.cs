@@ -10,13 +10,13 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Service for computing and verifying file integrity via SHA-256 hashing.</summary>
     internal class IntegrityVerificationService : IIntegrityVerificationService
     {
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<IntegrityVerificationService> _logger;
         private readonly IMediaPathResolver _paths;
 
         public IntegrityVerificationService(
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             IIntegrityRecordRepository integrityRecordRepository,
             ILogger<IntegrityVerificationService> logger,
             IMediaPathResolver? paths = null)

@@ -14,7 +14,7 @@ namespace VideoForensics.Data.Core.Services
         private const long PreferredOffsetMs = 1000;
 
         private readonly IMediaFrameExtractor _frames;
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IMediaThumbnailNotifier _notifier;
         private readonly ILogger<MediaThumbnailService> _logger;
         private readonly IMediaPathResolver _paths;
@@ -22,7 +22,7 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Creates the service.</summary>
         public MediaThumbnailService(
             IMediaFrameExtractor frames,
-            IMediaItemRepository items,
+            IMediaItemWriteRepository items,
             IMediaThumbnailNotifier notifier,
             ILogger<MediaThumbnailService> logger,
             IMediaPathResolver? paths = null)

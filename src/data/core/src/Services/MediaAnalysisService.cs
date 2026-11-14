@@ -31,7 +31,7 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Clips needed before an audio baseline (noise floor, silence) is trusted.</summary>
         private const int AudioBaselineMinimumSamples = 10;
 
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IDeviceWriteRepository _devices;
         private readonly Hemisphere _hemisphere;
         private readonly IMediaBitrateAnalyzer _bitrate;
@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Core.Services
 
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
-            IMediaItemRepository items,
+            IMediaItemWriteRepository items,
             IDeviceWriteRepository devices,
             IMediaBitrateAnalyzer bitrate,
             IClipColorAnalyzer color,

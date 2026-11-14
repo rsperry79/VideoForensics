@@ -1,5 +1,5 @@
 @using VideoForensics.Data.Core.Contracts
-@using VideoForensics.Data.Core.Models
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services.Analysis
@@ -24,22 +24,22 @@ else if (_report is not null)
     }
     else
     {
-        <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_report.AccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="AccessEventDto" DataSource="@_report.AccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" MinWidth="100">
+                <GridColumn Field="@nameof(AccessEventDto.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as AccessControlReport.AccessEvent)!.AccessedAtUtc)" />
+                        <LocalTimeText Value="@((context as AccessEventDto)!.AccessedAtUtc)" />
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
-                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
-                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessEventDto.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessEventDto.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessEventDto.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColDetails"]" MinWidth="100">
                     <Template>
                         @{
-                            var row = (AccessControlReport.AccessEvent)context;
+                            var row = (AccessEventDto)context;
                             @(row.Details ?? "-")
                         }
                     </Template>
@@ -55,25 +55,25 @@ else if (_report is not null)
     }
     else
     {
-        <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_report.ExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="ExportEventDto" DataSource="@_report.ExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" MinWidth="100">
+                <GridColumn Field="@nameof(ExportEventDto.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as AccessControlReport.ExportEvent)!.ExportedAtUtc)" />
+                        <LocalTimeText Value="@((context as ExportEventDto)!.ExportedAtUtc)" />
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ExportEventDto.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColCaseReference"]" MinWidth="100">
                     <Template>
                         @{
-                            var row = (AccessControlReport.ExportEvent)context;
+                            var row = (ExportEventDto)context;
                             @(row.CaseReference ?? "-")
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ItemCount)" HeaderText="@L["ColItemCount"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ExportEventDto.ItemCount)" HeaderText="@L["ColItemCount"]" MinWidth="100" />
             </GridColumns>
         </SfGrid>
     }
@@ -88,7 +88,7 @@ else if (_report is not null)
 
     private bool _isLoading = true;
     private string? _error;
-    private AccessControlReport? _report;
+    private AccessControlReportDto? _report;
     private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
 
     protected override async Task OnParametersSetAsync()
@@ -116,7 +116,7 @@ else if (_report is not null)
             }
             else
             {
-                var reports = new List<AccessControlReport>();
+                var reports = new List<AccessControlReportDto>();
                 foreach (var deviceId in Scope.DeviceIds)
                 {
                     reports.Add(await ReportGenerationService.BuildAccessControlReportAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None));

@@ -1,4 +1,4 @@
-using VideoForensics.Data.Core.Models;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Data.Core.Contracts
 {
@@ -6,35 +6,35 @@ namespace VideoForensics.Data.Core.Contracts
     public interface IReportGenerationService
     {
         /// <summary>Builds an evidence review report listing media items and their integrity status.</summary>
-        Task<EvidenceReviewReport> BuildEvidenceReviewAsync(
+        Task<EvidenceReviewReportDto> BuildEvidenceReviewAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
             CancellationToken ct);
 
         /// <summary>Builds a comprehensive forensic analysis report summarizing evidence across devices and timeframe.</summary>
-        Task<ForensicAnalysisReport> BuildForensicAnalysisReportAsync(
+        Task<ForensicAnalysisReportDto> BuildForensicAnalysisReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
             CancellationToken ct);
 
         /// <summary>Builds a signal anomaly report analyzing device health metrics.</summary>
-        Task<SignalAnomalyReport> BuildSignalAnomalyReportAsync(
+        Task<SignalAnomalyReportDto> BuildSignalAnomalyReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
             CancellationToken ct);
 
         /// <summary>Builds an access control report showing who accessed and exported evidence.</summary>
-        Task<AccessControlReport> BuildAccessControlReportAsync(
+        Task<AccessControlReportDto> BuildAccessControlReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
             CancellationToken ct);
 
         /// <summary>Builds a chain of custody report showing the complete audit trail for evidence.</summary>
-        Task<ChainOfCustodyReport> BuildChainOfCustodyReportAsync(
+        Task<ChainOfCustodyReportDto> BuildChainOfCustodyReportAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,

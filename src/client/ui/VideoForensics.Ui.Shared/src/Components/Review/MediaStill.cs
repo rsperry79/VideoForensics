@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Components.Review;
 
 /// <summary>Tells a flagged clip that is a still image (a JPEG or PNG snapshot) from a video clip.</summary>
@@ -13,7 +14,7 @@ public static class MediaStill
     /// A still is shown as an image; the media player cannot play it, and it has no timeline to scrub.
     /// </summary>
     /// <param name="clip">The media item to test.</param>
-    public static bool IsStill(MediaItem clip)
+    public static bool IsStill(MediaItemDto clip)
     {
         return HasStillExtension(clip.FileName) || HasStillExtension(clip.FilePath);
     }

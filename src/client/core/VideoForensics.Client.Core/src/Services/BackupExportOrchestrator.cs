@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IEventRepository _eventRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IForensicsConfiguration _forensicsConfiguration;
         private readonly IMediaMetadataTagger _metadataTagger;
         private readonly IMediaPathResolver _paths;
@@ -33,7 +33,7 @@ namespace VideoForensics.Client.Core.Services
             IDeviceWriteRepository deviceRepository,
             IEventRepository eventRepository,
             IDownloadEventRepository downloadEventRepository,
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             IForensicsConfiguration forensicsConfiguration,
             IMediaMetadataTagger metadataTagger,
             IMediaPathResolver? paths = null)

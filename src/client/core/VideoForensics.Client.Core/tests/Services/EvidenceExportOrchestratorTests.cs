@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Core.Tests.Services
     public class EvidenceExportOrchestratorTests
     {
         private readonly Mock<ILogger<EvidenceExportOrchestrator>> _loggerMock;
-        private readonly Mock<IMediaItemRepository> _mediaItemRepositoryMock;
+        private readonly Mock<IMediaItemWriteRepository> _mediaItemRepositoryMock;
         private readonly Mock<IIntegrityVerificationService> _integrityVerificationServiceMock;
         private readonly Mock<IActionLogRepository> _actionLogRepositoryMock;
         private readonly Mock<IExportRecordService> _exportRecordServiceMock;
@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Core.Tests.Services
         public EvidenceExportOrchestratorTests()
         {
             _loggerMock = new Mock<ILogger<EvidenceExportOrchestrator>>();
-            _mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
+            _mediaItemRepositoryMock = new Mock<IMediaItemWriteRepository>();
             _integrityVerificationServiceMock = new Mock<IIntegrityVerificationService>();
             _actionLogRepositoryMock = new Mock<IActionLogRepository>();
             _exportRecordServiceMock = new Mock<IExportRecordService>();

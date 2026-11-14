@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             var eventRepositoryMock = new Mock<IEventRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
-            var mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
+            var mediaItemRepositoryMock = new Mock<IMediaItemWriteRepository>();
             var configurationMock = new Mock<IForensicsConfiguration>();
             var metadataTaggerMock = new Mock<IMediaMetadataTagger>();
 
@@ -104,7 +104,7 @@ namespace VideoForensics.Client.Core.Tests.Services
             var deviceRepositoryMock = new Mock<IDeviceWriteRepository>();
             var eventRepositoryMock = new Mock<IEventRepository>();
             var downloadEventRepositoryMock = new Mock<IDownloadEventRepository>();
-            var mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
+            var mediaItemRepositoryMock = new Mock<IMediaItemWriteRepository>();
             var configurationMock = new Mock<IForensicsConfiguration>();
             var metadataTaggerMock = new Mock<IMediaMetadataTagger>();
 

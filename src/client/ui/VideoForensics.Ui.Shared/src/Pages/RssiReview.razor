@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Api.Contracts.Repositories
 @page "/signal-history/review/{FlagId:guid}"
 @implements IDisposable
@@ -148,7 +149,7 @@
             var device = await DeviceRepository.GetAsync(flag.DeviceId, ct);
             _cameraName = device?.Name ?? L["FlaggedMediaUnknownCamera"].Value;
 
-            IReadOnlyList<MediaItem> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(
+            IReadOnlyList<MediaItemDto> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(
                 flag.DeviceId,
                 flag.WindowStartUtc - ClipSearchPad,
                 flag.WindowEndUtc + ClipSearchPad,
@@ -159,14 +160,14 @@
                 return;
             }
 
-            IReadOnlyList<MediaItem> playable = clips.Where(c => !c.IsPurged).ToList();
+            IReadOnlyList<MediaItemDto> playable = clips.Where(c => !c.IsPurged).ToList();
             if (playable.Count == 0)
             {
                 _state = MediaFitState.Purged;
                 return;
             }
 
-            MediaItem clip = playable.FirstOrDefault(c => Covers(c, flag.WindowStartUtc)) ?? playable[0];
+            MediaItemDto clip = playable.FirstOrDefault(c => Covers(c, flag.WindowStartUtc)) ?? playable[0];
             IReadOnlyDictionary<Guid, string> urls = await MediaContentUrls.GetContentUrlsAsync([clip.Id], ct);
             _source = urls.TryGetValue(clip.Id, out string? url) ? url : null;
             _state = MediaStill.IsStill(clip) ? MediaFitState.Still : MediaFitState.Playable;
@@ -195,7 +196,7 @@
     }
 
     /// <summary>True when the clip's recorded span, which needs a known duration, contains the instant.</summary>
-    private static bool Covers(MediaItem clip, DateTime instantUtc)
+    private static bool Covers(MediaItemDto clip, DateTime instantUtc)
     {
         if (clip.DurationSeconds is not { } seconds)
         {

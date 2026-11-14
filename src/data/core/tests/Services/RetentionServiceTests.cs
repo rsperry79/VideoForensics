@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class RetentionServiceTests
     {
-        private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItemRepository;
         private readonly Mock<ILegalHoldRepository> _mockLegalHoldRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 
         public RetentionServiceTests()
         {
-            _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            _mockMediaItemRepository = new Mock<IMediaItemWriteRepository>();
             _mockLegalHoldRepository = new Mock<ILegalHoldRepository>();
             _ = _mockLegalHoldRepository
                 .Setup(x => x.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))

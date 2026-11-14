@@ -1,10 +1,9 @@
 @using VideoForensics.Core.Api.Contracts.Repositories
 @page "/analyze/chain-of-custody"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Core.Contracts
-@using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using Syncfusion.Blazor.Calendars
@@ -61,7 +60,7 @@ else
         {
             <div class="alert alert-danger" data-testid="chain-integrity-failed">
                 <div>@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</div>
-                @if (_report.ChainBreak != ChainBreakKind.None)
+                @if (_report.ChainBreak != "None")
                 {
                     <div class="small mt-1">@BreakReason(_report.ChainBreak)</div>
                 }
@@ -114,7 +113,7 @@ else
     private DateTime _toDate = DateTime.UtcNow.Date;
 
     // The combined report: a verdict over every selected device, and one audit list with a device column.
-    private ChainOfCustodyReport? _report;
+    private ChainOfCustodyReportDto? _report;
     private List<ChainAuditRow> _auditRows = new();
     private int _reportVersion;
     private string? _error;
@@ -124,7 +123,7 @@ else
         string DeviceName,
         DateTime TimestampUtc,
         string Actor,
-        ActorType ActorType,
+        string ActorType,
         string Action,
         string EntityType,
         Guid? EntityId);
@@ -224,7 +223,7 @@ else
 
         var rows = new List<ChainAuditRow>();
         var seen = new HashSet<Guid>();
-        ChainOfCustodyReport? first = null;
+        ChainOfCustodyReportDto? first = null;
         foreach (var device in targets)
         {
             var report = await ReportGenerationService.BuildChainOfCustodyReportAsync(device.Id, _fromDate, _toDate, CancellationToken.None);
@@ -241,28 +240,19 @@ else
         }
 
         // The hash chain is one chain for the whole log, so every per-device report carries the same verdict.
-        _report = new ChainOfCustodyReport
-        {
-            ChainIntegrityVerified = first!.ChainIntegrityVerified,
-            ChainVerificationStatus = first.ChainVerificationStatus,
-            ChainEntriesChecked = first.ChainEntriesChecked,
-            ChainBreak = first.ChainBreak,
-            ChainFailedEntryId = first.ChainFailedEntryId,
-            ChainFailedAtUtc = first.ChainFailedAtUtc,
-            AuditTrail = new List<ActionLogEntry>(),
-        };
+        _report = first! with { AuditTrail = [] };
         _auditRows = rows.OrderByDescending(r => r.TimestampUtc).ToList();
     }
 
     /// <summary>Plain-language reason for a break, so the operator can tell an inserted or reordered entry from an altered one.</summary>
-    private string BreakReason(ChainBreakKind kind) => kind switch
+    private string BreakReason(string kind) => kind switch
     {
-        ChainBreakKind.PreviousHashMismatch => L["ChainBreakPrevious"].Value,
-        ChainBreakKind.EntryHashMismatch => L["ChainBreakEntryHash"].Value,
+        "PreviousHashMismatch" => L["ChainBreakPrevious"].Value,
+        "EntryHashMismatch" => L["ChainBreakEntryHash"].Value,
         _ => string.Empty,
     };
 
-    private static ChainAuditRow ToRow(string deviceName, ActionLogEntry entry) => new(
+    private static ChainAuditRow ToRow(string deviceName, ActionLogEntryDto entry) => new(
         deviceName,
         entry.TimestampUtc,
         entry.Actor,

@@ -103,7 +103,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string folder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, location.Name, device.Name);
             _ = Directory.CreateDirectory(folder);
 
-            IMediaItemRepository mediaItems = sp.GetRequiredService<IMediaItemRepository>();
+            IMediaItemWriteRepository mediaItems = sp.GetRequiredService<IMediaItemWriteRepository>();
             ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
 
             // Attempts are held to fixed slots, so the six are five seconds apart rather than five seconds after each one finishes.

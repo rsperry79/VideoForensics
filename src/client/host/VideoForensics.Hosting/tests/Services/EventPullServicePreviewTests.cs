@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _download = new();
-        private readonly Mock<IMediaItemRepository> _mediaItems = new();
+        private readonly Mock<IMediaItemWriteRepository> _mediaItems = new();
         private readonly Mock<IMediaPreviewService> _previews = new();
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly string _mediaRoot = Path.Combine(Path.GetTempPath(), "evp-preview-tests-" + Guid.NewGuid().ToString("N"));

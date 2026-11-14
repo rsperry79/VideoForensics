@@ -10,7 +10,7 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Service for purging media files based on retention policy.</summary>
     internal class RetentionService : IRetentionService
     {
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly ILegalHoldRepository _legalHoldRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
@@ -20,7 +20,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaPathResolver _paths;
 
         public RetentionService(
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             ILegalHoldRepository legalHoldRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,

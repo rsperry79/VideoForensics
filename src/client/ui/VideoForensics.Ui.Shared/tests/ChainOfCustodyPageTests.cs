@@ -10,6 +10,7 @@ using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
@@ -48,7 +49,7 @@ public abstract class ChainOfCustodyPageTestBase : BunitContext
         // Empty audit trail keeps the page on its paragraph branch (no Syncfusion grid to render).
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildChainOfCustodyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = true });
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], true, null));
 
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);

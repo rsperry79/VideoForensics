@@ -10,6 +10,7 @@ using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Models;
 
 using Xunit;
@@ -19,7 +20,7 @@ namespace VideoForensics.Client.Core.Tests
     /// <summary>Tests the case-scoped export: only the selected case's reports and pinned media go in the archive.</summary>
     public class CaseEvidenceExportTests : IDisposable
     {
-        private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<IIntegrityVerificationService> _integrity = new();
         private readonly Mock<IActionLogRepository> _actionLog = new();
         private readonly Mock<IExportRecordService> _exportRecords = new();
@@ -61,11 +62,11 @@ namespace VideoForensics.Client.Core.Tests
             _ = _exportRecords
                 .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ExportRecord { Id = Guid.NewGuid(), ExportedByUserName = "u", ArchiveFileName = "a.zip", ArchiveSha256Hash = "h", AppVersion = "1" });
-            _ = _reports.Setup(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new EvidenceReviewReport());
-            _ = _reports.Setup(r => r.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ForensicAnalysisReport());
-            _ = _reports.Setup(r => r.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SignalAnomalyReport());
-            _ = _reports.Setup(r => r.BuildAccessControlReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AccessControlReport());
-            _ = _reports.Setup(r => r.BuildChainOfCustodyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ChainOfCustodyReport());
+            _ = _reports.Setup(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0));
+            _ = _reports.Setup(r => r.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ForensicAnalysisReportDto(default, default, default, [], [], [], null));
+            _ = _reports.Setup(r => r.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SignalAnomalyReportDto(default, default, default, [], []));
+            _ = _reports.Setup(r => r.BuildAccessControlReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AccessControlReportDto(default, default, default, [], []));
+            _ = _reports.Setup(r => r.BuildChainOfCustodyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, null));
         }
 
         public void Dispose()

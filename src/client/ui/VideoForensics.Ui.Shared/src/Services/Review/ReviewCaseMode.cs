@@ -1,6 +1,8 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
 /// <summary>
@@ -26,7 +28,7 @@ public sealed class ReviewCaseMode
     private readonly IMediaItemRepository _mediaItems;
     private readonly IEventRepository _events;
 
-    private List<MediaItem> _mediaList = [];
+    private List<MediaItemDto> _mediaList = [];
     private List<Event> _eventList = [];
     private List<Guid> _deviceIds = [];
 
@@ -57,7 +59,7 @@ public sealed class ReviewCaseMode
     public IReadOnlySet<Guid> MediaItemIds { get; private set; } = new HashSet<Guid>();
 
     /// <summary>The pinned media items, oldest recording first.</summary>
-    public IReadOnlyList<MediaItem> MediaItems => _mediaList;
+    public IReadOnlyList<MediaItemDto> MediaItems => _mediaList;
 
     /// <summary>The pinned events, newest first.</summary>
     public IReadOnlyList<Event> Events => _eventList;
@@ -105,10 +107,10 @@ public sealed class ReviewCaseMode
         var keptMedia = mediaPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.MediaItemId!.Value).ToHashSet();
         var keptEvents = eventPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.EventId!.Value).ToHashSet();
 
-        var mediaById = new Dictionary<Guid, MediaItem>();
+        var mediaById = new Dictionary<Guid, MediaItemDto>();
         foreach (Guid id in mediaPins.Select(pin => pin.MediaItemId!.Value).Where(keptMedia.Contains))
         {
-            MediaItem? item = await _mediaItems.GetAsync(id, ct);
+            MediaItemDto? item = await _mediaItems.GetAsync(id, ct);
             if (item is not null)
             {
                 mediaById[id] = item;
@@ -172,14 +174,14 @@ public sealed class ReviewCaseMode
     /// </summary>
     private static List<Guid> DistinctDevicesInPinOrder(
         IEnumerable<CaseItem> pins,
-        IReadOnlyDictionary<Guid, MediaItem> mediaById,
+        IReadOnlyDictionary<Guid, MediaItemDto> mediaById,
         IReadOnlyDictionary<Guid, Event> eventById)
     {
         var devices = new List<Guid>();
         var seen = new HashSet<Guid>();
         foreach (CaseItem pin in pins)
         {
-            Guid? device = pin.Kind == CaseItemKind.Media && pin.MediaItemId is Guid mediaId && mediaById.TryGetValue(mediaId, out MediaItem? item)
+            Guid? device = pin.Kind == CaseItemKind.Media && pin.MediaItemId is Guid mediaId && mediaById.TryGetValue(mediaId, out MediaItemDto? item)
                 ? item.DeviceId
                 : pin.Kind == CaseItemKind.Event && pin.EventId is Guid eventId && eventById.TryGetValue(eventId, out Event? evt)
                     ? evt.DeviceId

@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -63,7 +63,7 @@ public class EvidenceItem_Label_Tests
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
         // Act
@@ -144,7 +144,7 @@ public class EvidenceItem_HasViewableMedia_Tests
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
         // Act
@@ -178,7 +178,7 @@ public class EvidenceItem_HasViewableMedia_Tests
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
         // Act
@@ -234,7 +234,7 @@ public class EvidenceItem_HasViewableMedia_Tests
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
         // Act
@@ -271,7 +271,7 @@ public class EvidenceItem_NonViewableMediaClassification_Tests
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
         // Act & Assert

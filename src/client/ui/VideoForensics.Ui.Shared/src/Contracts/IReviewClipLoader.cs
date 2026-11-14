@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Contracts;
 
 /// <summary>Loads the media items the review timeline plays, for a set of cameras over a UTC range.</summary>
@@ -19,4 +20,4 @@ public interface IReviewClipLoader
 /// <param name="Items">Items, oldest first within each camera.</param>
 /// <param name="Truncated">True when the safety cap stopped the load before every item was read.</param>
 /// <param name="UnavailableEvents">Stored events in the window with no downloaded media. Null when the loader does not read them.</param>
-public sealed record ReviewClipSet(IReadOnlyList<MediaItem> Items, bool Truncated, IReadOnlyList<Event>? UnavailableEvents = null);
+public sealed record ReviewClipSet(IReadOnlyList<MediaItemDto> Items, bool Truncated, IReadOnlyList<Event>? UnavailableEvents = null);

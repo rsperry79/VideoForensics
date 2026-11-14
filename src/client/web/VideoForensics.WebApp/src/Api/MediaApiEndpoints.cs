@@ -168,7 +168,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             IOperatorRepository operators,
             IMediaStorageProvider storage,
             IAccessAuditLogRepository auditLog,
@@ -325,7 +325,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             IOperatorRepository operators,
             IMediaStorageProvider storage,
             ILogger<Program> logger,
@@ -364,7 +364,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             IOperatorRepository operators,
             IMediaStorageProvider storage,
             IMediaThumbnailService thumbnails,
@@ -468,7 +468,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid? deviceId,
             DateTime? from,
             DateTime? to,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             // Validate: from/to require deviceId
@@ -514,7 +514,7 @@ namespace VideoForensics.Client.WebApp.Api
             int? skip,
             int? take,
             bool? videoOnly,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             const int MaxDevices = 64;
@@ -550,7 +550,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         public static async Task<IResult> GetMediaItemAsync(
             Guid id,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             MediaItem? item = await mediaItems.GetAsync(id, ct);

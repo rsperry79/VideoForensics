@@ -224,7 +224,7 @@ namespace VideoForensics.Client.Hosting.Services
 
             IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             IEventRepository eventRepository = sp.GetRequiredService<IEventRepository>();
-            IMediaItemRepository mediaRepository = sp.GetRequiredService<IMediaItemRepository>();
+            IMediaItemWriteRepository mediaRepository = sp.GetRequiredService<IMediaItemWriteRepository>();
             IDownloadEventRepository downloadRepository = sp.GetRequiredService<IDownloadEventRepository>();
 
             // Devices are few; only the per-device event/media/download rows are large.

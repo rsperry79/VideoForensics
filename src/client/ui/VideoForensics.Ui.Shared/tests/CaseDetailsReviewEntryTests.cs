@@ -1,4 +1,4 @@
-using Bunit;
+using Bunit;using VideoForensics.Core.Api.Contracts;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +32,7 @@ public class CaseDetailsReviewEntry_Tests : CasesPagesTestBase
         _ = CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { CreateMediaPin(caseId, media.Id, media.Sha256Hash!) });
-        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media);
+        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media.ToDto());
         IRenderedComponent<CaseDetails> cut = Render<CaseDetails>(p => p.Add(c => c.CaseId, caseId));
 
         // Act

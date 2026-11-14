@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class MediaAnalysisServiceTests
     {
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaBitrateAnalyzer> _bitrate = new();
         private readonly Mock<IClipColorAnalyzer> _color = new();
         private readonly Mock<IAudioClipAnalyzer> _audio = new();

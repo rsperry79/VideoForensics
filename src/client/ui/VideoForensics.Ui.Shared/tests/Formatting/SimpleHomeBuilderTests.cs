@@ -109,7 +109,7 @@ public class SimpleHomeBuilderTests
     private void SetMedia(params MediaItem[] items)
     {
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(items.ToList());
+            .ReturnsAsync(items.Select(i => i.ToDto()).ToList());
     }
 
     private void SetJamming(params JammingIncidentRecord[] items)
@@ -364,7 +364,7 @@ public class SimpleHomeBuilderTests
         _ = _devices.Setup(d => d.ListAsync(token)).ReturnsAsync([Device(FrontId, "front door camera")]);
         _ = _events.Setup(e => e.ListByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), token)).ReturnsAsync([]);
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), token))
-            .ReturnsAsync([Media(new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc))]);
+            .ReturnsAsync([Media(new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc)).ToDto()]);
         _ = _jamming.Setup(j => j.ListIncidentsAsync(null, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), token)).ReturnsAsync([]);
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), token))
             .ReturnsAsync((IReadOnlyCollection<Guid> ids, CancellationToken _) => ids.ToDictionary(i => i, _ => "https://server/content/x"));

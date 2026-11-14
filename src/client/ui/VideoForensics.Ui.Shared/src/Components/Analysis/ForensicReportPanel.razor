@@ -1,5 +1,6 @@
 @using VideoForensics.Data.Core.Contracts
-@using VideoForensics.Data.Core.Models
+
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services.Analysis
@@ -24,14 +25,14 @@ else if (_report is not null)
     }
     else
     {
-        <SfGrid TValue="MediaItem" DataSource="@_report.EvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="MediaItemDto" DataSource="@_report.EvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn HeaderText="@L["ColEvidenceId"]" MinWidth="100">
                     <Template>
                         @{
-                            var item = (MediaItem)context;
+                            var item = (MediaItemDto)context;
                             @(item.Id.ToString("N")[..8])
                         }
                     </Template>
@@ -39,14 +40,14 @@ else if (_report is not null)
                 <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
                     <Template>
                         @{
-                            var item = (MediaItem)context;
+                            var item = (MediaItemDto)context;
                             var deviceName = Devices.FirstOrDefault(d => d.Id == item.DeviceId)?.Name ?? item.DeviceId.ToString("N")[..8];
                             @deviceName
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(MediaItem.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
-                <GridColumn Field="@nameof(MediaItem.MediaFormat)" HeaderText="@L["ColFormat"]" MinWidth="100" />
+                <GridColumn Field="@nameof(MediaItemDto.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
+                <GridColumn Field="@nameof(MediaItemDto.MediaFormat)" HeaderText="@L["ColFormat"]" MinWidth="100" />
             </GridColumns>
         </SfGrid>
     }
@@ -58,19 +59,19 @@ else if (_report is not null)
     }
     else
     {
-        <SfGrid TValue="DeviceHealth" DataSource="@_report.AnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="DeviceHealthDto" DataSource="@_report.AnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100">
+                <GridColumn Field="@nameof(DeviceHealthDto.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as DeviceHealth)!.CapturedAtUtc)" />
+                        <LocalTimeText Value="@((context as DeviceHealthDto)!.CapturedAtUtc)" />
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
                     <Template>
                         @{
-                            var snapshot = (DeviceHealth)context;
+                            var snapshot = (DeviceHealthDto)context;
                             var deviceName = Devices.FirstOrDefault(d => d.Id == snapshot.DeviceId)?.Name ?? snapshot.DeviceId.ToString("N")[..8];
                             @deviceName
                         }
@@ -79,7 +80,7 @@ else if (_report is not null)
                 <GridColumn HeaderText="@L["ColConnected"]" MinWidth="100">
                     <Template>
                         @{
-                            var snapshot = (DeviceHealth)context;
+                            var snapshot = (DeviceHealthDto)context;
                             @(snapshot.IsOnline?.ToString() ?? "-")
                         }
                     </Template>
@@ -87,7 +88,7 @@ else if (_report is not null)
                 <GridColumn HeaderText="@L["ColBatteryPercent"]" MinWidth="100">
                     <Template>
                         @{
-                            var snapshot = (DeviceHealth)context;
+                            var snapshot = (DeviceHealthDto)context;
                             @(snapshot.BatteryPercentage?.ToString() ?? "-")
                         }
                     </Template>
@@ -95,7 +96,7 @@ else if (_report is not null)
                 <GridColumn HeaderText="@L["ColRssi"]" MinWidth="100">
                     <Template>
                         @{
-                            var snapshot = (DeviceHealth)context;
+                            var snapshot = (DeviceHealthDto)context;
                             @(snapshot.WifiSignalRssi?.ToString() ?? "-")
                         }
                     </Template>
@@ -103,7 +104,7 @@ else if (_report is not null)
                 <GridColumn HeaderText="@L["ColWifi"]" MinWidth="100">
                     <Template>
                         @{
-                            var snapshot = (DeviceHealth)context;
+                            var snapshot = (DeviceHealthDto)context;
                             @(snapshot.WifiName ?? "-")
                         }
                     </Template>
@@ -111,7 +112,7 @@ else if (_report is not null)
                 <GridColumn HeaderText="@L["ColFirmware"]" MinWidth="100">
                     <Template>
                         @{
-                            var snapshot = (DeviceHealth)context;
+                            var snapshot = (DeviceHealthDto)context;
                             @(snapshot.FirmwareVersion ?? "-")
                         }
                     </Template>
@@ -127,16 +128,16 @@ else if (_report is not null)
     }
     else
     {
-        <SfGrid TValue="ActionLogEntry" DataSource="@_report.SignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="ActionLogEntryDto" DataSource="@_report.SignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
-                <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
-                <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
-                <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
+                <GridColumn Field="@nameof(ActionLogEntryDto.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntryDto.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntryDto.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntryDto.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as ActionLogEntry)!.TimestampUtc)" />
+                        <LocalTimeText Value="@((context as ActionLogEntryDto)!.TimestampUtc)" />
                     </Template>
                 </GridColumn>
             </GridColumns>
@@ -153,7 +154,7 @@ else if (_report is not null)
 
     private bool _isLoading = true;
     private string? _error;
-    private ForensicAnalysisReport? _report;
+    private ForensicAnalysisReportDto? _report;
     private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
 
     protected override async Task OnParametersSetAsync()
@@ -181,7 +182,7 @@ else if (_report is not null)
             }
             else
             {
-                var reports = new List<ForensicAnalysisReport>();
+                var reports = new List<ForensicAnalysisReportDto>();
                 foreach (var deviceId in Scope.DeviceIds)
                 {
                     reports.Add(await ReportGenerationService.BuildForensicAnalysisReportAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None));

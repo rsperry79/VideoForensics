@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Core.Services
         private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
 
         private readonly ILogger<MediaStillCaptureOrchestrator> _logger;
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IMediaStillRepository _mediaStillRepository;
         private readonly IMediaStorageProvider _storageProvider;
         private readonly IMediaFrameExtractor _frameExtractor;
@@ -44,7 +44,7 @@ namespace VideoForensics.Client.Core.Services
 
         public MediaStillCaptureOrchestrator(
             ILogger<MediaStillCaptureOrchestrator> logger,
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             IMediaStillRepository mediaStillRepository,
             IMediaStorageProvider storageProvider,
             IMediaFrameExtractor frameExtractor,

@@ -1,5 +1,5 @@
 
-using AngleSharp.Dom;
+using AngleSharp.Dom;using VideoForensics.Core.Api.Contracts;
 
 using Bunit;
 
@@ -23,8 +23,8 @@ public class SnapshotStripTests : BunitContext
 
         var items = new List<EvidenceItem>
         {
-            new() { Key = $"media:{media1.Id}", Kind = EvidenceKind.Snapshot, OccurredAtUtc = media1.RecordedAtUtc, DeviceId = deviceId, DeviceName = "Front Door", Media = media1 },
-            new() { Key = $"media:{media2.Id}", Kind = EvidenceKind.Snapshot, OccurredAtUtc = media2.RecordedAtUtc, DeviceId = deviceId, DeviceName = "Front Door", Media = media2 },
+            new() { Key = $"media:{media1.Id}", Kind = EvidenceKind.Snapshot, OccurredAtUtc = media1.RecordedAtUtc, DeviceId = deviceId, DeviceName = "Front Door", Media = media1.ToDto() },
+            new() { Key = $"media:{media2.Id}", Kind = EvidenceKind.Snapshot, OccurredAtUtc = media2.RecordedAtUtc, DeviceId = deviceId, DeviceName = "Front Door", Media = media2.ToDto() },
         };
 
         var urls = new Dictionary<Guid, string>

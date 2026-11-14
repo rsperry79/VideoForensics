@@ -1,4 +1,4 @@
-using Bunit;
+using Bunit;using VideoForensics.Core.Api.Contracts;
 using Bunit.Rendering;
 
 using Microsoft.AspNetCore.Components;
@@ -160,7 +160,7 @@ public class BitrateReview_Tests : BunitContext
         MediaFlag flag = Flag(MediaFlagType.BitrateCollapse, Guid.NewGuid());
         MediaItem clip = Clip(flag.DeviceId, purged: true);
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
 
@@ -175,7 +175,7 @@ public class BitrateReview_Tests : BunitContext
         MediaItem clip = Clip(flag.DeviceId, purged: false);
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -203,7 +203,7 @@ public class BitrateReview_Tests : BunitContext
         MediaItem clip = Clip(flag.DeviceId, purged: false);
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -220,7 +220,7 @@ public class BitrateReview_Tests : BunitContext
         clip.FilePath = "/x.jpg";
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/x.jpg?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -240,7 +240,7 @@ public class BitrateReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
             .ReturnsAsync(neighbour);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -265,7 +265,7 @@ public class BitrateReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, It.IsAny<MediaFlagFilter>(), MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
             .ReturnsAsync(neighbour);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -308,7 +308,7 @@ public class BitrateReview_Tests : BunitContext
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfBitrate(), MediaFlagNeighbour.Next, It.IsAny<CancellationToken>()))
             .ReturnsAsync(next);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -331,7 +331,7 @@ public class BitrateReview_Tests : BunitContext
             .ReturnsAsync((MediaFlag?)null);
         _ = _flags.Setup(r => r.GetNeighbourAsync(flag.Id, UnreviewedOfBitrate(), MediaFlagNeighbour.Previous, It.IsAny<CancellationToken>()))
             .ReturnsAsync((MediaFlag?)null);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);
@@ -352,7 +352,7 @@ public class BitrateReview_Tests : BunitContext
         MediaItem clip = Clip(flag.DeviceId, purged: false);
         IReadOnlyDictionary<Guid, string> urls = new Dictionary<Guid, string> { [clip.Id] = "/clips/clip.mp4?ticket=test" };
         _ = _flags.Setup(r => r.GetAsync(flag.Id, It.IsAny<CancellationToken>())).ReturnsAsync(flag);
-        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+        _ = _items.Setup(r => r.GetAsync(flag.MediaItemId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(clip.ToDto());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(urls);
 
         IRenderedComponent<BitrateReview> cut = RenderFor(flag.Id);

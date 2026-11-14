@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Core.Services
     internal class ExportRecordService : IExportRecordService
     {
         private readonly IExportRecordRepository _exportRecordRepository;
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
         private readonly IActionLogRepository _actionLogRepository;
@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Core.Services
 
         public ExportRecordService(
             IExportRecordRepository exportRecordRepository,
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<ExportRecordService> logger,

@@ -461,7 +461,7 @@ namespace VideoForensics.Client.Hosting.Services
                     hash = await SHA256.HashDataAsync(stream, ct);
                 }
 
-                await sp.GetRequiredService<IMediaItemRepository>().AddAsync(new MediaItem
+                await sp.GetRequiredService<IMediaItemWriteRepository>().AddAsync(new MediaItem
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = device.Id,

@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     public class DatabaseAdministrationServiceTests
     {
         private readonly Mock<IDatabaseEngine> _engine = new();
-        private readonly Mock<IMediaItemRepository> _mediaItems = new();
+        private readonly Mock<IMediaItemWriteRepository> _mediaItems = new();
         private readonly Mock<ILegalHoldRepository> _legalHolds = new();
         private readonly Mock<IUnitOfWork> _unitOfWork = new();
         private readonly Mock<IActionLogRepository> _actionLog = new();

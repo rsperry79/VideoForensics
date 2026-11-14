@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Core.Tests.Services
     public class MediaStillCaptureOrchestratorTests
     {
         private readonly Mock<ILogger<MediaStillCaptureOrchestrator>> _loggerMock = new();
-        private readonly Mock<IMediaItemRepository> _mediaItemRepositoryMock = new();
+        private readonly Mock<IMediaItemWriteRepository> _mediaItemRepositoryMock = new();
         private readonly Mock<IMediaStillRepository> _mediaStillRepositoryMock = new();
         private readonly Mock<IMediaStorageProvider> _storageProviderMock = new();
         private readonly Mock<IMediaFrameExtractor> _frameExtractorMock = new();

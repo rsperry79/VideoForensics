@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Core.Services
     internal class EvidenceExportOrchestrator : IEvidenceExportService
     {
         private readonly ILogger<EvidenceExportOrchestrator> _logger;
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
         private readonly IIntegrityVerificationService _integrityVerificationService;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly IExportRecordService _exportRecordService;
@@ -38,7 +38,7 @@ namespace VideoForensics.Client.Core.Services
         /// <param name="snapshotCaptures">Resolves pinned snapshot items to their image files. Required for case export.</param>
         public EvidenceExportOrchestrator(
             ILogger<EvidenceExportOrchestrator> logger,
-            IMediaItemRepository mediaItemRepository,
+            IMediaItemWriteRepository mediaItemRepository,
             IIntegrityVerificationService integrityVerificationService,
             IActionLogRepository actionLogRepository,
             IExportRecordService exportRecordService,

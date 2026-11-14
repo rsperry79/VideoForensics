@@ -221,7 +221,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaItem?)null);
             var operators = new Mock<IOperatorRepository>();
@@ -239,7 +239,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             (Mock<IMediaAccessTicketService>? ticketService, _, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var context = new DefaultHttpContext();
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -260,7 +260,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             (Mock<IMediaAccessTicketService>? ticketService, _, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var context = new DefaultHttpContext();
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -283,7 +283,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -324,7 +324,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -365,7 +365,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -394,7 +394,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -458,7 +458,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -523,7 +523,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             };
             context.Request.Headers.Append("Range", "bytes=1000-2000");
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -579,7 +579,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             };
             context.Request.Headers.Append("Range", "bytes=0-");
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -640,7 +640,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -692,7 +692,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var mediaItemId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(Guid.NewGuid()) };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             item.FilePath = "/nonexistent/file";
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
@@ -729,7 +729,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // context.User is new ClaimsPrincipal() - no identity at all
             var context = new DefaultHttpContext { User = new ClaimsPrincipal() };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -777,7 +777,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }, "test"))
             };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -825,7 +825,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }, "test"))
             };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -906,7 +906,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(items);
@@ -943,7 +943,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(items);
@@ -976,7 +976,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(items);
@@ -996,7 +996,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task ListMediaItemsAsync_FromWithoutDeviceId_ReturnsBadRequest()
         {
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
                 null, fromUtc, null, mediaItemsRepo.Object, CancellationToken.None);
@@ -1008,7 +1008,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task ListMediaItemsAsync_ToWithoutDeviceId_ReturnsBadRequest()
         {
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
                 null, null, toUtc, mediaItemsRepo.Object, CancellationToken.None);
@@ -1022,7 +1022,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
                 deviceId, fromUtc, toUtc, mediaItemsRepo.Object, CancellationToken.None);
@@ -1050,7 +1050,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 DownloadedAtUtc = DateTime.UtcNow
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -1068,7 +1068,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task GetMediaItemAsync_MediaItemNotFound_ReturnsNotFound()
         {
             var mediaItemId = Guid.NewGuid();
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaItem?)null);

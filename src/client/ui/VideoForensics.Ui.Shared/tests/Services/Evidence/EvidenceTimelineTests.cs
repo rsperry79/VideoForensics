@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -318,7 +318,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash1",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             },
             new() {
                 Key = "media:2",
@@ -337,7 +337,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash2",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             },
             new() {
                 Key = "media:3",
@@ -356,7 +356,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash3",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             }
         };
 
@@ -392,7 +392,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash1",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             },
             new() {
                 Key = "event:nonviewable",
@@ -428,7 +428,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash3",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             }
         };
 

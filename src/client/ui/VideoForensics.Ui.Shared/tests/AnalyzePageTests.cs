@@ -14,6 +14,7 @@ using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -69,13 +70,13 @@ public abstract class AnalyzePageTestBase : BunitContext
 
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicAnalysisReport());
+            .ReturnsAsync(new ForensicAnalysisReportDto(default, default, default, [], [], [], null));
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SignalAnomalyReport());
+            .ReturnsAsync(new SignalAnomalyReportDto(default, default, default, [], []));
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildAccessControlReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AccessControlReport());
+            .ReturnsAsync(new AccessControlReportDto(default, default, default, [], []));
 
         _ = DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))

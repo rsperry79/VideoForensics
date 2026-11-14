@@ -38,7 +38,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<ILocationRepository> _locations = new();
         private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
-        private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<IMediaDownloadService> _ringMedia = new();
         private readonly Mock<IProviderSnapshotCapture> _capture = new();
         private readonly Mock<IProviderApiBudgetGuard> _budget = new();

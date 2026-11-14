@@ -5,6 +5,7 @@ using Moq;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
 
@@ -19,7 +20,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class ReportGenerationServiceTests
     {
-        private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItemRepository;
         private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
@@ -35,7 +36,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         {
             _mockNotificationDispatcher = new Mock<INotificationDispatcher>();
 
-            _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            _mockMediaItemRepository = new Mock<IMediaItemWriteRepository>();
             _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
@@ -113,7 +114,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(mediaItems);
 
             // Act
-            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            EvidenceReviewReportDto result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -151,7 +152,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(mediaItems);
 
             // Act
-            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(null, fromUtc, toUtc, CancellationToken.None);
+            EvidenceReviewReportDto result = await _service.BuildEvidenceReviewAsync(null, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -186,7 +187,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(mediaItems);
 
             // Act
-            ForensicAnalysisReport result = await _service.BuildForensicAnalysisReportAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            ForensicAnalysisReportDto result = await _service.BuildForensicAnalysisReportAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -216,7 +217,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(device);
 
             // Act
-            SignalAnomalyReport result = await _service.BuildSignalAnomalyReportAsync(
+            SignalAnomalyReportDto result = await _service.BuildSignalAnomalyReportAsync(
                 deviceId,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -258,7 +259,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(devices);
 
             // Act
-            SignalAnomalyReport result = await _service.BuildSignalAnomalyReportAsync(
+            SignalAnomalyReportDto result = await _service.BuildSignalAnomalyReportAsync(
                 null,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -307,7 +308,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(actionLogEntries);
 
             // Act
-            AccessControlReport result = await _service.BuildAccessControlReportAsync(
+            AccessControlReportDto result = await _service.BuildAccessControlReportAsync(
                 null,
                 fromUtc,
                 toUtc,
@@ -350,7 +351,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(ChainIntegrityResult.Valid(3));
 
             // Act
-            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
+            ChainOfCustodyReportDto result = await _service.BuildChainOfCustodyReportAsync(
                 null,
                 fromUtc,
                 toUtc,
@@ -378,7 +379,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
 
             // Act
-            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
+            ChainOfCustodyReportDto result = await _service.BuildChainOfCustodyReportAsync(
                 null,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -404,7 +405,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(new ChainIntegrityResult(false, 4, ChainBreakKind.PreviousHashMismatch, failedId, failedAt));
 
             // Act
-            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
+            ChainOfCustodyReportDto result = await _service.BuildChainOfCustodyReportAsync(
                 null,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -412,7 +413,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 
             // Assert
             Assert.Equal(4, result.ChainEntriesChecked);
-            Assert.Equal(ChainBreakKind.PreviousHashMismatch, result.ChainBreak);
+            Assert.Equal("PreviousHashMismatch", result.ChainBreak);
             Assert.Equal(failedId, result.ChainFailedEntryId);
             Assert.Equal(failedAt, result.ChainFailedAtUtc);
         }
@@ -489,7 +490,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ThrowsAsync(new InvalidOperationException("channel down"));
 
             // Act
-            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
+            ChainOfCustodyReportDto result = await _service.BuildChainOfCustodyReportAsync(
                 null,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -507,13 +508,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             string tempDir = Path.Combine(Path.GetTempPath(), $"reports_{Guid.NewGuid()}");
             _ = Directory.CreateDirectory(tempDir);
 
-            var report = new EvidenceReviewReport
-            {
-                GeneratedAtUtc = DateTime.UtcNow,
-                ReportFromUtc = DateTime.UtcNow.AddDays(-1),
-                ReportToUtc = DateTime.UtcNow,
-                TotalItemCount = 5
-            };
+            var report = new EvidenceReviewReportDto(DateTime.UtcNow, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, [], [], 5, 0, 0);
 
             try
             {
@@ -541,11 +536,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         public async Task WriteReportAsync_WithUnsupportedFormat_ThrowsArgumentException()
         {
             // Arrange
-            var report = new EvidenceReviewReport
-            {
-                GeneratedAtUtc = DateTime.UtcNow,
-                TotalItemCount = 0
-            };
+            var report = new EvidenceReviewReportDto(DateTime.UtcNow, default, default, [], [], 0, 0, 0);
 
             // Act & Assert
             _ = await Assert.ThrowsAsync<ArgumentException>(
@@ -567,7 +558,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync([]);
 
             // Act
-            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(
+            EvidenceReviewReportDto result = await _service.BuildEvidenceReviewAsync(
                 deviceId,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -620,10 +611,10 @@ namespace VideoForensics.Data.Core.Tests.Services
                 ]);
 
             // Act
-            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            EvidenceReviewReportDto result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
-            MediaProviderEventLink link = Assert.Single(result.MediaProviderEventLinks);
+            MediaProviderEventLinkDto link = Assert.Single(result.MediaProviderEventLinks);
             Assert.Equal(mediaId, link.MediaItemId);
             Assert.Equal("ring-evt-1", link.ProviderEventId);
         }
@@ -654,7 +645,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 ]);
 
             // Act
-            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            EvidenceReviewReportDto result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.Empty(result.MediaProviderEventLinks);
@@ -703,7 +694,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 .ReturnsAsync(allActions);
 
             // Act
-            AccessControlReport result = await _service.BuildAccessControlReportAsync(
+            AccessControlReportDto result = await _service.BuildAccessControlReportAsync(
                 null,
                 fromUtc,
                 toUtc,

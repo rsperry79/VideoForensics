@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
@@ -8,7 +9,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Events;
 public class EventRow
 {
     public required Event Event { get; init; }
-    public MediaItem? MediaItem { get; set; }
+    public MediaItemDto? MediaItem { get; set; }
     public required Guid DeviceId { get; init; }
 
     public string EventType => Event.EventType;

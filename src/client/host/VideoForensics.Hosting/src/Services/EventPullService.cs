@@ -56,7 +56,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IStorageLocationProvider? _storage;
         private readonly IForensicsConfigurationService? _configurationService;
         private readonly IMediaPreviewService? _previewService;
-        private readonly IMediaItemRepository? _mediaItems;
+        private readonly IMediaItemWriteRepository? _mediaItems;
         private readonly ISyncProgressStore? _progress;
         private readonly IMediaPathResolver _mediaPaths;
 
@@ -86,7 +86,7 @@ namespace VideoForensics.Client.Hosting.Services
             IMediaDownloadService? mediaDownloadService = null,
             string? mediaRoot = null,
             IMediaPreviewService? previewService = null,
-            IMediaItemRepository? mediaItems = null,
+            IMediaItemWriteRepository? mediaItems = null,
             IStorageLocationProvider? storage = null,
             IForensicsConfigurationService? configurationService = null,
             ISyncProgressStore? progress = null,

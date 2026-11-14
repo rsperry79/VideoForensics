@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     /// <summary>One backfill pass analyses the unanalysed batch and keeps going past an item that throws.</summary>
     public class JammingAnalysisBackfillTests
     {
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaAnalysisService> _analysis = new();
 
         private JammingAnalysisBackfill Sut()

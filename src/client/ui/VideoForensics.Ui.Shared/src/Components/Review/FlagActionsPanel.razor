@@ -1,3 +1,5 @@
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Ui.Shared.Components.Reasons
@@ -193,7 +195,7 @@
     private static readonly TimeSpan RssiPinPad = TimeSpan.FromHours(1);
 
     /// <summary>The clips and current snapshots of an RSSI flag's padded window, oldest first.</summary>
-    private sealed record RssiWindow(IReadOnlyList<MediaItem> Clips, IReadOnlyList<SnapshotCapture> Snapshots);
+    private sealed record RssiWindow(IReadOnlyList<MediaItemDto> Clips, IReadOnlyList<SnapshotCapture> Snapshots);
 
     private IReadOnlyList<ForensicCase> _openCases = [];
     private IReadOnlyList<ForensicCase> _containing = [];
@@ -267,7 +269,7 @@
     {
         DateTime fromUtc = Flag.WindowStartUtc - RssiPinPad;
         DateTime toUtc = Flag.WindowEndUtc + RssiPinPad;
-        IReadOnlyList<MediaItem> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(Flag.DeviceId, fromUtc, toUtc, ct);
+        IReadOnlyList<MediaItemDto> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(Flag.DeviceId, fromUtc, toUtc, ct);
         IReadOnlyList<SnapshotCapture> snapshots = await SnapshotCaptureRepository.GetCurrentForDeviceAsync(
             Flag.DeviceId,
             new DateTimeOffset(DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc)),
@@ -525,7 +527,7 @@
             HashSet<(CaseItemKind Kind, Guid TargetId)> pinned = PinnedKeys(await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token));
 
             var pending = new List<(CaseItemKind Kind, Guid TargetId)>();
-            foreach (MediaItem clip in window.Clips)
+            foreach (MediaItemDto clip in window.Clips)
             {
                 if (!pinned.Contains((CaseItemKind.Media, clip.Id)))
                 {

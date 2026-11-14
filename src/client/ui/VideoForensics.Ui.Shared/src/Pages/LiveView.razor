@@ -286,8 +286,8 @@ else
         try
         {
             DateTime now = DateTime.UtcNow;
-            IReadOnlyList<MediaItem> snapshots = await MediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, now.AddHours(-1), now, ct);
-            MediaItem? newest = snapshots.LastOrDefault();
+            IReadOnlyList<MediaItemDto> snapshots = await MediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, now.AddHours(-1), now, ct);
+            MediaItemDto? newest = snapshots.LastOrDefault();
             if (newest is null)
             {
                 _stills[deviceId] = null;

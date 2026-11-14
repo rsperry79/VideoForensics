@@ -1,5 +1,5 @@
 
-using AngleSharp.Html.Dom;
+using AngleSharp.Html.Dom;using VideoForensics.Core.Api.Contracts;
 
 using Bunit;
 using Bunit.Rendering;
@@ -613,7 +613,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { eventPin, mediaPin });
         _ = EventRepositoryMock.Setup(r => r.GetAsync(@event.Id, It.IsAny<CancellationToken>())).ReturnsAsync(@event);
-        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media);
+        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media.ToDto());
 
         IRenderedComponent<CaseDetails> component = RenderPage(caseId);
         List<CaseDetails.CaseItemRow> rows = GridRows(component);
@@ -870,7 +870,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         _ = CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { pin });
-        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media);
+        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media.ToDto());
 
         IRenderedComponent<CaseDetails> component = RenderPage(caseId);
         IRenderedComponent<ForensicGrid<CaseDetails.CaseItemRow>> grid = component.FindComponent<ForensicGrid<CaseDetails.CaseItemRow>>();

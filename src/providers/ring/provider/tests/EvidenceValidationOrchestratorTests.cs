@@ -24,7 +24,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<IEventRepository> _mockEventRepository = new();
         private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository = new();
         private readonly Mock<IIntegrityVerificationService> _mockIntegrityService = new();
-        private readonly Mock<IMediaItemRepository> _mockMediaItemRepository = new();
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItemRepository = new();
         private readonly Mock<IProviderReconciliationService> _mockReconciliationService = new();
 
         [Fact]

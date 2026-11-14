@@ -37,7 +37,7 @@ namespace VideoForensics.Client.Hosting.Services
 
         private readonly ILocationRepository _locations;
         private readonly IDeviceWriteRepository _devices;
-        private readonly IMediaItemRepository _mediaItems;
+        private readonly IMediaItemWriteRepository _mediaItems;
         private readonly IProviderAccountRepository _accounts;
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
@@ -55,7 +55,7 @@ namespace VideoForensics.Client.Hosting.Services
         public SnapshotRollupService(
             ILocationRepository locations,
             IDeviceWriteRepository devices,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             IProviderAccountRepository accounts,
             IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
