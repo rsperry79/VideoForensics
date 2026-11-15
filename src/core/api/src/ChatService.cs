@@ -1,4 +1,4 @@
-namespace VideoForensics.Data.Common.Contracts
+namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
     /// Sends a message to the embedded MCP-backed chat assistant and gets a reply. The server-side

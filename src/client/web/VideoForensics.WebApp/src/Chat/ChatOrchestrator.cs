@@ -11,6 +11,7 @@ using System.Threading.Channels;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Infrastructure;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Chat
 {

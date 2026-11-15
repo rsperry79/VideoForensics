@@ -8,7 +8,7 @@ namespace VideoForensics.Core.Api.Contracts
         /// <summary>
         /// Converts a ChatTurn entity to a ChatMessageDto.
         /// </summary>
-        public static ChatMessageDto ToDto(this VideoForensics.Data.Common.Contracts.ChatTurn entity)
+        public static ChatMessageDto ToDto(this VideoForensics.Core.Api.Contracts.ChatTurn entity)
         {
             return new ChatMessageDto(
                 Role: entity.Role,
@@ -19,9 +19,9 @@ namespace VideoForensics.Core.Api.Contracts
         /// <summary>
         /// Converts a ChatMessageDto to a ChatTurn entity.
         /// </summary>
-        public static VideoForensics.Data.Common.Contracts.ChatTurn ToDomain(this ChatMessageDto dto)
+        public static VideoForensics.Core.Api.Contracts.ChatTurn ToDomain(this ChatMessageDto dto)
         {
-            return new VideoForensics.Data.Common.Contracts.ChatTurn
+            return new VideoForensics.Core.Api.Contracts.ChatTurn
             {
                 Role = dto.Role,
                 Content = dto.Content
@@ -31,9 +31,9 @@ namespace VideoForensics.Core.Api.Contracts
         /// <summary>
         /// Converts a ChatResponseDto to a ChatTurnResult.
         /// </summary>
-        public static VideoForensics.Data.Common.Contracts.ChatTurnResult ToDomain(this ChatResponseDto dto)
+        public static VideoForensics.Core.Api.Contracts.ChatTurnResult ToDomain(this ChatResponseDto dto)
         {
-            return new VideoForensics.Data.Common.Contracts.ChatTurnResult
+            return new VideoForensics.Core.Api.Contracts.ChatTurnResult
             {
                 Reply = dto.Reply,
                 ToolsInvoked = dto.ToolsInvoked
@@ -43,7 +43,7 @@ namespace VideoForensics.Core.Api.Contracts
         /// <summary>
         /// Converts a ChatTurnResult to a ChatResponseDto.
         /// </summary>
-        public static ChatResponseDto ToDto(this VideoForensics.Data.Common.Contracts.ChatTurnResult entity)
+        public static ChatResponseDto ToDto(this VideoForensics.Core.Api.Contracts.ChatTurnResult entity)
         {
             return new ChatResponseDto(
                 Reply: entity.Reply,
