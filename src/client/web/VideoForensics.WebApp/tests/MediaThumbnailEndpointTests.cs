@@ -16,7 +16,7 @@ namespace VideoForensics.Client.WebApp.Tests
     public class MediaThumbnailEndpointTests
     {
         private readonly Mock<IMediaAccessTicketService> _tickets = new();
-        private readonly Mock<IOperatorRepository> _operators = new();
+        private readonly Mock<IOperatorWriteRepository> _operators = new();
         private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaStorageProvider> _storage = new();
         private readonly Mock<IMediaThumbnailService> _thumbnails = new();

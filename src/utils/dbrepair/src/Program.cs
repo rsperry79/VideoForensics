@@ -482,7 +482,7 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
         }
 
         using IServiceScope scope = provider.CreateScope();
-        IOperatorRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
+        IOperatorWriteRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorWriteRepository>();
         IAppSettingRepository appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
         ISecurityAuditLogRepository auditRepo = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogRepository>();
 

@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for Operator entities.</summary>
-    public class OperatorRepository : IOperatorRepository
+    public class OperatorRepository : IOperatorWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<OperatorRepository> _logger;

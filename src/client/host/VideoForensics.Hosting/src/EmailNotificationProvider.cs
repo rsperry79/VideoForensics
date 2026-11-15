@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Hosting
     {
         private readonly IForensicsConfiguration _config;
         private readonly ISmtpMailSender _mailSender;
-        private readonly IOperatorRepository _operators;
+        private readonly IOperatorWriteRepository _operators;
         private readonly IOperatorNotificationPreferenceRepository _preferences;
         private readonly ILogger<EmailNotificationProvider> _logger;
         private readonly ICloudflaredTunnelService? _tunnels;
@@ -30,7 +30,7 @@ namespace VideoForensics.Client.Hosting
         public EmailNotificationProvider(
             IForensicsConfiguration config,
             ISmtpMailSender mailSender,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorNotificationPreferenceRepository preferences,
             ILogger<EmailNotificationProvider> logger,
             ICloudflaredTunnelService? tunnels = null)

@@ -324,6 +324,7 @@ namespace VideoForensics.Client.Hosting
         public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // Server-side event reads and commands for Ui.Shared: DTO view over the write repository (see EventDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IOperatorRepository, VideoForensics.Core.Api.Contracts.Repositories.OperatorDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.INoticeRepository, VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.INoticeDismissalRepository, VideoForensics.Core.Api.Contracts.Repositories.NoticeDismissalDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository, VideoForensics.Core.Api.Contracts.Repositories.SyncScheduleDtoRepository>();
@@ -809,6 +810,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository, Remote.RemoteSyncScheduleRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IOperatorRepository, Remote.RemoteOperatorRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.INoticeRepository, Remote.RemoteNoticeRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.INoticeDismissalRepository, Remote.RemoteNoticeDismissalRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
@@ -924,7 +926,7 @@ namespace VideoForensics.Client.Hosting
             // /setup wizard (SetupEndpoints.cs) handles first-run admin creation instead, letting the
             // installing user pick their own username/password rather than getting the fixed
             // admin/ChangeMe123! account.
-            IOperatorRepository operatorRepo = sp.GetRequiredService<IOperatorRepository>();
+            IOperatorWriteRepository operatorRepo = sp.GetRequiredService<IOperatorWriteRepository>();
             bool enableDefaultAdmin = string.Equals(
                 Environment.GetEnvironmentVariable("VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN"),
                 "true", StringComparison.OrdinalIgnoreCase);

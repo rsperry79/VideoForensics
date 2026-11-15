@@ -47,7 +47,7 @@ namespace VideoForensics.Client.WebApp.Api
                 string userCode,
                 ApproveDeviceCodeRequest request,
                 IDeviceCodePairingService deviceCodePairing,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 IPairedDeviceRepository pairedDevices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,

@@ -164,7 +164,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = tierResolver.Setup(t => t.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
 
             var ticketService = new Mock<IMediaAccessTicketService>();
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var logger = new Mock<ILogger<Program>>();
 
             return await MediaApiEndpoints.GetContentAsync(

@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for Operator entities (plan §5.11).</summary>
-    public interface IOperatorRepository
+    public interface IOperatorWriteRepository
     {
         Task<Operator?> GetAsync(Guid operatorId, CancellationToken ct);
         Task<Operator> AddAsync(Operator @operator, CancellationToken ct);

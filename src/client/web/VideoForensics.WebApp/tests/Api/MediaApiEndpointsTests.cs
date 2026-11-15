@@ -23,14 +23,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     {
         private static (
             Mock<IMediaAccessTicketService> TicketService,
-            Mock<IOperatorRepository> Operators,
+            Mock<IOperatorWriteRepository> Operators,
             Mock<IAccessAuditLogRepository> AuditLog,
             Mock<INetworkTierResolver> TierResolver,
             Mock<ILogger<Program>> Logger
         ) CreateMocks()
         {
             var ticketService = new Mock<IMediaAccessTicketService>();
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var auditLog = new Mock<IAccessAuditLogRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
             var logger = new Mock<ILogger<Program>>();
@@ -224,7 +224,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var mediaItems = new Mock<IMediaItemWriteRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaItem?)null);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, null!,
@@ -245,7 +245,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .ReturnsAsync(item);
 
             _ = ticketService.Setup(t => t.Validate(null, mediaItemId)).Returns((Guid?)null);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, null!,
@@ -266,7 +266,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .ReturnsAsync(item);
 
             _ = ticketService.Setup(t => t.Validate("invalid_ticket", mediaItemId)).Returns((Guid?)null);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "invalid_ticket", ticketService.Object, mediaItems.Object, operators.Object, null!,
@@ -278,7 +278,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicketButOperatorInactive_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
@@ -319,7 +319,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicketButOperatorNotApproved_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
@@ -360,7 +360,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicketButOperatorMissing_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
@@ -389,7 +389,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicket_ServeContentAndAudit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
@@ -453,7 +453,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuthenticatedUserWithoutTicket_ServeContentAndAudit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -514,7 +514,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_RangeHeaderBytes1000_ServeButNotAudit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext
@@ -570,7 +570,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_RangeHeaderBytes0_Audit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext
@@ -635,7 +635,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuditThrows_Returns500()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -723,7 +723,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_TicketNoIdentity_InactiveOperator_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             // context.User is new ClaimsPrincipal() - no identity at all
@@ -765,7 +765,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuthenticatedNoClaim_TicketForInactiveOperator_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             // Authenticated principal but NO OperatorId claim
@@ -813,7 +813,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuthenticatedNoClaim_TicketForActiveApprovedOperator_ServeContent()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             // Authenticated principal but NO OperatorId claim

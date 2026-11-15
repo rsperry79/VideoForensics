@@ -99,7 +99,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         private async Task<IResult> InvokeAsync(Harness h, HttpContext context)
         {
             return await MediaApiEndpoints.GetContentAsync(
-                _mediaItemId, null, Mock.Of<IMediaAccessTicketService>(), h.MediaItems.Object, Mock.Of<IOperatorRepository>(),
+                _mediaItemId, null, Mock.Of<IMediaAccessTicketService>(), h.MediaItems.Object, Mock.Of<IOperatorWriteRepository>(),
                 h.Storage.Object, h.AuditLog.Object, h.TierResolver.Object, h.Logger.Object,
                 h.Dispatcher.Object, h.Notices.Object, h.Devices.Object, h.ValidationJobs.Object,
                 context, CancellationToken.None);

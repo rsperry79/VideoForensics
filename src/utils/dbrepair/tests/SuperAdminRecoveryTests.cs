@@ -10,7 +10,7 @@ namespace VideoForensics.Utils.DbRepair.Tests;
 
 public class SuperAdminRecoveryTests
 {
-    private readonly Mock<IOperatorRepository> _operatorRepo = new();
+    private readonly Mock<IOperatorWriteRepository> _operatorRepo = new();
     private readonly Mock<IAppSettingRepository> _appSettingRepo = new();
     private readonly Mock<IPasswordPrompt> _passwordPrompt = new();
     private readonly Mock<ISecurityAuditLogRepository> _auditRepo = new();

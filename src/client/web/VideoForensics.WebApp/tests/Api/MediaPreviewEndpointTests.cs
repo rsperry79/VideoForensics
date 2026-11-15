@@ -175,7 +175,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             }
 
             var ticketService = new Mock<IMediaAccessTicketService>();
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var logger = new Mock<ILogger<Program>>();
 
             return await MediaApiEndpoints.GetPreviewAsync(

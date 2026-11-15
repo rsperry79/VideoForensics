@@ -67,7 +67,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> UpdateOperatorOverrideAsync(
             Guid id,
             UpdateOperatorTwoFactorOverrideRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -96,7 +96,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> UpdatePasskeyRequiredAsync(
             Guid id,
             UpdatePasskeyRequiredRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
