@@ -793,7 +793,6 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, Remote.RemoteSignalAnalysisService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, Remote.RemoteBitrateAnalysisService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Contracts.IMediaBitrateSeriesSource, Remote.RemoteMediaBitrateSeriesSource>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAuthService, RemoteProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IReportGenerationService, RemoteReportGenerationService>(c => c.BaseAddress = serverAddress);
@@ -802,7 +801,6 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IEvidenceExportService, RemoteEvidenceExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IDeviceTypedSettingsReader, RemoteDeviceTypedSettingsReader>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService, RemoteDeviceControlService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventWriteRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
