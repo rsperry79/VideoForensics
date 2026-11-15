@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Core.Services
     /// with its capture provenance, records a chain-of-custody ActionLog entry, and optionally pins
     /// the result to a case. The original source media file is never modified.
     /// </summary>
-    internal class MediaStillCaptureOrchestrator : IMediaStillCaptureService
+    public class MediaStillCaptureOrchestrator : IMediaStillCaptureService
     {
         /// <summary>Maximum decoded size accepted for a client-captured still (protects against a hostile/oversized upload).</summary>
         private const long MaxClientStillBytes = 20 * 1024 * 1024; // 20 MB

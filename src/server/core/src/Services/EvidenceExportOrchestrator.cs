@@ -14,7 +14,7 @@ using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.Core.Services
 {
-    internal class EvidenceExportOrchestrator : IEvidenceExportService
+    public class EvidenceExportOrchestrator : IEvidenceExportService
     {
         private readonly ILogger<EvidenceExportOrchestrator> _logger;
         private readonly IMediaItemWriteRepository _mediaItemRepository;

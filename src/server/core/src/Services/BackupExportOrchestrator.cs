@@ -13,7 +13,7 @@ using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Core.Services
 {
-    internal class BackupExportOrchestrator : IBackupExportService
+    public class BackupExportOrchestrator : IBackupExportService
     {
         private readonly ILogger<BackupExportOrchestrator> _logger;
         private readonly IProviderAccountWriteRepository _providerAccountRepository;

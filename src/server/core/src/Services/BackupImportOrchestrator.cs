@@ -12,7 +12,7 @@ using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Core.Services
 {
-    internal class BackupImportOrchestrator : IBackupImportService
+    public class BackupImportOrchestrator : IBackupImportService
     {
         private readonly ILogger<BackupImportOrchestrator> _logger;
         private readonly IUnitOfWork _unitOfWork;
