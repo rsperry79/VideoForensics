@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using VideoForensics.Data.Database.Logs;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -11,14 +12,14 @@ namespace VideoForensics.Data.Database.Repositories
     public class CameraBitrateBaselineRepository : ICameraBitrateBaselineRepository
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IDbContextFactory<VideoForensicsLogsDbContext> _logsFactory;
+        private readonly ILogsDbGate _logs;
         private readonly ILogger<CameraBitrateBaselineRepository> _logger;
 
         /// <summary>Initializes a new instance of the CameraBitrateBaselineRepository.</summary>
-        public CameraBitrateBaselineRepository(IUnitOfWork unitOfWork, IDbContextFactory<VideoForensicsLogsDbContext> logsFactory, ILogger<CameraBitrateBaselineRepository> logger)
+        public CameraBitrateBaselineRepository(IUnitOfWork unitOfWork, ILogsDbGate logs, ILogger<CameraBitrateBaselineRepository> logger)
         {
             _unitOfWork = unitOfWork;
-            _logsFactory = logsFactory;
+            _logs = logs;
             _logger = logger;
         }
 
@@ -78,7 +79,8 @@ namespace VideoForensics.Data.Database.Repositories
                         .ToListAsync(ct);
 
                     // Sessions live in the main database; telemetry samples live in logs.db, so the two are read separately.
-                    await using VideoForensicsLogsDbContext logs = await _logsFactory.CreateDbContextAsync(ct);
+                    await using LogsWriteLease lease = await _logs.AcquireWriteAsync(ct);
+                    VideoForensicsLogsDbContext logs = lease.Db;
                     List<LiveViewTelemetrySample> samples = await logs.LiveViewTelemetrySamples
                         .Where(t => deviceSessions.Contains(t.SessionId)
                             && t.CapturedAtUtc.Hour == hourOfDay
