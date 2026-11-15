@@ -75,8 +75,8 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IOperatorPreferencesWriteRepository, OperatorPreferencesRepository>();
             services.TryAddScoped<IAccessAuditLogRepository, AccessAuditLogRepository>();
             services.TryAddScoped<IExportAuditRecordRepository, ExportAuditRecordRepository>();
-            services.TryAddScoped<INoticeRepository, NoticeRepository>();
-            services.TryAddScoped<INoticeDismissalRepository, NoticeDismissalRepository>();
+            services.TryAddScoped<INoticeWriteRepository, NoticeRepository>();
+            services.TryAddScoped<INoticeDismissalWriteRepository, NoticeDismissalRepository>();
             services.TryAddScoped<IOperatorNotificationPreferenceRepository, OperatorNotificationPreferenceRepository>();
             services.TryAddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
             services.TryAddScoped<IBannedIpRangeRepository, BannedIpRangeRepository>();

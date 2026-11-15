@@ -38,7 +38,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             public Mock<INetworkTierResolver> TierResolver { get; } = new();
             public Mock<ILogger<Program>> Logger { get; } = new();
             public Mock<INotificationDispatcher> Dispatcher { get; } = new();
-            public Mock<INoticeRepository> Notices { get; } = new();
+            public Mock<INoticeWriteRepository> Notices { get; } = new();
             public Mock<IDeviceWriteRepository> Devices { get; } = new();
             public Mock<IEvidenceValidationJobs> ValidationJobs { get; } = new();
         }

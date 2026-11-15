@@ -11,7 +11,7 @@ namespace VideoForensics.Client.Hosting.Tests
         [Fact]
         public async Task DispatchAsync_EventWithActionPath_StoresTheLinkOnTheNotice()
         {
-            var notices = new Mock<INoticeRepository>();
+            var notices = new Mock<INoticeWriteRepository>();
             var dispatcher = new NotificationDispatcher(
                 Array.Empty<INotificationProvider>(),
                 new Mock<ILogger<NotificationDispatcher>>().Object,

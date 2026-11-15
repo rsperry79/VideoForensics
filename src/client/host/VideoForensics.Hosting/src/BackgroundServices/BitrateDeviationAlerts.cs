@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public static readonly TimeSpan LookBack = TimeSpan.FromHours(24);
 
         private readonly IMediaItemWriteRepository _mediaItems;
-        private readonly INoticeRepository _notices;
+        private readonly INoticeWriteRepository _notices;
         private readonly IMediaFlagWriteRepository _flags;
         private readonly INotificationDispatcher _dispatcher;
         private readonly TimeProvider _time;
@@ -30,7 +30,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         public BitrateDeviationAlerts(
             IMediaItemWriteRepository mediaItems,
-            INoticeRepository notices,
+            INoticeWriteRepository notices,
             IMediaFlagWriteRepository flags,
             INotificationDispatcher dispatcher,
             TimeProvider time,

@@ -175,7 +175,7 @@ namespace VideoForensics.Client.WebApp.Api
             INetworkTierResolver tierResolver,
             ILogger<Program> logger,
             INotificationDispatcher dispatcher,
-            INoticeRepository notices,
+            INoticeWriteRepository notices,
             IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             HttpContext context,
@@ -256,7 +256,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task RaiseMissingClipAlertAsync(
             MediaItem item,
             INotificationDispatcher dispatcher,
-            INoticeRepository notices,
+            INoticeWriteRepository notices,
             IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             ILogger<Program> logger,

@@ -35,7 +35,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         private int _undismissedCount = 0;
         private bool _noticesDropdownOpen = false;
-        private List<Notice> _noticesList = [];
+        private List<NoticeDto> _noticesList = [];
 
         private bool IsAdmin => _role.HasValue && _role >= OperatorRoleDto.Admin;
 
@@ -362,7 +362,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             }
 
             // Dismiss every undismissed notice, not just the 5 shown in this dropdown.
-            IReadOnlyList<Notice> allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
+            IReadOnlyList<NoticeDto> allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
             await NoticeDismissalRepository.DismissAllAsync(allUndismissed.Select(n => n.Id), SessionState.OperatorId.Value, CancellationToken.None);
             await LoadNoticesForDropdownAsync();
             _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);

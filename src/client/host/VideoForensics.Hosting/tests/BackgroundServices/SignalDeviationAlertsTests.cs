@@ -18,7 +18,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task Check_RaisesAnAlertForAReadingMoreThanTwoStdDevsFromTheMean()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
 
@@ -37,7 +37,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task Check_ActionPathDrillsToTheAlertedHourPlusOrMinusOneHour()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
@@ -59,7 +59,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task Check_DoesNotRaiseTheSameAlertTwice()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
 
@@ -72,7 +72,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task Check_NoticeStatesTheHourAverageAndCameraMean_InLocalTime()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
@@ -95,7 +95,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task CheckAsync_TwoSigmaHour_WritesRssiFlagLinkedToNotice()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
@@ -126,7 +126,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task CheckAsync_RepeatCheckOfSameHour_WritesNoSecondFlag()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagWriteRepository>();
@@ -139,7 +139,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task Check_DispatchFails_StillWritesRssiFlag()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
@@ -169,7 +169,7 @@ public class SignalDeviationAlertsTests
     [Fact]
     public async Task CheckAsync_TwoSigmaHour_StoresDeviationSigmaOfWorstReading()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagWriteRepository>();
@@ -190,7 +190,7 @@ public class SignalDeviationAlertsTests
     /// Ten readings alternating -50 and -70 (mean about -60), then one at -95 an hour ago. The -95 sits about 2.2 sample
     /// std devs below the mean, so it is an alert; the others are inside one std dev.
     /// </summary>
-    private async Task<int> CheckAsync(INoticeRepository notices, INotificationDispatcher dispatcher, IMediaFlagWriteRepository? flags = null)
+    private async Task<int> CheckAsync(INoticeWriteRepository notices, INotificationDispatcher dispatcher, IMediaFlagWriteRepository? flags = null)
     {
         DateTime now = DateTime.UtcNow;
         var rows = new List<DeviceHealth>();

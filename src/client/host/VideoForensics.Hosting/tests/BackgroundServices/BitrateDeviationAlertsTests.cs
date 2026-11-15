@@ -19,7 +19,7 @@ public class BitrateDeviationAlertsTests
     [Fact]
     public async Task BitrateDeviationAlerts_SpikeAboveTwoStdDevs_RaisesOneFlagAndOneNotice()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
@@ -62,7 +62,7 @@ public class BitrateDeviationAlertsTests
     [Fact]
     public async Task BitrateDeviationAlerts_RepeatCheckOfSameWindow_RaisesNothing()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagWriteRepository>();
@@ -78,7 +78,7 @@ public class BitrateDeviationAlertsTests
     public async Task BitrateDeviationAlerts_RssiOnlyDevice_WritesNoFlag()
     {
         // A camera with signal history but no measured clip bit rates has nothing for this check to read.
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         var flags = new Mock<IMediaFlagWriteRepository>();
@@ -108,7 +108,7 @@ public class BitrateDeviationAlertsTests
     }
 
     private async Task<int> CheckAsync(
-        INoticeRepository notices,
+        INoticeWriteRepository notices,
         INotificationDispatcher dispatcher,
         IMediaFlagWriteRepository flags,
         List<MeasuredBitrate> rows)

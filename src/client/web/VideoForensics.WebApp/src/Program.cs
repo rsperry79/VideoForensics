@@ -991,6 +991,7 @@ app.MapFolderBrowseEndpoints();
 app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 app.MapNotificationPreferencesEndpoints();
+app.MapNoticeEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
 app.MapLogPipeEndpoints();

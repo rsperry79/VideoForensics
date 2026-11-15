@@ -33,7 +33,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var dispatcher = new NotificationDispatcher(
                 Array.Empty<INotificationProvider>(),
                 new Mock<ILogger<NotificationDispatcher>>().Object,
-                new Mock<INoticeRepository>().Object,
+                new Mock<INoticeWriteRepository>().Object,
                 feed);
 
             await dispatcher.DispatchAsync(Event(), CancellationToken.None);

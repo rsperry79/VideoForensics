@@ -11,6 +11,9 @@ using Moq;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Filters;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -51,10 +54,10 @@ public class NoticesPage_FilterRestore_Tests : BunitContext
 
         _noticeRepository
             .Setup(r => r.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Notice>
+            .ReturnsAsync(new List<NoticeDto>
             {
-                new() { EventType = "DeviceOffline", Details = "ring-notice", TimestampUtc = DateTime.UtcNow, ProviderAccountId = RingAccountId },
-                new() { EventType = "DeviceOffline", Details = "wyze-notice", TimestampUtc = DateTime.UtcNow.AddMinutes(-1), ProviderAccountId = WyzeAccountId },
+                new(Guid.NewGuid(), "DeviceOffline", VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Info, "ring-notice", 0, DateTime.UtcNow, null, RingAccountId, null),
+                new(Guid.NewGuid(), "DeviceOffline", VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Info, "wyze-notice", 0, DateTime.UtcNow.AddMinutes(-1), null, WyzeAccountId, null),
             });
 
         SetRendererInfo(new RendererInfo("Server", true));
