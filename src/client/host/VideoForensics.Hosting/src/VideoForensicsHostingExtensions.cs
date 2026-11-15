@@ -348,6 +348,8 @@ namespace VideoForensics.Client.Hosting
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository, VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository>();
             // Server-side device reads for Ui.Shared: DTO view over the write repository (see DeviceDtoRepository).
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceRepository, VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository>();
+            // Server-side typed settings reads for the device config route: DTO view over the data reader (see DeviceTypedSettingsDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceTypedSettingsReader, VideoForensics.Core.Api.Contracts.Repositories.DeviceTypedSettingsDtoRepository>();
             // MainLayout.razor (rendered by every host sharing Ui.Shared, WebApp included) @injects
             // IServerConnectivityState/IServerLocationInformationService - these were only ever
             // registered by AddVideoForensicsClientApi() for client hosts (MAUI), so a server-tier
@@ -801,7 +803,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IDeviceTypedSettingsReader, RemoteDeviceTypedSettingsReader>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IDeviceTypedSettingsReader, RemoteDeviceTypedSettingsReader>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService, RemoteDeviceControlService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventWriteRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             services.AddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventRepository, Remote.RemoteEventDtoRepository>();

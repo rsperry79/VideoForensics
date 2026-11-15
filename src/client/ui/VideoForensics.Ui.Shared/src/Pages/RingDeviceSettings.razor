@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Api.Contracts.Repositories
 @page "/devices/config/ring/{DeviceId:guid}"
 @using VideoForensics.Data.Common.Contracts
@@ -87,7 +88,7 @@ else
     public Guid DeviceId { get; set; }
 
     private VideoForensics.Core.Api.Contracts.DeviceDto? _device;
-    private DeviceTypedSettings? _typed;
+    private DeviceTypedSettingsDto? _typed;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()

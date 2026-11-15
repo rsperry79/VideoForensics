@@ -42,7 +42,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IEventWriteRepository, EventRepository>();
             services.TryAddScoped<IEventDetailWriteRepository, EventDetailRepository>();
             services.TryAddScoped<IDeviceConfigRepository, DeviceConfigRepository>();
-            services.TryAddScoped<IDeviceTypedSettingsReader, DeviceTypedSettingsReader>();
+            services.TryAddScoped<IDeviceTypedSettingsDataReader, DeviceTypedSettingsReader>();
             services.TryAddScoped<IDeviceSettingChangeRepository, DeviceSettingChangeRepository>();
             services.TryAddScoped<IDeviceLightEventRepository, DeviceLightEventRepository>();
             services.TryAddScoped<IDeviceHealthWriteRepository, DeviceHealthRepository>();

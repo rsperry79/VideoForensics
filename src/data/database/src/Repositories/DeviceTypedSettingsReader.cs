@@ -7,7 +7,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Reads a device's typed settings rows (offline motion, detection types, thresholds).</summary>
-    public class DeviceTypedSettingsReader : IDeviceTypedSettingsReader
+    public class DeviceTypedSettingsReader : IDeviceTypedSettingsDataReader
     {
         private readonly IUnitOfWork _unitOfWork;
 

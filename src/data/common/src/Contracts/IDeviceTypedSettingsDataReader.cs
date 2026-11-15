@@ -12,7 +12,7 @@ namespace VideoForensics.Data.Common.Contracts
         IReadOnlyList<DeviceDetectionThreshold> Thresholds);
 
     /// <summary>Reads the typed settings rows stored for a device.</summary>
-    public interface IDeviceTypedSettingsReader
+    public interface IDeviceTypedSettingsDataReader
     {
         /// <summary>Returns the device's typed settings rows. Empty groups when none are stored.</summary>
         Task<DeviceTypedSettings> GetAsync(Guid deviceId, CancellationToken ct);
