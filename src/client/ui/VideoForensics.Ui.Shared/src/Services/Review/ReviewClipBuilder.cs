@@ -2,7 +2,6 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
-using VideoForensics.Data.Common.Entities;
 
 using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;

@@ -191,7 +191,7 @@ namespace VideoForensics.Client.WebApp.Api
                 await notifier.MediaFlagChangedAsync(flag.Id, flag.DeviceId, ct);
                 return Results.Ok(flag.ToDto());
             }
-            catch (FlagStatusConflictException ex)
+            catch (VideoForensics.Data.Common.Contracts.FlagStatusConflictException ex)
             {
                 return Results.Conflict(ex.ToDto());
             }
@@ -226,7 +226,7 @@ namespace VideoForensics.Client.WebApp.Api
                 await notifier.MediaFlagChangedAsync(flag.Id, flag.DeviceId, ct);
                 return Results.Ok(flag.ToDto());
             }
-            catch (FlagStatusConflictException ex)
+            catch (VideoForensics.Data.Common.Contracts.FlagStatusConflictException ex)
             {
                 return Results.Conflict(ex.ToDto());
             }

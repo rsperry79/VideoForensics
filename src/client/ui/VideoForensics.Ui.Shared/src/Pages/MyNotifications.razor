@@ -1,10 +1,14 @@
 @page "/settings/my-notifications"
 @using System.Globalization
+@using VideoForensics.Core.Api.Contracts
 @using System.Reflection
+@using VideoForensics.Core.Api.Contracts
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebPushClient WebPushClient
@@ -68,7 +72,7 @@ else
 
 @code {
     /// <summary>The audit event type names, in alphabetical order. The public string constants are the names, so the reflection lists them all.</summary>
-    private static readonly IReadOnlyList<string> EventTypeNames = typeof(SecurityAuditEventTypes)
+    private static readonly IReadOnlyList<string> EventTypeNames = typeof(SecurityAuditEventTypesDto)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
         .Where(f => f.IsLiteral && f.FieldType == typeof(string))
         .Select(f => (string)f.GetRawConstantValue()!)

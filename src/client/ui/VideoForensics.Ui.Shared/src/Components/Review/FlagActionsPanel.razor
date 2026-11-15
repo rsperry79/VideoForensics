@@ -8,8 +8,6 @@
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
 @using VideoForensics.Client.Ui.Shared.Services.Time
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
 @implements IDisposable
 @inject PairedSessionState SessionState
 @inject IMediaFlagRepository MediaFlagRepository
@@ -36,7 +34,7 @@
     }
 
     <div class="mb-2">
-        <ReasonPicker TReason="MediaFlagDismissReason" OtherValue="MediaFlagDismissReason.Other" @bind-Value="_dismissReason" @bind-Note="_dismissNote" ValidityChanged="OnReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+        <ReasonPicker TReason="MediaFlagDismissReasonDto" OtherValue="MediaFlagDismissReasonDto.Other" @bind-Value="_dismissReason" @bind-Note="_dismissNote" ValidityChanged="OnReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
     </div>
 
     <div class="d-flex justify-content-end gap-2">
@@ -150,7 +148,7 @@
     private const string CreateCaseOption = "create";
 
     private readonly CancellationTokenSource _disposeCts = new();
-    private MediaFlagDismissReason? _dismissReason;
+    private MediaFlagDismissReasonDto? _dismissReason;
     private string? _dismissNote;
     private bool _reasonValid;
     private bool _busy;
@@ -611,7 +609,7 @@
             return Task.CompletedTask;
         }
 
-        string text = reason == MediaFlagDismissReason.Other
+        string text = reason == MediaFlagDismissReasonDto.Other
             ? $"{reason}: {(_dismissNote ?? string.Empty).Trim()}"
             : reason.ToString();
         return ReviewAsync("Dismissed", text);
@@ -642,7 +640,7 @@
         {
             updated = await MediaFlagRepository.UpdateStatusAsync(Flag.Id, "Unreviewed", newStatus, reason, operatorId, _disposeCts.Token);
         }
-        catch (FlagStatusConflictException)
+        catch (VideoForensics.Core.Api.Contracts.FlagStatusConflictException)
         {
             _error = L["FlagActionsConflict"];
         }

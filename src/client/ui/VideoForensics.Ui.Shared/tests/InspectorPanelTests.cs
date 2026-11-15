@@ -454,7 +454,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
-        Assert.NotNull(component.FindComponent<ReasonPicker<EvidencePinReason>>());
+        Assert.NotNull(component.FindComponent<ReasonPicker<EvidencePinReasonDto>>());
         var button = (AngleSharp.Html.Dom.IHtmlButtonElement)component.Find("[data-testid='pin-to-case']");
         Assert.True(button.IsDisabled);
     }
@@ -478,7 +478,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Act: Other alone is not enough
-        await PickReasonAsync(component, EvidencePinReason.Other);
+        await PickReasonAsync(component, EvidencePinReasonDto.Other);
 
         // Assert
         Assert.True(component.Find("[data-testid='pin-to-case']").HasAttribute("disabled"));
@@ -510,7 +510,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         await RegisterRoleAsync(OperatorRole.Review);
 
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
-        await PickReasonAsync(component, EvidencePinReason.Corroboration);
+        await PickReasonAsync(component, EvidencePinReasonDto.Corroboration);
 
         // Act
         IElement button = component.Find("[data-testid='pin-to-case']");
@@ -539,7 +539,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         await RegisterRoleAsync(OperatorRole.Review);
 
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
-        await PickReasonAsync(component, EvidencePinReason.RelevantToIncident);
+        await PickReasonAsync(component, EvidencePinReasonDto.RelevantToIncident);
 
         // Act
         component.Find("[data-testid='pin-to-case']").Click();
@@ -600,7 +600,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         await RegisterRoleAsync(OperatorRole.Review);
 
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
-        await PickReasonAsync(component, EvidencePinReason.Corroboration);
+        await PickReasonAsync(component, EvidencePinReasonDto.Corroboration);
         component.Find("[data-testid='pin-to-case']").Click();
         Assert.Contains($"Pinned to {testCase.CaseNumber}", component.Markup);
 
@@ -612,7 +612,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
 
         // Assert - success message and reason are cleared for the new item
         Assert.DoesNotContain($"Pinned to {testCase.CaseNumber}", component.Markup);
-        Assert.Null(component.FindComponent<ReasonPicker<EvidencePinReason>>().Instance.Value);
+        Assert.Null(component.FindComponent<ReasonPicker<EvidencePinReasonDto>>().Instance.Value);
     }
 }
 
@@ -729,7 +729,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
 
         component.Find("[data-testid='place-legal-hold']").Click();
 
-        Assert.NotNull(component.FindComponent<ReasonPicker<EvidenceHoldReason>>());
+        Assert.NotNull(component.FindComponent<ReasonPicker<EvidenceHoldReasonDto>>());
         var confirmButton = (AngleSharp.Html.Dom.IHtmlButtonElement)component.Find("[data-testid='confirm-place-hold']");
         Assert.True(confirmButton.IsDisabled);
     }
@@ -749,7 +749,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        await PickReasonAsync(component, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(component, EvidenceHoldReasonDto.LegalHold);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
 
         _legalHoldRepository.Verify(
@@ -771,7 +771,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        await PickReasonAsync(component, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(component, EvidenceHoldReasonDto.LegalHold);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
 
         _legalHoldRepository.Verify(
@@ -795,7 +795,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='release-legal-hold']").Click();
-        await PickReasonAsync(component, EvidenceReleaseReason.ResolvedNoLongerNeeded);
+        await PickReasonAsync(component, EvidenceReleaseReasonDto.ResolvedNoLongerNeeded);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-release-hold']").Click());
 
         _legalHoldRepository.Verify(
@@ -818,7 +818,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='release-legal-hold']").Click();
-        await PickReasonAsync(component, EvidenceReleaseReason.ResolvedNoLongerNeeded);
+        await PickReasonAsync(component, EvidenceReleaseReasonDto.ResolvedNoLongerNeeded);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-release-hold']").Click());
 
         _legalHoldRepository.Verify(
@@ -841,7 +841,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        await PickReasonAsync(component, EvidenceHoldReason.Other);
+        await PickReasonAsync(component, EvidenceHoldReasonDto.Other);
         Assert.True(component.Find("[data-testid='confirm-place-hold']").HasAttribute("disabled"));
 
         component.Find("[data-testid='reason-picker-note']").Change("  camera was moved  ");
@@ -861,8 +861,8 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
 
         component.Find("[data-testid='release-legal-hold']").Click();
 
-        Assert.Empty(component.FindComponents<ReasonPicker<EvidenceHoldReason>>());
-        Assert.NotNull(component.FindComponent<ReasonPicker<EvidenceReleaseReason>>());
+        Assert.Empty(component.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
+        Assert.NotNull(component.FindComponent<ReasonPicker<EvidenceReleaseReasonDto>>());
     }
 
     [Fact]
@@ -914,7 +914,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
-        await PickReasonAsync(component, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(component, EvidenceHoldReasonDto.LegalHold);
         await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
         Assert.Contains("Legal hold placed", component.Markup);
 

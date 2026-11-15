@@ -1,6 +1,5 @@
 @page "/settings/network"
 @using VideoForensics.Core.Api.Contracts
-@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
 @using Syncfusion.Blazor.DropDowns
@@ -59,9 +58,9 @@ else
         <h5 class="mb-2">@L["NetworkTierLabel"]</h5>
         <small class="text-muted d-block mb-2">@L["NetworkTierHelp"]</small>
         <div>
-            <SfDropDownList TValue="NetworkTier" TItem="NetworkTierOption" DataSource="@_tierOptions" @bind-Value="_selectedTier" Style="max-width: 420px;">
+            <SfDropDownList TValue="NetworkTierDto" TItem="NetworkTierOption" DataSource="@_tierOptions" @bind-Value="_selectedTier" Style="max-width: 420px;">
                 <DropDownListFieldSettings Text="Text" Value="Value" />
-                <DropDownListEvents TValue="NetworkTier" TItem="NetworkTierOption" ValueChange="@(async (ChangeEventArgs<NetworkTier, NetworkTierOption> args) => await OnTierChanged(args.Value))" />
+                <DropDownListEvents TValue="NetworkTierDto" TItem="NetworkTierOption" ValueChange="@(async (ChangeEventArgs<NetworkTierDto, NetworkTierOption> args) => await OnTierChanged(args.Value))" />
             </SfDropDownList>
         </div>
 
@@ -185,7 +184,7 @@ else
 
     <h5 class="mt-4 mb-2">@L["RemoteAccessSectionTitle"]</h5>
 
-    @if (_currentTier != NetworkTier.Internet)
+    @if (_currentTier != NetworkTierDto.Internet)
     {
         <div class="alert alert-info mb-4">@L["RequiresInternetTier"]</div>
     }
@@ -345,7 +344,7 @@ else
 }
 
 @code {
-    private sealed record NetworkTierOption(string Text, NetworkTier Value);
+    private sealed record NetworkTierOption(string Text, NetworkTierDto Value);
 
     private const int WizardStepCount = 4;
 
@@ -367,15 +366,15 @@ else
     private bool _maxConcurrentSuccess;
     private string? _maxConcurrentMessage;
 
-    private NetworkTier _currentTier;
-    private NetworkTier _selectedTier;
-    private NetworkTier? _pendingTier;
+    private NetworkTierDto _currentTier;
+    private NetworkTierDto _selectedTier;
+    private NetworkTierDto? _pendingTier;
 
     private List<NetworkTierOption> _tierOptions => new()
     {
-        new(L["LocalLabelText"], NetworkTier.Local),
-        new(L["NetworkLabelText"], NetworkTier.Network),
-        new(L["InternetLabelText"], NetworkTier.Internet),
+        new(L["LocalLabelText"], NetworkTierDto.Local),
+        new(L["NetworkLabelText"], NetworkTierDto.Network),
+        new(L["InternetLabelText"], NetworkTierDto.Internet),
     };
 
     // Remote access (Cloudflare Tunnel) state - only relevant/shown once the Internet tier is selected.
@@ -659,7 +658,7 @@ else
         {
             await SessionState.EnsureLoadedAsync();
             await LoadAsync();
-            if (_currentTier == NetworkTier.Internet)
+            if (_currentTier == NetworkTierDto.Internet)
             {
                 await LoadRemoteAccessStatusAsync();
             }
@@ -690,7 +689,7 @@ else
 
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            _currentTier = Enum.Parse<NetworkTier>(body.GetProperty("configuredTier").GetString()!);
+            _currentTier = Enum.Parse<NetworkTierDto>(body.GetProperty("configuredTier").GetString()!);
             _selectedTier = _currentTier;
             _pendingTier = null;
 
@@ -719,7 +718,7 @@ else
         }
     }
 
-    private async Task OnTierChanged(NetworkTier newTier)
+    private async Task OnTierChanged(NetworkTierDto newTier)
     {
         _selectedTier = newTier;
         _message = null;
@@ -766,7 +765,7 @@ else
         }
     }
 
-    private async Task SaveAsync(NetworkTier tier, string? stepUpToken)
+    private async Task SaveAsync(NetworkTierDto tier, string? stepUpToken)
     {
         try
         {
@@ -790,7 +789,7 @@ else
             _success = true;
             _message = L["SavedMessage"];
 
-            if (_currentTier == NetworkTier.Internet)
+            if (_currentTier == NetworkTierDto.Internet)
             {
                 await LoadRemoteAccessStatusAsync();
             }

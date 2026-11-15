@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 

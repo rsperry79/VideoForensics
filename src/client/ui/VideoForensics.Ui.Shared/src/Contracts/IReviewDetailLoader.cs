@@ -1,7 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Contracts;
 

@@ -332,7 +332,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         Assert.True(cut.Find("[data-testid='review-hold-confirm']").HasAttribute("disabled"));
 
         // Act
-        await PickReasonAsync(cut, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.LegalHold);
         await ClickAsync(cut, "[data-testid='review-hold-confirm']");
 
         // Assert
@@ -340,7 +340,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
             r => r.PlaceAsync(_clipId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()),
             Times.Once);
         Assert.Equal(L["HoldPlaced"].Value, MessageText(cut));
-        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReason>>());
+        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
         _ = Assert.Single(cut.FindAll("[data-testid='review-action-release']"));
     }
 
@@ -355,7 +355,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
             .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "Other: camera was moved", CreatedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.Other);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.Other);
 
         // Assert: Other alone is not enough
         Assert.True(cut.Find("[data-testid='review-hold-confirm']").HasAttribute("disabled"));
@@ -388,9 +388,9 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Act
         await ClickAsync(cut, "[data-testid='review-action-release']");
-        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReason>>());
-        _ = Assert.Single(cut.FindComponents<ReasonPicker<EvidenceReleaseReason>>());
-        await PickReasonAsync(cut, EvidenceReleaseReason.ResolvedNoLongerNeeded);
+        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
+        _ = Assert.Single(cut.FindComponents<ReasonPicker<EvidenceReleaseReasonDto>>());
+        await PickReasonAsync(cut, EvidenceReleaseReasonDto.ResolvedNoLongerNeeded);
         await ClickAsync(cut, "[data-testid='review-hold-confirm']");
 
         // Assert
@@ -409,13 +409,13 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         SelectClipAtCursor();
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.Other);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.Other);
 
         // Act
         await ClickAsync(cut, "[data-testid='review-hold-cancel']");
 
         // Assert
-        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReason>>());
+        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
         LegalHoldRepositoryMock.Verify(
             r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -492,7 +492,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
             .ThrowsAsync(new InvalidOperationException("boom"));
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.LegalHold);
 
         // Act
         await ClickAsync(cut, "[data-testid='review-hold-confirm']");

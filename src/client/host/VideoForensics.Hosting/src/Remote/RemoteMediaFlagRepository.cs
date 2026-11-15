@@ -158,7 +158,8 @@ namespace VideoForensics.Client.Hosting.Remote
             {
                 case HttpStatusCode.Conflict:
                     FlagStatusConflictDto? body = await response.Content.ReadFromJsonAsync<FlagStatusConflictDto>(JsonOptions, ct);
-                    throw (body ?? new FlagStatusConflictDto(expectedStatus, expectedStatus, null, null)).ToDomain(flagId);
+                    FlagStatusConflictDto conflict = body ?? new FlagStatusConflictDto(expectedStatus, expectedStatus, null, null);
+                    throw new VideoForensics.Core.Api.Contracts.FlagStatusConflictException(flagId, conflict.ExpectedStatus, conflict.ActualStatus, conflict.ReviewedBy, conflict.ReviewedAtUtc);
                 case HttpStatusCode.NotFound:
                     throw new KeyNotFoundException("Media flag not found.");
                 case HttpStatusCode.BadRequest:

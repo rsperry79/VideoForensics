@@ -1,10 +1,8 @@
 @page "/settings/operators/{Id:guid}"
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
-@using Operator = VideoForensics.Data.Common.Entities.Operator
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
@@ -105,8 +103,8 @@ else
         <div class="mb-3">
             <label class="form-label">@L["TwoFactorOverride"]</label>
             <div class="d-flex gap-2 align-items-center">
-                <SfDropDownList TValue="TwoFactorRequirementOverride" TItem="TwoFactorRequirementOverride" @bind-Value="_twoFactorOverrideInput" DataSource="@(Enum.GetValues<TwoFactorRequirementOverride>())" Enabled="@(!_isSavingTwoFactorOverride)" Style="max-width: 200px;">
-                    <DropDownListEvents TValue="TwoFactorRequirementOverride" TItem="TwoFactorRequirementOverride" ValueChange="@(async (ChangeEventArgs<TwoFactorRequirementOverride, TwoFactorRequirementOverride> args) => await SaveTwoFactorOverrideAsync(args.Value))" />
+                <SfDropDownList TValue="TwoFactorRequirementOverrideDto" TItem="TwoFactorRequirementOverrideDto" @bind-Value="_twoFactorOverrideInput" DataSource="@(Enum.GetValues<TwoFactorRequirementOverrideDto>())" Enabled="@(!_isSavingTwoFactorOverride)" Style="max-width: 200px;">
+                    <DropDownListEvents TValue="TwoFactorRequirementOverrideDto" TItem="TwoFactorRequirementOverrideDto" ValueChange="@(async (ChangeEventArgs<TwoFactorRequirementOverrideDto, TwoFactorRequirementOverrideDto> args) => await SaveTwoFactorOverrideAsync(args.Value))" />
                 </SfDropDownList>
             </div>
         </div>
@@ -214,7 +212,7 @@ else
 
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private bool _isLoading = true;
-    private Operator? _operator;
+    private OperatorDto? _operator;
     private string? _authError;
     private string? _loadError;
     private string? _actionError;
@@ -226,7 +224,7 @@ else
     private string? _tempPassword;
 
     // Two-factor override state
-    private TwoFactorRequirementOverride _twoFactorOverrideInput;
+    private TwoFactorRequirementOverrideDto _twoFactorOverrideInput;
     private bool _isSavingTwoFactorOverride;
     private bool _isSavingPasskeyRequired;
 
@@ -341,7 +339,7 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            _operator = await response.Content.ReadFromJsonAsync<Operator>(JsonOptions);
+            _operator = await response.Content.ReadFromJsonAsync<OperatorDto>(JsonOptions);
             if (_operator is not null)
             {
                 _displayNameInput = _operator.DisplayName;
@@ -549,7 +547,7 @@ else
         }
     }
 
-    private async Task SaveTwoFactorOverrideAsync(TwoFactorRequirementOverride newOverride)
+    private async Task SaveTwoFactorOverrideAsync(TwoFactorRequirementOverrideDto newOverride)
     {
         if (_operator is null)
         {

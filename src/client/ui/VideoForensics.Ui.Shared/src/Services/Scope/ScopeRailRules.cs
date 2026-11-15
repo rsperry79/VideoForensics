@@ -1,7 +1,6 @@
 using System.Globalization;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 

@@ -5,10 +5,8 @@ using Microsoft.Extensions.Localization;
 using System.Net.Http.Json;
 
 using VideoForensics.Client.Ui.Shared.Services;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Api.Contracts.Repositories;
-using VideoForensics.Data.Common.Entities;
 
 using ProviderAccountEntity = VideoForensics.Core.Api.Contracts.ProviderAccountDto;
 

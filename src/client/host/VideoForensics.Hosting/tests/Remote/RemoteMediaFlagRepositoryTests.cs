@@ -208,12 +208,12 @@ public class RemoteMediaFlagRepositoryTests
         (RemoteMediaFlagRepository repo, _) = Create(_ => Json(
             new FlagStatusConflictDto("Unreviewed", "Kept", "reviewer-7", reviewedAt), HttpStatusCode.Conflict));
 
-        FlagStatusConflictException ex = await Assert.ThrowsAsync<FlagStatusConflictException>(() =>
+        VideoForensics.Core.Api.Contracts.FlagStatusConflictException ex = await Assert.ThrowsAsync<VideoForensics.Core.Api.Contracts.FlagStatusConflictException>(() =>
             repo.UpdateStatusAsync(FlagId, "Unreviewed", "Dismissed", "reason", "op", CancellationToken.None));
 
         Assert.Equal(FlagId, ex.FlagId);
-        Assert.Equal(MediaFlagStatus.Unreviewed, ex.ExpectedStatus);
-        Assert.Equal(MediaFlagStatus.Kept, ex.ActualStatus);
+        Assert.Equal("Unreviewed", ex.ExpectedStatus);
+        Assert.Equal("Kept", ex.ActualStatus);
         Assert.Equal("reviewer-7", ex.ReviewedBy);
         Assert.Equal(reviewedAt, ex.ReviewedAtUtc);
     }
@@ -255,11 +255,11 @@ public class RemoteMediaFlagRepositoryTests
         (RemoteMediaFlagRepository repo, _) = Create(_ => Json(
             new FlagStatusConflictDto("Dismissed", "Unreviewed", null, null), HttpStatusCode.Conflict));
 
-        FlagStatusConflictException ex = await Assert.ThrowsAsync<FlagStatusConflictException>(() =>
+        VideoForensics.Core.Api.Contracts.FlagStatusConflictException ex = await Assert.ThrowsAsync<VideoForensics.Core.Api.Contracts.FlagStatusConflictException>(() =>
             repo.ReopenAsync(FlagId, "op", "reason", CancellationToken.None));
 
-        Assert.Equal(MediaFlagStatus.Dismissed, ex.ExpectedStatus);
-        Assert.Equal(MediaFlagStatus.Unreviewed, ex.ActualStatus);
+        Assert.Equal("Dismissed", ex.ExpectedStatus);
+        Assert.Equal("Unreviewed", ex.ActualStatus);
         Assert.Null(ex.ReviewedBy);
     }
 

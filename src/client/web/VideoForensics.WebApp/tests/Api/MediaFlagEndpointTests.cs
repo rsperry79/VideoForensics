@@ -247,7 +247,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             DateTime reviewedAt = From.AddHours(2);
             _ = flags.Setup(f => f.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagStatus>(), It.IsAny<MediaFlagStatus>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new FlagStatusConflictException(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "reviewer-2", reviewedAt));
+                .ThrowsAsync(new VideoForensics.Data.Common.Contracts.FlagStatusConflictException(FlagId, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "reviewer-2", reviewedAt));
 
             IResult result = await MediaFlagEndpoints.SetStatusAsync(
                 FlagId, new SetFlagStatusRequestDto("Unreviewed", "Kept", null), flags.Object, notifier.Object, Context(OperatorId), CancellationToken.None);
@@ -349,7 +349,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var flags = new Mock<IMediaFlagWriteRepository>();
             var notifier = new Mock<IMediaFlagChangeNotifier>();
             _ = flags.Setup(f => f.ReopenAsync(FlagId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new FlagStatusConflictException(FlagId, MediaFlagStatus.Dismissed, MediaFlagStatus.Kept, null, null));
+                .ThrowsAsync(new VideoForensics.Data.Common.Contracts.FlagStatusConflictException(FlagId, MediaFlagStatus.Dismissed, MediaFlagStatus.Kept, null, null));
 
             IResult result = await MediaFlagEndpoints.ReopenAsync(
                 FlagId, new ReopenFlagRequestDto("reason"), flags.Object, notifier.Object, Context(OperatorId), CancellationToken.None);

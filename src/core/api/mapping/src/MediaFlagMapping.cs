@@ -93,7 +93,7 @@ namespace VideoForensics.Client.Hosting.Signal
             };
         }
 
-        public static FlagStatusConflictDto ToDto(this FlagStatusConflictException ex)
+        public static FlagStatusConflictDto ToDto(this VideoForensics.Data.Common.Contracts.FlagStatusConflictException ex)
         {
             ArgumentNullException.ThrowIfNull(ex);
             return new FlagStatusConflictDto(
@@ -104,10 +104,10 @@ namespace VideoForensics.Client.Hosting.Signal
         }
 
         /// <summary>Rebuilds the conflict on the client, using the flag id the caller asked about.</summary>
-        public static FlagStatusConflictException ToDomain(this FlagStatusConflictDto dto, Guid flagId)
+        public static VideoForensics.Data.Common.Contracts.FlagStatusConflictException ToDomain(this FlagStatusConflictDto dto, Guid flagId)
         {
             ArgumentNullException.ThrowIfNull(dto);
-            return new FlagStatusConflictException(
+            return new VideoForensics.Data.Common.Contracts.FlagStatusConflictException(
                 flagId,
                 ParseEnum<MediaFlagStatus>(dto.ExpectedStatus),
                 ParseEnum<MediaFlagStatus>(dto.ActualStatus),

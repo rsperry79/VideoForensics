@@ -7,7 +7,6 @@ using Syncfusion.Blazor.Layouts;
 
 using VideoForensics.Client.Ui.Shared.Extensions;
 using VideoForensics.Client.Ui.Shared.Services.Time;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Layout

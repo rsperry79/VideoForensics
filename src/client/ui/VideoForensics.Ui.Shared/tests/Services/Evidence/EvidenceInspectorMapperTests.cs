@@ -28,7 +28,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = null
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
@@ -80,7 +80,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = null
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
@@ -123,7 +123,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -167,7 +167,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -212,7 +212,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -259,7 +259,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         };
         var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "Active Investigation", CreatedBy = "admin" }.ToDto();
         var holds = new Dictionary<Guid, LegalHoldDto> { { mediaId, hold } };
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -300,7 +300,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -328,7 +328,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = null
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
@@ -370,7 +370,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
@@ -411,7 +411,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -454,7 +454,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media.ToDto()
         };
         var holds = new Dictionary<Guid, LegalHoldDto>();
-        var integrity = new List<IntegrityRecord>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -590,9 +590,9 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Event = null,
             Media = media.ToDto()
         };
-        var integrity = new List<IntegrityRecord>
+        var integrity = new List<IntegrityRecordDto>
         {
-            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = true, VerifiedBy = "system" }
+            new(Guid.NewGuid(), mediaId, "abc", DateTime.UtcNow, true, null, "system")
         };
 
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHoldDto>(), integrity);
@@ -628,9 +628,9 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Event = null,
             Media = media.ToDto()
         };
-        var integrity = new List<IntegrityRecord>
+        var integrity = new List<IntegrityRecordDto>
         {
-            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = false, VerifiedBy = "system" }
+            new(Guid.NewGuid(), mediaId, "abc", DateTime.UtcNow, false, null, "system")
         };
 
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHoldDto>(), integrity);

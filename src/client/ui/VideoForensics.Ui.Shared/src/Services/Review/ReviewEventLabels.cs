@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Localization;
 
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;

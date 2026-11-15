@@ -234,9 +234,9 @@ public class EvidenceActions_DetermineIntegrityStatus_Tests
     public void DetermineIntegrityStatus_RecordFailed_ReturnsIntegrityFailed()
     {
         var mediaId = Guid.NewGuid();
-        var records = new List<IntegrityRecord>
+        var records = new List<IntegrityRecordDto>
         {
-            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "x", VerifiedAtUtc = DateTime.UtcNow, Passed = false, VerifiedBy = "system" }
+            new(Guid.NewGuid(), mediaId, "x", DateTime.UtcNow, false, null, "system")
         };
 
         (string? text, string? color) = EvidenceActions.DetermineIntegrityStatus(mediaId, records);
@@ -249,9 +249,9 @@ public class EvidenceActions_DetermineIntegrityStatus_Tests
     public void DetermineIntegrityStatus_RecordPassed_ReturnsVerified()
     {
         var mediaId = Guid.NewGuid();
-        var records = new List<IntegrityRecord>
+        var records = new List<IntegrityRecordDto>
         {
-            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "x", VerifiedAtUtc = DateTime.UtcNow, Passed = true, VerifiedBy = "system" }
+            new(Guid.NewGuid(), mediaId, "x", DateTime.UtcNow, true, null, "system")
         };
 
         (string? text, string? color) = EvidenceActions.DetermineIntegrityStatus(mediaId, records);

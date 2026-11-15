@@ -9,10 +9,8 @@
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
-@using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Api.Contracts.Repositories
-@using VideoForensics.Data.Common.Entities
 @implements IDisposable
 @inject ReviewSelection Selection
 @inject ReviewEvidenceTagger Tagger
@@ -54,11 +52,11 @@
                         <div class="mb-2">
                             @if (_holdMode == HoldMode.Place)
                             {
-                                <ReasonPicker TReason="EvidenceHoldReason" OtherValue="EvidenceHoldReason.Other" @bind-Value="_placeHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
+                                <ReasonPicker TReason="EvidenceHoldReasonDto" OtherValue="EvidenceHoldReasonDto.Other" @bind-Value="_placeHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
                             }
                             else
                             {
-                                <ReasonPicker TReason="EvidenceReleaseReason" OtherValue="EvidenceReleaseReason.Other" @bind-Value="_releaseHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
+                                <ReasonPicker TReason="EvidenceReleaseReasonDto" OtherValue="EvidenceReleaseReasonDto.Other" @bind-Value="_releaseHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
                             }
                         </div>
                         <div class="d-flex justify-content-end gap-2">
@@ -104,8 +102,8 @@
     }
 
     private HoldMode _holdMode = HoldMode.None;
-    private EvidenceHoldReason? _placeHoldReason;
-    private EvidenceReleaseReason? _releaseHoldReason;
+    private EvidenceHoldReasonDto? _placeHoldReason;
+    private EvidenceReleaseReasonDto? _releaseHoldReason;
     private string? _holdNote;
     private bool _holdReasonValid;
     private Guid? _activeHoldId;
@@ -341,8 +339,8 @@
     {
         return _holdMode switch
         {
-            HoldMode.Place when _placeHoldReason is { } placed => ReasonText.Build(placed, EvidenceHoldReason.Other, _holdNote),
-            HoldMode.Release when _releaseHoldReason is { } released => ReasonText.Build(released, EvidenceReleaseReason.Other, _holdNote),
+            HoldMode.Place when _placeHoldReason is { } placed => ReasonText.Build(placed, EvidenceHoldReasonDto.Other, _holdNote),
+            HoldMode.Release when _releaseHoldReason is { } released => ReasonText.Build(released, EvidenceReleaseReasonDto.Other, _holdNote),
             _ => null,
         };
     }

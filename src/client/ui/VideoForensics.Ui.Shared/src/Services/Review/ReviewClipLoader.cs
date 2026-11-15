@@ -1,7 +1,5 @@
 using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;

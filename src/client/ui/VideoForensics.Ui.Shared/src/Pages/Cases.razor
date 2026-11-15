@@ -1,10 +1,8 @@
 @page "/cases"
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Api.Contracts.Repositories
-@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Scope
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
@@ -56,11 +54,11 @@ else
               OnRowSelected="@OnCaseSelected"
               ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = Zone.Format(c.CreatedAtUtc, "u"), Updated = Zone.Format(c.UpdatedAtUtc, "u") }))">
     <Columns>
-        <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="@L["ColumnCaseNumber"]" Width="120"></GridColumn>
-        <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="@L["ColumnTitle"]" Width="250"></GridColumn>
-        <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="@L["ColumnStatus"]" Width="100"></GridColumn>
-        <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCaseDto)!.CreatedAtUtc)" Format="u" /></Template></GridColumn>
-        <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCaseDto)!.UpdatedAtUtc)" Format="u" /></Template></GridColumn>
+        <GridColumn Field="@nameof(ForensicCaseDto.CaseNumber)" HeaderText="@L["ColumnCaseNumber"]" Width="120"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCaseDto.Title)" HeaderText="@L["ColumnTitle"]" Width="250"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCaseDto.Status)" HeaderText="@L["ColumnStatus"]" Width="100"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCaseDto.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCaseDto)!.CreatedAtUtc)" Format="u" /></Template></GridColumn>
+        <GridColumn Field="@nameof(ForensicCaseDto.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCaseDto)!.UpdatedAtUtc)" Format="u" /></Template></GridColumn>
     </Columns>
     </ForensicGrid>
 }

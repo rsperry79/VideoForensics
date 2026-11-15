@@ -1,7 +1,6 @@
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
@@ -14,7 +13,7 @@ public static class EvidenceInspectorMapper
     public static InspectorModel ToInspector(
         EvidenceItem item,
         IReadOnlyDictionary<Guid, LegalHoldDto> holds,
-        IReadOnlyList<IntegrityRecord> integrity,
+        IReadOnlyList<IntegrityRecordDto> integrity,
         UserTimeZone? zone = null)
     {
         UserTimeZone clock = zone ?? UserTimeZone.Unavailable;
@@ -100,7 +99,7 @@ public static class EvidenceInspectorMapper
                 "IntegrityVerified",
                 item.Media.IntegrityVerified.ToString()));
 
-            // Computed status (from the freshest IntegrityRecord for this media item), same as the
+            // Computed status (from the freshest IntegrityRecordDto for this media item), same as the
             // Events grid's "Integrity" column used to show - distinct from the raw
             // IntegrityVerified/LastVerifiedAtUtc entity fields above.
             (string? integrityStatusText, string _) = EvidenceActions.DetermineIntegrityStatus(item.Media.Id, integrity);

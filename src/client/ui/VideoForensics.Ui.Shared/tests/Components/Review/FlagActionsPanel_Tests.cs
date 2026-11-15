@@ -154,10 +154,10 @@ public class FlagActionsPanel_Tests : BunitContext
     }
 
     /// <summary>Chooses a reason in the dismiss reason dropdown, as the operator's pick does.</summary>
-    private static async Task PickReasonAsync(IRenderedComponent<FlagActionsPanel> cut, MediaFlagDismissReason reason)
+    private static async Task PickReasonAsync(IRenderedComponent<FlagActionsPanel> cut, MediaFlagDismissReasonDto reason)
     {
-        IRenderedComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>> dropdown =
-            cut.FindComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>>();
+        IRenderedComponent<SfDropDownList<MediaFlagDismissReasonDto?, ReasonOption<MediaFlagDismissReasonDto>>> dropdown =
+            cut.FindComponent<SfDropDownList<MediaFlagDismissReasonDto?, ReasonOption<MediaFlagDismissReasonDto>>>();
         await cut.InvokeAsync(() => dropdown.Instance.ValueChanged.InvokeAsync(reason));
     }
 
@@ -213,7 +213,7 @@ public class FlagActionsPanel_Tests : BunitContext
         Assert.True(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
 
         // Act: choosing a reason enables Dismiss
-        await PickReasonAsync(cut, MediaFlagDismissReason.Duplicate);
+        await PickReasonAsync(cut, MediaFlagDismissReasonDto.Duplicate);
         Assert.False(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
 
         await ClickAsync(cut, "[data-testid='flag-dismiss']");
@@ -236,7 +236,7 @@ public class FlagActionsPanel_Tests : BunitContext
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
         // Act: Other alone is not enough
-        await PickReasonAsync(cut, MediaFlagDismissReason.Other);
+        await PickReasonAsync(cut, MediaFlagDismissReasonDto.Other);
 
         // Assert
         Assert.True(cut.Find("[data-testid='flag-dismiss']").HasAttribute("disabled"));
@@ -260,7 +260,7 @@ public class FlagActionsPanel_Tests : BunitContext
         var changes = new List<MediaFlagDto>();
         _ = _repository
             .Setup(r => r.UpdateStatusAsync(flag.Id, "Unreviewed", "Kept", null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new FlagStatusConflictException(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Dismissed, "someone-else", FixedNowUtc));
+            .ThrowsAsync(new VideoForensics.Core.Api.Contracts.FlagStatusConflictException(flag.Id, "Unreviewed", "Dismissed", "someone-else", FixedNowUtc));
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(flag, changes);
 
         // Act
@@ -281,7 +281,7 @@ public class FlagActionsPanel_Tests : BunitContext
         IRenderedComponent<FlagActionsPanel> cut = RenderPanel(Flag(), changes);
 
         // Act
-        await PickReasonAsync(cut, MediaFlagDismissReason.Duplicate);
+        await PickReasonAsync(cut, MediaFlagDismissReasonDto.Duplicate);
 
         // Assert
         Assert.True(cut.Find("[data-testid='flag-keep']").HasAttribute("disabled"));
