@@ -46,6 +46,10 @@
                     <span>@L["DevicesCount"] @_exportResult.DeviceCount</span>
                     <span>@L["EventsCount"] @_exportResult.EventCount</span>
                     <span>@L["MediaItemsCount"] @_exportResult.MediaItemCount</span>
+                    @if (!string.IsNullOrEmpty(_exportResult.ArchiveSha256Hash))
+                    {
+                        <span>SHA-256: @_exportResult.ArchiveSha256Hash</span>
+                    }
                 </div>
             }
             else
@@ -135,29 +139,14 @@
 
             if (_exportResult.Success && _exportResult.ArchivePath is not null)
             {
-                // Write SHA-256 sidecar file
-                string? hashFilePath = null;
-                if (!string.IsNullOrEmpty(_exportResult.ArchiveSha256Hash))
-                {
-                    hashFilePath = _exportResult.ArchivePath + ".sha256.txt";
-                    await File.WriteAllTextAsync(hashFilePath, _exportResult.ArchiveSha256Hash, CancellationToken.None);
-                }
-
+                // Only the archive is downloaded. A second automatic download is blocked by the browser, so the
+                // SHA-256 is shown on the page instead of saved as a sidecar file.
                 try
                 {
                     await FileDialogService.SaveExportedArchiveAsync(
                         _exportResult.ArchivePath,
                         Path.GetFileName(_exportResult.ArchivePath),
                         CancellationToken.None);
-
-                    // Also save the hash sidecar file
-                    if (hashFilePath is not null)
-                    {
-                        await FileDialogService.SaveExportedArchiveAsync(
-                            hashFilePath,
-                            Path.GetFileName(hashFilePath),
-                            CancellationToken.None);
-                    }
                 }
                 catch (Exception ex)
                 {
