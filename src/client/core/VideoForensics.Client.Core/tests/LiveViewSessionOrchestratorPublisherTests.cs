@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -103,7 +104,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Assert
             _publisherMock.Verify(p => p.PublishSessionChangedAsync(
-                It.Is<LiveViewSession>(s => s.Id == result.Id && s.State == LiveViewSessionState.Starting),
+                It.Is<LiveViewSessionDto>(s => s.Id == result.Id && s.State == nameof(LiveViewSessionState.Starting)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -121,7 +122,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession?)null);
             _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = _publisherMock.Setup(p => p.PublishSessionChangedAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _publisherMock.Setup(p => p.PublishSessionChangedAsync(It.IsAny<LiveViewSessionDto>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("hub unavailable"));
 
             var spMock = new Mock<IServiceProvider>();
@@ -152,7 +153,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Assert
             _publisherMock.Verify(p => p.PublishSessionChangedAsync(
-                It.Is<LiveViewSession>(s => s.Id == sessionId && s.State == LiveViewSessionState.Sustained),
+                It.Is<LiveViewSessionDto>(s => s.Id == sessionId && s.State == nameof(LiveViewSessionState.Sustained)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -173,7 +174,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Assert
             _publisherMock.Verify(p => p.PublishSessionChangedAsync(
-                It.Is<LiveViewSession>(s => s.Id == sessionId && s.State == LiveViewSessionState.Active),
+                It.Is<LiveViewSessionDto>(s => s.Id == sessionId && s.State == nameof(LiveViewSessionState.Active)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -192,7 +193,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Assert
             _publisherMock.Verify(p => p.PublishSessionChangedAsync(
-                It.Is<LiveViewSession>(s => s.Id == sessionId && s.State == LiveViewSessionState.Stopped),
+                It.Is<LiveViewSessionDto>(s => s.Id == sessionId && s.State == nameof(LiveViewSessionState.Stopped)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -203,7 +204,7 @@ namespace VideoForensics.Client.Core.Tests
             var sessionId = Guid.NewGuid();
             _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ActiveSession(sessionId));
-            _ = _publisherMock.Setup(p => p.PublishSessionChangedAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _publisherMock.Setup(p => p.PublishSessionChangedAsync(It.IsAny<LiveViewSessionDto>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("hub unavailable"));
 
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
@@ -231,7 +232,7 @@ namespace VideoForensics.Client.Core.Tests
             await orchestrator.ExtendAsync(sessionId, CancellationToken.None);
 
             // Assert
-            _publisherMock.Verify(p => p.PublishSessionChangedAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()), Times.Never);
+            _publisherMock.Verify(p => p.PublishSessionChangedAsync(It.IsAny<LiveViewSessionDto>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

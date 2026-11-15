@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Threading.Channels;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -177,7 +178,7 @@ namespace VideoForensics.Client.Core.Tools
         {
             try
             {
-                await _telemetryPublisher.PublishSessionChangedAsync(session, ct);
+                await _telemetryPublisher.PublishSessionChangedAsync(session.ToDto(), ct);
             }
             catch (Exception ex)
             {
@@ -340,7 +341,7 @@ namespace VideoForensics.Client.Core.Tools
         {
             try
             {
-                await _telemetryPublisher.PublishSampleAsync(sample, ct);
+                await _telemetryPublisher.PublishSampleAsync(sample.ToDto(), ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Forensics.Implementations;
 using VideoForensics.Core.Forensics.Interfaces;
@@ -212,7 +213,7 @@ namespace VideoForensics.Client.Core.Tests
         public async Task LiveViewSessionOrchestrator_PublishThrows_StillPersists()
         {
             // Arrange
-            _ = _publisherMock.Setup(p => p.PublishSampleAsync(It.IsAny<LiveViewTelemetrySample>(), It.IsAny<CancellationToken>()))
+            _ = _publisherMock.Setup(p => p.PublishSampleAsync(It.IsAny<LiveViewTelemetrySampleDto>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("transport down"));
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
             LiveViewSession session = await StartSessionAsync(orchestrator);
