@@ -832,8 +832,6 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaStillCaptureService, Remote.RemoteMediaStillCaptureService>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
             // IAdminOperatorService/ISecurityEventsService live in VideoForensics.Client.Common.Contracts,
             // not VideoForensics.Client.Hosting.Contracts (the "Contracts." shorthand above) - unlike the lockout/
             // two-factor policy services, these are also injected directly by Ui.Shared Razor pages (the
