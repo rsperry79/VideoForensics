@@ -91,66 +91,6 @@ namespace VideoForensics.Client.WebApp.Api
             .RequireRateLimiting("media")
             .WithSummary("Export database backup")
             .WithDescription("Exports the entire database (accounts, locations, devices, events, media metadata) as a JSON+zip backup archive. Requires step-up authentication. This operation is sensitive as it creates a complete database snapshot.");
-
-            _ = group.MapPost("/import", async (
-                IFormFile backupFile,
-                [FromForm] string mediaRootPath,
-                IBackupImportService importService,
-                ISecurityAuditLogger auditLog,
-                INetworkTierResolver tierResolver,
-                HttpContext context,
-                CancellationToken ct) =>
-            {
-                // Save uploaded file to temporary location
-                string tempBackupPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".zip");
-                try
-                {
-                    using (FileStream fileStream = System.IO.File.Create(tempBackupPath))
-                    {
-                        await backupFile.CopyToAsync(fileStream, ct);
-                    }
-
-                    BackupImportResult result = await importService.ImportBackupAsync(
-                        tempBackupPath,
-                        mediaRootPath,
-                        ct);
-
-                    string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
-                    string description = "Database backup import";
-                    await auditLog.LogAsync(
-                        SecurityAuditEventTypes.BackupImported,
-                        Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
-                        null,
-                        tierResolver.ResolveClientIp(context),
-                        description,
-                        isUrgent: true,
-                        ct);
-
-                    return Results.Ok(result.ToDto());
-                }
-                finally
-                {
-                    // Clean up temporary file
-                    if (System.IO.File.Exists(tempBackupPath))
-                    {
-                        try
-                        {
-                            System.IO.File.Delete(tempBackupPath);
-                        }
-                        catch
-                        {
-                            // Ignore cleanup errors
-                        }
-                    }
-                }
-            })
-            .AddEndpointFilter<MaintenanceEndpointFilter>()
-            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
-            .AddEndpointFilter<StepUpEndpointFilter>()
-            .RequireRateLimiting("media")
-            .Accepts<IFormFile>("multipart/form-data")
-            .WithSummary("Import database backup")
-            .WithDescription("Imports a backup archive produced by the export endpoint back into the database. Skips duplicate records and orphaned entries. Media files are rehomed under the specified mediaRootPath and re-verified. Requires step-up authentication. This operation overwrites/merges database contents and is sensitive.");
         }
     }
 
