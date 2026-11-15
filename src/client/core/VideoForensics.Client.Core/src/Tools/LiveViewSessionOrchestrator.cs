@@ -6,6 +6,7 @@ using System.Threading.Channels;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -480,6 +481,18 @@ namespace VideoForensics.Client.Core.Tools
 
             return session;
         }
+
+        async Task<LiveViewSessionDto> ILiveViewSessionService.StartAsync(Guid deviceId, LiveViewTriggerReasonDto reason, Guid? operatorId, CancellationToken ct) =>
+            (await StartAsync(deviceId, reason.ToDomain(), operatorId, ct)).ToDto();
+
+        async Task<LiveViewSessionDto> ILiveViewSessionService.PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct) =>
+            (await PromoteToSustainedAsync(sessionId, reason, ct)).ToDto();
+
+        async Task<LiveViewSessionDto> ILiveViewSessionService.DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct) =>
+            (await DemoteFromSustainedAsync(sessionId, ct)).ToDto();
+
+        async Task<LiveViewSessionDto?> ILiveViewSessionService.GetActiveSessionAsync(Guid deviceId, CancellationToken ct) =>
+            (await GetActiveSessionAsync(deviceId, ct))?.ToDto();
 
         public async Task ExtendAsync(Guid sessionId, CancellationToken ct)
         {

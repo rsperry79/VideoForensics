@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -144,7 +145,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 try
                 {
                     // Skip if device already has an active session (any reason)
-                    LiveViewSession? activeSession = await sessionService.GetActiveSessionAsync(deviceId, ct);
+                    LiveViewSessionDto? activeSession = await sessionService.GetActiveSessionAsync(deviceId, ct);
                     if (activeSession != null)
                     {
                         _logger.LogDebug("Bitrate calibration tick: device {DeviceName} has active session; skipping calibration", device.Name);
@@ -163,7 +164,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
 
                     // Start a calibration session
-                    _ = await sessionService.StartAsync(deviceId, LiveViewTriggerReason.Calibration, null, ct);
+                    _ = await sessionService.StartAsync(deviceId, LiveViewTriggerReasonDto.Calibration, null, ct);
                     _logger.LogDebug("Bitrate calibration tick: started calibration session for device {DeviceName}", device.Name);
                 }
                 catch (Exception ex)

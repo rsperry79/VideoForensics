@@ -22,14 +22,14 @@ namespace VideoForensics.Core.Api.Contracts
         string TriggerReason,
         string State,
         DateTime StartedAtUtc,
-        DateTime? EndedAtUtc,
-        DateTime LastExtendedAtUtc,
-        bool IsSustained,
-        DateTime? SustainedSinceUtc,
-        string? PromotionReason,
-        Guid? OperatorId,
-        string? StopReason,
-        string? ProviderSessionRef
+        DateTime? EndedAtUtc = null,
+        DateTime LastExtendedAtUtc = default,
+        bool IsSustained = false,
+        DateTime? SustainedSinceUtc = null,
+        string? PromotionReason = null,
+        Guid? OperatorId = null,
+        string? StopReason = null,
+        string? ProviderSessionRef = null
     );
 
     /// <summary>

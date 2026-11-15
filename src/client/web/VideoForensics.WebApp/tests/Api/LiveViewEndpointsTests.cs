@@ -111,18 +111,22 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             };
         }
 
-        private static LiveViewSession SampleSession(LiveViewSessionState state = LiveViewSessionState.Active)
+        private static LiveViewSessionDto SampleSession(LiveViewSessionState state = LiveViewSessionState.Active)
         {
-            return new()
-            {
-                Id = SessionId,
-                DeviceId = DeviceId,
-                TriggerReason = LiveViewTriggerReason.Manual,
-                State = state,
-                StartedAtUtc = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
-                LastExtendedAtUtc = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
-                OperatorId = OperatorId
-            };
+            return new(
+                Id: SessionId,
+                DeviceId: DeviceId,
+                TriggerReason: "Manual",
+                State: state.ToString(),
+                StartedAtUtc: new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
+                EndedAtUtc: null,
+                LastExtendedAtUtc: new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
+                IsSustained: false,
+                SustainedSinceUtc: null,
+                PromotionReason: null,
+                OperatorId: OperatorId,
+                StopReason: null,
+                ProviderSessionRef: null);
         }
 
         private static HttpRequestMessage Req(HttpMethod method, string url, string? role = null, bool anonymous = false, bool noOperator = false, HttpContent? content = null)
@@ -164,7 +168,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task Start_ValidRequest_Returns200WithSessionDto()
         {
             await using LiveViewHost host = await StartAsync();
-            _ = host.Service.Setup(s => s.StartAsync(DeviceId, LiveViewTriggerReason.Manual, OperatorId, It.IsAny<CancellationToken>()))
+            _ = host.Service.Setup(s => s.StartAsync(DeviceId, LiveViewTriggerReasonDto.Manual, OperatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SampleSession());
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody()));
@@ -175,7 +179,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Assert.Equal(SessionId, dto!.Id);
             Assert.Equal("Manual", dto.TriggerReason);
             Assert.Equal("Active", dto.State);
-            host.Service.Verify(s => s.StartAsync(DeviceId, LiveViewTriggerReason.Manual, OperatorId, It.IsAny<CancellationToken>()), Times.Once);
+            host.Service.Verify(s => s.StartAsync(DeviceId, LiveViewTriggerReasonDto.Manual, OperatorId, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -186,7 +190,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody("NotAReason")));
 
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
-            host.Service.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            host.Service.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -207,7 +211,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", noOperator: true, content: StartBody()));
 
             Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
-            host.Service.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            host.Service.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -226,7 +230,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task Start_ServiceNotFound_Returns404()
         {
             await using LiveViewHost host = await StartAsync();
-            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new KeyNotFoundException());
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody()));
@@ -238,7 +242,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task Start_ServiceInvalidOperation_Returns409()
         {
             await using LiveViewHost host = await StartAsync();
-            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Live view is disabled."));
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody()));
@@ -250,7 +254,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task Start_ServiceNotSupported_Returns501()
         {
             await using LiveViewHost host = await StartAsync();
-            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new NotSupportedException());
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody()));
@@ -334,7 +338,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task GetActive_NoSession_Returns404()
         {
             await using LiveViewHost host = await StartAsync();
-            _ = host.Service.Setup(s => s.GetActiveSessionAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((LiveViewSession?)null);
+            _ = host.Service.Setup(s => s.GetActiveSessionAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((LiveViewSessionDto?)null);
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Get, ActiveUrl, "ReadOnly"));
 
@@ -375,7 +379,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "ReadOnly", content: StartBody()));
 
             Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
-            host.Service.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            host.Service.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

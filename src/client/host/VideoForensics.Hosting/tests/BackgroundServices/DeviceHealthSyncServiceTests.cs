@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -569,16 +570,16 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             // No active session
             _ = liveViewService.Setup(l => l.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((LiveViewSession?)null);
+                .ReturnsAsync((LiveViewSessionDto?)null);
 
-            var newSession = new LiveViewSession { Id = Guid.NewGuid(), DeviceId = device.Id, TriggerReason = LiveViewTriggerReason.JammingConfirmed };
-            _ = liveViewService.Setup(l => l.StartAsync(device.Id, LiveViewTriggerReason.JammingConfirmed, null, It.IsAny<CancellationToken>()))
+            var newSession = new LiveViewSessionDto(Id: Guid.NewGuid(), DeviceId: device.Id, TriggerReason: "JammingConfirmed", State: "Starting", StartedAtUtc: DateTime.UtcNow, LastExtendedAtUtc: DateTime.UtcNow);
+            _ = liveViewService.Setup(l => l.StartAsync(device.Id, LiveViewTriggerReasonDto.JammingConfirmed, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(newSession);
 
             await service.RunElevatedTickAsync(CancellationToken.None);
 
             liveViewService.Verify(
-                l => l.StartAsync(device.Id, LiveViewTriggerReason.JammingConfirmed, null, It.IsAny<CancellationToken>()),
+                l => l.StartAsync(device.Id, LiveViewTriggerReasonDto.JammingConfirmed, null, It.IsAny<CancellationToken>()),
                 Times.Once);
             Assert.False(elevatedTracker.IsElevated(device.Id));
         }
@@ -656,11 +657,11 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     new("ring-123", Connected: true, BatteryPercentage: 87m, Rssi: -60, WifiName: "HomeWifi", FirmwareVersion: "1.2.3")
                 ]);
 
-            var activeSession = new LiveViewSession { Id = Guid.NewGuid(), DeviceId = device.Id, TriggerReason = LiveViewTriggerReason.JammingSuspected };
+            var activeSession = new LiveViewSessionDto(Id: Guid.NewGuid(), DeviceId: device.Id, TriggerReason: "JammingSuspected", State: "Active", StartedAtUtc: DateTime.UtcNow, LastExtendedAtUtc: DateTime.UtcNow);
             _ = liveViewService.Setup(l => l.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(activeSession);
 
-            var promotedSession = new LiveViewSession { Id = activeSession.Id, DeviceId = device.Id, IsSustained = true };
+            var promotedSession = new LiveViewSessionDto(Id: activeSession.Id, DeviceId: device.Id, TriggerReason: "JammingSuspected", State: "Active", StartedAtUtc: DateTime.UtcNow, LastExtendedAtUtc: DateTime.UtcNow, IsSustained: true);
             _ = liveViewService.Setup(l => l.PromoteToSustainedAsync(activeSession.Id, It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(promotedSession);
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -527,11 +528,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     if (analysis.NewlyDetectedCount > 0)
                     {
                         // Jamming confirmed: start or promote live view session.
-                        LiveViewSession? activeSession = await liveViewService.GetActiveSessionAsync(deviceId, ct);
+                        LiveViewSessionDto? activeSession = await liveViewService.GetActiveSessionAsync(deviceId, ct);
                         if (activeSession == null)
                         {
                             // No active session: start one with JammingConfirmed trigger.
-                            _ = await liveViewService.StartAsync(deviceId, LiveViewTriggerReason.JammingConfirmed, null, ct);
+                            _ = await liveViewService.StartAsync(deviceId, LiveViewTriggerReasonDto.JammingConfirmed, null, ct);
                             _logger.LogInformation(
                                 "Elevated polling tick: jamming confirmed for device {DeviceId}; started new live view session",
                                 deviceId);

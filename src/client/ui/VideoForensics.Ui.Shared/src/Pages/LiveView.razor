@@ -153,7 +153,7 @@ else
     private IDisposable? _telemetrySubscription;
     private IDisposable? _evidenceSubscription;
     private volatile bool _disposed;
-    private LiveViewTelemetrySample? _latestTelemetry;
+    private LiveViewTelemetrySampleDto? _latestTelemetry;
 
     private IReadOnlyList<Guid> ShownCameras =>
         CameraState.CameraIds.Count > 0
@@ -328,7 +328,7 @@ else
 
             var session = await LiveViewSessionService.StartAsync(
                 deviceId,
-                LiveViewTriggerReason.Manual,
+                LiveViewTriggerReasonDto.Manual,
                 null,
                 System.Threading.CancellationToken.None);
 
@@ -338,7 +338,7 @@ else
 
             // Always wait, even when the start response is already Active. The waiter joins the session's push
             // group before its race-guard read, so telemetry arrives for a session that was Active at start.
-            LiveViewSession? active = await _activationWaiter.WaitForActiveAsync(
+            LiveViewSessionDto? active = await _activationWaiter.WaitForActiveAsync(
                 session.Id,
                 LiveViewSessionSource,
                 ct => LiveViewSessionService.GetActiveSessionAsync(deviceId, ct),

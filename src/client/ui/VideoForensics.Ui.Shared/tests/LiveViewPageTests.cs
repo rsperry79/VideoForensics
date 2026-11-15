@@ -170,8 +170,8 @@ public class LiveViewPageTests : BunitContext
         var sessionService = new Mock<ILiveViewSessionService>();
 
         var sessionSource = new Mock<ILiveViewSessionSource>();
-        _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(new Subject<LiveViewSession>());
-        _ = sessionSource.SetupGet(s => s.Telemetry).Returns(new Subject<LiveViewTelemetrySample>());
+        _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(new Subject<LiveViewSessionDto>());
+        _ = sessionSource.SetupGet(s => s.Telemetry).Returns(new Subject<LiveViewTelemetrySampleDto>());
         _ = sessionSource.SetupGet(s => s.IsConnected).Returns(false);
 
         _ = Services.AddSingleton(deviceRepository.Object);
