@@ -195,7 +195,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            ISyncScheduleRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleRepository>();
+            ISyncScheduleWriteRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleWriteRepository>();
             IReadOnlyList<SyncSchedule> schedules = await scheduleRepository.ListEnabledAsync(ct);
 
             // Why: runs before the empty check so an idle install is cleaned too.
@@ -468,7 +468,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
         private async Task RunEventSyncAsync(
             IServiceProvider sp,
-            ISyncScheduleRepository scheduleRepository,
+            ISyncScheduleWriteRepository scheduleRepository,
             SyncSchedule schedule,
             ProviderAccount account,
             IEventAndConfigService eventService,
@@ -698,7 +698,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// An enabled schedule whose account was deleted: record the failed attempt and back off a full interval, so the
         /// schedule does not write a failure row on every tick.
         /// </summary>
-        private async Task RecordMissingAccountAttemptAsync(IServiceProvider sp, ISyncScheduleRepository scheduleRepository, SyncSchedule schedule, CancellationToken ct)
+        private async Task RecordMissingAccountAttemptAsync(IServiceProvider sp, ISyncScheduleWriteRepository scheduleRepository, SyncSchedule schedule, CancellationToken ct)
         {
             DateTime now = _time.GetUtcNow().UtcDateTime;
             await ProviderSyncRunRecorder.RecordAsync(

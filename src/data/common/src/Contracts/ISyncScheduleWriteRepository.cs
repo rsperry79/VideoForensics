@@ -3,7 +3,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for sync schedule entities.</summary>
-    public interface ISyncScheduleRepository
+    public interface ISyncScheduleWriteRepository
     {
         /// <summary>Gets a sync schedule by provider account ID (includes JammingWindows navigation property).</summary>
         Task<SyncSchedule?> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct);

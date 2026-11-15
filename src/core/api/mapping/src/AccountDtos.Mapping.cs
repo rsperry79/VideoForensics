@@ -120,7 +120,10 @@ namespace VideoForensics.Core.Api.Contracts
                 IsEnabled: entity.IsEnabled,
                 UseAdvancedJammingSchedule: entity.UseAdvancedJammingSchedule,
                 EventNextRunUtc: entity.EventNextRunUtc,
-                EventLastRunUtc: entity.EventLastRunUtc
+                EventLastRunUtc: entity.EventLastRunUtc,
+                SnapshotIntervalSeconds: entity.SnapshotIntervalSeconds,
+                BackfillCursorUtc: entity.BackfillCursorUtc,
+                JammingWindows: entity.JammingWindows.Select(w => w.ToDto()).ToList()
             );
         }
 
@@ -138,7 +141,10 @@ namespace VideoForensics.Core.Api.Contracts
                 IsEnabled = dto.IsEnabled,
                 UseAdvancedJammingSchedule = dto.UseAdvancedJammingSchedule,
                 EventNextRunUtc = dto.EventNextRunUtc,
-                EventLastRunUtc = dto.EventLastRunUtc
+                EventLastRunUtc = dto.EventLastRunUtc,
+                SnapshotIntervalSeconds = dto.SnapshotIntervalSeconds,
+                BackfillCursorUtc = dto.BackfillCursorUtc,
+                JammingWindows = (dto.JammingWindows ?? []).Select(w => w.ToDomain(dto.Id)).ToList()
             };
         }
     }

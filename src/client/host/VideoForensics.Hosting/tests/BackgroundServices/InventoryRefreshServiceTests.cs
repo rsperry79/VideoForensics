@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             var account = new ProviderAccount { Id = Guid.NewGuid(), ProviderName = "Ring", IsActive = true };
             IReadOnlyList<SyncSchedule> schedules = [new SyncSchedule { Id = Guid.NewGuid(), ProviderAccountId = account.Id, IsEnabled = true }];
 
-            var scheduleRepository = new Mock<ISyncScheduleRepository>();
+            var scheduleRepository = new Mock<ISyncScheduleWriteRepository>();
             _ = scheduleRepository.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(schedules);
 
             var accounts = new Mock<IProviderAccountWriteRepository>();

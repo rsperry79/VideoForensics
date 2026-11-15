@@ -34,6 +34,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // Every type the account endpoints inject must be a registered service, otherwise route
             // inference treats it as a request body parameter.
             _ = builder.Services.AddSingleton(Mock.Of<IUserWriteRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderAccountWriteRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());

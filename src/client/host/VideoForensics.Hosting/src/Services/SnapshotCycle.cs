@@ -120,7 +120,7 @@ namespace VideoForensics.Client.Hosting.Services
                 return;
             }
 
-            SyncSchedule? schedule = await sp.GetRequiredService<ISyncScheduleRepository>().GetByProviderAccountIdAsync(accountId, ct);
+            SyncSchedule? schedule = await sp.GetRequiredService<ISyncScheduleWriteRepository>().GetByProviderAccountIdAsync(accountId, ct);
             // The schedule's snapshot interval (with any jamming window) sets the spacing. A stored SnapshotIntervalSeconds raised by
             // a Ring rate-limit incident is a floor on top of it, so the adaptive back-off is never undone by the form.
             int seconds = schedule is null

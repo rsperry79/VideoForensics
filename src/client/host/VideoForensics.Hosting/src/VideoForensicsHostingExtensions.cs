@@ -167,7 +167,7 @@ namespace VideoForensics.Client.Hosting
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<IVideoForensicsDataClient>(),
                 notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
-                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>(),
+                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleWriteRepository>(),
                 mediaPaths: provider.GetService<VideoForensics.Data.Common.Contracts.IMediaPathResolver>(),
                 referenceCache: provider.GetService<VideoForensics.Data.Common.Contracts.IReferenceDataCache>()
             );
@@ -324,6 +324,7 @@ namespace VideoForensics.Client.Hosting
         public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // Server-side event reads and commands for Ui.Shared: DTO view over the write repository (see EventDtoRepository).
+            services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository, VideoForensics.Core.Api.Contracts.Repositories.SyncScheduleDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.ISnapshotCaptureRepository, VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IDeviceHealthRepository, VideoForensics.Core.Api.Contracts.Repositories.DeviceHealthDtoRepository>();
             services.TryAddScoped<VideoForensics.Core.Api.Contracts.Repositories.IEventDetailRepository, VideoForensics.Core.Api.Contracts.Repositories.EventDetailDtoRepository>();
@@ -805,6 +806,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository, RemoteCaseNoteRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository, Remote.RemoteSyncScheduleRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.INoteRepository, RemoteNoteRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);            services.AddScoped<IJammingWriteRepository, Remote.RemoteJammingWriteRepository>();
 

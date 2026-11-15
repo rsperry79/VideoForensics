@@ -26,7 +26,7 @@ public class SignalAnalysisServiceTests
         _ = health
             .Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out DeviceHealth[]? rows) ? rows : []);
-        var schedules = new Mock<ISyncScheduleRepository>();
+        var schedules = new Mock<ISyncScheduleWriteRepository>();
         var accounts = new Mock<IProviderAccountRepository>();
         _ = accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ProviderAccountDto>());
         var locations = new Mock<ILocationRepository>();

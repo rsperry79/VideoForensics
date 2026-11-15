@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             using IServiceScope scope = _scopeFactory.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
 
-            IReadOnlyList<SyncSchedule> schedules = await sp.GetRequiredService<ISyncScheduleRepository>().ListEnabledAsync(ct);
+            IReadOnlyList<SyncSchedule> schedules = await sp.GetRequiredService<ISyncScheduleWriteRepository>().ListEnabledAsync(ct);
             IProviderAccountWriteRepository accounts = sp.GetRequiredService<IProviderAccountWriteRepository>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
             string[] enabledProviders = _options.CurrentValue.EnabledProviders ?? [];

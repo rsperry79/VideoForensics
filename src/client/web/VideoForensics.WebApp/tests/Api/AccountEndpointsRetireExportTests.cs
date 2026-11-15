@@ -52,6 +52,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.WebHost.UseTestServer();
 
             _ = builder.Services.AddSingleton(Mock.Of<IUserWriteRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository>());
             _ = builder.Services.AddSingleton(_accounts.Object);
             _ = builder.Services.AddSingleton(_exports.Object);
             _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());

@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
         private sealed class Harness
         {
-            public Mock<ISyncScheduleRepository> Schedules { get; } = new();
+            public Mock<ISyncScheduleWriteRepository> Schedules { get; } = new();
             public Mock<IProviderAccountWriteRepository> Accounts { get; } = new();
             public Mock<IDeviceWriteRepository> Devices { get; } = new();
 

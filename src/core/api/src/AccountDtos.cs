@@ -133,6 +133,9 @@ namespace VideoForensics.Core.Api.Contracts
         bool IsEnabled,
         bool UseAdvancedJammingSchedule,
         DateTime? EventNextRunUtc,
-        DateTime? EventLastRunUtc
+        DateTime? EventLastRunUtc,
+        int? SnapshotIntervalSeconds = null,
+        DateTime? BackfillCursorUtc = null,
+        IReadOnlyList<JammingScheduleWindowDto>? JammingWindows = null
     );
 }

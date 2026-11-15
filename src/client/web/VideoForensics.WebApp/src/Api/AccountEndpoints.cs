@@ -441,6 +441,37 @@ namespace VideoForensics.Client.WebApp.Api
                 .WithSummary("Queue manual sync of events and device configuration")
                 .WithDescription("Initiates background pull of events and config for all devices in the account");
 
+            _ = group.MapGet("/provider-accounts/{id:guid}/sync-schedule", async (
+                Guid id,
+                VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository schedules,
+                CancellationToken ct) =>
+            {
+                SyncScheduleDto? schedule = await schedules.GetByProviderAccountIdAsync(id, ct);
+                return schedule is null ? Results.NotFound() : Results.Ok(schedule);
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get the sync schedule")
+                .WithDescription("Returns the sync schedule for the account, with its jamming windows. 404 when none is saved.");
+
+            _ = group.MapPut("/provider-accounts/{id:guid}/sync-schedule", async (
+                Guid id,
+                SyncScheduleDto request,
+                VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository schedules,
+                CancellationToken ct) =>
+            {
+                if (request.ProviderAccountId != id)
+                {
+                    return Results.BadRequest("The schedule belongs to a different provider account.");
+                }
+
+                await schedules.UpsertAsync(request, ct);
+                return Results.Ok(request);
+            })
+                .RequireRateLimiting("media")
+                .AddEndpointFilter<ProviderAccountEditFilter>()
+                .WithSummary("Save the sync schedule")
+                .WithDescription("Creates or replaces the sync schedule for the account, including its jamming windows.");
+
             _ = group.MapGet("/provider-accounts/{id:guid}/config-sync-interval", async (
                 Guid id,
                 IRingAccountSyncState syncState,

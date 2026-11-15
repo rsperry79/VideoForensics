@@ -15,12 +15,12 @@ namespace VideoForensics.Client.Hosting.Signal
     public sealed class SignalAnalysisService(
         IDeviceWriteRepository devices,
         IDeviceHealthWriteRepository health,
-        ISyncScheduleRepository schedules,
+        ISyncScheduleWriteRepository schedules,
         DeviceOwnershipService ownership) : ISignalAnalysisService
     {
         private readonly IDeviceWriteRepository _devices = devices;
         private readonly IDeviceHealthWriteRepository _health = health;
-        private readonly ISyncScheduleRepository _schedules = schedules;
+        private readonly ISyncScheduleWriteRepository _schedules = schedules;
         private readonly DeviceOwnershipService _ownership = ownership;
 
         /// <inheritdoc />
