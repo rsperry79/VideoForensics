@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Common.Contracts
 {
@@ -61,7 +61,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// Implementations that cannot stream may ignore it.
         /// </param>
         /// <returns>List of discrepancies found (persisted via IProviderReconciliationService).</returns>
-        Task<IReadOnlyList<ReconciliationDiscrepancy>> ReconcileWithProviderAsync(
+        Task<IReadOnlyList<ReconciliationDiscrepancyDto>> ReconcileWithProviderAsync(
             Guid deviceId,
             string providerDeviceId,
             DateTime fromUtc,

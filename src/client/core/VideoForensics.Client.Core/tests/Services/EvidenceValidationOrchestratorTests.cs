@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -128,7 +129,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                 .Returns(Task.CompletedTask);
 
             // Act: Call ReconcileWithProviderAsync with injected device ID containing CRLF
-            IReadOnlyList<ReconciliationDiscrepancy> result = await _orchestrator.ReconcileWithProviderAsync(
+            IReadOnlyList<ReconciliationDiscrepancyDto> result = await _orchestrator.ReconcileWithProviderAsync(
                 deviceId,
                 injectedDeviceId,
                 fromDate,

@@ -1,4 +1,5 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -115,7 +116,7 @@ namespace VideoForensics.Client.WebApp.Services
                         {
                             try
                             {
-                                IReadOnlyList<ReconciliationDiscrepancy> discrepancies =
+                                IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies =
                                     await _validationService.ReconcileWithProviderAsync(
                                         device.Id,
                                         device.ProviderDeviceId,

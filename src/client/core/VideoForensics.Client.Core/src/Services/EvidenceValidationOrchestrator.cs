@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -168,7 +169,7 @@ namespace VideoForensics.Client.Core.Services
             return result;
         }
 
-        public async Task<IReadOnlyList<ReconciliationDiscrepancy>> ReconcileWithProviderAsync(
+        public async Task<IReadOnlyList<ReconciliationDiscrepancyDto>> ReconcileWithProviderAsync(
             Guid deviceId,
             string providerDeviceId,
             DateTime fromUtc,
@@ -348,7 +349,7 @@ namespace VideoForensics.Client.Core.Services
                 // Record the reconciliation run (persists discrepancies and logs a summary)
                 await _reconciliationService.RecordReconciliationRunAsync(deviceId, discrepancies, ct);
 
-                return discrepancies;
+                return discrepancies.Select(d => d.ToDto()).ToList();
             }
             catch (Exception ex)
             {

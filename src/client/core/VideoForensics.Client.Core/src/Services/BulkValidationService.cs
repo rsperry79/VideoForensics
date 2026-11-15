@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -70,7 +71,7 @@ namespace VideoForensics.Client.Core.Services
                             "Validating device {DeviceName}",
                             device.Name);
 
-                        IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
+                        IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
                             device.Id,
                             device.ProviderDeviceId,
                             fromUtc,
@@ -83,8 +84,8 @@ namespace VideoForensics.Client.Core.Services
                         // Count auto-fix results from the discrepancies
                         // Note: The actual auto-fix happens inside ReconcileWithProviderAsync,
                         // so we count the types of discrepancies that were fixed.
-                        int newEventCount = discrepancies.Count(d => d.Type == DiscrepancyType.NewEventFoundOnProvider);
-                        int metadataChangedCount = discrepancies.Count(d => d.Type == DiscrepancyType.MetadataChanged);
+                        int newEventCount = discrepancies.Count(d => d.Type == DiscrepancyTypeDto.NewEventFoundOnProvider);
+                        int metadataChangedCount = discrepancies.Count(d => d.Type == DiscrepancyTypeDto.MetadataChanged);
 
                         result.NewEventsInserted += newEventCount;
                         result.MetadataUpdated += metadataChangedCount;

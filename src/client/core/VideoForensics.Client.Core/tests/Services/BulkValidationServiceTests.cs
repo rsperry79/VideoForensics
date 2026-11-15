@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -130,11 +131,11 @@ namespace VideoForensics.Client.Core.Tests.Services
             var device = new Device { Id = deviceId, Name = "TestCamera", ProviderDeviceId = "ring-123", Type = "camera" };
             var devices = new List<Device> { device };
 
-            var discrepancies = new List<ReconciliationDiscrepancy>
+            var discrepancies = new List<ReconciliationDiscrepancyDto>
             {
-                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
-                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event2" },
-                new() { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event3" }
+                new(DiscrepancyTypeDto.NewEventFoundOnProvider, "event1", null, null, null),
+                new(DiscrepancyTypeDto.NewEventFoundOnProvider, "event2", null, null, null),
+                new(DiscrepancyTypeDto.MetadataChanged, "event3", null, null, null)
             };
 
             _ = _deviceRepositoryMock
@@ -321,14 +322,14 @@ namespace VideoForensics.Client.Core.Tests.Services
             var device = new Device { Id = deviceId, Name = "TestCamera", ProviderDeviceId = "ring-123", Type = "camera" };
             var devices = new List<Device> { device };
 
-            var discrepancies = new List<ReconciliationDiscrepancy>
+            var discrepancies = new List<ReconciliationDiscrepancyDto>
             {
-                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
-                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event2" },
-                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event3" },
-                new() { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event4" },
-                new() { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event5" },
-                new() { Type = DiscrepancyType.MissingFromProvider, ProviderEventId = "event6" }
+                new(DiscrepancyTypeDto.NewEventFoundOnProvider, "event1", null, null, null),
+                new(DiscrepancyTypeDto.NewEventFoundOnProvider, "event2", null, null, null),
+                new(DiscrepancyTypeDto.NewEventFoundOnProvider, "event3", null, null, null),
+                new(DiscrepancyTypeDto.MetadataChanged, "event4", null, null, null),
+                new(DiscrepancyTypeDto.MetadataChanged, "event5", null, null, null),
+                new(DiscrepancyTypeDto.MissingFromProvider, "event6", null, null, null)
             };
 
             _ = _deviceRepositoryMock
@@ -371,8 +372,8 @@ namespace VideoForensics.Client.Core.Tests.Services
                 .Setup(s => s.ReconcileWithProviderAsync(device1Id, "ring-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(
                 [
-                    new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
-                    new ReconciliationDiscrepancy { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event2" }
+                    new ReconciliationDiscrepancyDto(DiscrepancyTypeDto.NewEventFoundOnProvider, "event1", null, null, null),
+                    new ReconciliationDiscrepancyDto(DiscrepancyTypeDto.MetadataChanged, "event2", null, null, null)
                 ]);
 
             // Device 2: 1 discrepancy
@@ -380,7 +381,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                 .Setup(s => s.ReconcileWithProviderAsync(device2Id, "ring-2", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(
                 [
-                    new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event3" }
+                    new ReconciliationDiscrepancyDto(DiscrepancyTypeDto.NewEventFoundOnProvider, "event3", null, null, null)
                 ]);
 
             // Device 3: throws exception

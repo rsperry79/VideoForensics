@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Common.Contracts
 {
@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Common.Contracts
         public IReadOnlyList<MediaVerificationResult>? IntegrityResults { get; init; }
 
         /// <summary>Reconciliation discrepancies; null unless this is a completed reconcile job.</summary>
-        public IReadOnlyList<ReconciliationDiscrepancy>? Discrepancies { get; init; }
+        public IReadOnlyList<ReconciliationDiscrepancyDto>? Discrepancies { get; init; }
 
         /// <summary>Failure message when <see cref="State"/> is Failed; otherwise null.</summary>
         public string? ErrorMessage { get; init; }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -235,11 +236,11 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             _ = Assert.Single(discrepancies);
-            Assert.Equal(DiscrepancyType.MissingFromProvider, discrepancies[0].Type);
+            Assert.Equal(DiscrepancyTypeDto.MissingFromProvider, discrepancies[0].Type);
             Assert.Equal("evt-123", discrepancies[0].ProviderEventId);
         }
 
@@ -294,12 +295,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
-            ReconciliationDiscrepancy? eventTypeDiscrepancy = discrepancies.FirstOrDefault(d => d.FieldName == "EventType");
+            ReconciliationDiscrepancyDto? eventTypeDiscrepancy = discrepancies.FirstOrDefault(d => d.FieldName == "EventType");
             Assert.NotNull(eventTypeDiscrepancy);
-            Assert.Equal(DiscrepancyType.MetadataChanged, eventTypeDiscrepancy.Type);
+            Assert.Equal(DiscrepancyTypeDto.MetadataChanged, eventTypeDiscrepancy.Type);
             Assert.Equal("motion", eventTypeDiscrepancy.StoredValue);
             Assert.Equal("snapshot", eventTypeDiscrepancy.ProviderValue);
         }
@@ -346,11 +347,11 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             _ = Assert.Single(discrepancies);
-            Assert.Equal(DiscrepancyType.NewEventFoundOnProvider, discrepancies[0].Type);
+            Assert.Equal(DiscrepancyTypeDto.NewEventFoundOnProvider, discrepancies[0].Type);
             Assert.Equal("evt-999", discrepancies[0].ProviderEventId);
         }
 
@@ -402,7 +403,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.Empty(discrepancies);

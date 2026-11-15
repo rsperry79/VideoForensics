@@ -1,5 +1,6 @@
 @using VideoForensics.Core.Api.Contracts.Repositories
 @implements IDisposable
+@using VideoForensics.Core.Api.Contracts
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -127,15 +128,15 @@ else
             }
             else
             {
-                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@reconcileJob.Discrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
+                <SfGrid TValue="ReconciliationDiscrepancyDto" DataSource="@reconcileJob.Discrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.Type)" HeaderText="@L["ColType"]" MinWidth="100" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" MinWidth="100" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.FieldName)" HeaderText="@L["ColField"]" MinWidth="100" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.StoredValue)" HeaderText="@L["ColStoredValue"]" MinWidth="100" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderValue)" HeaderText="@L["ColProviderValue"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancyDto.Type)" HeaderText="@L["ColType"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancyDto.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancyDto.FieldName)" HeaderText="@L["ColField"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancyDto.StoredValue)" HeaderText="@L["ColStoredValue"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancyDto.ProviderValue)" HeaderText="@L["ColProviderValue"]" MinWidth="100" />
                     </GridColumns>
                 </SfGrid>
             }

@@ -156,7 +156,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            IReadOnlyList<ReconciliationDiscrepancy> results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/evidence/reconcile", capturedUri);
             Assert.Equal(2, results.Count);
@@ -182,9 +182,9 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            IReadOnlyList<ReconciliationDiscrepancy> results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
-            Assert.Equal(DiscrepancyType.MetadataChanged, results[0].Type);
+            Assert.Equal(DiscrepancyTypeDto.MetadataChanged, results[0].Type);
             Assert.Equal("event-123", results[0].ProviderEventId);
         }
 
@@ -228,7 +228,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            IReadOnlyList<ReconciliationDiscrepancy> results = await service.ReconcileWithProviderAsync(Guid.NewGuid(), "device-id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancyDto> results = await service.ReconcileWithProviderAsync(Guid.NewGuid(), "device-id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), CancellationToken.None);
 
             Assert.Empty(results);
         }

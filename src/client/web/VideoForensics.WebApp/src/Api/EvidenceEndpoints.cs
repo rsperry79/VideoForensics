@@ -185,13 +185,13 @@ namespace VideoForensics.Client.WebApp.Api
                 IEvidenceValidationService validationService,
                 CancellationToken ct) =>
             {
-                IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await validationService.ReconcileWithProviderAsync(
+                IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await validationService.ReconcileWithProviderAsync(
                     request.DeviceId,
                     request.ProviderDeviceId,
                     request.FromUtc,
                     request.ToUtc,
                     ct);
-                return Results.Ok(discrepancies.Select(d => d.ToDto()).ToList());
+                return Results.Ok(discrepancies.ToList());
             })
             .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
@@ -286,7 +286,7 @@ namespace VideoForensics.Client.WebApp.Api
                 CompletedUtc: job.CompletedUtc,
                 Log: job.Log,
                 IntegrityResults: job.IntegrityResults?.Select(r => r.ToDto()).ToList(),
-                Discrepancies: job.Discrepancies?.Select(d => d.ToDto()).ToList(),
+                Discrepancies: job.Discrepancies?.ToList(),
                 ErrorMessage: job.ErrorMessage
             );
         }
