@@ -2,7 +2,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
