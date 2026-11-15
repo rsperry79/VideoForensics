@@ -424,6 +424,7 @@ if (OperatingSystem.IsWindows())
 // comment). ILiveConnectionTracker is a singleton so DeviceManagementEndpoints' revoke handler can
 // forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
 builder.Services.AddSignalR();
+builder.Services.AddSingleton(new VideoForensics.Client.WebApp.Services.BackupUploadStore(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vf-backup-uploads")));
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
 // Live-view session pushes to subscribed clients (batch 3b). Replace, not Add: the Hosting registration
 // later in this file (AddVideoForensicsServerCore) uses TryAddSingleton for the no-op publisher, so this
@@ -977,6 +978,7 @@ app.MapAuthMethodEndpoints();
 app.MapDeviceCaptureModeEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
+app.MapBackupUploadEndpoints();
 app.MapDeviceConfigEndpoints();
 app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
