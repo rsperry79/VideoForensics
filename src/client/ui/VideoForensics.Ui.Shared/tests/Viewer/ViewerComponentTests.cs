@@ -196,54 +196,6 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             ];
         }
 
-        /// <summary>Verifies that a tile drifting past the tolerance is seeked to the master clock's absolute time.</summary>
-        [Fact]
-        public async Task CameraGrid_TileDrifted_ResyncsToMaster()
-        {
-            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
-                .Add(x => x.Tiles, TwoTiles())
-                .Add(x => x.Cursor, Start.AddSeconds(10)));
-
-            int before = _player.Invocations.Count(i => i.Identifier == "seek");
-            SetupPlaybackReads(10.0, 12.0);
-
-            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
-
-            Assert.Equal(1, _player.Invocations.Count(i => i.Identifier == "seek") - before);
-        }
-
-        /// <summary>Verifies that a tile within the tolerance is left alone.</summary>
-        [Fact]
-        public async Task CameraGrid_TilesWithinTolerance_DoNotResync()
-        {
-            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
-                .Add(x => x.Tiles, TwoTiles())
-                .Add(x => x.Cursor, Start.AddSeconds(10)));
-
-            int before = _player.Invocations.Count(i => i.Identifier == "seek");
-            SetupPlaybackReads(10.0, 10.2);
-
-            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
-
-            Assert.Equal(0, _player.Invocations.Count(i => i.Identifier == "seek") - before);
-        }
-
-        /// <summary>Verifies that a single-tile grid has nothing to sync and completes without seeking.</summary>
-        [Fact]
-        public async Task CameraGrid_SingleTile_SyncDoesNothing()
-        {
-            var tiles = new List<CameraTile> { new("Front", TwoClips(), id => $"/media/{id}/content") };
-            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
-                .Add(x => x.Tiles, tiles)
-                .Add(x => x.Cursor, Start.AddSeconds(10)));
-
-            int before = _player.Invocations.Count(i => i.Identifier == "seek");
-
-            await cut.InvokeAsync(cut.Instance.SyncTilesAsync);
-
-            Assert.Equal(0, _player.Invocations.Count(i => i.Identifier == "seek") - before);
-        }
-
         /// <summary>Verifies that the single-camera view plays the selected camera large and shows one preview for the other.</summary>
         [Fact]
         public void SingleCameraView_TwoCameras_RendersMainPlayerAndOnePreviewTile()

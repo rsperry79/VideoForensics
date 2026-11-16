@@ -124,14 +124,47 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_Rendered_HasNoTabGroupLiveButtonOrFilterControls()
+    public void ReviewTopBar_Render_ShowsTheThreeTabsInATablist()
     {
         // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
-        // Assert - these moved to the left view nav and the right filter panel
-        Assert.Empty(cut.FindAll("[data-testid='review-tabs']"));
-        Assert.Empty(cut.FindAll("[data-testid^='review-tab-button-']"));
+        // Assert: the review tabs moved from the left nav into the page header (U-D2)
+        Assert.Single(cut.FindAll("[data-testid='review-tabs'][role='tablist']"));
+        Assert.Equal(3, cut.FindAll("[data-testid='review-tabs'] [role='tab']").Count);
+    }
+
+    [Fact]
+    public void ReviewTopBar_TabClick_SetsTheActiveTab()
+    {
+        // Arrange
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Act
+        cut.Find("[data-testid='review-tab-button-events']").Click();
+
+        // Assert
+        Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
+    }
+
+    [Fact]
+    public void ReviewTopBar_Render_ShowsTimeRangeAndFiltersButton()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert: the date range works from the header with the right panel closed (U6b)
+        _ = cut.FindComponent<ReviewTimeRange>();
+        Assert.Single(cut.FindAll("[data-testid='review-filters-button']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_Rendered_HasNoLiveButtonOrFilterControls()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert - Live stays in the left menu; the filters moved to the right filter panel
         Assert.Empty(cut.FindAll("[data-testid='review-live']"));
         Assert.Empty(cut.FindAll("[data-testid='review-filter']"));
         Assert.Empty(cut.FindAll("[data-testid='review-filter-active']"));
@@ -142,6 +175,19 @@ public class ReviewTopBar_Tests : ReviewTestContext
     public void ReviewTopBar_NoPopupOpen_RendersNoBackdrop()
     {
         // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_PopupOpen_RendersNoBackdrop()
+    {
+        // Arrange: the backdrop lives in ReviewPopupHost, beside the popups, so the bar never draws its own
+        Services.GetRequiredService<ReviewPopupState>().Toggle(ReviewPopupState.Pending);
+
+        // Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
         // Assert

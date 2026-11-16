@@ -1,14 +1,18 @@
 @using VideoForensics.Client.Common.Viewer
 
 @* Picks the clip that covers the cursor and hands it to MediaPlayer. A cursor in a gap shows the gap message. *@
-<MediaPlayer @ref="_player"
-             Source="@_url"
-             SourceStartUtc="_selectedClip?.StartUtc"
-             SourceDurationSeconds="_selectedClip?.DurationSeconds"
-             Cursor="Cursor"
-             Gap="true"
-             Class="review-player"
-             data-clip-id="@_selection?.ClipId" />
+<div class="review-stage">
+    <MediaPlayer @ref="_player"
+                 Source="@_url"
+                 SourceStartUtc="_selectedClip?.StartUtc"
+                 SourceDurationSeconds="_selectedClip?.DurationSeconds"
+                 Cursor="Cursor"
+                 Gap="true"
+                 Fit="MediaFitMode.Contain"
+                 Class="review-player"
+                 OnProgress="HandleProgressAsync"
+                 data-clip-id="@_selection?.ClipId" />
+</div>
 
 @code {
     /// <summary>Clips for this camera. The player picks the one covering <see cref="Cursor"/>.</summary>
@@ -19,6 +23,12 @@
 
     /// <summary>The shared playback time (UTC). A change re-selects the clip and seeks to the offset.</summary>
     [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>The video's position (UTC) as it plays. Raised only while a clip is playing, and not during a gap.</summary>
+    [Parameter] public EventCallback<DateTime> OnPlaybackUtc { get; set; }
+
+    private Task HandleProgressAsync(MediaProgress progress) =>
+        progress.Utc is DateTime utc ? OnPlaybackUtc.InvokeAsync(utc) : Task.CompletedTask;
 
     private ClipSelection? _selection;
     private ClipWindow? _selectedClip;
@@ -43,6 +53,23 @@
     /// Seeks the video to an absolute UTC time. Does nothing when the time falls outside the selected clip, so a tile
     /// in a gap keeps playing where it is.
     /// </summary>
+    /// <summary>Plays or pauses the video. Does nothing when no video is rendered (a gap).</summary>
+    public Task TogglePlayAsync() =>
+        _player is null ? Task.CompletedTask : _player.TogglePlayAsync();
+
+    /// <summary>
+    /// Moves the playback position by <paramref name="seconds"/>, forward or back. Does nothing when no video is rendered or the
+    /// position cannot be read.
+    /// </summary>
+    public async Task NudgeAsync(double seconds)
+    {
+        double? now = await ReadPlaybackUtcSecondsAsync();
+        if (now is double value)
+        {
+            await SeekToUtcAsync(DateTime.UnixEpoch.AddSeconds(value + seconds));
+        }
+    }
+
     public Task SeekToUtcAsync(DateTime utc) =>
         _player is null ? Task.CompletedTask : _player.SeekToUtcAsync(utc);
 

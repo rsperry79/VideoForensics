@@ -44,7 +44,7 @@ public class NavGroups_Tests
         NavGroup media = NavGroups.All.First(g => g.Key == "media");
         Assert.Equal("/media", media.Path);
         Assert.Equal(
-            new[] { ("Timeline", "/media"), ("Events", "/media?tab=Events"), ("Detail", "/media?tab=Detail"), ("Live", "/live-view") },
+            new[] { ("Live", "/live-view") },
             media.Items.Select(i => (i.Text, i.Path)).ToArray());
     }
 

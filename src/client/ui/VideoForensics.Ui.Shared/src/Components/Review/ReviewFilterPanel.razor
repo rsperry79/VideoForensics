@@ -8,7 +8,7 @@
 @using VideoForensics.Client.Ui.Shared.Components.Filters
 @inject IStringLocalizer<ReviewPage> L
 
-<div class="review-filter-panel p-2" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel">
+<div class="review-filter-panel p-2" role="group" aria-label="@L["FilterTitle"]" data-testid="review-filter-panel">
     <ReviewSidebarSection Title="@L["FilterTitle"]">
         @* No labels above the dropdowns: each one's first option says what it filters, and each keeps its own aria-label. *@
         <FilterProviderSelect ProviderNames="ProviderNames" Value="@_provider" ValueChanged="OnProviderChanged"

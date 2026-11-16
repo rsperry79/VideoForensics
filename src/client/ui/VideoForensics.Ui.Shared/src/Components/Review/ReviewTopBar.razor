@@ -1,6 +1,8 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Components.Review
+@using Microsoft.Extensions.DependencyInjection
+@using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
@@ -8,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject ReviewCaseMode CaseMode
 @inject ReviewPopupState Popups
+@inject IServiceProvider ServiceProvider
 @inject IStringLocalizer<ReviewPage> L
 
 @if (CaseMode.Active)
@@ -22,16 +25,24 @@
     </div>
 }
 
-<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar" @onkeydown="OnTopBarKeyDown">
-    @if (Popups.Open is not null)
-    {
-        @* Transparent full-page backdrop below the popups: a click outside any popup lands here and closes it. *@
-        <div class="review-popup-backdrop" data-testid="review-popup-backdrop" @onclick="ClosePopups"></div>
-    }
-
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-        <ReviewPendingTags DeviceNames="DeviceNames" />
+<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
+    <div class="btn-group btn-group-sm" role="tablist" aria-label="@L["ReviewTabsLabel"]" data-testid="review-tabs">
+        @foreach (ReviewTab tab in TabOrder)
+        {
+            <button type="button" role="tab" class="btn @(State.ActiveTab == tab ? "btn-primary" : "btn-outline-secondary")"
+                    aria-selected="@(State.ActiveTab == tab ? "true" : "false")" data-testid="review-tab-button-@TabId(tab)"
+                    @onclick="() => State.SetTab(tab)">@TabLabel(tab)</button>
+        }
     </div>
+
+    <ReviewPopupHost>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <ReviewTimeRange State="State" />
+            <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filters-button" @onclick="OpenFilters">@L["FiltersButton"]</button>
+            <ReviewPendingTags DeviceNames="DeviceNames" />
+        </div>
+    </ReviewPopupHost>
 </div>
 
 @code {
@@ -42,6 +53,31 @@
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The cameras left after the Provider and Account filters. The camera selector lists these.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Opens the right panel, where the filters are (U-D4). Does nothing when the layout state is not registered.</summary>
+    private async Task OpenFilters()
+    {
+        LayoutPreferencesState? prefs = ServiceProvider.GetService<LayoutPreferencesState>();
+        if (prefs is not null)
+        {
+            await prefs.SetRightPanelCollapsedAsync(false);
+        }
+    }
+
+    private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events, ReviewTab.Detail];
+
+    private static string TabId(ReviewTab tab) => tab.ToString().ToLowerInvariant();
+
+    private LocalizedString TabLabel(ReviewTab tab) => tab switch
+    {
+        ReviewTab.Timeline => L["TabTimeline"],
+        ReviewTab.Events => L["TabEvents"],
+        _ => L["TabDetail"],
+    };
 
     protected override void OnInitialized()
     {
@@ -55,21 +91,6 @@
     private void OnStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
-    }
-
-    /// <summary>Closes whichever popup is open. Used by the backdrop click.</summary>
-    private void ClosePopups()
-    {
-        Popups.Close();
-    }
-
-    /// <summary>Escape closes the open popup. The key event bubbles up from whichever control has focus inside the bar.</summary>
-    private void OnTopBarKeyDown(KeyboardEventArgs args)
-    {
-        if (args.Key == "Escape")
-        {
-            Popups.Close();
-        }
     }
 
     /// <summary>
