@@ -1,5 +1,5 @@
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.Services;
 
 namespace VideoForensics.Core.Api.Contracts
 {
