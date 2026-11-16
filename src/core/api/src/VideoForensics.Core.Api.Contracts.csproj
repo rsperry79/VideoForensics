@@ -17,6 +17,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="SperryDev.Logger" Version="0.1.0" />
     </ItemGroup>
 
     <ItemGroup>
