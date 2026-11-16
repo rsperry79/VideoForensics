@@ -18,8 +18,7 @@ public class ReviewTopBar_Tests : ReviewTestContext
     {
         AddDevices(2);
         return Render<ReviewTopBar>(parameters => parameters
-            .Add(p => p.State, ReviewState)
-            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
+            .Add(p => p.State, ReviewState));
     }
 
     [Fact]
@@ -109,53 +108,16 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_PendingTagsExist_ShowsTheBadge()
+    public void ReviewTopBar_Render_HasNoTabsTimeRangeOrCameraSelector()
     {
-        // Arrange
+        // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert - the view tabs, time range, camera selector, Filters and pending tags moved to the right sidebar
+        Assert.Empty(cut.FindAll("[data-testid='review-tabs']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-camera-selector']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-filters-button']"));
         Assert.Empty(cut.FindAll("[data-testid='review-pending-tags-count']"));
-
-        // Act
-        _ = cut.InvokeAsync(() => Services.GetRequiredService<PendingEvidenceTags>().Add(new PendingTag(
-            CaseItemKindDto.Media, Guid.NewGuid(), Devices[0].Id, FixedNowUtc, PendingTagFakes.Reason, "actor-1")));
-
-        // Assert
-        _ = Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
-    }
-
-    [Fact]
-    public void ReviewTopBar_Render_ShowsTheThreeTabsInATablist()
-    {
-        // Arrange and Act
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-
-        // Assert: the review tabs moved from the left nav into the page header (U-D2)
-        Assert.Single(cut.FindAll("[data-testid='review-tabs'][role='tablist']"));
-        Assert.Equal(3, cut.FindAll("[data-testid='review-tabs'] [role='tab']").Count);
-    }
-
-    [Fact]
-    public void ReviewTopBar_TabClick_SetsTheActiveTab()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-
-        // Act
-        cut.Find("[data-testid='review-tab-button-events']").Click();
-
-        // Assert
-        Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
-    }
-
-    [Fact]
-    public void ReviewTopBar_Render_ShowsTimeRangeAndFiltersButton()
-    {
-        // Arrange and Act
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-
-        // Assert: the date range works from the header with the right panel closed (U6b)
-        _ = cut.FindComponent<ReviewTimeRange>();
-        Assert.Single(cut.FindAll("[data-testid='review-filters-button']"));
     }
 
     [Fact]
