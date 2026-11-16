@@ -22,16 +22,12 @@
     </div>
 }
 
-<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar" @onkeydown="OnTopBarKeyDown">
-    @if (Popups.Open is not null)
-    {
-        @* Transparent full-page backdrop below the popups: a click outside any popup lands here and closes it. *@
-        <div class="review-popup-backdrop" data-testid="review-popup-backdrop" @onclick="ClosePopups"></div>
-    }
-
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-        <ReviewPendingTags DeviceNames="DeviceNames" />
-    </div>
+<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
+    <ReviewPopupHost>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <ReviewPendingTags DeviceNames="DeviceNames" />
+        </div>
+    </ReviewPopupHost>
 </div>
 
 @code {
@@ -55,21 +51,6 @@
     private void OnStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
-    }
-
-    /// <summary>Closes whichever popup is open. Used by the backdrop click.</summary>
-    private void ClosePopups()
-    {
-        Popups.Close();
-    }
-
-    /// <summary>Escape closes the open popup. The key event bubbles up from whichever control has focus inside the bar.</summary>
-    private void OnTopBarKeyDown(KeyboardEventArgs args)
-    {
-        if (args.Key == "Escape")
-        {
-            Popups.Close();
-        }
     }
 
     /// <summary>

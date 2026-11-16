@@ -37,11 +37,13 @@ else
     <ReviewTimelineFeeder />
 
     <PageRightPanelContent>
-        <ReviewTimeRange State="State" />
-        <ReviewEventFilter State="State" />
-        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
-        <ReviewCaseSection State="State" Devices="_visibleIds" />
-        <ReviewActionsPanel State="State" />
+        <ReviewPopupHost>
+            <ReviewTimeRange State="State" />
+            <ReviewEventFilter State="State" />
+            <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
+            <ReviewCaseSection State="State" Devices="_visibleIds" />
+            <ReviewActionsPanel State="State" />
+        </ReviewPopupHost>
     </PageRightPanelContent>
 
     <ReviewTopBar State="State" DeviceNames="_deviceNames" />

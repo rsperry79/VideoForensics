@@ -147,4 +147,17 @@ public class ReviewTopBar_Tests : ReviewTestContext
         // Assert
         Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
     }
+
+    [Fact]
+    public void ReviewTopBar_PopupOpen_RendersNoBackdrop()
+    {
+        // Arrange: the backdrop lives in ReviewPopupHost, beside the popups, so the bar never draws its own
+        Services.GetRequiredService<ReviewPopupState>().Toggle(ReviewPopupState.Pending);
+
+        // Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
 }

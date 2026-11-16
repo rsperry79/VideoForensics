@@ -1,0 +1,16 @@
+/* Popup layering: the backdrop catches outside clicks, and every popup in the host sits above it. */
+.review-popup-host {
+    position: relative;
+}
+
+.review-popup-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: transparent;
+}
+
+.review-popup-host ::deep .review-popup {
+    position: absolute;
+    z-index: 1050;
+}

@@ -101,7 +101,7 @@ public class ReviewLayoutStylesheet_Tests
     public void ReviewTopBarStylesheet_PopupBackdrop_SitsBelowThePopups()
     {
         // Arrange
-        string css = RepoFile.ReadUiSharedSource("Components/Review/ReviewTopBar.razor.css");
+        string css = RepoFile.ReadUiSharedSource("Components/Review/ReviewPopupHost.razor.css");
 
         // Act
         int backdrop = ZIndexOf(css, @"\.review-popup-backdrop\s*\{([^}]*)\}");
@@ -116,7 +116,7 @@ public class ReviewLayoutStylesheet_Tests
     {
         // Arrange: the popup styles are scoped per component, so the Event Filter needs its own copy of the camera selector's
         string css = RepoFile.ReadUiSharedSource("Components/Review/ReviewEventFilter.razor.css");
-        int backdrop = ZIndexOf(RepoFile.ReadUiSharedSource("Components/Review/ReviewTopBar.razor.css"), @"\.review-popup-backdrop\s*\{([^}]*)\}");
+        int backdrop = ZIndexOf(RepoFile.ReadUiSharedSource("Components/Review/ReviewPopupHost.razor.css"), @"\.review-popup-backdrop\s*\{([^}]*)\}");
 
         // Act
         int popup = ZIndexOf(css, @"\.review-event-selector \.review-popup\s*\{([^}]*)\}");
