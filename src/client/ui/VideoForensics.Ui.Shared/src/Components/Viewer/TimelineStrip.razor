@@ -41,7 +41,7 @@
 }
 else
 {
-<div class="review-timeline" data-testid="timeline-strip" style="width:@(WidthPx)px" @onclick="HandleClick">
+<div class="review-timeline" data-testid="timeline-strip" style="@HorizontalStyle" @ref="_root" @onclick="HandleClick">
     @foreach (ClipWindow clip in Clips)
     {
         double left = ReviewTimeline.ToPixel(clip.StartUtc, WindowStartUtc, WindowEndUtc, WidthPx);
@@ -86,6 +86,14 @@ else
     /// <summary>Strip width in pixels for a horizontal strip. Clicks are mapped with this same width.</summary>
     [Parameter] public double WidthPx { get; set; } = 800;
 
+    /// <summary>
+    /// Horizontal only: when true the strip fills the width its container gives it instead of <see cref="WidthPx"/>. Clicks
+    /// are mapped through the measured position, so they stay right when the width is not known in advance.
+    /// </summary>
+    [Parameter] public bool FillWidth { get; set; }
+
+    private string HorizontalStyle => FillWidth ? "width:100%" : $"width:{WidthPx}px";
+
     /// <summary>Strip length in pixels for a vertical strip (its height). Clicks are mapped with this same length.</summary>
     [Parameter] public int? LengthPx { get; set; }
 
@@ -122,7 +130,7 @@ else
 
     private const string ElementSizeModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/element-size.js";
 
-    private sealed record MeasuredBox(double Top, double Height);
+    private sealed record MeasuredBox(double Top, double Height, double Left, double Width);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -292,7 +300,10 @@ else
         }
         else
         {
-            time = ReviewTimeline.FromPixel(e.OffsetX, WindowStartUtc, WindowEndUtc, WidthPx);
+            MeasuredBox? box = FillWidth ? await MeasureAsync() : null;
+            time = box is { Width: > 0 } measured
+                ? ReviewTimeline.FromPixel(e.ClientX - measured.Left, WindowStartUtc, WindowEndUtc, measured.Width)
+                : ReviewTimeline.FromPixel(e.OffsetX, WindowStartUtc, WindowEndUtc, WidthPx);
         }
 
         await OnSeek.InvokeAsync(time);
