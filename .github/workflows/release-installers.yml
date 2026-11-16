@@ -197,16 +197,14 @@ jobs:
           $dbSetupDir = (Resolve-Path "publish-dbsetup").Path
           $dbDiagnosticsDir = (Resolve-Path "publish-dbdiagnostics").Path
           $dbRepairDir = (Resolve-Path "publish-dbrepair").Path
-          $logViewerDir = (Resolve-Path "publish-logviewer").Path
-          Write-Host "Compiling Inno Setup installer: version=$version server=$serverDir desktop=$desktopDir dbsetup=$dbSetupDir dbdiagnostics=$dbDiagnosticsDir dbrepair=$dbRepairDir logviewer=$logViewerDir"
+          Write-Host "Compiling Inno Setup installer: version=$version server=$serverDir desktop=$desktopDir dbsetup=$dbSetupDir dbdiagnostics=$dbDiagnosticsDir dbrepair=$dbRepairDir"
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" deploy\windows\VideoForensics.iss `
             "/DAppVersion=$version" `
             "/DServerPublishDir=$serverDir" `
             "/DDesktopPublishDir=$desktopDir" `
             "/DDbSetupPublishDir=$dbSetupDir" `
             "/DDbDiagnosticsPublishDir=$dbDiagnosticsDir" `
-            "/DDbRepairPublishDir=$dbRepairDir" `
-            "/DLogViewerPublishDir=$logViewerDir"
+            "/DDbRepairPublishDir=$dbRepairDir"
 
       - name: Locate built installer
         shell: pwsh

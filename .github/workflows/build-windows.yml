@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   build:
@@ -31,6 +32,8 @@ jobs:
           path: ~/.nuget/packages
 
       - name: Restore NuGet packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet restore VideoForensics.CI.slnf
 
       # The WebApp embeds this file as its syncfusion-license.key resource. It is git-ignored, so CI writes it here.
@@ -89,13 +92,6 @@ jobs:
           dotnet publish src/utils/dbrepair/src/VideoForensics.Utils.DbRepair.csproj
           -c Release -r win-x64 --self-contained true -o publish-dbrepair
 
-      - name: Publish LogViewer (win-x64, self-contained)
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
-        shell: bash
-        run: >
-          dotnet publish src/utils/logviewer/src/VideoForensics.Utils.LogViewer.csproj
-          -c Release -r win-x64 --self-contained true -o publish-logviewer
-
       - name: Publish WebApp (linux-x64, self-contained)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
         shell: bash
@@ -109,7 +105,7 @@ jobs:
         if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
         shell: bash
         run: |
-          tar -cf windows-publish.tar publish-win publish-desktop publish-dbsetup publish-dbdiagnostics publish-dbrepair publish-logviewer
+          tar -cf windows-publish.tar publish-win publish-desktop publish-dbsetup publish-dbdiagnostics publish-dbrepair
           tar -cf linux-publish.tar publish-linux
 
       - name: Upload Windows publish output
