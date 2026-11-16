@@ -514,10 +514,20 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(devices != null, "Unable to retrieve Ring devices");
             Assert.True((devices.AuthorizedDoorbots != null && devices.AuthorizedDoorbots.Count > 0) || (devices.Doorbots != null && devices.Doorbots.Count > 0), "Retrieved Ring devices do not contain any doorbots");
 
-            Entities.DoorbotTimestamps doorbotSnapshotTimestamps = await session.GetDoorbotSnapshotTimestamp((devices.AuthorizedDoorbots?.Count > 0 ? devices.AuthorizedDoorbots : devices.Doorbots)[0]);
+            // Why: a dead or offline doorbot returns no snapshot timestamps, so try each doorbot until one answers.
+            // Skip only when none does, since that means no device can be checked, not that the account is broken.
+            IEnumerable<Entities.Doorbot> candidates = devices.AuthorizedDoorbots?.Count > 0 ? devices.AuthorizedDoorbots : devices.Doorbots;
+            foreach (Entities.Doorbot doorbot in candidates)
+            {
+                Entities.DoorbotTimestamps timestamps = await session.GetDoorbotSnapshotTimestamp(doorbot);
+                if (timestamps.Timestamp.Count > 0)
+                {
+                    Assert.True(timestamps.Timestamp[0].Timestamp.HasValue, $"Unable to define the date and time for the last snapshot of doorbot {doorbot.Id} ({doorbot.Description})");
+                    return;
+                }
+            }
 
-            Assert.True(doorbotSnapshotTimestamps.Timestamp.Count > 0, "No timestamps were returned for the doorbot");
-            Assert.True(doorbotSnapshotTimestamps.Timestamp[0].Timestamp.HasValue, "Unable to define the date and time for the last snapshot of the doorbot");
+            Assert.Skip("No doorbot returned snapshot timestamps; the account has no device that can be checked.");
         }
 
         /// <summary>
