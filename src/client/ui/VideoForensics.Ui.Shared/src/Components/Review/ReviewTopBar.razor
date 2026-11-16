@@ -38,6 +38,7 @@
     <ReviewPopupHost>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <ReviewTimeRange State="State" />
+            <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
             <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filters-button" @onclick="OpenFilters">@L["FiltersButton"]</button>
             <ReviewPendingTags DeviceNames="DeviceNames" />
         </div>
