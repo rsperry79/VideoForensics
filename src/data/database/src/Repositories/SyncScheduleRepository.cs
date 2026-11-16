@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for SyncSchedule entities.</summary>
-    public class SyncScheduleRepository : ISyncScheduleRepository
+    public class SyncScheduleRepository : ISyncScheduleWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<SyncScheduleRepository> _logger;

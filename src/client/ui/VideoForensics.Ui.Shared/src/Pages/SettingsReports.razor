@@ -1,5 +1,5 @@
 @page "/settings/reports"
-@using VideoForensics.Client.Core.Tools
+@using VideoForensics.Client.Common.Contracts
 @using System.Net.Http.Json
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Layout
@@ -7,7 +7,7 @@
 @using VideoForensics.Core.Api.Contracts
 @inject PairedSessionState SessionState
 @inject IForensicsConfiguration Config
-@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
+@inject VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
 @inject ISelfApiHttpClientFactory ClientFactory
 @inject IStringLocalizer<SettingsReports> L

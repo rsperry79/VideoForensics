@@ -79,7 +79,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        LegalHold result = await repo.PlaceAsync(mediaItemId, reason, createdBy, CancellationToken.None);
+        LegalHoldDto result = await repo.PlaceAsync(mediaItemId, reason, createdBy, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(mediaItemId, result.MediaItemId);
@@ -194,7 +194,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        IReadOnlyList<LegalHold> result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+        IReadOnlyList<LegalHoldDto> result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -223,7 +223,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        IReadOnlyList<LegalHold> result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+        IReadOnlyList<LegalHoldDto> result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);

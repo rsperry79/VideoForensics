@@ -1,8 +1,9 @@
-using System.Reflection;
+using System.Reflection;using VideoForensics.Core.Api.Contracts;
 
 using VideoForensics.Client.Ui.Shared.Services.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -23,11 +24,11 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" }.ToDto(),
             Media = null
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
@@ -49,13 +50,13 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" }.ToDto(),
             Media = null
         };
         var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), [], minusFive);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHoldDto>(), [], minusFive);
 
         // Assert
         Assert.Contains("2024-01-15 05:30:00", result.Title);
@@ -67,7 +68,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
     {
         // Arrange
         var deviceId = Guid.NewGuid();
-        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:2", MetadataJson = "{\"test\": true}" };
+        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:2", MetadataJson = "{\"test\": true}" }.ToDto();
         var eventItem = new EvidenceItem
         {
             Key = "event:123",
@@ -78,8 +79,8 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Event = evt,
             Media = null
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
@@ -119,10 +120,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Doorbell",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -163,10 +164,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Garage",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -176,7 +177,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         Type fieldsType = result.Fields.GetType();
         PropertyInfo? mediaProperty = fieldsType.GetProperty("MediaItem");
         Assert.NotNull(mediaProperty);
-        Assert.Equal(media, mediaProperty?.GetValue(result.Fields));
+        Assert.Equal(media.ToDto(), mediaProperty?.GetValue(result.Fields));
     }
 
     [Fact]
@@ -208,10 +209,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Porch",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -254,11 +255,11 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Driveway",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "Active Investigation", CreatedBy = "admin" };
-        var holds = new Dictionary<Guid, LegalHold> { { mediaId, hold } };
-        var integrity = new List<IntegrityRecord>();
+        var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "Active Investigation", CreatedBy = "admin" }.ToDto();
+        var holds = new Dictionary<Guid, LegalHoldDto> { { mediaId, hold } };
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -296,10 +297,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Driveway",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -323,18 +324,18 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" },
+            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" }.ToDto(),
             Media = null
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Pin);
-        Assert.Equal(CaseItemKind.Event, result.Pin!.Kind);
+        Assert.Equal(CaseItemKindDto.Event, result.Pin!.Kind);
         Assert.Equal(eventId, result.Pin.TargetId);
     }
 
@@ -365,18 +366,18 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" },
-            Media = media
+            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" }.ToDto(),
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Pin);
-        Assert.Equal(CaseItemKind.Event, result.Pin!.Kind);
+        Assert.Equal(CaseItemKindDto.Event, result.Pin!.Kind);
         Assert.Equal(eventId, result.Pin.TargetId);
     }
 
@@ -407,17 +408,17 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Doorbell",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Pin);
-        Assert.Equal(CaseItemKind.Media, result.Pin!.Kind);
+        Assert.Equal(CaseItemKindDto.Media, result.Pin!.Kind);
         Assert.Equal(mediaId, result.Pin.TargetId);
     }
 
@@ -450,10 +451,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Device",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var holds = new Dictionary<Guid, LegalHold>();
-        var integrity = new List<IntegrityRecord>();
+        var holds = new Dictionary<Guid, LegalHoldDto>();
+        var integrity = new List<IntegrityRecordDto>();
 
         // Act
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
@@ -478,11 +479,11 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" }.ToDto(),
             Media = null
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHoldDto>(), []);
 
         Assert.NotNull(result.Actions);
         Assert.Null(result.Actions!.MediaItemId);
@@ -515,10 +516,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Garage",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHoldDto>(), []);
 
         Assert.NotNull(result.Actions);
         Assert.Equal(mediaId, result.Actions!.MediaItemId);
@@ -551,10 +552,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Garage",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "r", CreatedBy = "admin" };
-        var holds = new Dictionary<Guid, LegalHold> { { mediaId, hold } };
+        var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "r", CreatedBy = "admin" }.ToDto();
+        var holds = new Dictionary<Guid, LegalHoldDto> { { mediaId, hold } };
 
         InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, []);
 
@@ -587,14 +588,14 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Garage",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var integrity = new List<IntegrityRecord>
+        var integrity = new List<IntegrityRecordDto>
         {
-            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = true, VerifiedBy = "system" }
+            new(Guid.NewGuid(), mediaId, "abc", DateTime.UtcNow, true, null, "system")
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHoldDto>(), integrity);
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("Verified", provenanceDict["IntegrityStatus"]);
@@ -625,14 +626,14 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Garage",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
-        var integrity = new List<IntegrityRecord>
+        var integrity = new List<IntegrityRecordDto>
         {
-            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = false, VerifiedBy = "system" }
+            new(Guid.NewGuid(), mediaId, "abc", DateTime.UtcNow, false, null, "system")
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHoldDto>(), integrity);
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("Integrity failed", provenanceDict["IntegrityStatus"]);
@@ -663,10 +664,10 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = deviceId,
             DeviceName = "Garage",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHoldDto>(), []);
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("Not verified", provenanceDict["IntegrityStatus"]);
@@ -683,11 +684,11 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = deviceId,
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" }.ToDto(),
             Media = null
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHoldDto>(), []);
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.DoesNotContain("IntegrityStatus", provenanceDict.Keys);
@@ -696,7 +697,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
     [Fact]
     public void ToInspector_EventWithRemainder_RawJsonIsTheRemainderAndFlaggedAsNotTheRawPayload()
     {
-        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:3", MetadataJson = "{\"new_top_level\":\"hello\"}" };
+        var evt = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:3", MetadataJson = "{\"new_top_level\":\"hello\"}" }.ToDto();
         var eventItem = new EvidenceItem
         {
             Key = "event:3",
@@ -708,7 +709,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = null
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHoldDto>(), []);
 
         Assert.Equal("{\"new_top_level\":\"hello\"}", result.RawJson);
         Assert.True(result.RawJsonIsRemainder);
@@ -739,15 +740,15 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             DeviceId = media.DeviceId,
             DeviceName = "Doorbell",
             Event = null,
-            Media = media
+            Media = media.ToDto()
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(item, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(item, new Dictionary<Guid, LegalHoldDto>(), []);
 
         Assert.Equal(marker, result.RawJson);
         Assert.True(result.RawJsonIsRemainder);
         PropertyInfo? mediaProperty = result.Fields!.GetType().GetProperty("MediaItem");
-        Assert.Same(media, mediaProperty?.GetValue(result.Fields));
+        Assert.Equal(media.ToDto(), mediaProperty?.GetValue(result.Fields));
     }
 
     [Fact]
@@ -760,11 +761,11 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Front Door",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:4", MetadataJson = null },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:4", MetadataJson = null }.ToDto(),
             Media = null
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHoldDto>(), []);
 
         Assert.Null(result.RawJson);
         Assert.True(result.RawJsonIsRemainder);

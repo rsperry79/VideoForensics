@@ -13,13 +13,13 @@ namespace VideoForensics.Utils.DbRepair;
 public class SuperAdminRecovery : ISuperAdminRecovery
 {
     private const int MinPasswordLength = 12;
-    private readonly IOperatorRepository _operatorRepo;
+    private readonly IOperatorWriteRepository _operatorRepo;
     private readonly IAppSettingRepository _appSettingRepo;
     private readonly IPasswordPrompt _passwordPrompt;
     private readonly ISecurityAuditLogRepository _auditRepo;
 
     public SuperAdminRecovery(
-        IOperatorRepository operatorRepo,
+        IOperatorWriteRepository operatorRepo,
         IAppSettingRepository appSettingRepo,
         IPasswordPrompt passwordPrompt,
         ISecurityAuditLogRepository auditRepo)

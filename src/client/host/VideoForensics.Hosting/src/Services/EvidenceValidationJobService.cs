@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Services
@@ -181,7 +182,7 @@ namespace VideoForensics.Client.Hosting.Services
             {
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
                 IEvidenceValidationService validation = scope.ServiceProvider.GetRequiredService<IEvidenceValidationService>();
-                IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await validation.ReconcileWithProviderAsync(
+                IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await validation.ReconcileWithProviderAsync(
                     deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None,
                     new DelegateProgress(line => AppendLog(job, line)));
 
@@ -307,7 +308,7 @@ namespace VideoForensics.Client.Hosting.Services
             public Guid? MediaItemId { get; set; }
             public DateTime? CompletedUtc { get; set; }
             public MediaVerificationResult[]? IntegrityResults { get; set; }
-            public ReconciliationDiscrepancy[]? Discrepancies { get; set; }
+            public ReconciliationDiscrepancyDto[]? Discrepancies { get; set; }
             public string? ErrorMessage { get; set; }
 
             /// <summary>

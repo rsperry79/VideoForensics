@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = app.MapPost("/api/v1/pairing/initiate", async (
                 HttpContext context,
                 IPairingTokenService pairingTokens,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
                 CancellationToken ct) =>
@@ -149,7 +149,7 @@ namespace VideoForensics.Client.WebApp.Api
                 RegisterCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairingTokenService pairingTokens,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 IPairedDeviceRepository pairedDevices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -270,7 +270,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = app.MapPost("/api/v1/auth/webauthn/assertion-options", async (
                 IPairedDeviceRepository pairedDevices,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 IOperatorCredentialRepository operatorCredentials,
                 IAuthMethodSettingsService authMethodsService,
                 ISecurityAuditLogger auditLog,
@@ -340,7 +340,7 @@ namespace VideoForensics.Client.WebApp.Api
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 ISessionTokenService sessionTokens,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -603,7 +603,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// logging and error response behavior of the inline checks it replaces.
         /// </summary>
         public static async Task<IResult?> CheckPasskeyEnabledAsync(
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IAuthMethodSettingsService authMethods,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,

@@ -165,7 +165,7 @@ public class MediaFlagMappingTests
     public void FlagStatusConflict_RoundTrip_KeepsExpectedActualAndReviewer()
     {
         DateTime reviewedAt = From.AddHours(2);
-        var ex = new FlagStatusConflictException(Guid.NewGuid(), MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, "reviewer-7", reviewedAt);
+        var ex = new VideoForensics.Data.Common.Contracts.FlagStatusConflictException(Guid.NewGuid(), MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, "reviewer-7", reviewedAt);
 
         FlagStatusConflictDto body = ex.ToDto();
         Assert.Equal("Unreviewed", body.ExpectedStatus);
@@ -173,7 +173,7 @@ public class MediaFlagMappingTests
         Assert.Equal("reviewer-7", body.ReviewedBy);
         Assert.Equal(reviewedAt, body.ReviewedAtUtc);
 
-        FlagStatusConflictException back = body.ToDomain(ex.FlagId);
+        VideoForensics.Data.Common.Contracts.FlagStatusConflictException back = body.ToDomain(ex.FlagId);
         Assert.Equal(ex.FlagId, back.FlagId);
         Assert.Equal(MediaFlagStatus.Unreviewed, back.ExpectedStatus);
         Assert.Equal(MediaFlagStatus.Kept, back.ActualStatus);

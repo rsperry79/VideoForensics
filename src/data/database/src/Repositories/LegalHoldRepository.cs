@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for LegalHold entities.</summary>
-    public class LegalHoldRepository : ILegalHoldRepository
+    public class LegalHoldRepository : ILegalHoldWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogRepository _actionLogRepository;

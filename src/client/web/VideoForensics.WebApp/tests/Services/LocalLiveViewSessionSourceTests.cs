@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
 
@@ -19,7 +20,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         public async Task LocalLiveViewSessionSource_SubscribeAndUnsubscribe_CompleteWithoutEmitting()
         {
             var source = new LocalLiveViewSessionSource();
-            var received = new List<LiveViewSession>();
+            var received = new List<LiveViewSessionDto>();
             using IDisposable subscription = source.SessionChanged.Subscribe(received.Add);
 
             await source.SubscribeAsync(Guid.NewGuid(), CancellationToken.None);
@@ -32,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         public void Telemetry_Empty_EmitsNothing()
         {
             var source = new LocalLiveViewSessionSource();
-            var received = new List<LiveViewTelemetrySample>();
+            var received = new List<LiveViewTelemetrySampleDto>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
 
             Assert.Empty(received);

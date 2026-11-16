@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Core.Tests.Services
 
         private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-timeline-tests-" + Guid.NewGuid().ToString("N"));
         private readonly string _output = Path.Combine(Path.GetTempPath(), "vf-timeline-tests-out.mp4");
-        private readonly Mock<ISnapshotCaptureRepository> _captures = new();
+        private readonly Mock<ISnapshotCaptureWriteRepository> _captures = new();
         private readonly Mock<ITimelineVideoBuilder> _builder = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 

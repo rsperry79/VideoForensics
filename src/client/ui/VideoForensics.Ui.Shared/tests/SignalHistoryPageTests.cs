@@ -1,3 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -32,8 +34,8 @@ public class SignalHistory_Tests : ScopeRailTestContext
         _ = Services.AddScoped<SignalDrillTrail>();
         var flags = new Mock<IMediaFlagRepository>();
         _ = flags
-            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0).ToDto());
         _ = Services.AddScoped(_ => flags.Object);
         return Render<SignalHistory>();
     }
@@ -46,7 +48,7 @@ public class SignalHistory_Tests : ScopeRailTestContext
         FlaggedMediaTable table = page.FindComponent<FlaggedMediaTable>().Instance;
 
         Assert.NotNull(table);
-        Assert.Equal(new[] { MediaFlagType.RssiDeviation }, table.Types);
+        Assert.Equal(new[] { "RssiDeviation" }, table.Types);
     }
 
     [Fact]
@@ -95,8 +97,8 @@ public class SignalHistory_Tests : ScopeRailTestContext
         _ = Services.AddScoped<SignalDrillTrail>();
         var flags = new Mock<IMediaFlagRepository>();
         _ = flags
-            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0).ToDto());
         _ = Services.AddScoped(_ => flags.Object);
         return Render<SignalHistory>();
     }
@@ -175,8 +177,8 @@ public class SignalHistory_Tests : ScopeRailTestContext
         _ = Services.AddScoped<SignalDrillTrail>();
         var flags = new Mock<IMediaFlagRepository>();
         _ = flags
-            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0).ToDto());
         _ = Services.AddScoped(_ => flags.Object);
         return Render<SignalHistory>();
     }
@@ -256,8 +258,8 @@ public class SignalHistory_Tests : ScopeRailTestContext
         _ = Services.AddScoped<SignalDrillTrail>();
         var flags = new Mock<IMediaFlagRepository>();
         _ = flags
-            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0));
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0).ToDto());
         _ = Services.AddScoped(_ => flags.Object);
         return Render<SignalHistory>();
     }

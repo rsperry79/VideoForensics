@@ -12,14 +12,14 @@ using Xunit;
 namespace VideoForensics.Data.Database.Tests
 {
     /// <summary>
-    /// Tests for <see cref="ICaseRepository.ListForProviderAccountAsync"/>.
+    /// Tests for <see cref="ICaseWriteRepository.ListForProviderAccountAsync"/>.
     /// A case is attached to a provider account when any of its scope devices belongs to a location
     /// the account can see (CaseDevice -> Device -> ProviderAccountLocation).
     /// </summary>
     public class CaseRepositoryProviderAccountTests : IAsyncLifetime
     {
         private SqliteInMemoryFixture _fixture = null!;
-        private ICaseRepository _repository = null!;
+        private ICaseWriteRepository _repository = null!;
         private ILoggerFactory _loggerFactory = null!;
 
         public async ValueTask InitializeAsync()

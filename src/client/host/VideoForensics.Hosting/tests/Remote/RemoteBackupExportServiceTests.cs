@@ -124,7 +124,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             {
                 Assert.Equal(HttpMethod.Post, request.Method);
                 Assert.Equal("/api/v1/backup/export", request.RequestUri?.AbsolutePath);
-                Assert.NotNull(request.Content);
 
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
@@ -359,17 +358,15 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
-        public async Task ExportBackupAsync_SendsCorrectJsonRequest()
+        public async Task ExportBackupAsync_PostsWithoutBody()
         {
             // Arrange
             string outputDir = Path.Combine(_tempDirectory, "export-request-check");
-            ExportBackupRequest? capturedRequest = null;
+            HttpRequestMessage? capturedRequest = null;
 
-            var handler = new FakeHttpMessageHandler(async request =>
+            var handler = new FakeHttpMessageHandler(request =>
             {
-                Assert.NotNull(request.Content);
-                string content = await request.Content!.ReadAsStringAsync();
-                capturedRequest = JsonSerializer.Deserialize<ExportBackupRequest>(content);
+                capturedRequest = request;
 
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
@@ -390,7 +387,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                         "application/json")
                 };
 
-                return response;
+                return Task.FromResult(response);
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
@@ -401,8 +398,10 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             // Assert
             Assert.NotNull(capturedRequest);
-            // The server accepts only a folder name (BackupEndpoints rejects rooted paths), so the local staging path must not be sent.
-            Assert.Equal(Path.GetFileName(outputDir), capturedRequest!.OutputDirectory);
+            Assert.Equal(HttpMethod.Post, capturedRequest!.Method);
+            Assert.Equal("/api/v1/backup/export", capturedRequest.RequestUri!.AbsolutePath);
+            // The server picks the destination from its saved Backup folder, so no client path is sent.
+            Assert.Null(capturedRequest.Content);
         }
 
         [Fact]
@@ -476,7 +475,4 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             }
         }
     }
-
-    /// <summary>This type is mirrored from RemoteBackupExportService for testing purposes.</summary>
-    internal record ExportBackupRequest(string OutputDirectory);
 }

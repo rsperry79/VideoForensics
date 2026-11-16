@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Database.Tests
     public class CaseRepositoryNumberingTests : IAsyncLifetime
     {
         private SqliteInMemoryFixture _fixture = null!;
-        private ICaseRepository _repository = null!;
+        private ICaseWriteRepository _repository = null!;
         private ActionLogRepository _actionLogRepository = null!;
         private LocationRepository _locationRepository = null!;
         private DeviceRepository _deviceRepository = null!;

@@ -66,3 +66,8 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 2026-11-07 | merge | merged feature/shared-filters and two other branches into wip while the main checkout had an unrelated docs change | ignored the handoff stop rule | stop and report when the main checkout has unrelated changes
 2026-11-07 | line endings | sed -i used on working copies that were w/crlf (ScheduledSyncService, VideoForensicsHostingExtensions, Program.cs, MauiProgram.cs); committed content checked as LF, no stray CRs | ran sed -i without checking eol first | check git ls-files --eol before sed -i
 >
+## 2026-11-14 Ui.Shared test regressions after provider-account and jamming DTO move (D4a/D4b)
+- Symptom: 9 Ui.Shared tests failed after the DTO move (AccountDetails credential banner and localization tests, SyncTab timestamp, ReviewDetailLoader jamming, Analyze jamming deep link, JammingPanel record and select).
+- Cause: (1) fixtures evaluated ToDto() once at construction, so later entity edits were not seen; (2) JammingToolsOrchestrator uses the entity write interface, so tests mocked the wrong repository; (3) Moq callback typed to the entity while the setup returns DTOs.
+- Fix: lazy ReturnsAsync factories; mocks moved to the write mock; callbacks retyped to DTOs.
+- Rule: when a DTO interface changes, grep the callers' constructor parameter types before mocking.

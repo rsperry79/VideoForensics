@@ -14,7 +14,7 @@ namespace VideoForensics.Data.Core.Tests.Services;
 public class MediaThumbnailBackfillTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "vf-backfill-" + Guid.NewGuid());
-    private readonly Mock<IMediaItemRepository> _items = new();
+    private readonly Mock<IMediaItemWriteRepository> _items = new();
     private readonly Mock<IMediaThumbnailService> _thumbnails = new();
 
     public MediaThumbnailBackfillTests()

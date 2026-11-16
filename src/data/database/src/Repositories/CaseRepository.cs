@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for forensic cases with chain-of-custody logging.</summary>
-    public class CaseRepository : ICaseRepository
+    public class CaseRepository : ICaseWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogRepository _actionLogRepository;

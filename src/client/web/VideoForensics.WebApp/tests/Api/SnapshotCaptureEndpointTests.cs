@@ -27,7 +27,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_DefaultAttemptsOnly_QueriesCurrentCaptures()
         {
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetCurrentForDeviceAsync(DeviceId, From, From.AddHours(1), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
@@ -41,7 +41,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_AttemptsOnly_QueriesAttempts()
         {
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(DeviceId, From, From.AddHours(1), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
@@ -54,7 +54,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task ListAsync_ToNotAfterFrom_ReturnsBadRequestWithoutQuerying()
         {
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
 
             IResult result = await SnapshotCaptureEndpoints.ListAsync(DeviceId, From, From, captures.Object, CancellationToken.None);
 
@@ -65,7 +65,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetAsync_Missing_ReturnsNotFound()
         {
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetAsync(CaptureId, It.IsAny<CancellationToken>())).ReturnsAsync((SnapshotCapture?)null);
 
             IResult result = await SnapshotCaptureEndpoints.GetAsync(CaptureId, captures.Object, CancellationToken.None);

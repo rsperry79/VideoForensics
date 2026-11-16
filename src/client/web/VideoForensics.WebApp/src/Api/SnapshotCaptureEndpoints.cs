@@ -31,7 +31,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid deviceId,
             DateTimeOffset from,
             DateTimeOffset to,
-            ISnapshotCaptureRepository captures,
+            ISnapshotCaptureWriteRepository captures,
             CancellationToken ct,
             bool attemptsOnly = false)
         {
@@ -47,7 +47,7 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>Gets one capture attempt, or 404.</summary>
-        public static async Task<IResult> GetAsync(Guid id, ISnapshotCaptureRepository captures, CancellationToken ct)
+        public static async Task<IResult> GetAsync(Guid id, ISnapshotCaptureWriteRepository captures, CancellationToken ct)
         {
             SnapshotCapture? capture = await captures.GetAsync(id, ct);
             return capture == null ? Results.NotFound() : Results.Ok(ToDto(capture));

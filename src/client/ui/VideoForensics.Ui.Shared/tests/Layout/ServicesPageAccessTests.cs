@@ -8,7 +8,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 
 public class ServicesPageAccess_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false, RestrictedSettings open = RestrictedSettings.None)
+    private static NavContext Ctx(OperatorRoleDto? role, bool local = false, RestrictedSettings open = RestrictedSettings.None)
     {
         return new(true, role, AppLockSupported: false, IsLocalTier: local, OpenToAdmin: open);
     }
@@ -16,25 +16,25 @@ public class ServicesPageAccess_Tests
     [Fact]
     public void IsAllowed_ServicesPage_SuperAdmin_Allowed()
     {
-        Assert.True(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRole.SuperAdmin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRoleDto.SuperAdmin)));
     }
 
     [Fact]
     public void IsAllowed_ServicesPage_AdminByDefault_Denied()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRole.Admin)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRoleDto.Admin)));
     }
 
     [Fact]
     public void IsAllowed_ServicesPage_AdminOnceSuperAdminOpensIt_Allowed()
     {
-        Assert.True(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRole.Admin, open: RestrictedSettings.Services)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRoleDto.Admin, open: RestrictedSettings.Services)));
     }
 
     [Fact]
     public void IsAllowed_ServicesPage_OtherAreaOpened_StaysDenied()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRole.Admin, open: RestrictedSettings.Reports)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/services", Ctx(OperatorRoleDto.Admin, open: RestrictedSettings.Reports)));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class ServicesPageAccess_Tests
 
         Assert.NotNull(item);
         Assert.Equal("System & Network", item!.Section);
-        Assert.False(item.IsVisible(Ctx(OperatorRole.Admin)));
-        Assert.True(item.IsVisible(Ctx(OperatorRole.SuperAdmin)));
+        Assert.False(item.IsVisible(Ctx(OperatorRoleDto.Admin)));
+        Assert.True(item.IsVisible(Ctx(OperatorRoleDto.SuperAdmin)));
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
@@ -16,7 +17,7 @@ using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
+using VideoForensics.Core.Api.Contracts;using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
@@ -288,8 +289,8 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         // Arrange
         _ = RegisterDeviceRepository();
         _ = Services.AddScoped(_ => new ScopeState());
-        ForensicCase case1 = MakeCase(caseNumber: "CASE-100", title: "Alpha");
-        ForensicCase case2 = MakeCase(caseNumber: "CASE-200", title: "Beta");
+        ForensicCaseDto case1 = MakeCase(caseNumber: "CASE-100", title: "Alpha");
+        ForensicCaseDto case2 = MakeCase(caseNumber: "CASE-200", title: "Beta");
         _ = RegisterCaseRepository(case1, case2);
 
         // Act
@@ -311,7 +312,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         _ = Services.AddScoped(_ => new ScopeState());
         var device1 = Guid.NewGuid();
         var device2 = Guid.NewGuid();
-        ForensicCase testCase = MakeCase();
+        ForensicCaseDto testCase = MakeCase();
         Mock<ICaseRepository> caseRepository = RegisterCaseRepository(testCase);
         _ = caseRepository
             .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
@@ -342,7 +343,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         _ = RegisterDeviceRepository();
         _ = Services.AddScoped(_ => new ScopeState());
         var device1 = Guid.NewGuid();
-        ForensicCase testCase = MakeCase();
+        ForensicCaseDto testCase = MakeCase();
         Mock<ICaseRepository> caseRepository = RegisterCaseRepository(testCase);
         _ = caseRepository
             .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
@@ -372,7 +373,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         // Arrange
         _ = RegisterDeviceRepository();
         _ = Services.AddScoped(_ => new ScopeState());
-        ForensicCase testCase = MakeCase(scopeFromUtc: new DateTime(2026, 1, 1), scopeToUtc: new DateTime(2026, 2, 1));
+        ForensicCaseDto testCase = MakeCase(scopeFromUtc: new DateTime(2026, 1, 1), scopeToUtc: new DateTime(2026, 2, 1));
         Mock<ICaseRepository> caseRepository = RegisterCaseRepository(testCase);
         _ = caseRepository
             .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
@@ -421,7 +422,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         // Arrange
         _ = RegisterDeviceRepository();
         _ = Services.AddScoped(_ => new ScopeState());
-        ForensicCase testCase = MakeCase();
+        ForensicCaseDto testCase = MakeCase();
         Mock<ICaseRepository> caseRepository = RegisterCaseRepository(testCase);
         _ = caseRepository
             .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
@@ -451,7 +452,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         // Arrange
         _ = RegisterDeviceRepository();
         _ = Services.AddScoped(_ => new ScopeState());
-        ForensicCase testCase = MakeCase();
+        ForensicCaseDto testCase = MakeCase();
         Mock<ICaseRepository> caseRepository = RegisterCaseRepository(testCase);
         _ = caseRepository
             .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
@@ -487,7 +488,7 @@ public class ScopeRail_Rendering_Tests : ScopeRailTestContext
         _ = Services.AddScoped(_ => new ScopeState());
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Test error"));
         _ = Services.AddScoped(_ => caseRepository.Object);
 

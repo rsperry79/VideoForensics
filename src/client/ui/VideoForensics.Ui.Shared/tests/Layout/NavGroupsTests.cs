@@ -109,9 +109,9 @@ public class NavGroups_Tests
         NavItem manualSyncItem = group.Items.First(i => i.Path == "/accounts/manual-sync");
 
         Assert.Equal("Manual Sync", manualSyncItem.Text);
-        Assert.False(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
-        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
-        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: false)));
+        Assert.False(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false)));
+        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false)));
+        Assert.True(manualSyncItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsLocalTier: false)));
     }
 
     [Fact]
@@ -120,8 +120,8 @@ public class NavGroups_Tests
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         NavItem queryItem = group.Items.First(i => i.Path == "/query");
 
-        Assert.False(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
-        Assert.True(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.False(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Review, AppLockSupported: false)));
+        Assert.True(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false)));
     }
 
     [Fact]
@@ -130,8 +130,8 @@ public class NavGroups_Tests
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         NavItem accountsItem = group.Items.First(i => i.Path == "/accounts");
 
-        Assert.False(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
-        Assert.True(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.False(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Review, AppLockSupported: false)));
+        Assert.True(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false)));
     }
 
     [Fact]
@@ -141,10 +141,10 @@ public class NavGroups_Tests
         NavItem permissionsItem = group.Items.First(i => i.Path == "/settings/permissions");
 
         Assert.Equal("Security", permissionsItem.Section);
-        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
-        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
-        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
-        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsPasskeySession: true)));
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false)));
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsPasskeySession: true)));
     }
 
     [Fact]
@@ -182,11 +182,11 @@ public class NavGroups_Tests
         NavItem logsItem = group.Items.First(i => i.Path == "/settings/logs");
 
         Assert.Equal("Server Logs", logsItem.Text);
-        Assert.True(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
-        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
-        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
-        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
-        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false)));
+        Assert.True(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Review, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.ReadOnly, AppLockSupported: false)));
         Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false)));
     }
 
@@ -206,11 +206,11 @@ public class NavGroups_Tests
         NavItem operatorsItem = group.Items.First(i => i.Path == "/settings/operators");
 
         // Should NOT be visible to Admin
-        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         Assert.False(operatorsItem.IsVisible(adminCtx));
 
         // Should be visible to SuperAdmin on the Local tier (the operator endpoints are SuperAdminLocal)
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(operatorsItem.IsVisible(superAdminCtx));
     }
 
@@ -228,11 +228,11 @@ public class NavGroups_Tests
         NavItem lockoutPolicyItem = group.Items.First(i => i.Path == "/settings/lockout-policy");
 
         // Should NOT be visible to Admin
-        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         Assert.False(lockoutPolicyItem.IsVisible(adminCtx));
 
         // Should be visible to SuperAdmin on the Local tier
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(lockoutPolicyItem.IsVisible(superAdminCtx));
     }
 
@@ -243,11 +243,11 @@ public class NavGroups_Tests
         NavItem loginMethodsItem = group.Items.First(i => i.Path == "/settings/auth-methods");
 
         // Should NOT be visible to Admin
-        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         Assert.False(loginMethodsItem.IsVisible(adminCtx));
 
         // Should be visible to SuperAdmin on the Local tier
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(loginMethodsItem.IsVisible(superAdminCtx));
     }
 
@@ -258,16 +258,16 @@ public class NavGroups_Tests
         NavItem notificationsItem = group.Items.First(i => i.Path == "/settings/notifications");
 
         // Should NOT be visible to ReadOnly
-        var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
+        var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.ReadOnly, AppLockSupported: false);
         Assert.False(notificationsItem.IsVisible(readOnlyCtx));
 
         // Hidden from Admin until a Super Admin opens notification settings to admins
-        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         Assert.False(notificationsItem.IsVisible(adminCtx));
         Assert.True(notificationsItem.IsVisible(adminCtx with { OpenToAdmin = RestrictedSettings.Notifications }));
 
         // Super Admin always sees it
-        Assert.True(notificationsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(notificationsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: false)));
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public class NavGroups_Tests
 
         Assert.Equal("My Notifications", item.Text);
         Assert.Equal("General", item.Section);
-        Assert.True(item.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false)));
+        Assert.True(item.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRoleDto.ReadOnly, AppLockSupported: false)));
     }
 
     [Fact]
@@ -298,11 +298,11 @@ public class NavGroups_Tests
         NavItem appLockItem = group.Items.First(i => i.Path == "/settings/app-lock");
 
         // Should NOT be visible if AppLock not supported
-        var noLockCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var noLockCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         Assert.False(appLockItem.IsVisible(noLockCtx));
 
         // Should be visible if AppLock is supported
-        var withLockCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: true);
+        var withLockCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: true);
         Assert.True(appLockItem.IsVisible(withLockCtx));
     }
 
@@ -335,7 +335,7 @@ public class NavGroups_Tests
             }
         }
 
-        var signedInCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: true);
+        var signedInCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.SuperAdmin, AppLockSupported: true);
         var signedOutCtx = new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false);
         foreach (UserMenu.UserMenuItem? item in UserMenu.Items(signedInCtx).Concat(UserMenu.Items(signedOutCtx)))
         {

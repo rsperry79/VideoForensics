@@ -195,7 +195,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            ISyncScheduleRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleRepository>();
+            ISyncScheduleWriteRepository scheduleRepository = sp.GetRequiredService<ISyncScheduleWriteRepository>();
             IReadOnlyList<SyncSchedule> schedules = await scheduleRepository.ListEnabledAsync(ct);
 
             // Why: runs before the empty check so an idle install is cleaned too.
@@ -226,7 +226,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 string providerName = "unknown provider";
                 try
                 {
-                    ProviderAccount? account = await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(schedule.ProviderAccountId, ct);
+                    ProviderAccount? account = await sp.GetRequiredService<IProviderAccountWriteRepository>().GetAsync(schedule.ProviderAccountId, ct);
                     if (account == null)
                     {
                         _logger.LogWarning("Scheduled sync skipped: provider account for an enabled schedule no longer exists");
@@ -366,8 +366,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
-            IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
+            ILocationWriteRepository locations = sp.GetRequiredService<ILocationWriteRepository>();
+            IDeviceWriteRepository devices = sp.GetRequiredService<IDeviceWriteRepository>();
             bool deviceFailed = false;
             foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, ct))
             {
@@ -431,7 +431,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             IReadOnlyList<DateTime> events = await queries.ListEventTimesForGapsAsync(deviceId, cursor.Value, horizon, ct);
-            IReadOnlyList<SnapshotCapture> attempts = await sp.GetRequiredService<ISnapshotCaptureRepository>()
+            IReadOnlyList<SnapshotCapture> attempts = await sp.GetRequiredService<ISnapshotCaptureWriteRepository>()
                 .GetAttemptsForDeviceAsync(deviceId, new DateTimeOffset(cursor.Value, TimeSpan.Zero), new DateTimeOffset(horizon, TimeSpan.Zero), ct);
 
             // Only attempts that produced an image count as snapshots; failed attempts leave a gap, not a frame.
@@ -468,7 +468,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
         private async Task RunEventSyncAsync(
             IServiceProvider sp,
-            ISyncScheduleRepository scheduleRepository,
+            ISyncScheduleWriteRepository scheduleRepository,
             SyncSchedule schedule,
             ProviderAccount account,
             IEventAndConfigService eventService,
@@ -551,9 +551,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(
                         eventService,
-                        sp.GetRequiredService<IDeviceRepository>(),
-                        sp.GetRequiredService<ILocationRepository>(),
-                        sp.GetRequiredService<IProviderAccountRepository>(),
+                        sp.GetRequiredService<IDeviceWriteRepository>(),
+                        sp.GetRequiredService<ILocationWriteRepository>(),
+                        sp.GetRequiredService<IProviderAccountWriteRepository>(),
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,
                         storage: sp.GetService<IStorageLocationProvider>(),
@@ -561,7 +561,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         progress: sp.GetService<ISyncProgressStore>(),
                         referenceCache: referenceCache,
                         budgetGuard: budgetGuard,
-                        events: sp.GetService<IEventRepository>());
+                        events: sp.GetService<IEventWriteRepository>());
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
@@ -575,7 +575,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         DateTime windowEnd = AccountSyncRunner.NextBackfillEnd(windowStart, nowUtc);
                         counts = await pull.PullAccountEventsAsync(accountId, windowStart, windowEnd, ct);
                         backfillError = ProviderSyncRunRecorder.OutcomeAfterPull(
-                            await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
+                            await sp.GetRequiredService<IProviderAccountWriteRepository>().GetAsync(accountId, ct));
                         if (backfillError is null)
                         {
                             backfillInProgress = windowEnd < nowUtc;
@@ -586,7 +586,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     {
                         IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.WeeklyWindows(catchUpStart, runNowUtc);
                         _logger.LogInformation("Scheduled sync catching up {Windows} week(s) for {ProviderName} account", windows.Count, providerName);
-                        (counts, catchUpError) = await PullCatchUpAsync(pull, sp.GetRequiredService<IProviderAccountRepository>(), budgetGuard, providerName, accountId, windows, ct);
+                        (counts, catchUpError) = await PullCatchUpAsync(pull, sp.GetRequiredService<IProviderAccountWriteRepository>(), budgetGuard, providerName, accountId, windows, ct);
                     }
                     else
                     {
@@ -599,7 +599,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     // Same rule as the manual sync: the pull reports failures by recording them on the account.
                     outcome = backfillError ?? catchUpError ?? ProviderSyncRunRecorder.OutcomeAfterPull(
-                        await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
+                        await sp.GetRequiredService<IProviderAccountWriteRepository>().GetAsync(accountId, ct));
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -618,7 +618,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 // Why: the clean-pull time gates the time-lapse horizon, so it is set only when the completion is recorded.
                 // A failed write leaves it unset, and the next tick retries the write.
-                if (await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct))
+                if (await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountWriteRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct))
                 {
                     _cleanPullUtc[accountId] = _time.GetUtcNow().UtcDateTime;
                 }
@@ -638,7 +638,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         private async Task<(EventPullResult Counts, string? Error)> PullCatchUpAsync(
             EventPullService pull,
-            IProviderAccountRepository accounts,
+            IProviderAccountWriteRepository accounts,
             IProviderApiBudgetGuard budgetGuard,
             string providerName,
             Guid accountId,
@@ -673,7 +673,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
         /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>
         /// <returns>True when the completion is recorded, or the account no longer exists; false when the write failed.</returns>
-        private async Task<bool> MarkSyncCompletedAsync(IProviderAccountRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
+        private async Task<bool> MarkSyncCompletedAsync(IProviderAccountWriteRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
         {
             try
             {
@@ -698,7 +698,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// An enabled schedule whose account was deleted: record the failed attempt and back off a full interval, so the
         /// schedule does not write a failure row on every tick.
         /// </summary>
-        private async Task RecordMissingAccountAttemptAsync(IServiceProvider sp, ISyncScheduleRepository scheduleRepository, SyncSchedule schedule, CancellationToken ct)
+        private async Task RecordMissingAccountAttemptAsync(IServiceProvider sp, ISyncScheduleWriteRepository scheduleRepository, SyncSchedule schedule, CancellationToken ct)
         {
             DateTime now = _time.GetUtcNow().UtcDateTime;
             await ProviderSyncRunRecorder.RecordAsync(

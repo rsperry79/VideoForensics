@@ -44,7 +44,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var caseId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var notes = new Mock<INoteRepository>();
+            var notes = new Mock<INoteWriteRepository>();
             Note saved = CreateCaseNote(caseId);
             _ = notes.Setup(n => n.AddAsync(NoteTargetKind.Case, caseId, "Observed motion at 14:02.", operatorId.ToString(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(saved);
@@ -62,7 +62,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var caseId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var notes = new Mock<INoteRepository>();
+            var notes = new Mock<INoteWriteRepository>();
             _ = notes.Setup(n => n.AddAsync(NoteTargetKind.Case, caseId, "   ", operatorId.ToString(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new ArgumentException("Note body is required.", "body"));
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -78,7 +78,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var caseId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var notes = new Mock<INoteRepository>();
+            var notes = new Mock<INoteWriteRepository>();
             _ = notes.Setup(n => n.AddAsync(NoteTargetKind.Case, caseId, It.IsAny<string>(), operatorId.ToString(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new KeyNotFoundException("Case not found."));
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -94,7 +94,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var caseId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
-            var notes = new Mock<INoteRepository>();
+            var notes = new Mock<INoteWriteRepository>();
             _ = notes.Setup(n => n.AddAsync(NoteTargetKind.Case, caseId, It.IsAny<string>(), operatorId.ToString(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Case is closed."));
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -109,7 +109,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task CaseNoteEndpoints_Add_MissingOperatorClaim_ReturnsUnauthorized()
         {
             var caseId = Guid.NewGuid();
-            var notes = new Mock<INoteRepository>();
+            var notes = new Mock<INoteWriteRepository>();
             var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) };
 
             IResult result = await CaseEndpoints.AddCaseNoteAsync(
@@ -123,7 +123,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task CaseNoteEndpoints_List_UnknownCase_ReturnsEmptyOk()
         {
             var caseId = Guid.NewGuid();
-            var notes = new Mock<INoteRepository>();
+            var notes = new Mock<INoteWriteRepository>();
             _ = notes.Setup(n => n.ListAsync(NoteTargetKind.Case, caseId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Array.Empty<Note>());
 

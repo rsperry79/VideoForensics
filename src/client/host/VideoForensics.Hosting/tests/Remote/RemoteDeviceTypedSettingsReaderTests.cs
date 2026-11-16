@@ -29,7 +29,7 @@ public class RemoteDeviceTypedSettingsReaderTests
     }
 
     [Fact]
-    public async Task RemoteDeviceTypedSettingsReader_GetAsync_CallsTypedRouteAndMapsRows()
+    public async Task RemoteDeviceTypedSettingsReader_GetAsync_CallsTypedRouteAndReturnsDto()
     {
         var deviceId = Guid.NewGuid();
         var dto = new DeviceTypedSettingsDto(
@@ -40,11 +40,11 @@ public class RemoteDeviceTypedSettingsReaderTests
         var handler = new StubHandler(JsonSerializer.Serialize(dto));
         var reader = new RemoteDeviceTypedSettingsReader(new HttpClient(handler) { BaseAddress = new Uri("https://server.test/") });
 
-        DeviceTypedSettings settings = await reader.GetAsync(deviceId, CancellationToken.None);
+        DeviceTypedSettingsDto settings = await reader.GetAsync(deviceId, CancellationToken.None);
 
         Assert.Equal($"https://server.test/api/v1/device-config/typed/{deviceId}", handler.RequestedUri!.ToString());
         Assert.Equal(5000, settings.OfflineMotion!.MaxUploadKb);
-        Assert.Equal(deviceId, settings.OfflineMotion.DeviceId);
+        Assert.Equal(deviceId, settings.DeviceId);
         Assert.Equal("cloud", Assert.Single(settings.DetectionTypes).Mode);
         Assert.Equal(10.0, Assert.Single(settings.Thresholds).Threshold);
     }

@@ -7,6 +7,8 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -19,13 +21,13 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 public class ExportEvidencePageTests : CasesPagesTestBase
 {
     private readonly Mock<IEvidenceExportService> _exportMock = new();
-    private readonly ForensicCase _caseA = CreateTestCase(caseNumber: "CASE-A", title: "Alpha");
-    private readonly ForensicCase _caseB = CreateTestCase(caseNumber: "CASE-B", title: "Bravo");
+    private readonly ForensicCaseDto _caseA = CreateTestCase(caseNumber: "CASE-A", title: "Alpha");
+    private readonly ForensicCaseDto _caseB = CreateTestCase(caseNumber: "CASE-B", title: "Bravo");
 
     public ExportEvidencePageTests()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([_caseA, _caseB]);
         _ = _exportMock
             .Setup(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))

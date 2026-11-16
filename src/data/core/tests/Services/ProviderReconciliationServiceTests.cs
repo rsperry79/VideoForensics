@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     public class ProviderReconciliationServiceTests
     {
         private readonly Mock<IProviderReconciliationRepository> _mockReconciliationRepository;
-        private readonly Mock<IEventRepository> _mockEventRepository;
+        private readonly Mock<IEventWriteRepository> _mockEventRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
@@ -25,7 +25,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         public ProviderReconciliationServiceTests()
         {
             _mockReconciliationRepository = new Mock<IProviderReconciliationRepository>();
-            _mockEventRepository = new Mock<IEventRepository>();
+            _mockEventRepository = new Mock<IEventWriteRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
@@ -342,7 +342,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockEventRepoInContext = new Mock<IEventRepository>();
+            var mockEventRepoInContext = new Mock<IEventWriteRepository>();
             var mockActionLogRepoInContext = _mockActionLogRepository;
 
 

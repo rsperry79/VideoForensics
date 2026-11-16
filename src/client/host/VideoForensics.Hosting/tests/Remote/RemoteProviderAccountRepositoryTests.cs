@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteProviderAccountRepository(httpClient);
-            ProviderAccount? result = await repo.GetAsync(accountId, CancellationToken.None);
+            ProviderAccountDto? result = await repo.GetAsync(accountId, CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             Assert.NotNull(result);
@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.NotFound); });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteProviderAccountRepository(httpClient);
-            ProviderAccount? result = await repo.GetAsync(Guid.NewGuid(), CancellationToken.None);
+            ProviderAccountDto? result = await repo.GetAsync(Guid.NewGuid(), CancellationToken.None);
             Assert.Null(result);
         }
         [Fact]
@@ -52,7 +52,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteProviderAccountRepository(httpClient);
-            IReadOnlyList<ProviderAccount> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<ProviderAccountDto> result = await repo.ListAsync(CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             _ = Assert.Single(result);
@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task AddAsync_WithProviderAccount_PostsToEndpoint()
         {
-            var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
+            var account = new ProviderAccountDto(Guid.NewGuid(), Guid.NewGuid(), "Ring", DateTime.UtcNow, null, true, null, null, null);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.Created); });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteProviderAccountRepository(httpClient);

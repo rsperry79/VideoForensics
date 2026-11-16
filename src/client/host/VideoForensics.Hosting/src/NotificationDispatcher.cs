@@ -18,14 +18,14 @@ namespace VideoForensics.Client.Hosting
     {
         private readonly IEnumerable<INotificationProvider> _providers;
         private readonly ILogger<NotificationDispatcher> _logger;
-        private readonly INoticeRepository _noticeRepository;
+        private readonly INoticeWriteRepository _noticeRepository;
         private readonly LocalNoticeFeed? _noticeFeed;
 
         /// <summary>Creates the dispatcher. <paramref name="noticeFeed"/> is null on hosts with no open pages to tell, such as MAUI.</summary>
         public NotificationDispatcher(
             IEnumerable<INotificationProvider> providers,
             ILogger<NotificationDispatcher> logger,
-            INoticeRepository noticeRepository,
+            INoticeWriteRepository noticeRepository,
             LocalNoticeFeed? noticeFeed = null)
         {
             _providers = providers;

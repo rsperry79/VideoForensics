@@ -4,6 +4,8 @@ using Bunit;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts;using VideoForensics.Core.Api.Contracts.Repositories;
+
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -15,7 +17,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 /// <summary>The Case section at the top of the media right sidebar: pick an open case to enter it, or leave it.</summary>
 public class ReviewCaseSection_Tests : ReviewTestContext
 {
-    private ForensicCase _openCase = null!;
+    private ForensicCaseDto _openCase = null!;
 
     /// <summary>Gives the context one open case the picker can list.</summary>
     private void ArrangeOpenCase()
@@ -23,7 +25,7 @@ public class ReviewCaseSection_Tests : ReviewTestContext
         _openCase = PendingTagFakes.CreateOpenCase();
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(_openCase);
         _ = repository
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([_openCase]);
         CaseRepositoryDouble = repository.Object;
     }

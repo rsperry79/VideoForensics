@@ -14,13 +14,13 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class VideoForensicsDataClientTests
     {
-        private readonly Mock<IUserRepository> _mockUserRepository;
-        private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository;
-        private readonly Mock<IDeviceRepository> _mockDeviceRepository;
+        private readonly Mock<IUserWriteRepository> _mockUserRepository;
+        private readonly Mock<IProviderAccountWriteRepository> _mockProviderAccountRepository;
+        private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
-        private readonly Mock<IEventRepository> _mockEventRepository;
-        private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
-        private readonly Mock<IDeviceHealthRepository> _mockDeviceHealthRepository;
+        private readonly Mock<IEventWriteRepository> _mockEventRepository;
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItemRepository;
+        private readonly Mock<IDeviceHealthWriteRepository> _mockDeviceHealthRepository;
         private readonly Mock<IDeviceDetailsRepository> _mockDeviceDetailsRepository;
         private readonly Mock<IProviderApiErrorLogRepository> _mockProviderApiErrorLogRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
@@ -35,22 +35,22 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly Mock<IDeviceHealthChangeNotifier> _mockDeviceHealthChangeNotifier = new();
         private readonly VideoForensicsDataClient _dataClient;
 
-        private readonly Mock<ILocationRepository> _mockLocationRepository;
+        private readonly Mock<ILocationWriteRepository> _mockLocationRepository;
         private readonly Mock<IDingIdLinkRepository> _mockDingIdLinkRepository = new();
         private readonly Mock<IDeviceSettingChangeRepository> _mockDeviceSettingChangeRepository = new();
         private readonly Mock<IDetectionEntityProvider> _mockDetectionEntityProvider = new();
 
         public VideoForensicsDataClientTests()
         {
-            _mockUserRepository = new Mock<IUserRepository>();
-            _mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
-            _mockLocationRepository = new Mock<ILocationRepository>();
-            _mockDeviceRepository = new Mock<IDeviceRepository>();
+            _mockUserRepository = new Mock<IUserWriteRepository>();
+            _mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
+            _mockLocationRepository = new Mock<ILocationWriteRepository>();
+            _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
-            _mockEventRepository = new Mock<IEventRepository>();
+            _mockEventRepository = new Mock<IEventWriteRepository>();
             // DefaultValue.Mock: the list query returns an empty result, as the old per-context mock did.
-            _mockMediaItemRepository = new Mock<IMediaItemRepository> { DefaultValue = DefaultValue.Mock };
-            _mockDeviceHealthRepository = new Mock<IDeviceHealthRepository>();
+            _mockMediaItemRepository = new Mock<IMediaItemWriteRepository> { DefaultValue = DefaultValue.Mock };
+            _mockDeviceHealthRepository = new Mock<IDeviceHealthWriteRepository>();
             _mockDeviceDetailsRepository = new Mock<IDeviceDetailsRepository>();
             _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();

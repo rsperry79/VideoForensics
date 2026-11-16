@@ -1,11 +1,11 @@
 @page "/settings/services"
-@using VideoForensics.Client.Core.Tools
+@using VideoForensics.Client.Common.Contracts
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Services
 @inject PairedSessionState SessionState
 @inject IForensicsConfiguration Config
-@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
+@inject VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ServicesSettings> L
 

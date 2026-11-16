@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -43,14 +44,14 @@ public class HistogramTimeline_Playback_Tests : BunitContext
         };
     }
 
-    private IRenderedComponent<HistogramTimeline> RenderTimeline(IReadOnlyCollection<MediaFlag> markers, EventCallback<MediaFlag> onMarkerClick = default)
+    private IRenderedComponent<HistogramTimeline> RenderTimeline(IReadOnlyCollection<MediaFlag> markers, EventCallback<MediaFlagDto> onMarkerClick = default)
     {
         IRenderedComponent<MediaPlayer> player = Render<MediaPlayer>();
         return Render<HistogramTimeline>(p => p
             .Add(c => c.Player, player.Instance)
             .Add(c => c.WindowStartUtc, WindowStart)
             .Add(c => c.WindowEndUtc, WindowEnd)
-            .Add(c => c.Markers, markers)
+            .Add(c => c.Markers, markers.Select(m => m.ToDto()).ToList())
             .Add(c => c.OnMarkerClick, onMarkerClick));
     }
 
@@ -89,14 +90,14 @@ public class HistogramTimeline_Playback_Tests : BunitContext
     public void PlaybackTimeline_MarkerClick_RaisesOnMarkerClick()
     {
         MediaFlag flag = Flag(MediaFlagType.RssiDeviation, WindowStart.AddSeconds(60));
-        MediaFlag? clicked = null;
+        MediaFlagDto? clicked = null;
         IRenderedComponent<HistogramTimeline> cut = RenderTimeline(
             [flag],
-            EventCallback.Factory.Create<MediaFlag>(this, f => clicked = f));
+            EventCallback.Factory.Create<MediaFlagDto>(this, f => clicked = f));
 
         cut.Find("[data-testid=timeline-marker]").Click();
 
-        Assert.Same(flag, clicked);
+        Assert.Equal(flag.Id, clicked!.Id);
     }
 
     /// <summary>Renders the timeline over a playing clip whose playhead is <paramref name="playheadSeconds"/> into the window.</summary>

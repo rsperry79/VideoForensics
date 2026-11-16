@@ -1,7 +1,7 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Services.Events;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
@@ -28,7 +28,7 @@ public class EvidenceLoader
     /// <returns>An EvidenceLoadResult with merged items, holds, integrity records, and errors.</returns>
     public async Task<EvidenceLoadResult> LoadAsync(
         ForensicScope scope,
-        IReadOnlyList<Device> allDevices,
+        IReadOnlyList<DeviceDto> allDevices,
         CancellationToken ct)
     {
         IReadOnlyList<Guid> allDeviceIds = scope.IncludesAllDevices
@@ -38,8 +38,8 @@ public class EvidenceLoader
         var devicesByIdMap = allDevices.ToDictionary(d => d.Id);
         var allItems = new List<EvidenceItem>();
         var perDeviceErrors = new Dictionary<Guid, string>();
-        var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
-        var integrityRecords = new List<IntegrityRecord>();
+        var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>();
+        var integrityRecords = new List<IntegrityRecordDto>();
         var mediaItemsAttachedToEvents = new HashSet<Guid>();
 
         // Step 1: Load events
@@ -48,7 +48,7 @@ public class EvidenceLoader
         // Add event items and collect attached media
         foreach (EventRow row in eventLoadResult.Rows)
         {
-            string deviceName = devicesByIdMap.TryGetValue(row.DeviceId, out Device? device)
+            string deviceName = devicesByIdMap.TryGetValue(row.DeviceId, out DeviceDto? device)
                 ? device.Name
                 : row.DeviceId.ToString("D")[..8];
 
@@ -72,12 +72,12 @@ public class EvidenceLoader
         }
 
         // Merge event holds and integrity records
-        foreach (KeyValuePair<Guid, LegalHold> kvp in eventLoadResult.ActiveHoldsByMediaItemId)
+        foreach (KeyValuePair<Guid, LegalHoldDto> kvp in eventLoadResult.ActiveHoldsByMediaItemId)
         {
             activeHoldsByMediaItemId[kvp.Key] = kvp.Value;
         }
 
-        foreach (IntegrityRecord record in eventLoadResult.IntegrityRecords)
+        foreach (IntegrityRecordDto record in eventLoadResult.IntegrityRecords)
         {
             if (!integrityRecords.Any(r => r.Id == record.Id))
             {
@@ -95,17 +95,17 @@ public class EvidenceLoader
         {
             try
             {
-                IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDeviceAndDateRangeAsync(
+                IReadOnlyList<MediaItemDto> mediaItems = await _mediaItemRepository.GetByDeviceAndDateRangeAsync(
                     deviceId,
                     scope.FromUtc,
                     scope.ToUtc,
                     ct);
 
-                string deviceName = devicesByIdMap.TryGetValue(deviceId, out Device? device)
+                string deviceName = devicesByIdMap.TryGetValue(deviceId, out DeviceDto? device)
                     ? device.Name
                     : deviceId.ToString("D")[..8];
 
-                foreach (MediaItem media in mediaItems)
+                foreach (MediaItemDto media in mediaItems)
                 {
                     // Skip purged media
                     if (media.IsPurged)

@@ -33,19 +33,19 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Guid _locationId = Guid.NewGuid();
         private readonly MutableTimeProvider _time = new(T0);
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
-        private readonly Mock<ISyncScheduleRepository> _schedules = new();
-        private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
-        private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
-        private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
+        private readonly Mock<ISyncScheduleWriteRepository> _schedules = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
+        private readonly Mock<ISnapshotCaptureWriteRepository> _captureRows = new();
+        private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<IMediaDownloadService> _ringMedia = new();
         private readonly Mock<IProviderSnapshotCapture> _capture = new();
         private readonly Mock<IProviderApiBudgetGuard> _budget = new();
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
         private readonly Mock<INotificationDispatcher> _dispatcher = new();
-        private readonly Mock<IDeviceHealthRepository> _health = new();
+        private readonly Mock<IDeviceHealthWriteRepository> _health = new();
         private readonly List<SnapshotCapture> _rows = [];
 
         // The provider's offline rule, resolved keyed by provider name. Tests can swap it before building the provider.
@@ -242,7 +242,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddSingleton(cycle ?? new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, _time, _storage.Object, new ForensicsConfiguration()));
             _ = services.AddScoped<ISnapshotSyncService>(sp => new SnapshotSyncService(
                 sp,
-                sp.GetRequiredService<IProviderAccountRepository>(),
+                sp.GetRequiredService<IProviderAccountWriteRepository>(),
                 NullLogger<SnapshotSyncService>.Instance));
             _ = services.AddSingleton(_accounts.Object);
             _ = services.AddSingleton(_schedules.Object);

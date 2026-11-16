@@ -8,7 +8,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 
 public class ProviderAccountEditGateTests
 {
-    private static NavContext Operator(OperatorRole role)
+    private static NavContext Operator(OperatorRoleDto role)
     {
         return new NavContext(IsSignedIn: true, Role: role, AppLockSupported: false);
     }
@@ -19,25 +19,25 @@ public class ProviderAccountEditGateTests
     [InlineData("not-a-level")]
     public void CanEdit_AdminOrUnknownLevel_AdminCanEdit(string? level)
     {
-        Assert.True(ProviderAccountEditGate.CanEdit(level, Operator(OperatorRole.Admin)));
+        Assert.True(ProviderAccountEditGate.CanEdit(level, Operator(OperatorRoleDto.Admin)));
     }
 
     [Fact]
     public void CanEdit_SuperAdminLevel_AdminCannotEdit()
     {
-        Assert.False(ProviderAccountEditGate.CanEdit(ProviderEditAccessLevels.SuperAdmin, Operator(OperatorRole.Admin)));
+        Assert.False(ProviderAccountEditGate.CanEdit(ProviderEditAccessLevels.SuperAdmin, Operator(OperatorRoleDto.Admin)));
     }
 
     [Fact]
     public void CanEdit_SuperAdminLevel_SuperAdminCanEdit()
     {
-        Assert.True(ProviderAccountEditGate.CanEdit(ProviderEditAccessLevels.SuperAdmin, Operator(OperatorRole.SuperAdmin)));
+        Assert.True(ProviderAccountEditGate.CanEdit(ProviderEditAccessLevels.SuperAdmin, Operator(OperatorRoleDto.SuperAdmin)));
     }
 
     [Fact]
     public void CanEdit_AdminLevel_ReadOnlyCannotEdit()
     {
-        Assert.False(ProviderAccountEditGate.CanEdit(ProviderEditAccessLevels.Admin, Operator(OperatorRole.ReadOnly)));
+        Assert.False(ProviderAccountEditGate.CanEdit(ProviderEditAccessLevels.Admin, Operator(OperatorRoleDto.ReadOnly)));
     }
 
     [Fact]

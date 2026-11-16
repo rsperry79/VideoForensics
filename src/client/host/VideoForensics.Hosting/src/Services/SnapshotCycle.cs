@@ -120,7 +120,7 @@ namespace VideoForensics.Client.Hosting.Services
                 return;
             }
 
-            SyncSchedule? schedule = await sp.GetRequiredService<ISyncScheduleRepository>().GetByProviderAccountIdAsync(accountId, ct);
+            SyncSchedule? schedule = await sp.GetRequiredService<ISyncScheduleWriteRepository>().GetByProviderAccountIdAsync(accountId, ct);
             // The schedule's snapshot interval (with any jamming window) sets the spacing. A stored SnapshotIntervalSeconds raised by
             // a Ring rate-limit incident is a floor on top of it, so the adaptive back-off is never undone by the form.
             int seconds = schedule is null
@@ -128,13 +128,13 @@ namespace VideoForensics.Client.Hosting.Services
                 : SnapshotIntervals.CaptureSpacing(schedule, _time.GetUtcNow().UtcDateTime);
             var interval = TimeSpan.FromSeconds(seconds);
 
-            IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
-            ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
+            IDeviceWriteRepository devices = sp.GetRequiredService<IDeviceWriteRepository>();
+            ISnapshotCaptureWriteRepository captures = sp.GetRequiredService<ISnapshotCaptureWriteRepository>();
             IProviderDeviceStatus deviceStatus = sp.GetRequiredKeyedService<IProviderDeviceStatus>(RingProviderName);
             var candidates = new List<(Device Device, TimeSpan Window)>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (Location location in await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(accountId, ct))
+            foreach (Location location in await sp.GetRequiredService<ILocationWriteRepository>().ListByProviderAccountIdAsync(accountId, ct))
             {
                 foreach (Device device in await devices.GetByLocationIdAsync(location.Id, ct))
                 {
@@ -303,7 +303,7 @@ namespace VideoForensics.Client.Hosting.Services
 
             // Read before the call, because the call writes this attempt's health row. Offline is a health transition, so the
             // alert needs the reading that was current before this attempt.
-            DeviceHealth? previousHealth = sp.GetService<IDeviceHealthRepository>() is { } healthRepository
+            DeviceHealth? previousHealth = sp.GetService<IDeviceHealthWriteRepository>() is { } healthRepository
                 ? await healthRepository.GetLatestAsync(device.Id, ct)
                 : null;
 
@@ -368,7 +368,7 @@ namespace VideoForensics.Client.Hosting.Services
 
                 try
                 {
-                    Location? location = await sp.GetRequiredService<ILocationRepository>().GetAsync(device.LocationId, ct);
+                    Location? location = await sp.GetRequiredService<ILocationWriteRepository>().GetAsync(device.LocationId, ct);
                     string mediaRoot = await ResolveMediaRootAsync(sp, ct);
                     mediaFilePath = WriteImage(mediaRoot, account.ProviderName, location?.Name ?? string.Empty, device.Name, device.ProviderDeviceId, attemptedAt, image);
                 }
@@ -387,7 +387,7 @@ namespace VideoForensics.Client.Hosting.Services
                     ? null
                     : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
                 var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: attempt.DeviceHealthId);
-                _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
+                _ = await sp.GetRequiredService<ISnapshotCaptureWriteRepository>().AddAsync(row, ct);
                 _logger.LogDebug("Snapshot attempt recorded for {DeviceName} on {AccountName}: HTTP {HttpStatus}", device.Name, accountName, status);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -435,7 +435,7 @@ namespace VideoForensics.Client.Hosting.Services
                 _logger.LogInformation("Snapshot capture set {DeviceName} on {AccountName} to {OnlineState} from its health reading",
                     device.Name, accountName, connected ? "online" : "offline");
                 device.IsOnline = connected;
-                await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
+                await sp.GetRequiredService<IDeviceWriteRepository>().UpdateAsync(device, ct);
             }
 
             if (attempt.Connected == false && previousHealth is { IsOnline: true })
@@ -461,7 +461,7 @@ namespace VideoForensics.Client.Hosting.Services
                     hash = await SHA256.HashDataAsync(stream, ct);
                 }
 
-                await sp.GetRequiredService<IMediaItemRepository>().AddAsync(new MediaItem
+                await sp.GetRequiredService<IMediaItemWriteRepository>().AddAsync(new MediaItem
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = device.Id,

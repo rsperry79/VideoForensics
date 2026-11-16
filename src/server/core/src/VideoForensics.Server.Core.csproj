@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Server.Core</AssemblyName>
+        <RootNamespace>VideoForensics.Client.Core</RootNamespace>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Server-only services that use the data layer. Moved out of Client.Core so Client.Core has no data-layer reference. Not referenced by client UI hosts.</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
+        <PackageReference Include="NodaTime" Version="3.3.7" />
+        <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../client/core/VideoForensics.Client.Core/src/VideoForensics.Client.Core.csproj" />
+        <ProjectReference Include="../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
+        <ProjectReference Include="../../../core/api/mapping/src/VideoForensics.Core.Api.Mapping.csproj" />
+        <ProjectReference Include="../../../data/common/src/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../../data/core/src/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
+        <ProjectReference Include="../../../core/providers/core/src/VideoForensics.Core.Providers.Core.csproj" />
+        <ProjectReference Include="../../../providers/ring/provider/src/VideoForensics.Providers.Ring.csproj" />
+        <ProjectReference Include="../../../core/forensics/src/VideoForensics.Core.Forensics.csproj" />
+        <ProjectReference Include="../../../providers/ring/utils/src/VideoForensics.Providers.Ring.Utils.csproj" />
+    </ItemGroup>
+
+</Project>

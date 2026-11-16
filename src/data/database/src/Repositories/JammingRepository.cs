@@ -8,14 +8,14 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for jamming incident records and stats summaries.</summary>
-    public class JammingRepository : IJammingRepository
+    public class JammingRepository : IJammingWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<JammingRepository> _logger;
-        private readonly ICaseRepository? _caseRepository;
+        private readonly ICaseWriteRepository? _caseRepository;
 
         /// <summary>Initializes a new instance of the JammingRepository.</summary>
-        public JammingRepository(IUnitOfWork unitOfWork, ILogger<JammingRepository> logger, ICaseRepository? caseRepository = null)
+        public JammingRepository(IUnitOfWork unitOfWork, ILogger<JammingRepository> logger, ICaseWriteRepository? caseRepository = null)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;

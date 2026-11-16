@@ -12,14 +12,14 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Top-level facade for accessing the VideoForensics data layer.</summary>
     internal class VideoForensicsDataClient : IVideoForensicsDataClient
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IProviderAccountRepository _providerAccountRepository;
-        private readonly ILocationRepository _locationRepository;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IUserWriteRepository _userRepository;
+        private readonly IProviderAccountWriteRepository _providerAccountRepository;
+        private readonly ILocationWriteRepository _locationRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
-        private readonly IEventRepository _eventRepository;
-        private readonly IMediaItemRepository _mediaItemRepository;
-        private readonly IDeviceHealthRepository _deviceHealthRepository;
+        private readonly IEventWriteRepository _eventRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
+        private readonly IDeviceHealthWriteRepository _deviceHealthRepository;
         private readonly IDeviceDetailsRepository _deviceDetailsRepository;
         private readonly IDeviceModelRepository _deviceModelRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
@@ -40,14 +40,14 @@ namespace VideoForensics.Data.Core.Services
         public IActionLogRepository ActionLog { get; }
 
         public VideoForensicsDataClient(
-            IUserRepository userRepository,
-            IProviderAccountRepository providerAccountRepository,
-            ILocationRepository locationRepository,
-            IDeviceRepository deviceRepository,
+            IUserWriteRepository userRepository,
+            IProviderAccountWriteRepository providerAccountRepository,
+            ILocationWriteRepository locationRepository,
+            IDeviceWriteRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
-            IEventRepository eventRepository,
-            IMediaItemRepository mediaItemRepository,
-            IDeviceHealthRepository deviceHealthRepository,
+            IEventWriteRepository eventRepository,
+            IMediaItemWriteRepository mediaItemRepository,
+            IDeviceHealthWriteRepository deviceHealthRepository,
             IDeviceDetailsRepository deviceDetailsRepository,
             IDeviceModelRepository deviceModelRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,

@@ -16,7 +16,7 @@ public class InitialSyncResumerTests
         var finished = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true, InitialSyncCompleted = true };
         var interrupted = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true, InitialSyncCompleted = false };
 
-        var accounts = new Mock<IProviderAccountRepository>();
+        var accounts = new Mock<IProviderAccountWriteRepository>();
         _ = accounts.Setup(a => a.ListActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([finished, interrupted]);
         var coordinator = new Mock<IInitialSyncCoordinator>();
@@ -34,7 +34,7 @@ public class InitialSyncResumerTests
         var first = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true, InitialSyncCompleted = false };
         var second = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true, InitialSyncCompleted = false };
 
-        var accounts = new Mock<IProviderAccountRepository>();
+        var accounts = new Mock<IProviderAccountWriteRepository>();
         _ = accounts.Setup(a => a.ListActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([first, second]);
         var coordinator = new Mock<IInitialSyncCoordinator>();

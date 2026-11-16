@@ -133,9 +133,9 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 TwoFactorRequirementOverride = TwoFactorRequirementOverride.Inherit
             };
 
-            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverride.Required);
+            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverrideDto.Required);
 
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
             _ = operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operatorRepository.Setup(r => r.SetTwoFactorRequirementOverrideAsync(operatorId, It.IsAny<TwoFactorRequirementOverride>(), It.IsAny<CancellationToken>()))
@@ -167,9 +167,9 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // Arrange
             var operatorId = Guid.NewGuid();
             var actingOperatorId = Guid.NewGuid();
-            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverride.Required);
+            var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverrideDto.Required);
 
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
             _ = operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -216,7 +216,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 options.ValidateOnBuild = true;
             });
             _ = builder.Services.AddScoped(_ => Mock.Of<ITwoFactorRoleRequirementRepository>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<IOperatorRepository>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<IOperatorWriteRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<ISecurityAuditLogger>());
             _ = builder.Services.AddScoped(_ => Mock.Of<INetworkTierResolver>());
 
@@ -278,7 +278,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public static async Task<object> UpdateOperatorOverrideAsync(
             Guid operatorId,
             UpdateOperatorTwoFactorOverrideRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -288,7 +288,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("UpdateOperatorOverrideAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(Guid), typeof(UpdateOperatorTwoFactorOverrideRequest), typeof(IOperatorRepository),
+                    [typeof(Guid), typeof(UpdateOperatorTwoFactorOverrideRequest), typeof(IOperatorWriteRepository),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 

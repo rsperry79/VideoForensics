@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for NoticeDismissal entities (per-operator notice suppression).</summary>
-    public class NoticeDismissalRepository : INoticeDismissalRepository
+    public class NoticeDismissalRepository : INoticeDismissalWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<NoticeDismissalRepository> _logger;

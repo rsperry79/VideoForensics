@@ -217,10 +217,10 @@ namespace VideoForensics.Utils.SelfTest.Tests
                     logger,
                     sessionProvider,
                     metadataRepository: sp.GetRequiredService<ILocationMetadataRepository>(),
-                    locationRepository: sp.GetRequiredService<ILocationRepository>(),
+                    locationRepository: sp.GetRequiredService<ILocationWriteRepository>(),
                     settingsPersister: new RingAccountSettingsPersister(sp.GetRequiredService<IRingAccountSettingsWriter>(), logger),
                     eventHistoryWriter: sp.GetRequiredService<IRingEventHistoryWriter>(),
-                    deviceSettingsPersister: new RingDeviceSettingsPersister(data, sp.GetRequiredService<IDeviceRepository>(), logger));
+                    deviceSettingsPersister: new RingDeviceSettingsPersister(data, sp.GetRequiredService<IDeviceWriteRepository>(), logger));
 
                 IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location> locations = await service.GetLocationsAsync(account.Id, ct);
 

@@ -128,7 +128,7 @@ namespace VideoForensics.Client.Hosting.Remote
                     FailureReason = r.FailureReason,
                     DeviceId = r.DeviceId
                 }).ToList(),
-                Discrepancies = dto.Discrepancies?.Select(d => d.ToDomain()).ToList(),
+                Discrepancies = dto.Discrepancies?.ToList(),
                 ErrorMessage = dto.ErrorMessage
             };
         }

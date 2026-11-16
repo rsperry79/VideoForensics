@@ -17,13 +17,13 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Items per pass.</summary>
         public const int BatchSize = 50;
 
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IMediaBitrateAnalyzer _bitrate;
         private readonly IMediaPathResolver _paths;
         private readonly ILogger<MediaCodecBackfill> _logger;
         private readonly HashSet<Guid> _skipped = [];
 
-        public MediaCodecBackfill(IMediaItemRepository items, IMediaBitrateAnalyzer bitrate, IMediaPathResolver? paths, ILogger<MediaCodecBackfill> logger)
+        public MediaCodecBackfill(IMediaItemWriteRepository items, IMediaBitrateAnalyzer bitrate, IMediaPathResolver? paths, ILogger<MediaCodecBackfill> logger)
         {
             _items = items;
             _bitrate = bitrate;

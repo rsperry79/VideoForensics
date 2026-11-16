@@ -73,7 +73,7 @@ namespace VideoForensics.Client.Hosting.Remote
         /// only once the whole reconcile finishes, so nothing can stream per discrepancy.
         /// </summary>
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ReconciliationDiscrepancy>> ReconcileWithProviderAsync(
+        public async Task<IReadOnlyList<ReconciliationDiscrepancyDto>> ReconcileWithProviderAsync(
             Guid deviceId,
             string providerDeviceId,
             DateTime fromUtc,
@@ -92,7 +92,7 @@ namespace VideoForensics.Client.Hosting.Remote
             _ = response.EnsureSuccessStatusCode();
 
             List<ReconciliationDiscrepancyDto>? dtos = await response.Content.ReadFromJsonAsync<List<ReconciliationDiscrepancyDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(d => d.ToDomain()).ToList();
+            return dtos ?? [];
         }
     }
 

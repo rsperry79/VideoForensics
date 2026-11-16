@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
     {
         private readonly Mock<IProviderAuthService> _mockAuth = new();
         private readonly Mock<IEventPullService> _mockPull = new();
-        private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _mockAccounts = new();
         private readonly Mock<IProviderSyncRunRepository> _mockRuns = new();
         private readonly Mock<ILogger<AccountSyncRunner>> _mockLogger = new();
         private readonly SyncActivityLog _activity = new(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance);

@@ -3,18 +3,18 @@ using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Repositories
 {
-    /// <summary>Case-only adapter over <see cref="INoteRepository"/>: every call uses <see cref="NoteTargetKind.Case"/>.</summary>
-    public class CaseNoteAdapter : ICaseNoteRepository
+    /// <summary>Case-only adapter over <see cref="INoteWriteRepository"/>: every call uses <see cref="NoteTargetKind.Case"/>.</summary>
+    public class CaseNoteAdapter : ICaseNoteWriteRepository
     {
-        private readonly INoteRepository _notes;
+        private readonly INoteWriteRepository _notes;
 
         /// <summary>Initializes a new instance of the CaseNoteAdapter.</summary>
-        public CaseNoteAdapter(INoteRepository notes)
+        public CaseNoteAdapter(INoteWriteRepository notes)
         {
             _notes = notes;
         }
 
-        /// <summary>Appends a note to a case. See <see cref="INoteRepository.AddAsync"/> for the rules.</summary>
+        /// <summary>Appends a note to a case. See <see cref="INoteWriteRepository.AddAsync"/> for the rules.</summary>
         public Task<Note> AddAsync(Guid caseId, string body, string addedBy, CancellationToken ct)
         {
             return _notes.AddAsync(NoteTargetKind.Case, caseId, body, addedBy, ct);

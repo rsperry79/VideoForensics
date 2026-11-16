@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Core.Tests.Services;
 
 public class MediaPreviewBackfillTests
 {
-    private readonly Mock<IMediaItemRepository> _items = new();
+    private readonly Mock<IMediaItemWriteRepository> _items = new();
     private readonly Mock<IMediaPreviewService> _previews = new();
 
     private MediaPreviewBackfill CreateSut()

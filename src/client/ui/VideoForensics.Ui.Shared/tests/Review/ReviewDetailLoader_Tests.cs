@@ -1,3 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -67,11 +69,11 @@ public class ReviewDetailLoader_Tests
         var device = Guid.NewGuid();
         var older = new MediaFlag { Id = Guid.NewGuid(), DeviceId = device, FlagType = MediaFlagType.BitrateCollapse, WindowStartUtc = From.AddHours(1), WindowEndUtc = From.AddHours(1).AddMinutes(5) };
         var newer = new MediaFlag { Id = Guid.NewGuid(), DeviceId = device, FlagType = MediaFlagType.BitrateDeviation, WindowStartUtc = From.AddHours(3), WindowEndUtc = From.AddHours(3).AddMinutes(5) };
-        MediaFlagFilter? seen = null;
+        MediaFlagFilterDto? seen = null;
         var flags = new Mock<IMediaFlagRepository>();
-        _ = flags.Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), 0, It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Callback<MediaFlagFilter, int, int, CancellationToken>((filter, _, _, _) => seen = filter)
-            .ReturnsAsync(new MediaFlagPage([older, newer], 2));
+        _ = flags.Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), 0, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<MediaFlagFilterDto, int, int, CancellationToken>((filter, _, _, _) => seen = filter)
+            .ReturnsAsync(new MediaFlagPage([older, newer], 2).ToDto());
         ReviewDetailLoader loader = CreateLoader(flags: flags);
 
         // Act
@@ -80,8 +82,8 @@ public class ReviewDetailLoader_Tests
         // Assert
         Assert.Equal([newer.Id, older.Id], result.Select(r => r.FlagId).ToArray());
         Assert.NotNull(seen);
-        Assert.Contains(MediaFlagType.BitrateCollapse, seen!.Types!);
-        Assert.Contains(MediaFlagType.BitrateDeviation, seen.Types!);
+        Assert.Contains("BitrateCollapse", seen!.Types!);
+        Assert.Contains("BitrateDeviation", seen.Types!);
         Assert.Equal([device], seen.DeviceIds);
     }
 
@@ -96,14 +98,14 @@ public class ReviewDetailLoader_Tests
             .Returns((IReadOnlyCollection<Guid> ids, CancellationToken _) =>
             {
                 sizes.Add(ids.Count);
-                IReadOnlyList<EventDetail> rows = ids.Select(id => new EventDetail(id, null, [], [], [], [])).ToList();
+                IReadOnlyList<EventDetailDto> rows = ids.Select(id => new EventDetail(id, null, [], [], [], []).ToDto()).ToList();
                 return Task.FromResult(rows);
             });
         ReviewDetailLoader loader = CreateLoader(details);
         Guid[] ids = Enumerable.Range(0, 450).Select(_ => Guid.NewGuid()).ToArray();
 
         // Act
-        IReadOnlyDictionary<Guid, EventDetail> result = await loader.LoadEventDetailsAsync(ids, CancellationToken.None);
+        IReadOnlyDictionary<Guid, EventDetailDto> result = await loader.LoadEventDetailsAsync(ids, CancellationToken.None);
 
         // Assert
         Assert.Equal(new[] { 200, 200, 50 }, sizes);
@@ -119,7 +121,7 @@ public class ReviewDetailLoader_Tests
         ReviewDetailLoader loader = CreateLoader(details);
 
         // Act
-        IReadOnlyDictionary<Guid, EventDetail> result = await loader.LoadEventDetailsAsync([], CancellationToken.None);
+        IReadOnlyDictionary<Guid, EventDetailDto> result = await loader.LoadEventDetailsAsync([], CancellationToken.None);
 
         // Assert
         Assert.Empty(result);
@@ -139,15 +141,15 @@ public class ReviewDetailLoader_Tests
             .Returns((Guid? device, DateTime? _, DateTime? _, CancellationToken _) =>
             {
                 asked.Add(device);
-                IReadOnlyList<JammingIncidentRecord> rows = device == first
-                    ? [Incident(first, From.AddHours(2)), Incident(first, From.AddHours(6))]
-                    : [Incident(second, From.AddHours(4))];
+                IReadOnlyList<JammingIncidentDto> rows = device == first
+                    ? [Incident(first, From.AddHours(2)).ToDto(), Incident(first, From.AddHours(6)).ToDto()]
+                    : [Incident(second, From.AddHours(4)).ToDto()];
                 return Task.FromResult(rows);
             });
         ReviewDetailLoader loader = CreateLoader(jamming: jamming);
 
         // Act
-        IReadOnlyList<JammingIncidentRecord> result = await loader.LoadJammingAsync([first, second], From, To, CancellationToken.None);
+        IReadOnlyList<JammingIncidentDto> result = await loader.LoadJammingAsync([first, second], From, To, CancellationToken.None);
 
         // Assert
         Assert.Equal(new Guid?[] { first, second }, asked);
@@ -162,7 +164,7 @@ public class ReviewDetailLoader_Tests
         ReviewDetailLoader loader = CreateLoader(jamming: jamming);
 
         // Act
-        IReadOnlyList<JammingIncidentRecord> result = await loader.LoadJammingAsync([], From, To, CancellationToken.None);
+        IReadOnlyList<JammingIncidentDto> result = await loader.LoadJammingAsync([], From, To, CancellationToken.None);
 
         // Assert
         Assert.Empty(result);

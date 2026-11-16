@@ -4,6 +4,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Components.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
@@ -12,7 +13,8 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The rail's Provider and Account filters narrow the device list and scope the investigation to it.</summary>
@@ -25,14 +27,16 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
         // Overrides the base's Open-only case repository: this rail test also queries with a nullable status.
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = Services.AddScoped(_ => caseRepository.Object);
     }
 
-    private static Device MakeDevice(string name, Guid locationId)
+    private static Device MakeDevice(string name, Guid locationId) => MakeEntity(name, locationId).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(string name, Guid locationId)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = Guid.NewGuid(),
             LocationId = locationId,

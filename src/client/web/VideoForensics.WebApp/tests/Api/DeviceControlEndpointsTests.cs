@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetLightAsync_UnknownProviderDeviceId_ReturnsNotFound()
         {
-            var devices = new Mock<IDeviceRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             _ = devices.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             var control = new Mock<IDeviceControlService>();
 
@@ -49,7 +49,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task SetLightAsync_ProviderRefusesAmbiguousAccount_ReturnsConflict()
         {
             var deviceId = Guid.NewGuid();
-            var devices = new Mock<IDeviceRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             _ = devices.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([BuildDevice(deviceId)]);
             var control = new Mock<IDeviceControlService>();
             _ = control.Setup(c => c.SetLightAsync("123", true, It.IsAny<CancellationToken>()))
@@ -66,7 +66,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task SetLightAsync_ProviderReportsNoAccountForDevice_ReturnsNotFound()
         {
             var deviceId = Guid.NewGuid();
-            var devices = new Mock<IDeviceRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             _ = devices.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([BuildDevice(deviceId)]);
             var control = new Mock<IDeviceControlService>();
             _ = control.Setup(c => c.SetLightAsync("123", true, It.IsAny<CancellationToken>()))
@@ -82,7 +82,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetVolumeAsync_VolumeOutOfRange_ReturnsBadRequestWithoutControlling()
         {
-            var devices = new Mock<IDeviceRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             var control = new Mock<IDeviceControlService>();
 
             IResult result = await DeviceControlEndpoints.SetVolumeAsync(
@@ -98,7 +98,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task SetLightAsync_ValidRequest_ReturnsNoContentAndControlsProviderDeviceOnce()
         {
             var deviceId = Guid.NewGuid();
-            var devices = new Mock<IDeviceRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             _ = devices.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([BuildDevice(deviceId)]);
             var control = new Mock<IDeviceControlService>();
 

@@ -11,7 +11,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     /// each with its own marker:
     /// RSSI flags get the sigma of their worst reading against the camera's all-time signal baseline, the same calculation
     /// <see cref="SignalDeviationAlerts"/> stores at raise time. BitrateCollapse flags get the sigma of their clip's bit rate
-    /// against the camera's all-time bit rate baseline (<see cref="IMediaItemRepository.GetBitrateBaselineByDeviceAsync"/>).
+    /// against the camera's all-time bit rate baseline (<see cref="IMediaItemWriteRepository.GetBitrateBaselineByDeviceAsync"/>).
     /// </summary>
     /// <remarks>
     /// The passes run once: a persisted marker is written when each completes. A failed pass writes no marker, and the next
@@ -27,15 +27,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         public const string BitrateMarkerKey = "MediaFlagBitrateDeviationSigmaBackfilled";
 
         private readonly IMediaFlagDeviationRepository _flags;
-        private readonly IDeviceHealthRepository _health;
-        private readonly IMediaItemRepository _media;
+        private readonly IDeviceHealthWriteRepository _health;
+        private readonly IMediaItemWriteRepository _media;
         private readonly IAppSettingRepository _settings;
         private readonly ILogger<MediaFlagDeviationBackfill> _logger;
 
         public MediaFlagDeviationBackfill(
             IMediaFlagDeviationRepository flags,
-            IDeviceHealthRepository health,
-            IMediaItemRepository media,
+            IDeviceHealthWriteRepository health,
+            IMediaItemWriteRepository media,
             IAppSettingRepository settings,
             ILogger<MediaFlagDeviationBackfill> logger)
         {

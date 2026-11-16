@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for Location entities.</summary>
-    public class LocationRepository : ILocationRepository
+    public class LocationRepository : ILocationWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<LocationRepository> _logger;

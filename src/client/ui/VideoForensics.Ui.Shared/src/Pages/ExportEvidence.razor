@@ -1,8 +1,8 @@
 @page "/review/export"
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @inject PairedSessionState SessionState
 @inject IEvidenceExportService EvidenceExportService
 @inject ICaseRepository CaseRepository
@@ -32,7 +32,7 @@ else
         <label for="export-case-picker" class="form-label">@L["CasePickerLabel"]</label>
         <select id="export-case-picker" class="form-select" data-testid="case-picker" value="@_selectedCaseId" @onchange="OnCaseChanged" disabled="@_isExporting">
             <option value="">@L["CasePickerPlaceholder"]</option>
-            @foreach (ForensicCase c in _cases)
+            @foreach (ForensicCaseDto c in _cases)
             {
                 <option value="@c.Id" selected="@(c.Id == _selectedCaseId)">@c.CaseNumber · @c.Title</option>
             }
@@ -87,7 +87,7 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private bool _isExporting;
-    private List<ForensicCase> _cases = new();
+    private List<ForensicCaseDto> _cases = new();
     private Guid? _selectedCaseId;
     private string? _loadError;
     private ExportResult? _result;

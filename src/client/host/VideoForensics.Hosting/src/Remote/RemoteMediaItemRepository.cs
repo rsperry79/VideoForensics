@@ -1,32 +1,24 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed, read-only <see cref="IMediaItemRepository"/> that calls the server's Minimal API
-    /// (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs) instead of a local database - the MAUI
-    /// client's implementation of the "thin client talks to a server API" half of the plan's client/
-    /// server split (§4/M5). Backed endpoints: <see cref="ListAsync"/>, <see cref="GetByDeviceIdAsync"/>,
-    /// <see cref="GetByDeviceAndDateRangeAsync"/>, and <see cref="GetAsync"/>. Every write method throws
-    /// <see cref="NotSupportedException"/> because MAUI has no write path to server-owned evidence data -
-    /// new media only ever originates server-side, from a download the server itself executed (a deliberate
-    /// architectural rule from the plan, not a missing feature). Every other read with no matching
-    /// endpoint also throws.
+    /// (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs). Backed reads: <see cref="ListAsync"/>,
+    /// <see cref="GetByDeviceIdAsync"/>, <see cref="GetByDeviceAndDateRangeAsync"/>, <see cref="GetAsync"/> and
+    /// <see cref="GetPageByDevicesAndDateRangeAsync"/>. Every other read needs a server-side query and throws
+    /// <see cref="NotSupportedException"/>. Writes are server-only and are not part of this interface.
     /// </summary>
     public class RemoteMediaItemRepository : IMediaItemRepository
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-        private const string NotSupportedMessage =
-            "Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.";
-
-        private const string NoWritePathMessage =
-            "MAUI has no write path to server-owned evidence data - new media items only ever originate server-side, from a download the server itself executed.";
+        private const string ServerOnlyMessage = "Not supported on a remote (MAUI client) repository - this read runs on the server only.";
 
         private readonly HttpClient _httpClient;
 
@@ -36,34 +28,16 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        /// <summary>
-        /// Thumbnail backfill runs only on the server, next to the files, so no client endpoint exists for this query.
-        /// </summary>
-        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
-        {
-            throw new NotSupportedException("Videos without a thumbnail are listed by the server's own repository, not over HTTP.");
-        }
-
-        /// <inheritdoc />
-        /// <summary>
-        /// Preview backfill runs only on the server, next to the files, so no client endpoint exists for this query.
-        /// </summary>
-        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
-        {
-            throw new NotSupportedException("Videos without a preview are listed by the server's own repository, not over HTTP.");
-        }
-
-        public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
+        public async Task<IReadOnlyList<MediaItemDto>> ListAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items", ct);
             _ = response.EnsureSuccessStatusCode();
             List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        /// <summary>Paged clip listing for the media viewer, served by the server's <c>/media-items/page</c> endpoint.</summary>
-        public async Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
+        public async Task<MediaItemPageDto> GetPageByDevicesAndDateRangeAsync(
             IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct, bool videoOnly = false)
         {
             var parameters = deviceIds.Select(id => $"deviceIds={id:D}").ToList();
@@ -79,68 +53,50 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items/page?" + string.Join('&', parameters), ct);
             _ = response.EnsureSuccessStatusCode();
             MediaItemPageResponse? body = await response.Content.ReadFromJsonAsync<MediaItemPageResponse>(JsonOptions, ct);
-            return new MediaItemPage((body?.Items ?? []).Select(x => x.ToDomain()).ToList(), body?.TotalCount ?? 0);
+            return new MediaItemPageDto((body?.Items ?? []).ToList(), body?.TotalCount ?? 0);
         }
 
         /// <summary>Wire shape of <c>/media-items/page</c>.</summary>
         private sealed record MediaItemPageResponse(List<MediaItemDto>? Items, int TotalCount);
 
         /// <inheritdoc />
-        /// <summary>Analysis runs server-side only; a client host has no recent-clip query.</summary>
-        public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
-        {
-            throw new NotSupportedException("Media analysis runs on the server, not on a client host.");
-        }
-
-        public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
+        public async Task<IReadOnlyList<MediaItemDto>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items?deviceId={deviceId}", ct);
             _ = response.EnsureSuccessStatusCode();
             List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
+        public async Task<MediaItemDto?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items/{mediaItemId}", ct);
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 return null;
             }
 
             _ = response.EnsureSuccessStatusCode();
-            MediaItemDto? dto = await response.Content.ReadFromJsonAsync<MediaItemDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<MediaItemDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        /// <remarks>Flag backfill runs on the server only, so a client never lists flagged clips for it.</remarks>
-        public Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
+        public async Task<IReadOnlyList<MediaItemDto>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            throw new NotSupportedException("Flag backfill runs on the server only.");
+            string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));
+            string toEscaped = Uri.EscapeDataString(toUtc.ToString("O"));
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items?deviceId={deviceId}&from={fromEscaped}&to={toEscaped}", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        /// <remarks>Analysis runs on the server only, so a client never lists unanalysed media.</remarks>
-        public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
+        /// <remarks>No server endpoint returns only snapshots yet, so this filters the device's range on the client.</remarks>
+        public async Task<IReadOnlyList<MediaItemDto>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            throw new NotSupportedException("Analysis backfill runs on the server only.");
-        }
-
-        /// <inheritdoc />
-        public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
-        {
-            throw new NotSupportedException("Codec backfill runs on the server only.");
-        }
-
-        /// <remarks>
-        /// No server endpoint returns only snapshots yet, so this filters the device's range on the client. The roll-up runs
-        /// on the server, where the database does the filtering; a snapshot endpoint would move this into SQL too.
-        /// </remarks>
-        public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
-        {
-            IReadOnlyList<MediaItem> range = await GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
+            IReadOnlyList<MediaItemDto> range = await GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
             return range
                 .Where(m => string.Equals(m.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
                     && m.MetadataJson is not null && m.MetadataJson.Contains("\"type\":\"snapshot\"", StringComparison.Ordinal))
@@ -148,62 +104,34 @@ namespace VideoForensics.Client.Hosting.Remote
                 .ToList();
         }
 
-        /// <remarks>The bit rate analysis runs on the server only; a client reads it through the analysis endpoint.</remarks>
-        public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
+        /// <inheritdoc />
+        public Task<IReadOnlyList<MediaItemDto>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            throw new NotSupportedException("Bit rate analysis runs on the server only.");
-        }
-
-        /// <remarks>The bit rate baseline is computed on the server only.</remarks>
-        public Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
-        {
-            throw new NotSupportedException("The bit rate baseline is computed on the server only.");
-        }
-
-        public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
-        {
-            string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));
-            string toEscaped = Uri.EscapeDataString(toUtc.ToString("O"));
-            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items?deviceId={deviceId}&from={fromEscaped}&to={toEscaped}", ct);
-            _ = response.EnsureSuccessStatusCode();
-            List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            throw new NotSupportedException(ServerOnlyMessage);
         }
 
         /// <inheritdoc />
-        public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
+        public Task<IReadOnlyList<string>> GetDistinctVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
         {
-            throw new NotSupportedException(NotSupportedMessage);
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
         }
 
         /// <inheritdoc />
-        public Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        public Task<MediaItemDto?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
         {
-            throw new NotSupportedException("Remote API doesn't yet support GetByApiSourceHashAsync");
+            throw new NotSupportedException(ServerOnlyMessage);
         }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
+        public Task<IReadOnlyList<MeasuredBitrateDto>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            throw new NotSupportedException(NotSupportedMessage);
+            throw new NotSupportedException(ServerOnlyMessage);
         }
 
         /// <inheritdoc />
-        public Task AddAsync(MediaItem mediaItem, CancellationToken ct)
+        public Task<AllTimeBitrateBaselineDto> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            throw new NotSupportedException(NoWritePathMessage);
-        }
-
-        /// <inheritdoc />
-        public Task UpdateAsync(MediaItem mediaItem, CancellationToken ct)
-        {
-            throw new NotSupportedException(NoWritePathMessage);
-        }
-
-        /// <inheritdoc />
-        public Task DeleteAsync(Guid mediaItemId, CancellationToken ct)
-        {
-            throw new NotSupportedException(NoWritePathMessage);
+            throw new NotSupportedException(ServerOnlyMessage);
         }
     }
 }

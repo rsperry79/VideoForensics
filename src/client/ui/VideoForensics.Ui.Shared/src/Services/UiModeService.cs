@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Ui.Shared.Services
 {
@@ -44,7 +44,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             await _session.EnsureLoadedAsync();
             if (_session.OperatorId is Guid operatorId)
             {
-                OperatorPreferences? saved = await _repository.GetAsync(operatorId, CancellationToken.None);
+                OperatorPreferencesDto? saved = await _repository.GetAsync(operatorId, CancellationToken.None);
                 if (saved is not null)
                 {
                     Mode = saved.UiMode ?? "Standard";
@@ -87,22 +87,21 @@ namespace VideoForensics.Client.Ui.Shared.Services
             // Read the existing row first (if present) to avoid clobbering other fields like ThemeMode
             // or CultureName that ThemePreferenceService might have set. If no row exists yet, this
             // returns null and we create one fresh with just the UiMode set.
-            OperatorPreferences? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
+            OperatorPreferencesDto? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
 
             // Merge: keep existing ThemeMode, CultureName and TimeFormat, but update UiMode and UpdatedAtUtc.
             // Never write the UiModeLocked field - it's managed by the admin lock endpoint.
-            var prefs = new OperatorPreferences
-            {
-                Id = existing?.Id ?? Guid.NewGuid(),
-                OperatorId = operatorId,
-                ThemeMode = existing?.ThemeMode ?? "System",
-                CultureName = existing?.CultureName,
-                TimeFormat = existing?.TimeFormat ?? "Locale",
-                UiMode = Mode,
-                UpdatedAtUtc = DateTime.UtcNow,
+            var prefs = new OperatorPreferencesDto(
+                Id: existing?.Id ?? Guid.NewGuid(),
+                OperatorId: operatorId,
+                ThemeMode: existing?.ThemeMode ?? "System",
+                CultureName: existing?.CultureName,
+                UiMode: Mode,
                 // Preserve the lock state without writing it
-                UiModeLocked = existing?.UiModeLocked ?? false
-            };
+                UiModeLocked: existing?.UiModeLocked ?? false,
+                TimeFormat: existing?.TimeFormat ?? "Locale",
+                EncryptionWarningDismissed: existing?.EncryptionWarningDismissed ?? false,
+                UpdatedAtUtc: DateTime.UtcNow);
 
             try
             {
@@ -111,7 +110,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             catch (InvalidOperationException ex) when (ex.Message == "The display mode is locked by an administrator.")
             {
                 // Admin locked it after this circuit loaded. Refresh state from repository.
-                OperatorPreferences? refreshed = await _repository.GetAsync(operatorId, CancellationToken.None);
+                OperatorPreferencesDto? refreshed = await _repository.GetAsync(operatorId, CancellationToken.None);
                 if (refreshed is not null)
                 {
                     Mode = refreshed.UiMode ?? "Standard";

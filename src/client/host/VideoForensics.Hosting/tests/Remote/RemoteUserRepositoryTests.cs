@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteUserRepository(httpClient);
-            User? result = await repo.GetAsync(userId, CancellationToken.None);
+            UserDto? result = await repo.GetAsync(userId, CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             Assert.NotNull(result);
@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.NotFound); });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteUserRepository(httpClient);
-            User? result = await repo.GetAsync(Guid.NewGuid(), CancellationToken.None);
+            UserDto? result = await repo.GetAsync(Guid.NewGuid(), CancellationToken.None);
             Assert.Null(result);
         }
         [Fact]
@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteUserRepository(httpClient);
-            IReadOnlyList<User> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<UserDto> result = await repo.ListAsync(CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             _ = Assert.Single(result);
@@ -61,7 +61,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         [Fact]
         public async Task AddAsync_WithUser_PostsToEndpoint()
         {
-            var user = new User { Id = Guid.NewGuid(), ProviderUserKey = "key", DisplayName = "New User", Email = "new@example.com", CreatedUtc = DateTime.UtcNow };
+            var user = new UserDto(Guid.NewGuid(), "key", "New User", "new@example.com", DateTime.UtcNow);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.Created); });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var repo = new RemoteUserRepository(httpClient);

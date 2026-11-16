@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
@@ -8,7 +8,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Events;
 public class EventLoadResult
 {
     public required IReadOnlyList<EventRow> Rows { get; init; }
-    public required IReadOnlyDictionary<Guid, LegalHold> ActiveHoldsByMediaItemId { get; init; }
-    public required IReadOnlyList<IntegrityRecord> IntegrityRecords { get; init; }
+    public required IReadOnlyDictionary<Guid, LegalHoldDto> ActiveHoldsByMediaItemId { get; init; }
+    public required IReadOnlyList<IntegrityRecordDto> IntegrityRecords { get; init; }
     public required IReadOnlyDictionary<Guid, string> PerDeviceErrors { get; init; }
 }

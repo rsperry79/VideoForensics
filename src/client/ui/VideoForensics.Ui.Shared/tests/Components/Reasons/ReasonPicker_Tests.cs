@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using Bunit;
 
 using Microsoft.AspNetCore.Components;
@@ -31,14 +32,14 @@ public class ReasonPicker_Tests : BunitContext
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
     }
 
-    private IRenderedComponent<ReasonPicker<MediaFlagDismissReason>> RenderPicker(
-        MediaFlagDismissReason? value,
+    private IRenderedComponent<ReasonPicker<MediaFlagDismissReasonDto>> RenderPicker(
+        MediaFlagDismissReasonDto? value,
         string? note,
         List<bool> validity)
     {
-        return Render<ReasonPicker<MediaFlagDismissReason>>(p => p
+        return Render<ReasonPicker<MediaFlagDismissReasonDto>>(p => p
             .Add(c => c.Value, value)
-            .Add(c => c.OtherValue, MediaFlagDismissReason.Other)
+            .Add(c => c.OtherValue, MediaFlagDismissReasonDto.Other)
             .Add(c => c.Note, note)
             .Add(c => c.LabelText, "Reason")
             .Add(c => c.ValidityChanged, EventCallback.Factory.Create<bool>(this, validity.Add)));
@@ -48,21 +49,21 @@ public class ReasonPicker_Tests : BunitContext
     public void ReasonPicker_DropDown_ListsAllValuesInDeclarationOrder()
     {
         // Arrange and Act
-        IRenderedComponent<ReasonPicker<MediaFlagDismissReason>> cut = RenderPicker(null, null, []);
+        IRenderedComponent<ReasonPicker<MediaFlagDismissReasonDto>> cut = RenderPicker(null, null, []);
 
         // Assert
-        IRenderedComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>> dropdown =
-            cut.FindComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>>();
+        IRenderedComponent<SfDropDownList<MediaFlagDismissReasonDto?, ReasonOption<MediaFlagDismissReasonDto>>> dropdown =
+            cut.FindComponent<SfDropDownList<MediaFlagDismissReasonDto?, ReasonOption<MediaFlagDismissReasonDto>>>();
         var values = dropdown.Instance.DataSource!.Select(option => option.Value).ToList();
-        Assert.Equal(Enum.GetValues<MediaFlagDismissReason>(), values);
+        Assert.Equal(Enum.GetValues<MediaFlagDismissReasonDto>(), values);
     }
 
     [Fact]
     public void ReasonPicker_NoteBox_AppearsOnlyForOther()
     {
         // Arrange and Act
-        IRenderedComponent<ReasonPicker<MediaFlagDismissReason>> plain = RenderPicker(MediaFlagDismissReason.Duplicate, null, []);
-        IRenderedComponent<ReasonPicker<MediaFlagDismissReason>> other = RenderPicker(MediaFlagDismissReason.Other, null, []);
+        IRenderedComponent<ReasonPicker<MediaFlagDismissReasonDto>> plain = RenderPicker(MediaFlagDismissReasonDto.Duplicate, null, []);
+        IRenderedComponent<ReasonPicker<MediaFlagDismissReasonDto>> other = RenderPicker(MediaFlagDismissReasonDto.Other, null, []);
 
         // Assert
         Assert.Empty(plain.FindAll(NoteTestId));
@@ -77,11 +78,11 @@ public class ReasonPicker_Tests : BunitContext
         string expectedPlaceholder = Services.GetRequiredService<IStringLocalizer<SharedResources>>()["ReasonPickerPlaceholder"].Value;
 
         // Act
-        IRenderedComponent<ReasonPicker<MediaFlagDismissReason>> cut = RenderPicker(null, null, validity);
+        IRenderedComponent<ReasonPicker<MediaFlagDismissReasonDto>> cut = RenderPicker(null, null, validity);
 
         // Assert
-        IRenderedComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>> dropdown =
-            cut.FindComponent<SfDropDownList<MediaFlagDismissReason?, ReasonOption<MediaFlagDismissReason>>>();
+        IRenderedComponent<SfDropDownList<MediaFlagDismissReasonDto?, ReasonOption<MediaFlagDismissReasonDto>>> dropdown =
+            cut.FindComponent<SfDropDownList<MediaFlagDismissReasonDto?, ReasonOption<MediaFlagDismissReasonDto>>>();
         Assert.Equal(expectedPlaceholder, dropdown.Instance.Placeholder);
         Assert.Equal(new[] { false }, validity);
     }
@@ -106,7 +107,7 @@ public class ReasonPicker_Tests : BunitContext
         var validity = new List<bool>();
 
         // Act
-        _ = RenderPicker(MediaFlagDismissReason.Other, "   ", validity);
+        _ = RenderPicker(MediaFlagDismissReasonDto.Other, "   ", validity);
 
         // Assert
         Assert.Equal(new[] { false }, validity);
@@ -119,7 +120,7 @@ public class ReasonPicker_Tests : BunitContext
         var validity = new List<bool>();
 
         // Act
-        _ = RenderPicker(MediaFlagDismissReason.Other, "camera was moved", validity);
+        _ = RenderPicker(MediaFlagDismissReasonDto.Other, "camera was moved", validity);
 
         // Assert
         Assert.Equal(new[] { true }, validity);
@@ -132,7 +133,7 @@ public class ReasonPicker_Tests : BunitContext
         var validity = new List<bool>();
 
         // Act
-        _ = RenderPicker(MediaFlagDismissReason.FalsePositive, null, validity);
+        _ = RenderPicker(MediaFlagDismissReasonDto.FalsePositive, null, validity);
 
         // Assert
         Assert.Equal(new[] { true }, validity);

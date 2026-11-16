@@ -19,7 +19,7 @@ namespace VideoForensics.Providers.Ring.Tests
     public class EvidenceExportOrchestratorTests
     {
         private readonly Mock<ILogger<EvidenceExportOrchestrator>> _mockLogger = new();
-        private readonly Mock<IMediaItemRepository> _mockMediaItemRepository = new();
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItemRepository = new();
         private readonly Mock<IIntegrityVerificationService> _mockIntegrityService = new();
         private readonly Mock<IActionLogRepository> _mockActionLogRepository = new();
         private readonly Mock<IExportRecordService> _mockExportRecordService = new();
