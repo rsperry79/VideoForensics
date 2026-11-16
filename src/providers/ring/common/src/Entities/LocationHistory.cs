@@ -173,6 +173,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public System.Text.Json.JsonElement? KeyMoments { get; set; }
 
         [JsonPropertyName("tags")]
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.CvTagListConverter))]
         public List<string> Tags { get; set; }
     }
 
