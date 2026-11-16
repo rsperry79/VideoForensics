@@ -5,7 +5,7 @@
 
 @if (_hasMain)
 {
-    <ReviewPlayer @ref="_mainPlayer" Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" />
+    <ReviewPlayer @ref="_mainPlayer" Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" OnPlaybackUtc="OnPlaybackUtc" />
 }
 
 @if (_previewIndexes.Count > 0)
@@ -57,6 +57,9 @@
 
     /// <summary>Raised with the index (into <see cref="Cameras"/>) of a preview tile the user clicked.</summary>
     [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    /// <summary>The main player's playback position (UTC) as the video plays, for the timeline's playback cursor.</summary>
+    [Parameter] public EventCallback<DateTime> OnPlaybackUtc { get; set; }
 
     private bool _hasMain => SelectedIndex >= 0 && SelectedIndex < Cameras.Count;
 

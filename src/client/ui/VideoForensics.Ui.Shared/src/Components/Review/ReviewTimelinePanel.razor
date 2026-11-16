@@ -15,7 +15,7 @@
                    UnavailableClips="TimelineModel.UnavailableClips"
                    WindowStartUtc="Window.Start"
                    WindowEndUtc="Window.End"
-                   Cursor="State.Cursor"
+                   Cursor="State.PlaybackCursor ?? State.Cursor"
                    Label="@L["TimelineNewestAtTop"].Value"
                    OnSeek="SeekTo" />
 
@@ -39,6 +39,7 @@
     {
         TimelineModel.OnChange += Refresh;
         State.OnChange += Refresh;
+        State.OnPlaybackChange += Refresh;
         return Task.CompletedTask;
     }
 
@@ -56,5 +57,6 @@
     {
         TimelineModel.OnChange -= Refresh;
         State.OnChange -= Refresh;
+        State.OnPlaybackChange -= Refresh;
     }
 }

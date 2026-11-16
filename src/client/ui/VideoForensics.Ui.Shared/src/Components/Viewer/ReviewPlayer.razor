@@ -10,6 +10,7 @@
                  Gap="true"
                  Fit="MediaFitMode.Contain"
                  Class="review-player"
+                 OnProgress="HandleProgressAsync"
                  data-clip-id="@_selection?.ClipId" />
 </div>
 
@@ -22,6 +23,12 @@
 
     /// <summary>The shared playback time (UTC). A change re-selects the clip and seeks to the offset.</summary>
     [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>The video's position (UTC) as it plays. Raised only while a clip is playing, and not during a gap.</summary>
+    [Parameter] public EventCallback<DateTime> OnPlaybackUtc { get; set; }
+
+    private Task HandleProgressAsync(MediaProgress progress) =>
+        progress.Utc is DateTime utc ? OnPlaybackUtc.InvokeAsync(utc) : Task.CompletedTask;
 
     private ClipSelection? _selection;
     private ClipWindow? _selectedClip;
