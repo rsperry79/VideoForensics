@@ -1,10 +1,12 @@
-using Bunit;
+using Bunit;using VideoForensics.Core.Api.Contracts;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Moq;
+
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -349,7 +351,7 @@ public class ReviewPage_Tests : ReviewTestContext
                 RecordedAtUtc = FixedNowUtc.AddHours(-1),
                 DurationSeconds = 120,
                 Sha256Hash = "hash",
-            }).ToList(),
+            }.ToDto()).ToList(),
             false));
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
         cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
@@ -537,7 +539,7 @@ public class ReviewPage_Tests : ReviewTestContext
         AddDevices(2);
         var caseRepository = new Mock<ICaseRepository>();
         var unknown = Guid.NewGuid();
-        _ = caseRepository.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
+        _ = caseRepository.Setup(r => r.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCaseDto?)null);
         CaseRepositoryDouble = caseRepository.Object;
         NavigateToReview("reviewcase=" + unknown.ToString("D"));
 

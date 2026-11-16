@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
@@ -23,9 +24,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _events = new EventRepository(_fixture.Factory, NullLogger<EventRepository>.Instance);
-            _media = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
-            _queries = new TimelapseGapQueries(_fixture.Factory, NullLogger<TimelapseGapQueries>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _events = new EventRepository(unitOfWork, NullLogger<EventRepository>.Instance);
+            _media = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
+            _queries = new TimelapseGapQueries(unitOfWork, NullLogger<TimelapseGapQueries>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -93,8 +96,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task SnapshotCaptures_EarliestCapture_IsOldestAttemptForTheDevice()
         {
-            var locations = new LocationRepository(_fixture.Factory, NullLogger<LocationRepository>.Instance);
-            var devices = new DeviceRepository(_fixture.Factory, NullLogger<DeviceRepository>.Instance);
+            var locations = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance), NullLogger<LocationRepository>.Instance);
+            var devices = new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance), NullLogger<DeviceRepository>.Instance);
             Location location = TestDataBuilder.BuildLocation(name: "Gap Site");
             await locations.AddAsync(location, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Gap Camera");
@@ -102,7 +105,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Device other = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Other Camera");
             await devices.AddAsync(other, CancellationToken.None);
 
-            var captures = new SnapshotCaptureRepository(_fixture.Factory, NullLogger<SnapshotCaptureRepository>.Instance);
+            var captures = new SnapshotCaptureRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, NullLoggerFactory.Instance), NullLogger<UnitOfWork>.Instance), NullLogger<SnapshotCaptureRepository>.Instance);
             await captures.AddAsync(SnapshotCapture.Create(device.Id, new DateTimeOffset(Start.AddMinutes(20), TimeSpan.Zero), "fresh", 404, null, null), CancellationToken.None);
             await captures.AddAsync(SnapshotCapture.Create(device.Id, new DateTimeOffset(Start.AddMinutes(5), TimeSpan.Zero), "fresh", 200, "p.jpg", null), CancellationToken.None);
             await captures.AddAsync(SnapshotCapture.Create(other.Id, new DateTimeOffset(Start.AddMinutes(1), TimeSpan.Zero), "fresh", 200, "q.jpg", null), CancellationToken.None);

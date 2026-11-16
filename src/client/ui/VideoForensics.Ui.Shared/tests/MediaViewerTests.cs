@@ -1,4 +1,4 @@
-using AngleSharp.Dom;
+using AngleSharp.Dom;using VideoForensics.Core.Api.Contracts;
 
 using Bunit;
 
@@ -43,7 +43,7 @@ public class MediaViewer_Image_Tests : BunitContext
                 DeviceId = Guid.NewGuid(),
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
     }
 
@@ -410,7 +410,7 @@ public class MediaViewer_NoUrl_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
 
         // Act
@@ -446,7 +446,7 @@ public class MediaViewer_NoUrl_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
 
         // Act
@@ -494,7 +494,7 @@ public class MediaViewer_Video_Tests : BunitContext
                 DeviceId = Guid.NewGuid(),
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
     }
 
@@ -776,7 +776,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
         bool callbackInvoked = false;
         IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
@@ -816,7 +816,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
         bool callbackInvoked = false;
         IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
@@ -856,7 +856,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
         bool callbackInvoked = false;
         IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
@@ -896,7 +896,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
         bool callbackInvoked = false;
         IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
@@ -935,7 +935,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
     }
 
@@ -1053,7 +1053,7 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
                 DeviceId = deviceId,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
     }
 
@@ -1148,7 +1148,7 @@ public class MediaViewer_ItemChange_Tests : BunitContext
                 DeviceId = deviceId1,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -1167,7 +1167,7 @@ public class MediaViewer_ItemChange_Tests : BunitContext
                 DeviceId = deviceId2,
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow
-            }
+            }.ToDto()
         };
 
         IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters

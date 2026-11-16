@@ -11,7 +11,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     /// setting (Admin and up unless narrowed to SuperAdmin). Delete is always SuperAdmin on the Local tier. Background
     /// sync (the Record methods) is not an operator action and passes through.
     /// </summary>
-    public sealed class GuardedProviderAccountRepository(IProviderAccountRepository inner, ICircuitOperatorGate gate, IProviderAccountEditPolicy editPolicy) : IProviderAccountRepository
+    public sealed class GuardedProviderAccountRepository(IProviderAccountWriteRepository inner, ICircuitOperatorGate gate, IProviderAccountEditPolicy editPolicy) : IProviderAccountWriteRepository
     {
         public Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct)
         {

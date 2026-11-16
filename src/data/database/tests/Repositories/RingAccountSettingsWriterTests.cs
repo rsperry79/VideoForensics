@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -24,7 +25,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _writer = new RingAccountSettingsWriter(_fixture.Factory);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _writer = new RingAccountSettingsWriter(unitOfWork);
 
             _ringAccountId = Guid.NewGuid();
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();

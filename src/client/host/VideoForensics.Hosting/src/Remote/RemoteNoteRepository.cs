@@ -3,8 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
@@ -27,7 +26,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<Note> AddAsync(NoteTargetKind kind, Guid targetId, string body, string addedBy, CancellationToken ct)
+        public async Task<NoteDto> AddAsync(NoteTargetKindDto kind, Guid targetId, string body, string addedBy, CancellationToken ct)
         {
             var request = new AddNoteRequest(body);
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"/api/v1/notes/{kind}/{targetId}", request, cancellationToken: ct);
@@ -51,16 +50,16 @@ namespace VideoForensics.Client.Hosting.Remote
 
             _ = response.EnsureSuccessStatusCode();
             NoteDto? dto = await response.Content.ReadFromJsonAsync<NoteDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<Note>> ListAsync(NoteTargetKind kind, Guid targetId, CancellationToken ct)
+        public async Task<IReadOnlyList<NoteDto>> ListAsync(NoteTargetKindDto kind, Guid targetId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/notes/{kind}/{targetId}", ct);
             _ = response.EnsureSuccessStatusCode();
             List<NoteDto>? dtos = await response.Content.ReadFromJsonAsync<List<NoteDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
     }
 }

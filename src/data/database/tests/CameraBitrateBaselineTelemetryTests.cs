@@ -1,11 +1,17 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using VideoForensics.Data.Database.Logs;
 
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.Logs;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Logs;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Data.Database.Logs;
 using VideoForensics.Utils.Testing;
+using VideoForensics.Data.Database.Logs;
 
 using Xunit;
+using VideoForensics.Data.Database.Logs;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -64,7 +70,9 @@ namespace VideoForensics.Data.Database.Tests
                 _ = await logs.SaveChangesAsync();
             }
 
-            var repository = new CameraBitrateBaselineRepository(_main.Factory, _logs.Factory, NullLogger<CameraBitrateBaselineRepository>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_main.Factory, new Repositories.TestServiceProvider(_main, loggerFactory), NullLogger<UnitOfWork>.Instance);
+            var repository = new CameraBitrateBaselineRepository(unitOfWork, new LogsDbGate(_logs.Factory), NullLogger<CameraBitrateBaselineRepository>.Instance);
             await repository.RecomputeBucketAsync(deviceId, 14, isWeekend: false, CancellationToken.None);
 
             CameraBitrateBaseline? baseline = await repository.GetBucketAsync(deviceId, 14, isWeekend: false, CancellationToken.None);

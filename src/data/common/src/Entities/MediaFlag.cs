@@ -28,5 +28,17 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Optimistic concurrency token. Incremented on every update; SQLite has no native row version.</summary>
         public int RowVersion { get; set; }
+
+        /// <summary>
+        /// How many std devs the flagged worst reading sat from the camera's all-time mean, when the flag was raised. Null
+        /// for flags with no sigma (bit rate collapse) and for rows raised before the value was stored.
+        /// </summary>
+        public double? DeviationSigma { get; set; }
+
+        /// <summary>
+        /// Event type shown with the flag. Not stored: the repository fills it on read. A flag with a clip takes its clip's
+        /// download event type; a clip-less RSSI flag takes the type of a clip on its camera within the review search pad.
+        /// </summary>
+        public string? EventType { get; set; }
     }
 }

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 using System.Security.Cryptography;
@@ -11,24 +10,26 @@ using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Repositories
 {
-    /// <summary>Repository implementation for hash-chained ActionLogEntry entities.</summary>
+    /// <summary>
+    /// Repository implementation for hash-chained ActionLogEntry entities. Appends run through <see cref="IUnitOfWork.ExecuteAsync{T}"/>,
+    /// which holds the chain gate for the whole read, insert and commit.
+    /// </summary>
     public class ActionLogRepository : IActionLogRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<ActionLogRepository> _logger;
 
         /// <summary>Initializes a new instance of the ActionLogRepository.</summary>
-        public ActionLogRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<ActionLogRepository> logger)
+        public ActionLogRepository(IUnitOfWork unitOfWork, ILogger<ActionLogRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Gets an action log entry by ID.</summary>
-        public async Task<ActionLogEntry?> GetAsync(Guid entryId, CancellationToken ct)
+        public Task<ActionLogEntry?> GetAsync(Guid entryId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entryId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entryId, ct), ct);
         }
 
         /// <summary>
@@ -50,85 +51,52 @@ namespace VideoForensics.Data.Database.Repositories
             string? detailsJson,
             CancellationToken ct)
         {
-            // Inside an open unit of work, write on the unit's context so the append joins its transaction. The unit
-            // already holds the chain gate in this flow.
-            VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
-            if (ambient != null)
-            {
-                return await new UnitOfWorkActionLogRepository(ambient, _logger).AppendAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
-            }
-
-            // The shared chain gate covers this read, insert and commit.
-            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
-            if (entered)
-            {
-                await ActionLogAppendGate.WaitAsync(ct);
-            }
-
             try
             {
-                return await AppendCoreAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
-            }
-            finally
-            {
-                if (entered)
+                // Why: ExecuteAsync holds the chain gate for the whole transaction, so no other append reads this tail
+                // before this one commits. Inside an open unit of work it joins that unit's transaction instead.
+                ActionLogEntry entry = await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    ActionLogAppendGate.Release();
-                }
-            }
-        }
+                    VideoForensicsDbContext db = context.Db();
 
-        private async Task<ActionLogEntry> AppendCoreAsync(
-            string actor,
-            ActorType actorType,
-            string action,
-            string entityType,
-            Guid? entityId,
-            string? detailsJson,
-            CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            try
-            {
-                using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
+                    // Read the last entry's hash atomically within this transaction
+                    ActionLogEntry? lastEntry = await db.ActionLogEntries
+                        .OrderByDescending(ale => ale.TimestampUtc)
+                        .ThenByDescending(ale => ale.Id)
+                        .FirstOrDefaultAsync(ct);
 
-                // Read the last entry's hash atomically within this transaction
-                ActionLogEntry? lastEntry = await db.ActionLogEntries
-                    .OrderByDescending(ale => ale.TimestampUtc)
-                    .ThenByDescending(ale => ale.Id)
-                    .FirstOrDefaultAsync(ct);
+                    string? previousEntryHash = lastEntry?.EntryHash;
 
-                string? previousEntryHash = lastEntry?.EntryHash;
+                    // Verification orders by timestamp, so this entry must be strictly later than its predecessor.
+                    DateTime timestampUtc = DateTime.UtcNow;
+                    if (lastEntry != null && timestampUtc <= lastEntry.TimestampUtc)
+                    {
+                        timestampUtc = DateTime.SpecifyKind(lastEntry.TimestampUtc.AddTicks(1), DateTimeKind.Utc);
+                    }
 
-                // Verification orders by timestamp, so this entry must be strictly later than its predecessor.
-                DateTime timestampUtc = DateTime.UtcNow;
-                if (lastEntry != null && timestampUtc <= lastEntry.TimestampUtc)
-                {
-                    timestampUtc = DateTime.SpecifyKind(lastEntry.TimestampUtc.AddTicks(1), DateTimeKind.Utc);
-                }
+                    // Compute the new entry's hash
+                    string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
+                    string entryHash = ComputeSha256Hash(canonicalString);
 
-                // Compute the new entry's hash
-                string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
-                string entryHash = ComputeSha256Hash(canonicalString);
+                    // Create and insert the new entry
+                    var appended = new ActionLogEntry
+                    {
+                        Id = Guid.NewGuid(),
+                        Actor = actor,
+                        ActorType = actorType,
+                        Action = action,
+                        EntityType = entityType,
+                        EntityId = entityId,
+                        DetailsJson = detailsJson,
+                        TimestampUtc = timestampUtc,
+                        PreviousEntryHash = previousEntryHash,
+                        EntryHash = entryHash
+                    };
 
-                // Create and insert the new entry
-                var entry = new ActionLogEntry
-                {
-                    Id = Guid.NewGuid(),
-                    Actor = actor,
-                    ActorType = actorType,
-                    Action = action,
-                    EntityType = entityType,
-                    EntityId = entityId,
-                    DetailsJson = detailsJson,
-                    TimestampUtc = timestampUtc,
-                    PreviousEntryHash = previousEntryHash,
-                    EntryHash = entryHash
-                };
-
-                _ = db.ActionLogEntries.Add(entry);
-                _ = await db.SaveChangesAsync(ct);
-                await transaction.CommitAsync(ct);
+                    _ = db.ActionLogEntries.Add(appended);
+                    _ = await db.SaveChangesAsync(ct);
+                    return appended;
+                }, ct);
 
                 _logger.LogDebug("Action log entry appended: {EntryId} (action: {Action}, entity: {EntityType}:{EntityId})",
                     entry.Id, action, entityType, entityId);
@@ -143,20 +111,24 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Gets the history of actions for a specific entity.</summary>
-        public async Task<IReadOnlyList<ActionLogEntry>> GetHistoryForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
+        public Task<IReadOnlyList<ActionLogEntry>> GetHistoryForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ActionLogEntries
-                .Where(ale => ale.EntityType == entityType && ale.EntityId == entityId)
-                .OrderByDescending(ale => ale.TimestampUtc)
-                .ToListAsync(ct);
+            return _unitOfWork.ReadAsync<IReadOnlyList<ActionLogEntry>>(async context =>
+            {
+                return await context.Db().ActionLogEntries
+                    .Where(ale => ale.EntityType == entityType && ale.EntityId == entityId)
+                    .OrderByDescending(ale => ale.TimestampUtc)
+                    .ToListAsync(ct);
+            }, ct);
         }
 
         /// <summary>Gets all action log entries.</summary>
-        public async Task<IReadOnlyList<ActionLogEntry>> ListAsync(CancellationToken ct)
+        public Task<IReadOnlyList<ActionLogEntry>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ActionLogEntries.ToListAsync(ct);
+            return _unitOfWork.ReadAsync<IReadOnlyList<ActionLogEntry>>(async context =>
+            {
+                return await context.Db().ActionLogEntries.ToListAsync(ct);
+            }, ct);
         }
 
         /// <summary>
@@ -165,11 +137,10 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<ChainIntegrityResult> VerifyChainIntegrityAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<ActionLogEntry> entries = await db.ActionLogEntries
+            List<ActionLogEntry> entries = await _unitOfWork.ReadAsync(context => context.Db().ActionLogEntries
                 .OrderBy(ale => ale.TimestampUtc)
                 .ThenBy(ale => ale.Id)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
 
             if (entries.Count == 0)
             {

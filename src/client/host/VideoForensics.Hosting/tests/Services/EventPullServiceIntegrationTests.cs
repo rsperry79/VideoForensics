@@ -105,9 +105,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             // Setup mocks with different behavior per account
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
-            var mockDeviceRepository = new Mock<IDeviceRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
-            var mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
+            var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
+            var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             // Account 1 setup
@@ -250,9 +250,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             var device3 = new DeviceEntity { Id = device3Id, LocationId = location2Id, ProviderDeviceId = "dev3", Name = "Dev 3", Type = "camera" };
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
-            var mockDeviceRepository = new Mock<IDeviceRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
-            var mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
+            var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
+            var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             // Account 1 setup (2 devices)
@@ -352,9 +352,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             }
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
-            var mockDeviceRepository = new Mock<IDeviceRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
-            var mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
+            var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
+            var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             // Setup all 3 accounts with minimal setup (just verify accountId isolation)
@@ -439,9 +439,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             var device = new DeviceEntity { Id = deviceId, LocationId = locationId, ProviderDeviceId = "device-123", Name = "Front Door", Type = "doorbell" };
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
-            var mockDeviceRepository = new Mock<IDeviceRepository>();
-            var mockLocationRepository = new Mock<ILocationRepository>();
-            var mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
+            var mockDeviceRepository = new Mock<IDeviceWriteRepository>();
+            var mockLocationRepository = new Mock<ILocationWriteRepository>();
+            var mockProviderAccountRepository = new Mock<IProviderAccountWriteRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             _ = mockProviderAccountRepository

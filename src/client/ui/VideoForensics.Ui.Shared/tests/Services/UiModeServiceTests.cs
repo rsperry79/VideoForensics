@@ -3,8 +3,8 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using Xunit;
 
@@ -12,6 +12,27 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services;
 
 public class UiModeServiceTests
 {
+    /// <summary>Builds a preferences DTO for the tests, with the fields the layout service reads set explicitly.</summary>
+    private static OperatorPreferencesDto Prefs(
+        Guid operatorId,
+        string uiMode,
+        bool uiModeLocked = false,
+        string themeMode = "System",
+        string? cultureName = null,
+        string timeFormat = "Locale")
+    {
+        return new OperatorPreferencesDto(
+            Guid.NewGuid(),
+            operatorId,
+            themeMode,
+            cultureName,
+            uiMode,
+            uiModeLocked,
+            timeFormat,
+            false,
+            DateTime.UtcNow);
+    }
+
     [Fact]
     public void UiModeService_Constructor_DefaultMode_IsStandard()
     {
@@ -52,7 +73,7 @@ public class UiModeServiceTests
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -72,14 +93,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            ThemeMode = "Dark",
-            CultureName = "en-US",
-            UiMode = "Simple"
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Simple", themeMode: "Dark", cultureName: "en-US");
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -104,14 +118,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            ThemeMode = "Light",
-            CultureName = "en-US",
-            UiMode = "Standard"
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Standard", themeMode: "Light", cultureName: "en-US");
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -139,7 +146,7 @@ public class UiModeServiceTests
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -163,7 +170,7 @@ public class UiModeServiceTests
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -178,7 +185,7 @@ public class UiModeServiceTests
         // Assert
         mockRepository.Verify(
             r => r.UpsertAsync(
-                It.Is<OperatorPreferences>(p => p.OperatorId == operatorId && p.UiMode == "Simple"),
+                It.Is<OperatorPreferencesDto>(p => p.OperatorId == operatorId && p.UiMode == "Simple"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -188,15 +195,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            ThemeMode = "Dark",
-            CultureName = "en-US",
-            TimeFormat = "TwentyFourHour",
-            UiMode = "Standard"
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Standard", themeMode: "Dark", cultureName: "en-US", timeFormat: "TwentyFourHour");
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -216,7 +215,7 @@ public class UiModeServiceTests
         // Assert - verify that ThemeMode, CultureName and TimeFormat are preserved
         mockRepository.Verify(
             r => r.UpsertAsync(
-                It.Is<OperatorPreferences>(p =>
+                It.Is<OperatorPreferencesDto>(p =>
                     p.OperatorId == operatorId &&
                     p.UiMode == "Simple" &&
                     p.ThemeMode == "Dark" &&
@@ -234,7 +233,7 @@ public class UiModeServiceTests
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -269,7 +268,7 @@ public class UiModeServiceTests
         await service.SetModeAsync("Simple");
 
         // Assert - repository should not be called when no operator is signed in
-        mockRepository.Verify(r => r.UpsertAsync(It.IsAny<OperatorPreferences>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepository.Verify(r => r.UpsertAsync(It.IsAny<OperatorPreferencesDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -280,7 +279,7 @@ public class UiModeServiceTests
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -304,13 +303,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            UiMode = "Simple",
-            UiModeLocked = false
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Simple", uiModeLocked: false);
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -335,13 +328,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            UiMode = "Standard",
-            UiModeLocked = true
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Standard", uiModeLocked: true);
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -366,13 +353,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            UiMode = "Standard",
-            UiModeLocked = true
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Standard", uiModeLocked: true);
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -396,13 +377,7 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var savedPreferences = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            UiMode = "Standard",
-            UiModeLocked = true
-        };
+        var savedPreferences = Prefs(operatorId, uiMode: "Standard", uiModeLocked: true);
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -429,7 +404,7 @@ public class UiModeServiceTests
         // Assert
         Assert.Equal("Standard", service.Mode);
         mockRepository.Verify(
-            r => r.UpsertAsync(It.IsAny<OperatorPreferences>(), It.IsAny<CancellationToken>()),
+            r => r.UpsertAsync(It.IsAny<OperatorPreferencesDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -441,7 +416,7 @@ public class UiModeServiceTests
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -459,21 +434,8 @@ public class UiModeServiceTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var initialPrefs = new OperatorPreferences
-        {
-            Id = Guid.NewGuid(),
-            OperatorId = operatorId,
-            UiMode = "Standard",
-            UiModeLocked = false
-        };
-
-        var refreshedPrefs = new OperatorPreferences
-        {
-            Id = initialPrefs.Id,
-            OperatorId = operatorId,
-            UiMode = "Standard",
-            UiModeLocked = true
-        };
+        var initialPrefs = Prefs(operatorId, uiMode: "Standard", uiModeLocked: false);
+        var refreshedPrefs = initialPrefs with { UiModeLocked = true };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         _ = mockRepository
@@ -482,7 +444,7 @@ public class UiModeServiceTests
 
         // First UpsertAsync call (from SetModeAsync) throws lock exception
         _ = mockRepository
-            .Setup(r => r.UpsertAsync(It.IsAny<OperatorPreferences>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.UpsertAsync(It.IsAny<OperatorPreferencesDto>(), It.IsAny<CancellationToken>()))
             .Callback(() =>
             {
                 // After the exception, subsequent GetAsync calls return the locked version

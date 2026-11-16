@@ -36,10 +36,11 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
 
-            var actionLogRepo = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _caseRepo = new CaseRepository(_fixture.Factory, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
+            var actionLogRepo = new ActionLogRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _caseRepo = new CaseRepository(unitOfWork, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
-            _alertRepo = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
+            _alertRepo = new AlertRepository(unitOfWork, _loggerFactory.CreateLogger<AlertRepository>());
 
             // Initialize a plain reader instance with no case repository for reading back test results
             _jammingRepo = BuildJammingRepo();
@@ -52,17 +53,18 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory.Dispose();
         }
 
-        private JammingRepository BuildJammingRepo(ICaseRepository? caseRepository = null)
+        private JammingRepository BuildJammingRepo(ICaseWriteRepository? caseRepository = null)
         {
-            return new(_fixture.Factory, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            return new(unitOfWork, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
         }
 
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
             Location loc = TestDataBuilder.BuildLocation(name: "Test Location");
-            await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            await new LocationRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
             Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Test Device");
-            await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
+            await new DeviceRepository(new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), lf.CreateLogger<UnitOfWork>()), lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
@@ -224,7 +226,7 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         /// <summary>
-        /// Test (e): If ICaseRepository throws, UpsertIncidentAsync still returns the saved incident with CaseId=null and logs error.
+        /// Test (e): If ICaseWriteRepository throws, UpsertIncidentAsync still returns the saved incident with CaseId=null and logs error.
         /// </summary>
         [Fact]
         public async Task UpsertIncidentAsync_CaseRepositoryThrows_IncidentSavedWithNullCaseId()
@@ -232,8 +234,8 @@ namespace VideoForensics.Data.Database.Tests
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
 
-            // Mock ICaseRepository to throw
-            var mockCaseRepo = new Mock<ICaseRepository>();
+            // Mock ICaseWriteRepository to throw
+            var mockCaseRepo = new Mock<ICaseWriteRepository>();
             _ = mockCaseRepo
                 .Setup(r => r.CreateFromJammingDetectionAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Simulated case creation failure"));
@@ -287,8 +289,8 @@ namespace VideoForensics.Data.Database.Tests
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
 
-            // Mock ICaseRepository to throw OperationCanceledException
-            var mockCaseRepo = new Mock<ICaseRepository>();
+            // Mock ICaseWriteRepository to throw OperationCanceledException
+            var mockCaseRepo = new Mock<ICaseWriteRepository>();
             _ = mockCaseRepo
                 .Setup(r => r.CreateFromJammingDetectionAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new OperationCanceledException("Cancelled"));
@@ -324,13 +326,13 @@ namespace VideoForensics.Data.Database.Tests
 
             ServiceProvider sp = services.BuildServiceProvider();
 
-            // Verify IJammingRepository is resolved
-            IJammingRepository jammingRepo = sp.GetRequiredService<IJammingRepository>();
+            // Verify IJammingWriteRepository is resolved
+            IJammingWriteRepository jammingRepo = sp.GetRequiredService<IJammingWriteRepository>();
             Assert.NotNull(jammingRepo);
             _ = Assert.IsType<JammingRepository>(jammingRepo);
 
-            // Verify ICaseRepository is also resolved
-            ICaseRepository caseRepo = sp.GetRequiredService<ICaseRepository>();
+            // Verify ICaseWriteRepository is also resolved
+            ICaseWriteRepository caseRepo = sp.GetRequiredService<ICaseWriteRepository>();
             Assert.NotNull(caseRepo);
 
             // Behavioral test: seed a device, then upsert a NEW incident and verify case/alert creation

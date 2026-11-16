@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
@@ -65,7 +65,7 @@ namespace VideoForensics.Client.Core.Tests
             var loadedConfig = new ForensicsConfiguration
             {
                 InternetServerUrl = "https://video.example.com",
-                ConfiguredNetworkTier = NetworkTier.Internet,
+                ConfiguredNetworkTier = NetworkTierDto.Internet,
             };
 
             var configService = new Mock<IForensicsConfigurationService>();
@@ -77,7 +77,7 @@ namespace VideoForensics.Client.Core.Tests
             await ConfigurationLoader.LoadAndApplyAsync(configService.Object, runtimeConfig, NullLogger.Instance, CancellationToken.None);
 
             Assert.Equal("https://video.example.com", runtimeConfig.InternetServerUrl);
-            Assert.Equal(NetworkTier.Internet, runtimeConfig.ConfiguredNetworkTier);
+            Assert.Equal(NetworkTierDto.Internet, runtimeConfig.ConfiguredNetworkTier);
         }
 
         [Fact]

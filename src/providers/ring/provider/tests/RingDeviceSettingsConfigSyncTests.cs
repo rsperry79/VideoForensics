@@ -159,7 +159,7 @@ namespace VideoForensics.Providers.Ring.Tests
             StubSessionHandler handler = CreateHandler();
             var logger = new RecordingLogger();
             var tally = new SyncRunTally();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(includeBackDoor: false);
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(includeBackDoor: false);
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), logger, tally, devices);
 
@@ -194,7 +194,7 @@ namespace VideoForensics.Providers.Ring.Tests
             StubSessionHandler handler = CreateHandler();
             var state = new InMemorySyncState();
             var logger = new RecordingLogger();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(includeBackDoor: false);
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(includeBackDoor: false);
 
             _ = await SyncAsync(handler, data, state, new ManualTimeProvider(StartUtc), logger, devices: devices);
 
@@ -296,7 +296,7 @@ namespace VideoForensics.Providers.Ring.Tests
             handler.Routes[RingDevicesUrl] = (HttpStatusCode.OK,
                 "{\"doorbots\":[],\"authorized_doorbots\":[],\"base_stations\":[],\"stickup_cams\":[]," +
                 "\"chimes\":[{\"id\":3003,\"description\":\"Hall Chime\",\"location_id\":\"" + LocationId + "\",\"device_id\":\"hall\",\"firmware_version\":\"1.2.3\",\"settings\":{\"volume\":7}}]}");
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(includeBackDoor: false, includeChime: true);
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(includeBackDoor: false, includeChime: true);
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger(), devices: devices);
 
@@ -349,7 +349,7 @@ namespace VideoForensics.Providers.Ring.Tests
             ManualTimeProvider clock,
             RecordingLogger logger,
             SyncRunTally? tally = null,
-            Mock<IDeviceRepository>? devices = null)
+            Mock<IDeviceWriteRepository>? devices = null)
         {
             var session = new Session("user@example.com", "password", handler);
             var sessionProvider = new Mock<ISessionProvider>();
@@ -389,7 +389,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>Lists the three stored devices by their provider ids. The back door is left out when <paramref name="includeBackDoor"/> is false.</summary>
-        private static Mock<IDeviceRepository> CreateDeviceRepository(bool includeBackDoor, bool includeChime = false)
+        private static Mock<IDeviceWriteRepository> CreateDeviceRepository(bool includeBackDoor, bool includeChime = false)
         {
             var rows = new List<Device>
             {
@@ -406,7 +406,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 rows.Add(new Device { Id = HallChimeGuid, ProviderDeviceId = "3003", Name = "Hall Chime", Type = "chime", LocationId = Guid.NewGuid() });
             }
 
-            var repository = new Mock<IDeviceRepository>();
+            var repository = new Mock<IDeviceWriteRepository>();
             _ = repository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<IReadOnlyList<Device>>(rows));
             return repository;

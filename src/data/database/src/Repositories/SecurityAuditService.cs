@@ -15,12 +15,12 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Maximum stored length of <see cref="SecurityEvent.AttemptedUsername"/>; matches the column limit in the EF configuration.</summary>
         private const int MaxAttemptedUsernameLength = 256;
 
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<SecurityAuditService> _logger;
 
-        public SecurityAuditService(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<SecurityAuditService> logger)
+        public SecurityAuditService(IUnitOfWork unitOfWork, ILogger<SecurityAuditService> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -42,22 +42,26 @@ namespace VideoForensics.Data.Database.Repositories
                 username = username[..MaxAttemptedUsernameLength];
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var securityEvent = new SecurityEvent
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                Id = Guid.NewGuid(),
-                OperatorId = null,
-                EventType = SecurityEventType.LoginAttemptFailure,
-                Success = false,
-                IpAddress = ipAddress,
-                OccurredAtUtc = DateTime.UtcNow,
-                Reason = reason,
-                AttemptedUsername = username,
-                CreatedAtUtc = DateTime.UtcNow
-            };
+                VideoForensicsDbContext db = context.Db();
+                var securityEvent = new SecurityEvent
+                {
+                    Id = Guid.NewGuid(),
+                    OperatorId = null,
+                    EventType = SecurityEventType.LoginAttemptFailure,
+                    Success = false,
+                    IpAddress = ipAddress,
+                    OccurredAtUtc = DateTime.UtcNow,
+                    Reason = reason,
+                    AttemptedUsername = username,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
 
-            _ = db.SecurityEvents.Add(securityEvent);
-            _ = await db.SaveChangesAsync(ct);
+                _ = db.SecurityEvents.Add(securityEvent);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
             _logger.LogDebug("Security event recorded: login failure for an unknown username");
         }
 
@@ -84,16 +88,20 @@ namespace VideoForensics.Data.Database.Repositories
                 throw new ArgumentException("operatorId is required unless unknownOnly is true.", nameof(operatorId));
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             // The unknown-login filter is applied in SQL, before paging.
-            IQueryable<SecurityEvent> events = (unknownOnly
-                    ? db.SecurityEvents.Where(e => e.OperatorId == null)
-                    : db.SecurityEvents.Where(e => e.OperatorId == operatorId))
-                .OrderByDescending(e => e.OccurredAtUtc)
-                .Skip(skip)
-                .Take(take);
+            List<SecurityEvent> events = await _unitOfWork.ReadAsync<List<SecurityEvent>>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                return await (unknownOnly
+                        ? db.SecurityEvents.Where(e => e.OperatorId == null)
+                        : db.SecurityEvents.Where(e => e.OperatorId == operatorId))
+                    .OrderByDescending(e => e.OccurredAtUtc)
+                    .Skip(skip)
+                    .Take(take)
+                    .ToListAsync(ct);
+            }, ct);
 
-            await foreach (SecurityEvent? @event in events.AsAsyncEnumerable().WithCancellation(ct))
+            foreach (SecurityEvent @event in events)
             {
                 yield return MapToDto(@event);
             }
@@ -101,13 +109,16 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async IAsyncEnumerable<SecurityEventDto> GetAllEventsAsync(int skip, int take, [EnumeratorCancellation] CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<SecurityEvent> events = db.SecurityEvents
-                .OrderByDescending(e => e.OccurredAtUtc)
-                .Skip(skip)
-                .Take(take);
+            List<SecurityEvent> events = await _unitOfWork.ReadAsync<List<SecurityEvent>>(async context =>
+            {
+                return await context.Db().SecurityEvents
+                    .OrderByDescending(e => e.OccurredAtUtc)
+                    .Skip(skip)
+                    .Take(take)
+                    .ToListAsync(ct);
+            }, ct);
 
-            await foreach (SecurityEvent? @event in events.AsAsyncEnumerable().WithCancellation(ct))
+            foreach (SecurityEvent @event in events)
             {
                 yield return MapToDto(@event);
             }
@@ -115,21 +126,25 @@ namespace VideoForensics.Data.Database.Repositories
 
         private async Task RecordEventAsync(Guid operatorId, SecurityEventType eventType, string? ipAddress, bool success, string? reason, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var securityEvent = new SecurityEvent
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                Id = Guid.NewGuid(),
-                OperatorId = operatorId,
-                EventType = eventType,
-                Success = success,
-                IpAddress = ipAddress,
-                OccurredAtUtc = DateTime.UtcNow,
-                Reason = reason,
-                CreatedAtUtc = DateTime.UtcNow
-            };
+                VideoForensicsDbContext db = context.Db();
+                var securityEvent = new SecurityEvent
+                {
+                    Id = Guid.NewGuid(),
+                    OperatorId = operatorId,
+                    EventType = eventType,
+                    Success = success,
+                    IpAddress = ipAddress,
+                    OccurredAtUtc = DateTime.UtcNow,
+                    Reason = reason,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
 
-            _ = db.SecurityEvents.Add(securityEvent);
-            _ = await db.SaveChangesAsync(ct);
+                _ = db.SecurityEvents.Add(securityEvent);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
             _logger.LogDebug("Security event recorded: {EventType} for operator {OperatorId}", eventType, operatorId);
         }
 

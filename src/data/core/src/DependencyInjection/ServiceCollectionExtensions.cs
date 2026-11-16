@@ -64,19 +64,20 @@ namespace VideoForensics.Data.Core.DependencyInjection
             _ = services.AddScoped<IIntegrityVerificationService, IntegrityVerificationService>();
 
             // Phase 2 reporting and retention services
-            _ = services.AddScoped<IReportGenerationService, ReportGenerationService>();
+            _ = services.AddScoped<VideoForensics.Core.Api.Contracts.IReportGenerationService, ReportGenerationService>();
             _ = services.AddScoped<IStorageSettingsService, StorageSettingsService>();
 
             // Register RetentionService with configurable retention days
             _ = services.AddScoped<IRetentionService>(sp =>
             {
                 ILogger<RetentionService> logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RetentionService>>();
-                IMediaItemRepository mediaItemRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IMediaItemRepository>();
-                ILegalHoldRepository legalHoldRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ILegalHoldRepository>();
+                IMediaItemWriteRepository mediaItemRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IMediaItemWriteRepository>();
+                ILegalHoldWriteRepository legalHoldRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ILegalHoldWriteRepository>();
                 IUnitOfWork unitOfWork = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUnitOfWork>();
                 IActionLogger actionLogger = sp.GetRequiredService<IActionLogger>();
+                IActionLogRepository actionLogRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IActionLogRepository>();
                 int days = retentionDays ?? 90;
-                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days, sp.GetService<IMediaPathResolver>());
+                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, actionLogRepo, days, sp.GetService<IMediaPathResolver>());
             });
 
             _ = services.AddScoped<IRedactionService, RedactionService>();

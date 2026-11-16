@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -48,7 +49,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Event discovered = TestDataBuilder.BuildEvent(deviceId, providerEventId);
-                _ = await context.Events.UpsertAsync(discovered, CancellationToken.None);
+                _ = await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).UpsertAsync(discovered, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -58,7 +59,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 Event downloaded = TestDataBuilder.BuildEvent(deviceId, providerEventId);
                 downloaded.EventIntegrityHash = integrityHash;
                 downloaded.DownloadedAtUtc = downloadedAtUtc;
-                _ = await context.Events.UpsertAsync(downloaded, CancellationToken.None);
+                _ = await new EventRepository(_unitOfWork, NullLogger<EventRepository>.Instance).UpsertAsync(downloaded, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 

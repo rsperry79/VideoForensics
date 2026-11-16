@@ -3,7 +3,7 @@
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @implements IDisposable
 @using VideoForensics.Client.Ui.Shared.Components.Filters
 @inject IStringLocalizer<ReviewPage> L
@@ -53,13 +53,13 @@
 
     private IReadOnlyList<string> ProviderNames => Ownership?.ProviderNames ?? Array.Empty<string>();
 
-    private IReadOnlyList<ProviderAccount> Accounts => Ownership?.Accounts ?? Array.Empty<ProviderAccount>();
+    private IReadOnlyList<ProviderAccountDto> Accounts => Ownership?.Accounts ?? Array.Empty<ProviderAccountDto>();
 
     private IReadOnlyList<FilterLocation> Locations => Ownership?.Locations ?? Array.Empty<FilterLocation>();
 
     private IReadOnlyDictionary<Guid, string> AccountNames => Ownership?.AccountNames ?? new Dictionary<Guid, string>();
 
-    private IReadOnlyList<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
+    private IReadOnlyList<ProviderAccountDto> AccountOptions => ScopeDeviceFilter.AccountsForProvider(Accounts, _provider);
 
 
     // The state filters the edit fields were last seeded from. A different value on a state change means something

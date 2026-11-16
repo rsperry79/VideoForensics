@@ -21,8 +21,8 @@ using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Logging.DependencyInjection;
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.DependencyInjection;
+using SperryDev.Logger.Services;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;

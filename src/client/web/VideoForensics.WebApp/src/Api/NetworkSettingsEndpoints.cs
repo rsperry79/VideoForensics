@@ -4,6 +4,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Infrastructure;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Api
@@ -158,7 +159,7 @@ namespace VideoForensics.Client.WebApp.Api
                 await configService.SaveConfigurationAsync(config, ct);
 
                 // The firewall rule follows the HTTP port, the same way the tier widening does. Local tier needs no rule.
-                if (config.ConfiguredNetworkTier != NetworkTier.Local)
+                if (config.ConfiguredNetworkTier != NetworkTierDto.Local)
                 {
                     await firewallRuleManager.RemoveRuleAsync("VideoForensics", ct);
                     await firewallRuleManager.EnsureRuleExistsAsync("VideoForensics", request.HttpPort, ct);
@@ -193,7 +194,7 @@ namespace VideoForensics.Client.WebApp.Api
             HttpContext context,
             CancellationToken ct)
         {
-            NetworkTier currentTier = config.ConfiguredNetworkTier;
+            NetworkTier currentTier = config.ConfiguredNetworkTier.ToDomain();
             bool isWidening = request.Tier > currentTier;
 
             if (isWidening)
@@ -213,7 +214,7 @@ namespace VideoForensics.Client.WebApp.Api
                 }
             }
 
-            config.ConfiguredNetworkTier = request.Tier;
+            config.ConfiguredNetworkTier = request.Tier.ToDto();
             await configService.SaveConfigurationAsync(config, ct);
 
             // Kestrel's own bind (Program.cs) only controls whether the socket listens on every interface -

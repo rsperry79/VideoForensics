@@ -46,12 +46,12 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
 
-            LiveViewSession result = await service.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            LiveViewSessionDto result = await service.StartAsync(deviceId, LiveViewTriggerReasonDto.Manual, null, CancellationToken.None);
 
             Assert.Equal(sessionId, result.Id);
             Assert.Equal(deviceId, result.DeviceId);
-            Assert.Equal(LiveViewTriggerReason.Manual, result.TriggerReason);
-            Assert.Equal(LiveViewSessionState.Active, result.State);
+            Assert.Equal("Manual", result.TriggerReason);
+            Assert.Equal("Active", result.State);
             Assert.Equal(startedAt, result.StartedAtUtc);
             Assert.Equal("provider-ref-1", result.ProviderSessionRef);
             Assert.Null(result.OperatorId);
@@ -67,7 +67,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             _ = await Assert.ThrowsAsync<HttpRequestException>(async () =>
             {
-                _ = await service.StartAsync(Guid.NewGuid(), LiveViewTriggerReason.Manual, null, CancellationToken.None);
+                _ = await service.StartAsync(Guid.NewGuid(), LiveViewTriggerReasonDto.Manual, null, CancellationToken.None);
             });
         }
 
@@ -79,7 +79,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
 
-            LiveViewSession? result = await service.GetActiveSessionAsync(Guid.NewGuid(), CancellationToken.None);
+            LiveViewSessionDto? result = await service.GetActiveSessionAsync(Guid.NewGuid(), CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -186,7 +186,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var sessionId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
 
-            _ = await service.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            _ = await service.StartAsync(deviceId, LiveViewTriggerReasonDto.Manual, null, CancellationToken.None);
             await service.ExtendAsync(sessionId, CancellationToken.None);
             _ = await service.PromoteToSustainedAsync(sessionId, "reason", CancellationToken.None);
             _ = await service.DemoteFromSustainedAsync(sessionId, CancellationToken.None);

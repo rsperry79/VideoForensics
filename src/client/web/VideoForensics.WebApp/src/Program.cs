@@ -47,10 +47,11 @@ using VideoForensics.Client.WebApp.RateLimiting;
 using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Logging.DependencyInjection;
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.DependencyInjection;
+using SperryDev.Logger.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
@@ -122,7 +123,7 @@ Log.Logger = new LoggerConfiguration()
         .Filter.ByExcluding(e => !ServerLogLevel.StoresInFiles(e.Level) || !serverLogLevel.BufferLevel.AdmitsStored(SourceOf(e), e.Level >= Serilog.Events.LogEventLevel.Warning))
         // Text format: human-readable with structured properties appended
         .WriteTo.File(
-            new VideoForensics.Core.Logging.Providers.UtcConsoleFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"),
+            new SperryDev.Logger.Providers.UtcConsoleFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"),
             path: Path.Combine(logsDir, "audit-.txt"),
             rollingInterval: RollingInterval.Day,
             // A day that reaches the size limit rolls to audit-yyyyMMdd_001, _002, ... instead of silently stopping.
@@ -141,7 +142,7 @@ Log.Logger = new LoggerConfiguration()
             retainedFileCountLimit: 30,
             shared: true))
     // Console only: UTC time, the category on its own line above the message, the structured properties left out, and the level tag and message coloured by level.
-    .WriteTo.Sink(VideoForensics.Core.Logging.Providers.UtcTimestampSink.Console())
+    .WriteTo.Sink(SperryDev.Logger.Providers.UtcTimestampSink.Console())
     .CreateLogger();
 
 // A fatal exception off the request path (async void, timer, thread pool) only reaches stderr, which a service or container
@@ -304,7 +305,7 @@ builder.Services.AddSingleton(serverLogLevel.BufferLevel);
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
 // The named pipe feeds VideoForensics.Utils.LogViewer. The gate starts closed; the saved Infrastructure setting opens it after build.
-var namedPipeGate = new VideoForensics.Core.Logging.Providers.NamedPipeLogGate { Level = serverLogLevel.BufferLevel };
+var namedPipeGate = new SperryDev.Logger.Providers.NamedPipeLogGate { Level = serverLogLevel.BufferLevel };
 builder.Services.AddSingleton(namedPipeGate);
 builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
     enableNamedPipeLogger: true,
@@ -423,6 +424,7 @@ if (OperatingSystem.IsWindows())
 // comment). ILiveConnectionTracker is a singleton so DeviceManagementEndpoints' revoke handler can
 // forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
 builder.Services.AddSignalR();
+builder.Services.AddSingleton(new VideoForensics.Client.WebApp.Services.BackupUploadStore(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vf-backup-uploads")));
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
 // Live-view session pushes to subscribed clients (batch 3b). Replace, not Add: the Hosting registration
 // later in this file (AddVideoForensicsServerCore) uses TryAddSingleton for the no-op publisher, so this
@@ -808,7 +810,7 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 // both hosts (both run on the same local machine as the user in this app's deployment model).
 builder.Services.AddSingleton<ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
-builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
+builder.Services.AddScoped<IBackupStagingLocator, VideoForensics.Client.WebApp.Services.ConfiguredBackupStagingLocator>();
 builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 // The folder picker answers in-process on this host (see InProcessFolderBrowserEndpoint). MAUI registers the
@@ -866,6 +868,22 @@ using (IServiceScope levelScope = app.Services.CreateScope())
     catch (Exception ex)
     {
         app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
+
+// Create the saved Backup folder at startup, so it exists before the first export. A failure is logged, not fatal.
+using (IServiceScope backupScope = app.Services.CreateScope())
+{
+    try
+    {
+        IForensicsConfiguration backupConfig = await backupScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
+        string backupRoot = backupScope.ServiceProvider.GetRequiredService<VideoForensics.Core.Helpers.Platform.IStorageLocationProvider>()
+            .GetEffectiveRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Backup, backupConfig.QueryExportLocation);
+        _ = Directory.CreateDirectory(backupRoot);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not create the Backup folder at startup: {Type}: {Message}", ex.GetType().Name, ex.Message);
     }
 }
 
@@ -976,6 +994,7 @@ app.MapAuthMethodEndpoints();
 app.MapDeviceCaptureModeEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
+app.MapBackupUploadEndpoints();
 app.MapDeviceConfigEndpoints();
 app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
@@ -990,6 +1009,8 @@ app.MapStorageSettingsEndpoints();
 app.MapFolderBrowseEndpoints();
 app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
+app.MapNotificationPreferencesEndpoints();
+app.MapNoticeEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
 app.MapLogPipeEndpoints();

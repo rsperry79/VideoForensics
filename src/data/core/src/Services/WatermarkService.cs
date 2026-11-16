@@ -9,13 +9,13 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Service for resolving incremental download start dates using watermarks.</summary>
     internal class WatermarkService : IWatermarkService
     {
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILogger<WatermarkService> _logger;
 
         /// <summary>Buffer time (1 hour) subtracted from the watermark to catch in-flight events.</summary>
         private static readonly TimeSpan WatermarkBuffer = TimeSpan.FromHours(1);
 
-        public WatermarkService(IDeviceRepository deviceRepository, ILogger<WatermarkService> logger)
+        public WatermarkService(IDeviceWriteRepository deviceRepository, ILogger<WatermarkService> logger)
         {
             _deviceRepository = deviceRepository;
             _logger = logger;

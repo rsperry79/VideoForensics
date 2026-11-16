@@ -6,6 +6,7 @@ using System.Data.Common;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
@@ -115,6 +116,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// </summary>
         public static async Task OptimizeAsync(
             IDbContextFactory<VideoForensicsDbContext> factory,
+            ITransactionlessWriteGate gate,
             ILogger logger,
             MaintenanceDiagnosis? diagnosis = null,
             CancellationToken cancellationToken = default)
@@ -146,8 +148,20 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 if (diagnosis.NeedsWalCheckpoint)
                 {
                     logger.LogDebug("Database maintenance: checkpointing WAL ({WalMB:F1}MB)...", diagnosis.WalSizeBytes / 1024.0 / 1024.0);
-                    command.CommandText = "PRAGMA wal_checkpoint(PASSIVE);";
-                    _ = await command.ExecuteScalarAsync(cancellationToken);
+                    // A checkpoint cannot run inside a transaction, so it goes through the write gate on its own context.
+                    _ = await gate.ExecuteWithoutTransactionAsync(async (walDb, walToken) =>
+                    {
+                        DbConnection walConnection = walDb.Database.GetDbConnection();
+                        if (walConnection.State != System.Data.ConnectionState.Open)
+                        {
+                            await walConnection.OpenAsync(walToken);
+                        }
+
+                        using DbCommand walCommand = walConnection.CreateCommand();
+                        walCommand.CommandText = "PRAGMA wal_checkpoint(PASSIVE);";
+                        _ = await walCommand.ExecuteScalarAsync(walToken);
+                        return 0;
+                    }, cancellationToken);
                 }
 
                 // 2. Reindex to rebuild corrupted or fragmented indexes

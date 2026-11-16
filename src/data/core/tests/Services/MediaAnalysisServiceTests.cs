@@ -15,13 +15,13 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class MediaAnalysisServiceTests
     {
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaBitrateAnalyzer> _bitrate = new();
         private readonly Mock<IClipColorAnalyzer> _color = new();
         private readonly Mock<IAudioClipAnalyzer> _audio = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<IMediaThumbnailService> _thumbnails = new();
-        private readonly Mock<IMediaFlagRepository> _flags = new();
+        private readonly Mock<IMediaFlagWriteRepository> _flags = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 
         private MediaAnalysisService CreateSut()

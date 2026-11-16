@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -193,9 +194,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
 
             bool itemFailed = false;
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
-            IDeviceHealthRepository healthRepository = sp.GetRequiredService<IDeviceHealthRepository>();
+            IDeviceHealthWriteRepository healthRepository = sp.GetRequiredService<IDeviceHealthWriteRepository>();
             INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
@@ -216,10 +217,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            // A camera with snapshot capture on gets its health from each capture (SnapshotCaptureService), so this poll leaves
+            // A camera with snapshot capture on gets its health from each capture (SnapshotSyncBackgroundService), so this poll leaves
             // it out. Cameras with capture off, chimes and other non-cameras are still polled.
             var devicesByProviderId = devices
-                .Where(d => !(d.SnapshotCaptureEnabled && SnapshotCaptureService.HasCamera(d.Type)))
+                .Where(d => !(d.SnapshotCaptureEnabled && SnapshotSyncBackgroundService.HasCamera(d.Type)))
                 .GroupBy(d => d.ProviderDeviceId)
                 .ToDictionary(g => g.Key, g => g.First());
             if (devicesByProviderId.Count == 0)
@@ -395,11 +396,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
             ISecurityAuditLogger auditLog = sp.GetRequiredService<ISecurityAuditLogger>();
-            IDeviceHealthRepository? healthRepository = sp.GetService<IDeviceHealthRepository>();
+            IDeviceHealthWriteRepository? healthRepository = sp.GetService<IDeviceHealthWriteRepository>();
             INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
@@ -527,11 +528,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     if (analysis.NewlyDetectedCount > 0)
                     {
                         // Jamming confirmed: start or promote live view session.
-                        LiveViewSession? activeSession = await liveViewService.GetActiveSessionAsync(deviceId, ct);
+                        LiveViewSessionDto? activeSession = await liveViewService.GetActiveSessionAsync(deviceId, ct);
                         if (activeSession == null)
                         {
                             // No active session: start one with JammingConfirmed trigger.
-                            _ = await liveViewService.StartAsync(deviceId, LiveViewTriggerReason.JammingConfirmed, null, ct);
+                            _ = await liveViewService.StartAsync(deviceId, LiveViewTriggerReasonDto.JammingConfirmed, null, ct);
                             _logger.LogInformation(
                                 "Elevated polling tick: jamming confirmed for device {DeviceId}; started new live view session",
                                 deviceId);
@@ -565,7 +566,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// True when the reading is offline and the newest persisted reading was online. Checked before the new
         /// reading is written, so the alert fires on the transition rather than on every tick the device stays offline.
         /// </summary>
-        private static async Task<bool> IsNewlyOfflineAsync(IDeviceHealthRepository? healthRepository, Guid deviceId, bool? connectedNow, CancellationToken ct)
+        private static async Task<bool> IsNewlyOfflineAsync(IDeviceHealthWriteRepository? healthRepository, Guid deviceId, bool? connectedNow, CancellationToken ct)
         {
             // A null Connected means the provider did not say, so it is not treated as offline.
             if (connectedNow != false)
@@ -589,7 +590,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// </summary>
         private static async Task<string?> SyncPagePathAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
-            ILocationRepository? locations = sp.GetService<ILocationRepository>();
+            ILocationWriteRepository? locations = sp.GetService<ILocationWriteRepository>();
             if (locations is null)
             {
                 return null;

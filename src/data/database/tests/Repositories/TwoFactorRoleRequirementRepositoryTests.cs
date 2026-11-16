@@ -12,7 +12,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _repository = new TwoFactorRoleRequirementRepository(Fixture.Factory, CreateLogger<TwoFactorRoleRequirementRepository>());
+            _repository = new TwoFactorRoleRequirementRepository(new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()),CreateLogger<TwoFactorRoleRequirementRepository>());
         }
 
         [Fact]

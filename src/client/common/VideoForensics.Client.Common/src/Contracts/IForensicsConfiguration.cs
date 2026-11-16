@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Common.Contracts
 {
@@ -89,7 +89,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// it here takes effect only after a server restart, since a listen socket can't be rebound
         /// live.
         /// </summary>
-        NetworkTier ConfiguredNetworkTier { get; set; }
+        NetworkTierDto ConfiguredNetworkTier { get; set; }
 
         /// <summary>
         /// Internet-reachable URL (scheme + host + port) that paired clients may use to connect
@@ -242,7 +242,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string SmtpUsername { get; set; } = "";
         public string SmtpFromAddress { get; set; } = "";
         public string NotificationRecipientEmail { get; set; } = "";
-        public NetworkTier ConfiguredNetworkTier { get; set; } = NetworkTier.Local;
+        public NetworkTierDto ConfiguredNetworkTier { get; set; } = NetworkTierDto.Local;
         public string? InternetServerUrl { get; set; }
         public string? InternalServerUrl { get; set; }
         public int ServerHttpPort { get; set; }

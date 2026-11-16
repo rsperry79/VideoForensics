@@ -22,9 +22,9 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
 {
     private static readonly DateTime ClipStart = FixedNowUtc.AddHours(-1);
 
-    private static MediaItem Clip(Guid device, DateTime startUtc)
+    private static MediaItemDto Clip(Guid device, DateTime startUtc)
     {
-        return new()
+        return new MediaItem
         {
             Id = Guid.NewGuid(),
             DeviceId = device,
@@ -34,7 +34,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
             RecordedAtUtc = startUtc,
             DurationSeconds = 120,
             Sha256Hash = "hash",
-        };
+        }.ToDto();
     }
 
     /// <summary>Gives every requested camera one clip at <see cref="ClipStart"/>.</summary>

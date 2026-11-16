@@ -14,8 +14,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             LocationEntity location,
             IReadOnlyList<DeviceEntity> devices,
             Mock<IDeviceDiscoveryService> discovery,
-            Mock<ILocationRepository> locations,
-            Mock<IDeviceRepository> deviceRepository)
+            Mock<ILocationWriteRepository> locations,
+            Mock<IDeviceWriteRepository> deviceRepository)
         {
             _ = discovery.Setup(d => d.GetLocationsAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new(location.ProviderLocationId, location.Name)]);

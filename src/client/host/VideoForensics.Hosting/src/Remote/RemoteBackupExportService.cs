@@ -35,14 +35,8 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         public async Task<BackupExportResult> ExportBackupAsync(string outputDirectory, CancellationToken ct)
         {
-            // The server accepts only a folder name (BackupEndpoints rejects rooted paths) and writes the archive under its
-            // own export root. The archive is streamed back below and saved into the local outputDirectory.
-            var request = new ExportBackupRequest(Path.GetFileName(Path.TrimEndingDirectorySeparator(outputDirectory)));
-            string jsonContent = JsonSerializer.Serialize(request);
-            var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/backup/export")
-            {
-                Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
-            };
+            // The server writes the archive to its saved Backup folder and streams it back below, saved into the local outputDirectory.
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/backup/export");
 
             HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, ct);
             _ = response.EnsureSuccessStatusCode();
@@ -141,8 +135,4 @@ namespace VideoForensics.Client.Hosting.Remote
                 : fullCandidate;
         }
     }
-
-    /// <summary>Request to export the database to a backup archive.</summary>
-    /// <param name="OutputDirectory">Output directory where the backup archive will be created.</param>
-    internal record ExportBackupRequest(string OutputDirectory);
 }

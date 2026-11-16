@@ -3,8 +3,7 @@ using System.Text;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
@@ -30,7 +29,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<JammingIncidentRecord> UpsertIncidentAsync(JammingIncidentRecord incident, CancellationToken ct)
+        public async Task<JammingIncidentDto> UpsertIncidentAsync(JammingIncidentDto incident, CancellationToken ct)
         {
             var request = new UpsertJammingIncidentRequest(
                 incident.Id,
@@ -39,18 +38,18 @@ namespace VideoForensics.Client.Hosting.Remote
                 incident.EndUtc,
                 incident.AffectedEventCount,
                 incident.AverageDegradationDb,
-                incident.Confidence.ToString(),
+                incident.Confidence,
                 incident.Notes,
-                incident.Source.ToString());
+                incident.Source);
 
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync("/api/v1/jamming/incidents", request, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();
             JammingIncidentDto? dto = await response.Content.ReadFromJsonAsync<JammingIncidentDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<JammingIncidentRecord>> ListIncidentsAsync(Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct)
+        public async Task<IReadOnlyList<JammingIncidentDto>> ListIncidentsAsync(Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct)
         {
             var url = new StringBuilder("/api/v1/jamming/incidents");
             char separator = '?';
@@ -74,11 +73,11 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync(url.ToString(), ct);
             _ = response.EnsureSuccessStatusCode();
             List<JammingIncidentDto>? dtos = await response.Content.ReadFromJsonAsync<List<JammingIncidentDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
+        public async Task<JammingIncidentDto?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/jamming/incidents/{incidentId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -87,12 +86,11 @@ namespace VideoForensics.Client.Hosting.Remote
             }
 
             _ = response.EnsureSuccessStatusCode();
-            JammingIncidentDto? dto = await response.Content.ReadFromJsonAsync<JammingIncidentDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<JammingIncidentDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        public async Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct)
+        public async Task<JammingStatsSummaryDto?> GetStatsAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/jamming/stats/{deviceId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -101,26 +99,25 @@ namespace VideoForensics.Client.Hosting.Remote
             }
 
             _ = response.EnsureSuccessStatusCode();
-            JammingStatsSummaryDto? dto = await response.Content.ReadFromJsonAsync<JammingStatsSummaryDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<JammingStatsSummaryDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<JammingStatsSummary>> ListStatsAsync(CancellationToken ct)
+        public async Task<IReadOnlyList<JammingStatsSummaryDto>> ListStatsAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/jamming/stats", ct);
             _ = response.EnsureSuccessStatusCode();
             List<JammingStatsSummaryDto>? dtos = await response.Content.ReadFromJsonAsync<List<JammingStatsSummaryDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<JammingStatsSummary> RecomputeStatsAsync(Guid deviceId, CancellationToken ct)
+        public async Task<JammingStatsSummaryDto> RecomputeStatsAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/jamming/stats/{deviceId}/recompute", null, ct);
             _ = response.EnsureSuccessStatusCode();
             JammingStatsSummaryDto? dto = await response.Content.ReadFromJsonAsync<JammingStatsSummaryDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
     }
 }

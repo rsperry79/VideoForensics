@@ -1,3 +1,5 @@
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Ui.Shared.Components.Reasons
@@ -6,8 +8,6 @@
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
 @using VideoForensics.Client.Ui.Shared.Services.Time
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
 @implements IDisposable
 @inject PairedSessionState SessionState
 @inject IMediaFlagRepository MediaFlagRepository
@@ -34,7 +34,7 @@
     }
 
     <div class="mb-2">
-        <ReasonPicker TReason="MediaFlagDismissReason" OtherValue="MediaFlagDismissReason.Other" @bind-Value="_dismissReason" @bind-Note="_dismissNote" ValidityChanged="OnReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+        <ReasonPicker TReason="MediaFlagDismissReasonDto" OtherValue="MediaFlagDismissReasonDto.Other" @bind-Value="_dismissReason" @bind-Note="_dismissNote" ValidityChanged="OnReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
     </div>
 
     <div class="d-flex justify-content-end gap-2">
@@ -49,7 +49,7 @@
         <div class="flag-add-to-case mt-3" data-testid="flag-add-to-case-section">
             <div class="small fw-semibold mb-1">@L["FlagActionsAddToCase"]</div>
 
-            @foreach (ForensicCase existing in _containing)
+            @foreach (ForensicCaseDto existing in _containing)
             {
                 <div class="small text-muted mb-1" data-testid="flag-already-in-case">@L["FlagActionsAlreadyIn", existing.Title].Value</div>
             }
@@ -58,7 +58,7 @@
                 <select class="form-select form-select-sm" id="flag-add-case" data-testid="flag-add-to-case-picker" aria-label="@L["FlagActionsAddToCase"].Value" @onchange="OnCasePicked">
                     <option value="" selected="@(_pickedCaseId is null && !_creatingCase)">@L["FlagActionsPickCase"]</option>
                     <option value="@CreateCaseOption" selected="@_creatingCase">@L["FlagActionsCreateCase"]</option>
-                    @foreach (ForensicCase openCase in _openCases)
+                    @foreach (ForensicCaseDto openCase in _openCases)
                     {
                         <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
                     }
@@ -95,7 +95,7 @@
                     <select class="form-select form-select-sm" id="flag-window-case" data-testid="flag-window-case-picker" aria-label="@L["FlagActionsPickCase"].Value" @onchange="OnCasePicked">
                         <option value="" selected="@(_pickedCaseId is null && !_creatingCase)">@L["FlagActionsPickCase"]</option>
                         <option value="@CreateCaseOption" selected="@_creatingCase">@L["FlagActionsCreateCase"]</option>
-                        @foreach (ForensicCase openCase in _openCases)
+                        @foreach (ForensicCaseDto openCase in _openCases)
                         {
                             <option value="@openCase.Id" selected="@(_pickedCaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
                         }
@@ -132,11 +132,11 @@
 @code {
     /// <summary>The flag being reviewed. Its status decides whether the actions apply.</summary>
     [Parameter, EditorRequired]
-    public MediaFlag Flag { get; set; } = default!;
+    public MediaFlagDto Flag { get; set; } = default!;
 
     /// <summary>Raised with the updated flag after a Keep or Dismiss is saved. Not raised when the save fails.</summary>
     [Parameter]
-    public EventCallback<MediaFlag> OnChanged { get; set; }
+    public EventCallback<MediaFlagDto> OnChanged { get; set; }
 
     /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used.</summary>
     [CascadingParameter]
@@ -148,23 +148,23 @@
     private const string CreateCaseOption = "create";
 
     private readonly CancellationTokenSource _disposeCts = new();
-    private MediaFlagDismissReason? _dismissReason;
+    private MediaFlagDismissReasonDto? _dismissReason;
     private string? _dismissNote;
     private bool _reasonValid;
     private bool _busy;
     private LocalizedString? _error;
 
     /// <summary>The operator role parsed from the paired session, or null when no role is known.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>Why the operator cannot review, or null when the operator holds the Review role.</summary>
     private LocalizedString? RoleReason =>
         Role is null
             ? ReviewL["ReasonSignInRequired"]
-            : Role.Value >= OperatorRole.Review ? null : ReviewL["ReasonRequiresReview"];
+            : Role.Value >= OperatorRoleDto.Review ? null : ReviewL["ReasonRequiresReview"];
 
     /// <summary>True when the operator may act on this flag: the role is held and the flag is still Unreviewed.</summary>
-    private bool CanAct => RoleReason is null && Flag.Status == MediaFlagStatus.Unreviewed;
+    private bool CanAct => RoleReason is null && Flag.Status == "Unreviewed";
 
     /// <summary>True when the new-case form has a title. The case number is generated by the server.</summary>
     private bool NewCaseReady => !string.IsNullOrWhiteSpace(_newCaseTitle);
@@ -193,10 +193,10 @@
     private static readonly TimeSpan RssiPinPad = TimeSpan.FromHours(1);
 
     /// <summary>The clips and current snapshots of an RSSI flag's padded window, oldest first.</summary>
-    private sealed record RssiWindow(IReadOnlyList<MediaItem> Clips, IReadOnlyList<SnapshotCapture> Snapshots);
+    private sealed record RssiWindow(IReadOnlyList<MediaItemDto> Clips, IReadOnlyList<SnapshotCaptureDto> Snapshots);
 
-    private IReadOnlyList<ForensicCase> _openCases = [];
-    private IReadOnlyList<ForensicCase> _containing = [];
+    private IReadOnlyList<ForensicCaseDto> _openCases = [];
+    private IReadOnlyList<ForensicCaseDto> _containing = [];
     private Guid? _pickedCaseId;
     private bool _creatingCase;
     private string _newCaseTitle = string.Empty;
@@ -206,13 +206,13 @@
     private string? _windowNotice;
 
     /// <summary>The active pins of the picked case as (kind, target id) keys. Empty when no case is picked.</summary>
-    private HashSet<(CaseItemKind Kind, Guid TargetId)> _pinnedToPicked = new();
+    private HashSet<(CaseItemKindDto Kind, Guid TargetId)> _pinnedToPicked = new();
 
     /// <summary>The window clips the picked case does not already hold. Every window clip when no case is picked.</summary>
-    private int PendingClipCount => _window?.Clips.Count(clip => !_pinnedToPicked.Contains((CaseItemKind.Media, clip.Id))) ?? 0;
+    private int PendingClipCount => _window?.Clips.Count(clip => !_pinnedToPicked.Contains((CaseItemKindDto.Media, clip.Id))) ?? 0;
 
     /// <summary>The window snapshots the picked case does not already hold. Every window snapshot when no case is picked.</summary>
-    private int PendingSnapshotCount => _window?.Snapshots.Count(snapshot => !_pinnedToPicked.Contains((CaseItemKind.Snapshot, snapshot.Id))) ?? 0;
+    private int PendingSnapshotCount => _window?.Snapshots.Count(snapshot => !_pinnedToPicked.Contains((CaseItemKindDto.Snapshot, snapshot.Id))) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -239,10 +239,10 @@
         _pinnedToPicked = new();
         try
         {
-            _openCases = await CaseRepository.ListAsync(CaseStatus.Open, _disposeCts.Token);
+            _openCases = await CaseRepository.ListAsync(CaseStatusDto.Open, _disposeCts.Token);
             if (Flag.MediaItemId is { } mediaId)
             {
-                _containing = await CaseRepository.ListCasesContainingAsync(CaseItemKind.Media, mediaId, _disposeCts.Token);
+                _containing = await CaseRepository.ListCasesContainingAsync(CaseItemKindDto.Media, mediaId, _disposeCts.Token);
             }
             else
             {
@@ -267,8 +267,8 @@
     {
         DateTime fromUtc = Flag.WindowStartUtc - RssiPinPad;
         DateTime toUtc = Flag.WindowEndUtc + RssiPinPad;
-        IReadOnlyList<MediaItem> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(Flag.DeviceId, fromUtc, toUtc, ct);
-        IReadOnlyList<SnapshotCapture> snapshots = await SnapshotCaptureRepository.GetCurrentForDeviceAsync(
+        IReadOnlyList<MediaItemDto> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(Flag.DeviceId, fromUtc, toUtc, ct);
+        IReadOnlyList<SnapshotCaptureDto> snapshots = await SnapshotCaptureRepository.GetCurrentForDeviceAsync(
             Flag.DeviceId,
             new DateTimeOffset(DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc)),
             new DateTimeOffset(DateTime.SpecifyKind(toUtc, DateTimeKind.Utc)),
@@ -296,7 +296,7 @@
     {
         try
         {
-            IReadOnlyList<CaseItem> pins = await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token);
+            IReadOnlyList<CaseItemDto> pins = await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token);
             if (_pickedCaseId == caseId)
             {
                 _pinnedToPicked = PinnedKeys(pins);
@@ -313,18 +313,18 @@
     }
 
     /// <summary>The active pins as (kind, target id) keys: a Media pin keys its clip and a Snapshot pin keys its snapshot.</summary>
-    private static HashSet<(CaseItemKind Kind, Guid TargetId)> PinnedKeys(IEnumerable<CaseItem> pins)
+    private static HashSet<(CaseItemKindDto Kind, Guid TargetId)> PinnedKeys(IEnumerable<CaseItemDto> pins)
     {
-        var keys = new HashSet<(CaseItemKind Kind, Guid TargetId)>();
-        foreach (CaseItem pin in pins)
+        var keys = new HashSet<(CaseItemKindDto Kind, Guid TargetId)>();
+        foreach (CaseItemDto pin in pins)
         {
-            if (pin.Kind == CaseItemKind.Media && pin.MediaItemId is { } mediaId)
+            if (pin.Kind == CaseItemKindDto.Media.ToString())
             {
-                _ = keys.Add((pin.Kind, mediaId));
+                _ = keys.Add((CaseItemKindDto.Media, pin.TargetId));
             }
-            else if (pin.Kind == CaseItemKind.Snapshot && pin.SnapshotCaptureId is { } snapshotId)
+            else if (pin.Kind == CaseItemKindDto.Snapshot.ToString())
             {
-                _ = keys.Add((pin.Kind, snapshotId));
+                _ = keys.Add((CaseItemKindDto.Snapshot, pin.TargetId));
             }
         }
 
@@ -336,11 +336,11 @@
     /// not sent, so the repository generates it. On success the case is listed and picked, and the form is cleared. Any failure sets
     /// the message and returns null, so nothing is added to a case.
     /// </summary>
-    private async Task<ForensicCase?> CreateCaseAsync(string operatorId)
+    private async Task<ForensicCaseDto?> CreateCaseAsync(string operatorId)
     {
         try
         {
-            ForensicCase created = await CaseRepository.CreateAsync(
+            ForensicCaseDto created = await CaseRepository.CreateAsync(
                 null,
                 _newCaseTitle.Trim(),
                 null,
@@ -416,8 +416,8 @@
 
         try
         {
-            _ = await CaseRepository.AddItemAsync(caseId, CaseItemKind.Media, mediaId, L["FlagActionsPinReason"].Value, operatorId, _disposeCts.Token);
-            ForensicCase? added = _openCases.FirstOrDefault(c => c.Id == caseId);
+            _ = await CaseRepository.AddItemAsync(caseId, CaseItemKindDto.Media, mediaId, L["FlagActionsPinReason"].Value, operatorId, _disposeCts.Token);
+            ForensicCaseDto? added = _openCases.FirstOrDefault(c => c.Id == caseId);
             if (added is not null)
             {
                 _containing = [.. _containing, added];
@@ -435,7 +435,7 @@
         catch (KeyNotFoundException)
         {
             // The case itself may be the missing entity, so check it before blaming the clip.
-            ForensicCase? picked = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
+            ForensicCaseDto? picked = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
             if (picked is null)
             {
                 Logger.LogError("Adding flagged clip to case failed: the case is missing");
@@ -459,13 +459,13 @@
     {
         try
         {
-            ForensicCase? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
-            if (target?.Status == CaseStatus.Closed)
+            ForensicCaseDto? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
+            if (target?.Status == CaseStatusDto.Closed.ToString())
             {
                 return L["FlagActionsClosedCase"];
             }
 
-            IReadOnlyList<ForensicCase> containing = await CaseRepository.ListCasesContainingAsync(CaseItemKind.Media, mediaId, _disposeCts.Token);
+            IReadOnlyList<ForensicCaseDto> containing = await CaseRepository.ListCasesContainingAsync(CaseItemKindDto.Media, mediaId, _disposeCts.Token);
             return containing.Any(existing => existing.Id == caseId) ? L["FlagActionsDuplicate"] : L["FlagActionsFailed"];
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -508,36 +508,36 @@
                 return;
             }
 
-            ForensicCase? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
+            ForensicCaseDto? target = await CaseRepository.GetAsync(caseId, _disposeCts.Token);
             if (target is null)
             {
                 _error = L["FlagActionsMissingTarget"];
                 return;
             }
 
-            if (target.Status == CaseStatus.Closed)
+            if (target.Status == CaseStatusDto.Closed.ToString())
             {
                 _error = L["FlagActionsClosedCase"];
                 return;
             }
 
             // One read of the case's active pins covers every window item, instead of one read per item.
-            HashSet<(CaseItemKind Kind, Guid TargetId)> pinned = PinnedKeys(await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token));
+            HashSet<(CaseItemKindDto Kind, Guid TargetId)> pinned = PinnedKeys(await CaseRepository.ListItemsAsync(caseId, false, _disposeCts.Token));
 
-            var pending = new List<(CaseItemKind Kind, Guid TargetId)>();
-            foreach (MediaItem clip in window.Clips)
+            var pending = new List<(CaseItemKindDto Kind, Guid TargetId)>();
+            foreach (MediaItemDto clip in window.Clips)
             {
-                if (!pinned.Contains((CaseItemKind.Media, clip.Id)))
+                if (!pinned.Contains((CaseItemKindDto.Media, clip.Id)))
                 {
-                    pending.Add((CaseItemKind.Media, clip.Id));
+                    pending.Add((CaseItemKindDto.Media, clip.Id));
                 }
             }
 
-            foreach (SnapshotCapture snapshot in window.Snapshots)
+            foreach (SnapshotCaptureDto snapshot in window.Snapshots)
             {
-                if (!pinned.Contains((CaseItemKind.Snapshot, snapshot.Id)))
+                if (!pinned.Contains((CaseItemKindDto.Snapshot, snapshot.Id)))
                 {
-                    pending.Add((CaseItemKind.Snapshot, snapshot.Id));
+                    pending.Add((CaseItemKindDto.Snapshot, snapshot.Id));
                 }
             }
 
@@ -546,7 +546,7 @@
             int snapshotsAdded = 0;
             for (int index = 0; index < pending.Count; index++)
             {
-                (CaseItemKind kind, Guid targetId) = pending[index];
+                (CaseItemKindDto kind, Guid targetId) = pending[index];
                 try
                 {
                     _ = await CaseRepository.AddItemAsync(caseId, kind, targetId, reason, operatorId, _disposeCts.Token);
@@ -559,7 +559,7 @@
                     return;
                 }
 
-                if (kind == CaseItemKind.Media)
+                if (kind == CaseItemKindDto.Media)
                 {
                     clipsAdded++;
                 }
@@ -589,7 +589,7 @@
     /// <summary>Runs a Keep: the expected status is Unreviewed and no reason is sent. Notes live in the flag's own thread.</summary>
     private Task OnKeepAsync()
     {
-        return ReviewAsync(MediaFlagStatus.Kept, null);
+        return ReviewAsync("Kept", null);
     }
 
     /// <summary>Keeps Dismiss enabled only while the reason picker reports a complete reason.</summary>
@@ -609,17 +609,17 @@
             return Task.CompletedTask;
         }
 
-        string text = reason == MediaFlagDismissReason.Other
+        string text = reason == MediaFlagDismissReasonDto.Other
             ? $"{reason}: {(_dismissNote ?? string.Empty).Trim()}"
             : reason.ToString();
-        return ReviewAsync(MediaFlagStatus.Dismissed, text);
+        return ReviewAsync("Dismissed", text);
     }
 
     /// <summary>
     /// Saves one review through the compare-and-set status path. A conflict or failure becomes a message and no change is
     /// raised; success raises <see cref="OnChanged"/> with the updated flag.
     /// </summary>
-    private async Task ReviewAsync(MediaFlagStatus newStatus, string? reason)
+    private async Task ReviewAsync(string newStatus, string? reason)
     {
         if (_busy || !CanAct)
         {
@@ -633,14 +633,14 @@
             return;
         }
 
-        MediaFlag? updated = null;
+        MediaFlagDto? updated = null;
         _busy = true;
         _error = null;
         try
         {
-            updated = await MediaFlagRepository.UpdateStatusAsync(Flag.Id, MediaFlagStatus.Unreviewed, newStatus, reason, operatorId, _disposeCts.Token);
+            updated = await MediaFlagRepository.UpdateStatusAsync(Flag.Id, "Unreviewed", newStatus, reason, operatorId, _disposeCts.Token);
         }
-        catch (FlagStatusConflictException)
+        catch (VideoForensics.Core.Api.Contracts.FlagStatusConflictException)
         {
             _error = L["FlagActionsConflict"];
         }
@@ -667,7 +667,7 @@
     private string StatusName()
     {
         LocalizedString text = L[$"FlaggedMediaStatus_{Flag.Status}"];
-        return text.ResourceNotFound ? Flag.Status.ToString() : text.Value;
+        return text.ResourceNotFound ? Flag.Status : text.Value;
     }
 
     public void Dispose()

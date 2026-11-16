@@ -1,6 +1,8 @@
 using VideoForensics.Client.Hosting.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests.Signal;
@@ -18,15 +20,15 @@ public class SignalAnalysisServiceTests
 
     private static SignalAnalysisService Create(Device[] devices, Dictionary<Guid, DeviceHealth[]> history)
     {
-        var deviceRepo = new Mock<IDeviceRepository>();
+        var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
-        var health = new Mock<IDeviceHealthRepository>();
+        var health = new Mock<IDeviceHealthWriteRepository>();
         _ = health
             .Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out DeviceHealth[]? rows) ? rows : []);
-        var schedules = new Mock<ISyncScheduleRepository>();
+        var schedules = new Mock<ISyncScheduleWriteRepository>();
         var accounts = new Mock<IProviderAccountRepository>();
-        _ = accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ProviderAccount>());
+        _ = accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ProviderAccountDto>());
         var locations = new Mock<ILocationRepository>();
         var users = new Mock<IUserRepository>();
         var ownership = new DeviceOwnershipService(accounts.Object, locations.Object, users.Object);

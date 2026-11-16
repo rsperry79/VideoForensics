@@ -14,12 +14,12 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Upserts a device's capability, feature and alert rows in one transaction.</summary>
     public class DeviceDetailsRepository : IDeviceDetailsRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceDetailsRepository> _logger;
 
-        public DeviceDetailsRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<DeviceDetailsRepository> logger)
+        public DeviceDetailsRepository(IUnitOfWork unitOfWork, ILogger<DeviceDetailsRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -34,120 +34,124 @@ namespace VideoForensics.Data.Database.Repositories
         {
             // One timestamp per upsert, so every change row written by this call shares the same observation time.
             DateTime changedAtUtc = DateTime.UtcNow;
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             Device? device = null;
             try
             {
-                device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-                if (device == null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    _logger.LogWarning("Device details not written: device {DeviceId} does not exist", deviceId);
-                    return;
-                }
-
-                if (healthId.HasValue)
-                {
-                    device.DeviceHealthId = healthId.Value;
-                }
-
-                if (capabilities != null)
-                {
-                    DeviceCapabilities? existingCaps = await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.DeviceId == deviceId, ct);
-                    if (existingCaps == null)
+                    VideoForensicsDbContext db = context.Db();
+                    device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                    if (device == null)
                     {
-                        capabilities.Id = capabilities.Id == Guid.Empty ? Guid.NewGuid() : capabilities.Id;
-                        capabilities.DeviceId = deviceId;
-                        _ = db.DeviceCapabilities.Add(capabilities);
-                    }
-                    else
-                    {
-                        existingCaps.HasAudio = capabilities.HasAudio;
-                        existingCaps.HasMotionDetection = capabilities.HasMotionDetection;
-                        existingCaps.HasNightVision = capabilities.HasNightVision;
-                        existingCaps.HasCloudStorage = capabilities.HasCloudStorage;
-                        existingCaps.Resolution = capabilities.Resolution;
-                        existingCaps.StorageType = capabilities.StorageType;
-                        existingCaps.MaxStorageDays = capabilities.MaxStorageDays;
-                        existingCaps.FirmwareVersion = capabilities.FirmwareVersion;
-                        existingCaps.HardwareModel = capabilities.HardwareModel;
-                        existingCaps.LastSyncedUtc = capabilities.LastSyncedUtc;
-                        existingCaps.SyncStatus = capabilities.SyncStatus;
-                    }
-                }
-
-                if (features != null)
-                {
-                    DeviceFeatures? existingFeatures = await db.DeviceFeatures.FirstOrDefaultAsync(f => f.DeviceId == deviceId, ct);
-                    if (existingFeatures == null)
-                    {
-                        features.Id = features.Id == Guid.Empty ? Guid.NewGuid() : features.Id;
-                        features.DeviceId = deviceId;
-                        _ = db.DeviceFeatures.Add(features);
-                        existingFeatures = features;
-                    }
-                    else
-                    {
-                        existingFeatures.MotionsEnabled = features.MotionsEnabled;
-                        existingFeatures.ShowRecordings = features.ShowRecordings;
-                        existingFeatures.AdvancedMotionEnabled = features.AdvancedMotionEnabled;
-                        existingFeatures.PeopleOnlyEnabled = features.PeopleOnlyEnabled;
-                        existingFeatures.ShadowCorrectionEnabled = features.ShadowCorrectionEnabled;
-                        existingFeatures.MotionMessageEnabled = features.MotionMessageEnabled;
-                        existingFeatures.NightVisionEnabled = features.NightVisionEnabled;
-                        existingFeatures.ShowVodSettings = features.ShowVodSettings;
-                        existingFeatures.RingtonesEnabled = features.RingtonesEnabled;
-                        existingFeatures.CfesEligible = features.CfesEligible;
-                        existingFeatures.PackageWarning = features.PackageWarning;
-                        existingFeatures.AutoZoomTrack = features.AutoZoomTrack;
-                        existingFeatures.AutomatedSiren = features.AutomatedSiren;
-                        existingFeatures.AlexaPlusGreetings = features.AlexaPlusGreetings;
-                        existingFeatures.RemoteAccessControl = features.RemoteAccessControl;
-                        existingFeatures.AutoShutoffDevice = features.AutoShutoffDevice;
-                        existingFeatures.ShortOnLongOff = features.ShortOnLongOff;
-                        existingFeatures.Tracklight = features.Tracklight;
-                        existingFeatures.MotionZoneRecommendation = features.MotionZoneRecommendation;
-                        existingFeatures.RichNotificationsEligible = features.RichNotificationsEligible;
-                        existingFeatures.ShowOfflineMotionEvents = features.ShowOfflineMotionEvents;
-                        existingFeatures.SheilaCameraEligible = features.SheilaCameraEligible;
-                        existingFeatures.SheilaCameraProcessingEligible = features.SheilaCameraProcessingEligible;
-                        existingFeatures.DynamicNetworkSwitchingEligible = features.DynamicNetworkSwitchingEligible;
-                        existingFeatures.VehicleDetectionEligible = features.VehicleDetectionEligible;
-                        existingFeatures.AnimalDetectionEligible = features.AnimalDetectionEligible;
-                        existingFeatures.Show24x7Lite = features.Show24x7Lite;
-                        existingFeatures.Recording24x7Eligible = features.Recording24x7Eligible;
-                        existingFeatures.PropertyView = features.PropertyView;
+                        _logger.LogWarning("Device details not written: device {DeviceId} does not exist", deviceId);
+                        return null;
                     }
 
-                    device.DeviceFeaturesId = existingFeatures.Id;
-                }
-
-                if (alerts != null)
-                {
-                    foreach (DeviceAlerts alert in alerts)
+                    if (healthId.HasValue)
                     {
-                        DeviceAlerts? existingAlert = await db.DeviceAlerts
-                            .FirstOrDefaultAsync(a => a.DeviceId == deviceId && a.AlertType == alert.AlertType, ct);
-                        if (existingAlert == null)
+                        device.DeviceHealthId = healthId.Value;
+                    }
+
+                    if (capabilities != null)
+                    {
+                        DeviceCapabilities? existingCaps = await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.DeviceId == deviceId, ct);
+                        if (existingCaps == null)
                         {
-                            alert.Id = alert.Id == Guid.Empty ? Guid.NewGuid() : alert.Id;
-                            alert.DeviceId = deviceId;
-                            _ = db.DeviceAlerts.Add(alert);
+                            capabilities.Id = capabilities.Id == Guid.Empty ? Guid.NewGuid() : capabilities.Id;
+                            capabilities.DeviceId = deviceId;
+                            _ = db.DeviceCapabilities.Add(capabilities);
                         }
                         else
                         {
-                            existingAlert.IsEnabled = alert.IsEnabled;
-                            existingAlert.AlertValue = alert.AlertValue;
+                            existingCaps.HasAudio = capabilities.HasAudio;
+                            existingCaps.HasMotionDetection = capabilities.HasMotionDetection;
+                            existingCaps.HasNightVision = capabilities.HasNightVision;
+                            existingCaps.HasCloudStorage = capabilities.HasCloudStorage;
+                            existingCaps.Resolution = capabilities.Resolution;
+                            existingCaps.StorageType = capabilities.StorageType;
+                            existingCaps.MaxStorageDays = capabilities.MaxStorageDays;
+                            existingCaps.FirmwareVersion = capabilities.FirmwareVersion;
+                            existingCaps.HardwareModel = capabilities.HardwareModel;
+                            existingCaps.LastSyncedUtc = capabilities.LastSyncedUtc;
+                            existingCaps.SyncStatus = capabilities.SyncStatus;
                         }
                     }
-                }
 
-                if (settings != null)
-                {
-                    await ReplaceSettingsChildrenAsync(db, deviceId, settings, changedAtUtc, ct);
-                }
+                    if (features != null)
+                    {
+                        DeviceFeatures? existingFeatures = await db.DeviceFeatures.FirstOrDefaultAsync(f => f.DeviceId == deviceId, ct);
+                        if (existingFeatures == null)
+                        {
+                            features.Id = features.Id == Guid.Empty ? Guid.NewGuid() : features.Id;
+                            features.DeviceId = deviceId;
+                            _ = db.DeviceFeatures.Add(features);
+                            existingFeatures = features;
+                        }
+                        else
+                        {
+                            existingFeatures.MotionsEnabled = features.MotionsEnabled;
+                            existingFeatures.ShowRecordings = features.ShowRecordings;
+                            existingFeatures.AdvancedMotionEnabled = features.AdvancedMotionEnabled;
+                            existingFeatures.PeopleOnlyEnabled = features.PeopleOnlyEnabled;
+                            existingFeatures.ShadowCorrectionEnabled = features.ShadowCorrectionEnabled;
+                            existingFeatures.MotionMessageEnabled = features.MotionMessageEnabled;
+                            existingFeatures.NightVisionEnabled = features.NightVisionEnabled;
+                            existingFeatures.ShowVodSettings = features.ShowVodSettings;
+                            existingFeatures.RingtonesEnabled = features.RingtonesEnabled;
+                            existingFeatures.CfesEligible = features.CfesEligible;
+                            existingFeatures.PackageWarning = features.PackageWarning;
+                            existingFeatures.AutoZoomTrack = features.AutoZoomTrack;
+                            existingFeatures.AutomatedSiren = features.AutomatedSiren;
+                            existingFeatures.AlexaPlusGreetings = features.AlexaPlusGreetings;
+                            existingFeatures.RemoteAccessControl = features.RemoteAccessControl;
+                            existingFeatures.AutoShutoffDevice = features.AutoShutoffDevice;
+                            existingFeatures.ShortOnLongOff = features.ShortOnLongOff;
+                            existingFeatures.Tracklight = features.Tracklight;
+                            existingFeatures.MotionZoneRecommendation = features.MotionZoneRecommendation;
+                            existingFeatures.RichNotificationsEligible = features.RichNotificationsEligible;
+                            existingFeatures.ShowOfflineMotionEvents = features.ShowOfflineMotionEvents;
+                            existingFeatures.SheilaCameraEligible = features.SheilaCameraEligible;
+                            existingFeatures.SheilaCameraProcessingEligible = features.SheilaCameraProcessingEligible;
+                            existingFeatures.DynamicNetworkSwitchingEligible = features.DynamicNetworkSwitchingEligible;
+                            existingFeatures.VehicleDetectionEligible = features.VehicleDetectionEligible;
+                            existingFeatures.AnimalDetectionEligible = features.AnimalDetectionEligible;
+                            existingFeatures.Show24x7Lite = features.Show24x7Lite;
+                            existingFeatures.Recording24x7Eligible = features.Recording24x7Eligible;
+                            existingFeatures.PropertyView = features.PropertyView;
+                        }
 
-                _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Device details recorded for device {DeviceName}", device.Name);
+                        device.DeviceFeaturesId = existingFeatures.Id;
+                    }
+
+                    if (alerts != null)
+                    {
+                        foreach (DeviceAlerts alert in alerts)
+                        {
+                            DeviceAlerts? existingAlert = await db.DeviceAlerts
+                                .FirstOrDefaultAsync(a => a.DeviceId == deviceId && a.AlertType == alert.AlertType, ct);
+                            if (existingAlert == null)
+                            {
+                                alert.Id = alert.Id == Guid.Empty ? Guid.NewGuid() : alert.Id;
+                                alert.DeviceId = deviceId;
+                                _ = db.DeviceAlerts.Add(alert);
+                            }
+                            else
+                            {
+                                existingAlert.IsEnabled = alert.IsEnabled;
+                                existingAlert.AlertValue = alert.AlertValue;
+                            }
+                        }
+                    }
+
+                    if (settings != null)
+                    {
+                        await ReplaceSettingsChildrenAsync(db, deviceId, settings, changedAtUtc, ct);
+                    }
+
+                    _ = await db.SaveChangesAsync(ct);
+                    _logger.LogDebug("Device details recorded for device {DeviceName}", device.Name);
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {

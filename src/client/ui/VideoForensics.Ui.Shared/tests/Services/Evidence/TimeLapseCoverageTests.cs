@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -47,7 +47,7 @@ public class TimeLapseCoverageTests
                 DurationSeconds = span.TotalSeconds,
                 DownloadedAtUtc = recordedAt,
                 MetadataJson = "{\"type\":\"snapshot-rollup\"}",
-            },
+            }.ToDto(),
         };
     }
 

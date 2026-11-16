@@ -9,8 +9,8 @@
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @implements IDisposable
 @inject ReviewSelection Selection
 @inject ReviewEvidenceTagger Tagger
@@ -52,11 +52,11 @@
                         <div class="mb-2">
                             @if (_holdMode == HoldMode.Place)
                             {
-                                <ReasonPicker TReason="EvidenceHoldReason" OtherValue="EvidenceHoldReason.Other" @bind-Value="_placeHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
+                                <ReasonPicker TReason="EvidenceHoldReasonDto" OtherValue="EvidenceHoldReasonDto.Other" @bind-Value="_placeHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
                             }
                             else
                             {
-                                <ReasonPicker TReason="EvidenceReleaseReason" OtherValue="EvidenceReleaseReason.Other" @bind-Value="_releaseHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
+                                <ReasonPicker TReason="EvidenceReleaseReasonDto" OtherValue="EvidenceReleaseReasonDto.Other" @bind-Value="_releaseHoldReason" @bind-Note="_holdNote" ValidityChanged="OnHoldReasonValidityChanged" LabelText="@SharedL["ReasonPickerLabel"].Value" />
                             }
                         </div>
                         <div class="d-flex justify-content-end gap-2">
@@ -102,8 +102,8 @@
     }
 
     private HoldMode _holdMode = HoldMode.None;
-    private EvidenceHoldReason? _placeHoldReason;
-    private EvidenceReleaseReason? _releaseHoldReason;
+    private EvidenceHoldReasonDto? _placeHoldReason;
+    private EvidenceReleaseReasonDto? _releaseHoldReason;
     private string? _holdNote;
     private bool _holdReasonValid;
     private Guid? _activeHoldId;
@@ -114,25 +114,25 @@
     private bool _busy;
 
     /// <summary>The operator role parsed from the paired session, or null when no role is known.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>Why the tag and new-case actions do not apply, or null when they do.</summary>
     private LocalizedString? TagReason =>
         Selection.DeviceId is null || (Selection.EventId is null && Selection.MediaItemId is null)
             ? L["ReasonNoSelection"]
-            : RoleReason(OperatorRole.Review);
+            : RoleReason(OperatorRoleDto.Review);
 
     /// <summary>Why the hold action does not apply, or null when it does.</summary>
     private LocalizedString? HoldReason =>
-        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.Admin);
+        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRoleDto.Admin);
 
     /// <summary>Why the integrity check does not apply, or null when it does.</summary>
     private LocalizedString? VerifyReason =>
-        Selection.MediaItemId is null || Selection.DeviceId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.ReadOnly);
+        Selection.MediaItemId is null || Selection.DeviceId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRoleDto.ReadOnly);
 
     /// <summary>Why the export does not apply, or null when it does. Export needs SuperAdmin, as the export page does.</summary>
     private LocalizedString? ExportReason =>
-        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRole.SuperAdmin);
+        Selection.MediaItemId is null ? L["ReasonNoClipAtCursor"] : RoleReason(OperatorRoleDto.SuperAdmin);
 
     /// <summary>The export link for the covering clip, or null while export does not apply.</summary>
     private string? ExportHref =>
@@ -147,9 +147,9 @@
     }
 
     /// <summary>Returns the reason a minimum role is refused, or null when the operator meets it.</summary>
-    private LocalizedString? RoleReason(OperatorRole minimum)
+    private LocalizedString? RoleReason(OperatorRoleDto minimum)
     {
-        OperatorRole? role = Role;
+        OperatorRoleDto? role = Role;
         if (role is null)
         {
             return L["ReasonSignInRequired"];
@@ -162,8 +162,8 @@
 
         return minimum switch
         {
-            OperatorRole.Review => L["ReasonRequiresReview"],
-            OperatorRole.Admin => L["ReasonRequiresAdmin"],
+            OperatorRoleDto.Review => L["ReasonRequiresReview"],
+            OperatorRoleDto.Admin => L["ReasonRequiresAdmin"],
             _ => L["ReasonRequiresSuperAdmin"],
         };
     }
@@ -195,7 +195,7 @@
 
         try
         {
-            IReadOnlyList<LegalHold> holds = await LegalHoldRepository.GetActiveByMediaItemIdsAsync(new[] { clipId }, CancellationToken.None);
+            IReadOnlyList<LegalHoldDto> holds = await LegalHoldRepository.GetActiveByMediaItemIdsAsync(new[] { clipId }, CancellationToken.None);
             _activeHoldId = holds.FirstOrDefault(h => h.MediaItemId == clipId)?.Id;
         }
         catch (Exception ex)
@@ -236,10 +236,10 @@
         string reason = L["TagDefaultReason"].Value;
         if (Selection.EventId is Guid eventId)
         {
-            return Tagger.TagAsync(CaseItemKind.Event, eventId, deviceId, Selection.AtUtc, reason, CancellationToken.None);
+            return Tagger.TagAsync(CaseItemKindDto.Event, eventId, deviceId, Selection.AtUtc, reason, CancellationToken.None);
         }
 
-        return Tagger.TagAsync(CaseItemKind.Media, Selection.MediaItemId!.Value, deviceId, Selection.AtUtc, reason, CancellationToken.None);
+        return Tagger.TagAsync(CaseItemKindDto.Media, Selection.MediaItemId!.Value, deviceId, Selection.AtUtc, reason, CancellationToken.None);
     }
 
     private LocalizedString OutcomeMessage(TagOutcome outcome)
@@ -339,8 +339,8 @@
     {
         return _holdMode switch
         {
-            HoldMode.Place when _placeHoldReason is { } placed => ReasonText.Build(placed, EvidenceHoldReason.Other, _holdNote),
-            HoldMode.Release when _releaseHoldReason is { } released => ReasonText.Build(released, EvidenceReleaseReason.Other, _holdNote),
+            HoldMode.Place when _placeHoldReason is { } placed => ReasonText.Build(placed, EvidenceHoldReasonDto.Other, _holdNote),
+            HoldMode.Release when _releaseHoldReason is { } released => ReasonText.Build(released, EvidenceReleaseReasonDto.Other, _holdNote),
             _ => null,
         };
     }
@@ -373,7 +373,7 @@
         {
             if (mode == HoldMode.Place)
             {
-                LegalHold hold = await LegalHoldRepository.PlaceAsync(mediaItemId, reason, actor, CancellationToken.None);
+                LegalHoldDto hold = await LegalHoldRepository.PlaceAsync(mediaItemId, reason, actor, CancellationToken.None);
                 _activeHoldId = hold.Id;
                 _message = L["HoldPlaced"];
             }

@@ -2,8 +2,8 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
-using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
 /// <summary>
@@ -12,7 +12,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.Review;
 /// </summary>
 public static class ReviewClipBuilder
 {
-    // The host writes this marker (SnapshotCaptureService). Ui.Shared cannot reference the host, so the value is repeated
+    // The host writes this marker (SnapshotSyncBackgroundService). Ui.Shared cannot reference the host, so the value is repeated
     // here and must change together.
     private const string SnapshotType = "snapshot";
     private const string CaptureSource = "capture";
@@ -22,7 +22,7 @@ public static class ReviewClipBuilder
     /// and items with no positive duration (a clip with no length can never cover a time on the timeline).
     /// Time-lapse roll-ups are video loops and are included.
     /// </summary>
-    public static IReadOnlyList<ClipWindow> BuildClips(IEnumerable<MediaItem> items, Guid deviceId)
+    public static IReadOnlyList<ClipWindow> BuildClips(IEnumerable<MediaItemDto> items, Guid deviceId)
     {
         return items
             .Where(item => item.DeviceId == deviceId && IsPlayableClip(item))
@@ -38,10 +38,10 @@ public static class ReviewClipBuilder
     /// The unavailable events of one device: each stored event with no downloaded media, drawn at its time and never played.
     /// Downloaded events are excluded, since their media is in <see cref="BuildClips"/>.
     /// </summary>
-    public static IReadOnlyList<ClipWindow> BuildUnavailableClips(IEnumerable<Event> events, Guid deviceId)
+    public static IReadOnlyList<ClipWindow> BuildUnavailableClips(IEnumerable<EventDto> events, Guid deviceId)
     {
         return events
-            .Where(evt => evt.DeviceId == deviceId && evt.DownloadStatus != EventDownloadStatus.Downloaded)
+            .Where(evt => evt.DeviceId == deviceId && evt.DownloadStatus != EventDownloadStatusDto.Downloaded)
             .OrderBy(evt => evt.OccurredAtUtc)
             .Select(evt => new ClipWindow("event:" + evt.Id.ToString("D"), evt.OccurredAtUtc, UnavailableMarkerSeconds, null, IsUnavailable: true))
             .ToList();
@@ -58,15 +58,15 @@ public static class ReviewClipBuilder
     /// <param name="contentUrl">Video URL for an item.</param>
     /// <param name="previewUrl">Short preview URL for an item.</param>
     public static IReadOnlyList<CameraTile> BuildTiles(
-        IEnumerable<MediaItem> items,
+        IEnumerable<MediaItemDto> items,
         IReadOnlyList<Guid> cameraIds,
         IReadOnlyDictionary<Guid, string> deviceNames,
-        Func<MediaItem, string?> contentUrl,
-        Func<MediaItem, string?> previewUrl)
+        Func<MediaItemDto, string?> contentUrl,
+        Func<MediaItemDto, string?> previewUrl)
     {
         var all = items.ToList();
-        var byClipId = new Dictionary<string, MediaItem>(StringComparer.Ordinal);
-        foreach (MediaItem item in all)
+        var byClipId = new Dictionary<string, MediaItemDto>(StringComparer.Ordinal);
+        foreach (MediaItemDto item in all)
         {
             byClipId[item.Id.ToString("D")] = item;
         }
@@ -83,14 +83,14 @@ public static class ReviewClipBuilder
             tiles.Add(new CameraTile(
                 label,
                 clips,
-                id => byClipId.TryGetValue(id, out MediaItem? item) ? contentUrl(item) : null,
-                id => byClipId.TryGetValue(id, out MediaItem? item) ? previewUrl(item) : null));
+                id => byClipId.TryGetValue(id, out MediaItemDto? item) ? contentUrl(item) : null,
+                id => byClipId.TryGetValue(id, out MediaItemDto? item) ? previewUrl(item) : null));
         }
 
         return tiles;
     }
 
-    private static bool IsPlayableClip(MediaItem item)
+    private static bool IsPlayableClip(MediaItemDto item)
     {
         return !item.IsPurged
             && MediaFormatHelper.IsVideo(item.MediaFormat)

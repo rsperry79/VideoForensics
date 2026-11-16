@@ -6,7 +6,7 @@ namespace VideoForensics.Client.Common.Contracts
     /// </summary>
     public interface IBackupStagingLocator
     {
-        /// <summary>Returns the folder to stage the export in. The folder may not exist yet; the export creates it.</summary>
-        string GetStagingDirectory();
+        /// <summary>Returns the folder to write the export to. The folder is created if it does not exist.</summary>
+        Task<string> GetExportDirectoryAsync(CancellationToken ct);
     }
 }

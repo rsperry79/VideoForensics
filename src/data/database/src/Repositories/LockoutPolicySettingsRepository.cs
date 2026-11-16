@@ -10,80 +10,88 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for LockoutPolicySettings singleton entity.</summary>
     public class LockoutPolicySettingsRepository : ILockoutPolicySettingsRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<LockoutPolicySettingsRepository> _logger;
 
-        public LockoutPolicySettingsRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<LockoutPolicySettingsRepository> logger)
+        public LockoutPolicySettingsRepository(IUnitOfWork unitOfWork, ILogger<LockoutPolicySettingsRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         public async Task<LockoutPolicySettings> GetAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            // Singleton table: OrderBy silences EF 10103 (First without OrderBy) and gives a deterministic row.
-            LockoutPolicySettings? settings = await db.LockoutPolicySettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
-
-            if (settings == null)
+            return await _unitOfWork.ReadAsync<LockoutPolicySettings>(async context =>
             {
-                // Return default instance without persisting
-                return new LockoutPolicySettings
-                {
-                    Id = Guid.Empty, // Sentinel value indicating not-yet-persisted
-                    MaxFailedAttempts = 5,
-                    LockoutDurationMinutes = 15,
-                    BlockedCountryCodes = null,
-                    FailClosedOnLookupError = false,
-                    AutoBanEnabled = false,
-                    AutoBanDistinctAccountThreshold = 3,
-                    AutoBanWindowMinutes = 60,
-                    AutoBanDurationMinutes = 1440,
-                    UpdatedAtUtc = DateTime.UtcNow,
-                    UpdatedByOperatorId = null
-                };
-            }
+                VideoForensicsDbContext db = context.Db();
 
-            return settings;
+                // Singleton table: OrderBy silences EF 10103 (First without OrderBy) and gives a deterministic row.
+                LockoutPolicySettings? settings = await db.LockoutPolicySettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+
+                if (settings == null)
+                {
+                    // Return default instance without persisting
+                    return new LockoutPolicySettings
+                    {
+                        Id = Guid.Empty, // Sentinel value indicating not-yet-persisted
+                        MaxFailedAttempts = 5,
+                        LockoutDurationMinutes = 15,
+                        BlockedCountryCodes = null,
+                        FailClosedOnLookupError = false,
+                        AutoBanEnabled = false,
+                        AutoBanDistinctAccountThreshold = 3,
+                        AutoBanWindowMinutes = 60,
+                        AutoBanDurationMinutes = 1440,
+                        UpdatedAtUtc = DateTime.UtcNow,
+                        UpdatedByOperatorId = null
+                    };
+                }
+
+                return settings;
+            }, ct);
         }
 
         public async Task UpsertAsync(LockoutPolicySettings settings, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-
-            LockoutPolicySettings? existing = await db.LockoutPolicySettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
-
-            if (existing == null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                // Ensure a valid Id for insertion
-                if (settings.Id == Guid.Empty)
+                VideoForensicsDbContext db = context.Db();
+
+                LockoutPolicySettings? existing = await db.LockoutPolicySettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+
+                if (existing == null)
                 {
-                    settings.Id = Guid.NewGuid();
+                    // Ensure a valid Id for insertion
+                    if (settings.Id == Guid.Empty)
+                    {
+                        settings.Id = Guid.NewGuid();
+                    }
+
+                    settings.UpdatedAtUtc = DateTime.UtcNow;
+
+                    _ = db.LockoutPolicySettings.Add(settings);
+                    _logger.LogDebug("Lockout policy settings created");
+                }
+                else
+                {
+                    // Update existing row
+                    existing.MaxFailedAttempts = settings.MaxFailedAttempts;
+                    existing.LockoutDurationMinutes = settings.LockoutDurationMinutes;
+                    existing.BlockedCountryCodes = settings.BlockedCountryCodes;
+                    existing.FailClosedOnLookupError = settings.FailClosedOnLookupError;
+                    existing.AutoBanEnabled = settings.AutoBanEnabled;
+                    existing.AutoBanDistinctAccountThreshold = settings.AutoBanDistinctAccountThreshold;
+                    existing.AutoBanWindowMinutes = settings.AutoBanWindowMinutes;
+                    existing.AutoBanDurationMinutes = settings.AutoBanDurationMinutes;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                    existing.UpdatedByOperatorId = settings.UpdatedByOperatorId;
+
+                    _logger.LogDebug("Lockout policy settings updated");
                 }
 
-                settings.UpdatedAtUtc = DateTime.UtcNow;
-
-                _ = db.LockoutPolicySettings.Add(settings);
-                _logger.LogDebug("Lockout policy settings created");
-            }
-            else
-            {
-                // Update existing row
-                existing.MaxFailedAttempts = settings.MaxFailedAttempts;
-                existing.LockoutDurationMinutes = settings.LockoutDurationMinutes;
-                existing.BlockedCountryCodes = settings.BlockedCountryCodes;
-                existing.FailClosedOnLookupError = settings.FailClosedOnLookupError;
-                existing.AutoBanEnabled = settings.AutoBanEnabled;
-                existing.AutoBanDistinctAccountThreshold = settings.AutoBanDistinctAccountThreshold;
-                existing.AutoBanWindowMinutes = settings.AutoBanWindowMinutes;
-                existing.AutoBanDurationMinutes = settings.AutoBanDurationMinutes;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
-                existing.UpdatedByOperatorId = settings.UpdatedByOperatorId;
-
-                _logger.LogDebug("Lockout policy settings updated");
-            }
-
-            _ = await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
     }
 }

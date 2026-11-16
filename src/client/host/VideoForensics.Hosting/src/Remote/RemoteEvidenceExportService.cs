@@ -25,12 +25,10 @@ namespace VideoForensics.Client.Hosting.Remote
         /// <inheritdoc />
         public async Task<ExportResult> ExportEvidenceAsync(
             Guid caseId,
-            string? recipientDescription,
-            string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null)
         {
-            var request = new ExportEvidenceRequest(caseId, recipientDescription, passphrase);
+            var request = new ExportEvidenceRequest(caseId);
             string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/evidence/export")
             {
@@ -60,11 +58,5 @@ namespace VideoForensics.Client.Hosting.Remote
 
     /// <summary>Request to export one case's reports and evidence to an archive.</summary>
     /// <param name="CaseId">The case whose reports and pinned media are exported.</param>
-    /// <param name="RecipientDescription">Description of the archive recipient/purpose.</param>
-    /// <param name="Passphrase">Optional passphrase for AES-256 encryption.</param>
-    internal record ExportEvidenceRequest(
-        Guid CaseId,
-        string? RecipientDescription,
-        string? Passphrase
-    );
+    internal record ExportEvidenceRequest(Guid CaseId);
 }

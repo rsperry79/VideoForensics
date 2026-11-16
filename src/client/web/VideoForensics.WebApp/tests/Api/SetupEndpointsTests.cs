@@ -16,9 +16,9 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class SetupEndpointsTests
     {
-        private static (Mock<IOperatorRepository> Operators, Mock<ISecurityAuditLogger> AuditLog, Mock<INetworkTierResolver> TierResolver, Mock<ISessionTierHeaderProtector> HeaderProtector, ILogger<Program> Logger) CreateMocks(bool operatorsEmpty)
+        private static (Mock<IOperatorWriteRepository> Operators, Mock<ISecurityAuditLogger> AuditLog, Mock<INetworkTierResolver> TierResolver, Mock<ISessionTierHeaderProtector> HeaderProtector, ILogger<Program> Logger) CreateMocks(bool operatorsEmpty)
         {
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(o => o.IsEmptyAsync(It.IsAny<CancellationToken>())).ReturnsAsync(operatorsEmpty);
             _ = operators.Setup(o => o.AddAsync(It.IsAny<Operator>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator op, CancellationToken _) => op);
@@ -35,7 +35,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateAdminAsync_EmptyOperatorsAndLocal_CreatesSuperAdminAndReturnsOk()
         {
-            (Mock<IOperatorRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
+            (Mock<IOperatorWriteRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
             var request = new CreateSetupAdminRequest("admin", "a-very-long-password-123");
 
             IResult result = await SetupEndpoints.CreateAdminAsync(
@@ -53,7 +53,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task SetupEndpoints_CreateAdmin_MarksOperatorAsPrimarySuperAdmin()
         {
-            (Mock<IOperatorRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
+            (Mock<IOperatorWriteRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
             Operator? captured = null;
             _ = operators.Setup(o => o.AddAsync(It.IsAny<Operator>(), It.IsAny<CancellationToken>()))
                 .Callback((Operator op, CancellationToken _) => captured = op)
@@ -70,7 +70,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateAdminAsync_OperatorAlreadyExists_ReturnsForbidWithErrorMessage()
         {
-            (Mock<IOperatorRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: false);
+            (Mock<IOperatorWriteRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: false);
             var request = new CreateSetupAdminRequest("admin", "a-very-long-password-123");
 
             IResult result = await SetupEndpoints.CreateAdminAsync(
@@ -89,7 +89,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateAdminAsync_PasswordTooShort_ReturnsBadRequest()
         {
-            (Mock<IOperatorRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
+            (Mock<IOperatorWriteRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
             var request = new CreateSetupAdminRequest("admin", "short");
 
             IResult result = await SetupEndpoints.CreateAdminAsync(
@@ -103,7 +103,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task CreateAdminAsync_EmptyOperatorsButRemote_ReturnsForbidWithErrorMessage()
         {
-            (Mock<IOperatorRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
+            (Mock<IOperatorWriteRepository>? operators, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
             var request = new CreateSetupAdminRequest("admin", "a-very-long-password-123");
 
@@ -123,7 +123,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetStatusAsync_OperatorsEmptyAndLocal_ReturnsIsEmptyTrueIsLocalTrue()
         {
-            (Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
+            (Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
             var context = new DefaultHttpContext();
 
             IResult result = await SetupEndpoints.GetStatusAsync(
@@ -141,7 +141,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetStatusAsync_OperatorsEmptyAndRemote_ReturnsIsEmptyTrueIsLocalFalse()
         {
-            (Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
+            (Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: true);
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
             var context = new DefaultHttpContext();
 
@@ -160,7 +160,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetStatusAsync_OperatorsNotEmpty_ReturnsIsEmptyFalse()
         {
-            (Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: false);
+            (Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ISessionTierHeaderProtector>? headerProtector, ILogger<Program>? logger) = CreateMocks(operatorsEmpty: false);
             var context = new DefaultHttpContext();
 
             IResult result = await SetupEndpoints.GetStatusAsync(

@@ -21,17 +21,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>How far back a poll looks for flagged hours. Older hours were checked by earlier polls.</summary>
         public static readonly TimeSpan LookBack = TimeSpan.FromHours(24);
 
-        private readonly IMediaItemRepository _mediaItems;
-        private readonly INoticeRepository _notices;
-        private readonly IMediaFlagRepository _flags;
+        private readonly IMediaItemWriteRepository _mediaItems;
+        private readonly INoticeWriteRepository _notices;
+        private readonly IMediaFlagWriteRepository _flags;
         private readonly INotificationDispatcher _dispatcher;
         private readonly TimeProvider _time;
         private readonly ILogger<BitrateDeviationAlerts> _logger;
 
         public BitrateDeviationAlerts(
-            IMediaItemRepository mediaItems,
-            INoticeRepository notices,
-            IMediaFlagRepository flags,
+            IMediaItemWriteRepository mediaItems,
+            INoticeWriteRepository notices,
+            IMediaFlagWriteRepository flags,
             INotificationDispatcher dispatcher,
             TimeProvider time,
             ILogger<BitrateDeviationAlerts> logger)
@@ -59,6 +59,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             // The baseline is the camera's all-time mean and std dev; only the look-back window is checked against it.
             var baseline = SignalStats.Compute(samples);
+
+            // The sigma stored on each flag comes from the server's all-time bit rate baseline (an SQL aggregate). It is in bps,
+            // so it is divided to kbps to match the worst reading, which is kbps like the samples.
+            AllTimeBitrateBaseline allTime = await _mediaItems.GetBitrateBaselineByDeviceAsync(device.Id, ct);
             int raised = 0;
             foreach (SignalDeviationWindow window in SignalDeviation
                 .Windows(samples, now - LookBack, now, baseline)
@@ -104,7 +108,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     WindowEndUtc = hourEndUtc,
                     RaisedAtUtc = now,
                     Severity = MediaFlagSeverity.Alert,
-                    NoticeId = noticeId
+                    NoticeId = noticeId,
+                    DeviationSigma = SignalDeviation.DeviationSigma(window.WorstRssiDbm, allTime.MeanBps / 1000.0, allTime.StdDevBps / 1000.0)
                 }, ct);
 
                 await _dispatcher.DispatchAsync(new NotificationEvent(

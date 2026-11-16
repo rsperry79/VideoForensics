@@ -1,5 +1,6 @@
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
+
 
 namespace VideoForensics.Client.Ui.Shared.Components.Review;
 
@@ -19,10 +20,10 @@ public static class FlagAdvance
     /// <param name="fromFlagId">The flag the viewer just reviewed.</param>
     /// <param name="ct">Cancels the lookups.</param>
     /// <returns>The nearest Unreviewed flag on either side, or null when none is left.</returns>
-    public static async Task<MediaFlag?> FindNextUnreviewedAsync(IMediaFlagRepository repository, MediaFlagFilter filter, Guid fromFlagId, CancellationToken ct)
+    public static async Task<MediaFlagDto?> FindNextUnreviewedAsync(IMediaFlagRepository repository, MediaFlagFilterDto filter, Guid fromFlagId, CancellationToken ct)
     {
-        MediaFlagFilter unreviewed = filter with { Statuses = [MediaFlagStatus.Unreviewed] };
-        return await repository.GetNeighbourAsync(fromFlagId, unreviewed, MediaFlagNeighbour.Next, ct)
-            ?? await repository.GetNeighbourAsync(fromFlagId, unreviewed, MediaFlagNeighbour.Previous, ct);
+        MediaFlagFilterDto unreviewed = filter with { Statuses = ["Unreviewed"] };
+        return await repository.GetNeighbourAsync(fromFlagId, unreviewed, MediaFlagNeighbourDto.Next, ct)
+            ?? await repository.GetNeighbourAsync(fromFlagId, unreviewed, MediaFlagNeighbourDto.Previous, ct);
     }
 }

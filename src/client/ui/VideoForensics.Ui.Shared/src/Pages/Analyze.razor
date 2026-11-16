@@ -1,6 +1,5 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/analyze"
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Components.Analysis
 @using VideoForensics.Client.Ui.Shared.Layout
@@ -111,7 +110,7 @@ else
 
     private bool _isLoading = true;
     private bool _isAuthenticated;
-    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private List<VideoForensics.Core.Api.Contracts.DeviceDto> _devices = new();
     private string _activeAnalysis = "reports";
 
     protected override async Task OnInitializedAsync()

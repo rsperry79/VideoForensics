@@ -4,7 +4,7 @@
     {
       "name": "webapp",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/client/web/VideoForensics.WebApp/src/VideoForensics.Client.WebApp.csproj", "--urls", "http://localhost:5162"],
+      "runtimeArgs": ["run", "--launch-profile", "http", "--project", "F:\\vf-worktrees\\db-access\\src\\client\\web\\VideoForensics.WebApp\\src\\VideoForensics.Client.WebApp.csproj"],
       "port": 5162
     }
   ]

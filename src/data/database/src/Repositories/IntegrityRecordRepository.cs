@@ -10,24 +10,28 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for IntegrityRecord entities.</summary>
     public class IntegrityRecordRepository : IIntegrityRecordRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<IntegrityRecordRepository> _logger;
 
         /// <summary>Initializes a new instance of the IntegrityRecordRepository.</summary>
-        public IntegrityRecordRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<IntegrityRecordRepository> logger)
+        public IntegrityRecordRepository(IUnitOfWork unitOfWork, ILogger<IntegrityRecordRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Adds a new integrity record.</summary>
         public async Task AddAsync(IntegrityRecord record, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.IntegrityRecords.Add(record);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.IntegrityRecords.Add(record);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Integrity record added for media item {MediaItemId}: passed={Passed}", record.MediaItemId, record.Passed);
             }
             catch (Exception ex)
@@ -40,14 +44,13 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the most recent integrity record for each of the given media items.</summary>
         public async Task<IReadOnlyList<IntegrityRecord>> GetLatestByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var ids = mediaItemIds.ToList();
 
-            return await db.IntegrityRecords
+            return await _unitOfWork.ReadAsync(context => context.Db().IntegrityRecords
                 .Where(r => ids.Contains(r.MediaItemId))
                 .GroupBy(r => r.MediaItemId)
                 .Select(g => g.OrderByDescending(r => r.VerifiedAtUtc).First())
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
     }
 }

@@ -32,9 +32,10 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             // Every type the account endpoints inject must be a registered service, otherwise route
             // inference treats it as a request body parameter.
-            _ = builder.Services.AddSingleton(Mock.Of<IUserRepository>());
-            _ = builder.Services.AddSingleton(Mock.Of<IProviderAccountRepository>());
-            _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<IUserWriteRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<IProviderAccountWriteRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
@@ -55,7 +56,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private static async Task<DefaultHttpContext> InvokeAsync(
             RequestDelegate handler,
-            ICaseRepository cases,
+            ICaseWriteRepository cases,
             Guid accountId,
             CancellationToken requestAborted = default)
         {
@@ -108,7 +109,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             WebApplication app = BuildApp();
             var accountId = Guid.NewGuid();
             ForensicCase caseEntity = CreateCase("detected-2026-10-01-12-00-0");
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             _ = cases.Setup(c => c.ListForProviderAccountAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([caseEntity]);
 
@@ -136,7 +137,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var accountId = Guid.NewGuid();
             var cts = new CancellationTokenSource();
             await cts.CancelAsync();
-            var cases = new Mock<ICaseRepository>();
+            var cases = new Mock<ICaseWriteRepository>();
             _ = cases.Setup(c => c.ListForProviderAccountAsync(accountId, It.IsAny<CancellationToken>()))
                 .Returns((Guid _, CancellationToken ct) =>
                 {

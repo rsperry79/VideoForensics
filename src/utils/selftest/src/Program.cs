@@ -188,7 +188,7 @@ namespace VideoForensics.Utils.SelfTest
 
             // The selftest takes no account argument and runs against Ring, so it restores the first active Ring account.
             // Falls back to RingAuthService's most-recently-authenticated-Ring-account heuristic when none is active.
-            IProviderAccountRepository accountRepository = serviceProvider.GetRequiredService<IProviderAccountRepository>();
+            IProviderAccountWriteRepository accountRepository = serviceProvider.GetRequiredService<IProviderAccountWriteRepository>();
             Guid? activeAccountId = (await accountRepository.ListActiveAsync(CancellationToken.None))
                 .FirstOrDefault(a => string.Equals(a.ProviderName, "Ring", StringComparison.OrdinalIgnoreCase))?.Id;
 

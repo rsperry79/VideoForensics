@@ -24,11 +24,11 @@ namespace VideoForensics.Client.WebApp.Hubs
         }
 
         /// <inheritdoc />
-        public Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct)
+        public Task PublishSessionChangedAsync(LiveViewSessionDto session, CancellationToken ct)
         {
             return _hubContext.Clients
                 .Group(LiveHubMethods.LiveViewGroup(session.Id))
-                .SendAsync(LiveHubMethods.LiveViewSessionChanged, session.ToDto(), ct);
+                .SendAsync(LiveHubMethods.LiveViewSessionChanged, session, ct);
         }
 
         /// <inheritdoc />
@@ -36,11 +36,11 @@ namespace VideoForensics.Client.WebApp.Hubs
         /// Sends the wire DTO, never the entity, to the session's group only. The orchestrator calls this once per
         /// persisted sample, so each sample reaches the same subscribers as the session state pushes.
         /// </remarks>
-        public Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
+        public Task PublishSampleAsync(LiveViewTelemetrySampleDto sample, CancellationToken ct)
         {
             return _hubContext.Clients
                 .Group(LiveHubMethods.LiveViewGroup(sample.SessionId))
-                .SendAsync(LiveHubMethods.LiveViewTelemetry, sample.ToDto(), ct);
+                .SendAsync(LiveHubMethods.LiveViewTelemetry, sample, ct);
         }
     }
 }
