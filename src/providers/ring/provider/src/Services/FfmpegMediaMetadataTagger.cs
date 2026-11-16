@@ -132,7 +132,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), ct);
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), null, ct);
                 return analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment)
                     ? null
                     : comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&

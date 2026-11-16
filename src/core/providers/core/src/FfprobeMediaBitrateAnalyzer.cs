@@ -28,7 +28,7 @@ namespace VideoForensics.Core.Providers.Core
         {
             try
             {
-                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildOptions(), ct);
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildOptions(), null, ct);
                 return MediaBitrateAnalysis.FromProbe(
                     analysis.Duration,
                     analysis.PrimaryVideoStream?.BitRate,
@@ -37,7 +37,7 @@ namespace VideoForensics.Core.Providers.Core
                     audioCodec: analysis.PrimaryAudioStream?.CodecName,
                     width: analysis.PrimaryVideoStream?.Width,
                     height: analysis.PrimaryVideoStream?.Height,
-                    frameRate: analysis.PrimaryVideoStream?.AvgFrameRate);
+                    frameRate: analysis.PrimaryVideoStream?.AverageFrameRate);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
