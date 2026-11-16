@@ -587,4 +587,7 @@
   <data name="TabDetail" xml:space="preserve">
     <value>Detail</value>
   </data>
+  <data name="FiltersButton" xml:space="preserve">
+    <value>Filters</value>
+  </data>
 </root>

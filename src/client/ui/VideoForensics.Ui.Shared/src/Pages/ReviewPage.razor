@@ -38,7 +38,6 @@ else
 
     <PageRightPanelContent>
         <ReviewPopupHost>
-            <ReviewTimeRange State="State" />
             <ReviewEventFilter State="State" />
             <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
             <ReviewCaseSection State="State" Devices="_visibleIds" />
@@ -48,7 +47,7 @@ else
 
     <ReviewShell>
         <Header>
-            <ReviewTopBar State="State" DeviceNames="_deviceNames" />
+            <ReviewTopBar State="State" DeviceNames="_deviceNames" Devices="_visibleIds" />
 
             @if (_caseNotFound)
             {

@@ -216,7 +216,6 @@ public class ReviewPage_Tests : ReviewTestContext
     [Theory]
     [InlineData("review-case-section")]
     [InlineData("review-filter-panel")]
-    [InlineData("review-time-range")]
     [InlineData("review-actions-panel")]
     public void ReviewPage_RightPanelSection_HasACollapsibleHeading(string testId)
     {
@@ -233,7 +232,7 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_RightPanel_ListsTimeRangeThenFiltersThenCaseThenActions()
+    public void ReviewPage_RightPanel_ListsFiltersThenCaseThenActions()
     {
         // Arrange
         AddDevices(2);
@@ -248,7 +247,7 @@ public class ReviewPage_Tests : ReviewTestContext
             .FindAll("[data-testid='review-time-range'], [data-testid='review-filter-panel'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
             .Select(e => e.GetAttribute("data-testid")!)
             .ToArray();
-        Assert.Equal(new[] { "review-time-range", "review-filter-panel", "review-case-section", "review-actions-panel" }, order);
+        Assert.Equal(new[] { "review-filter-panel", "review-case-section", "review-actions-panel" }, order);
     }
 
     [Fact]

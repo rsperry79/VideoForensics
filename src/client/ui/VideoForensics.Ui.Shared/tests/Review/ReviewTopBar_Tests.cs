@@ -148,6 +148,17 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTopBar_Render_ShowsTimeRangeAndFiltersButton()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert: the date range works from the header with the right panel closed (U6b)
+        _ = cut.FindComponent<ReviewTimeRange>();
+        Assert.Single(cut.FindAll("[data-testid='review-filters-button']"));
+    }
+
+    [Fact]
     public void ReviewTopBar_Rendered_HasNoLiveButtonOrFilterControls()
     {
         // Arrange and Act

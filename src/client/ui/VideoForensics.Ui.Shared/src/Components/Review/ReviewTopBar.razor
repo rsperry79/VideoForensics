@@ -1,6 +1,8 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Components.Review
+@using Microsoft.Extensions.DependencyInjection
+@using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
@@ -8,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject ReviewCaseMode CaseMode
 @inject ReviewPopupState Popups
+@inject IServiceProvider ServiceProvider
 @inject IStringLocalizer<ReviewPage> L
 
 @if (CaseMode.Active)
@@ -34,6 +37,8 @@
 
     <ReviewPopupHost>
         <div class="d-flex align-items-center gap-2 flex-wrap">
+            <ReviewTimeRange State="State" />
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filters-button" @onclick="OpenFilters">@L["FiltersButton"]</button>
             <ReviewPendingTags DeviceNames="DeviceNames" />
         </div>
     </ReviewPopupHost>
@@ -47,6 +52,20 @@
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The cameras left after the Provider and Account filters. The camera selector lists these.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Opens the right panel, where the filters are (U-D4). Does nothing when the layout state is not registered.</summary>
+    private async Task OpenFilters()
+    {
+        LayoutPreferencesState? prefs = ServiceProvider.GetService<LayoutPreferencesState>();
+        if (prefs is not null)
+        {
+            await prefs.SetRightPanelCollapsedAsync(false);
+        }
+    }
 
     private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events, ReviewTab.Detail];
 
