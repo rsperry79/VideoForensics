@@ -103,6 +103,7 @@ namespace VideoForensics.Providers.Ring.Entities
         /// Null if no tags present.
         /// </summary>
         [JsonPropertyName("tags")]
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.CvTagListConverter))]
         public List<string> Tags { get; set; }
 
         /// <summary>cv_properties.key_moments. Shape not captured (null in every sample): read as a raw value, stored only if it is a string.</summary>
