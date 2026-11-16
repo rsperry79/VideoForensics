@@ -53,7 +53,7 @@ public class ReviewPage_Tests : ReviewTestContext
         // The Media page has no Back button; the top bar keeps only the case banner and the pending tags.
         Assert.Empty(cut.FindAll("[data-testid='review-back']"));
 
-        string cameras = RenderRightPanel().Find("[data-testid='review-camera-button']").TextContent;
+        string cameras = cut.Find("[data-testid='review-camera-button']").TextContent;
         Assert.Contains(L["AllCameras"].Value, cameras);
 
         // Actions and Grab still live in the right sidebar, under the filters.
@@ -398,19 +398,18 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_RightPanel_RendersTheCameraSelectorInsideTheFilterPanel()
+    public void ReviewPage_Header_RendersTheCameraSelectorOnce()
     {
         // Arrange
         AddDevices(2);
         NavigateToReview();
-        _ = Render<ReviewPage>();
 
         // Act
-        IRenderedComponent<IComponent> panel = RenderRightPanel();
+        IRenderedComponent<ReviewPage> page = Render<ReviewPage>();
 
-        // Assert
-        _ = Assert.Single(panel.FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
-        _ = Assert.Single(panel.FindAll("[data-testid='review-camera-selector']"));
+        // Assert: the camera selector is in the page header (U6b), and the right panel does not repeat it
+        _ = Assert.Single(page.FindAll("[data-testid='review-camera-selector']"));
+        Assert.Empty(page.FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
     }
 
     [Fact]
@@ -420,15 +419,14 @@ public class ReviewPage_Tests : ReviewTestContext
         (Guid ringDevice, Guid wyzeDevice) = SetUpRingAndWyze();
         NavigateToReview("provider=Ring");
 
-        _ = Render<ReviewPage>();
+        IRenderedComponent<ReviewPage> page = Render<ReviewPage>();
 
-        // Act
-        IRenderedComponent<IComponent> filters = RenderRightPanel();
-        filters.Find("[data-testid='review-camera-button']").Click();
+        // Act: the camera selector is in the page header now (U6b)
+        page.Find("[data-testid='review-camera-button']").Click();
 
         // Assert
-        _ = Assert.Single(filters.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
-        Assert.Empty(filters.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
+        _ = Assert.Single(page.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
+        Assert.Empty(page.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
     }
 
     [Fact]
