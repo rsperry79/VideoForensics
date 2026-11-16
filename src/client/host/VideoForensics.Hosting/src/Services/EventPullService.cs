@@ -165,6 +165,17 @@ namespace VideoForensics.Client.Hosting.Services
                     return default;
                 }
 
+                // Why: the media service reads the active account id when it downloads, so it must be set before the queue
+                // retry below. Otherwise the first pull after a restart downloads under an empty account and fails.
+                if (_mediaDownloadService == null)
+                {
+                    _logger.LogWarning("No media download service is registered; media was not pulled");
+                }
+                else
+                {
+                    _mediaDownloadService.SetActiveProviderAccountId(accountId);
+                }
+
                 // Why: no new pull while an event is still waiting for its ding id. The queue is retried first, in one batch per device,
                 // so the pull resumes as soon as the events are downloaded or have used all their passes.
                 if (_events is not null && await RetryQueueAsync(inventory, account, cancellationToken))
@@ -184,15 +195,6 @@ namespace VideoForensics.Client.Hosting.Services
                     ? (to.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(to, DateTimeKind.Utc) : to.ToUniversalTime())
                     : DateTime.UtcNow;
                 var deviceErrors = new List<string>();
-
-                if (_mediaDownloadService == null)
-                {
-                    _logger.LogWarning("No media download service is registered; media was not pulled");
-                }
-                else
-                {
-                    _mediaDownloadService.SetActiveProviderAccountId(accountId);
-                }
 
                 // Read once per pull so every device in this pull lands under the same root.
                 string mediaRoot = await ResolveMediaRootAsync(cancellationToken);
