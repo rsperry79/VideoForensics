@@ -222,7 +222,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             string? folder = Path.GetDirectoryName(ffprobe);
             var options = new FFOptions { BinaryFolder = string.IsNullOrEmpty(folder) ? null : folder };
-            IMediaAnalysis analysis = await FFProbe.AnalyseAsync(path, options, ct);
+            IMediaAnalysis analysis = await FFProbe.AnalyseAsync(path, options, null, ct);
             return analysis.Duration.TotalSeconds;
         }
     }
