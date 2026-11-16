@@ -30,6 +30,10 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaAnalysisService _mediaAnalysis;
         private readonly IEvidenceChangeNotifier _evidenceChangeNotifier;
         private readonly IDeviceHealthChangeNotifier _deviceHealthChangeNotifier;
+        private readonly IDingIdLinkRepository _dingIdLinkRepository;
+        private readonly IDeviceSettingChangeRepository _deviceSettingChangeRepository;
+        private readonly IDetectionEntityProvider _detectionEntityProvider;
+        private readonly IActionLogRepository _actionLogRepository;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -55,6 +59,9 @@ namespace VideoForensics.Data.Core.Services
             IActionLogRepository actionLogRepository,
             ILogger<VideoForensicsDataClient> logger,
             IMediaAnalysisService mediaAnalysis,
+            IDingIdLinkRepository dingIdLinkRepository,
+            IDeviceSettingChangeRepository deviceSettingChangeRepository,
+            IDetectionEntityProvider detectionEntityProvider,
             IEvidenceChangeNotifier? evidenceChangeNotifier = null,
             IDeviceHealthChangeNotifier? deviceHealthChangeNotifier = null)
         {
@@ -77,6 +84,10 @@ namespace VideoForensics.Data.Core.Services
             ActionLog = actionLogRepository;
             _logger = logger;
             _mediaAnalysis = mediaAnalysis;
+            _dingIdLinkRepository = dingIdLinkRepository;
+            _deviceSettingChangeRepository = deviceSettingChangeRepository;
+            _detectionEntityProvider = detectionEntityProvider;
+            _actionLogRepository = actionLogRepository;
             _evidenceChangeNotifier = evidenceChangeNotifier ?? new NullEvidenceChangeNotifier();
             _deviceHealthChangeNotifier = deviceHealthChangeNotifier ?? new NullDeviceHealthChangeNotifier();
         }
@@ -146,7 +157,7 @@ namespace VideoForensics.Data.Core.Services
             {
                 _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    Device? device = await context.Devices.GetAsync(deviceId, ct);
+                    Device? device = await _deviceRepository.GetAsync(deviceId, ct);
                     if (device == null)
                     {
                         _logger.LogDebug("Device detail fields not stored: device {DeviceId} is not in the database yet", deviceId);
@@ -155,11 +166,11 @@ namespace VideoForensics.Data.Core.Services
 
                     var changes = new List<DeviceSettingChange>();
                     ApplyDetailFields(device, details, changes);
-                    await context.Devices.UpdateAsync(device, ct);
+                    await _deviceRepository.UpdateAsync(device, ct);
                     if (changes.Count > 0)
                     {
                         // Same unit of work as the Device update: history commits or rolls back with it.
-                        await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
+                        await _deviceSettingChangeRepository.AddRangeAsync(changes, ct);
                     }
 
                     return null;
@@ -251,15 +262,15 @@ namespace VideoForensics.Data.Core.Services
                     // MaxRetries check) would otherwise pile up duplicate rows, and a caller reading
                     // "the" DownloadEvent for an event id would get whichever row happened to sort
                     // first rather than the latest attempt's outcome.
-                    DownloadEvent? existing = await context.DownloadEvents.GetByProviderEventIdAsync(evt.DeviceId, evt.ProviderEventId, ct);
+                    DownloadEvent? existing = await _downloadEventRepository.GetByProviderEventIdAsync(evt.DeviceId, evt.ProviderEventId, ct);
                     if (existing != null)
                     {
                         evt.Id = existing.Id;
-                        await context.DownloadEvents.UpdateAsync(evt, ct);
+                        await _downloadEventRepository.UpdateAsync(evt, ct);
                     }
                     else
                     {
-                        await context.DownloadEvents.AddAsync(evt, ct);
+                        await _downloadEventRepository.AddAsync(evt, ct);
                     }
 
                     if (media != null)
@@ -268,37 +279,37 @@ namespace VideoForensics.Data.Core.Services
                         // re-download must update that row; a blind insert would violate the index and roll back the event.
                         // The range is a single instant, so the list holds one row per media kind at most.
                         // Only a row of the same kind is the same recording: a snapshot or loop at this instant must not be overwritten.
-                        MediaItem? sameRecording = (await context.MediaItems.GetByDeviceAndDateRangeAsync(
+                        MediaItem? sameRecording = (await _mediaItemRepository.GetByDeviceAndDateRangeAsync(
                             media.DeviceId, media.RecordedAtUtc, media.RecordedAtUtc, ct)).FirstOrDefault(m => m.MediaKind == media.MediaKind);
                         if (sameRecording != null)
                         {
                             media.Id = sameRecording.Id;
-                            await context.MediaItems.UpdateAsync(media, ct);
+                            await _mediaItemRepository.UpdateAsync(media, ct);
                         }
                         else
                         {
-                            await context.MediaItems.AddAsync(media, ct);
+                            await _mediaItemRepository.AddAsync(media, ct);
                         }
                     }
 
                     // Persist detection-related entities if provided
                     if (detection != null)
                     {
-                        await context.DetectionEntities.AddMediaItemDetectionAsync(detection, ct);
+                        await _detectionEntityProvider.AddMediaItemDetectionAsync(detection, ct);
                     }
 
                     if (persons != null && persons.Count > 0)
                     {
-                        await context.DetectionEntities.AddDetectedPersonsAsync(persons, ct);
+                        await _detectionEntityProvider.AddDetectedPersonsAsync(persons, ct);
                     }
 
                     if (occurrences != null && occurrences.Count > 0)
                     {
-                        await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, ct);
+                        await _detectionEntityProvider.AddDetectionTypeOccurrencesAsync(occurrences, ct);
                     }
 
                     // Downloads run in the background as the service account, which is not a person.
-                    _ = await context.ActionLog.AppendAsync(
+                    _ = await _actionLogRepository.AppendAsync(
                         Environment.UserName,
                         ActorTypes.ForAccount(Environment.UserName),
                         "MediaDownloaded",
@@ -307,7 +318,7 @@ namespace VideoForensics.Data.Core.Services
                         null,
                         ct);
 
-                    Device? device = await context.Devices.GetAsync(evt.DeviceId, ct);
+                    Device? device = await _deviceRepository.GetAsync(evt.DeviceId, ct);
 
                     _logger.LogDebug(
                         "Download event recorded for device {DeviceName}, provider event {ProviderEventId}, success={Success}",
@@ -336,28 +347,28 @@ namespace VideoForensics.Data.Core.Services
 
         public Task<IReadOnlyList<string>> GetDingIdCandidatesAsync(long doorbotId, CancellationToken ct)
         {
-            return _unitOfWork.ReadAsync(context => context.DingIdLinks.GetCandidateDingIdsAsync(doorbotId, ct), ct);
+            return _unitOfWork.ReadAsync(context => _dingIdLinkRepository.GetCandidateDingIdsAsync(doorbotId, ct), ct);
         }
 
         public Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct)
         {
             return _unitOfWork.ExecuteAsync(async context =>
             {
-                await context.DingIdLinks.LinkDoorbotHistoryEventAsync(doorbotHistoryProviderEventId, eventId, ct);
+                await _dingIdLinkRepository.LinkDoorbotHistoryEventAsync(doorbotHistoryProviderEventId, eventId, ct);
                 return true;
             }, ct);
         }
 
         public Task<Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct)
         {
-            return _unitOfWork.ExecuteAsync(context => context.DingIdLinks.GetLinkedEventAsync(doorbotHistoryProviderEventId, ct), ct);
+            return _unitOfWork.ExecuteAsync(context => _dingIdLinkRepository.GetLinkedEventAsync(doorbotHistoryProviderEventId, ct), ct);
         }
 
         public Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct)
         {
             return _unitOfWork.ExecuteAsync(async context =>
             {
-                await context.DingIdLinks.RekeyLinkedEventAsync(eventId, newProviderEventId, ct);
+                await _dingIdLinkRepository.RekeyLinkedEventAsync(eventId, newProviderEventId, ct);
                 return true;
             }, ct);
         }
@@ -376,7 +387,7 @@ namespace VideoForensics.Data.Core.Services
                 Event saved = await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Upsert the Event record itself
-                    Event upserted = await context.Events.UpsertAsync(evt, ct);
+                    Event upserted = await _eventRepository.UpsertAsync(evt, ct);
 
                     // Persist detection-related entities if provided
                     // Idempotent: this runs several times per event, so detection and its child rows are
@@ -384,7 +395,7 @@ namespace VideoForensics.Data.Core.Services
                     if (detection != null)
                     {
                         detection.EventId = upserted.Id;
-                        _ = await context.DetectionEntities.UpsertEventDetectionAsync(detection, ct);
+                        _ = await _detectionEntityProvider.UpsertEventDetectionAsync(detection, ct);
                         upserted.EventDetectionId = detection.Id;
                     }
 
@@ -392,7 +403,7 @@ namespace VideoForensics.Data.Core.Services
                     bool hasPersons = persons != null && persons.Count > 0;
                     if (hasAlerts || hasPersons)
                     {
-                        await context.DetectionEntities.ClearEventAlertsAndPersonsAsync(upserted.Id, hasAlerts, hasPersons, ct);
+                        await _detectionEntityProvider.ClearEventAlertsAndPersonsAsync(upserted.Id, hasAlerts, hasPersons, ct);
                     }
 
                     if (zones != null && zones.Count > 0)
@@ -402,7 +413,7 @@ namespace VideoForensics.Data.Core.Services
                             zone.EventDetectionId = detection?.Id ?? Guid.Empty;
                         }
 
-                        await context.DetectionEntities.AddEventDetectionZonesAsync(zones, ct);
+                        await _detectionEntityProvider.AddEventDetectionZonesAsync(zones, ct);
                     }
 
                     if (alerts != null && alerts.Count > 0)
@@ -412,7 +423,7 @@ namespace VideoForensics.Data.Core.Services
                             alert.EventId = upserted.Id;
                         }
 
-                        await context.DetectionEntities.AddEventSecurityAlertsAsync(alerts, ct);
+                        await _detectionEntityProvider.AddEventSecurityAlertsAsync(alerts, ct);
                     }
 
                     if (persons != null && persons.Count > 0)
@@ -422,7 +433,7 @@ namespace VideoForensics.Data.Core.Services
                             person.EventId = upserted.Id;
                         }
 
-                        await context.DetectionEntities.AddEventDetectedPersonsAsync(persons, ct);
+                        await _detectionEntityProvider.AddEventDetectedPersonsAsync(persons, ct);
                     }
 
                     if (occurrences != null && occurrences.Count > 0)
@@ -432,7 +443,7 @@ namespace VideoForensics.Data.Core.Services
                             occurrence.EventDetectionId = detection?.Id ?? Guid.Empty;
                         }
 
-                        await context.DetectionEntities.AddEventDetectionTypeOccurrencesAsync(occurrences, ct);
+                        await _detectionEntityProvider.AddEventDetectionTypeOccurrencesAsync(occurrences, ct);
                     }
 
                     return upserted;
@@ -466,7 +477,7 @@ namespace VideoForensics.Data.Core.Services
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Try to find existing user
-                    IReadOnlyList<User> users = await context.Users.ListAsync(ct);
+                    IReadOnlyList<User> users = await _userRepository.ListAsync(ct);
                     User? existingUser = users.FirstOrDefault(u =>
                         u.ProviderUserKey == providerUserKey &&
                         u.DisplayName == displayName);
@@ -482,7 +493,7 @@ namespace VideoForensics.Data.Core.Services
                             Email = email,
                             CreatedUtc = DateTime.UtcNow
                         };
-                        await context.Users.AddAsync(user, ct);
+                        await _userRepository.AddAsync(user, ct);
                         _logger.LogDebug("Created new user: {DisplayName}", displayName);
                     }
                     else
@@ -492,7 +503,7 @@ namespace VideoForensics.Data.Core.Services
                     }
 
                     // Try to find existing provider account
-                    IReadOnlyList<ProviderAccount> accounts = await context.ProviderAccounts.ListAsync(ct);
+                    IReadOnlyList<ProviderAccount> accounts = await _providerAccountRepository.ListAsync(ct);
                     ProviderAccount? existingAccount = accounts.FirstOrDefault(a =>
                         a.UserId == user.Id &&
                         a.ProviderName == providerName);
@@ -508,7 +519,7 @@ namespace VideoForensics.Data.Core.Services
                             LinkedUtc = DateTime.UtcNow,
                             IsActive = true
                         };
-                        await context.ProviderAccounts.AddAsync(account, ct);
+                        await _providerAccountRepository.AddAsync(account, ct);
                         _logger.LogDebug("Created new provider account: {Provider} for user {DisplayName}", providerName, user.DisplayName);
                     }
                     else
@@ -517,7 +528,7 @@ namespace VideoForensics.Data.Core.Services
                         _logger.LogDebug("Found existing provider account: {Provider} for user {DisplayName}", providerName, user.DisplayName);
                     }
 
-                    _ = await context.ActionLog.AppendAsync(
+                    _ = await _actionLogRepository.AppendAsync(
                         Environment.UserName,
                         ActorType.Human,
                         existingUser == null ? "UserCreated" : "AccountLinked",
@@ -550,7 +561,7 @@ namespace VideoForensics.Data.Core.Services
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Since ProviderLocationId is now globally unique, query globally
-                    Location? existingLocation = await context.Locations.GetByProviderLocationIdAsync(providerLocationId, ct);
+                    Location? existingLocation = await _locationRepository.GetByProviderLocationIdAsync(providerLocationId, ct);
 
                     if (existingLocation == null)
                     {
@@ -563,16 +574,16 @@ namespace VideoForensics.Data.Core.Services
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
                         };
-                        await context.Locations.AddAsync(location, ct);
+                        await _locationRepository.AddAsync(location, ct);
                         _logger.LogDebug("Created new location: {LocationName}", name);
-                        await context.Locations.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
+                        await _locationRepository.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
                         return location;
                     }
                     else
                     {
                         _logger.LogDebug("Found existing location: {LocationName}", existingLocation.Name);
                         // Locations are globally unique but shared across accounts; ensure this account is linked (idempotent).
-                        await context.Locations.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
+                        await _locationRepository.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
                         return existingLocation;
                     }
                 }, ct);
@@ -762,7 +773,7 @@ namespace VideoForensics.Data.Core.Services
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Try the common case first: device already under this same location.
-                    IReadOnlyList<Device> devices = await context.Devices.GetByLocationIdAsync(locationId, ct);
+                    IReadOnlyList<Device> devices = await _deviceRepository.GetByLocationIdAsync(locationId, ct);
                     Device? existingDevice = devices.FirstOrDefault(d =>
                         d.ProviderDeviceId == providerDeviceId);
 
@@ -772,7 +783,7 @@ namespace VideoForensics.Data.Core.Services
                     // which would otherwise create a duplicate row instead of relocating the original.
                     if (existingDevice == null)
                     {
-                        IReadOnlyList<Device> allDevices = await context.Devices.ListAsync(ct);
+                        IReadOnlyList<Device> allDevices = await _deviceRepository.ListAsync(ct);
                         existingDevice = allDevices?.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
                     }
 
@@ -791,7 +802,7 @@ namespace VideoForensics.Data.Core.Services
                             SyncStatus = SyncStatus.Synced
                         };
                         ApplyDetailFields(device, details);
-                        await context.Devices.AddAsync(device, ct);
+                        await _deviceRepository.AddAsync(device, ct);
                         _logger.LogInformation("Created new device: {DeviceName}", name);
                         return device;
                     }
@@ -800,7 +811,7 @@ namespace VideoForensics.Data.Core.Services
                         if (existingDevice.LocationId != locationId)
                         {
                             // Check if device already exists at target location (race condition check)
-                            Device? inTargetLocation = await context.Devices
+                            Device? inTargetLocation = await _deviceRepository
                                 .GetByProviderDeviceIdAsync(locationId, providerDeviceId, ct);
 
                             if (inTargetLocation != null)
@@ -830,7 +841,7 @@ namespace VideoForensics.Data.Core.Services
                             };
                             ApplyDetailFields(newDevice, details);
 
-                            await context.Devices.AddAsync(newDevice, ct);
+                            await _deviceRepository.AddAsync(newDevice, ct);
                             _logger.LogInformation(
                                 "Device {DeviceName} ({ProviderDeviceId}) moved to new location; creating new record (NewDeviceId: {NewDeviceId}). " +
                                 "Old device {OldDeviceId} at location {OldLocationId} retained for history.",
@@ -864,11 +875,11 @@ namespace VideoForensics.Data.Core.Services
 
                         var changes = new List<DeviceSettingChange>();
                         ApplyDetailFields(existingDevice, details, changes);
-                        await context.Devices.UpdateAsync(existingDevice, ct);
+                        await _deviceRepository.UpdateAsync(existingDevice, ct);
                         if (changes.Count > 0)
                         {
                             // Same unit of work as the Device update: history commits or rolls back with it.
-                            await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
+                            await _deviceSettingChangeRepository.AddRangeAsync(changes, ct);
                         }
 
                         _logger.LogDebug("Found and updated existing device: {DeviceName}", existingDevice.Name);
@@ -890,7 +901,7 @@ namespace VideoForensics.Data.Core.Services
             {
                 _ = await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    Device? device = await context.Devices.GetAsync(deviceId, ct);
+                    Device? device = await _deviceRepository.GetAsync(deviceId, ct);
                     if (device != null)
                     {
                         // Events download concurrently (see RingMediaDownloadService's
@@ -902,7 +913,7 @@ namespace VideoForensics.Data.Core.Services
                         if (device.LastSuccessfulPullAtUtc == null || latestSuccessfulPullTime > device.LastSuccessfulPullAtUtc.Value)
                         {
                             device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
-                            await context.Devices.UpdateAsync(device, ct);
+                            await _deviceRepository.UpdateAsync(device, ct);
                             _logger.LogDebug("Advanced watermark for device {DeviceName} to {Timestamp}",
                                 device.Name, latestSuccessfulPullTime);
                         }
@@ -956,13 +967,13 @@ namespace VideoForensics.Data.Core.Services
             {
                 _ = await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    ProviderAccount? account = await context.ProviderAccounts.GetAsync(providerAccountId, ct);
+                    ProviderAccount? account = await _providerAccountRepository.GetAsync(providerAccountId, ct);
                     if (account != null)
                     {
                         if (account.LastDownloadTimeUtc == null || latestDownloadTime > account.LastDownloadTimeUtc.Value)
                         {
                             account.LastDownloadTimeUtc = latestDownloadTime;
-                            await context.ProviderAccounts.UpdateAsync(account, ct);
+                            await _providerAccountRepository.UpdateAsync(account, ct);
                             _logger.LogDebug("Advanced account download watermark for account {AccountName} to {Timestamp}",
                                 account.ProviderName, latestDownloadTime);
                         }

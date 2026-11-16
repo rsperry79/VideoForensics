@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.Services;
 using VideoForensics.Utils.Testing;
 
@@ -24,7 +27,8 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _backfill = new SqliteEventTypeLinkBackfill(_fixture.Factory);
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new ServiceCollection().AddLogging().BuildServiceProvider(), NullLogger<UnitOfWork>.Instance);
+            _backfill = new SqliteEventTypeLinkBackfill(_fixture.Factory, unitOfWork);
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
 

@@ -129,8 +129,8 @@ namespace VideoForensics.Data.Core.Services
                     item.PurgedAtUtc = DateTime.UtcNow;
                     item.PurgeReason = reason;
 
-                    await context.MediaItems.UpdateAsync(item, ct);
-                    _ = await context.ActionLog.AppendAsync(
+                    await _mediaItems.UpdateAsync(item, ct);
+                    _ = await _actionLog.AppendAsync(
                         Environment.UserName,
                         ActorType.Human,
                         "MediaPurged",

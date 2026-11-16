@@ -154,6 +154,12 @@ namespace VideoForensics.Client.Hosting.Remote
             throw new NotSupportedException("Bit rate analysis runs on the server only.");
         }
 
+        /// <remarks>The bit rate baseline is computed on the server only.</remarks>
+        public Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            throw new NotSupportedException("The bit rate baseline is computed on the server only.");
+        }
+
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));

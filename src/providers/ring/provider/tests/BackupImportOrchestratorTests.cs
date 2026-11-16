@@ -22,7 +22,6 @@ namespace VideoForensics.Providers.Ring.Tests
         public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
         public ILocationRepository Locations { get; set; } = null!;
         public IDeviceRepository Devices { get; set; } = null!;
-        public IDingIdLinkRepository DingIdLinks { get; set; } = null!;
         public IMediaItemRepository MediaItems { get; set; } = null!;
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;
@@ -72,8 +71,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Devices = _mockDevices.Object,
                 Events = _mockEvents.Object,
                 DownloadEvents = _mockDownloadEvents.Object,
-                MediaItems = _mockMediaItems.Object,
-                DingIdLinks = _mockDingIdLinks.Object
+                MediaItems = _mockMediaItems.Object
             };
 
             _ = _mockUnitOfWork
@@ -130,7 +128,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockAccounts.Setup(r => r.GetAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(account);
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
@@ -168,7 +166,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockDevices.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "d1", Name = "Cam", Type = "camera" });
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
@@ -201,7 +199,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: [exportedItem]);
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.False(result.Success);
@@ -237,7 +235,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockDevices.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "d1", Name = "Cam", Type = "camera" });
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
@@ -272,7 +270,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockLocations.Setup(r => r.GetAsync(existingLocId, It.IsAny<CancellationToken>())).ReturnsAsync(new Location { Id = existingLocId, ProviderLocationId = "p", Name = "n" });
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
@@ -296,7 +294,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), locations: [loc]);
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
@@ -341,7 +339,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789" });
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.Equal(1, result.Events.Inserted);
@@ -368,7 +366,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.Equal(0, result.Events.Inserted);
@@ -395,7 +393,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789" });
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.Equal(0, result.DownloadEvents.Inserted);
@@ -421,7 +419,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _ = _mockDingIdLinks.Setup(l => l.GetCandidateDingIdsAsync(86401464, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { "1234567890123456789", "1234567890123456789" });
                 WireUnitOfWork();
 
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
                 BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.Equal(0, result.DownloadEvents.Inserted);

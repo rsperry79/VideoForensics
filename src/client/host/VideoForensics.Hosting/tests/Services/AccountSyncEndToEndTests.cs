@@ -35,7 +35,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IMediaDownloadService> _media = new();
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<IProviderSyncRunRepository> _runs = new();
-        private readonly Mock<ISnapshotSyncService> _snapshots = new();
         private readonly List<(string DeviceId, string Folder, DateTime Start, DateTime End)> _downloads = [];
         private readonly List<DateTime?> _watermarksWritten = [];
 
@@ -106,7 +105,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 services,
                 _accounts.Object,
                 _runs.Object,
-                _snapshots.Object,
                 Mock.Of<ILogger<AccountSyncRunner>>(),
                 new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
         }

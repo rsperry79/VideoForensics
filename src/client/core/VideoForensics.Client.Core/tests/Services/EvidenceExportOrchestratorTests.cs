@@ -49,7 +49,6 @@ namespace VideoForensics.Client.Core.Tests.Services
             {
                 var mediaItemId = Guid.NewGuid();
                 string injectedCaseRef = "Case-123\r\nFAKE ADMIN LOG: Unauthorized access granted";
-                string recipient = "Detective Smith";
 
                 // Setup media item mock
                 var mediaItem = new MediaItem
@@ -79,7 +78,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                     .Returns(Task.FromResult((IReadOnlyList<ActionLogEntry>)[]));
 
                 _ = _exportRecordServiceMock
-                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
+                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(new ExportRecord
                     {
                         Id = Guid.NewGuid(),
@@ -94,8 +93,6 @@ namespace VideoForensics.Client.Core.Tests.Services
                     [mediaItemId],
                     relativeExportPath,
                     injectedCaseRef,
-                    recipient,
-                    null,
                     CancellationToken.None);
 
                 // Assert: Verify the method completed and didn't throw
@@ -103,7 +100,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                 Assert.NotNull(result);
                 // Verify export was recorded
                 _exportRecordServiceMock.Verify(
-                    s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()),
+                    s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
             }
             finally
@@ -128,7 +125,6 @@ namespace VideoForensics.Client.Core.Tests.Services
             {
                 var mediaItemId = Guid.NewGuid();
                 string caseRef = "Case-123";
-                string recipient = "Detective Smith";
 
                 // Setup media item mock
                 var mediaItem = new MediaItem
@@ -158,7 +154,7 @@ namespace VideoForensics.Client.Core.Tests.Services
                     .Returns(Task.FromResult((IReadOnlyList<ActionLogEntry>)[]));
 
                 _ = _exportRecordServiceMock
-                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
+                    .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(new ExportRecord
                     {
                         Id = Guid.NewGuid(),
@@ -173,8 +169,6 @@ namespace VideoForensics.Client.Core.Tests.Services
                     [mediaItemId],
                     relativeExportPath,
                     caseRef,
-                    recipient,
-                    null,
                     CancellationToken.None);
 
                 // Assert: Verify success and archive exists (in the mapped exports directory)

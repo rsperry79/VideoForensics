@@ -12,8 +12,6 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     {
         public Task<ExportResult> ExportEvidenceAsync(
             Guid caseId,
-            string? recipientDescription,
-            string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null)
         {
@@ -25,7 +23,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             // Matches the HTTP export, which requires step-up through the endpoint filter.
             return !gate.IsStepUpValid(stepUpToken)
                 ? throw new UnauthorizedAccessException(gate.StepUpDenial())
-                : inner.ExportEvidenceAsync(caseId, recipientDescription, passphrase, ct, stepUpToken);
+                : inner.ExportEvidenceAsync(caseId, ct, stepUpToken);
         }
     }
 }

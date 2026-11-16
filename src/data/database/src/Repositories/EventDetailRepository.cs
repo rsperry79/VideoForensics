@@ -15,13 +15,13 @@ namespace VideoForensics.Data.Database.Repositories
     {
         private const int MaxEventIds = 200;
 
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<EventDetailRepository> _logger;
 
         /// <summary>Initializes a new instance of the EventDetailRepository.</summary>
-        public EventDetailRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<EventDetailRepository> logger)
+        public EventDetailRepository(IUnitOfWork unitOfWork, ILogger<EventDetailRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -39,66 +39,69 @@ namespace VideoForensics.Data.Database.Repositories
 
             Guid[] ids = eventIds.Distinct().ToArray();
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-
-            List<EventDetection> detections = await db.EventDetections.AsNoTracking()
-                .Where(d => ids.Contains(d.EventId))
-                .ToListAsync(ct);
-            Guid[] detectionIds = detections.Select(d => d.Id).ToArray();
-
-            List<EventDetectionTypeOccurrence> occurrences = await db.EventDetectionTypeOccurrences.AsNoTracking()
-                .Where(o => detectionIds.Contains(o.EventDetectionId))
-                .OrderBy(o => o.DetectedAtUtc)
-                .ToListAsync(ct);
-
-            List<EventDetectionZone> zones = await db.EventDetectionZones.AsNoTracking()
-                .Where(z => detectionIds.Contains(z.EventDetectionId))
-                .OrderBy(z => z.ZoneId)
-                .ToListAsync(ct);
-
-            // People and alerts hang off the event itself, not the detection row.
-            List<EventDetectedPerson> people = await db.EventDetectedPersons.AsNoTracking()
-                .Where(p => ids.Contains(p.EventId))
-                .OrderBy(p => p.ProfileId)
-                .ToListAsync(ct);
-
-            List<EventSecurityAlert> alerts = await db.EventSecurityAlerts.AsNoTracking()
-                .Where(a => ids.Contains(a.EventId))
-                .OrderBy(a => a.Id)
-                .ToListAsync(ct);
-
-            // Group the child rows in memory by their parent key. This is a join over rows already filtered in SQL, not paging.
-            var detectionByEvent = detections
-                .GroupBy(d => d.EventId)
-                .ToDictionary(g => g.Key, g => g.First());
-            var eventByDetection = detections.ToDictionary(d => d.Id, d => d.EventId);
-            Dictionary<Guid, List<EventDetectionTypeOccurrence>> occurrencesByEvent = GroupByEvent(occurrences, o => eventByDetection[o.EventDetectionId]);
-            Dictionary<Guid, List<EventDetectionZone>> zonesByEvent = GroupByEvent(zones, z => eventByDetection[z.EventDetectionId]);
-            Dictionary<Guid, List<EventDetectedPerson>> peopleByEvent = GroupByEvent(people, p => p.EventId);
-            Dictionary<Guid, List<EventSecurityAlert>> alertsByEvent = GroupByEvent(alerts, a => a.EventId);
-
-            var result = new List<EventDetail>();
-            foreach (Guid eventId in ids)
+            return await _unitOfWork.ReadAsync<IReadOnlyList<EventDetail>>(async context =>
             {
-                bool hasRows = detectionByEvent.ContainsKey(eventId)
-                    || peopleByEvent.ContainsKey(eventId)
-                    || alertsByEvent.ContainsKey(eventId);
-                if (!hasRows)
+                VideoForensicsDbContext db = context.Db();
+
+                List<EventDetection> detections = await db.EventDetections.AsNoTracking()
+                    .Where(d => ids.Contains(d.EventId))
+                    .ToListAsync(ct);
+                Guid[] detectionIds = detections.Select(d => d.Id).ToArray();
+
+                List<EventDetectionTypeOccurrence> occurrences = await db.EventDetectionTypeOccurrences.AsNoTracking()
+                    .Where(o => detectionIds.Contains(o.EventDetectionId))
+                    .OrderBy(o => o.DetectedAtUtc)
+                    .ToListAsync(ct);
+
+                List<EventDetectionZone> zones = await db.EventDetectionZones.AsNoTracking()
+                    .Where(z => detectionIds.Contains(z.EventDetectionId))
+                    .OrderBy(z => z.ZoneId)
+                    .ToListAsync(ct);
+
+                // People and alerts hang off the event itself, not the detection row.
+                List<EventDetectedPerson> people = await db.EventDetectedPersons.AsNoTracking()
+                    .Where(p => ids.Contains(p.EventId))
+                    .OrderBy(p => p.ProfileId)
+                    .ToListAsync(ct);
+
+                List<EventSecurityAlert> alerts = await db.EventSecurityAlerts.AsNoTracking()
+                    .Where(a => ids.Contains(a.EventId))
+                    .OrderBy(a => a.Id)
+                    .ToListAsync(ct);
+
+                // Group the child rows in memory by their parent key. This is a join over rows already filtered in SQL, not paging.
+                var detectionByEvent = detections
+                    .GroupBy(d => d.EventId)
+                    .ToDictionary(g => g.Key, g => g.First());
+                var eventByDetection = detections.ToDictionary(d => d.Id, d => d.EventId);
+                Dictionary<Guid, List<EventDetectionTypeOccurrence>> occurrencesByEvent = GroupByEvent(occurrences, o => eventByDetection[o.EventDetectionId]);
+                Dictionary<Guid, List<EventDetectionZone>> zonesByEvent = GroupByEvent(zones, z => eventByDetection[z.EventDetectionId]);
+                Dictionary<Guid, List<EventDetectedPerson>> peopleByEvent = GroupByEvent(people, p => p.EventId);
+                Dictionary<Guid, List<EventSecurityAlert>> alertsByEvent = GroupByEvent(alerts, a => a.EventId);
+
+                var result = new List<EventDetail>();
+                foreach (Guid eventId in ids)
                 {
-                    continue;
+                    bool hasRows = detectionByEvent.ContainsKey(eventId)
+                        || peopleByEvent.ContainsKey(eventId)
+                        || alertsByEvent.ContainsKey(eventId);
+                    if (!hasRows)
+                    {
+                        continue;
+                    }
+
+                    result.Add(new EventDetail(
+                        eventId,
+                        detectionByEvent.GetValueOrDefault(eventId),
+                        occurrencesByEvent.GetValueOrDefault(eventId) ?? [],
+                        zonesByEvent.GetValueOrDefault(eventId) ?? [],
+                        peopleByEvent.GetValueOrDefault(eventId) ?? [],
+                        alertsByEvent.GetValueOrDefault(eventId) ?? []));
                 }
 
-                result.Add(new EventDetail(
-                    eventId,
-                    detectionByEvent.GetValueOrDefault(eventId),
-                    occurrencesByEvent.GetValueOrDefault(eventId) ?? [],
-                    zonesByEvent.GetValueOrDefault(eventId) ?? [],
-                    peopleByEvent.GetValueOrDefault(eventId) ?? [],
-                    alertsByEvent.GetValueOrDefault(eventId) ?? []));
-            }
-
-            _logger.LogDebug("Loaded event detail rows for {EventCount} of {RequestedCount} events", result.Count, ids.Length);
-            return result;
+                _logger.LogDebug("Loaded event detail rows for {EventCount} of {RequestedCount} events", result.Count, ids.Length);
+                return result;
+            }, ct);
         }
 
         /// <summary>Groups rows by the event each one belongs to, keeping the incoming order within each group.</summary>

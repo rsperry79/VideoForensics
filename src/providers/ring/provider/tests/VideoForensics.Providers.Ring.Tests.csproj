@@ -22,6 +22,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
     <ProjectReference Include="../../../../client/core/VideoForensics.Client.Core/src/VideoForensics.Client.Core.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.csproj" />

@@ -18,6 +18,10 @@
             @if (_nowSeconds is double)
             {
                 <span class="playback-timeline-now" data-testid="timeline-now">@L["PlaybackNow", Zone.Format(NowUtc, "yyyy-MM-dd HH:mm:ss")].Value</span>
+                @if (EventType is { } eventType && !string.IsNullOrWhiteSpace(eventType))
+                {
+                    <span class="playback-timeline-event-type" data-testid="timeline-event-type">@L["PlaybackEventType", EventTypeLabel(eventType)].Value</span>
+                }
             }
         </div>
     </div>
@@ -88,6 +92,10 @@
     /// <summary>The histogram to draw below the scrub timeline. Any chart can be fed here.</summary>
     [Parameter]
     public RenderFragment? Histogram { get; set; }
+
+    /// <summary>The event type of the clip under review (for example "person"). Shown after the playhead time when set.</summary>
+    [Parameter]
+    public string? EventType { get; set; }
 
     /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used.</summary>
     [CascadingParameter]
@@ -199,6 +207,14 @@
         {
             // The component is disposing; the loop ends.
         }
+    }
+
+    /// <summary>The event type's name: the localized label when one exists, else the raw value with its first letter capitalised.</summary>
+    private string EventTypeLabel(string eventType)
+    {
+        string raw = eventType.Trim();
+        LocalizedString label = L[$"EventTypeLabel_{raw}"];
+        return label.ResourceNotFound ? char.ToUpperInvariant(raw[0]) + raw[1..] : label.Value;
     }
 
     private static double SecondsSinceEpoch(DateTime utc) => (utc - DateTime.UnixEpoch).TotalSeconds;

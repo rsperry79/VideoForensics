@@ -237,13 +237,11 @@
     /// <param name="ExportedAtUtc">Timestamp when evidence was exported, in UTC.</param>
     /// <param name="ExportedByUserName">Identifier of the operator who performed the export.</param>
     /// <param name="CaseReference">Reference identifier for the associated legal case, if applicable. Null otherwise.</param>
-    /// <param name="RecipientDescription">Description of the intended recipient or purpose of the export. Null if not specified.</param>
     /// <param name="ItemCount">Number of evidence items included in this export.</param>
     public record ExportEventDto(
         DateTime ExportedAtUtc,
         string ExportedByUserName,
         string? CaseReference,
-        string? RecipientDescription,
         int ItemCount
     );
 
@@ -473,7 +471,6 @@
                 ExportedAtUtc: model.ExportedAtUtc,
                 ExportedByUserName: model.ExportedByUserName,
                 CaseReference: model.CaseReference,
-                RecipientDescription: model.RecipientDescription,
                 ItemCount: model.ItemCount
             );
         }

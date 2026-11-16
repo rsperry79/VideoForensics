@@ -13,13 +13,13 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Maximum note length in characters, matching the database column limit.</summary>
         public const int MaxBodyLength = 4000;
 
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<NoteRepository> _logger;
 
         /// <summary>Initializes a new instance of the NoteRepository.</summary>
-        public NoteRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<NoteRepository> logger)
+        public NoteRepository(IUnitOfWork unitOfWork, ILogger<NoteRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -38,40 +38,44 @@ namespace VideoForensics.Data.Database.Repositories
                 throw new ArgumentException($"Note body cannot exceed {MaxBodyLength} characters.", nameof(body));
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                string? caseNumber = null;
-                if (kind == NoteTargetKind.Case)
+                (Note note, string? caseNumber) = await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    ForensicCase? forensicCase = await db.Cases
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(c => c.Id == targetId, ct);
-                    if (forensicCase is null)
+                    VideoForensicsDbContext db = context.Db();
+                    string? savedCaseNumber = null;
+                    if (kind == NoteTargetKind.Case)
                     {
-                        throw new KeyNotFoundException($"Case {targetId} not found.");
+                        ForensicCase? forensicCase = await db.Cases
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(c => c.Id == targetId, ct);
+                        if (forensicCase is null)
+                        {
+                            throw new KeyNotFoundException($"Case {targetId} not found.");
+                        }
+
+                        if (forensicCase.Status == CaseStatus.Closed)
+                        {
+                            throw new InvalidOperationException($"Cannot add notes to a closed case {targetId}.");
+                        }
+
+                        savedCaseNumber = forensicCase.CaseNumber;
                     }
 
-                    if (forensicCase.Status == CaseStatus.Closed)
+                    var newNote = new Note
                     {
-                        throw new InvalidOperationException($"Cannot add notes to a closed case {targetId}.");
-                    }
+                        Id = Guid.NewGuid(),
+                        TargetKind = kind,
+                        TargetId = targetId,
+                        Body = trimmedBody,
+                        AddedBy = addedBy,
+                        AddedAtUtc = DateTime.UtcNow,
+                    };
 
-                    caseNumber = forensicCase.CaseNumber;
-                }
-
-                var note = new Note
-                {
-                    Id = Guid.NewGuid(),
-                    TargetKind = kind,
-                    TargetId = targetId,
-                    Body = trimmedBody,
-                    AddedBy = addedBy,
-                    AddedAtUtc = DateTime.UtcNow,
-                };
-
-                _ = db.Notes.Add(note);
-                _ = await db.SaveChangesAsync(ct);
+                    _ = db.Notes.Add(newNote);
+                    _ = await db.SaveChangesAsync(ct);
+                    return (newNote, savedCaseNumber);
+                }, ct);
 
                 if (caseNumber is not null)
                 {
@@ -95,12 +99,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all notes for a target of the given kind, oldest first.</summary>
         public async Task<IReadOnlyList<Note>> ListAsync(NoteTargetKind kind, Guid targetId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Notes
-                .AsNoTracking()
-                .Where(n => n.TargetKind == kind && n.TargetId == targetId)
-                .OrderBy(n => n.AddedAtUtc)
-                .ToListAsync(ct);
+            return await _unitOfWork.ReadAsync<IReadOnlyList<Note>>(async context =>
+            {
+                return await context.Db().Notes
+                    .AsNoTracking()
+                    .Where(n => n.TargetKind == kind && n.TargetId == targetId)
+                    .OrderBy(n => n.AddedAtUtc)
+                    .ToListAsync(ct);
+            }, ct);
         }
     }
 }

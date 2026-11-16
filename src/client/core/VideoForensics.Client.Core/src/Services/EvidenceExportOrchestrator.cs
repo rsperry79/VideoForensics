@@ -66,8 +66,6 @@ namespace VideoForensics.Client.Core.Services
         /// <remarks>The archive is written under the exports location stored in the database, never a caller-supplied path.</remarks>
         public async Task<ExportResult> ExportEvidenceAsync(
             Guid caseId,
-            string? recipientDescription,
-            string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null)
         {
@@ -139,7 +137,7 @@ namespace VideoForensics.Client.Core.Services
             }
 
             string exportsRoot = await ResolveExportsRootAsync(ct);
-            return await ExportCoreAsync(mediaItemIds, snapshotCaptureIds, exportsRoot, forensicCase.CaseNumber, recipientDescription, passphrase, reportEntries, ct);
+            return await ExportCoreAsync(mediaItemIds, snapshotCaptureIds, exportsRoot, forensicCase.CaseNumber, reportEntries, ct);
         }
 
         /// <summary>Exports an explicit set of media items, not tied to a case. Not part of <see cref="IEvidenceExportService"/>.</summary>
@@ -147,12 +145,10 @@ namespace VideoForensics.Client.Core.Services
             IReadOnlyList<Guid> mediaItemIds,
             string outputDirectory,
             string? caseReference,
-            string? recipientDescription,
-            string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null)
         {
-            return await ExportCoreAsync(mediaItemIds, [], ResolveSafeOutputDirectory(outputDirectory), caseReference, recipientDescription, passphrase, [], ct);
+            return await ExportCoreAsync(mediaItemIds, [], ResolveSafeOutputDirectory(outputDirectory), caseReference, [], ct);
         }
 
         /// <summary>Reads the stored ExportsLocation and resolves it to the effective exports root (default when unset).</summary>
@@ -168,8 +164,6 @@ namespace VideoForensics.Client.Core.Services
             IReadOnlyList<Guid> snapshotCaptureIds,
             string resolvedOutputDirectory,
             string? caseReference,
-            string? recipientDescription,
-            string? passphrase,
             IReadOnlyList<(string Name, string Json)> extraEntries,
             CancellationToken ct)
         {
@@ -180,11 +174,9 @@ namespace VideoForensics.Client.Core.Services
             try
             {
                 _logger.LogInformation(
-                    "Starting evidence export for {ItemCount} item(s). Case: {CaseRef}, Recipient: {Recipient}, Encrypted: {IsEncrypted}",
+                    "Starting evidence export for {ItemCount} item(s). Case: {CaseRef}",
                     mediaItemIds.Count,
-                    SanitizeForLog(caseReference ?? "[no case reference]"),
-                    SanitizeForLog(recipientDescription ?? "[no recipient]"),
-                    !string.IsNullOrEmpty(passphrase));
+                    SanitizeForLog(caseReference ?? "[no case reference]"));
 
                 // Ensure output directory exists
                 _ = Directory.CreateDirectory(resolvedOutputDirectory);
@@ -262,7 +254,6 @@ namespace VideoForensics.Client.Core.Services
                     ExportedAtUtc = DateTime.UtcNow,
                     ExportedByUserName = Environment.UserName,
                     CaseReference = caseReference,
-                    RecipientDescription = recipientDescription,
                     ItemCount = itemsToExport.Count,
                     Items = itemsToExport.Select(x => new
                     {
@@ -319,11 +310,6 @@ namespace VideoForensics.Client.Core.Services
 
                 using (var zipStream = new ZipOutputStream(File.Create(archivePath)))
                 {
-                    if (!string.IsNullOrEmpty(passphrase))
-                    {
-                        zipStream.Password = passphrase;
-                    }
-
                     // Add each media file
                     foreach ((MediaItem? item, _) in itemsToExport)
                     {
@@ -423,10 +409,9 @@ namespace VideoForensics.Client.Core.Services
                 _ = await _exportRecordService.RecordExportAsync(
                     Environment.UserName,
                     caseReference,
-                    recipientDescription,
                     archiveFileName,
                     archiveHash,
-                    wasEncrypted: !string.IsNullOrEmpty(passphrase),
+                    wasEncrypted: false,
                     exportedItems,
                     ct);
 
@@ -437,11 +422,10 @@ namespace VideoForensics.Client.Core.Services
                 result.ItemsExcludedForFailedIntegrity = excludedItems;
 
                 _logger.LogInformation(
-                    "Export completed successfully: {ArchivePath}, {ItemCount} items, hash={Hash}, encrypted={IsEncrypted}",
+                    "Export completed successfully: {ArchivePath}, {ItemCount} items, hash={Hash}",
                     SanitizeForLog(archivePath),
                     itemsToExport.Count,
-                    archiveHash,
-                    !string.IsNullOrEmpty(passphrase));
+                    archiveHash);
 
                 return result;
             }

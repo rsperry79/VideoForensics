@@ -36,6 +36,9 @@ namespace VideoForensics.Data.Core.Tests.Services
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
+        private readonly Mock<IDingIdLinkRepository> _mockDingIdLinkRepository = new();
+        private readonly Mock<IDeviceSettingChangeRepository> _mockDeviceSettingChangeRepository = new();
+        private readonly Mock<IDetectionEntityProvider> _mockDetectionEntityProvider = new();
 
         public VideoForensicsDataClientTests()
         {
@@ -45,7 +48,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             _mockDeviceRepository = new Mock<IDeviceRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockEventRepository = new Mock<IEventRepository>();
-            _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            // DefaultValue.Mock: the list query returns an empty result, as the old per-context mock did.
+            _mockMediaItemRepository = new Mock<IMediaItemRepository> { DefaultValue = DefaultValue.Mock };
             _mockDeviceHealthRepository = new Mock<IDeviceHealthRepository>();
             _mockDeviceDetailsRepository = new Mock<IDeviceDetailsRepository>();
             _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
@@ -78,6 +82,9 @@ namespace VideoForensics.Data.Core.Tests.Services
                 _mockActionLogRepository.Object,
                 _mockLogger.Object,
                 _mockMediaAnalysis.Object,
+                _mockDingIdLinkRepository.Object,
+                _mockDeviceSettingChangeRepository.Object,
+                _mockDetectionEntityProvider.Object,
                 _mockEvidenceChangeNotifier.Object,
                 _mockDeviceHealthChangeNotifier.Object);
         }
@@ -253,14 +260,10 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDownloadEventRepo = new Mock<IDownloadEventRepository>();
-            var mockMediaItemRepo = new Mock<IMediaItemRepository>();
-            var mockActionLogRepo = new Mock<IActionLogRepository>();
-            var mockDeviceRepo = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepo.Object);
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepo.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepo.Object);
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepo.Object);
+            var mockDownloadEventRepo = _mockDownloadEventRepository;
+            var mockMediaItemRepo = _mockMediaItemRepository;
+            var mockActionLogRepo = _mockActionLogRepository;
+            var mockDeviceRepo = _mockDeviceRepository;
             _ = mockMediaItemRepo
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, recordedAt, recordedAt, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([existingClip]);
@@ -313,19 +316,15 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDownloadEventRepoInContext = new Mock<IDownloadEventRepository>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockDownloadEventRepoInContext = _mockDownloadEventRepository;
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
             // No existing clip for this recording, so the media item is added rather than updated.
             _ = mockMediaItemRepoInContext
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, mediaItem.RecordedAtUtc, mediaItem.RecordedAtUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
@@ -401,15 +400,11 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDownloadEventRepoInContext = new Mock<IDownloadEventRepository>();
-            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockDownloadEventRepoInContext = _mockDownloadEventRepository;
+            var mockMediaItemRepoInContext = _mockMediaItemRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
-            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
@@ -475,13 +470,10 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDownloadEventRepoInContext = new Mock<IDownloadEventRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockDownloadEventRepoInContext = _mockDownloadEventRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
+            var mockDeviceRepoInContext = _mockDeviceRepository;
 
-            _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
@@ -547,13 +539,10 @@ namespace VideoForensics.Data.Core.Tests.Services
             string email = "john@example.com";
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockUserRepoInContext = new Mock<IUserRepository>();
-            var mockProviderAccountRepoInContext = new Mock<IProviderAccountRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockUserRepoInContext = _mockUserRepository;
+            var mockProviderAccountRepoInContext = _mockProviderAccountRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.Users).Returns(mockUserRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ProviderAccounts).Returns(mockProviderAccountRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             // Setup Users repository to return empty list
             _ = mockUserRepoInContext
@@ -646,13 +635,10 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockUserRepoInContext = new Mock<IUserRepository>();
-            var mockProviderAccountRepoInContext = new Mock<IProviderAccountRepository>();
-            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockUserRepoInContext = _mockUserRepository;
+            var mockProviderAccountRepoInContext = _mockProviderAccountRepository;
+            var mockActionLogRepoInContext = _mockActionLogRepository;
 
-            _ = mockContext.Setup(x => x.Users).Returns(mockUserRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ProviderAccounts).Returns(mockProviderAccountRepoInContext.Object);
-            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             _ = mockUserRepoInContext
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
@@ -770,9 +756,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             string address = "123 Main St";
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockLocationRepoInContext = new Mock<ILocationRepository>();
+            var mockLocationRepoInContext = _mockLocationRepository;
 
-            _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
 
             // Setup Locations repository to return null (no existing location)
             _ = mockLocationRepoInContext
@@ -819,9 +804,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockLocationRepoInContext = new Mock<ILocationRepository>();
+            var mockLocationRepoInContext = _mockLocationRepository;
 
-            _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
 
             _ = mockLocationRepoInContext
                 .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
@@ -854,8 +838,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             string providerLocationId = "location-link-new";
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockLocationRepoInContext = new Mock<ILocationRepository>();
-            _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
+            var mockLocationRepoInContext = _mockLocationRepository;
             _ = mockLocationRepoInContext
                 .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Location?)null);
@@ -890,8 +873,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockLocationRepoInContext = new Mock<ILocationRepository>();
-            _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
+            var mockLocationRepoInContext = _mockLocationRepository;
             _ = mockLocationRepoInContext
                 .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingLocation);
@@ -927,9 +909,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             bool isOnline = true;
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockDeviceRepoInContext = _mockDeviceRepository;
 
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
 
             // Setup Devices repository to return empty list for both the location-scoped lookup and
             // the account-wide fallback lookup (this device genuinely doesn't exist anywhere yet).
@@ -985,8 +966,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetByLocationIdAsync(newLocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
@@ -1018,9 +998,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             bool? isOnline = null;
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockDeviceRepoInContext = _mockDeviceRepository;
 
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
@@ -1051,8 +1030,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         {
             var locationId = Guid.NewGuid();
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = _mockUnitOfWork
@@ -1085,8 +1063,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         {
             var locationId = Guid.NewGuid();
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = _mockUnitOfWork
@@ -1116,8 +1093,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         {
             var locationId = Guid.NewGuid();
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = _mockUnitOfWork
@@ -1148,8 +1124,7 @@ namespace VideoForensics.Data.Core.Tests.Services
         {
             var locationId = Guid.NewGuid();
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = _mockUnitOfWork
@@ -1199,8 +1174,7 @@ namespace VideoForensics.Data.Core.Tests.Services
                 Owned = true
             };
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1219,8 +1193,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             // Arrange: Ring's device time_zone must land in Devices.TimeZoneId (it was previously dropped).
             var locationId = Guid.NewGuid();
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
             _ = _mockUnitOfWork
@@ -1241,8 +1214,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             var locationId = Guid.NewGuid();
             var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-tz2", Name = "Front", Type = "doorbell", TimeZoneId = null };
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1263,8 +1235,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             var locationId = Guid.NewGuid();
             var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash", Name = "Front", Type = "doorbell" };
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1284,8 +1255,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             var locationId = Guid.NewGuid();
             var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash2", Name = "Front", Type = "doorbell" };
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1306,10 +1276,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-chg", Name = "Front", Type = "doorbell", LightBrightness = 50 };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(LightBrightness: 80);
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
-            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
+            var mockChangeRepoInContext = _mockDeviceSettingChangeRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1341,10 +1309,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-same", Name = "Front", Type = "doorbell", LightBrightness = 80 };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(LightBrightness: 80);
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
-            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
+            var mockChangeRepoInContext = _mockDeviceSettingChangeRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1368,10 +1334,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-first", Name = "Front", Type = "doorbell", LightBrightness = null };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(LightBrightness: 80);
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
-            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
+            var mockChangeRepoInContext = _mockDeviceSettingChangeRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
@@ -1408,10 +1372,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1 };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
-            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
+            var mockChangeRepoInContext = _mockDeviceSettingChangeRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<object?>>>(), It.IsAny<CancellationToken>()))
@@ -1445,10 +1407,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var deviceId = Guid.NewGuid();
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
-            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
+            var mockChangeRepoInContext = _mockDeviceSettingChangeRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync((Device?)null);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<object?>>>(), It.IsAny<CancellationToken>()))
@@ -1470,10 +1430,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-null", Name = "Chime", Type = "chime", ChimeVolume = null };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
-            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
+            var mockChangeRepoInContext = _mockDeviceSettingChangeRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<object?>>>(), It.IsAny<CancellationToken>()))
@@ -1509,9 +1467,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockDeviceRepoInContext = _mockDeviceRepository;
 
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
 
             // Not found under the real location...
             _ = mockDeviceRepoInContext
@@ -1567,8 +1524,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([existingDevice]);
@@ -1607,9 +1563,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockDeviceRepoInContext = _mockDeviceRepository;
 
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
 
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
@@ -1657,8 +1612,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
             _ = _mockUnitOfWork
@@ -1691,8 +1645,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
-            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            var mockDeviceRepoInContext = _mockDeviceRepository;
             _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
             _ = _mockUnitOfWork
@@ -1714,9 +1667,8 @@ namespace VideoForensics.Data.Core.Tests.Services
             var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "event-101", EventType = "motion" };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            var mockEventRepoInContext = new Mock<IEventRepository>();
+            var mockEventRepoInContext = _mockEventRepository;
             _ = mockEventRepoInContext.Setup(x => x.UpsertAsync(evt, It.IsAny<CancellationToken>())).ReturnsAsync(evt);
-            _ = mockContext.Setup(x => x.Events).Returns(mockEventRepoInContext.Object);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Event>>>(), It.IsAny<CancellationToken>()))

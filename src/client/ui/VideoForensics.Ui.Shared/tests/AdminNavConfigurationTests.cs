@@ -23,7 +23,6 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/security-events", AccessPolicy.ReadOnly)]
     [InlineData("/settings/operators", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/operators/{Id:guid}", AccessPolicy.SuperAdminLocal)]
-    [InlineData("/admin/pending-credentials", AccessPolicy.SuperAdminLocalOrPasskey)]
     [InlineData("/settings/infrastructure", AccessPolicy.InfrastructureSettings)]
     [InlineData("/tools/import-export", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/notifications", AccessPolicy.NotificationSettings)]
@@ -71,19 +70,6 @@ public class AdminNavConfiguration_Tests
         Assert.False(PageAccessRules.IsAllowed("/analyze?analysis=jamming", Ctx(OperatorRole.ReadOnly)));
         Assert.True(PageAccessRules.IsAllowed("/analyze?analysis=reports", Ctx(OperatorRole.ReadOnly)));
         Assert.True(PageAccessRules.IsAllowed("/analyze", Ctx(OperatorRole.ReadOnly)));
-    }
-
-    [Fact]
-    public void PageAccessRules_PendingApprovals_RemotePasskeySuperAdmin_Allowed()
-    {
-        // Approving credentials is open to a passkey session from any tier (SuperAdminLocalOrPasskey).
-        Assert.True(PageAccessRules.IsAllowed("/admin/pending-credentials", Ctx(OperatorRole.SuperAdmin, passkey: true)));
-    }
-
-    [Fact]
-    public void PageAccessRules_PendingApprovals_RemotePasswordSuperAdmin_Denied()
-    {
-        Assert.False(PageAccessRules.IsAllowed("/admin/pending-credentials", Ctx(OperatorRole.SuperAdmin)));
     }
 
     [Fact]

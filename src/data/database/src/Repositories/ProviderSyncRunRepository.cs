@@ -9,40 +9,42 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for ProviderSyncRun rows.</summary>
     public class ProviderSyncRunRepository : IProviderSyncRunRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
 
         /// <summary>Initializes a new instance of the ProviderSyncRunRepository.</summary>
-        public ProviderSyncRunRepository(IDbContextFactory<VideoForensicsDbContext> factory)
+        public ProviderSyncRunRepository(IUnitOfWork unitOfWork)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
         }
 
         /// <summary>Records a completed sync attempt.</summary>
         public async Task AddAsync(ProviderSyncRun run, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = db.ProviderSyncRuns.Add(run);
-            _ = await db.SaveChangesAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = db.ProviderSyncRuns.Add(run);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
         /// <summary>Lists every sync run for an account, newest StartedUtc first.</summary>
         public async Task<IReadOnlyList<ProviderSyncRun>> ListByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ProviderSyncRuns
+            return await _unitOfWork.ReadAsync(context => context.Db().ProviderSyncRuns
                 .AsNoTracking()
                 .Where(r => r.ProviderAccountId == providerAccountId)
                 .OrderByDescending(r => r.StartedUtc)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         /// <summary>Gets a single sync run by ID, or null if none exists.</summary>
-        public async Task<ProviderSyncRun?> GetAsync(Guid id, CancellationToken ct)
+        public Task<ProviderSyncRun?> GetAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ProviderSyncRuns
+            return _unitOfWork.ReadAsync(context => context.Db().ProviderSyncRuns
                 .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.Id == id, ct);
+                .FirstOrDefaultAsync(r => r.Id == id, ct), ct);
         }
     }
 }

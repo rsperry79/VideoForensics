@@ -21,10 +21,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// never intervals or IsEnabled (the user may have edited them while the run was in flight). No-op if the row no longer exists.</summary>
         Task RecordEventRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct);
 
-        /// <summary>Records that a snapshot/RSSI poll ran: updates ONLY SnapshotLastRunUtc and SnapshotNextRunUtc of the matching row,
-        /// never intervals or IsEnabled. No-op if the row no longer exists.</summary>
-        Task RecordSnapshotRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct);
-
 
         /// <summary>Sets the scheduled backfill cursor (see <c>SyncSchedule.BackfillCursorUtc</c>); a vanished row is a no-op.</summary>
         Task RecordBackfillCursorAsync(Guid providerAccountId, DateTime? cursorUtc, CancellationToken ct);

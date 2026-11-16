@@ -23,6 +23,7 @@
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Client.Core.csproj" />
     <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
     <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />

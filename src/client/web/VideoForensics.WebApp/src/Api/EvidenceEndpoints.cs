@@ -39,11 +39,7 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.BadRequest("A case id is required to export evidence.");
             }
 
-            ExportResult result = await exportService.ExportEvidenceAsync(
-                request.CaseId,
-                request.RecipientDescription,
-                request.Passphrase,
-                ct);
+            ExportResult result = await exportService.ExportEvidenceAsync(request.CaseId, ct);
 
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             await auditLog.LogAsync(
@@ -246,13 +242,7 @@ namespace VideoForensics.Client.WebApp.Api
 
     /// <summary>Request to export one case's reports and evidence to an archive.</summary>
     /// <param name="CaseId">The case to export. Required; <see cref="Guid.Empty"/> is rejected.</param>
-    /// <param name="RecipientDescription">Description of the archive recipient/purpose.</param>
-    /// <param name="Passphrase">Optional passphrase for AES-256 encryption.</param>
-    public record ExportEvidenceRequest(
-        Guid CaseId,
-        string? RecipientDescription,
-        string? Passphrase
-    );
+    public record ExportEvidenceRequest(Guid CaseId);
 
     /// <summary>Request to validate all devices with optional date range override.</summary>
     /// <param name="FromUtcOverride">Override default start date (default: 90 days ago).</param>

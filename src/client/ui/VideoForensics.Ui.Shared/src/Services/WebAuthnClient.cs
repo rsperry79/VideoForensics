@@ -265,7 +265,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
                 "api/v1/auth/webauthn/username-assertion-complete",
-                new { nonce, assertionResponse = assertion, twoFactorCorrelationId });
+                new { nonce, assertionResponse = assertion, twoFactorCorrelationId, username });
 
             if (!completeResponse.IsSuccessStatusCode)
             {
@@ -340,7 +340,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
                 "api/v1/auth/webauthn/username-assertion-complete",
-                new { nonce, assertionResponse = assertion });
+                new { nonce, assertionResponse = assertion, username });
 
             if (!completeResponse.IsSuccessStatusCode)
             {

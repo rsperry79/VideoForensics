@@ -6,9 +6,9 @@
 @inject IStringLocalizer<SharedResources> L
 @inject IMediaFlagRepository MediaFlagRepository
 
-<div class="clip-navigator d-flex align-items-center gap-2" data-testid="clip-navigator" tabindex="0" role="group" aria-label="@L["ClipNavigatorLabel"].Value" @onkeydown="OnKeyDown">
-    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorPrevious"].Value" Disabled="@_previousDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Previous))" data-testid="clip-nav-prev" />
+<div class="clip-navigator d-flex flex-wrap align-items-center gap-2" data-testid="clip-navigator" tabindex="0" role="group" aria-label="@L["ClipNavigatorLabel"].Value" @onkeydown="OnKeyDown">
     <span class="small" data-testid="clip-nav-total">@Readout</span>
+    <SfButton CssClass="e-outline" Content="@L["ClipNavigatorPrevious"].Value" Disabled="@_previousDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Previous))" data-testid="clip-nav-prev" />
     <SfButton CssClass="e-outline" Content="@L["ClipNavigatorNext"].Value" Disabled="@_nextDisabled" OnClick="@(() => MoveAsync(MediaFlagNeighbour.Next))" data-testid="clip-nav-next" />
     <div class="visually-hidden" aria-live="polite" data-testid="clip-nav-status">@_status</div>
 </div>

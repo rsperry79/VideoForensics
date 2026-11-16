@@ -181,10 +181,10 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task SyncNow_CustomBody_PassesStartAndEnd()
         {
             _ = await _client.PostAsync(SyncNowUrl, Json(
-                "{\"syncType\":\"Snapshots\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-01T00:00:00Z\",\"endUtc\":\"2026-10-02T00:00:00Z\"}"));
+                "{\"syncType\":\"Events\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-01T00:00:00Z\",\"endUtc\":\"2026-10-02T00:00:00Z\"}"));
 
             AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(AccountSyncType.Snapshots, request.Type);
+            Assert.Equal(AccountSyncType.Events, request.Type);
             Assert.False(request.AllHistory);
             Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), request.FromUtc);
             Assert.Equal(new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc), request.ToUtc);

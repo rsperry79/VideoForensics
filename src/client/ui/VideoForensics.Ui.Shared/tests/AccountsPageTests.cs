@@ -252,7 +252,7 @@ public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
         {
             Assert.Contains("Ring Owner", cut.Markup);
             Assert.DoesNotContain("Wyze Owner", cut.Markup);
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 }
 

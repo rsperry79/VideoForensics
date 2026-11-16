@@ -187,8 +187,6 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="UseAdvancedJammingSchedule">Indicates whether the advanced jamming detection schedule is active.</param>
     /// <param name="EventNextRunUtc">The UTC timestamp when the next event poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="EventLastRunUtc">The UTC timestamp of the most recent event poll run; null if never run.</param>
-    /// <param name="SnapshotNextRunUtc">The UTC timestamp when the next snapshot/RSSI poll is scheduled to run; null if no future poll is scheduled.</param>
-    /// <param name="SnapshotLastRunUtc">The UTC timestamp of the most recent snapshot/RSSI poll run; null if never run.</param>
     public record SyncScheduleDto(
         Guid Id,
         Guid ProviderAccountId,
@@ -197,9 +195,7 @@ namespace VideoForensics.Core.Api.Contracts
         bool IsEnabled,
         bool UseAdvancedJammingSchedule,
         DateTime? EventNextRunUtc,
-        DateTime? EventLastRunUtc,
-        DateTime? SnapshotNextRunUtc,
-        DateTime? SnapshotLastRunUtc
+        DateTime? EventLastRunUtc
     );
 
     /// <summary>Extension methods for mapping SyncSchedule entities to/from SyncScheduleDtos.</summary>
@@ -218,9 +214,7 @@ namespace VideoForensics.Core.Api.Contracts
                 IsEnabled: entity.IsEnabled,
                 UseAdvancedJammingSchedule: entity.UseAdvancedJammingSchedule,
                 EventNextRunUtc: entity.EventNextRunUtc,
-                EventLastRunUtc: entity.EventLastRunUtc,
-                SnapshotNextRunUtc: entity.SnapshotNextRunUtc,
-                SnapshotLastRunUtc: entity.SnapshotLastRunUtc
+                EventLastRunUtc: entity.EventLastRunUtc
             );
         }
 
@@ -238,9 +232,7 @@ namespace VideoForensics.Core.Api.Contracts
                 IsEnabled = dto.IsEnabled,
                 UseAdvancedJammingSchedule = dto.UseAdvancedJammingSchedule,
                 EventNextRunUtc = dto.EventNextRunUtc,
-                EventLastRunUtc = dto.EventLastRunUtc,
-                SnapshotNextRunUtc = dto.SnapshotNextRunUtc,
-                SnapshotLastRunUtc = dto.SnapshotLastRunUtc
+                EventLastRunUtc = dto.EventLastRunUtc
             };
         }
     }
@@ -262,7 +254,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// Request body for POST /api/v1/accounts/provider-accounts/{id}/sync-now. A missing body runs the legacy sync.
     /// Null fields default to SyncType "Events" and RangeKind "SinceLast".
     /// </summary>
-    /// <param name="SyncType">"All" (events and snapshots), "Config", "Snapshots" or "Events".</param>
+    /// <param name="SyncType">"All" (events and device configuration) or "Events".</param>
     /// <param name="RangeKind">"SinceLast", "Days", "Custom" or "All" (the provider's retained history).</param>
     /// <param name="Days">Days back from now, 1 to 3650. Required when RangeKind is "Days".</param>
     /// <param name="StartUtc">Range start, required for "Custom". Must be before EndUtc.</param>

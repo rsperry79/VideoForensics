@@ -19,7 +19,7 @@ using VideoForensics.Client.MauiApp.ServerDiscovery;
 using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Logging.DependencyInjection;
+using SperryDev.Logger.DependencyInjection;
 
 namespace VideoForensics.Client.MauiApp
 {

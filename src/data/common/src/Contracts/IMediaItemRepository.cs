@@ -66,6 +66,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// </summary>
         Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct);
 
+        /// <summary>
+        /// A device's all-time bit rate baseline (count, mean and sample std dev of every stream-reported bitrate), with no date
+        /// window. Uses the same rows as <see cref="GetMeasuredBitrateByDeviceAsync"/>. The aggregates run in SQL.
+        /// </summary>
+        Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct);
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct);
 

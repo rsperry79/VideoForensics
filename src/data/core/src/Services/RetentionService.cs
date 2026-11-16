@@ -14,6 +14,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILegalHoldRepository _legalHoldRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
+        private readonly IActionLogRepository _actionLogRepository;
         private readonly ILogger<RetentionService> _logger;
         private readonly int _retentionDays;
         private readonly IMediaPathResolver _paths;
@@ -24,6 +25,7 @@ namespace VideoForensics.Data.Core.Services
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<RetentionService> logger,
+            IActionLogRepository actionLogRepository,
             int retentionDays = 90,
             IMediaPathResolver? paths = null)
         {
@@ -32,6 +34,7 @@ namespace VideoForensics.Data.Core.Services
             _unitOfWork = unitOfWork;
             _actionLogger = actionLogger;
             _logger = logger;
+            _actionLogRepository = actionLogRepository;
             _retentionDays = retentionDays;
             _paths = paths ?? PassThroughMediaPathResolver.Instance;
         }
@@ -62,28 +65,21 @@ namespace VideoForensics.Data.Core.Services
                 {
                     try
                     {
+                        string? clipPath = null;
+                        string? thumbnailPath = null;
+
                         _ = await _unitOfWork.ExecuteAsync(async context =>
                         {
-                            string filePath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
-                            if (File.Exists(filePath))
-                            {
-                                File.Delete(filePath);
-                                _logger.LogDebug("Deleted file during retention purge: {FilePath}", filePath);
-                            }
-
+                            clipPath = await _paths.ToAbsoluteAsync(item.FilePath, ct);
                             // The stored thumbnail is derived from the clip, so it goes too, even if the clip was already gone.
-                            string thumbnail = MediaThumbnailService.ThumbnailPathFor(filePath);
-                            if (File.Exists(thumbnail))
-                            {
-                                File.Delete(thumbnail);
-                            }
+                            thumbnailPath = MediaThumbnailService.ThumbnailPathFor(clipPath);
 
                             item.IsPurged = true;
                             item.PurgedAtUtc = DateTime.UtcNow;
                             item.PurgeReason = $"Retention policy: older than {_retentionDays} days";
 
-                            await context.MediaItems.UpdateAsync(item, ct);
-                            _ = await context.ActionLog.AppendAsync(
+                            await _mediaItemRepository.UpdateAsync(item, ct);
+                            _ = await _actionLogRepository.AppendAsync(
                                 Environment.UserName,
                                 ActorType.Human,
                                 "MediaPurged",
@@ -97,6 +93,17 @@ namespace VideoForensics.Data.Core.Services
 
                             return true;
                         }, ct);
+
+                        // Files are removed only after the commit, so a rolled-back purge never deletes evidence.
+                        if (clipPath is not null && thumbnailPath is not null)
+                        {
+                            if (DeletePurgedFile(item, clipPath))
+                            {
+                                _logger.LogDebug("Deleted file during retention purge: {FilePath}", clipPath);
+                            }
+
+                            _ = DeletePurgedFile(item, thumbnailPath);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -113,6 +120,30 @@ namespace VideoForensics.Data.Core.Services
             {
                 _logger.LogError("Error during retention purge: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Deletes a file whose purge has already committed. Returns true if a file was deleted.
+        /// A failure is logged, not thrown: the purge stands, and the leftover file is an orphan that a later sweep can remove.
+        /// </summary>
+        private bool DeletePurgedFile(MediaItem item, string path)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return false;
+                }
+
+                File.Delete(path);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Could not delete {FileName} after purging media item {MediaItemId}: {Message} ({ErrorType})",
+                    Path.GetFileName(path), item.Id, ex.Message, ex.GetType().Name);
+                return false;
             }
         }
     }

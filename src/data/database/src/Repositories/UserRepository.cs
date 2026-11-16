@@ -7,48 +7,52 @@ using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Repositories
 {
-    /// <summary>Repository implementation for User entities.</summary>
+    /// <summary>
+    /// Repository implementation for User entities. Reads run through <see cref="IUnitOfWork.ReadAsync{T}"/>; writes run
+    /// through <see cref="IUnitOfWork.ExecuteAsync{T}"/>, so inside an open unit of work they join its transaction.
+    /// </summary>
     public class UserRepository : IUserRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<UserRepository> _logger;
 
         /// <summary>Initializes a new instance of the UserRepository.</summary>
-        public UserRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<UserRepository> logger)
+        public UserRepository(IUnitOfWork unitOfWork, ILogger<UserRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Gets a user by ID.</summary>
-        public async Task<User?> GetAsync(Guid userId, CancellationToken ct)
+        public Task<User?> GetAsync(Guid userId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().Users.FirstOrDefaultAsync(u => u.Id == userId, ct), ct);
         }
 
         /// <summary>Gets a user by provider key.</summary>
-        public async Task<User?> GetByProviderKeyAsync(string providerUserKey, CancellationToken ct)
+        public Task<User?> GetByProviderKeyAsync(string providerUserKey, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Users.FirstOrDefaultAsync(u => u.ProviderUserKey == providerUserKey, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().Users.FirstOrDefaultAsync(u => u.ProviderUserKey == providerUserKey, ct), ct);
         }
 
         /// <summary>Lists all users.</summary>
         public async Task<IReadOnlyList<User>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Users.ToListAsync(ct);
+            return await _unitOfWork.ReadAsync(context => context.Db().Users.ToListAsync(ct), ct);
         }
 
         /// <summary>Adds a new user.</summary>
         public async Task AddAsync(User user, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.Users.Add(user);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.Users.Add(user);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("User added: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
             }
             catch (Exception ex)
@@ -61,11 +65,15 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Updates an existing user.</summary>
         public async Task UpdateAsync(User user, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.Users.Update(user);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.Users.Update(user);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("User updated: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
             }
             catch (Exception ex)
@@ -78,14 +86,24 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes a user.</summary>
         public async Task DeleteAsync(Guid userId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                User? user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
-                if (user != null)
+                bool deleted = await _unitOfWork.ExecuteAsync(async context =>
                 {
+                    VideoForensicsDbContext db = context.Db();
+                    User? user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+                    if (user == null)
+                    {
+                        return false;
+                    }
+
                     _ = db.Users.Remove(user);
                     _ = await db.SaveChangesAsync(ct);
+                    return true;
+                }, ct);
+
+                if (deleted)
+                {
                     _logger.LogDebug("User deleted: {UserId}", userId);
                 }
             }

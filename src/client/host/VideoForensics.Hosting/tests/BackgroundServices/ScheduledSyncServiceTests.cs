@@ -12,6 +12,7 @@ using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Tests.Services;
+using VideoForensics.Core.Helpers.Platform;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
@@ -81,7 +82,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
             public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
-            public Mock<ISnapshotSyncService> SnapshotSync { get; } = new();
+            /// <summary>The process-lifetime capture cycle; the time-lapse horizon reads its last completed pass.</summary>
+            public SnapshotCycle Cycle { get; }
             public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
             public Mock<ITimelapseGapQueries> TimelapseQueries { get; } = new();
             public Mock<ISnapshotCaptureRepository> Captures { get; } = new();
@@ -114,6 +116,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             public Harness()
             {
+                Cycle = new SnapshotCycle(Mock.Of<ILogger<SnapshotCycle>>(), Time, Mock.Of<IStorageLocationProvider>(), new ForensicsConfiguration());
                 _ = Budget.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
                 _ = Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => _schedules);
                 _ = SyncRuns.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
@@ -129,8 +132,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 int intervalMinutes = 30,
                 bool registerKeyed = true,
                 bool authResult = true,
-                bool initialSyncCompleted = true,
-                DateTime? snapshotNext = null)
+                bool initialSyncCompleted = true)
             {
                 var account = new ProviderAccount
                 {
@@ -148,7 +150,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     IsEnabled = true,
                     EventPollIntervalMinutes = intervalMinutes,
                     SnapshotRssiIntervalSeconds = 60,
-                    SnapshotNextRunUtc = snapshotNext ?? Now.AddHours(1),
                     EventNextRunUtc = eventNext,
                     EventLastRunUtc = eventLast
                 };
@@ -235,7 +236,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     _ = _services.AddKeyedSingleton(provider, Discovery[provider].Object);
                 }
 
-                _ = _services.AddScoped(_ => SnapshotSync.Object);
+                _ = _services.AddSingleton(Cycle);
                 _ = _services.AddScoped(_ => SnapshotRollup.Object);
                 _ = _services.AddScoped(_ => TimelapseQueries.Object);
                 _ = _services.AddScoped(_ => Captures.Object);
@@ -297,6 +298,20 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public async Task RunOneTickAsync_DueAccount_DoesNotCallDeviceDiscoveryOrInventorySync()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, intervalMinutes: 30);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            // Inventory is refreshed by InventoryRefreshService on its own timer; the tick's event pull reads the stored devices.
+            h.Discovery["Ring"].Verify(d => d.GetLocationsAsync(account.Id, It.IsAny<CancellationToken>()), Times.Never);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Once);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_InitialSyncIncomplete_RunsInitialSyncInsteadOfPull()
         {
             var h = new Harness { InitialSyncEnabled = true };
@@ -335,49 +350,6 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await service.RunOneTickAsync(CancellationToken.None);
 
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_SnapshotDue_RunsSnapshotSyncAndRecordsNextSnapshotRun()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
-            ScheduledSyncService service = h.Build();
-
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()), Times.Once);
-            h.Schedules.Verify(r => r.RecordSnapshotRunAsync(account.Id, Now, Now.AddSeconds(60), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_SnapshotDueDuringRingBan_SkipsSnapshotSyncButRecordsRun()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.Media["Ring"].Setup(m => m.GetRateLimitBanUntilUtc()).Returns(Now.AddMinutes(10));
-            ScheduledSyncService service = h.Build();
-
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
-            h.Schedules.Verify(r => r.RecordSnapshotRunAsync(account.Id, Now, Now.AddSeconds(60), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_SnapshotNotDue_DoesNotRunSnapshotSync()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(5));
-            ScheduledSyncService service = h.Build();
-
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -687,10 +659,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_CompletedSyncWriteFails_DoesNotStartTheTimelapseCheckAndRetriesNextTick()
         {
             var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            (_, ProviderAccount account) = h.AddAccount("Ring");
             _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            h.Cycle.MarkPassCompleted(account.Id);
             _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
             _ = h.TimelapseQueries.Setup(q => q.GetEarliestCaptureAtUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -720,23 +691,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_DeviceConfigReadFails_WarnsWithProviderNameAndCount()
-        {
-            var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddHours(1));
-            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.Events["Ring"].Setup(e => e.GetDeviceConfigAsync(account.Id, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("config boom"));
-            ScheduledSyncService service = h.Build();
-
-            await service.RunOneTickAsync(CancellationToken.None);
-
-            // The inventory still syncs; the failed device configuration is counted and reported, not left to a debug line.
-            _ = Assert.Single(h.Logs.Lines, l => l.StartsWith("Warning") && l.Contains("Device configuration could not be read") && l.Contains("Ring") && l.Contains("1 device"));
-        }
-
-        [Fact]
-        public async Task RunOneTickAsync_NoSnapshotSyncThisProcess_LogsThatTheTimelapseCheckIsWaiting()
+        public async Task RunOneTickAsync_NoCompletedCapturePassThisProcess_LogsThatTheTimelapseCheckIsWaiting()
         {
             var h = new Harness();
             (_, ProviderAccount account) = h.AddAccount("Ring");
@@ -902,16 +857,16 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             var h = new Harness();
             (_, ProviderAccount account) = h.AddAccount("Ring");
-            // The pull catches discovery failures and records them on the account instead of throwing.
-            _ = h.Discovery["Ring"].Setup(d => d.GetLocationsAsync(account.Id, It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("discovery boom"));
+            // The pull catches a failed media download and records it on the account instead of throwing.
+            _ = h.Media["Ring"].Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("media boom"));
             ScheduledSyncService service = h.Build();
 
             await service.RunOneTickAsync(CancellationToken.None);
 
             ProviderSyncRun run = Assert.Single(h.Runs);
             Assert.False(run.Success);
-            Assert.Equal("discovery boom", run.ErrorMessage);
+            Assert.Contains("media boom", run.ErrorMessage ?? string.Empty);
             _ = Assert.NotNull(run.CompletedUtc);
         }
 
@@ -985,10 +940,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_TimelapseCheckStalled_LogsOneErrorWithProviderNameAndNoGuid()
         {
             var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            (_, ProviderAccount account) = h.AddAccount("Ring");
             _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            h.Cycle.MarkPassCompleted(account.Id);
             _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
 
@@ -1008,13 +962,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
         }
 
-        /// <summary>Seeds a clean pull and a snapshot sync, so the time-lapse check runs, and the device's latest event time (any date).</summary>
+        /// <summary>Seeds a clean pull and a completed capture pass, so the time-lapse check runs, and the device's latest event time (any date).</summary>
         private static ProviderAccount SetUpTimelapseCheckWithLatestEvent(Harness h, DateTime? latestEvent)
         {
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            (_, ProviderAccount account) = h.AddAccount("Ring");
             _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            h.Cycle.MarkPassCompleted(account.Id);
             _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
             _ = h.TimelapseQueries.Setup(q => q.GetLatestEventTimeAnyUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -1104,7 +1057,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_NoSnapshotSyncThisProcess_DoesNotBuildTimelapseSegments()
+        public async Task RunOneTickAsync_NoCompletedCapturePassThisProcess_DoesNotBuildTimelapseSegments()
         {
             var h = new Harness();
             (_, ProviderAccount account) = h.AddAccount("Ring");
@@ -1113,18 +1066,17 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            // The horizon needs a snapshot sync from this process, and none ran, so nothing is planned or built.
+            // The horizon needs a capture pass that completed in this process, and none did, so nothing is planned or built.
             h.SnapshotRollup.Verify(s => s.RollUpSegmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task RunOneTickAsync_CleanPullAndSnapshotSync_BuildsAtMostFiveSegmentsPerTick()
+        public async Task RunOneTickAsync_CleanPullAndCapturePass_BuildsAtMostFiveSegmentsPerTick()
         {
             var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            (_, ProviderAccount account) = h.AddAccount("Ring");
             _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            h.Cycle.MarkPassCompleted(account.Id);
             _ = h.TimelapseQueries.Setup(q => q.GetEarliestCaptureAtUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DateTimeOffset(Now.AddHours(-8), TimeSpan.Zero));
             _ = h.TimelapseQueries.Setup(q => q.GetLatestTimelapseEndUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateTime?)null);
@@ -1153,10 +1105,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         public async Task RunOneTickAsync_SegmentReturnsError_CheckIsNotCompleteAndTheWatchdogStalls()
         {
             var h = new Harness();
-            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            (_, ProviderAccount account) = h.AddAccount("Ring");
             _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            h.Cycle.MarkPassCompleted(account.Id);
             _ = h.Config.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration { TimelapseCheckIntervalMinutes = 15 });
             _ = h.TimelapseQueries.Setup(q => q.GetEarliestCaptureAtUtcAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

@@ -10,7 +10,7 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for forensic cases with chain-of-custody logging.</summary>
     public class CaseRepository : ICaseRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly ILogger<CaseRepository> _logger;
         private const string SystemActor = "System";
@@ -19,12 +19,12 @@ namespace VideoForensics.Data.Database.Repositories
 
         /// <summary>Initializes a new instance of the CaseRepository.</summary>
         public CaseRepository(
-            IDbContextFactory<VideoForensicsDbContext> factory,
+            IUnitOfWork unitOfWork,
             IActionLogRepository actionLogRepository,
             ILogger<CaseRepository> logger,
             TimeProvider? timeProvider = null)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _actionLogRepository = actionLogRepository;
             _logger = logger;
             _timeProvider = timeProvider ?? TimeProvider.System;
@@ -46,13 +46,11 @@ namespace VideoForensics.Data.Database.Repositories
             string timePrefix = now.ToString("yyyy-MM-dd-HH-mm");
             string searchPattern = $"{prefix}-{timePrefix}-";
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-
             // Get all case numbers that match the prefix and time window, extract indices
-            List<string> matchingNumbers = await db.Cases
+            List<string> matchingNumbers = await _unitOfWork.ReadAsync(context => context.Db().Cases
                 .Where(c => c.CreatedAtUtc >= startOfMinute && c.CreatedAtUtc < endOfMinute && c.CaseNumber.StartsWith(searchPattern))
                 .Select(c => c.CaseNumber)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
 
             int maxIndex = -1;
             foreach (string number in matchingNumbers)
@@ -84,11 +82,10 @@ namespace VideoForensics.Data.Database.Repositories
             Guid? linkedCaseId = jammingEvent.CaseId;
             if (linkedCaseId is null || linkedCaseId == Guid.Empty)
             {
-                await using VideoForensicsDbContext lookup = await _factory.CreateDbContextAsync(ct);
-                linkedCaseId = await lookup.JammingIncidentRecords
+                linkedCaseId = await _unitOfWork.ReadAsync<Guid?>(context => context.Db().JammingIncidentRecords
                     .Where(i => i.Id == jammingEvent.Id)
                     .Select(i => i.CaseId)
-                    .FirstOrDefaultAsync(ct);
+                    .FirstOrDefaultAsync(ct), ct);
             }
 
             if (linkedCaseId.HasValue && linkedCaseId != Guid.Empty)
@@ -216,82 +213,101 @@ namespace VideoForensics.Data.Database.Repositories
             Action<VideoForensicsDbContext, ForensicCase>? onBeforeSave = null)
         {
             bool wasGenerated = string.IsNullOrWhiteSpace(explicitNumber);
-            string finalCaseNumber = wasGenerated ? await GenerateCaseNumber(generatedPrefix, ct) : explicitNumber!;
+            // A generated number is chosen inside the write gate below, not here: a read outside the gate runs in parallel
+            // with other creates and collides on the shared connection.
+            string finalCaseNumber = wasGenerated ? string.Empty : explicitNumber!;
 
             // For auto-generated numbers, retry up to 5 times on collision
             int maxRetries = wasGenerated ? 5 : 1;
             for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
                 try
                 {
-                    // Check for duplicate case number
-                    bool exists = await db.Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct);
-                    if (exists)
+                    // A null result means the generated number collided; the loop then tries a new number.
+                    ForensicCase? created = await _unitOfWork.ExecuteAsync<ForensicCase?>(async context =>
                     {
-                        if (wasGenerated && attempt < maxRetries - 1)
+                        VideoForensicsDbContext db = context.Db();
+
+                        // Generate under the gate: a number chosen before the gate can be taken by a parallel create that
+                        // writes first, and the retries would run out. Inside the write, the read sees every committed number.
+                        if (wasGenerated)
                         {
-                            // Retry with a new generated number
                             finalCaseNumber = await GenerateCaseNumber(generatedPrefix, ct);
-                            continue;
                         }
 
-                        throw new InvalidOperationException($"A case with number '{finalCaseNumber}' already exists.");
-                    }
-
-                    var forensicCase = new ForensicCase
-                    {
-                        Id = Guid.NewGuid(),
-                        CaseNumber = finalCaseNumber,
-                        Title = title,
-                        Description = description,
-                        LeadOperatorId = leadOperatorId,
-                        Status = CaseStatus.Open,
-                        CreatedBy = createdBy,
-                        CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
-                        UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
-                        ScopeFromUtc = scopeFromUtc,
-                        ScopeToUtc = scopeToUtc
-                    };
-
-                    _ = db.Cases.Add(forensicCase);
-
-                    // Add device scope entries
-                    var deviceSet = new List<CaseDevice>();
-                    foreach (Guid deviceId in deviceIds)
-                    {
-                        deviceSet.Add(new CaseDevice
+                        // Check for duplicate case number
+                        bool exists = await db.Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct);
+                        if (exists)
                         {
-                            CaseId = forensicCase.Id,
-                            DeviceId = deviceId,
-                            AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
-                        });
-                    }
+                            if (wasGenerated && attempt < maxRetries - 1)
+                            {
+                                return null;
+                            }
 
-                    if (deviceSet.Count > 0)
+                            throw new InvalidOperationException($"A case with number '{finalCaseNumber}' already exists.");
+                        }
+
+                        var forensicCase = new ForensicCase
+                        {
+                            Id = Guid.NewGuid(),
+                            CaseNumber = finalCaseNumber,
+                            Title = title,
+                            Description = description,
+                            LeadOperatorId = leadOperatorId,
+                            Status = CaseStatus.Open,
+                            CreatedBy = createdBy,
+                            CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                            UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                            ScopeFromUtc = scopeFromUtc,
+                            ScopeToUtc = scopeToUtc
+                        };
+
+                        _ = db.Cases.Add(forensicCase);
+
+                        // Add device scope entries
+                        var deviceSet = new List<CaseDevice>();
+                        foreach (Guid deviceId in deviceIds)
+                        {
+                            deviceSet.Add(new CaseDevice
+                            {
+                                CaseId = forensicCase.Id,
+                                DeviceId = deviceId,
+                                AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
+                            });
+                        }
+
+                        if (deviceSet.Count > 0)
+                        {
+                            db.CaseDevices.AddRange(deviceSet);
+                        }
+
+                        ActorType actorType = createdBy == SystemActor ? ActorType.System : ActorType.Human;
+
+                        onBeforeSave?.Invoke(db, forensicCase);
+
+                        _ = await db.SaveChangesAsync(ct);
+
+                        // Append custody entry
+                        _ = await _actionLogRepository.AppendAsync(
+                            createdBy,
+                            actorType,
+                            "CreateCase",
+                            "Case",
+                            forensicCase.Id,
+                            $"Case number: {finalCaseNumber}, Title: {title}, Devices: {deviceIds.Count}",
+                            ct);
+
+                        _logger.LogInformation("Case {CaseNumber} created", finalCaseNumber);
+
+                        return forensicCase;
+                    }, ct);
+
+                    if (created is not null)
                     {
-                        db.CaseDevices.AddRange(deviceSet);
+                        return created;
                     }
 
-                    ActorType actorType = createdBy == SystemActor ? ActorType.System : ActorType.Human;
-
-                    onBeforeSave?.Invoke(db, forensicCase);
-
-                    _ = await db.SaveChangesAsync(ct);
-
-                    // Append custody entry
-                    _ = await _actionLogRepository.AppendAsync(
-                        createdBy,
-                        actorType,
-                        "CreateCase",
-                        "Case",
-                        forensicCase.Id,
-                        $"Case number: {finalCaseNumber}, Title: {title}, Devices: {deviceIds.Count}",
-                        ct);
-
-                    _logger.LogInformation("Case {CaseNumber} created", finalCaseNumber);
-
-                    return forensicCase;
+                    finalCaseNumber = await GenerateCaseNumber(generatedPrefix, ct);
                 }
                 catch (InvalidOperationException)
                 {
@@ -301,8 +317,8 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     // Another writer can take the number between the pre-check and the insert; only a
                     // number collision is retried, so FK and other constraint failures still propagate.
-                    await using VideoForensicsDbContext check = await _factory.CreateDbContextAsync(ct);
-                    if (!await check.Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct))
+                    bool taken = await _unitOfWork.ReadAsync(context => context.Db().Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct), ct);
+                    if (!taken)
                     {
                         throw;
                     }
@@ -318,54 +334,57 @@ namespace VideoForensics.Data.Database.Repositories
 
             throw new InvalidOperationException("Failed to create case after maximum retries.");
         }
-        public async Task<ForensicCase?> GetAsync(Guid id, CancellationToken ct)
+        public Task<ForensicCase?> GetAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().Cases.FirstOrDefaultAsync(c => c.Id == id, ct), ct);
         }
 
-        public async Task<ForensicCase?> GetByNumberAsync(string caseNumber, CancellationToken ct)
+        public Task<ForensicCase?> GetByNumberAsync(string caseNumber, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Cases.FirstOrDefaultAsync(c => c.CaseNumber == caseNumber, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().Cases.FirstOrDefaultAsync(c => c.CaseNumber == caseNumber, ct), ct);
         }
 
         public async Task<IReadOnlyList<ForensicCase>> ListAsync(CaseStatus? status, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<ForensicCase> query = db.Cases.OrderByDescending(c => c.CreatedAtUtc);
-
-            if (status.HasValue)
+            return await _unitOfWork.ReadAsync<IReadOnlyList<ForensicCase>>(async context =>
             {
-                query = query.Where(c => c.Status == status.Value);
-            }
+                IQueryable<ForensicCase> query = context.Db().Cases.OrderByDescending(c => c.CreatedAtUtc);
 
-            return await query.ToListAsync(ct);
+                if (status.HasValue)
+                {
+                    query = query.Where(c => c.Status == status.Value);
+                }
+
+                return await query.ToListAsync(ct);
+            }, ct);
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<ForensicCase>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await _unitOfWork.ReadAsync<IReadOnlyList<ForensicCase>>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
 
-            // Subqueries (not joins) so each case appears once no matter how many scope devices it has.
-            IQueryable<Guid> visibleLocationIds = db.ProviderAccountLocations
-                .Where(pal => pal.ProviderAccountId == providerAccountId)
-                .Select(pal => pal.LocationId);
+                // Subqueries (not joins) so each case appears once no matter how many scope devices it has.
+                IQueryable<Guid> visibleLocationIds = db.ProviderAccountLocations
+                    .Where(pal => pal.ProviderAccountId == providerAccountId)
+                    .Select(pal => pal.LocationId);
 
-            IQueryable<Guid> visibleDeviceIds = db.Devices
-                .Where(d => visibleLocationIds.Contains(d.LocationId))
-                .Select(d => d.Id);
+                IQueryable<Guid> visibleDeviceIds = db.Devices
+                    .Where(d => visibleLocationIds.Contains(d.LocationId))
+                    .Select(d => d.Id);
 
-            IQueryable<Guid> attachedCaseIds = db.CaseDevices
-                .Where(cd => visibleDeviceIds.Contains(cd.DeviceId))
-                .Select(cd => cd.CaseId);
+                IQueryable<Guid> attachedCaseIds = db.CaseDevices
+                    .Where(cd => visibleDeviceIds.Contains(cd.DeviceId))
+                    .Select(cd => cd.CaseId);
 
-            return await db.Cases
-                .AsNoTracking()
-                .Where(c => attachedCaseIds.Contains(c.Id))
-                .OrderByDescending(c => c.CreatedAtUtc)
-                .ToListAsync(ct);
+                return await db.Cases
+                    .AsNoTracking()
+                    .Where(c => attachedCaseIds.Contains(c.Id))
+                    .OrderByDescending(c => c.CreatedAtUtc)
+                    .ToListAsync(ct);
+            }, ct);
         }
 
         public async Task UpdateDetailsAsync(
@@ -376,37 +395,41 @@ namespace VideoForensics.Data.Database.Repositories
             string updatedBy,
             CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
-                if (forensicCase is null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    throw new KeyNotFoundException($"Case {id} not found.");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
+                    if (forensicCase is null)
+                    {
+                        throw new KeyNotFoundException($"Case {id} not found.");
+                    }
 
-                if (forensicCase.Status == CaseStatus.Closed)
-                {
-                    throw new InvalidOperationException($"Cannot update a closed case {id}.");
-                }
+                    if (forensicCase.Status == CaseStatus.Closed)
+                    {
+                        throw new InvalidOperationException($"Cannot update a closed case {id}.");
+                    }
 
-                forensicCase.Title = title;
-                forensicCase.Description = description;
-                forensicCase.LeadOperatorId = leadOperatorId;
-                forensicCase.UpdatedAtUtc = DateTime.UtcNow;
+                    forensicCase.Title = title;
+                    forensicCase.Description = description;
+                    forensicCase.LeadOperatorId = leadOperatorId;
+                    forensicCase.UpdatedAtUtc = DateTime.UtcNow;
 
-                _ = await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
 
-                _ = await _actionLogRepository.AppendAsync(
-                    updatedBy,
-                    ActorType.Human,
-                    "UpdateCase",
-                    "Case",
-                    id,
-                    $"Title: {title}",
-                    ct);
+                    _ = await _actionLogRepository.AppendAsync(
+                        updatedBy,
+                        ActorType.Human,
+                        "UpdateCase",
+                        "Case",
+                        id,
+                        $"Title: {title}",
+                        ct);
 
-                _logger.LogDebug("Case {CaseTitle} updated", forensicCase.Title);
+                    _logger.LogDebug("Case {CaseTitle} updated", forensicCase.Title);
+                    return null;
+                }, ct);
             }
             catch (InvalidOperationException)
             {
@@ -431,57 +454,61 @@ namespace VideoForensics.Data.Database.Repositories
             string updatedBy,
             CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
-                if (forensicCase is null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    throw new KeyNotFoundException($"Case {id} not found.");
-                }
-
-                if (forensicCase.Status == CaseStatus.Closed)
-                {
-                    throw new InvalidOperationException($"Cannot update scope of a closed case {id}.");
-                }
-
-                forensicCase.ScopeFromUtc = fromUtc;
-                forensicCase.ScopeToUtc = toUtc;
-                forensicCase.UpdatedAtUtc = DateTime.UtcNow;
-
-                // Replace device set
-                IEnumerable<CaseDevice> existingDevices = db.CaseDevices.Where(cd => cd.CaseId == id);
-                db.CaseDevices.RemoveRange(existingDevices);
-
-                var newDevices = new List<CaseDevice>();
-                foreach (Guid deviceId in deviceIds)
-                {
-                    newDevices.Add(new CaseDevice
+                    VideoForensicsDbContext db = context.Db();
+                    ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
+                    if (forensicCase is null)
                     {
-                        CaseId = id,
-                        DeviceId = deviceId,
-                        AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
-                    });
-                }
+                        throw new KeyNotFoundException($"Case {id} not found.");
+                    }
 
-                if (newDevices.Count > 0)
-                {
-                    db.CaseDevices.AddRange(newDevices);
-                }
+                    if (forensicCase.Status == CaseStatus.Closed)
+                    {
+                        throw new InvalidOperationException($"Cannot update scope of a closed case {id}.");
+                    }
 
-                _ = await db.SaveChangesAsync(ct);
+                    forensicCase.ScopeFromUtc = fromUtc;
+                    forensicCase.ScopeToUtc = toUtc;
+                    forensicCase.UpdatedAtUtc = DateTime.UtcNow;
 
-                string details = $"Scope: {fromUtc:O} to {toUtc:O}, Devices: {deviceIds.Count}";
-                _ = await _actionLogRepository.AppendAsync(
-                    updatedBy,
-                    ActorType.Human,
-                    "SetCaseScope",
-                    "Case",
-                    id,
-                    details,
-                    ct);
+                    // Replace device set
+                    IEnumerable<CaseDevice> existingDevices = db.CaseDevices.Where(cd => cd.CaseId == id);
+                    db.CaseDevices.RemoveRange(existingDevices);
 
-                _logger.LogDebug("Case {CaseTitle} scope updated", forensicCase.Title);
+                    var newDevices = new List<CaseDevice>();
+                    foreach (Guid deviceId in deviceIds)
+                    {
+                        newDevices.Add(new CaseDevice
+                        {
+                            CaseId = id,
+                            DeviceId = deviceId,
+                            AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
+                        });
+                    }
+
+                    if (newDevices.Count > 0)
+                    {
+                        db.CaseDevices.AddRange(newDevices);
+                    }
+
+                    _ = await db.SaveChangesAsync(ct);
+
+                    string details = $"Scope: {fromUtc:O} to {toUtc:O}, Devices: {deviceIds.Count}";
+                    _ = await _actionLogRepository.AppendAsync(
+                        updatedBy,
+                        ActorType.Human,
+                        "SetCaseScope",
+                        "Case",
+                        id,
+                        details,
+                        ct);
+
+                    _logger.LogDebug("Case {CaseTitle} scope updated", forensicCase.Title);
+                    return null;
+                }, ct);
             }
             catch (InvalidOperationException)
             {
@@ -500,41 +527,44 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<Guid>> GetDeviceIdsAsync(Guid caseId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.CaseDevices
+            return await _unitOfWork.ReadAsync(context => context.Db().CaseDevices
                 .Where(cd => cd.CaseId == caseId)
                 .Select(cd => cd.DeviceId)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         public async Task CloseAsync(Guid id, string closedBy, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
-                if (forensicCase is null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    throw new KeyNotFoundException($"Case {id} not found.");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
+                    if (forensicCase is null)
+                    {
+                        throw new KeyNotFoundException($"Case {id} not found.");
+                    }
 
-                forensicCase.Status = CaseStatus.Closed;
-                forensicCase.ClosedBy = closedBy;
-                forensicCase.ClosedAtUtc = DateTime.UtcNow;
-                forensicCase.UpdatedAtUtc = DateTime.UtcNow;
+                    forensicCase.Status = CaseStatus.Closed;
+                    forensicCase.ClosedBy = closedBy;
+                    forensicCase.ClosedAtUtc = DateTime.UtcNow;
+                    forensicCase.UpdatedAtUtc = DateTime.UtcNow;
 
-                _ = await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
 
-                _ = await _actionLogRepository.AppendAsync(
-                    closedBy,
-                    ActorType.Human,
-                    "CloseCase",
-                    "Case",
-                    id,
-                    string.Empty,
-                    ct);
+                    _ = await _actionLogRepository.AppendAsync(
+                        closedBy,
+                        ActorType.Human,
+                        "CloseCase",
+                        "Case",
+                        id,
+                        string.Empty,
+                        ct);
 
-                _logger.LogInformation("Case {CaseTitle} closed", forensicCase.Title);
+                    _logger.LogInformation("Case {CaseTitle} closed", forensicCase.Title);
+                    return null;
+                }, ct);
             }
             catch (InvalidOperationException)
             {
@@ -553,32 +583,36 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task ReopenAsync(Guid id, string reopenedBy, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
-                if (forensicCase is null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    throw new KeyNotFoundException($"Case {id} not found.");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, ct);
+                    if (forensicCase is null)
+                    {
+                        throw new KeyNotFoundException($"Case {id} not found.");
+                    }
 
-                forensicCase.Status = CaseStatus.Open;
-                forensicCase.ClosedBy = null;
-                forensicCase.ClosedAtUtc = null;
-                forensicCase.UpdatedAtUtc = DateTime.UtcNow;
+                    forensicCase.Status = CaseStatus.Open;
+                    forensicCase.ClosedBy = null;
+                    forensicCase.ClosedAtUtc = null;
+                    forensicCase.UpdatedAtUtc = DateTime.UtcNow;
 
-                _ = await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
 
-                _ = await _actionLogRepository.AppendAsync(
-                    reopenedBy,
-                    ActorType.Human,
-                    "ReopenCase",
-                    "Case",
-                    id,
-                    string.Empty,
-                    ct);
+                    _ = await _actionLogRepository.AppendAsync(
+                        reopenedBy,
+                        ActorType.Human,
+                        "ReopenCase",
+                        "Case",
+                        id,
+                        string.Empty,
+                        ct);
 
-                _logger.LogInformation("Case {CaseTitle} reopened", forensicCase.Title);
+                    _logger.LogInformation("Case {CaseTitle} reopened", forensicCase.Title);
+                    return null;
+                }, ct);
             }
             catch (InvalidOperationException)
             {
@@ -603,78 +637,81 @@ namespace VideoForensics.Data.Database.Repositories
             string addedBy,
             CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == caseId, ct);
-                if (forensicCase is null)
+                return await _unitOfWork.ExecuteAsync<CaseItem>(async context =>
                 {
-                    throw new KeyNotFoundException($"Case {caseId} not found.");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    ForensicCase? forensicCase = await db.Cases.FirstOrDefaultAsync(c => c.Id == caseId, ct);
+                    if (forensicCase is null)
+                    {
+                        throw new KeyNotFoundException($"Case {caseId} not found.");
+                    }
 
-                if (forensicCase.Status == CaseStatus.Closed)
-                {
-                    throw new InvalidOperationException($"Cannot add items to a closed case {caseId}.");
-                }
+                    if (forensicCase.Status == CaseStatus.Closed)
+                    {
+                        throw new InvalidOperationException($"Cannot add items to a closed case {caseId}.");
+                    }
 
-                // Check for duplicate active pin
-                CaseItem? existingItem = kind switch
-                {
-                    CaseItemKind.Event => await db.CaseItems.FirstOrDefaultAsync(
-                        ci => ci.CaseId == caseId && ci.EventId == targetId && ci.RemovedAtUtc == null, ct),
-                    CaseItemKind.Media => await db.CaseItems.FirstOrDefaultAsync(
-                        ci => ci.CaseId == caseId && ci.MediaItemId == targetId && ci.RemovedAtUtc == null, ct),
-                    CaseItemKind.Snapshot => await db.CaseItems.FirstOrDefaultAsync(
-                        ci => ci.CaseId == caseId && ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null, ct),
-                    _ => null
-                };
+                    // Check for duplicate active pin
+                    CaseItem? existingItem = kind switch
+                    {
+                        CaseItemKind.Event => await db.CaseItems.FirstOrDefaultAsync(
+                            ci => ci.CaseId == caseId && ci.EventId == targetId && ci.RemovedAtUtc == null, ct),
+                        CaseItemKind.Media => await db.CaseItems.FirstOrDefaultAsync(
+                            ci => ci.CaseId == caseId && ci.MediaItemId == targetId && ci.RemovedAtUtc == null, ct),
+                        CaseItemKind.Snapshot => await db.CaseItems.FirstOrDefaultAsync(
+                            ci => ci.CaseId == caseId && ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null, ct),
+                        _ => null
+                    };
 
-                if (existingItem is not null)
-                {
-                    throw new InvalidOperationException(
-                        $"Target {kind} {targetId} is already actively pinned to case {caseId}.");
-                }
+                    if (existingItem is not null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Target {kind} {targetId} is already actively pinned to case {caseId}.");
+                    }
 
-                string? mediaSha256AtAdd = null;
-                if (kind == CaseItemKind.Media)
-                {
-                    // A missing item is rejected here so the UI gets a clear error and no pin is stored without a hash.
-                    MediaItem mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == targetId, ct)
-                        ?? throw new KeyNotFoundException($"Media item {targetId} not found.");
-                    mediaSha256AtAdd = mediaItem.Sha256Hash;
-                }
+                    string? mediaSha256AtAdd = null;
+                    if (kind == CaseItemKind.Media)
+                    {
+                        // A missing item is rejected here so the UI gets a clear error and no pin is stored without a hash.
+                        MediaItem mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == targetId, ct)
+                            ?? throw new KeyNotFoundException($"Media item {targetId} not found.");
+                        mediaSha256AtAdd = mediaItem.Sha256Hash;
+                    }
 
-                var caseItem = new CaseItem
-                {
-                    Id = Guid.NewGuid(),
-                    CaseId = caseId,
-                    Kind = kind,
-                    EventId = kind == CaseItemKind.Event ? targetId : null,
-                    MediaItemId = kind == CaseItemKind.Media ? targetId : null,
-                    SnapshotCaptureId = kind == CaseItemKind.Snapshot ? targetId : null,
-                    Reason = reason,
-                    AddedBy = addedBy,
-                    AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
-                    MediaSha256AtAdd = mediaSha256AtAdd
-                };
+                    var caseItem = new CaseItem
+                    {
+                        Id = Guid.NewGuid(),
+                        CaseId = caseId,
+                        Kind = kind,
+                        EventId = kind == CaseItemKind.Event ? targetId : null,
+                        MediaItemId = kind == CaseItemKind.Media ? targetId : null,
+                        SnapshotCaptureId = kind == CaseItemKind.Snapshot ? targetId : null,
+                        Reason = reason,
+                        AddedBy = addedBy,
+                        AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                        MediaSha256AtAdd = mediaSha256AtAdd
+                    };
 
-                _ = db.CaseItems.Add(caseItem);
-                _ = await db.SaveChangesAsync(ct);
+                    _ = db.CaseItems.Add(caseItem);
+                    _ = await db.SaveChangesAsync(ct);
 
-                _ = await _actionLogRepository.AppendAsync(
-                    addedBy,
-                    ActorType.Human,
-                    "AddCaseItem",
-                    "Case",
-                    caseId,
-                    $"Kind: {kind}, Target: {targetId}, Reason: {reason}",
-                    ct);
+                    _ = await _actionLogRepository.AppendAsync(
+                        addedBy,
+                        ActorType.Human,
+                        "AddCaseItem",
+                        "Case",
+                        caseId,
+                        $"Kind: {kind}, Target: {targetId}, Reason: {reason}",
+                        ct);
 
-                _logger.LogDebug(
-                    "Case {CaseTitle} item added: {Kind} {TargetId}",
-                    forensicCase.Title, kind, targetId);
+                    _logger.LogDebug(
+                        "Case {CaseTitle} item added: {Kind} {TargetId}",
+                        forensicCase.Title, kind, targetId);
 
-                return caseItem;
+                    return caseItem;
+                }, ct);
             }
             catch (InvalidOperationException)
             {
@@ -693,31 +730,35 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task RemoveItemAsync(Guid caseItemId, string removedBy, string reason, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                CaseItem? caseItem = await db.CaseItems.FirstOrDefaultAsync(ci => ci.Id == caseItemId, ct);
-                if (caseItem is null)
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    throw new InvalidOperationException($"Case item {caseItemId} not found.");
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    CaseItem? caseItem = await db.CaseItems.FirstOrDefaultAsync(ci => ci.Id == caseItemId, ct);
+                    if (caseItem is null)
+                    {
+                        throw new InvalidOperationException($"Case item {caseItemId} not found.");
+                    }
 
-                caseItem.RemovedBy = removedBy;
-                caseItem.RemovedAtUtc = DateTime.UtcNow;
-                caseItem.RemovalReason = reason;
+                    caseItem.RemovedBy = removedBy;
+                    caseItem.RemovedAtUtc = DateTime.UtcNow;
+                    caseItem.RemovalReason = reason;
 
-                _ = await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
 
-                _ = await _actionLogRepository.AppendAsync(
-                    removedBy,
-                    ActorType.Human,
-                    "RemoveCaseItem",
-                    "Case",
-                    caseItem.CaseId,
-                    $"Item: {caseItemId}, Reason: {reason}",
-                    ct);
+                    _ = await _actionLogRepository.AppendAsync(
+                        removedBy,
+                        ActorType.Human,
+                        "RemoveCaseItem",
+                        "Case",
+                        caseItem.CaseId,
+                        $"Item: {caseItemId}, Reason: {reason}",
+                        ct);
 
-                _logger.LogDebug("Case item {CaseItemId} removed", caseItemId);
+                    _logger.LogDebug("Case item {CaseItemId} removed", caseItemId);
+                    return null;
+                }, ct);
             }
             catch (InvalidOperationException)
             {
@@ -732,36 +773,40 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<CaseItem>> ListItemsAsync(Guid caseId, bool includeRemoved, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<CaseItem> query = db.CaseItems.Where(ci => ci.CaseId == caseId);
-
-            if (!includeRemoved)
+            return await _unitOfWork.ReadAsync<IReadOnlyList<CaseItem>>(async context =>
             {
-                query = query.Where(ci => ci.RemovedAtUtc == null);
-            }
+                IQueryable<CaseItem> query = context.Db().CaseItems.Where(ci => ci.CaseId == caseId);
 
-            return await query.ToListAsync(ct);
+                if (!includeRemoved)
+                {
+                    query = query.Where(ci => ci.RemovedAtUtc == null);
+                }
+
+                return await query.ToListAsync(ct);
+            }, ct);
         }
 
         public async Task<IReadOnlyList<ForensicCase>> ListCasesContainingAsync(CaseItemKind kind, Guid targetId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-
-            IQueryable<CaseItem> items = kind switch
+            return await _unitOfWork.ReadAsync<IReadOnlyList<ForensicCase>>(async context =>
             {
-                CaseItemKind.Event => db.CaseItems.Where(ci => ci.EventId == targetId && ci.RemovedAtUtc == null),
-                CaseItemKind.Media => db.CaseItems.Where(ci => ci.MediaItemId == targetId && ci.RemovedAtUtc == null),
-                CaseItemKind.Snapshot => db.CaseItems.Where(ci => ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null),
-                _ => db.CaseItems.Where(ci => false)
-            };
+                VideoForensicsDbContext db = context.Db();
 
-            List<Guid> caseIds = await items.Select(ci => ci.CaseId).Distinct().ToListAsync(ct);
+                IQueryable<CaseItem> items = kind switch
+                {
+                    CaseItemKind.Event => db.CaseItems.Where(ci => ci.EventId == targetId && ci.RemovedAtUtc == null),
+                    CaseItemKind.Media => db.CaseItems.Where(ci => ci.MediaItemId == targetId && ci.RemovedAtUtc == null),
+                    CaseItemKind.Snapshot => db.CaseItems.Where(ci => ci.SnapshotCaptureId == targetId && ci.RemovedAtUtc == null),
+                    _ => db.CaseItems.Where(ci => false)
+                };
 
-            return await db.Cases
-                .Where(c => caseIds.Contains(c.Id))
-                .OrderByDescending(c => c.CreatedAtUtc)
-                .ToListAsync(ct);
+                List<Guid> caseIds = await items.Select(ci => ci.CaseId).Distinct().ToListAsync(ct);
+
+                return await db.Cases
+                    .Where(c => caseIds.Contains(c.Id))
+                    .OrderByDescending(c => c.CreatedAtUtc)
+                    .ToListAsync(ct);
+            }, ct);
         }
     }
 }
-

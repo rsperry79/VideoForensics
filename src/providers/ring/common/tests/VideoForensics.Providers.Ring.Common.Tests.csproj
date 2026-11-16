@@ -24,6 +24,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Common.csproj" />
   </ItemGroup>
   <ItemGroup>

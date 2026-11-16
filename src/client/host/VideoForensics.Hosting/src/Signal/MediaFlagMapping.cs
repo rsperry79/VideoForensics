@@ -27,7 +27,9 @@ namespace VideoForensics.Client.Hosting.Signal
                 flag.ReviewedAtUtc,
                 flag.ReviewNote,
                 flag.NoticeId,
-                flag.RowVersion);
+                flag.RowVersion,
+                flag.EventType,
+                flag.DeviationSigma);
         }
 
         public static MediaFlag ToDomain(this MediaFlagDto dto)
@@ -49,6 +51,8 @@ namespace VideoForensics.Client.Hosting.Signal
                 ReviewNote = dto.ReviewNote,
                 NoticeId = dto.NoticeId,
                 RowVersion = dto.RowVersion,
+                EventType = dto.EventType,
+                DeviationSigma = dto.DeviationSigma,
             };
         }
 
