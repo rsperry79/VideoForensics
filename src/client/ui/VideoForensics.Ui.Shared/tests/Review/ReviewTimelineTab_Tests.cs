@@ -127,6 +127,19 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimelineTab_NoCamerasSelected_RendersInAStagePlaceholder()
+    {
+        // Arrange
+        AddDevices(2);
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert: the message sits in a box the size of the player stage, so the page does not jump when clips arrive
+        Assert.True(cut.Find("[data-testid='review-timeline-no-cameras']").ParentElement!.ClassList.Contains("review-stage--message"));
+    }
+
+    [Fact]
     public void ReviewTimelineTab_CameraWithNoClips_ShowsTheNoClipsMessage()
     {
         // Arrange

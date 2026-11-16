@@ -26,15 +26,21 @@
 <div class="review-timeline-tab" data-testid="review-timeline-tab">
     @if (State.CameraIds.Count == 0)
     {
-        <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+        </div>
     }
     else if (_error)
     {
-        <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+        </div>
     }
     else if (_loaded is null || !_loaded.Key.Matches(State))
     {
-        <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+        </div>
     }
     else
     {
@@ -45,13 +51,16 @@
 
         @if (!_loaded.HasSelectedClips)
         {
-            <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+            <div class="review-stage--message">
+                <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+            </div>
         }
         else if (State.CameraIds.Count == 1)
         {
+            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
             @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
             {
-                <div class="review-grab-still-bar">
+                <div class="review-grab-still-bar" role="status" aria-live="polite">
                     <span class="@(_stillStatus.IsError ? "text-danger" : null)" data-testid="review-grab-still-status">@_stillStatus.Text</span>
                     @if (_stillStatus.OpenUrl is not null)
                     {
@@ -59,7 +68,6 @@
                     }
                 </div>
             }
-            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
         }
         else
         {
