@@ -36,13 +36,13 @@ public class MediaFit_Tests : BunitContext
     }
 
     [Fact]
-    public void MediaFit_Playable_FillsTheBoxWithCover()
+    public void MediaFit_Playable_UsesContainFit()
     {
         IRenderedComponent<MediaFit> cut = Render<MediaFit>(p => p
             .Add(c => c.State, MediaFitState.Playable)
             .Add(c => c.Source, "/clips/a.mp4"));
 
-        Assert.Equal(MediaFitMode.Cover, cut.FindComponent<MediaPlayer>().Instance.Fit);
+        Assert.Equal(MediaFitMode.Contain, cut.FindComponent<MediaPlayer>().Instance.Fit);
     }
 
     [Fact]

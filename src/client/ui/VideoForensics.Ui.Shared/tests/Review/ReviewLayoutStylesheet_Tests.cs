@@ -23,6 +23,31 @@ public class ReviewLayoutStylesheet_Tests
     }
 
     [Fact]
+    public void ReviewStylesheets_NoObjectFitCover_InReviewComponents()
+    {
+        // Arrange: the review pages use contain everywhere so evidence frames are never cropped
+        string media = RepoFile.ReadUiSharedSource("Components/Review/MediaFit.razor.css");
+        string player = RepoFile.ReadUiSharedSource("Components/Viewer/ReviewPlayer.razor.css");
+
+        // Assert
+        Assert.DoesNotContain("object-fit: cover", media);
+        Assert.DoesNotContain("object-fit: cover", player);
+    }
+
+    [Fact]
+    public void ReviewPlayerStylesheet_Stage_HasFixedAspectAndViewportCap()
+    {
+        // Arrange
+        string css = RepoFile.ReadUiSharedSource("Components/Viewer/ReviewPlayer.razor.css");
+        Match stage = Regex.Match(css, @"\.review-stage\s*\{([^}]*)\}");
+
+        // Assert
+        Assert.True(stage.Success, "The stage rule must exist.");
+        Assert.Contains("aspect-ratio: 16 / 9", stage.Groups[1].Value);
+        Assert.Contains("max-height: 62vh", stage.Groups[1].Value);
+    }
+
+    [Fact]
     public void CameraGridStylesheet_Grid_IsDisplayGridAndSingleColumnOnNarrowScreens()
     {
         // Act

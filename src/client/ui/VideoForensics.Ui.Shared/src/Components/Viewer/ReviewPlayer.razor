@@ -1,14 +1,17 @@
 @using VideoForensics.Client.Common.Viewer
 
 @* Picks the clip that covers the cursor and hands it to MediaPlayer. A cursor in a gap shows the gap message. *@
-<MediaPlayer @ref="_player"
-             Source="@_url"
-             SourceStartUtc="_selectedClip?.StartUtc"
-             SourceDurationSeconds="_selectedClip?.DurationSeconds"
-             Cursor="Cursor"
-             Gap="true"
-             Class="review-player"
-             data-clip-id="@_selection?.ClipId" />
+<div class="review-stage">
+    <MediaPlayer @ref="_player"
+                 Source="@_url"
+                 SourceStartUtc="_selectedClip?.StartUtc"
+                 SourceDurationSeconds="_selectedClip?.DurationSeconds"
+                 Cursor="Cursor"
+                 Gap="true"
+                 Fit="MediaFitMode.Contain"
+                 Class="review-player"
+                 data-clip-id="@_selection?.ClipId" />
+</div>
 
 @code {
     /// <summary>Clips for this camera. The player picks the one covering <see cref="Cursor"/>.</summary>
