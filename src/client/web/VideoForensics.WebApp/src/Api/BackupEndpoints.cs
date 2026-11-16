@@ -41,7 +41,6 @@ namespace VideoForensics.Client.WebApp.Api
             .WithDescription("Validates that every downloaded event's media and sidecar entries are present and correctly tagged before export.");
 
             _ = group.MapPost("/export", async (
-                ExportBackupRequest request,
                 IBackupExportService exportService,
                 IForensicsConfigurationService configService,
                 IStorageLocationProvider storageLocations,
@@ -50,11 +49,6 @@ namespace VideoForensics.Client.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                if (string.IsNullOrWhiteSpace(request.OutputDirectory))
-                {
-                    return Results.BadRequest("OutputDirectory is required.");
-                }
-
                 // The archive goes to the DB-configured Backup folder (QueryExportLocation), never a client-chosen path.
                 IForensicsConfiguration config = await configService.LoadConfigurationAsync(string.Empty, ct);
                 string backupRoot = ResolveBackupExportRoot(storageLocations, config);
@@ -93,8 +87,4 @@ namespace VideoForensics.Client.WebApp.Api
             .WithDescription("Exports the entire database (accounts, locations, devices, events, media metadata) as a JSON+zip backup archive. Requires step-up authentication. This operation is sensitive as it creates a complete database snapshot.");
         }
     }
-
-    /// <summary>Request to export the database to a backup archive.</summary>
-    /// <param name="OutputDirectory">Output directory where the backup archive will be created.</param>
-    public record ExportBackupRequest(string OutputDirectory);
 }

@@ -53,6 +53,7 @@ C. `VACUUM` and `wal_checkpoint(TRUNCATE)` use a **transaction-less gate entry**
   - U5d. Ui.Shared (48 files): page bindings move to DTOs.
   - U5e. Backup path: chunked zip upload endpoint, server-side media copy and hash, folder picker on `/api/v1/filesystem/fileoperations`.
   - U5f. Client test projects (Core, Hosting, WebApp) switch to DTOs and drop data refs.
+Decouple-hosts inventory (2026-11-13): Ui.Shared (client host, per client-split rule) references Client.Common and Client.Core csproj. It injects data-layer repository interfaces directly (IDeviceRepository, IMediaItemRepository, IEventRepository, ICaseRepository, IMediaFlagRepository, IUserRepository, ILocationRepository, ILegalHoldRepository, IJammingRepository, IProviderAccountRepository, IOperatorPreferencesRepository, IReviewEventLoader and others), plus Client.Core service types (ConfigTools, DeviceControlService, ReportGenerationService, StepUpService, and others). Those must move behind Remote* implementations or Api.Contracts endpoints. Hosting (not a client host by the rule) references data.*, providers and Ui.Shared, so it cannot be the place for the shared contracts. Decoupling needs its own plan: one repository group per unit.
 Order: U5a → U5b → U5e (server side, needed by U5b) → U5c → U5d → U5f. Each step adds a failing test first.
 - [ ] U6. Shrink the allowlist to the permitted set (see Enforcement).
 - [ ] U7. Verify live: no `database is locked` under snapshot and backfill load, with queue-wait metrics attached.
