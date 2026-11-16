@@ -68,12 +68,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            // The review views are ordinary menu items. The review page follows the ?tab= value, so a click on the same page switches the view.
+            // The review tabs (Timeline, Events, Detail) live in the review page header. Only Live stays in the menu.
             new("media", "Media", "/media",
             [
-                new("Timeline", "/media"),
-                new("Events", "/media?tab=Events"),
-                new("Detail", "/media?tab=Detail"),
                 new("Live", "/live-view")
             ], Visible: ctx => ctx.IsSignedIn),
 

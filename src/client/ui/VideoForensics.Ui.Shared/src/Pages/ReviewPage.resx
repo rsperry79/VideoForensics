@@ -575,4 +575,16 @@
   <data name="DetailBitRateDeviation" xml:space="preserve">
     <value>Bit rate deviation</value>
   </data>
+  <data name="ReviewTabsLabel" xml:space="preserve">
+    <value>Review views</value>
+  </data>
+  <data name="TabTimeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="TabEvents" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="TabDetail" xml:space="preserve">
+    <value>Detail</value>
+  </data>
 </root>

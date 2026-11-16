@@ -136,14 +136,22 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>
         /// Pages in <see cref="ExpandedLeftNavPaths"/> always show the left nav pane, whatever the saved preference, because it
-        /// hosts the media view menu (Timeline, Events, Detail, Live). Every other page shows the saved preference.
-        /// The override is transient: it changes the pane, never <see cref="LayoutPreferencesState"/>.
+        /// hosts the Live view menu. Pages in <see cref="ForcedCollapsedLeftNavPaths"/> always collapse it: the review tabs
+        /// moved to the page header, so /media needs the width. Every other page shows the saved preference.
+        /// Both overrides are transient: they change the pane, never <see cref="LayoutPreferencesState"/>.
         /// </summary>
-        private static readonly string[] ExpandedLeftNavPaths = ["/media", "/media/review", "/live-view"];
+        private static readonly string[] ExpandedLeftNavPaths = ["/live-view"];
+
+        private static readonly string[] ForcedCollapsedLeftNavPaths = ["/media", "/media/review"];
 
         private static bool IsExpandedLeftNavPath(string path)
         {
             return ExpandedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static bool IsForcedCollapsedLeftNavPath(string path)
+        {
+            return ForcedCollapsedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -153,7 +161,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// </summary>
         private async Task SyncLeftNavForPathAsync(SfSplitter splitter)
         {
-            bool wantCollapsed = !IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed;
+            bool wantCollapsed = IsForcedCollapsedLeftNavPath(_currentPath)
+                || (!IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed);
             try
             {
                 if (wantCollapsed != _leftNavPaneCollapsed)
@@ -263,7 +272,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
             // On an auto-collapse page the toggle only flips the pane for this visit. The saved preference
             // stays put, and leaving the page brings the pane back in line with it.
-            if (IsExpandedLeftNavPath(_currentPath))
+            if (IsExpandedLeftNavPath(_currentPath) || IsForcedCollapsedLeftNavPath(_currentPath))
             {
                 if (_outerSplitter is not null)
                 {

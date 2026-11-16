@@ -31,11 +31,41 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
     [Theory]
     [InlineData("http://localhost/media")]
     [InlineData("http://localhost/media/review")]
-    public void MainLayout_MediaPage_DoesNotCollapseLeftNavWhenPrefIsExpanded(string uri)
+    public void MainLayout_MediaPage_CollapsesLeftNavWhenPrefIsExpanded(string uri)
     {
-        // Arrange
+        // Arrange: the review tabs moved to the page header, so /media collapses the left nav (U-D2)
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
         NavigateTo(uri);
+
+        // Act
+        _ = Render<MainLayout>();
+
+        // Assert
+        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+    }
+
+    [Theory]
+    [InlineData("http://localhost/media")]
+    [InlineData("http://localhost/media/review")]
+    public void MainLayout_MediaPage_StaysCollapsedWhenPrefIsCollapsed(string uri)
+    {
+        // Arrange
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
+        NavigateTo(uri);
+
+        // Act
+        _ = Render<MainLayout>();
+
+        // Assert
+        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+    }
+
+    [Fact]
+    public void MainLayout_LiveViewPage_KeepsLeftNavOpenWhenPrefIsCollapsed()
+    {
+        // Arrange - Live view still hosts its own menu in the left pane
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
+        NavigateTo("http://localhost/live-view");
 
         // Act
         _ = Render<MainLayout>();
@@ -44,25 +74,8 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         Assert.Equal(0, CountInvocations(CollapseIdentifier));
     }
 
-    [Theory]
-    [InlineData("http://localhost/media")]
-    [InlineData("http://localhost/media/review")]
-    [InlineData("http://localhost/live-view")]
-    public void MainLayout_MediaPage_KeepsLeftNavOpenWhenPrefIsCollapsed(string uri)
-    {
-        // Arrange - the media menu lives in the left pane, so the pane opens even with a collapsed saved preference
-        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
-        NavigateTo(uri);
-
-        // Act
-        _ = Render<MainLayout>();
-
-        // Assert - the pane stays open; it is never collapsed on these pages
-        Assert.Equal(0, CountInvocations(CollapseIdentifier));
-    }
-
     [Fact]
-    public async Task MainLayout_LeavingMediaWithExpandedPref_DoesNotTouchThePane()
+    public async Task MainLayout_LeavingMediaWithExpandedPref_ExpandsThePane()
     {
         // Arrange
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
@@ -73,9 +86,9 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         NavigateTo("http://localhost/");
         await component.InvokeAsync(() => Task.CompletedTask);
 
-        // Assert
-        Assert.Equal(0, CountInvocations(CollapseIdentifier));
-        Assert.Equal(0, CountInvocations(ExpandIdentifier));
+        // Assert: /media collapsed the pane; leaving it brings the saved (expanded) preference back
+        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+        Assert.Equal(1, CountInvocations(ExpandIdentifier));
     }
 
     [Fact]

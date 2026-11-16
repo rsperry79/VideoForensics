@@ -23,6 +23,15 @@
 }
 
 <div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
+    <div class="btn-group btn-group-sm" role="tablist" aria-label="@L["ReviewTabsLabel"]" data-testid="review-tabs">
+        @foreach (ReviewTab tab in TabOrder)
+        {
+            <button type="button" role="tab" class="btn @(State.ActiveTab == tab ? "btn-primary" : "btn-outline-secondary")"
+                    aria-selected="@(State.ActiveTab == tab ? "true" : "false")" data-testid="review-tab-button-@TabId(tab)"
+                    @onclick="() => State.SetTab(tab)">@TabLabel(tab)</button>
+        }
+    </div>
+
     <ReviewPopupHost>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <ReviewPendingTags DeviceNames="DeviceNames" />
@@ -38,6 +47,17 @@
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events, ReviewTab.Detail];
+
+    private static string TabId(ReviewTab tab) => tab.ToString().ToLowerInvariant();
+
+    private LocalizedString TabLabel(ReviewTab tab) => tab switch
+    {
+        ReviewTab.Timeline => L["TabTimeline"],
+        ReviewTab.Events => L["TabEvents"],
+        _ => L["TabDetail"],
+    };
 
     protected override void OnInitialized()
     {
