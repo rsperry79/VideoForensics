@@ -6,7 +6,7 @@ paths:
 
 # C# conventions
 
-- `.csproj`: `Microsoft.CodeAnalysis` 5.9.0. Signed projects use `VideoForensics.snk` (root).
+- `.csproj`: `Microsoft.CodeAnalysis` 5.12.0 (with `.Analyzers` and `.Workspaces.MSBuild` at the same version). Signed projects use `VideoForensics.snk` (root).
 - Public APIs are interfaces in `Contracts/`. No vendor SDK outside service layers.
 - Async I/O. Async methods take `CancellationToken`.
 - Log user paths: Info on success, Error on failure, with context. Use account names, never GUIDs. Expose errors via `GetLastError()`.

@@ -89,7 +89,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.12.0" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.120" />
     <!-- Microsoft.AspNetCore.Components.WebView.Maui is Windows-only; iOS builds do not support Blazor WebView -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.130" Condition="'$(BuildIOS)' != 'true'" />
