@@ -79,7 +79,7 @@ namespace VideoForensics.Client.Common.Contracts
     /// Orchestrates capturing a video frame as a new, independently-hashed "still" media item for
     /// evidence purposes (Evidence "grab still with hash"). The original source file is never
     /// modified. Implemented locally (server-tier hosts) by an orchestrator over
-    /// IMediaFrameExtractor/IMediaItemRepository/IMediaStillRepository, and remotely (MAUI) by an
+    /// IMediaFrameExtractor/IMediaItemWriteRepository/IMediaStillRepository, and remotely (MAUI) by an
     /// HTTP-backed Remote* class calling POST /api/v1/media/{id}/stills - both sides of the
     /// client/server split share this one interface (CLAUDE.md's "interface names don't change" rule).
     /// </summary>

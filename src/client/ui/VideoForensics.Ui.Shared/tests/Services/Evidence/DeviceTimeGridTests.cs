@@ -1,4 +1,5 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -7,9 +8,11 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 public class DeviceTimeGrid_Build_Tests
 {
-    private static Device MakeDevice(string name)
+    private static Device MakeDevice(string name) => MakeEntity(name).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(string name)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = Guid.NewGuid(),
             LocationId = Guid.NewGuid(),

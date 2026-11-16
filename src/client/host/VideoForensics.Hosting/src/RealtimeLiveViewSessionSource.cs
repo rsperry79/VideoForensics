@@ -26,12 +26,12 @@ namespace VideoForensics.Client.Hosting
         }
 
         /// <inheritdoc />
-        public IObservable<LiveViewSession> SessionChanged =>
-            _hub.LiveViewSessionChanged.Select(dto => dto.ToDomain());
+        public IObservable<LiveViewSessionDto> SessionChanged =>
+            _hub.LiveViewSessionChanged;
 
         /// <inheritdoc />
-        public IObservable<LiveViewTelemetrySample> Telemetry =>
-            _hub.LiveViewTelemetry.Select(dto => dto.ToDomain());
+        public IObservable<LiveViewTelemetrySampleDto> Telemetry =>
+            _hub.LiveViewTelemetry;
 
         /// <inheritdoc />
         public bool IsConnected => _hub.IsLiveHubConnected;

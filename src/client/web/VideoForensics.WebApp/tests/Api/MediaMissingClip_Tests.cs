@@ -32,14 +32,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private sealed class Harness
         {
-            public Mock<IMediaItemRepository> MediaItems { get; } = new();
+            public Mock<IMediaItemWriteRepository> MediaItems { get; } = new();
             public Mock<IMediaStorageProvider> Storage { get; } = new();
             public Mock<IAccessAuditLogRepository> AuditLog { get; } = new();
             public Mock<INetworkTierResolver> TierResolver { get; } = new();
             public Mock<ILogger<Program>> Logger { get; } = new();
             public Mock<INotificationDispatcher> Dispatcher { get; } = new();
-            public Mock<INoticeRepository> Notices { get; } = new();
-            public Mock<IDeviceRepository> Devices { get; } = new();
+            public Mock<INoticeWriteRepository> Notices { get; } = new();
+            public Mock<IDeviceWriteRepository> Devices { get; } = new();
             public Mock<IEvidenceValidationJobs> ValidationJobs { get; } = new();
         }
 
@@ -99,7 +99,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         private async Task<IResult> InvokeAsync(Harness h, HttpContext context)
         {
             return await MediaApiEndpoints.GetContentAsync(
-                _mediaItemId, null, Mock.Of<IMediaAccessTicketService>(), h.MediaItems.Object, Mock.Of<IOperatorRepository>(),
+                _mediaItemId, null, Mock.Of<IMediaAccessTicketService>(), h.MediaItems.Object, Mock.Of<IOperatorWriteRepository>(),
                 h.Storage.Object, h.AuditLog.Object, h.TierResolver.Object, h.Logger.Object,
                 h.Dispatcher.Object, h.Notices.Object, h.Devices.Object, h.ValidationJobs.Object,
                 context, CancellationToken.None);

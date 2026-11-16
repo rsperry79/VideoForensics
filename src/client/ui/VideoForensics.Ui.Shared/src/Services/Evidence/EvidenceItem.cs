@@ -1,5 +1,6 @@
-using VideoForensics.Data.Common.Entities;
 
+
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
@@ -53,12 +54,12 @@ public sealed class EvidenceItem
     /// <summary>
     /// The event, if this is an event-based item (null for media-only).
     /// </summary>
-    public Event? Event { get; init; }
+    public EventDto? Event { get; init; }
 
     /// <summary>
     /// The media item, if one is attached (optional even for events, null for pure events).
     /// </summary>
-    public MediaItem? Media { get; init; }
+    public MediaItemDto? Media { get; init; }
 
     /// <summary>
     /// Human-readable label for the item: event type for events, or "Snapshot"/"Time Lapse"/"Video"/"File" for media.

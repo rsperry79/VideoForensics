@@ -7,6 +7,7 @@ using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components;
@@ -23,7 +24,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
+using VideoForensics.Core.Api.Contracts;using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
@@ -98,7 +99,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         var opPrefRepoMock = new Mock<IOperatorPreferencesRepository>();
         _ = opPrefRepoMock
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((OperatorPreferences?)null);
+            .ReturnsAsync((OperatorPreferencesDto?)null);
         _ = Services.AddScoped(_ => opPrefRepoMock.Object);
 
         // Register default IUiModeService mock (can be overridden by individual tests)
@@ -113,7 +114,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         // Register ICaseRepository mock
         var caseRepoMock = new Mock<ICaseRepository>();
         _ = caseRepoMock
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _ = Services.AddScoped(_ => caseRepoMock.Object);
 

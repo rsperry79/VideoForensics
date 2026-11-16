@@ -1,6 +1,6 @@
 @page "/pair/device"
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using System.Web
 @inject NavigationManager NavigationManager
@@ -32,7 +32,7 @@ else
 
         <div>
             <label>@L["RoleLabel"]</label>
-            <SfDropDownList @bind-Value="_selectedRole" DataSource="@_availableRoles" TValue="OperatorRole" TItem="RoleOption">
+            <SfDropDownList @bind-Value="_selectedRole" DataSource="@_availableRoles" TValue="OperatorRoleDto" TItem="RoleOption">
                 <DropDownListFieldSettings Text="DisplayName" Value="Value"></DropDownListFieldSettings>
             </SfDropDownList>
         </div>
@@ -52,21 +52,21 @@ else
 }
 
 @code {
-    private sealed record RoleOption(string DisplayName, OperatorRole Value);
+    private sealed record RoleOption(string DisplayName, OperatorRoleDto Value);
 
     private string _userCode = string.Empty;
     private string _deviceName = "MCP Bridge";
-    private OperatorRole _selectedRole = OperatorRole.ReadOnly;
+    private OperatorRoleDto _selectedRole = OperatorRoleDto.ReadOnly;
     private bool _isApproving;
     private string? _error;
     private string? _successMessage;
 
     private List<RoleOption> _availableRoles = new()
     {
-        new RoleOption("Read Only", OperatorRole.ReadOnly),
-        new RoleOption("Review", OperatorRole.Review),
-        new RoleOption("Admin", OperatorRole.Admin),
-        new RoleOption("SuperAdmin", OperatorRole.SuperAdmin)
+        new RoleOption("Read Only", OperatorRoleDto.ReadOnly),
+        new RoleOption("Review", OperatorRoleDto.Review),
+        new RoleOption("Admin", OperatorRoleDto.Admin),
+        new RoleOption("SuperAdmin", OperatorRoleDto.SuperAdmin)
     };
 
     protected override void OnInitialized()

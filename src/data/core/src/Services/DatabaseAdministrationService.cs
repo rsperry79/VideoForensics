@@ -12,8 +12,8 @@ namespace VideoForensics.Data.Core.Services
         private const int MaxBridgesPerRun = 1000;
 
         private readonly IDatabaseEngine _engine;
-        private readonly IMediaItemRepository _mediaItems;
-        private readonly ILegalHoldRepository _legalHolds;
+        private readonly IMediaItemWriteRepository _mediaItems;
+        private readonly ILegalHoldWriteRepository _legalHolds;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogRepository _actionLog;
         private readonly IMediaPathResolver _paths;
@@ -22,8 +22,8 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Creates the service.</summary>
         public DatabaseAdministrationService(
             IDatabaseEngine engine,
-            IMediaItemRepository mediaItems,
-            ILegalHoldRepository legalHolds,
+            IMediaItemWriteRepository mediaItems,
+            ILegalHoldWriteRepository legalHolds,
             IUnitOfWork unitOfWork,
             IActionLogRepository actionLog,
             ILogger<DatabaseAdministrationService> logger,
@@ -129,8 +129,8 @@ namespace VideoForensics.Data.Core.Services
                     item.PurgedAtUtc = DateTime.UtcNow;
                     item.PurgeReason = reason;
 
-                    await context.MediaItems.UpdateAsync(item, ct);
-                    _ = await context.ActionLog.AppendAsync(
+                    await _mediaItems.UpdateAsync(item, ct);
+                    _ = await _actionLog.AppendAsync(
                         Environment.UserName,
                         ActorType.Human,
                         "MediaPurged",

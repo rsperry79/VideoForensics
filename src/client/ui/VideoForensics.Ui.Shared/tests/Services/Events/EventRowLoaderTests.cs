@@ -3,8 +3,11 @@ using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services.Events;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 
@@ -35,7 +38,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
             DownloadedAtUtc = new DateTime(2026, 9, 20, 12, 10, 0, DateTimeKind.Utc),
             ProviderEventId = "provider-event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -45,7 +48,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = [], IntegrityRecords = [] });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0, []));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 
@@ -81,7 +84,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -92,7 +95,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -102,7 +105,7 @@ public class EventRowLoader_LoadAsync_SingleDevice_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = [], IntegrityRecords = [] });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0, []));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 
@@ -141,7 +144,7 @@ public class EventRowLoader_LoadAsync_MultiDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -152,7 +155,7 @@ public class EventRowLoader_LoadAsync_MultiDevice_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -165,7 +168,7 @@ public class EventRowLoader_LoadAsync_MultiDevice_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid>(), scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = [], IntegrityRecords = [] });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0, []));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 
@@ -204,7 +207,7 @@ public class EventRowLoader_LoadAsync_AllDevices_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -217,7 +220,7 @@ public class EventRowLoader_LoadAsync_AllDevices_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid>(), scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = [], IntegrityRecords = [] });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0, []));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 
@@ -255,7 +258,7 @@ public class EventRowLoader_LoadAsync_SearchFilter_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -266,7 +269,7 @@ public class EventRowLoader_LoadAsync_SearchFilter_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -276,7 +279,7 @@ public class EventRowLoader_LoadAsync_SearchFilter_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = [], IntegrityRecords = [] });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0, []));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 
@@ -313,7 +316,7 @@ public class EventRowLoader_LoadAsync_UnansweredMode_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -357,7 +360,7 @@ public class EventRowLoader_LoadAsync_ErrorHandling_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 21, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "event-2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mockEventRepo = new Mock<IEventRepository>();
         _ = mockEventRepo
@@ -370,7 +373,7 @@ public class EventRowLoader_LoadAsync_ErrorHandling_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(device2Id, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = [], IntegrityRecords = [] });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [], [], 0, 0, 0, []));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 
@@ -407,7 +410,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "ring-evt-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mediaItem = new MediaItem
         {
@@ -428,12 +431,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport
-            {
-                MediaItems = [mediaItem],
-                MediaProviderEventLinks = [new(mediaItem.Id, "ring-evt-1")],
-                IntegrityRecords = []
-            });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [mediaItem.ToDto()], [], 0, 0, 0, [new MediaProviderEventLinkDto(mediaItem.Id, "ring-evt-1")]));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
         _ = mockHoldRepo
@@ -447,7 +445,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
 
         // Assert
         _ = Assert.Single(result.Rows);
-        Assert.Same(mediaItem, result.Rows[0].MediaItem);
+        Assert.Equal(mediaItem.ToDto(), result.Rows[0].MediaItem);
     }
 
     [Fact]
@@ -470,7 +468,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
             DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
             ProviderEventId = "ring-evt-1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var mediaItem = new MediaItem
         {
@@ -491,12 +489,7 @@ public class EventRowLoader_LoadAsync_MediaMatching_Tests
         var mockReportService = new Mock<IReportGenerationService>();
         _ = mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport
-            {
-                MediaItems = [mediaItem],
-                MediaProviderEventLinks = [new(mediaItem.Id, "ring-evt-other")],
-                IntegrityRecords = []
-            });
+            .ReturnsAsync(new EvidenceReviewReportDto(default, default, default, [mediaItem.ToDto()], [], 0, 0, 0, [new MediaProviderEventLinkDto(mediaItem.Id, "ring-evt-other")]));
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
         _ = mockHoldRepo

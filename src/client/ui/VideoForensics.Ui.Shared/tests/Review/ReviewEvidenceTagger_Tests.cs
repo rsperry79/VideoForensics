@@ -7,8 +7,8 @@ using Moq;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using Xunit;
 
@@ -36,27 +36,27 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     public async Task ReviewEvidenceTagger_TagAsync_NoActiveCase_ReturnsKeptPendingAndDoesNotPin()
     {
         // Arrange
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
         ReviewEvidenceTagger tagger = CreateTagger(PendingTagFakes.CreateUnactivated(repository), pending, await CreateSessionAsync());
         var targetId = Guid.NewGuid();
 
         // Act
-        TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        TagOutcome outcome = await tagger.TagAsync(CaseItemKindDto.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Assert
         Assert.Equal(TagOutcome.KeptPending, outcome);
-        Assert.True(tagger.IsPending(CaseItemKind.Media, targetId));
+        Assert.True(tagger.IsPending(CaseItemKindDto.Media, targetId));
         repository.Verify(r => r.AddItemAsync(
-            It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<CaseItemKindDto>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task ReviewEvidenceTagger_TagAsync_ActiveCase_PinsWithKindTargetReasonAndActor()
     {
         // Arrange
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase);
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
         CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
@@ -64,14 +64,14 @@ public class ReviewEvidenceTagger_Tests : BunitContext
         var targetId = Guid.NewGuid();
 
         // Act
-        TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Event, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        TagOutcome outcome = await tagger.TagAsync(CaseItemKindDto.Event, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Assert
         Assert.Equal(TagOutcome.PinnedToOpenCase, outcome);
         Assert.Equal(0, pending.Count);
         repository.Verify(r => r.AddItemAsync(
             openCase.Id,
-            CaseItemKind.Event,
+            CaseItemKindDto.Event,
             targetId,
             PendingTagFakes.Reason,
             _operatorId.ToString(),
@@ -82,14 +82,14 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     public async Task ReviewEvidenceTagger_TagAsync_DuplicatePending_ReturnsAlreadyTagged()
     {
         // Arrange
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
         ReviewEvidenceTagger tagger = CreateTagger(PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase)), pending, await CreateSessionAsync());
         var targetId = Guid.NewGuid();
-        _ = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        _ = await tagger.TagAsync(CaseItemKindDto.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Act
-        TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        TagOutcome outcome = await tagger.TagAsync(CaseItemKindDto.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Assert
         Assert.Equal(TagOutcome.AlreadyTagged, outcome);
@@ -100,36 +100,28 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     public async Task ReviewEvidenceTagger_TagAsync_ActiveCaseAlreadyHoldsItem_ReturnsAlreadyTagged()
     {
         // Arrange
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var targetId = Guid.NewGuid();
-        var existing = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            CaseId = openCase.Id,
-            Kind = CaseItemKind.Media,
-            MediaItemId = targetId,
-            Reason = "earlier",
-            AddedBy = "actor-0",
-        };
+        var existing = new CaseItemDto(Guid.NewGuid(), openCase.Id, CaseItemKindDto.Media.ToString(), targetId, "earlier", "actor-0", DateTime.UtcNow, null, null, null, null);
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, existingItems: [existing]);
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
         CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
         ReviewEvidenceTagger tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
 
         // Act
-        TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        TagOutcome outcome = await tagger.TagAsync(CaseItemKindDto.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Assert
         Assert.Equal(TagOutcome.AlreadyTagged, outcome);
         repository.Verify(r => r.AddItemAsync(
-            It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<CaseItemKindDto>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task ReviewEvidenceTagger_TagAsync_PinRefused_ReturnsFailed()
     {
         // Arrange
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var targetId = Guid.NewGuid();
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { targetId });
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
@@ -137,7 +129,7 @@ public class ReviewEvidenceTagger_Tests : BunitContext
         ReviewEvidenceTagger tagger = CreateTagger(caseState, pending, await CreateSessionAsync());
 
         // Act
-        TagOutcome outcome = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        TagOutcome outcome = await tagger.TagAsync(CaseItemKindDto.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Assert
         Assert.Equal(TagOutcome.Failed, outcome);
@@ -148,16 +140,16 @@ public class ReviewEvidenceTagger_Tests : BunitContext
     public async Task ReviewEvidenceTagger_IsPending_ReflectsTheKeptTag()
     {
         // Arrange
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var pending = new PendingEvidenceTags(NullLogger<PendingEvidenceTags>.Instance);
         ReviewEvidenceTagger tagger = CreateTagger(PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase)), pending, await CreateSessionAsync());
         var targetId = Guid.NewGuid();
-        Assert.False(tagger.IsPending(CaseItemKind.Media, targetId));
+        Assert.False(tagger.IsPending(CaseItemKindDto.Media, targetId));
 
         // Act
-        _ = await tagger.TagAsync(CaseItemKind.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
+        _ = await tagger.TagAsync(CaseItemKindDto.Media, targetId, Guid.NewGuid(), null, PendingTagFakes.Reason, CancellationToken.None);
 
         // Assert
-        Assert.True(tagger.IsPending(CaseItemKind.Media, targetId));
+        Assert.True(tagger.IsPending(CaseItemKindDto.Media, targetId));
     }
 }

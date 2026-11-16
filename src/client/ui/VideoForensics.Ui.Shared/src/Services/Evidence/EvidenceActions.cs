@@ -1,5 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
@@ -82,9 +82,9 @@ public static class EvidenceActions
     /// </summary>
     public static (string Text, string Color) DetermineIntegrityStatus(
         Guid mediaItemId,
-        IReadOnlyList<IntegrityRecord> integrityRecords)
+        IReadOnlyList<IntegrityRecordDto> integrityRecords)
     {
-        IntegrityRecord? record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaItemId);
+        IntegrityRecordDto? record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaItemId);
 
         if (record is null)
         {

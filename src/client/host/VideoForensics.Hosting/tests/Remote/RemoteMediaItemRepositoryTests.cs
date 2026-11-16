@@ -3,7 +3,7 @@ using System.Text.Json;
 
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
@@ -81,7 +81,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<MediaItemDto> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -111,7 +111,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.ListAsync(cts.Token);
+            IReadOnlyList<MediaItemDto> result = await repo.ListAsync(cts.Token);
 
             _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
@@ -134,7 +134,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<MediaItemDto> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.Empty(result);
         }
@@ -160,7 +160,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.GetByDeviceIdAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<MediaItemDto> result = await repo.GetByDeviceIdAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -191,122 +191,16 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.GetByDeviceIdAsync(deviceId, cts.Token);
+            IReadOnlyList<MediaItemDto> result = await repo.GetByDeviceIdAsync(deviceId, cts.Token);
 
             _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
         }
 
         [Fact]
-        public async Task GetByHashAsync_Throws_NotSupportedException()
+        public void RemoteMediaItemRepository_IsNotAWriteRepository()
         {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByHashAsync("sha256hash", CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
-
-        [Fact]
-        public async Task GetByApiSourceHashAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByApiSourceHashAsync("hash-123", CancellationToken.None));
-
-            Assert.Contains("Remote API doesn't yet support", ex.Message);
-        }
-
-        [Fact]
-        public async Task GetByDownloadEventIdAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByDownloadEventIdAsync(Guid.NewGuid(), CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
-
-        [Fact]
-        public async Task AddAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            var mediaItem = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "test.mp4", FilePath = "/data/test.mp4", MediaFormat = "mp4", Sha256Hash = "hash123" };
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.AddAsync(mediaItem, CancellationToken.None));
-
-            Assert.Contains("MAUI has no write path", ex.Message);
-        }
-
-        [Fact]
-        public async Task UpdateAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            var mediaItem = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "test.mp4", FilePath = "/data/test.mp4", MediaFormat = "mp4", Sha256Hash = "hash123" };
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.UpdateAsync(mediaItem, CancellationToken.None));
-
-            Assert.Contains("MAUI has no write path", ex.Message);
-        }
-
-        [Fact]
-        public async Task DeleteAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
-
-            Assert.Contains("MAUI has no write path", ex.Message);
+            Assert.False(typeof(IMediaItemWriteRepository).IsAssignableFrom(typeof(RemoteMediaItemRepository)));
         }
 
         [Fact]
@@ -351,9 +245,9 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<MediaItemDto> result = await repo.ListAsync(CancellationToken.None);
 
-            MediaItem mediaItem = result[0];
+            MediaItemDto mediaItem = result[0];
             Assert.Equal(mediaItemDto.Id, mediaItem.Id);
             Assert.Equal(mediaItemDto.DeviceId, mediaItem.DeviceId);
             Assert.Equal(mediaItemDto.DownloadEventId, mediaItem.DownloadEventId);
@@ -420,9 +314,9 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.GetByDeviceIdAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<MediaItemDto> result = await repo.GetByDeviceIdAsync(deviceId, CancellationToken.None);
 
-            MediaItem mediaItem = result[0];
+            MediaItemDto mediaItem = result[0];
             Assert.Equal(mediaItemDto.FileName, mediaItem.FileName);
             Assert.Equal(mediaItemDto.FilePath, mediaItem.FilePath);
             Assert.Equal(mediaItemDto.MediaFormat, mediaItem.MediaFormat);
@@ -457,7 +351,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<MediaItemDto> result = await repo.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -498,7 +392,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            IReadOnlyList<MediaItem> result = await repo.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cts.Token);
+            IReadOnlyList<MediaItemDto> result = await repo.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cts.Token);
 
             _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
@@ -523,7 +417,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            MediaItem? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
+            MediaItemDto? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(mediaItemId, result.Id);
@@ -546,7 +440,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            MediaItem? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
+            MediaItemDto? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -591,7 +485,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            MediaItem? result = await repo.GetAsync(mediaItemId, cts.Token);
+            MediaItemDto? result = await repo.GetAsync(mediaItemId, cts.Token);
 
             _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
@@ -640,7 +534,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            MediaItem? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
+            MediaItemDto? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(mediaItemDto.Id, result.Id);

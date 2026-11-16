@@ -1,7 +1,7 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -29,15 +29,15 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
+    public async Task<IReadOnlyDictionary<Guid, EventDetailDto>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, EventDetail>();
+        var result = new Dictionary<Guid, EventDetailDto>();
         var distinct = eventIds.Distinct().ToList();
         for (int start = 0; start < distinct.Count; start += DetailChunkSize)
         {
             List<Guid> chunk = distinct.GetRange(start, Math.Min(DetailChunkSize, distinct.Count - start));
-            IReadOnlyList<EventDetail> rows = await _details.GetDetailsAsync(chunk, ct);
-            foreach (EventDetail row in rows)
+            IReadOnlyList<EventDetailDto> rows = await _details.GetDetailsAsync(chunk, ct);
+            foreach (EventDetailDto row in rows)
             {
                 result[row.EventId] = row;
             }
@@ -48,12 +48,12 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
 
     /// <inheritdoc />
     /// <remarks>The repository filters one camera at a time, so each camera is one query and the results are merged here.</remarks>
-    public async Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    public async Task<IReadOnlyList<JammingIncidentDto>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
-        var merged = new List<JammingIncidentRecord>();
+        var merged = new List<JammingIncidentDto>();
         foreach (Guid device in deviceIds.Distinct())
         {
-            IReadOnlyList<JammingIncidentRecord> rows = await _jamming.ListIncidentsAsync(device, fromUtc, toUtc, ct);
+            var rows = await _jamming.ListIncidentsAsync(device, fromUtc, toUtc, ct);
             merged.AddRange(rows);
         }
 
@@ -91,14 +91,8 @@ public sealed class ReviewDetailLoader : IReviewDetailLoader
             return [];
         }
 
-        var filter = new MediaFlagFilter
-        {
-            Types = [MediaFlagType.BitrateCollapse, MediaFlagType.BitrateDeviation],
-            DeviceIds = devices,
-            FromUtc = fromUtc,
-            ToUtc = toUtc,
-        };
-        MediaFlagPage page = await _flags.ListPageAsync(filter, 0, BitRateFlagPageSize, ct);
+        var filter = new MediaFlagFilterDto(["BitrateCollapse", "BitrateDeviation"], null, devices, fromUtc, toUtc);
+        MediaFlagPageDto page = await _flags.ListPageAsync(filter, 0, BitRateFlagPageSize, ct);
         return page.Items
             .OrderByDescending(flag => flag.WindowStartUtc)
             .Select(flag => new ReviewBitRateFlag(flag.Id, flag.DeviceId, flag.WindowStartUtc, flag.WindowEndUtc, flag.FlagType, flag.MediaItemId))

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services
 {
@@ -33,10 +33,10 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// <param name="timeout">The longest time to wait.</param>
         /// <param name="cancellationToken">Cancels the wait. Cancellation throws <see cref="OperationCanceledException"/>.</param>
         /// <returns>The Active session, or null if the timeout passed first.</returns>
-        public async Task<LiveViewSession?> WaitForActiveAsync(
+        public async Task<LiveViewSessionDto?> WaitForActiveAsync(
             Guid sessionId,
             ILiveViewSessionSource? source,
-            Func<CancellationToken, Task<LiveViewSession?>> getActiveAsync,
+            Func<CancellationToken, Task<LiveViewSessionDto?>> getActiveAsync,
             TimeSpan timeout,
             CancellationToken cancellationToken)
         {
@@ -49,11 +49,11 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
             // Subscribe to the stream before asking the host for pushes. Pushes are not replayed, so attaching
             // after the request would drop an early push.
-            var activated = new TaskCompletionSource<LiveViewSession>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var activated = new TaskCompletionSource<LiveViewSessionDto>(TaskCreationOptions.RunContinuationsAsynchronously);
             using IDisposable observer = source.SessionChanged.Subscribe(
                 session =>
                 {
-                    if (session.Id == sessionId && session.State == LiveViewSessionState.Active)
+                    if (session.Id == sessionId && session.State == "Active")
                     {
                         _ = activated.TrySetResult(session);
                     }
@@ -71,8 +71,8 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 return await PollUntilActiveAsync(getActiveAsync, timeout, cancellationToken);
             }
 
-            LiveViewSession? current = await getActiveAsync(cancellationToken);
-            if (current?.State == LiveViewSessionState.Active)
+            LiveViewSessionDto? current = await getActiveAsync(cancellationToken);
+            if (current?.State == "Active")
             {
                 return current;
             }
@@ -87,13 +87,13 @@ namespace VideoForensics.Client.Ui.Shared.Services
             cancellationToken.ThrowIfCancellationRequested();
 
             current = await getActiveAsync(cancellationToken);
-            return current?.State == LiveViewSessionState.Active ? current : null;
+            return current?.State == "Active" ? current : null;
         }
 
         // Fallback poll. Polls every PollInterval until the deadline. The last wait is cut short so the total
         // never exceeds the timeout.
-        private static async Task<LiveViewSession?> PollUntilActiveAsync(
-            Func<CancellationToken, Task<LiveViewSession?>> getActiveAsync,
+        private static async Task<LiveViewSessionDto?> PollUntilActiveAsync(
+            Func<CancellationToken, Task<LiveViewSessionDto?>> getActiveAsync,
             TimeSpan timeout,
             CancellationToken cancellationToken)
         {
@@ -108,8 +108,8 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
                 await Task.Delay(remaining < PollInterval ? remaining : PollInterval, cancellationToken);
 
-                LiveViewSession? current = await getActiveAsync(cancellationToken);
-                if (current?.State == LiveViewSessionState.Active)
+                LiveViewSessionDto? current = await getActiveAsync(cancellationToken);
+                if (current?.State == "Active")
                 {
                     return current;
                 }

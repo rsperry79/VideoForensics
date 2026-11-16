@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   test:
@@ -32,6 +33,8 @@ jobs:
           path: ~/.nuget/packages
 
       - name: Restore NuGet packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet restore VideoForensics.CI.slnf
 
       - name: Download build output

@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             var services = new ServiceCollection();
             _ = services.AddSingleton<ILogger<UnitOfWork>>(new Logger<UnitOfWork>(loggerFactory));
             _unitOfWork = new UnitOfWork(_fixture.Factory, services.BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>());
-            _repository = new MediaFlagRepository(_fixture.Factory, NullLogger<MediaFlagRepository>.Instance);
+            _repository = new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -55,16 +55,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             Guid id = await _unitOfWork.ExecuteAsync(async ctx =>
             {
-                MediaFlag flag = await ctx.MediaFlags.UpsertRaisedAsync(Raised(device), CancellationToken.None);
-                _ = await ctx.MediaFlags.UpsertRaisedAsync(Raised(device), CancellationToken.None);
-                _ = await ctx.MediaFlags.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
+                MediaFlag flag = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpsertRaisedAsync(Raised(device), CancellationToken.None);
+                _ = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpsertRaisedAsync(Raised(device), CancellationToken.None);
+                _ = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
                 return flag.Id;
             }, CancellationToken.None);
 
             MediaFlag? stored = await _repository.GetAsync(id, CancellationToken.None);
             Assert.Equal(MediaFlagStatus.Kept, stored?.Status);
             Assert.Equal(1, await _repository.CountAsync(new MediaFlagFilter(), CancellationToken.None));
-            var actionLog = new ActionLogRepository(_fixture.Factory, NullLogger<ActionLogRepository>.Instance);
+            var actionLog = new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance);
             _ = Assert.Single(await actionLog.GetHistoryForEntityAsync("MediaFlag", id, CancellationToken.None));
         }
 
@@ -75,13 +75,13 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(() => _unitOfWork.ExecuteAsync<int>(async ctx =>
             {
-                MediaFlag flag = await ctx.MediaFlags.UpsertRaisedAsync(Raised(device), CancellationToken.None);
-                _ = await ctx.MediaFlags.UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
+                MediaFlag flag = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpsertRaisedAsync(Raised(device), CancellationToken.None);
+                _ = await new MediaFlagRepository(_unitOfWork, NullLogger<MediaFlagRepository>.Instance).UpdateStatusAsync(flag.Id, MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, null, "alice", CancellationToken.None);
                 throw new InvalidOperationException("boom");
             }, CancellationToken.None));
 
             Assert.Equal(0, await _repository.CountAsync(new MediaFlagFilter(), CancellationToken.None));
-            var actionLog = new ActionLogRepository(_fixture.Factory, NullLogger<ActionLogRepository>.Instance);
+            var actionLog = new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance);
             Assert.Empty(await actionLog.ListAsync(CancellationToken.None));
         }
     }

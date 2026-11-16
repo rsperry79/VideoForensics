@@ -17,12 +17,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Guid _locationId = Guid.NewGuid();
         private readonly Mock<IEventAndConfigService> _events = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
-        private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _media = new();
-        private readonly Mock<IEventRepository> _eventRepository = new();
+        private readonly Mock<IEventWriteRepository> _eventRepository = new();
         private readonly ProviderAccountEntity _account;
         private readonly VideoForensics.Data.Common.Entities.Device _device;
 
@@ -99,6 +99,24 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _eventRepository.Verify(r => r.RecordRetryPassAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             _events.Verify(e => e.GetEventsAsync(_accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_QueuedBatchOnFirstPull_ActivatesTheAccountBeforeDownloading()
+        {
+            // Why: the queued batch downloads through the media service, which reads the active account id. The first pull
+            // after a restart must set it before the retry, or the download looks up an empty account and reports "not authenticated".
+            var calls = new List<string>();
+            _ = _media.Setup(m => m.SetActiveProviderAccountId(_accountId)).Callback(() => calls.Add("activate"));
+            _ = _media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback(() => calls.Add("download"))
+                .ReturnsAsync(new DownloadResult(Success: true));
+            _ = _eventRepository.Setup(r => r.ListAwaitingDingIdAsync(_device.Id, 3, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.Event> { Queued() });
+
+            _ = await BuildSut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal(new[] { "activate", "download" }, calls.Take(2));
         }
     }
 }

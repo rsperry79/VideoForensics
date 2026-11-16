@@ -37,7 +37,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Mock<IAccountSyncRunner> _runner = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IRingAccountSyncState> _syncState = new();
         private readonly TaskCompletionSource<AccountSyncRequest> _ranWith = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _ranLegacy = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -74,9 +74,10 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.WebHost.UseTestServer();
 
             // Every type the account endpoints inject must be a registered service, otherwise route inference treats it as a body parameter.
-            _ = builder.Services.AddSingleton(Mock.Of<IUserRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<IUserWriteRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository>());
             _ = builder.Services.AddSingleton(_accounts.Object);
-            _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddSingleton(_runner.Object);
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<Common.Contracts.IAccountExportService>());
@@ -181,10 +182,10 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task SyncNow_CustomBody_PassesStartAndEnd()
         {
             _ = await _client.PostAsync(SyncNowUrl, Json(
-                "{\"syncType\":\"Snapshots\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-01T00:00:00Z\",\"endUtc\":\"2026-10-02T00:00:00Z\"}"));
+                "{\"syncType\":\"Events\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-01T00:00:00Z\",\"endUtc\":\"2026-10-02T00:00:00Z\"}"));
 
             AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(AccountSyncType.Snapshots, request.Type);
+            Assert.Equal(AccountSyncType.Events, request.Type);
             Assert.False(request.AllHistory);
             Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), request.FromUtc);
             Assert.Equal(new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc), request.ToUtc);

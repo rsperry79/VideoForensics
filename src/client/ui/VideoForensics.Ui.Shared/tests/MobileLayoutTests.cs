@@ -10,6 +10,8 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts.Repositories;
+
 using VideoForensics.Client.Ui.Shared.Layout.Mobile;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;

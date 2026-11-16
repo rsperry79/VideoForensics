@@ -4,6 +4,8 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -56,11 +58,12 @@ public class RingDeviceSettingsPage_Tests : BunitContext
     public void RingDeviceSettingsPage_RingDeviceWithTypedRows_ShowsOfflineDetectionTypesThresholdsAndOtherSettings()
     {
         Device device = RingDevice(RingDeviceId, "{\"live_view_disabled\":false}");
-        _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([device]);
-        _ = _typed.Setup(t => t.GetAsync(RingDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeviceTypedSettings(
-            new DeviceOfflineMotionSettings { DeviceId = RingDeviceId, MaxUploadKb = 5000, PeriodAfterSecs = 30 },
-            [new DeviceDetectionType { DeviceId = RingDeviceId, DetectionType = "human", Enabled = true, Mode = "cloud", Record = false, Notification = true }],
-            [new DeviceDetectionThreshold { DeviceId = RingDeviceId, DetectionType = "loitering", Threshold = 10.0 }]));
+        _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([device.ToDto()]);
+        _ = _typed.Setup(t => t.GetAsync(RingDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeviceTypedSettingsDto(
+            RingDeviceId,
+            new DeviceOfflineMotionDto(null, null, 5000, null, null, 30),
+            [new DeviceDetectionTypeDto("human", true, "cloud", false, true)],
+            [new DeviceDetectionThresholdDto("loitering", 10.0)]));
 
         IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(RingDeviceId);
 
@@ -74,8 +77,8 @@ public class RingDeviceSettingsPage_Tests : BunitContext
     [Fact]
     public void RingDeviceSettingsPage_RingDeviceWithNoTypedRows_ShowsNoTypedSettingsMessage()
     {
-        _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([RingDevice(RingDeviceId)]);
-        _ = _typed.Setup(t => t.GetAsync(RingDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeviceTypedSettings(null, [], []));
+        _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([RingDevice(RingDeviceId).ToDto()]);
+        _ = _typed.Setup(t => t.GetAsync(RingDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeviceTypedSettingsDto(RingDeviceId, null, [], []));
 
         IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(RingDeviceId);
 
@@ -88,7 +91,7 @@ public class RingDeviceSettingsPage_Tests : BunitContext
     {
         Device wyze = RingDevice(RingDeviceId);
         wyze.ProviderName = "Wyze";
-        _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([wyze]);
+        _ = _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([wyze.ToDto()]);
 
         IRenderedComponent<Client.Ui.Shared.Pages.RingDeviceSettings> cut = RenderPage(RingDeviceId);
 

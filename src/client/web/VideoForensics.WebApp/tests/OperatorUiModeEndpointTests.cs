@@ -48,11 +48,11 @@ namespace VideoForensics.Client.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
 
             // Act
             object result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
@@ -71,11 +71,11 @@ namespace VideoForensics.Client.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = "testop", FirstName = "Test", LastName = "Operator", Email = "test@example.com" });
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             _ = preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((OperatorPreferences?)null);
 
@@ -98,7 +98,7 @@ namespace VideoForensics.Client.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = "testop", FirstName = "Test", LastName = "Operator", Email = "test@example.com" });
 
@@ -110,7 +110,7 @@ namespace VideoForensics.Client.WebApp.Tests
                 ThemeMode = "Light"
             };
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             _ = preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(storedPrefs);
 
@@ -132,11 +132,11 @@ namespace VideoForensics.Client.WebApp.Tests
             // Arrange - GET should never log audit events
             var operatorId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             _ = preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((OperatorPreferences?)null);
 
@@ -158,11 +158,11 @@ namespace VideoForensics.Client.WebApp.Tests
             var adminId = Guid.NewGuid();
             var request = new SetOperatorUiModeRequest("Simple", true);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
             HttpContext context = CreateAuthenticatedHttpContext(adminId);
@@ -188,11 +188,11 @@ namespace VideoForensics.Client.WebApp.Tests
             var adminId = Guid.NewGuid();
             var request = new SetOperatorUiModeRequest("InvalidMode", false);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
             HttpContext context = CreateAuthenticatedHttpContext(adminId);
@@ -218,7 +218,7 @@ namespace VideoForensics.Client.WebApp.Tests
             var adminId = Guid.NewGuid();
             var request = new SetOperatorUiModeRequest("Simple", true);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
@@ -230,7 +230,7 @@ namespace VideoForensics.Client.WebApp.Tests
                 ThemeMode = "System"
             };
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             _ = preferences.Setup(r => r.SetUiModeAsync(operatorId, "Simple", true, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(savedPrefs);
 
@@ -265,7 +265,7 @@ namespace VideoForensics.Client.WebApp.Tests
             string targetUsername = "testoperator";
             var request = new SetOperatorUiModeRequest("Simple", true);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = targetUsername, FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
@@ -277,7 +277,7 @@ namespace VideoForensics.Client.WebApp.Tests
                 ThemeMode = "System"
             };
 
-            var preferences = new Mock<IOperatorPreferencesRepository>();
+            var preferences = new Mock<IOperatorPreferencesWriteRepository>();
             _ = preferences.Setup(r => r.SetUiModeAsync(operatorId, "Simple", true, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(savedPrefs);
 
@@ -309,15 +309,15 @@ namespace VideoForensics.Client.WebApp.Tests
     {
         public static async Task<object> GetUiModeAsync(
             Guid operatorId,
-            IOperatorRepository operators,
-            IOperatorPreferencesRepository preferences,
+            IOperatorWriteRepository operators,
+            IOperatorPreferencesWriteRepository preferences,
             CancellationToken ct)
         {
             MethodInfo? method = typeof(DeviceManagementEndpoints)
                 .GetMethod("GetUiModeAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(Guid), typeof(IOperatorRepository), typeof(IOperatorPreferencesRepository),
+                    [typeof(Guid), typeof(IOperatorWriteRepository), typeof(IOperatorPreferencesWriteRepository),
                      typeof(CancellationToken)],
                     null);
 
@@ -333,8 +333,8 @@ namespace VideoForensics.Client.WebApp.Tests
         public static async Task<object> SetUiModeAsync(
             Guid operatorId,
             SetOperatorUiModeRequest request,
-            IOperatorRepository operators,
-            IOperatorPreferencesRepository preferences,
+            IOperatorWriteRepository operators,
+            IOperatorPreferencesWriteRepository preferences,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -344,8 +344,8 @@ namespace VideoForensics.Client.WebApp.Tests
                 .GetMethod("SetUiModeAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(Guid), typeof(SetOperatorUiModeRequest), typeof(IOperatorRepository),
-                     typeof(IOperatorPreferencesRepository), typeof(ISecurityAuditLogger),
+                    [typeof(Guid), typeof(SetOperatorUiModeRequest), typeof(IOperatorWriteRepository),
+                     typeof(IOperatorPreferencesWriteRepository), typeof(ISecurityAuditLogger),
                      typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 

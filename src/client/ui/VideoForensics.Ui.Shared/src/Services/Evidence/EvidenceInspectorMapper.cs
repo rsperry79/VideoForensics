@@ -1,6 +1,6 @@
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Time;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
@@ -12,8 +12,8 @@ public static class EvidenceInspectorMapper
     /// <param name="zone">The signed-in user's zone for the times shown. Null uses UTC, the zone before the browser's is known.</param>
     public static InspectorModel ToInspector(
         EvidenceItem item,
-        IReadOnlyDictionary<Guid, LegalHold> holds,
-        IReadOnlyList<IntegrityRecord> integrity,
+        IReadOnlyDictionary<Guid, LegalHoldDto> holds,
+        IReadOnlyList<IntegrityRecordDto> integrity,
         UserTimeZone? zone = null)
     {
         UserTimeZone clock = zone ?? UserTimeZone.Unavailable;
@@ -99,7 +99,7 @@ public static class EvidenceInspectorMapper
                 "IntegrityVerified",
                 item.Media.IntegrityVerified.ToString()));
 
-            // Computed status (from the freshest IntegrityRecord for this media item), same as the
+            // Computed status (from the freshest IntegrityRecordDto for this media item), same as the
             // Events grid's "Integrity" column used to show - distinct from the raw
             // IntegrityVerified/LastVerifiedAtUtc entity fields above.
             (string? integrityStatusText, string _) = EvidenceActions.DetermineIntegrityStatus(item.Media.Id, integrity);
@@ -128,16 +128,16 @@ public static class EvidenceInspectorMapper
         PinTarget? pinTarget = null;
         if (item.Event is not null)
         {
-            pinTarget = new PinTarget(CaseItemKind.Event, item.Event.Id);
+            pinTarget = new PinTarget(CaseItemKindDto.Event, item.Event.Id);
         }
         else if (item.Media is not null)
         {
-            pinTarget = new PinTarget(CaseItemKind.Media, item.Media.Id);
+            pinTarget = new PinTarget(CaseItemKindDto.Media, item.Media.Id);
         }
 
         // Evidence actions: legal hold place/release, device integrity verification, export - all
         // gated on this item having a linked, downloaded media item (see EvidenceActions).
-        Guid? activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out LegalHold? activeHold)
+        Guid? activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out LegalHoldDto? activeHold)
             ? activeHold.Id
             : null;
         var actions = new EvidenceActionState(

@@ -1,7 +1,7 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/cases/new"
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Scope
@@ -16,7 +16,7 @@
 
 <h4 class="mb-4">@L["NewCaseTitle"]</h4>
 
-@if (SessionState.OperatorId is null || !Enum.TryParse(SessionState.Role, out OperatorRole role) || role < OperatorRole.Review)
+@if (SessionState.OperatorId is null || !Enum.TryParse(SessionState.Role, out OperatorRoleDto role) || role < OperatorRoleDto.Review)
 {
     <div class="alert alert-info">@L["NoPermission"]</div>
 }

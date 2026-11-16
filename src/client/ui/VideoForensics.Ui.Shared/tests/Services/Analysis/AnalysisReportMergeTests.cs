@@ -1,5 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Analysis;
-using VideoForensics.Data.Core.Models;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
@@ -13,26 +13,20 @@ public class AnalysisReportMergeTests
     [Fact]
     public void Merge_AccessControlReports_ConcatenatesEventsNewestFirst()
     {
-        var older = new AccessControlReport
-        {
-            ReportFromUtc = From,
-            ReportToUtc = To,
-            AccessEvents =
-            [
-                new() { AccessedAtUtc = new DateTime(2026, 9, 2, 0, 0, 0, DateTimeKind.Utc), Actor = "a", Action = "View", EntityType = "Media" },
-            ],
-        };
-        var newer = new AccessControlReport
-        {
-            ReportFromUtc = From,
-            ReportToUtc = To,
-            AccessEvents =
-            [
-                new() { AccessedAtUtc = new DateTime(2026, 9, 5, 0, 0, 0, DateTimeKind.Utc), Actor = "b", Action = "View", EntityType = "Media" },
-            ],
-        };
+        var older = new AccessControlReportDto(
+            default,
+            From,
+            To,
+            [new AccessEventDto(new DateTime(2026, 9, 2, 0, 0, 0, DateTimeKind.Utc), "a", "View", "Media", null, null)],
+            []);
+        var newer = new AccessControlReportDto(
+            default,
+            From,
+            To,
+            [new AccessEventDto(new DateTime(2026, 9, 5, 0, 0, 0, DateTimeKind.Utc), "b", "View", "Media", null, null)],
+            []);
 
-        AccessControlReport merged = AnalysisReportMerge.Merge(new[] { older, newer });
+        AccessControlReportDto merged = AnalysisReportMerge.Merge(new[] { older, newer });
 
         Assert.Equal(2, merged.AccessEvents.Count);
         Assert.Equal("b", merged.AccessEvents[0].Actor);
@@ -43,34 +37,20 @@ public class AnalysisReportMergeTests
     [Fact]
     public void Merge_SignalAnomalyReports_KeepsEveryDeviceFindingsAndJammingRows()
     {
-        var first = new SignalAnomalyReport
-        {
-            ReportFromUtc = From,
-            ReportToUtc = To,
-            AnomaliesByDevice =
-            [
-                new() { DeviceName = "Front" },
-            ],
-            JammingByDevice =
-            [
-                new() { DeviceName = "Front", IncidentCount = 2 },
-            ],
-        };
-        var second = new SignalAnomalyReport
-        {
-            ReportFromUtc = From,
-            ReportToUtc = To,
-            AnomaliesByDevice =
-            [
-                new() { DeviceName = "Back" },
-            ],
-            JammingByDevice =
-            [
-                new() { DeviceName = "Back", IncidentCount = 0 },
-            ],
-        };
+        var first = new SignalAnomalyReportDto(
+            default,
+            From,
+            To,
+            [new AnomalyFindingsDto(Guid.Empty, "Front", [])],
+            [new JammingSummaryEntryDto(Guid.Empty, "Front", 2, 0, 0, 0, null, null)]);
+        var second = new SignalAnomalyReportDto(
+            default,
+            From,
+            To,
+            [new AnomalyFindingsDto(Guid.Empty, "Back", [])],
+            [new JammingSummaryEntryDto(Guid.Empty, "Back", 0, 0, 0, 0, null, null)]);
 
-        SignalAnomalyReport merged = AnalysisReportMerge.Merge(new[] { first, second });
+        SignalAnomalyReportDto merged = AnalysisReportMerge.Merge(new[] { first, second });
 
         Assert.Equal(new[] { "Front", "Back" }, merged.AnomaliesByDevice.Select(a => a.DeviceName));
         Assert.Equal(new[] { "Front", "Back" }, merged.JammingByDevice.Select(j => j.DeviceName));
@@ -79,10 +59,10 @@ public class AnalysisReportMergeTests
     [Fact]
     public void Merge_ForensicReports_ConcatenatesEvidenceAndClearsSummary()
     {
-        var first = new ForensicAnalysisReport { ReportFromUtc = From, ReportToUtc = To, Summary = "first" };
-        var second = new ForensicAnalysisReport { ReportFromUtc = From, ReportToUtc = To, Summary = "second" };
+        var first = new ForensicAnalysisReportDto(default, From, To, [], [], [], "first");
+        var second = new ForensicAnalysisReportDto(default, From, To, [], [], [], "second");
 
-        ForensicAnalysisReport merged = AnalysisReportMerge.Merge(new[] { first, second });
+        ForensicAnalysisReportDto merged = AnalysisReportMerge.Merge(new[] { first, second });
 
         Assert.Empty(merged.EvidenceItems);
         Assert.Null(merged.Summary);

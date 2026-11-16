@@ -1,4 +1,5 @@
-using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
+using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -7,9 +8,11 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services.DeviceSettings;
 
 public class DeviceConfigFilter_Tests
 {
-    private static Device Dev(string name, string? provider)
+    private static Device Dev(string name, string? provider) => MakeEntity(name, provider).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(string name, string? provider)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = Guid.NewGuid(),
             LocationId = Guid.NewGuid(),

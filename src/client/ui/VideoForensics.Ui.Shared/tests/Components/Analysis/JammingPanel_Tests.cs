@@ -14,6 +14,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
+using VideoForensics.Core.Api.Contracts;
 using Device = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Components.Analysis;
@@ -34,14 +35,14 @@ public class JammingPanel_Tests : AnalyzePageTestBase
     {
         return Render<JammingPanel>(p => p
             .Add(c => c.Scope, new ForensicScope([device.Id], FixedNowUtc.AddDays(-1), FixedNowUtc, null))
-            .Add(c => c.Devices, [device]));
+            .Add(c => c.Devices, [device.ToDto()]));
     }
 
     /// <summary>Builds the row-select event the grid raises for a clicked row. Syncfusion keeps the row data read-only.</summary>
-    private static RowSelectEventArgs<JammingIncidentRecord> SelectArgs(JammingIncidentRecord row)
+    private static RowSelectEventArgs<JammingIncidentDto> SelectArgs(JammingIncidentDto row)
     {
-        var args = new RowSelectEventArgs<JammingIncidentRecord>();
-        typeof(RowSelectEventArgs<JammingIncidentRecord>)
+        var args = new RowSelectEventArgs<JammingIncidentDto>();
+        typeof(RowSelectEventArgs<JammingIncidentDto>)
             .GetField("<Data>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(args, row);
         return args;
@@ -66,7 +67,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
     {
         // Arrange
         Device device = CreateTestDevice("Porch");
-        _ = JammingRepositoryMock
+        _ = JammingWriteRepositoryMock
             .Setup(m => m.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((JammingIncidentRecord r, CancellationToken _) => r);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);
@@ -76,7 +77,7 @@ public class JammingPanel_Tests : AnalyzePageTestBase
         await cut.InvokeAsync(() => cut.FindComponent<SfButton>().Find("button").Click());
 
         // Assert
-        cut.WaitForAssertion(() => JammingRepositoryMock.Verify(
+        cut.WaitForAssertion(() => JammingWriteRepositoryMock.Verify(
             m => m.UpsertIncidentAsync(It.Is<JammingIncidentRecord>(r => r.DeviceId == device.Id && r.Notes == null), It.IsAny<CancellationToken>()),
             Times.Once));
     }
@@ -97,16 +98,16 @@ public class JammingPanel_Tests : AnalyzePageTestBase
             Confidence = JammingConfidenceLevel.Medium,
             Source = JammingIncidentSource.AutoDetected,
         };
-        _ = JammingRepositoryMock
+        _ = JammingWriteRepositoryMock
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([incident]);
         IRenderedComponent<JammingPanel> cut = RenderPanel(device);
-        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SfGrid<JammingIncidentRecord>>()));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SfGrid<JammingIncidentDto>>()));
         Assert.Empty(cut.FindComponents<JammingNotes>());
 
         // Act
-        GridEvents<JammingIncidentRecord> events = cut.FindComponent<GridEvents<JammingIncidentRecord>>().Instance;
-        await cut.InvokeAsync(() => events.RowSelected.InvokeAsync(SelectArgs(incident)));
+        GridEvents<JammingIncidentDto> events = cut.FindComponent<GridEvents<JammingIncidentDto>>().Instance;
+        await cut.InvokeAsync(() => events.RowSelected.InvokeAsync(SelectArgs(incident.ToDto())));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<JammingNotes>()));

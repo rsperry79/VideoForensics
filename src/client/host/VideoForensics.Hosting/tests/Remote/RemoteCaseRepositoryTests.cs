@@ -3,7 +3,7 @@ using System.Text.Json;
 
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Tests.Remote
 {
@@ -90,7 +90,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            ForensicCase result = await repo.CreateAsync(
+            ForensicCaseDto result = await repo.CreateAsync(
                 caseDto.CaseNumber, caseDto.Title, caseDto.Description,
                 caseDto.LeadOperatorId, caseDto.ScopeFromUtc, caseDto.ScopeToUtc,
                 caseDto.DeviceIds, "admin", CancellationToken.None);
@@ -152,7 +152,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            ForensicCase? result = await repo.GetAsync(id, CancellationToken.None);
+            ForensicCaseDto? result = await repo.GetAsync(id, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -175,7 +175,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            ForensicCase? result = await repo.GetAsync(id, CancellationToken.None);
+            ForensicCaseDto? result = await repo.GetAsync(id, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -202,7 +202,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            ForensicCase? result = await repo.GetByNumberAsync(caseDto.CaseNumber, CancellationToken.None);
+            ForensicCaseDto? result = await repo.GetByNumberAsync(caseDto.CaseNumber, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -223,7 +223,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            ForensicCase? result = await repo.GetByNumberAsync("INVALID", CancellationToken.None);
+            ForensicCaseDto? result = await repo.GetByNumberAsync("INVALID", CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -252,7 +252,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            IReadOnlyList<ForensicCase> result = await repo.ListAsync(null, CancellationToken.None);
+            IReadOnlyList<ForensicCaseDto> result = await repo.ListAsync(null, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -279,7 +279,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            IReadOnlyList<ForensicCase> result = await repo.ListAsync(CaseStatus.Open, CancellationToken.None);
+            IReadOnlyList<ForensicCaseDto> result = await repo.ListAsync(CaseStatusDto.Open, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Contains("status=Open", handler.CapturedRequest.RequestUri?.PathAndQuery);
@@ -388,7 +388,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var repo = new RemoteCaseRepository(httpClient);
 
             _ = await Assert.ThrowsAsync<KeyNotFoundException>(
-                () => repo.AddItemAsync(Guid.NewGuid(), CaseItemKind.Media, Guid.NewGuid(), "Reason", "admin", CancellationToken.None));
+                () => repo.AddItemAsync(Guid.NewGuid(), CaseItemKindDto.Media, Guid.NewGuid(), "Reason", "admin", CancellationToken.None));
         }
 
         [Fact]
@@ -542,7 +542,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            CaseItem result = await repo.AddItemAsync(caseId, CaseItemKind.Media, itemDto.TargetId, "Relevant", "admin", CancellationToken.None);
+            CaseItemDto result = await repo.AddItemAsync(caseId, CaseItemKindDto.Media, itemDto.TargetId, "Relevant", "admin", CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
@@ -568,7 +568,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var repo = new RemoteCaseRepository(httpClient);
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => repo.AddItemAsync(caseId, CaseItemKind.Media, Guid.NewGuid(), "Relevant", "admin", CancellationToken.None));
+                () => repo.AddItemAsync(caseId, CaseItemKindDto.Media, Guid.NewGuid(), "Relevant", "admin", CancellationToken.None));
         }
 
         #endregion
@@ -621,7 +621,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            IReadOnlyList<CaseItem> result = await repo.ListItemsAsync(caseId, true, CancellationToken.None);
+            IReadOnlyList<CaseItemDto> result = await repo.ListItemsAsync(caseId, true, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -653,7 +653,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            IReadOnlyList<ForensicCase> result = await repo.ListCasesContainingAsync(CaseItemKind.Media, targetId, CancellationToken.None);
+            IReadOnlyList<ForensicCaseDto> result = await repo.ListCasesContainingAsync(CaseItemKindDto.Media, targetId, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -691,16 +691,16 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            IReadOnlyList<ForensicCase> result = await repo.ListForProviderAccountAsync(accountId, CancellationToken.None);
+            IReadOnlyList<ForensicCaseDto> result = await repo.ListForProviderAccountAsync(accountId, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             Assert.Equal($"/api/v1/accounts/provider-accounts/{accountId}/cases", handler.CapturedRequest.RequestUri?.PathAndQuery);
-            ForensicCase entity = Assert.Single(result);
+            ForensicCaseDto entity = Assert.Single(result);
             Assert.Equal(caseDto.Id, entity.Id);
             Assert.Equal(caseDto.CaseNumber, entity.CaseNumber);
             Assert.Equal(caseDto.Title, entity.Title);
-            Assert.Equal(CaseStatus.Open, entity.Status);
+            Assert.Equal("Open", entity.Status);
             Assert.Equal(string.Empty, entity.CreatedBy);
         }
 

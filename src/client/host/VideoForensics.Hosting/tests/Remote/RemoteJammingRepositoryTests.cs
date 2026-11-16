@@ -65,17 +65,17 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingIncidentDto> { SampleIncidentDto(CaseId) }));
 
-            IReadOnlyList<JammingIncidentRecord> result = await repo.ListIncidentsAsync(null, null, null, CancellationToken.None);
+            IReadOnlyList<JammingIncidentDto> result = await repo.ListIncidentsAsync(null, null, null, CancellationToken.None);
 
             HttpRequestMessage req = Assert.Single(seen);
             Assert.Equal(HttpMethod.Get, req.Method);
             Assert.Equal("/api/v1/jamming/incidents", req.RequestUri!.AbsolutePath);
             Assert.Equal(string.Empty, req.RequestUri.Query);
-            JammingIncidentRecord rec = Assert.Single(result);
+            JammingIncidentDto rec = Assert.Single(result);
             Assert.Equal(IncidentId, rec.Id);
             Assert.Equal(DeviceId, rec.DeviceId);
-            Assert.Equal(JammingConfidenceLevel.High, rec.Confidence);
-            Assert.Equal(JammingIncidentSource.ManuallyRecorded, rec.Source);
+            Assert.Equal("High", rec.Confidence);
+            Assert.Equal("ManuallyRecorded", rec.Source);
             Assert.Equal(CaseId, rec.CaseId);
             Assert.Equal(12.5, rec.AverageDegradationDb);
             Assert.Equal(4, rec.AffectedEventCount);
@@ -104,7 +104,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingIncidentDto>()), blockUntilCancelled: true);
             using var cts = new CancellationTokenSource();
 
-            Task<IReadOnlyList<JammingIncidentRecord>> pending = repo.ListIncidentsAsync(null, null, null, cts.Token);
+            Task<IReadOnlyList<JammingIncidentDto>> pending = repo.ListIncidentsAsync(null, null, null, cts.Token);
             cts.Cancel();
 
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(10)));
@@ -114,12 +114,12 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(SampleIncidentDto(CaseId)));
 
-            JammingIncidentRecord? rec = await repo.GetIncidentAsync(IncidentId, CancellationToken.None);
+            JammingIncidentDto? rec = await repo.GetIncidentAsync(IncidentId, CancellationToken.None);
 
             Assert.Equal($"/api/v1/jamming/incidents/{IncidentId}", seen[0].RequestUri!.AbsolutePath);
             Assert.NotNull(rec);
             Assert.Equal(CaseId, rec.CaseId);
-            Assert.Equal(JammingConfidenceLevel.High, rec.Confidence);
+            Assert.Equal("High", rec.Confidence);
         }
 
         [Fact]
@@ -127,7 +127,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
-            JammingIncidentRecord? rec = await repo.GetIncidentAsync(IncidentId, CancellationToken.None);
+            JammingIncidentDto? rec = await repo.GetIncidentAsync(IncidentId, CancellationToken.None);
 
             Assert.Null(rec);
         }
@@ -146,7 +146,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             JammingStatsSummaryDto dto = SampleStatsDto();
             (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(dto));
 
-            JammingStatsSummary? stats = await repo.GetStatsAsync(DeviceId, CancellationToken.None);
+            JammingStatsSummaryDto? stats = await repo.GetStatsAsync(DeviceId, CancellationToken.None);
 
             Assert.Equal(HttpMethod.Get, seen[0].Method);
             Assert.Equal($"/api/v1/jamming/stats/{DeviceId}", seen[0].RequestUri!.AbsolutePath);
@@ -177,7 +177,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingStatsSummaryDto> { SampleStatsDto(), SampleStatsDto() }));
 
-            IReadOnlyList<JammingStatsSummary> result = await repo.ListStatsAsync(CancellationToken.None);
+            IReadOnlyList<JammingStatsSummaryDto> result = await repo.ListStatsAsync(CancellationToken.None);
 
             Assert.Equal(HttpMethod.Get, seen[0].Method);
             Assert.Equal("/api/v1/jamming/stats", seen[0].RequestUri!.AbsolutePath);
@@ -189,7 +189,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(SampleStatsDto()));
 
-            JammingStatsSummary stats = await repo.RecomputeStatsAsync(DeviceId, CancellationToken.None);
+            JammingStatsSummaryDto stats = await repo.RecomputeStatsAsync(DeviceId, CancellationToken.None);
 
             Assert.Equal(HttpMethod.Post, seen[0].Method);
             Assert.Equal($"/api/v1/jamming/stats/{DeviceId}/recompute", seen[0].RequestUri!.AbsolutePath);
@@ -208,22 +208,12 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         public async Task UpsertIncidentAsync_PutsRequestWithSourceButWithoutServerControlledFields_AndReturnsSavedRecord()
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?>? bodies, List<CancellationToken> _) = Create(_ => Json(SampleIncidentDto(CaseId)));
-            var incident = new JammingIncidentRecord
-            {
-                Id = IncidentId,
-                DeviceId = DeviceId,
-                StartUtc = new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 3, 1, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 4,
-                AverageDegradationDb = 12.5,
-                Confidence = JammingConfidenceLevel.High,
-                Notes = "notes",
-                Source = JammingIncidentSource.AutoDetected,
-                DetectedAtUtc = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                CaseId = Guid.NewGuid()
-            };
+            var incident = new JammingIncidentDto(
+                IncidentId, DeviceId,
+                new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 3, 1, 10, 30, 0, DateTimeKind.Utc),
+                4, 12.5, "High", new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), "notes", "AutoDetected", Guid.NewGuid());
 
-            JammingIncidentRecord saved = await repo.UpsertIncidentAsync(incident, CancellationToken.None);
+            JammingIncidentDto saved = await repo.UpsertIncidentAsync(incident, CancellationToken.None);
 
             Assert.Equal(HttpMethod.Put, seen[0].Method);
             Assert.Equal("/api/v1/jamming/incidents", seen[0].RequestUri!.AbsolutePath);
@@ -240,7 +230,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal("notes", root.GetProperty("notes").GetString());
             // The server's saved record (incl. its CaseId) is what the caller gets back.
             Assert.Equal(CaseId, saved.CaseId);
-            Assert.Equal(JammingIncidentSource.ManuallyRecorded, saved.Source);
+            Assert.Equal("ManuallyRecorded", saved.Source);
         }
 
         [Fact]
@@ -248,7 +238,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
 
-            _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.UpsertIncidentAsync(new JammingIncidentRecord(), CancellationToken.None));
+            _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.UpsertIncidentAsync(SampleIncidentDto(), CancellationToken.None));
         }
 
         [Fact]
@@ -258,7 +248,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => repo.UpsertIncidentAsync(new JammingIncidentRecord(), cts.Token));
+            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => repo.UpsertIncidentAsync(SampleIncidentDto(), cts.Token));
         }
 
         [Fact]
@@ -271,9 +261,9 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
             using ServiceProvider provider = services.BuildServiceProvider();
 
-            IJammingRepository repo = provider.GetRequiredService<IJammingRepository>();
+            IJammingWriteRepository repo = provider.GetRequiredService<IJammingWriteRepository>();
 
-            _ = Assert.IsType<RemoteJammingRepository>(repo);
+            _ = Assert.IsType<VideoForensics.Client.Hosting.Remote.RemoteJammingWriteRepository>(repo);
         }
 
         [Fact]

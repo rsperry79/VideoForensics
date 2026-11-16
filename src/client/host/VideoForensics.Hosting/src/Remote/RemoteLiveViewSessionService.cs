@@ -26,9 +26,9 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<LiveViewSession> StartAsync(
+        public async Task<LiveViewSessionDto> StartAsync(
             Guid deviceId,
-            LiveViewTriggerReason reason,
+            LiveViewTriggerReasonDto reason,
             Guid? operatorId,
             CancellationToken ct)
         {
@@ -37,7 +37,7 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/live-view/start", request, JsonOptions, ct);
             _ = response.EnsureSuccessStatusCode();
             LiveViewSessionDto? dto = await response.Content.ReadFromJsonAsync<LiveViewSessionDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return (dto ?? throw new InvalidOperationException("Response was null"));
         }
 
         /// <inheritdoc />
@@ -49,23 +49,23 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct)
+        public async Task<LiveViewSessionDto> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"/api/v1/live-view/{sessionId:D}/promote", reason, JsonOptions, ct);
             ThrowIfUnknownSession(response, sessionId);
             _ = response.EnsureSuccessStatusCode();
             LiveViewSessionDto? dto = await response.Content.ReadFromJsonAsync<LiveViewSessionDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return (dto ?? throw new InvalidOperationException("Response was null"));
         }
 
         /// <inheritdoc />
-        public async Task<LiveViewSession> DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct)
+        public async Task<LiveViewSessionDto> DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/live-view/{sessionId:D}/demote", null, ct);
             ThrowIfUnknownSession(response, sessionId);
             _ = response.EnsureSuccessStatusCode();
             LiveViewSessionDto? dto = await response.Content.ReadFromJsonAsync<LiveViewSessionDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return (dto ?? throw new InvalidOperationException("Response was null"));
         }
 
         /// <inheritdoc />
@@ -78,7 +78,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<LiveViewSession?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct)
+        public async Task<LiveViewSessionDto?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/live-view/device/{deviceId:D}/active", ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
@@ -89,7 +89,7 @@ namespace VideoForensics.Client.Hosting.Remote
 
             _ = response.EnsureSuccessStatusCode();
             LiveViewSessionDto? dto = await response.Content.ReadFromJsonAsync<LiveViewSessionDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Response was null")).ToDomain();
+            return (dto ?? throw new InvalidOperationException("Response was null"));
         }
 
         /// <inheritdoc />

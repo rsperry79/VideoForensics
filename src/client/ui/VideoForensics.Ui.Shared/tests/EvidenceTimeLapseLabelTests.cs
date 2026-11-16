@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -28,7 +28,7 @@ public class EvidenceTimeLapseLabelTests
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow,
                 MetadataJson = metadata,
-            },
+            }.ToDto(),
         };
     }
 
@@ -69,7 +69,7 @@ public class EvidenceTimeLapseLabelTests
                 EventType = "timelapse",
                 OccurredAtUtc = DateTime.UtcNow,
                 DiscoveredAtUtc = DateTime.UtcNow,
-            },
+            }.ToDto(),
         };
 
         Assert.Equal("Time Lapse", item.Label);

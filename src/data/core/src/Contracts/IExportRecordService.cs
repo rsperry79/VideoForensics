@@ -12,7 +12,6 @@ namespace VideoForensics.Data.Core.Contracts
         Task<ExportRecord> RecordExportAsync(
             string exportedByUserName,
             string? caseReference,
-            string? recipientDescription,
             string archiveFileName,
             string archiveSha256Hash,
             bool wasEncrypted,

@@ -2,7 +2,8 @@ using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
@@ -11,7 +12,7 @@ public class LiveViewDeviceSelection_Tests
 {
     private static Device NewDevice()
     {
-        return new Device { Id = Guid.NewGuid(), ProviderDeviceId = "1", Name = "Door", Type = "camera", LocationId = Guid.NewGuid() };
+        return new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "1", Name = "Door", Type = "camera", LocationId = Guid.NewGuid() }.ToDto();
     }
 
     [Fact]

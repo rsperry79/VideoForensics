@@ -1,8 +1,8 @@
 @page "/accounts/{Id:guid}"
 @inherits AccountTabPageBase
 @using VideoForensics.Client.Ui.Shared.Services
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts.Repositories
+@using VideoForensics.Core.Api.Contracts
 @inject IMultiProviderAuthService MultiProviderAuthService
 @inject ISyncScheduleRepository SyncScheduleRepository
 
@@ -56,17 +56,6 @@ else
                         <div class="col-md-6">
                             <label class="form-label fw-bold">@L["NextEventPoll"]</label>
                             <p class="mb-0"><LocalTimeText Value="@_schedule.EventNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">@L["LastSnapshotPoll"]</label>
-                            <p class="mb-0"><LocalTimeText Value="@_schedule.SnapshotLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">@L["NextSnapshotPoll"]</label>
-                            <p class="mb-0"><LocalTimeText Value="@_schedule.SnapshotNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
                         </div>
                     </div>
                 }
@@ -136,7 +125,7 @@ else
     private bool _validationBusy;
     private bool _showReauthentication;
     private string? _credentialStatus;
-    private SyncSchedule? _schedule;
+    private SyncScheduleDto? _schedule;
 
     protected override async Task OnInitializedAsync()
     {

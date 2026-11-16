@@ -26,8 +26,8 @@
     <!-- WebAuthn/passkey attestation+assertion verification (plan §5.1/§6). Fido2NetLib does the
          CBOR/COSE parsing and attestation-statement cryptographic verification - explicitly called
          out in the plan as a "looks right and isn't" risk area not to hand-roll. -->
-    <PackageReference Include="Fido2" Version="4.3.2" />
-    <PackageReference Include="Fido2.AspNet" Version="4.3.2" />
+    <PackageReference Include="Fido2" Version="4.3.3" />
+    <PackageReference Include="Fido2.AspNet" Version="4.3.3" />
     <PackageReference Include="QRCoder" Version="1.8.1" />
     <!-- Windows Service hosting (plan: allows dotnet run/debug unchanged, becomes a Windows Service
          in production when installed via deploy/install-service.ps1). -->
@@ -72,12 +72,14 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
+    <ProjectReference Include="../../../../core/api/mapping/src/VideoForensics.Core.Api.Mapping.csproj" />
     <ProjectReference Include="..\..\..\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj" />
+    <ProjectReference Include="..\..\..\..\server\core\src\VideoForensics.Server.Core.csproj" />
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\..\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
     <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
     <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Web/src/VideoForensics.Client.Platform.Web.csproj" />
-    <ProjectReference Include="../../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
+    <PackageReference Include="SperryDev.Logger" Version="0.1.0" />
   </ItemGroup>
 
 </Project>

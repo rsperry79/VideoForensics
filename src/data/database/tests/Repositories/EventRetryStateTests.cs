@@ -82,7 +82,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 _ = await seed.SaveChangesAsync();
             }
 
-            var repository = new EventRepository(_fixture.Factory, Microsoft.Extensions.Logging.Abstractions.NullLogger<EventRepository>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            var repository = new EventRepository(unitOfWork, Microsoft.Extensions.Logging.Abstractions.NullLogger<EventRepository>.Instance);
             await repository.RecordRetryPassAsync(evt.Id, 3, CancellationToken.None);
             await repository.RecordRetryPassAsync(evt.Id, 3, CancellationToken.None);
 
@@ -131,7 +133,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 _ = await seed.SaveChangesAsync();
             }
 
-            var repository = new EventRepository(_fixture.Factory, Microsoft.Extensions.Logging.Abstractions.NullLogger<EventRepository>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            var repository = new EventRepository(unitOfWork, Microsoft.Extensions.Logging.Abstractions.NullLogger<EventRepository>.Instance);
             IReadOnlyList<Event> result = await repository.ListAwaitingDingIdAsync(device.Id, 3, CancellationToken.None);
 
             Assert.Equal(new[] { queued.Id }, result.Select(e => e.Id));

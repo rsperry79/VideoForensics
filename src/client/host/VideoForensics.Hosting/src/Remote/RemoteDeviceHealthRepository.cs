@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
-    /// HTTP-backed, read-only <see cref="IDeviceHealthRepository"/> that calls the server's Minimal
+    /// HTTP-backed, read-only <see cref="IDeviceHealthWriteRepository"/> that calls the server's Minimal
     /// API (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs's device-health route) instead of a
     /// local database - the MAUI client's implementation of the "thin client talks to a server API"
     /// half of the plan's client/server split. Only the date-range history read used by the Evidence
@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Hosting.Remote
     /// <see cref="NotSupportedException"/> because MAUI has no write path to server-owned health data
     /// and no endpoint for "full history" or "latest only" exists yet.
     /// </summary>
-    public class RemoteDeviceHealthRepository : IDeviceHealthRepository
+    public class RemoteDeviceHealthRepository : IDeviceHealthWriteRepository
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 

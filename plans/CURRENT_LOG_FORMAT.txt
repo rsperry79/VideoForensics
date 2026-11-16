@@ -1,0 +1,161 @@
+CURRENT LOG FORMAT DOCUMENTATION
+==============================================================
+
+Date: 2026-10-03
+Implementation: FileLoggerProvider.cs
+Framework: Microsoft.Extensions.Logging + Custom FileLoggerProvider
+
+Current Format Structure:
+==============================================================
+
+Output Format: Text (one entry per line)
+Field Delimiter: Pipe-separated (|) with surrounding spaces for readability
+Timestamp Format: ISO-8601 with millisecond precision (yyyy-MM-dd HH:mm:ss.fff Z)
+Encoding: UTF-8 (explicit via StreamWriter)
+
+Sample Log Entry:
+---
+
+2026-10-03 14:32:15.847 Z | INFO | VideoForensics.Providers.Ring.Services | RingMediaDownloadService | Downloaded media for device Ring-Front-Door
+
+---
+
+Field Order (Left to Right):
+1. Timestamp (ISO-8601 with milliseconds, UTC timezone)
+2. Log Level (INFO, WARNING, ERROR, DEBUG, TRACE)
+3. Category/Namespace (e.g., "VideoForensics.Providers.Ring.Services")
+4. Source Class (e.g., "RingMediaDownloadService")
+5. Message (free-form text, may contain exception details)
+
+Additional Format Details:
+==============================================================
+
+Line Breaks:
+- Each entry is a single line
+- Multi-line messages (with \n) are written as-is (may break parsing)
+- Exception details appended directly to message line
+
+Escaping:
+- Pipes (|) in message text are NOT escaped (possible parsing issue)
+- Special characters: not escaped, included verbatim
+- Issue: If message contains "|", line parsing by downstream tools breaks
+
+File Location:
+- Path: %ProgramData%\VideoForensics\logs\actions.log (Windows)
+- Permissions: Restricted to application user + System
+- Rotation: None (single file, grows indefinitely until manual cleanup)
+
+Field Widths:
+- Timestamp: Fixed (26 characters with delimiter spacing)
+- Level: Variable (5-7 characters: "INFO" to "CRITICAL")
+- Category: Variable (typically 30-50 characters)
+- Source: Variable (10-50 characters)
+- Message: Variable (remaining content)
+
+Current Example Output:
+==============================================================
+
+2026-10-03 10:45:22.123 Z | INFO | VideoForensics.Providers.Ring.Auth | RingAuthService | User authenticated successfully for account richard@example.com
+2026-10-03 10:45:23.456 Z | INFO | VideoForensics.Providers.Ring.Services | RingDeviceDiscoveryService | Discovered 3 Ring devices
+2026-10-03 10:45:24.789 Z | INFO | VideoForensics.Providers.Ring.Services | RingMediaDownloadService | Starting download for device Ring-Front-Door (ID: 12345)
+2026-10-03 10:45:35.012 Z | WARNING | VideoForensics.Providers.Ring.Services | RingHttpUtility | Rate limit approaching - waiting 30 seconds before next request
+2026-10-03 10:46:05.789 Z | ERROR | VideoForensics.Providers.Ring.Services | RingMediaDownloadService | Failed to download media: HTTP 429 Too Many Requests
+
+Special Cases:
+==============================================================
+
+Exception Logging:
+- Full exception details appended to message field
+- Stack trace spans multiple lines (breaks standard format)
+- Example:
+  2026-10-03 10:50:00.000 Z | ERROR | VideoForensics.Providers.Ring.Services | RingAuthService | Authentication failed: System.Net.Http.HttpRequestException: The remote server returned an error: (401) Unauthorized.
+     at VideoForensics.Providers.Ring.Session.EnsureSessionValid()
+     at VideoForensics.Providers.Ring.RingAuthService.AuthenticateAsync(String username, String password)
+
+Multi-Line Messages:
+- If a log message contains \n characters, they are preserved
+- This breaks the one-entry-per-line assumption
+- Issue for downstream parsing tools
+
+Known Limitations:
+==============================================================
+
+1. DELIMITER COLLISION: Messages containing "|" characters will break parsing
+   - Example: "Operation took 50 | 100ms" → parsed as 2 fields
+   - Solution: Escape "|" in message text or switch delimiter
+
+2. NO ROTATION: Single file grows indefinitely
+   - Can reach gigabytes in long-running instances
+   - Manual cleanup required or disk full errors
+   - Solution: Implement rolling file sink (Phase 2 with Serilog)
+
+3. MULTI-LINE EXCEPTIONS: Stack traces break line-based parsing
+   - Downstream tools expecting one-entry-per-line fail on exception logs
+   - Solution: Flatten stack traces or use structured logging (Serilog)
+
+4. NO STRUCTURED DATA: All fields are text, no schema enforcement
+   - Difficult to programmatically parse
+   - No type information for timestamps, levels, etc.
+   - Solution: Switch to JSON format in Phase 2 (Serilog + JsonFormatter)
+
+5. TIMEZONE IMPLICIT: "Z" suffix indicates UTC, but not standardized
+   - Parsing tools must be aware of "Z" meaning UTC
+   - Could be replaced with "+00:00" for ISO-8601 compliance
+
+Migration Path for Serilog Phase 2:
+==============================================================
+
+Current (Text format) → Serilog Phase 2 (JSON format)
+
+Proposed JSON Format:
+```json
+{
+  "timestamp": "2026-10-03T10:45:22.123Z",
+  "level": "Information",
+  "logger": "VideoForensics.Providers.Ring.Services.RingMediaDownloadService",
+  "message": "Downloaded media for device Ring-Front-Door",
+  "exception": null,
+  "properties": {
+    "deviceId": "12345",
+    "deviceName": "Ring-Front-Door"
+  }
+}
+```
+
+Benefits:
+- No delimiter collision issues
+- Structured data for programmatic parsing
+- Native support for exceptions
+- Rotation support built-in
+- Standardized JSON format
+
+Backwards Compatibility Concerns:
+==============================================================
+
+1. Forensic Analysis Tools:
+   - Current tools may parse text format
+   - JSON format will require migration of parsing scripts
+   - Recommendation: Provide migration guide with Phase 2
+
+2. Log Aggregation Systems:
+   - Splunk, ELK, Azure Monitor, etc. may have text format parsers
+   - JSON format is more standard and easier to ingest
+   - Recommendation: Test with target aggregation system
+
+3. Manual Log Review:
+   - Text format is human-readable as-is
+   - JSON format requires pretty-printing for readability
+   - Serilog's Console sink provides pretty-printed JSON
+   - Recommendation: Keep text format for console, JSON for file
+
+Phase 2 Recommendation:
+==============================================================
+
+1. Switch FileLoggerProvider to Serilog.Sinks.File with JsonFormatter
+2. Keep console output in text format for readability
+3. Dual-write during transition:
+   - Text file for backwards compatibility (30-day retention)
+   - JSON file as primary (infinite retention, indexed)
+4. After 30-day transition period, archive text files and use JSON only
+
+No breaking changes if migration strategy followed.

@@ -73,10 +73,10 @@ public sealed class FakeReviewEventLoader : IReviewEventLoader
     public IReadOnlyList<EventLoadCall> Calls => _calls;
 
     /// <summary>Produces the result of a call. Defaults to an empty page.</summary>
-    public Func<EventLoadCall, CancellationToken, Task<EventPage>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPage([], 0));
+    public Func<EventLoadCall, CancellationToken, Task<EventPageDto>> Responder { get; set; } = (_, _) => Task.FromResult(new EventPageDto([], 0));
 
     /// <inheritdoc />
-    public Task<EventPage> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
+    public Task<EventPageDto> LoadAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? eventTypes, int skip, int take, CancellationToken ct)
     {
         var call = new EventLoadCall(deviceIds.ToList(), fromUtc, toUtc, skip, take, eventTypes);
         _calls.Add(call);
@@ -118,12 +118,12 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     public IReadOnlyList<WindowLoadCall> AnomalyCalls => _anomalyCalls;
 
     /// <summary>Produces the detail rows for a call. Defaults to none.</summary>
-    public Func<IReadOnlyCollection<Guid>, CancellationToken, Task<IReadOnlyDictionary<Guid, EventDetail>>> DetailResponder { get; set; } =
-        (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetail>>(new Dictionary<Guid, EventDetail>());
+    public Func<IReadOnlyCollection<Guid>, CancellationToken, Task<IReadOnlyDictionary<Guid, EventDetailDto>>> DetailResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyDictionary<Guid, EventDetailDto>>(new Dictionary<Guid, EventDetailDto>());
 
     /// <summary>Produces the jamming incidents for a call. Defaults to none.</summary>
-    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<JammingIncidentRecord>>> JammingResponder { get; set; } =
-        (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([]);
+    public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<JammingIncidentDto>>> JammingResponder { get; set; } =
+        (_, _) => Task.FromResult<IReadOnlyList<JammingIncidentDto>>([]);
 
     /// <summary>Produces the anomalies for a call. Defaults to none.</summary>
     public Func<WindowLoadCall, CancellationToken, Task<IReadOnlyList<ReviewAnomaly>>> AnomalyResponder { get; set; } =
@@ -142,14 +142,14 @@ public sealed class FakeReviewDetailLoader : IReviewDetailLoader
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
+    public Task<IReadOnlyDictionary<Guid, EventDetailDto>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
     {
         _detailCalls.Add(eventIds.ToList());
         return DetailResponder(eventIds, ct);
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    public Task<IReadOnlyList<JammingIncidentDto>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         var call = new WindowLoadCall(deviceIds.ToList(), fromUtc, toUtc);
         _jammingCalls.Add(call);

@@ -36,7 +36,7 @@ public class BreadcrumbLocalizationTests : BunitContext
         _ = Services.AddScoped<StepUpService>();
         _ = Services.AddScoped(_ => new Mock<IAdminOperatorService>().Object);
         _ = Services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
-        _ = Services.AddScoped(_ => Mock.Of<Data.Common.Contracts.ICaseRepository>());
+        _ = Services.AddScoped(_ => Mock.Of<VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository>());
         _ = Services.AddScoped(_ => new Mock<ISelfApiHttpClientFactory>().Object);
         _ = Services.AddLogging();
     }

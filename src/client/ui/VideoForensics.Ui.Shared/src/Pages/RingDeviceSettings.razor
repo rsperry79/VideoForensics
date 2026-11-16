@@ -1,6 +1,6 @@
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/devices/config/ring/{DeviceId:guid}"
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
 @using Microsoft.Extensions.Localization
@@ -85,8 +85,8 @@ else
     [Parameter]
     public Guid DeviceId { get; set; }
 
-    private VideoForensics.Data.Common.Entities.Device? _device;
-    private DeviceTypedSettings? _typed;
+    private VideoForensics.Core.Api.Contracts.DeviceDto? _device;
+    private DeviceTypedSettingsDto? _typed;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -94,7 +94,7 @@ else
         try
         {
             // The list carries ProviderName (the single-device read does not), so the device is found in it.
-            IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices = await DeviceRepository.ListAsync(CancellationToken.None);
+            IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto> devices = await DeviceRepository.ListAsync(CancellationToken.None);
             _device = devices.FirstOrDefault(d => d.Id == DeviceId);
             if (_device is not null && RingSettingsRoute.IsRingDevice(_device))
             {

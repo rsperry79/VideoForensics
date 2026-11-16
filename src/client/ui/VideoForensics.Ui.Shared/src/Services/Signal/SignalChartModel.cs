@@ -1,5 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Time;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Signal;
 
@@ -120,7 +120,7 @@ public static class SignalChartModel
     /// </summary>
     public static TimeSpan ExpectedIntervalFor(int? snapshotIntervalSeconds)
     {
-        return TimeSpan.FromSeconds(snapshotIntervalSeconds ?? SyncSchedule.DefaultSnapshotIntervalSeconds);
+        return TimeSpan.FromSeconds(snapshotIntervalSeconds ?? SyncScheduleLimits.DefaultSnapshotIntervalSeconds);
     }
 
     /// <summary>

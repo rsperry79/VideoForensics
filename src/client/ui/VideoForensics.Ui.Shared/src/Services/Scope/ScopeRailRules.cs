@@ -1,6 +1,6 @@
 using System.Globalization;
 
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
@@ -15,8 +15,8 @@ public static class ScopeRailRules
     public const string DateInputFormat = "yyyy-MM-dd";
 
     /// <summary>The devices visible under the Provider/Account filters. Delegates to <see cref="ScopeDeviceFilter.Filter"/>.</summary>
-    public static IReadOnlyList<Device> VisibleDevices(
-        IEnumerable<Device> devices,
+    public static IReadOnlyList<DeviceDto> VisibleDevices(
+        IEnumerable<DeviceDto> devices,
         IReadOnlyList<DeviceOwnership> ownership,
         string? providerFilter,
         Guid? accountFilter,
@@ -30,7 +30,7 @@ public static class ScopeRailRules
     /// offered by the newly picked provider, the account filter is cleared.
     /// </summary>
     public static (string? ProviderFilter, Guid? AccountFilter) ApplyProviderPick(
-        IEnumerable<ProviderAccount> accounts,
+        IEnumerable<ProviderAccountDto> accounts,
         Guid? currentAccountFilter,
         string? providerValue)
     {
@@ -171,9 +171,9 @@ public static class ScopeRailRules
     public static bool ShowSaveScopeToCase(
         bool hasActiveCase,
         bool scopeDiffersFromCase,
-        OperatorRole? role,
+        OperatorRoleDto? role,
         bool matchesNoDevices)
     {
-        return hasActiveCase && scopeDiffersFromCase && role.HasValue && role.Value >= OperatorRole.Review && !matchesNoDevices;
+        return hasActiveCase && scopeDiffersFromCase && role.HasValue && role.Value >= OperatorRoleDto.Review && !matchesNoDevices;
     }
 }

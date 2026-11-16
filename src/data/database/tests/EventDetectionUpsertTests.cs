@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -46,13 +47,13 @@ namespace VideoForensics.Data.Database.Tests
                     FullDescription = description
                 };
 
-                _ = await context.DetectionEntities.UpsertEventDetectionAsync(detection, CancellationToken.None);
+                _ = await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).UpsertEventDetectionAsync(detection, CancellationToken.None);
 
                 var zones = new List<EventDetectionZone>
                 {
                     new() { Id = Guid.NewGuid(), EventDetectionId = detection.Id, ZoneId = zoneId, ZoneName = zoneId }
                 };
-                await context.DetectionEntities.AddEventDetectionZonesAsync(zones, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectionZonesAsync(zones, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
         }
@@ -106,9 +107,9 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = await context.DetectionEntities.UpsertEventDetectionAsync(
+                _ = await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).UpsertEventDetectionAsync(
                     new EventDetection { Id = Guid.NewGuid(), EventId = eventId, FullDescription = "one" }, CancellationToken.None);
-                _ = await context.DetectionEntities.UpsertEventDetectionAsync(
+                _ = await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).UpsertEventDetectionAsync(
                     new EventDetection { Id = Guid.NewGuid(), EventId = eventId, FullDescription = "two" }, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -123,16 +124,16 @@ namespace VideoForensics.Data.Database.Tests
             var eventId = Guid.NewGuid();
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddEventSecurityAlertsAsync(
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventSecurityAlertsAsync(
                     [new EventSecurityAlert { Id = Guid.NewGuid(), EventId = eventId, Severity = "high", AlertText = "a" }], CancellationToken.None);
-                await context.DetectionEntities.AddEventDetectedPersonsAsync(
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectedPersonsAsync(
                     [new EventDetectedPerson { Id = Guid.NewGuid(), EventId = eventId, ProfileId = "p1" }], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.ClearEventAlertsAndPersonsAsync(eventId, clearAlerts: true, clearPersons: false, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).ClearEventAlertsAndPersonsAsync(eventId, clearAlerts: true, clearPersons: false, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 

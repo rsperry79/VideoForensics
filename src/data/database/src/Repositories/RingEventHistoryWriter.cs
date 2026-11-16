@@ -1,7 +1,6 @@
 using System.Globalization;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 
 using VideoForensics.Data.Common.Contracts;
@@ -18,11 +17,11 @@ namespace VideoForensics.Data.Database.Repositories
     /// </summary>
     public class RingEventHistoryWriter : IRingEventHistoryWriter
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public RingEventHistoryWriter(IDbContextFactory<VideoForensicsDbContext> factory)
+        public RingEventHistoryWriter(IUnitOfWork unitOfWork)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
         }
 
         public Task ReplaceVideoSearchEventAsync(Guid ringAccountId, RingVideoSearchEvent evt, RingEventDetails details, CancellationToken ct)
@@ -188,10 +187,11 @@ namespace VideoForensics.Data.Database.Repositories
 
         private async Task ReplaceAsync(Func<VideoForensicsDbContext, CancellationToken, Task> replace, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
-            await replace(db, ct);
-            await transaction.CommitAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                await replace(context.Db(), ct);
+                return null;
+            }, ct);
         }
 
         /// <summary>Deletes the nested object rows of the given event rows, for every nested table of the feed.</summary>

@@ -1,11 +1,11 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Resources
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @inject IStringLocalizer<SharedResources> L
 
 <select class="@Class" data-testid="@TestId" aria-label="@L["ScopeAccount"]" @onchange="OnChanged">
     <option value="" selected="@(Value is null)">@L["ScopeAllAccounts"]</option>
-    @foreach (ProviderAccount account in Accounts)
+    @foreach (ProviderAccountDto account in Accounts)
     {
         <option value="@account.Id" selected="@(Value == account.Id)">@AccountNames.GetValueOrDefault(account.Id, account.ProviderName)</option>
     }
@@ -14,7 +14,7 @@
 @code {
     /// <summary>The accounts to offer, in display order.</summary>
     [Parameter]
-    public IReadOnlyList<ProviderAccount> Accounts { get; set; } = [];
+    public IReadOnlyList<ProviderAccountDto> Accounts { get; set; } = [];
 
     /// <summary>The label per account; an account without one shows its provider name.</summary>
     [Parameter]

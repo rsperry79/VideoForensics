@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             }
 
             IReadOnlyList<string> candidates = await _unitOfWork.ReadAsync(
-                ctx => ctx.DingIdLinks.GetCandidateDingIdsAsync(DoorbotId, CancellationToken.None), CancellationToken.None);
+                _ => new DingIdLinkRepository(_unitOfWork).GetCandidateDingIdsAsync(DoorbotId, CancellationToken.None), CancellationToken.None);
 
             Assert.Equal(new[] { "111" }, candidates);
         }

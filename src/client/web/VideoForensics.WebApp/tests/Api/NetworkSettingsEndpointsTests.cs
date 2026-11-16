@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -21,7 +22,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         private static (Mock<IForensicsConfiguration> Config, Mock<IForensicsConfigurationService> ConfigService, Mock<IStepUpAuthService> StepUpAuth, Mock<ISecurityAuditLogger> AuditLog, Mock<INetworkTierResolver> TierResolver, Mock<IFirewallRuleManager> FirewallRuleManager, Mock<IConfiguration> Configuration) CreateMocks(NetworkTier currentTier = NetworkTier.Local)
         {
             var config = new Mock<IForensicsConfiguration>();
-            _ = config.Setup(c => c.ConfiguredNetworkTier).Returns(currentTier);
+            _ = config.Setup(c => c.ConfiguredNetworkTier).Returns(currentTier.ToDto());
             _ = config.SetupProperty(c => c.ConfiguredNetworkTier);
 
             var configService = new Mock<IForensicsConfigurationService>();

@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Contracts;
-
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>Offline motion upload and sampling settings for one device.</summary>
@@ -17,21 +15,4 @@ namespace VideoForensics.Core.Api.Contracts
         DeviceOfflineMotionDto? OfflineMotion,
         IReadOnlyList<DeviceDetectionTypeDto> DetectionTypes,
         IReadOnlyList<DeviceDetectionThresholdDto> Thresholds);
-
-    /// <summary>Maps the typed settings read model to its DTO.</summary>
-    public static class DeviceTypedSettingsDtoMapping
-    {
-        /// <summary>Converts the typed rows for <paramref name="deviceId"/> to a DTO.</summary>
-        public static DeviceTypedSettingsDto ToDto(this DeviceTypedSettings settings, Guid deviceId)
-        {
-            DeviceOfflineMotionDto? offline = settings.OfflineMotion is { } o
-                ? new DeviceOfflineMotionDto(o.Subscribed, o.Enabled, o.MaxUploadKb, o.ResolutionP, o.FrequencyAfterSecs, o.PeriodAfterSecs)
-                : null;
-            return new DeviceTypedSettingsDto(
-                deviceId,
-                offline,
-                settings.DetectionTypes.Select(t => new DeviceDetectionTypeDto(t.DetectionType, t.Enabled, t.Mode, t.Record, t.Notification)).ToList(),
-                settings.Thresholds.Select(t => new DeviceDetectionThresholdDto(t.DetectionType, t.Threshold)).ToList());
-        }
-    }
 }

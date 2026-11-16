@@ -85,7 +85,13 @@ namespace VideoForensics.Client.WebApp.Discovery
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to start mDNS advertisement: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                // The outer type initializer error hides the cause; name the inner exception so the log shows it.
+                _logger.LogError(
+                    "Failed to start mDNS advertisement: {Message} ({ErrorType}); cause: {CauseMessage} ({CauseType})",
+                    ex.Message,
+                    ex.GetType().Name,
+                    ex.InnerException?.Message ?? "none",
+                    ex.InnerException?.GetType().Name ?? "none");
                 _mdns?.Dispose();
                 _serviceDiscovery?.Dispose();
                 _mdns = null;

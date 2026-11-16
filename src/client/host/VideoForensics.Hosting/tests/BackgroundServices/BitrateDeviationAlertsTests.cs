@@ -13,17 +13,20 @@ public class BitrateDeviationAlertsTests
 {
     private readonly Device _device = new() { Id = Guid.NewGuid(), Name = "Rear camera", ProviderName = "Ring", ProviderDeviceId = "1234", Type = "doorbot" };
 
+    /// <summary>The all-time baseline of the eleven clips in <see cref="Spike"/>: mean 5545.45 kbps, sample sd about 1809 kbps.</summary>
+    private static readonly AllTimeBitrateBaseline AllTimeBaseline = new(11, 5_545_454.5, 1_809_076.0);
+
     [Fact]
     public async Task BitrateDeviationAlerts_SpikeAboveTwoStdDevs_RaisesOneFlagAndOneNotice()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
         NotificationEvent? sent = null;
         _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
             .Returns(Task.CompletedTask);
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
         var written = new List<MediaFlag>();
         _ = flags.Setup(f => f.UpsertRaisedAsync(It.IsAny<MediaFlag>(), It.IsAny<CancellationToken>()))
             .Callback<MediaFlag, CancellationToken>((f, _) => written.Add(f))
@@ -50,15 +53,19 @@ public class BitrateDeviationAlertsTests
         Assert.Equal(alertedHourUtc, flag.WindowStartUtc);
         Assert.Equal(alertedHourUtc.AddHours(1), flag.WindowEndUtc);
         Assert.Equal(sent.NoticeId, flag.NoticeId);
+
+        // The worst reading (1000 kbps) against the all-time baseline (about 5545 kbps, sd about 1809): about 2.5 std devs.
+        _ = Assert.NotNull(flag.DeviationSigma);
+        Assert.InRange(flag.DeviationSigma!.Value, 2.4, 2.6);
     }
 
     [Fact]
     public async Task BitrateDeviationAlerts_RepeatCheckOfSameWindow_RaisesNothing()
     {
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var dispatcher = new Mock<INotificationDispatcher>();
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
 
         int raised = await CheckAsync(notices.Object, dispatcher.Object, flags.Object, Spike());
 
@@ -71,10 +78,10 @@ public class BitrateDeviationAlertsTests
     public async Task BitrateDeviationAlerts_RssiOnlyDevice_WritesNoFlag()
     {
         // A camera with signal history but no measured clip bit rates has nothing for this check to read.
-        var notices = new Mock<INoticeRepository>();
+        var notices = new Mock<INoticeWriteRepository>();
         _ = notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var dispatcher = new Mock<INotificationDispatcher>();
-        var flags = new Mock<IMediaFlagRepository>();
+        var flags = new Mock<IMediaFlagWriteRepository>();
 
         int raised = await CheckAsync(notices.Object, dispatcher.Object, flags.Object, []);
 
@@ -101,13 +108,14 @@ public class BitrateDeviationAlertsTests
     }
 
     private async Task<int> CheckAsync(
-        INoticeRepository notices,
+        INoticeWriteRepository notices,
         INotificationDispatcher dispatcher,
-        IMediaFlagRepository flags,
+        IMediaFlagWriteRepository flags,
         List<MeasuredBitrate> rows)
     {
-        var mediaItems = new Mock<IMediaItemRepository>();
+        var mediaItems = new Mock<IMediaItemWriteRepository>();
         _ = mediaItems.Setup(m => m.GetMeasuredBitrateByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _ = mediaItems.Setup(m => m.GetBitrateBaselineByDeviceAsync(_device.Id, It.IsAny<CancellationToken>())).ReturnsAsync(AllTimeBaseline);
 
         var checker = new BitrateDeviationAlerts(
             mediaItems.Object,

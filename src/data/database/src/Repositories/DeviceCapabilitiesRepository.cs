@@ -10,34 +10,36 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for device capabilities.</summary>
     public class DeviceCapabilitiesRepository : IDeviceCapabilitiesRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceCapabilitiesRepository> _logger;
 
-        public DeviceCapabilitiesRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<DeviceCapabilitiesRepository> logger)
+        public DeviceCapabilitiesRepository(IUnitOfWork unitOfWork, ILogger<DeviceCapabilitiesRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        public async Task<DeviceCapabilities?> GetAsync(Guid id, CancellationToken ct)
+        public Task<DeviceCapabilities?> GetAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.Id == id, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().DeviceCapabilities.FirstOrDefaultAsync(c => c.Id == id, ct), ct);
         }
 
-        public async Task<DeviceCapabilities?> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
+        public Task<DeviceCapabilities?> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.DeviceId == deviceId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().DeviceCapabilities.FirstOrDefaultAsync(c => c.DeviceId == deviceId, ct), ct);
         }
 
         public async Task AddAsync(DeviceCapabilities capabilities, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.DeviceCapabilities.Add(capabilities);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.DeviceCapabilities.Add(capabilities);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Device capabilities added for device {DeviceId}", capabilities.DeviceId);
             }
             catch (Exception ex)
@@ -49,11 +51,15 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task UpdateAsync(DeviceCapabilities capabilities, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.DeviceCapabilities.Update(capabilities);
-                _ = await db.SaveChangesAsync(ct);
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.DeviceCapabilities.Update(capabilities);
+                    _ = await db.SaveChangesAsync(ct);
+                    return null;
+                }, ct);
                 _logger.LogDebug("Device capabilities updated for device {DeviceId}", capabilities.DeviceId);
             }
             catch (Exception ex)
@@ -65,14 +71,24 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task DeleteAsync(Guid id, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                DeviceCapabilities? cap = await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.Id == id, ct);
-                if (cap != null)
+                bool deleted = await _unitOfWork.ExecuteAsync(async context =>
                 {
+                    VideoForensicsDbContext db = context.Db();
+                    DeviceCapabilities? cap = await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.Id == id, ct);
+                    if (cap == null)
+                    {
+                        return false;
+                    }
+
                     _ = db.DeviceCapabilities.Remove(cap);
                     _ = await db.SaveChangesAsync(ct);
+                    return true;
+                }, ct);
+
+                if (deleted)
+                {
                     _logger.LogDebug("Device capabilities deleted: {CapabilitiesId}", id);
                 }
             }

@@ -20,7 +20,7 @@ namespace VideoForensics.Client.WebApp.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator
                 {
@@ -53,7 +53,7 @@ namespace VideoForensics.Client.WebApp.Tests
         public async Task GetOperator_UnknownId_ReturnsNotFound()
         {
             // Arrange
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 

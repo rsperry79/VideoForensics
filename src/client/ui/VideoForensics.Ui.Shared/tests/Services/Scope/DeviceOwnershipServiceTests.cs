@@ -7,7 +7,9 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
@@ -22,20 +24,16 @@ public class DeviceOwnershipServiceTests
         return new(_accounts.Object, _locations.Object, _users.Object);
     }
 
-    private static ProviderAccount MakeAccount(string providerName, Guid userId)
+    private static ProviderAccountDto MakeAccount(string providerName, Guid userId)
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ProviderName = providerName,
-            LinkedUtc = DateTime.UtcNow,
-        };
+        return new(Guid.NewGuid(), userId, providerName, DateTime.UtcNow, null, true, null, null, null);
     }
 
-    private static Device MakeDevice(Guid locationId)
+    private static Device MakeDevice(Guid locationId) => MakeEntity(locationId).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid locationId)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = Guid.NewGuid(),
             LocationId = locationId,
@@ -48,15 +46,15 @@ public class DeviceOwnershipServiceTests
     [Fact]
     public async Task LoadAsync_AccountsAndLocations_BuildsOwnershipAndSortedProviderNames()
     {
-        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
-        ProviderAccount wyze = MakeAccount("Wyze", Guid.NewGuid());
+        ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccountDto wyze = MakeAccount("Wyze", Guid.NewGuid());
         var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L1", Name = "Home" };
         Device device = MakeDevice(location.Id);
 
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { wyze, ring });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { location });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Location>());
-        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { location.ToDto() });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<LocationRecordDto>());
+        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserDto?)null);
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(new[] { device }, CancellationToken.None);
 
@@ -69,16 +67,16 @@ public class DeviceOwnershipServiceTests
     [Fact]
     public async Task LoadAsync_SharedAndBlankNamedLocations_AreDistinctSortedAndNamed()
     {
-        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
-        ProviderAccount wyze = MakeAccount("Wyze", Guid.NewGuid());
+        ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccountDto wyze = MakeAccount("Wyze", Guid.NewGuid());
         var shared = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L1", Name = "home" };
         var unnamed = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L2", Name = " " };
         var cabin = new Location { Id = Guid.NewGuid(), ProviderLocationId = "L3", Name = "Cabin" };
 
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring, wyze });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, unnamed });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared, cabin });
-        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared.ToDto(), unnamed.ToDto() });
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(wyze.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { shared.ToDto(), cabin.ToDto() });
+        _ = _users.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((UserDto?)null);
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(Array.Empty<Device>(), CancellationToken.None);
 
@@ -89,9 +87,9 @@ public class DeviceOwnershipServiceTests
     [Fact]
     public async Task LoadAsync_UserLookupThrows_FallsBackToProviderName()
     {
-        ProviderAccount ring = MakeAccount("Ring", Guid.NewGuid());
+        ProviderAccountDto ring = MakeAccount("Ring", Guid.NewGuid());
         _ = _accounts.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { ring });
-        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Location>());
+        _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(ring.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<LocationRecordDto>());
         _ = _users.Setup(r => r.GetAsync(ring.UserId, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("db down"));
 
         DeviceOwnershipSnapshot snapshot = await CreateService().LoadAsync(Array.Empty<Device>(), CancellationToken.None);

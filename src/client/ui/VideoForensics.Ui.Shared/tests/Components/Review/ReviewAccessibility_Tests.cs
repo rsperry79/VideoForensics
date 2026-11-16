@@ -1,3 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using AngleSharp.Dom;
 
 using Bunit;
@@ -24,7 +26,7 @@ public class ReviewAccessibility_Tests : BunitContext
 
     private readonly Mock<IMediaFlagRepository> _repository = new();
     private readonly Guid _currentId = Guid.NewGuid();
-    private readonly MediaFlagFilter _filter = new() { Types = new[] { MediaFlagType.RssiDeviation } };
+    private readonly MediaFlagFilterDto _filter = new(new[] { "RssiDeviation" }, null, null, null, null);
 
     public ReviewAccessibility_Tests()
     {
@@ -36,10 +38,10 @@ public class ReviewAccessibility_Tests : BunitContext
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_repository.Object);
         _ = _repository
-            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.CountAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(17);
         _ = _repository
-            .Setup(r => r.GetPositionAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilter>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetPositionAsync(It.IsAny<Guid>(), It.IsAny<MediaFlagFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(3);
     }
 
@@ -89,8 +91,8 @@ public class ReviewAccessibility_Tests : BunitContext
             .Add(c => c.WindowEndUtc, WindowEnd)
             .Add(c => c.Markers,
             [
-                Flag(MediaFlagType.RssiDeviation, WindowStart.AddSeconds(60)),
-                Flag(MediaFlagType.BitrateCollapse, WindowStart.AddSeconds(120)),
+                Flag(MediaFlagType.RssiDeviation, WindowStart.AddSeconds(60)).ToDto(),
+                Flag(MediaFlagType.BitrateCollapse, WindowStart.AddSeconds(120)).ToDto(),
             ]));
 
         IReadOnlyList<IElement> markers = cut.FindAll("[data-testid=timeline-marker]");

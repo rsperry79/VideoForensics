@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly INotificationDispatcher? _notificationDispatcher;
 
         // Persists the account's snapshot spacing after a new rate-limit incident. Null when the host has no schedule store.
-        private readonly ISyncScheduleRepository? _syncScheduleRepository;
+        private readonly ISyncScheduleWriteRepository? _syncScheduleRepository;
 
         // Saved SnapshotIntervalSeconds per account, used as a spacing floor that SetRequestPacing must not drop below.
         // Loaded once per account per process (see EnsureStoredSpacingLoadedAsync); raised again after each saved incident.
@@ -517,7 +517,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly IReferenceDataCache? _referenceCache;
 
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
-            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null,
+            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleWriteRepository? syncScheduleRepository = null,
             IMediaPathResolver? mediaPaths = null, IReferenceDataCache? referenceCache = null)
         {
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;

@@ -49,6 +49,34 @@ public class MediaFlagMappingTests
     }
 
     [Fact]
+    public void MediaFlag_RoundTrip_PreservesEventTypeAndDeviationSigma()
+    {
+        var flag = new MediaFlag
+        {
+            FlagType = MediaFlagType.RssiDeviation,
+            EventType = "person",
+            DeviationSigma = 1.456,
+        };
+
+        MediaFlagDto dto = flag.ToDto();
+        MediaFlag back = dto.ToDomain();
+
+        Assert.Equal("person", dto.EventType);
+        Assert.Equal(1.456, dto.DeviationSigma);
+        Assert.Equal("person", back.EventType);
+        Assert.Equal(1.456, back.DeviationSigma);
+    }
+
+    [Fact]
+    public void MediaFlag_RoundTrip_NullEventTypeAndSigmaStayNull()
+    {
+        MediaFlag back = new MediaFlag { FlagType = MediaFlagType.Jamming }.ToDto().ToDomain();
+
+        Assert.Null(back.EventType);
+        Assert.Null(back.DeviationSigma);
+    }
+
+    [Fact]
     public void MediaFlag_ToDto_WritesEnumsAsNames()
     {
         var flag = new MediaFlag { FlagType = MediaFlagType.RssiDeviation, Severity = MediaFlagSeverity.Warn, Status = MediaFlagStatus.Kept };
@@ -78,7 +106,7 @@ public class MediaFlagMappingTests
     public void MediaFlag_ToDomain_UnknownStatus_ThrowsArgumentException()
     {
         var dto = new MediaFlagDto(
-            Guid.NewGuid(), "BitrateCollapse", Guid.NewGuid(), null, From, From, From, "Warn", "Archived", null, null, null, null, 0);
+            Guid.NewGuid(), "BitrateCollapse", Guid.NewGuid(), null, From, From, From, "Warn", "Archived", null, null, null, null, 0, null, null);
 
         _ = Assert.Throws<ArgumentException>(dto.ToDomain);
     }
@@ -137,7 +165,7 @@ public class MediaFlagMappingTests
     public void FlagStatusConflict_RoundTrip_KeepsExpectedActualAndReviewer()
     {
         DateTime reviewedAt = From.AddHours(2);
-        var ex = new FlagStatusConflictException(Guid.NewGuid(), MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, "reviewer-7", reviewedAt);
+        var ex = new VideoForensics.Data.Common.Contracts.FlagStatusConflictException(Guid.NewGuid(), MediaFlagStatus.Unreviewed, MediaFlagStatus.Kept, "reviewer-7", reviewedAt);
 
         FlagStatusConflictDto body = ex.ToDto();
         Assert.Equal("Unreviewed", body.ExpectedStatus);
@@ -145,7 +173,7 @@ public class MediaFlagMappingTests
         Assert.Equal("reviewer-7", body.ReviewedBy);
         Assert.Equal(reviewedAt, body.ReviewedAtUtc);
 
-        FlagStatusConflictException back = body.ToDomain(ex.FlagId);
+        VideoForensics.Data.Common.Contracts.FlagStatusConflictException back = body.ToDomain(ex.FlagId);
         Assert.Equal(ex.FlagId, back.FlagId);
         Assert.Equal(MediaFlagStatus.Unreviewed, back.ExpectedStatus);
         Assert.Equal(MediaFlagStatus.Kept, back.ActualStatus);
