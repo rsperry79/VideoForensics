@@ -23,9 +23,9 @@ namespace VideoForensics.Client.Platform.Windows.Services
         }
 
         /// <inheritdoc />
-        public string GetStagingDirectory()
+        public Task<string> GetExportDirectoryAsync(CancellationToken ct)
         {
-            return Path.Combine(_documentsRoot(), "VideoForensics", "Backups");
+            return Task.FromResult(Path.Combine(_documentsRoot(), "VideoForensics", "Backups"));
         }
     }
 }

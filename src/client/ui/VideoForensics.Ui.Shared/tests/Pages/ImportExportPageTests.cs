@@ -50,7 +50,7 @@ public class ImportExportPage_Tests : Bunit.TestContext
         File.WriteAllText(archive, "zip");
         const string hash = "abc123def456";
 
-        _ = _staging.Setup(s => s.GetStagingDirectory()).Returns(_folder);
+        _ = _staging.Setup(s => s.GetExportDirectoryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(_folder);
         _ = _export.Setup(e => e.PrepareForExportAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new PrepareExportResult());
         _ = _export.Setup(e => e.ExportBackupAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new BackupExportResult { Success = true, ArchivePath = archive, ArchiveSha256Hash = hash });

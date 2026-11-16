@@ -25,7 +25,7 @@ namespace VideoForensics.Client.WebApp.Api
                 .AddEndpointFilter<StepUpEndpointFilter>()
                 .RequireRateLimiting("media");
 
-            _ = group.MapPost("/", (BackupUploadStore store, HttpContext context) =>
+            _ = group.MapPost("", (BackupUploadStore store, HttpContext context) =>
             {
                 if (!TryOperator(context, out Guid operatorId))
                 {

@@ -20,13 +20,13 @@
         @if (_prepareResult is not null)
         {
             <div class="mt-2">
-                <span>@L["Validated"] @_prepareResult.Validated</span>
-                <span>@L["Backfilled"] @_prepareResult.Backfilled</span>
-                <span>@L["MissingMedia"] @_prepareResult.MissingMedia</span>
-                <span>@L["UnrecoverableSidecars"] @_prepareResult.MissingSidecarUnrecoverable</span>
+                <div>@L["Validated"] @_prepareResult.Validated</div>
+                <div>@L["Backfilled"] @_prepareResult.Backfilled</div>
+                <div>@L["MissingMedia"] @_prepareResult.MissingMedia</div>
+                <div>@L["UnrecoverableSidecars"] @_prepareResult.MissingSidecarUnrecoverable</div>
                 @foreach (var detail in _prepareResult.Details)
                 {
-                    <span class="mt-1">@detail</span>
+                    <div class="mt-1 small text-break">@detail</div>
                 }
             </div>
         }
@@ -40,15 +40,15 @@
             @if (_exportResult.Success)
             {
                 <div class="mt-2">
-                    <span class="mt-2">@L["ExportComplete"]</span>
-                    <span>@L["AccountsCount"] @_exportResult.ProviderAccountCount</span>
-                    <span>@L["LocationsCount"] @_exportResult.LocationCount</span>
-                    <span>@L["DevicesCount"] @_exportResult.DeviceCount</span>
-                    <span>@L["EventsCount"] @_exportResult.EventCount</span>
-                    <span>@L["MediaItemsCount"] @_exportResult.MediaItemCount</span>
+                    <div class="mt-2">@L["ExportComplete"]</div>
+                    <div>@L["AccountsCount"] @_exportResult.ProviderAccountCount</div>
+                    <div>@L["LocationsCount"] @_exportResult.LocationCount</div>
+                    <div>@L["DevicesCount"] @_exportResult.DeviceCount</div>
+                    <div>@L["EventsCount"] @_exportResult.EventCount</div>
+                    <div>@L["MediaItemsCount"] @_exportResult.MediaItemCount</div>
                     @if (!string.IsNullOrEmpty(_exportResult.ArchiveSha256Hash))
                     {
-                        <span>SHA-256: @_exportResult.ArchiveSha256Hash</span>
+                        <div class="text-break">SHA-256: @_exportResult.ArchiveSha256Hash</div>
                     }
                 </div>
             }
@@ -135,7 +135,8 @@
             _prepareResult = await BackupExportService.PrepareForExportAsync(CancellationToken.None);
 
             // Then export
-            _exportResult = await BackupExportService.ExportBackupAsync(StagingLocator.GetStagingDirectory(), CancellationToken.None);
+            string exportDirectory = await StagingLocator.GetExportDirectoryAsync(CancellationToken.None);
+            _exportResult = await BackupExportService.ExportBackupAsync(exportDirectory, CancellationToken.None);
 
             if (_exportResult.Success && _exportResult.ArchivePath is not null)
             {

@@ -810,7 +810,7 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 // both hosts (both run on the same local machine as the user in this app's deployment model).
 builder.Services.AddSingleton<ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
-builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Platform.Windows.Services.UserDocumentsBackupStagingLocator>();
+builder.Services.AddScoped<IBackupStagingLocator, VideoForensics.Client.WebApp.Services.ConfiguredBackupStagingLocator>();
 builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 // The folder picker answers in-process on this host (see InProcessFolderBrowserEndpoint). MAUI registers the
@@ -868,6 +868,22 @@ using (IServiceScope levelScope = app.Services.CreateScope())
     catch (Exception ex)
     {
         app.Logger.LogError("Could not read the saved logging level, keeping Information: {Type}: {Message}", ex.GetType().Name, ex.Message);
+    }
+}
+
+// Create the saved Backup folder at startup, so it exists before the first export. A failure is logged, not fatal.
+using (IServiceScope backupScope = app.Services.CreateScope())
+{
+    try
+    {
+        IForensicsConfiguration backupConfig = await backupScope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty);
+        string backupRoot = backupScope.ServiceProvider.GetRequiredService<VideoForensics.Core.Helpers.Platform.IStorageLocationProvider>()
+            .GetEffectiveRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Backup, backupConfig.QueryExportLocation);
+        _ = Directory.CreateDirectory(backupRoot);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError("Could not create the Backup folder at startup: {Type}: {Message}", ex.GetType().Name, ex.Message);
     }
 }
 

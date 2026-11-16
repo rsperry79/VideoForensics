@@ -5,6 +5,7 @@ using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Api
@@ -18,6 +19,12 @@ namespace VideoForensics.Client.WebApp.Api
     /// </summary>
     public static class BackupEndpoints
     {
+        /// <summary>Resolves the DB-configured Backup folder (QueryExportLocation), or the storage default when unset.</summary>
+        public static string ResolveBackupExportRoot(IStorageLocationProvider storageLocations, IForensicsConfiguration config)
+        {
+            return storageLocations.GetEffectiveRoot(StorageCategory.Backup, config.QueryExportLocation);
+        }
+
         public static void MapBackupEndpoints(this WebApplication app)
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1/backup").RequireAuthorization();
@@ -36,6 +43,8 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapPost("/export", async (
                 ExportBackupRequest request,
                 IBackupExportService exportService,
+                IForensicsConfigurationService configService,
+                IStorageLocationProvider storageLocations,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
                 HttpContext context,
@@ -46,21 +55,12 @@ namespace VideoForensics.Client.WebApp.Api
                     return Results.BadRequest("OutputDirectory is required.");
                 }
 
-                string requestedDirectoryName = request.OutputDirectory.Trim();
-
-                if (Path.IsPathRooted(requestedDirectoryName)
-                    || requestedDirectoryName.Contains("..", StringComparison.Ordinal)
-                    || requestedDirectoryName.Contains(Path.DirectorySeparatorChar)
-                    || requestedDirectoryName.Contains(Path.AltDirectorySeparatorChar))
-                {
-                    return Results.BadRequest("Invalid OutputDirectory.");
-                }
-
-                string exportRoot = Path.Combine(Path.GetTempPath(), "VideoForensics", "Backups");
-                string safeOutputDirectory = Path.Combine(exportRoot, requestedDirectoryName);
+                // The archive goes to the DB-configured Backup folder (QueryExportLocation), never a client-chosen path.
+                IForensicsConfiguration config = await configService.LoadConfigurationAsync(string.Empty, ct);
+                string backupRoot = ResolveBackupExportRoot(storageLocations, config);
 
                 BackupExportResult result = await exportService.ExportBackupAsync(
-                    safeOutputDirectory,
+                    backupRoot,
                     ct);
 
                 string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
