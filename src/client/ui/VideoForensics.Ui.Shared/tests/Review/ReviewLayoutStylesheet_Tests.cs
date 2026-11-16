@@ -55,8 +55,8 @@ public class ReviewLayoutStylesheet_Tests
 
         // Assert
         Assert.Contains("display: grid", css);
-        Assert.Contains("@media (max-width: 900px)", css);
-        Assert.Contains("grid-template-columns: 1fr !important", css);
+        Assert.Contains("repeat(auto-fit, minmax(280px, 1fr))", css);
+        Assert.DoesNotContain("!important", css);
     }
 
     [Fact]
