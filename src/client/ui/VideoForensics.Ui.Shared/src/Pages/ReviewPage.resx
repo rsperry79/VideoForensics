@@ -405,7 +405,7 @@
     <value>Loitering</value>
   </data>
   <data name="PendingTagsCount" xml:space="preserve">
-    <value>{0} tagged</value>
+    <value>{0} pending tags</value>
   </data>
   <data name="PendingTagsHelp" xml:space="preserve">
     <value>Tags are kept in memory until you open a case, then attached to it. They are lost if the session or connection restarts.</value>

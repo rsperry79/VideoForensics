@@ -20,7 +20,9 @@
         <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
                               TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
 
-        @* The camera selector lives in the page header (U6b); the panel no longer repeats it. *@
+        <div class="mb-2">
+            <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+        </div>
     </ReviewSidebarSection>
 </div>
 

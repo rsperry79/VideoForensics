@@ -49,15 +49,15 @@ public class ReviewSidebarControls_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewSidebarControls_Render_ShowsTimeRangeCameraSelectorAndFiltersButton()
+    public void ReviewSidebarControls_Render_ShowsTimeRangeWithoutCameraSelectorOrFiltersButton()
     {
         // Arrange and Act
         IRenderedComponent<ReviewSidebarControls> cut = RenderControls();
 
-        // Assert
+        // Assert: the camera selector sits under Locations in the filter section; the Filters button is gone
         _ = cut.FindComponent<ReviewTimeRange>();
-        _ = Assert.Single(cut.FindAll("[data-testid='review-camera-selector']"));
-        _ = Assert.Single(cut.FindAll("[data-testid='review-filters-button']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-camera-selector']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-filters-button']"));
     }
 
     [Fact]

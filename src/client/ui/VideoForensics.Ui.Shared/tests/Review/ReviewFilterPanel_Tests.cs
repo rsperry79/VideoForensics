@@ -246,7 +246,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewFilterPanel_Rendered_HasNoCameraSelector()
+    public void ReviewFilterPanel_Rendered_ShowsTheCameraSelectorUnderLocations()
     {
         // Arrange
         SetUpTwoProviders();
@@ -254,8 +254,11 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Act
         IRenderedComponent<ReviewFilterPanel> cut = RenderPanel();
 
-        // Assert: the camera selector moved to the page header (U6b), so the panel shows it once
-        Assert.Empty(cut.FindAll("[data-testid='review-camera-selector']"));
+        // Assert: the camera selector sits in the filter section, after the Location filter
+        string[] order = cut.FindAll("[data-testid='review-filter-location'], [data-testid='review-camera-selector']")
+            .Select(e => e.GetAttribute("data-testid")!)
+            .ToArray();
+        Assert.Equal(new[] { "review-filter-location", "review-camera-selector" }, order);
     }
 
     [Fact]

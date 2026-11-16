@@ -245,11 +245,11 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Assert - the view tabs, time range, camera selector and Filters sit at the top of the sidebar, and the header keeps none of them
         string[] order = right
-            .FindAll("[data-testid='review-tabs'], [data-testid='review-time-range'], [data-testid='review-camera-selector'], [data-testid='review-filters-button'], [data-testid='review-filter-panel'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
+            .FindAll("[data-testid='review-tabs'], [data-testid='review-time-range'], [data-testid='review-filter-panel'], [data-testid='review-camera-selector'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
             .Select(e => e.GetAttribute("data-testid")!)
             .ToArray();
         Assert.Equal(
-            new[] { "review-tabs", "review-time-range", "review-camera-selector", "review-filters-button", "review-filter-panel", "review-case-section", "review-actions-panel" },
+            new[] { "review-tabs", "review-time-range", "review-filter-panel", "review-camera-selector", "review-case-section", "review-actions-panel" },
             order);
     }
 
@@ -401,7 +401,7 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_Sidebar_RendersTheCameraSelectorOnce()
+    public void ReviewPage_Sidebar_RendersTheCameraSelectorOnceUnderLocations()
     {
         // Arrange
         AddDevices(2);
@@ -410,9 +410,9 @@ public class ReviewPage_Tests : ReviewTestContext
         // Act
         IRenderedComponent<ReviewPage> page = Render<ReviewPage>();
 
-        // Assert: the camera selector is in the right sidebar's controls (U6b), once, and not in the filter panel
+        // Assert: the camera selector is in the filter section under Locations, once
         _ = Assert.Single(RenderRightPanel().FindAll("[data-testid='review-camera-selector']"));
-        Assert.Empty(page.FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
+        _ = Assert.Single(RenderRightPanel().FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
     }
 
     [Fact]

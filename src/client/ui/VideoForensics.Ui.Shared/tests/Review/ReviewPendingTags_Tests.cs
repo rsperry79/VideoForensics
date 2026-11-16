@@ -57,6 +57,20 @@ public class ReviewPendingTags_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewPendingTags_WithPendingTags_ShowsTheDefinitionOnScreen()
+    {
+        // Arrange
+        AddDevices(1);
+        _ = Pending.Add(CreateTag(Devices[0].Id));
+
+        // Act
+        IRenderedComponent<ReviewPendingTags> cut = RenderBadge();
+
+        // Assert: the meaning is printed beside the count, not only in a hover title
+        Assert.Equal(L["PendingTagsHelp"].Value, cut.Find("[data-testid='review-pending-tags-help']").TextContent.Trim());
+    }
+
+    [Fact]
     public void ReviewPendingTags_Badge_CarriesTheInMemoryHelpText()
     {
         // Arrange
