@@ -423,7 +423,7 @@ namespace VideoForensics.Core.Providers.Core
             timeoutCts.CancelAfter(_timeout);
             try
             {
-                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(Path.GetFullPath(path), BuildFfprobeOptions(), timeoutCts.Token);
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(Path.GetFullPath(path), BuildFfprobeOptions(), null, timeoutCts.Token);
                 return (true, analysis, null);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -466,13 +466,13 @@ namespace VideoForensics.Core.Providers.Core
                 }
 
                 VideoStream? video = analysis!.PrimaryVideoStream;
-                if (video is null || video.Width <= 0 || video.Height <= 0)
+                if (video is null || video.Width is not > 0 || video.Height is not > 0)
                 {
                     return (false, 0, 0, "ffprobe returned an unreadable image size.");
                 }
 
-                maxWidth = Math.Max(maxWidth, video.Width);
-                maxHeight = Math.Max(maxHeight, video.Height);
+                maxWidth = Math.Max(maxWidth, video.Width!.Value);
+                maxHeight = Math.Max(maxHeight, video.Height!.Value);
             }
 
             return (true, RoundUpToEven(maxWidth), RoundUpToEven(maxHeight), null);
