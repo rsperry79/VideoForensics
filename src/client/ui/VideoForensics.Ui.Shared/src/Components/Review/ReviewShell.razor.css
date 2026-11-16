@@ -1,0 +1,61 @@
+/* One grid for every review page: header on top, the stage beside an optional side column, and an optional bottom strip.
+   Columns and rows use minmax(0, 1fr) so a wide child never pushes the page sideways. */
+.review-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 7rem;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "header header"
+        "stage side"
+        "bottom bottom";
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.review-shell--no-side {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "stage"
+        "bottom";
+}
+
+.review-shell--fill {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.review-shell-header {
+    grid-area: header;
+    min-width: 0;
+}
+
+.review-shell-stage {
+    grid-area: stage;
+    min-width: 0;
+    min-height: 0;
+}
+
+.review-shell-side {
+    grid-area: side;
+    min-width: 0;
+    align-self: start;
+}
+
+.review-shell-bottom {
+    grid-area: bottom;
+    min-width: 0;
+}
+
+/* Under 600px there is no room for a side column: the side content drops under the stage. */
+@media (max-width: 599px) {
+    .review-shell {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "header"
+            "stage"
+            "side"
+            "bottom";
+    }
+}

@@ -146,18 +146,18 @@ public class ReviewLayoutStylesheet_Tests
     }
 
     [Fact]
-    public void ReviewPageStylesheet_Body_IsAFlexRowWithAShrinkableContentColumn()
+    public void ReviewShellStylesheet_Stage_IsAShrinkableGridColumn()
     {
-        // Arrange
-        string css = RepoFile.ReadUiSharedSource("Pages/ReviewPage.razor.css");
-        Match body = Regex.Match(css, @"\.review-body\s*\{([^}]*)\}");
-        Match content = Regex.Match(css, @"\.review-content\s*\{([^}]*)\}");
+        // Arrange: the shell grid replaces the old review body flex row
+        string shell = RepoFile.ReadUiSharedSource("Components/Review/ReviewShell.razor.css");
+        Match stage = Regex.Match(shell, @"\.review-shell-stage\s*\{([^}]*)\}");
+        Match content = Regex.Match(RepoFile.ReadUiSharedSource("Pages/ReviewPage.razor.css"), @"\.review-content\s*\{([^}]*)\}");
 
         // Assert
-        Assert.True(body.Success, "The review body rule must exist.");
-        Assert.Contains("display: flex", body.Groups[1].Value);
+        Assert.Contains("minmax(0, 1fr)", shell);
+        Assert.True(stage.Success, "The shell stage rule must exist.");
+        Assert.Contains("min-width: 0", stage.Groups[1].Value);
         Assert.True(content.Success, "The review content rule must exist.");
-        Assert.Matches(new Regex(@"flex:\s*1"), content.Groups[1].Value);
         Assert.Contains("min-width: 0", content.Groups[1].Value);
     }
 

@@ -281,7 +281,8 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Assert - the panel is in the page body, inside the aside, never in the slots
         _ = Assert.Single(cut.FindAll("aside.review-timeline-aside [data-testid='review-timeline-panel']"));
-        _ = Assert.Single(cut.FindAll(".review-body > .review-content"));
+        _ = Assert.Single(cut.FindAll("[data-testid=review-shell-stage] > .review-content"));
+        _ = Assert.Single(cut.FindAll("[data-testid=review-shell-side] aside.review-timeline-aside"));
         Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
     }
 
