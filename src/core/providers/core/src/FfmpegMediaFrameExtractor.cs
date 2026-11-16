@@ -97,9 +97,9 @@ namespace VideoForensics.Core.Providers.Core
             try
             {
                 _ = await FFMpegArguments
-                    .FromFileInput(videoFilePath, verifyExists: true, options => options.Seek(TimeSpan.FromMilliseconds(frameOffsetMs)))
+                    .FromFileInput(videoFilePath, verifyExists: true, options => options.WithStartTime(TimeSpan.FromMilliseconds(frameOffsetMs)))
                     .OutputToPipe(new StreamPipeSink(output), options => options
-                        .WithFrameOutputCount(1)
+                        .WithFrameCount(1)
                         .ForceFormat("image2pipe")
                         .WithVideoCodec("png"))
                     .CancellableThrough(linkedCts.Token)
