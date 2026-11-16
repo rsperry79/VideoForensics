@@ -20,7 +20,9 @@
         <FilterLocationSelect Locations="Locations" Value="_location" ValueChanged="OnLocationChanged"
                               TestId="review-filter-location" Class="form-select form-select-sm mb-2" />
 
-        <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+        <div class="mb-2">
+            <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+        </div>
     </ReviewSidebarSection>
 </div>
 
@@ -124,5 +126,8 @@
         // Mark these values as seen first, so this change is not mistaken for an external one that discards a newer edit.
         _seenFilters = (_provider, _account, _location);
         State.SetFilters(_provider, _account, _location);
+
+        // Re-render after applying, so the panel reflects the applied filters and any render-driven observers see the change.
+        StateHasChanged();
     }
 }

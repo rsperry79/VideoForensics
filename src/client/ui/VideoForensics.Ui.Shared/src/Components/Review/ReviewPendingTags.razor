@@ -21,6 +21,7 @@
                     @onclick="OnToggleOpen">
                 <span class="badge rounded-pill text-bg-secondary" data-testid="review-pending-tags-count">@L["PendingTagsCount", PendingTags.Count]</span>
             </button>
+            <span class="small text-muted" data-testid="review-pending-tags-help">@L["PendingTagsHelp"]</span>
         }
 
         @if (Popups.IsOpen(ReviewPopupState.Pending) && PendingTags.Count > 0)

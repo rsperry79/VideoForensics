@@ -1,18 +1,15 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Components.Review
-@using Microsoft.Extensions.DependencyInjection
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Review
-@using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IDisposable
 @inject NavigationManager NavigationManager
 @inject ReviewCaseMode CaseMode
-@inject ReviewPopupState Popups
-@inject IServiceProvider ServiceProvider
 @inject IStringLocalizer<ReviewPage> L
 
+@* The header keeps only the case banner. The view tabs, time range, camera selector and Filters moved to the right sidebar. *@
 @if (CaseMode.Active)
 {
     <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 w-100 py-2 mb-2" role="status" data-testid="review-case-banner">
@@ -25,67 +22,14 @@
     </div>
 }
 
-<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
-    <div class="btn-group btn-group-sm" role="tablist" aria-label="@L["ReviewTabsLabel"]" data-testid="review-tabs">
-        @foreach (ReviewTab tab in TabOrder)
-        {
-            <button type="button" role="tab" class="btn @(State.ActiveTab == tab ? "btn-primary" : "btn-outline-secondary")"
-                    aria-selected="@(State.ActiveTab == tab ? "true" : "false")" data-testid="review-tab-button-@TabId(tab)"
-                    @onclick="() => State.SetTab(tab)">@TabLabel(tab)</button>
-        }
-    </div>
-
-    <ReviewPopupHost>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <ReviewTimeRange State="State" />
-            <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filters-button" @onclick="OpenFilters">@L["FiltersButton"]</button>
-            <ReviewPendingTags DeviceNames="DeviceNames" />
-        </div>
-    </ReviewPopupHost>
-</div>
-
 @code {
-    /// <summary>The review state the bar reads and writes.</summary>
+    /// <summary>The review state the bar reads.</summary>
     [Parameter, EditorRequired]
     public ReviewPageState State { get; set; } = default!;
 
-    /// <summary>Display name for each camera id.</summary>
-    [Parameter]
-    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
-
-    /// <summary>The cameras left after the Provider and Account filters. The camera selector lists these.</summary>
-    [Parameter]
-    public IReadOnlyList<Guid> Devices { get; set; } = [];
-
-    /// <summary>Opens the right panel, where the filters are (U-D4). Does nothing when the layout state is not registered.</summary>
-    private async Task OpenFilters()
-    {
-        LayoutPreferencesState? prefs = ServiceProvider.GetService<LayoutPreferencesState>();
-        if (prefs is not null)
-        {
-            await prefs.SetRightPanelCollapsedAsync(false);
-        }
-    }
-
-    private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events, ReviewTab.Detail];
-
-    private static string TabId(ReviewTab tab) => tab.ToString().ToLowerInvariant();
-
-    private LocalizedString TabLabel(ReviewTab tab) => tab switch
-    {
-        ReviewTab.Timeline => L["TabTimeline"],
-        ReviewTab.Events => L["TabEvents"],
-        _ => L["TabDetail"],
-    };
-
     protected override void OnInitialized()
     {
-        // A popup left open by an earlier visit to this page must not reopen with the bar.
-        Popups.Close();
-        State.OnChange += OnStateChanged;
         CaseMode.OnChange += OnStateChanged;
-        Popups.OnChange += OnStateChanged;
     }
 
     private void OnStateChanged()
@@ -105,8 +49,6 @@
 
     public void Dispose()
     {
-        State.OnChange -= OnStateChanged;
         CaseMode.OnChange -= OnStateChanged;
-        Popups.OnChange -= OnStateChanged;
     }
 }

@@ -1,0 +1,54 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@inject ReviewPopupState Popups
+@inject IStringLocalizer<ReviewPage> L
+
+@* The review controls at the top of the right sidebar. The sidebar's ReviewPopupHost wraps them, so the popups these open
+   share the one backdrop and Escape handler. *@
+<div class="review-sidebar-controls d-flex flex-column gap-2 p-2" data-testid="review-sidebar-controls">
+    <div class="btn-group btn-group-sm w-100" role="tablist" aria-label="@L["ReviewTabsLabel"]" data-testid="review-tabs">
+        @foreach (ReviewTab tab in TabOrder)
+        {
+            <button type="button" role="tab" class="btn @(State.ActiveTab == tab ? "btn-primary" : "btn-outline-secondary")"
+                    aria-selected="@(State.ActiveTab == tab ? "true" : "false")" data-testid="review-tab-button-@TabId(tab)"
+                    @onclick="() => State.SetTab(tab)">@TabLabel(tab)</button>
+        }
+    </div>
+
+    <ReviewTimeRange State="State" />
+    <ReviewPendingTags DeviceNames="DeviceNames" />
+</div>
+
+@code {
+    /// <summary>The review state the controls read and write.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The cameras left after the Provider and Account filters. The camera selector lists these.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events, ReviewTab.Detail];
+
+    private static string TabId(ReviewTab tab) => tab.ToString().ToLowerInvariant();
+
+    private LocalizedString TabLabel(ReviewTab tab) => tab switch
+    {
+        ReviewTab.Timeline => L["TabTimeline"],
+        ReviewTab.Events => L["TabEvents"],
+        _ => L["TabDetail"],
+    };
+
+    protected override void OnInitialized()
+    {
+        // A popup left open by an earlier visit to this page must not reopen with the controls.
+        Popups.Close();
+    }
+
+}
