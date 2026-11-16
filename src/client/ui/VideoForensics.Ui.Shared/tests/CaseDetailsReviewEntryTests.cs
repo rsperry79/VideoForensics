@@ -1,4 +1,4 @@
-using Bunit;
+using Bunit;using VideoForensics.Core.Api.Contracts;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +32,7 @@ public class CaseDetailsReviewEntry_Tests : CasesPagesTestBase
         _ = CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { CreateMediaPin(caseId, media.Id, media.Sha256Hash!) });
-        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media);
+        _ = MediaItemRepositoryMock.Setup(r => r.GetAsync(media.Id, It.IsAny<CancellationToken>())).ReturnsAsync(media.ToDto());
         IRenderedComponent<CaseDetails> cut = Render<CaseDetails>(p => p.Add(c => c.CaseId, caseId));
 
         // Act
@@ -63,10 +63,7 @@ public class CaseDetailsReviewEntry_Tests : CasesPagesTestBase
     {
         // Arrange
         var caseId = Guid.NewGuid();
-        CaseItem removed = CreateEventPin(caseId, Guid.NewGuid());
-        removed.RemovedAtUtc = FixedNowUtc;
-        removed.RemovedBy = "op";
-        removed.RemovalReason = "wrong case";
+        CaseItemDto removed = CreateEventPin(caseId, Guid.NewGuid()) with { RemovedAtUtc = FixedNowUtc, RemovedBy = "op", RemovalReason = "wrong case" };
         _ = CaseRepositoryMock.Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateTestCase(id: caseId));
         _ = CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))

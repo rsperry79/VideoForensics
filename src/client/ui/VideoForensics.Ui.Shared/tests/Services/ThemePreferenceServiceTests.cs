@@ -4,8 +4,9 @@ using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -132,11 +133,11 @@ public class ThemePreferenceServiceTests
         var repository = new Mock<IOperatorPreferencesRepository>();
         _ = repository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OperatorPreferences { OperatorId = operatorId, ThemeMode = "Dark", UiMode = "Standard", TimeFormat = "TwelveHour" });
-        OperatorPreferences? written = null;
+            .ReturnsAsync(new OperatorPreferencesDto(Guid.NewGuid(), operatorId, "Dark", null, "Standard", false, "TwelveHour", false, DateTime.UtcNow));
+        OperatorPreferencesDto? written = null;
         _ = repository
-            .Setup(r => r.UpsertAsync(It.IsAny<OperatorPreferences>(), It.IsAny<CancellationToken>()))
-            .Callback<OperatorPreferences, CancellationToken>((p, _) => written = p)
+            .Setup(r => r.UpsertAsync(It.IsAny<OperatorPreferencesDto>(), It.IsAny<CancellationToken>()))
+            .Callback<OperatorPreferencesDto, CancellationToken>((p, _) => written = p)
             .Returns(Task.CompletedTask);
         var session = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = session.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
@@ -165,7 +166,7 @@ public class ThemePreferenceServiceTests
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedMode is null
                 ? null
-                : new OperatorPreferences { OperatorId = operatorId!.Value, ThemeMode = savedMode, UiMode = "Standard", TimeFormat = savedTimeFormat ?? "Locale" });
+                : new OperatorPreferencesDto(Guid.NewGuid(), operatorId!.Value, savedMode, null, "Standard", false, savedTimeFormat ?? "Locale", false, DateTime.UtcNow));
 
         var session = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = session.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);

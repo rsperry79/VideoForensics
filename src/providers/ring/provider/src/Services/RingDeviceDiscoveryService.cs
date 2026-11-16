@@ -21,7 +21,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly ILocationMetadataRepository? _metadataRepository;
-        private readonly ILocationRepository? _locationRepository;
+        private readonly ILocationWriteRepository? _locationRepository;
         private readonly ApiResponseNormalizer? _normalizer;
         private readonly RingAccountSettingsPersister? _settingsPersister;
         private readonly IRingEventHistoryWriter? _eventHistoryWriter;
@@ -58,7 +58,7 @@ namespace VideoForensics.Providers.Ring.Services
             ISessionProvider sessionProvider,
             ILocationMetadataRepository? metadataRepository = null,
             ApiResponseNormalizer? normalizer = null,
-            ILocationRepository? locationRepository = null,
+            ILocationWriteRepository? locationRepository = null,
             RingAccountSettingsPersister? settingsPersister = null,
             IRingEventHistoryWriter? eventHistoryWriter = null,
             IRingAccountSyncState? syncState = null,

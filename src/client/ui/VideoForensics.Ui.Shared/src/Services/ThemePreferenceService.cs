@@ -1,8 +1,8 @@
 using Microsoft.JSInterop;
 
 using VideoForensics.Client.Ui.Shared.Services.Time;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Ui.Shared.Services
 {
@@ -101,7 +101,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             await _session.EnsureLoadedAsync();
             if (_session.OperatorId is Guid operatorId)
             {
-                OperatorPreferences? saved = await _repository.GetAsync(operatorId, CancellationToken.None);
+                OperatorPreferencesDto? saved = await _repository.GetAsync(operatorId, CancellationToken.None);
                 if (saved is not null)
                 {
                     Mode = Enum.TryParse<ThemeMode>(saved.ThemeMode, out ThemeMode parsed) ? parsed : ThemeMode.System;
@@ -179,19 +179,19 @@ namespace VideoForensics.Client.Ui.Shared.Services
             // Read the existing row first (if present) to avoid clobbering other fields like UiMode
             // that UiModeService might have set. If no row exists yet, this returns null and we create
             // one fresh with just the theme/culture set.
-            OperatorPreferences? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
+            OperatorPreferencesDto? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
 
             // Merge: keep existing UiMode, but update ThemeMode and CultureName.
-            var prefs = new OperatorPreferences
-            {
-                Id = existing?.Id ?? Guid.NewGuid(),
-                OperatorId = operatorId,
-                ThemeMode = Mode.ToString(),
-                CultureName = CultureName,
-                TimeFormat = TimeFormat.ToString(),
-                UiMode = existing?.UiMode ?? "Standard",
-                UpdatedAtUtc = DateTime.UtcNow
-            };
+            var prefs = new OperatorPreferencesDto(
+                Id: existing?.Id ?? Guid.NewGuid(),
+                OperatorId: operatorId,
+                ThemeMode: Mode.ToString(),
+                CultureName: CultureName,
+                UiMode: existing?.UiMode ?? "Standard",
+                UiModeLocked: existing?.UiModeLocked ?? false,
+                TimeFormat: TimeFormat.ToString(),
+                EncryptionWarningDismissed: existing?.EncryptionWarningDismissed ?? false,
+                UpdatedAtUtc: DateTime.UtcNow);
 
             await _repository.UpsertAsync(prefs, CancellationToken.None);
         }

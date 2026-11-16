@@ -18,11 +18,11 @@ namespace VideoForensics.Data.Database.Repositories
     /// </summary>
     public class EventBackfillService
     {
-        private readonly IDeviceRepository _devices;
+        private readonly IDeviceWriteRepository _devices;
         private readonly IDingIdLinkRepository _dingIdLinks;
 
         /// <summary>Initializes a new instance of the EventBackfillService.</summary>
-        public EventBackfillService(IDeviceRepository devices, IDingIdLinkRepository dingIdLinks)
+        public EventBackfillService(IDeviceWriteRepository devices, IDingIdLinkRepository dingIdLinks)
         {
             _devices = devices;
             _dingIdLinks = dingIdLinks;
@@ -31,8 +31,8 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Reconstructs Event rows from DownloadEvents and MediaItems. Returns the number of Events written.</summary>
         public async Task<int> BackfillFromDownloadEventsAsync(
             IDownloadEventRepository downloadEventRepository,
-            IMediaItemRepository mediaItemRepository,
-            IEventRepository eventRepository,
+            IMediaItemWriteRepository mediaItemRepository,
+            IEventWriteRepository eventRepository,
             IUnitOfWork unitOfWork,
             ILogger logger,
             CancellationToken ct)

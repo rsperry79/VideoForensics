@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Database.Repositories
     /// Repository implementation for User entities. Reads run through <see cref="IUnitOfWork.ReadAsync{T}"/>; writes run
     /// through <see cref="IUnitOfWork.ExecuteAsync{T}"/>, so inside an open unit of work they join its transaction.
     /// </summary>
-    public class UserRepository : IUserRepository
+    public class UserRepository : IUserWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<UserRepository> _logger;

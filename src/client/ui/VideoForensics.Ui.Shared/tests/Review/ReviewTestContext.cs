@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Components.Review;
@@ -113,7 +115,7 @@ public abstract class ReviewTestContext : BunitContext
     protected Mock<IEventRepository> EventRepositoryMock { get; } = new();
 
     private readonly Dictionary<Guid, MediaItem> _mediaById = [];
-    private readonly Dictionary<Guid, Event> _eventsById = [];
+    private readonly Dictionary<Guid, EventDto> _eventsById = [];
 
     /// <summary>The case view service, resolved from the same scope the page uses.</summary>
     protected ReviewCaseMode CaseMode => Services.GetRequiredService<ReviewCaseMode>();
@@ -173,10 +175,10 @@ public abstract class ReviewTestContext : BunitContext
             sp.GetRequiredService<IEventRepository>()));
         _ = MediaItemRepositoryMock
             .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItem?>(_mediaById.GetValueOrDefault(id)));
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<MediaItemDto?>(_mediaById.GetValueOrDefault(id)?.ToDto()));
         _ = EventRepositoryMock
             .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns((Guid id, CancellationToken _) => Task.FromResult<Event?>(_eventsById.GetValueOrDefault(id)));
+            .Returns((Guid id, CancellationToken _) => Task.FromResult<EventDto?>(_eventsById.GetValueOrDefault(id)));
         _ = Services.AddScoped(_ => StillCaptureMock.Object);
         _ = StillCaptureMock
             .Setup(m => m.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -206,7 +208,7 @@ public abstract class ReviewTestContext : BunitContext
 
         _ = DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => Devices.ToList());
+            .ReturnsAsync(() => Devices.Select(d => d.ToDto()).ToList());
 
         SignInOperatorAsync().GetAwaiter().GetResult();
     }
@@ -215,26 +217,26 @@ public abstract class ReviewTestContext : BunitContext
     /// Creates a case whose pins are the given media items and events, wires the case, pin, and row doubles, and
     /// returns the case id. Set the case repository double before rendering anything that resolves the case view.
     /// </summary>
-    protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<Event>? events = null)
+    protected Guid ArrangePinnedCase(string title, IReadOnlyList<MediaItem> media, IReadOnlyList<EventDto>? events = null)
     {
         var caseId = Guid.NewGuid();
-        var pins = new List<CaseItem>();
+        var pins = new List<CaseItemDto>();
         foreach (MediaItem item in media)
         {
             _mediaById[item.Id] = item;
-            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Media, MediaItemId = item.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+            pins.Add(new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Media.ToString(), item.Id, "r", "op", FixedNowUtc, null, null, null, null));
         }
 
-        foreach (Event evt in events ?? [])
+        foreach (EventDto evt in events ?? [])
         {
             _eventsById[evt.Id] = evt;
-            pins.Add(new CaseItem { Id = Guid.NewGuid(), CaseId = caseId, Kind = CaseItemKind.Event, EventId = evt.Id, Reason = "r", AddedBy = "op", AddedAtUtc = FixedNowUtc });
+            pins.Add(new CaseItemDto(Guid.NewGuid(), caseId, CaseItemKindDto.Event.ToString(), evt.Id, "r", "op", FixedNowUtc, null, null, null, null));
         }
 
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicCase { Id = caseId, CaseNumber = "CASE-1", Title = title, CreatedBy = "op" });
+            .ReturnsAsync(new ForensicCaseDto(caseId, "CASE-1", title, null, CaseStatusDto.Open.ToString(), null, "op", FixedNowUtc, FixedNowUtc, null, null, null, null, []));
         _ = caseRepository
             .Setup(r => r.ListItemsAsync(caseId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pins);
@@ -290,7 +292,7 @@ public abstract class ReviewTestContext : BunitContext
             {
                 return OwnershipFails
                     ? throw new InvalidOperationException("ownership unavailable")
-                    : (IReadOnlyList<ProviderAccount>)Accounts.ToList();
+                    : (IReadOnlyList<ProviderAccountDto>)Accounts.Select(a => a.ToDto()).ToList();
             });
         return repository;
     }
@@ -300,7 +302,7 @@ public abstract class ReviewTestContext : BunitContext
         var repository = new Mock<ILocationRepository>();
         _ = repository
             .Setup(r => r.ListByProviderAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid accountId, CancellationToken _) => LocationsFor(accountId));
+            .ReturnsAsync((Guid accountId, CancellationToken _) => (IReadOnlyList<LocationRecordDto>)LocationsFor(accountId).Select(l => l.ToDto()).ToList());
         return repository;
     }
 
@@ -315,7 +317,7 @@ public abstract class ReviewTestContext : BunitContext
         var repository = new Mock<IUserRepository>();
         _ = repository
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .ReturnsAsync((UserDto?)null);
         return repository;
     }
 

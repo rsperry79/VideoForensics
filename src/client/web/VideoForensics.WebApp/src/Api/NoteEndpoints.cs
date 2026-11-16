@@ -36,10 +36,10 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> ListNotesAsync(
             string kind,
             Guid targetId,
-            ICaseRepository cases,
-            IJammingRepository jamming,
-            IMediaFlagRepository flags,
-            INoteRepository notes,
+            ICaseWriteRepository cases,
+            IJammingWriteRepository jamming,
+            IMediaFlagWriteRepository flags,
+            INoteWriteRepository notes,
             CancellationToken ct)
         {
             if (!TryParseKind(kind, out NoteTargetKind parsedKind))
@@ -61,10 +61,10 @@ namespace VideoForensics.Client.WebApp.Api
             string kind,
             Guid targetId,
             AddNoteRequest request,
-            ICaseRepository cases,
-            IJammingRepository jamming,
-            IMediaFlagRepository flags,
-            INoteRepository notes,
+            ICaseWriteRepository cases,
+            IJammingWriteRepository jamming,
+            IMediaFlagWriteRepository flags,
+            INoteWriteRepository notes,
             HttpContext context,
             CancellationToken ct)
         {
@@ -118,9 +118,9 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<bool> TargetExistsAsync(
             NoteTargetKind kind,
             Guid targetId,
-            ICaseRepository cases,
-            IJammingRepository jamming,
-            IMediaFlagRepository flags,
+            ICaseWriteRepository cases,
+            IJammingWriteRepository jamming,
+            IMediaFlagWriteRepository flags,
             CancellationToken ct)
         {
             return kind switch

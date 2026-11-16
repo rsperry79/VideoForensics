@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = healthy.Setup(p => p.SendAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
             var logger = new Mock<ILogger<NotificationDispatcher>>();
-            var notices = new Mock<INoticeRepository>();
+            var notices = new Mock<INoticeWriteRepository>();
             var dispatcher = new NotificationDispatcher(new[] { failing.Object, healthy.Object }, logger.Object, notices.Object);
 
             await dispatcher.DispatchAsync(Event(), CancellationToken.None);

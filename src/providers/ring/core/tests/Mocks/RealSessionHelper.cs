@@ -168,7 +168,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         {
             IServiceProvider sp = ServiceProviderLazy.Value;
             using IServiceScope scope = sp.CreateScope();
-            IProviderAccountRepository accounts = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+            IProviderAccountWriteRepository accounts = scope.ServiceProvider.GetRequiredService<IProviderAccountWriteRepository>();
             ICredentialRepository credentials = scope.ServiceProvider.GetRequiredService<ICredentialRepository>();
 
             IReadOnlyList<ProviderAccount> ringAccounts;

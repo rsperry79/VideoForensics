@@ -1,7 +1,10 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.Logs;
 using VideoForensics.Data.Database.Repositories;
+using VideoForensics.Data.Database.Logs;
 
 using Xunit;
+using VideoForensics.Data.Database.Logs;
 
 namespace VideoForensics.Data.Database.Tests.Repositories
 {
@@ -14,7 +17,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteLogsInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new ProviderApiErrorLogRepository(_fixture.Factory);
+            _repository = new ProviderApiErrorLogRepository(new LogsDbGate(_fixture.Factory));
         }
 
         public async ValueTask DisposeAsync()

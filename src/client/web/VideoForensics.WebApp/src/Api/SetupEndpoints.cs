@@ -14,7 +14,7 @@ namespace VideoForensics.Client.WebApp.Api
     /// admin/ChangeMe123! seed (see VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync).
     ///
     /// Gated the same way PairingEndpoints.initiate gates its bootstrap case: only actionable while
-    /// IOperatorRepository.IsEmptyAsync() is true, becoming Forbid() once any operator exists - this
+    /// IOperatorWriteRepository.IsEmptyAsync() is true, becoming Forbid() once any operator exists - this
     /// reuses the exact same "first run" signal as the seeding block and AuthGate.razor rather than
     /// introducing a second source of truth (e.g. a separate "SetupComplete" flag).
     /// </summary>
@@ -31,7 +31,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         /// <summary>Extracted from the MapGet lambda so it's directly unit-testable, matching CreateAdminAsync's pattern.</summary>
         public static async Task<IResult> GetStatusAsync(
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             INetworkTierResolver tierResolver,
             ISessionTierHeaderProtector headerProtector,
             HttpContext context,
@@ -47,7 +47,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// SetupEndpointsTests.cs) without spinning up a full WebApplicationFactory host.</summary>
         public static async Task<IResult> CreateAdminAsync(
             CreateSetupAdminRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             ISessionTierHeaderProtector headerProtector,

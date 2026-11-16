@@ -1,6 +1,6 @@
 @using VideoForensics.Client.Common.Contracts
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Evidence
@@ -122,10 +122,10 @@
                 {
                     <div class="muted-text">@L["InspectorSelectCase"]</div>
                 }
-                else if (CaseState.ActiveCase.Status == CaseStatus.Open && _role.HasValue && _role >= OperatorRole.Review)
+                else if (CaseState.ActiveCase.Status == CaseStatusDto.Open.ToString() && _role.HasValue && _role >= OperatorRoleDto.Review)
                 {
                     <div class="mb-2">
-                        <ReasonPicker TReason="EvidencePinReason" OtherValue="EvidencePinReason.Other" @bind-Value="_pinReason" @bind-Note="_pinNote" ValidityChanged="OnPinReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+                        <ReasonPicker TReason="EvidencePinReasonDto" OtherValue="EvidencePinReasonDto.Other" @bind-Value="_pinReason" @bind-Note="_pinNote" ValidityChanged="OnPinReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
                     </div>
                     <button type="button"
                             class="inspector-pin-button"
@@ -154,7 +154,7 @@
                     @if (_pendingAction == PendingEvidenceAction.Hold)
                     {
                         <div class="mb-2">
-                            <ReasonPicker TReason="EvidenceHoldReason" OtherValue="EvidenceHoldReason.Other" @bind-Value="_holdReason" @bind-Note="_actionNote" ValidityChanged="OnActionReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+                            <ReasonPicker TReason="EvidenceHoldReasonDto" OtherValue="EvidenceHoldReasonDto.Other" @bind-Value="_holdReason" @bind-Note="_actionNote" ValidityChanged="OnActionReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
                         </div>
                         <button type="button" data-testid="confirm-place-hold"
                                 disabled="@(!_actionReasonValid)"
@@ -178,7 +178,7 @@
                     @if (_pendingAction == PendingEvidenceAction.Release)
                     {
                         <div class="mb-2">
-                            <ReasonPicker TReason="EvidenceReleaseReason" OtherValue="EvidenceReleaseReason.Other" @bind-Value="_releaseReason" @bind-Note="_actionNote" ValidityChanged="OnActionReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
+                            <ReasonPicker TReason="EvidenceReleaseReasonDto" OtherValue="EvidenceReleaseReasonDto.Other" @bind-Value="_releaseReason" @bind-Note="_actionNote" ValidityChanged="OnActionReasonValidityChanged" LabelText="@L["ReasonPickerLabel"].Value" />
                         </div>
                         <button type="button" data-testid="confirm-release-hold"
                                 disabled="@(!_actionReasonValid)"
@@ -228,16 +228,16 @@
     private enum PendingEvidenceAction { None, Hold, Release }
 
     private string _activeTab = "fields";
-    private EvidencePinReason? _pinReason;
+    private EvidencePinReasonDto? _pinReason;
     private string? _pinNote;
     private bool _pinReasonValid;
     private string? _pinError;
     private string? _pinSuccessMessage;
-    private OperatorRole? _role;
+    private OperatorRoleDto? _role;
 
     private PendingEvidenceAction _pendingAction = PendingEvidenceAction.None;
-    private EvidenceHoldReason? _holdReason;
-    private EvidenceReleaseReason? _releaseReason;
+    private EvidenceHoldReasonDto? _holdReason;
+    private EvidenceReleaseReasonDto? _releaseReason;
     private string? _actionNote;
     private bool _actionReasonValid;
     private string? _actionSuccessMessage;
@@ -256,7 +256,7 @@
         CaseState.OnChange += OnCaseStateChanged;
 
         await SessionState.EnsureLoadedAsync();
-        _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+        _role = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out var role) ? role : null;
     }
 
     private void OnCloseClick()
@@ -315,7 +315,7 @@
 
         try
         {
-            string reason = ReasonText.Build(pinReason, EvidencePinReason.Other, _pinNote);
+            string reason = ReasonText.Build(pinReason, EvidencePinReasonDto.Other, _pinNote);
             await CaseState.PinAsync(pin.Kind, pin.TargetId, reason, actor, CancellationToken.None);
             _pinSuccessMessage = L["InspectorPinnedTo", caseNumber].Value;
         }
@@ -393,7 +393,7 @@
             return;
         }
 
-        string reason = ReasonText.Build(holdReason, EvidenceHoldReason.Other, _actionNote);
+        string reason = ReasonText.Build(holdReason, EvidenceHoldReasonDto.Other, _actionNote);
 
         _actionError = null;
 
@@ -434,7 +434,7 @@
             return;
         }
 
-        string reason = ReasonText.Build(releaseReason, EvidenceReleaseReason.Other, _actionNote);
+        string reason = ReasonText.Build(releaseReason, EvidenceReleaseReasonDto.Other, _actionNote);
 
         _actionError = null;
 

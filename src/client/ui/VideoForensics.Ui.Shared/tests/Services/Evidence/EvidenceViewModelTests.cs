@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -83,7 +83,7 @@ public class EvidenceViewModel_Constructor_Tests
             Items = [],
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         });
 
         // Assert
@@ -107,7 +107,7 @@ public class EvidenceViewModel_Open_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -116,14 +116,14 @@ public class EvidenceViewModel_Open_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test2", ProviderEventId = "test:2", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test2", ProviderEventId = "test:2", MetadataJson = "{}" }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item1, item2 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -145,14 +145,14 @@ public class EvidenceViewModel_Open_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -177,14 +177,14 @@ public class EvidenceViewModel_Close_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("event:1");
@@ -211,7 +211,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -220,14 +220,14 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item2, item1 },  // Descending order
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:2");
@@ -250,7 +250,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -259,14 +259,14 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item2, item1 },  // Descending order
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -289,7 +289,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -298,14 +298,14 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item2, item1 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:2");
@@ -328,14 +328,14 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -358,7 +358,7 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow.AddHours(-1),
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-1), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -367,14 +367,14 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "b.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "b", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item2, item1 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -397,14 +397,14 @@ public class EvidenceViewModel_Navigation_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
@@ -430,7 +430,7 @@ public class EvidenceViewModel_GalleryItems_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = Guid.NewGuid(), FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var nonViewableItem = new EvidenceItem
         {
@@ -439,7 +439,7 @@ public class EvidenceViewModel_GalleryItems_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" },
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Test", ProviderEventId = "test:1", MetadataJson = "{}" }.ToDto(),
             Media = null
         };
         var result = new EvidenceLoadResult
@@ -447,7 +447,7 @@ public class EvidenceViewModel_GalleryItems_Tests
             Items = new[] { viewableItem, nonViewableItem },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -476,7 +476,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device1",
-            Media = new MediaItem { Id = imageId1, FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = imageId1, FileName = "a.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "a", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item2 = new EvidenceItem
         {
@@ -485,7 +485,7 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device2",
-            Media = new MediaItem { Id = imageId2, FileName = "b.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "b", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = imageId2, FileName = "b.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = "b", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var item3 = new EvidenceItem
         {
@@ -494,14 +494,14 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
             OccurredAtUtc = DateTime.UtcNow,
             DeviceId = Guid.NewGuid(),
             DeviceName = "Device3",
-            Media = new MediaItem { Id = videoId, FileName = "c.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "c", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }
+            Media = new MediaItem { Id = videoId, FileName = "c.mp4", FilePath = "/", MediaFormat = "video/mp4", Sha256Hash = "c", FileSizeBytes = 1000, RecordedAtUtc = DateTime.UtcNow, DownloadedAtUtc = DateTime.UtcNow }.ToDto()
         };
         var result = new EvidenceLoadResult
         {
             Items = new[] { item1, item2, item3 },
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 
@@ -527,14 +527,14 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
                 OccurredAtUtc = DateTime.UtcNow.AddHours(-i),
                 DeviceId = Guid.NewGuid(),
                 DeviceName = "Device",
-                Media = new MediaItem { Id = Guid.NewGuid(), FileName = $"{i}.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = $"h{i}", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-i), DownloadedAtUtc = DateTime.UtcNow }
+                Media = new MediaItem { Id = Guid.NewGuid(), FileName = $"{i}.jpg", FilePath = "/", MediaFormat = "image/jpeg", Sha256Hash = $"h{i}", FileSizeBytes = 100, RecordedAtUtc = DateTime.UtcNow.AddHours(-i), DownloadedAtUtc = DateTime.UtcNow }.ToDto()
             }).ToList();
         var result = new EvidenceLoadResult
         {
             Items = imageIds,
             Errors = new Dictionary<Guid, string>(),
             IntegrityRecords = [],
-            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
+            ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHoldDto>()
         };
         var vm = new EvidenceViewModel(result);
 

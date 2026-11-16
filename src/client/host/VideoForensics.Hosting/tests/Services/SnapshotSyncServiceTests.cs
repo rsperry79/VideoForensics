@@ -14,9 +14,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
     /// <summary>The snapshot sync service runs the capture cycle for Ring accounts.</summary>
     public class SnapshotSyncServiceTests
     {
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
-        private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly LocationEntity _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
 
@@ -45,7 +45,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 var storage = new Mock<IStorageLocationProvider>();
                 _ = storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(mediaRoot);
                 _ = storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>())).Returns(mediaRoot);
-                var captureRows = new Mock<ISnapshotCaptureRepository>();
+                var captureRows = new Mock<ISnapshotCaptureWriteRepository>();
                 _ = captureRows.Setup(r => r.GetDeviceIdsWithAttemptsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync((IReadOnlySet<Guid>)new HashSet<Guid>());
                 var auth = new Mock<IProviderAuthService>();
@@ -57,8 +57,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _ = services.AddSingleton(_locations.Object);
                 _ = services.AddSingleton(_devices.Object);
                 _ = services.AddSingleton(captureRows.Object);
-                _ = services.AddSingleton(Mock.Of<ISyncScheduleRepository>());
-                _ = services.AddSingleton(Mock.Of<IMediaItemRepository>());
+                _ = services.AddSingleton(Mock.Of<ISyncScheduleWriteRepository>());
+                _ = services.AddSingleton(Mock.Of<IMediaItemWriteRepository>());
                 _ = services.AddSingleton(sessions.Object);
                 _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", capture.Object);
                 _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);

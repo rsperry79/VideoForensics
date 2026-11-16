@@ -306,12 +306,12 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>The open context of this unit of work.</summary>
         internal VideoForensicsDbContext Db => _db;
 
-        public IUserRepository Users => new UnitOfWorkUserRepository(_db, _logger);
-        public IProviderAccountRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
-        public ILocationRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
-        public IMediaItemRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
+        public IUserWriteRepository Users => new UnitOfWorkUserRepository(_db, _logger);
+        public IProviderAccountWriteRepository ProviderAccounts => new UnitOfWorkProviderAccountRepository(_db, _logger);
+        public ILocationWriteRepository Locations => new UnitOfWorkLocationRepository(_db, _logger);
+        public IMediaItemWriteRepository MediaItems => new UnitOfWorkMediaItemRepository(_db, _logger);
         public IDownloadEventRepository DownloadEvents => new UnitOfWorkDownloadEventRepository(_db, _logger);
-        public IEventRepository Events => new UnitOfWorkEventRepository(_db, _logger);
+        public IEventWriteRepository Events => new UnitOfWorkEventRepository(_db, _logger);
 
         public async Task SaveChangesAsync(CancellationToken ct)
         {
@@ -322,7 +322,7 @@ namespace VideoForensics.Data.Database.Repositories
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
     // Note: These use synchronous LINQ since the DbContext is already created within the transaction scope
 
-    internal class UnitOfWorkUserRepository : IUserRepository
+    internal class UnitOfWorkUserRepository : IUserWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;
@@ -358,7 +358,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkProviderAccountRepository : IProviderAccountRepository
+    internal class UnitOfWorkProviderAccountRepository : IProviderAccountWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;
@@ -461,7 +461,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkLocationRepository : ILocationRepository
+    internal class UnitOfWorkLocationRepository : ILocationWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;
@@ -538,7 +538,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkMediaItemRepository : IMediaItemRepository
+    internal class UnitOfWorkMediaItemRepository : IMediaItemWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;
@@ -876,7 +876,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 
-    internal class UnitOfWorkEventRepository : IEventRepository
+    internal class UnitOfWorkEventRepository : IEventWriteRepository
     {
         private readonly VideoForensicsDbContext _db;
         private readonly ILogger _logger;

@@ -18,15 +18,15 @@ namespace VideoForensics.Providers.Ring.Tests
 {
     internal class FakeUnitOfWorkContext : IUnitOfWorkContext
     {
-        public IUserRepository Users { get; set; } = null!;
-        public IProviderAccountRepository ProviderAccounts { get; set; } = null!;
-        public ILocationRepository Locations { get; set; } = null!;
-        public IDeviceRepository Devices { get; set; } = null!;
-        public IMediaItemRepository MediaItems { get; set; } = null!;
+        public IUserWriteRepository Users { get; set; } = null!;
+        public IProviderAccountWriteRepository ProviderAccounts { get; set; } = null!;
+        public ILocationWriteRepository Locations { get; set; } = null!;
+        public IDeviceWriteRepository Devices { get; set; } = null!;
+        public IMediaItemWriteRepository MediaItems { get; set; } = null!;
         public IDownloadEventRepository DownloadEvents { get; set; } = null!;
         public ICredentialRepository Credentials { get; set; } = null!;
         public IActionLogRepository ActionLog { get; set; } = null!;
-        public IEventRepository Events { get; set; } = null!;
+        public IEventWriteRepository Events { get; set; } = null!;
         public IDeviceConfigRepository DeviceConfig { get; set; } = null!;
         public IDeviceSettingChangeRepository DeviceSettingChanges { get; set; } = null!;
         public IProviderReconciliationRepository ProviderReconciliation { get; set; } = null!;
@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public IAccessAuditLogRepository AccessAuditLogs { get; set; } = null!;
         public IExportAuditRecordRepository ExportAuditRecords { get; set; } = null!;
         public IDetectionEntityProvider DetectionEntities { get; set; } = null!;
-        public IMediaFlagRepository MediaFlags { get; set; } = null!;
+        public IMediaFlagWriteRepository MediaFlags { get; set; } = null!;
         public Task SaveChangesAsync(CancellationToken ct)
         {
             return Task.CompletedTask;
@@ -45,13 +45,13 @@ namespace VideoForensics.Providers.Ring.Tests
     {
         private readonly Mock<ILogger<BackupImportOrchestrator>> _mockLogger = new();
         private readonly Mock<IUnitOfWork> _mockUnitOfWork = new();
-        private readonly Mock<IUserRepository> _mockUsers = new();
-        private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
-        private readonly Mock<ILocationRepository> _mockLocations = new();
-        private readonly Mock<IDeviceRepository> _mockDevices = new();
-        private readonly Mock<IEventRepository> _mockEvents = new();
+        private readonly Mock<IUserWriteRepository> _mockUsers = new();
+        private readonly Mock<IProviderAccountWriteRepository> _mockAccounts = new();
+        private readonly Mock<ILocationWriteRepository> _mockLocations = new();
+        private readonly Mock<IDeviceWriteRepository> _mockDevices = new();
+        private readonly Mock<IEventWriteRepository> _mockEvents = new();
         private readonly Mock<IDownloadEventRepository> _mockDownloadEvents = new();
-        private readonly Mock<IMediaItemRepository> _mockMediaItems = new();
+        private readonly Mock<IMediaItemWriteRepository> _mockMediaItems = new();
         private readonly Mock<IDingIdLinkRepository> _mockDingIdLinks = new();
 
         private static string CreateTempDirectory()

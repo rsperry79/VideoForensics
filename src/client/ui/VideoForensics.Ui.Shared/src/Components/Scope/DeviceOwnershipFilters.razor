@@ -1,5 +1,5 @@
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @inject DeviceOwnershipService OwnershipService
@@ -30,20 +30,20 @@
 @code {
     /// <summary>The devices the filters narrow. Changing the list reloads the ownership snapshot.</summary>
     [Parameter, EditorRequired]
-    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = Array.Empty<VideoForensics.Data.Common.Entities.Device>();
+    public IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto> Devices { get; set; } = Array.Empty<VideoForensics.Core.Api.Contracts.DeviceDto>();
 
     /// <summary>Raised after each filter change with the devices that remain visible.</summary>
     [Parameter]
     public EventCallback<DeviceFilterResult> VisibleDevicesChanged { get; set; }
 
     private DeviceOwnershipSnapshot? _snapshot;
-    private IReadOnlyList<VideoForensics.Data.Common.Entities.Device>? _loadedFor;
+    private IReadOnlyList<VideoForensics.Core.Api.Contracts.DeviceDto>? _loadedFor;
     private string? _providerFilter;
     private Guid? _accountFilter;
 
-    private IEnumerable<VideoForensics.Data.Common.Entities.ProviderAccount> AccountOptions =>
+    private IEnumerable<ProviderAccountDto> AccountOptions =>
         _snapshot is null
-            ? Enumerable.Empty<VideoForensics.Data.Common.Entities.ProviderAccount>()
+            ? Enumerable.Empty<ProviderAccountDto>()
             : ScopeDeviceFilter.AccountsForProvider(_snapshot.Accounts, _providerFilter);
 
     protected override async Task OnParametersSetAsync()
@@ -63,7 +63,7 @@
 
         // ScopeRailRules clears an account that the newly picked provider does not offer.
         (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(
-            _snapshot?.Accounts ?? Array.Empty<ProviderAccount>(), _accountFilter, value);
+            _snapshot?.Accounts ?? Array.Empty<ProviderAccountDto>(), _accountFilter, value);
 
         await PublishAsync();
     }

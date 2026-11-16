@@ -109,7 +109,7 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = services.AddSingleton(new SnapshotCycle(NullLogger<SnapshotCycle>.Instance, TimeProvider.System, MediaStorage(), new ForensicsConfiguration()));
             _ = services.AddScoped<ISnapshotSyncService>(sp => new SnapshotSyncService(
                 sp,
-                sp.GetRequiredService<IProviderAccountRepository>(),
+                sp.GetRequiredService<IProviderAccountWriteRepository>(),
                 NullLogger<SnapshotSyncService>.Instance));
 
             ServiceProvider provider = services.BuildServiceProvider();

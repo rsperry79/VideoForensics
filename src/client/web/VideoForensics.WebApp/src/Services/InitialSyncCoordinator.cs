@@ -21,7 +21,7 @@ namespace VideoForensics.Client.WebApp.Services
     public class InitialSyncCoordinator : IInitialSyncCoordinator, IInitialSyncDispatcher
     {
         private readonly IAccountSyncRunner _runner;
-        private readonly IProviderAccountRepository _accounts;
+        private readonly IProviderAccountWriteRepository _accounts;
         private readonly IAccountDeviceRepository _accountDevices;
         private readonly BulkValidationService _validation;
         private readonly ILogger<InitialSyncCoordinator> _logger;
@@ -30,7 +30,7 @@ namespace VideoForensics.Client.WebApp.Services
         /// <summary>Creates the coordinator.</summary>
         public InitialSyncCoordinator(
             IAccountSyncRunner runner,
-            IProviderAccountRepository accounts,
+            IProviderAccountWriteRepository accounts,
             IAccountDeviceRepository accountDevices,
             BulkValidationService validation,
             ILogger<InitialSyncCoordinator> logger,

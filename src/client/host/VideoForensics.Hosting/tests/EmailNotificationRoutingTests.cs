@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Hosting.Tests
         private readonly Guid _operatorId = Guid.NewGuid();
         private readonly Mock<IForensicsConfiguration> _config = new();
         private readonly Mock<ISmtpMailSender> _sender = new();
-        private readonly Mock<IOperatorRepository> _operators = new();
+        private readonly Mock<IOperatorWriteRepository> _operators = new();
         private readonly Mock<IOperatorNotificationPreferenceRepository> _preferences = new();
 
         public EmailNotificationRoutingTests()

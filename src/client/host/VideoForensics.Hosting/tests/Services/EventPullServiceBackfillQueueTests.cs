@@ -17,12 +17,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Guid _locationId = Guid.NewGuid();
         private readonly Mock<IEventAndConfigService> _events = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
-        private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _media = new();
-        private readonly Mock<IEventRepository> _eventRepository = new();
+        private readonly Mock<IEventWriteRepository> _eventRepository = new();
         private readonly ProviderAccountEntity _account;
         private readonly VideoForensics.Data.Common.Entities.Device _device;
 

@@ -22,13 +22,13 @@ public class BitrateAnalysisServiceTests
 
     private static BitrateAnalysisService Create(Device[] devices, Dictionary<Guid, MeasuredBitrate[]> history, MediaFlag[]? flags = null)
     {
-        var deviceRepo = new Mock<IDeviceRepository>();
+        var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
-        var media = new Mock<IMediaItemRepository>();
+        var media = new Mock<IMediaItemWriteRepository>();
         _ = media
             .Setup(r => r.GetMeasuredBitrateByDeviceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out MeasuredBitrate[]? rows) ? rows : []);
-        var flagRepo = new Mock<IMediaFlagRepository>();
+        var flagRepo = new Mock<IMediaFlagWriteRepository>();
         _ = flagRepo
             .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MediaFlagPage(flags ?? [], flags?.Length ?? 0));

@@ -1,7 +1,7 @@
 using System.Reactive.Linq;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services
 {
@@ -13,11 +13,11 @@ namespace VideoForensics.Client.WebApp.Services
     public sealed class LocalLiveViewSessionSource : ILiveViewSessionSource
     {
         /// <inheritdoc />
-        public IObservable<LiveViewSession> SessionChanged { get; } = Observable.Never<LiveViewSession>();
+        public IObservable<LiveViewSessionDto> SessionChanged { get; } = Observable.Never<LiveViewSessionDto>();
 
         /// <inheritdoc />
         /// <remarks>The WebApp receives no telemetry pushes through this source, so the page shows "no data yet".</remarks>
-        public IObservable<LiveViewTelemetrySample> Telemetry { get; } = Observable.Never<LiveViewTelemetrySample>();
+        public IObservable<LiveViewTelemetrySampleDto> Telemetry { get; } = Observable.Never<LiveViewTelemetrySampleDto>();
 
         /// <inheritdoc />
         public bool IsConnected => false;

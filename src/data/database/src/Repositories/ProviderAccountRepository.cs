@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for ProviderAccount entities.</summary>
-    public class ProviderAccountRepository : IProviderAccountRepository
+    public class ProviderAccountRepository : IProviderAccountWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<ProviderAccountRepository> _logger;

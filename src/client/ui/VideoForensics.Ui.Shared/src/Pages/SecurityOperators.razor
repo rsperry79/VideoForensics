@@ -1,9 +1,10 @@
 @page "/settings/operators"
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
-@using Operator = VideoForensics.Data.Common.Entities.Operator
+@using VideoForensics.Core.Api.Contracts
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
@@ -46,27 +47,27 @@ else if (_operators is null || _operators.Count == 0)
 }
 else
 {
-    <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+    <SfGrid TValue="OperatorDto" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn HeaderText="@L["ColDisplayName"]" MinWidth="100">
                 <Template>
                     @{
-                        var op = (Operator)context;
+                        var op = (OperatorDto)context;
                         <a href="/settings/operators/@op.Id">@op.DisplayName</a>
                     }
                 </Template>
             </GridColumn>
-            <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100">
+            <GridColumn Field="@nameof(OperatorDto.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100">
                 <Template>
-                    <LocalTimeText Value="@(((Operator)context).CreatedAtUtc)" Format="u" />
+                    <LocalTimeText Value="@(((OperatorDto)context).CreatedAtUtc)" Format="u" />
                 </Template>
             </GridColumn>
             <GridColumn HeaderText="@L["ColActive"]" MinWidth="100">
                 <Template>
                     @{
-                        var op = (Operator)context;
+                        var op = (OperatorDto)context;
                         @if (op.Active)
                         {
                             <span style="color: var(--bs-success);">@L["StatusActive"]</span>
@@ -85,7 +86,7 @@ else
             <GridColumn HeaderText="" MinWidth="100">
                 <Template>
                     @{
-                        var op = (Operator)context;
+                        var op = (OperatorDto)context;
                         <SfButton Content="@L["DetailsButton"]" OnClick="() => GoToOperatorDetails(op.Id)" CssClass="e-flat" />
                         @if (op.Active)
                         {
@@ -202,8 +203,8 @@ else
 
     // Operators
     private bool _isLoading = true;
-    private List<VideoForensics.Data.Common.Entities.Operator>? _operators;
-    private IEnumerable<VideoForensics.Data.Common.Entities.Operator> _filteredOperators = new List<VideoForensics.Data.Common.Entities.Operator>();
+    private List<OperatorDto>? _operators;
+    private IEnumerable<OperatorDto> _filteredOperators = new List<OperatorDto>();
     private string? _authError;
     private string? _loadError;
     private string? _actionError;
@@ -260,8 +261,8 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            _operators = await response.Content.ReadFromJsonAsync<List<Operator>>(JsonOptions);
-            _filteredOperators = _operators ?? new List<Operator>();
+            _operators = await response.Content.ReadFromJsonAsync<List<OperatorDto>>(JsonOptions);
+            _filteredOperators = _operators ?? new List<OperatorDto>();
         }
         catch (Exception ex)
         {
@@ -291,7 +292,7 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            var credentials = await response.Content.ReadFromJsonAsync<List<OperatorCredential>>(JsonOptions);
+            var credentials = await response.Content.ReadFromJsonAsync<List<OperatorCredentialDto>>(JsonOptions);
 
             // Fetch operators to resolve display names
             var opsResponse = await client.GetAsync("api/devices-management/operators");
@@ -300,7 +301,7 @@ else
                 throw new InvalidOperationException("Failed to load operators for credential display names");
             }
 
-            var ops = await opsResponse.Content.ReadFromJsonAsync<List<Operator>>(JsonOptions);
+            var ops = await opsResponse.Content.ReadFromJsonAsync<List<OperatorDto>>(JsonOptions);
             var opMap = ops?.ToDictionary(o => o.Id, o => o.DisplayName) ?? new Dictionary<Guid, string>();
 
             _pendingCredentials = credentials?

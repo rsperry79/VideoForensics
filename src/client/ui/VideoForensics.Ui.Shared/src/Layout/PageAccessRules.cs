@@ -1,5 +1,4 @@
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -128,12 +127,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             return policy switch
             {
-                AccessPolicy.ReadOnly => ctx.HasRole(OperatorRole.ReadOnly),
-                AccessPolicy.Review => ctx.HasRole(OperatorRole.Review),
-                AccessPolicy.Admin => ctx.HasRole(OperatorRole.Admin),
-                AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRole.SuperAdmin),
-                AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRole.SuperAdmin) && ctx.IsLocalTier,
-                AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRole.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
+                AccessPolicy.ReadOnly => ctx.HasRole(OperatorRoleDto.ReadOnly),
+                AccessPolicy.Review => ctx.HasRole(OperatorRoleDto.Review),
+                AccessPolicy.Admin => ctx.HasRole(OperatorRoleDto.Admin),
+                AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRoleDto.SuperAdmin),
+                AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRoleDto.SuperAdmin) && ctx.IsLocalTier,
+                AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRoleDto.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
                 AccessPolicy.ReportSettings => AllowsSetting(RestrictedSettings.Reports, ctx),
                 AccessPolicy.EmailSettings => AllowsSetting(RestrictedSettings.Email, ctx),
                 AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
@@ -147,7 +146,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// <summary>SuperAdmin always; Admin only once a Super Admin has opened that settings page to admins.</summary>
         private static bool AllowsSetting(RestrictedSettings area, NavContext ctx)
         {
-            return ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.OpenToAdmin.HasFlag(area) && ctx.HasRole(OperatorRole.Admin));
+            return ctx.HasRole(OperatorRoleDto.SuperAdmin) || (ctx.OpenToAdmin.HasFlag(area) && ctx.HasRole(OperatorRoleDto.Admin));
         }
 
         private static string StripQuery(string path)

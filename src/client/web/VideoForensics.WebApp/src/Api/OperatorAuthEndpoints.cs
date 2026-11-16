@@ -122,7 +122,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> GetSessionKindAsync(
             ClaimsPrincipal user,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ITwoFactorRoleRequirementRepository roleRequirements,
             CancellationToken ct)
         {
@@ -174,7 +174,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(
             UsernameAssertionOptionsRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             IWebAuthnCeremonyCache ceremonyCache,
             ILogger<Program> logger,
@@ -230,7 +230,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> UsernameAssertionCompleteAsync(
             ILogger<Program> logger,
             UsernameAssertionCompleteRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             IWebAuthnCeremonyCache ceremonyCache,
@@ -394,7 +394,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> CredentialRegisterOptionsAsync(
             CredentialRegisterOptionsRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IWebAuthnCeremonyCache ceremonyCache,
             HttpContext context,
             IFido2 fido2,
@@ -439,7 +439,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> CredentialRegisterCompleteAsync(
             CredentialRegisterCompleteRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             IWebAuthnCeremonyCache ceremonyCache,
             ISecurityAuditLogger auditLog,
@@ -556,7 +556,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> RegisterAsync(
             RegisterRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             INotificationDispatcher? notificationDispatcher,
@@ -646,7 +646,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         private static async Task<PasswordCheck> VerifyPasswordAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -864,7 +864,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> LoginPasswordAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -982,7 +982,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         private static async Task<IResult> LoginPasswordCreatePasskeyAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -1032,7 +1032,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Sends the one-time "approved operator logged in for the first time" admin notice. A failure here never fails the sign-in.</summary>
         private static async Task NotifyFirstLoginAfterApprovalAsync(
             Operator op,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             INotificationDispatcher? notificationDispatcher,
             string sourceIpString,
             CancellationToken ct)
@@ -1066,7 +1066,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> ChangePasswordAsync(
             ChangePasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -1139,7 +1139,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> StepUpPasswordAsync(
             StepUpPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ITwoFactorRoleRequirementRepository roleRequirements,
             IStepUpAuthService stepUpAuth,
             ISecurityAuditLogger auditLog,
@@ -1190,7 +1190,7 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         private static async Task<IResult> RecoverPasswordAsync(
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             HttpContext context,
             CancellationToken ct)

@@ -1,3 +1,5 @@
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/signal-history/review/{FlagId:guid}"
 @implements IDisposable
 @using Microsoft.Extensions.Localization
@@ -9,8 +11,6 @@
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services.Signal
 @using VideoForensics.Client.Ui.Shared.Resources
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
 @inject IMediaFlagRepository MediaFlagRepository
 @inject IMediaItemRepository MediaItemRepository
 @inject IMediaContentUrlProvider MediaContentUrls
@@ -82,7 +82,7 @@
     [Parameter]
     public Guid FlagId { get; set; }
 
-    private static readonly MediaFlagFilter RssiFilter = new() { Types = [MediaFlagType.RssiDeviation] };
+    private static readonly MediaFlagFilterDto RssiFilter = new(["RssiDeviation"], null, null, null, null);
 
     /// <summary>How far the clip search extends beyond the flag window on each side.</summary>
     private static readonly TimeSpan ClipSearchPad = TimeSpan.FromHours(1);
@@ -93,7 +93,7 @@
     private readonly CancellationTokenSource _disposeCts = new();
     private Guid? _loadedFlagId;
     private bool _loaded;
-    private MediaFlag? _flag;
+    private MediaFlagDto? _flag;
     private MediaFitState _state = MediaFitState.FlagNotFound;
     private string? _source;
     private DateTime? _clipStartUtc;
@@ -103,7 +103,7 @@
     private MediaPlayer? _player;
     private DateTime _windowStart;
     private DateTime _windowEnd;
-    private IReadOnlyCollection<MediaFlag> _markers = [];
+    private IReadOnlyCollection<MediaFlagDto> _markers = [];
     private IReadOnlyList<SignalSample> _readings = [];
     private double? _stdDevDbm;
     private string? _noUnreviewedMessage;
@@ -133,8 +133,8 @@
         _state = MediaFitState.FlagNotFound;
         try
         {
-            MediaFlag? flag = await MediaFlagRepository.GetAsync(FlagId, ct);
-            if (flag is null || flag.FlagType != MediaFlagType.RssiDeviation)
+            MediaFlagDto? flag = await MediaFlagRepository.GetAsync(FlagId, ct);
+            if (flag is null || flag.FlagType != "RssiDeviation")
             {
                 return;
             }
@@ -147,7 +147,7 @@
             var device = await DeviceRepository.GetAsync(flag.DeviceId, ct);
             _cameraName = device?.Name ?? L["FlaggedMediaUnknownCamera"].Value;
 
-            IReadOnlyList<MediaItem> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(
+            IReadOnlyList<MediaItemDto> clips = await MediaItemRepository.GetByDeviceAndDateRangeAsync(
                 flag.DeviceId,
                 flag.WindowStartUtc - ClipSearchPad,
                 flag.WindowEndUtc + ClipSearchPad,
@@ -158,14 +158,14 @@
                 return;
             }
 
-            IReadOnlyList<MediaItem> playable = clips.Where(c => !c.IsPurged).ToList();
+            IReadOnlyList<MediaItemDto> playable = clips.Where(c => !c.IsPurged).ToList();
             if (playable.Count == 0)
             {
                 _state = MediaFitState.Purged;
                 return;
             }
 
-            MediaItem clip = playable.FirstOrDefault(c => Covers(c, flag.WindowStartUtc)) ?? playable[0];
+            MediaItemDto clip = playable.FirstOrDefault(c => Covers(c, flag.WindowStartUtc)) ?? playable[0];
             IReadOnlyDictionary<Guid, string> urls = await MediaContentUrls.GetContentUrlsAsync([clip.Id], ct);
             _source = urls.TryGetValue(clip.Id, out string? url) ? url : null;
             _state = MediaStill.IsStill(clip) ? MediaFitState.Still : MediaFitState.Playable;
@@ -194,7 +194,7 @@
     }
 
     /// <summary>True when the clip's recorded span, which needs a known duration, contains the instant.</summary>
-    private static bool Covers(MediaItem clip, DateTime instantUtc)
+    private static bool Covers(MediaItemDto clip, DateTime instantUtc)
     {
         if (clip.DurationSeconds is not { } seconds)
         {
@@ -210,18 +210,18 @@
     }
 
     /// <summary>Keep or Dismiss moves to the next unreviewed flag. Undoing a review stays on the flag.</summary>
-    private async Task OnFlagChanged(MediaFlag updated)
+    private async Task OnFlagChanged(MediaFlagDto updated)
     {
         _flag = updated;
         _markers = [updated];
-        if (updated.Status == MediaFlagStatus.Unreviewed)
+        if (updated.Status == "Unreviewed")
         {
             return;
         }
 
         try
         {
-            MediaFlag? next = await FlagAdvance.FindNextUnreviewedAsync(MediaFlagRepository, RssiFilter, updated.Id, _disposeCts.Token);
+            MediaFlagDto? next = await FlagAdvance.FindNextUnreviewedAsync(MediaFlagRepository, RssiFilter, updated.Id, _disposeCts.Token);
             if (next is { } found && FlaggedMediaTable.ReviewPath(found) is { } path)
             {
                 NavigationManager.NavigateTo(path);
@@ -236,7 +236,7 @@
         }
     }
 
-    private void OnNeighbourNavigate(MediaFlag neighbour)
+    private void OnNeighbourNavigate(MediaFlagDto neighbour)
     {
         string? path = FlaggedMediaTable.ReviewPath(neighbour);
         if (path is not null)

@@ -163,7 +163,7 @@ public class RemoteMediaItemRepositoryPageTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteMediaItemRepository(httpClient);
 
-        MediaItemPage page = await repo.GetPageByDevicesAndDateRangeAsync(
+        MediaItemPageDto page = await repo.GetPageByDevicesAndDateRangeAsync(
             new[] { Guid.NewGuid() },
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
@@ -190,7 +190,7 @@ public class RemoteMediaItemRepositoryPageTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteMediaItemRepository(httpClient);
 
-        MediaItemPage page = await repo.GetPageByDevicesAndDateRangeAsync(
+        MediaItemPageDto page = await repo.GetPageByDevicesAndDateRangeAsync(
             new[] { Guid.NewGuid() },
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),

@@ -5,6 +5,7 @@ using VideoForensics.Client.Hosting;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Client.WebApp.Infrastructure;
 using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.WebApp.Api
@@ -189,7 +190,7 @@ namespace VideoForensics.Client.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                if (config.ConfiguredNetworkTier == NetworkTier.Local)
+                if (config.ConfiguredNetworkTier == NetworkTierDto.Local)
                 {
                     return Results.BadRequest(new { error = "Set the network tier to Network or Internet before starting a tunnel." });
                 }

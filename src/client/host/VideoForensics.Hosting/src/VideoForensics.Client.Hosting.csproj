@@ -69,8 +69,10 @@
 
     <ItemGroup>
         <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
+        <ProjectReference Include="../../../../core/api/mapping/src/VideoForensics.Core.Api.Mapping.csproj" />
         <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
         <ProjectReference Include="../../../core/VideoForensics.Client.Core/src/VideoForensics.Client.Core.csproj" />
+        <ProjectReference Include="../../../../server/core/src/VideoForensics.Server.Core.csproj" />
         <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
         <ProjectReference Include="../../../../core/telemetry/src/VideoForensics.Core.Telemetry.csproj" />
         <PackageReference Include="SperryDev.Logger" Version="0.1.0" />

@@ -1,4 +1,6 @@
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Formatting;
@@ -25,11 +27,11 @@ public class SimpleHomeBuilderZoneTests
         _ = events.Setup(e => e.ListByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = Guid.NewGuid(), DeviceId = DeviceId, ProviderEventId = "evt-1", EventType = "motion", OccurredAtUtc = new DateTime(2026, 10, 7, 19, 0, 0, DateTimeKind.Utc) }
+                new VideoForensics.Data.Common.Entities.Event { Id = Guid.NewGuid(), DeviceId = DeviceId, ProviderEventId = "evt-1", EventType = "motion", OccurredAtUtc = new DateTime(2026, 10, 7, 19, 0, 0, DateTimeKind.Utc) }.ToDto()
             ]);
         var devices = new Mock<IDeviceRepository>();
         _ = devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new() { Id = DeviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "ring-dev-1", Name = "front door", Type = "ring_doorbell" }]);
+            .ReturnsAsync([new VideoForensics.Data.Common.Entities.Device { Id = DeviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "ring-dev-1", Name = "front door", Type = "ring_doorbell" }.ToDto()]);
         var media = new Mock<IMediaItemRepository>();
         _ = media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);

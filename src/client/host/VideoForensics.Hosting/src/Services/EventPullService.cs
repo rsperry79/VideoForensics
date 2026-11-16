@@ -45,9 +45,9 @@ namespace VideoForensics.Client.Hosting.Services
     public class EventPullService : IEventPullService
     {
         private readonly IEventAndConfigService _eventAndConfigService;
-        private readonly IDeviceRepository _deviceRepository;
-        private readonly ILocationRepository _locationRepository;
-        private readonly IProviderAccountRepository _providerAccountRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
+        private readonly ILocationWriteRepository _locationRepository;
+        private readonly IProviderAccountWriteRepository _providerAccountRepository;
         private readonly ILogger<EventPullService> _logger;
         private readonly IReferenceDataCache _referenceCache;
         private readonly IMediaDownloadService? _mediaDownloadService;
@@ -56,7 +56,7 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IStorageLocationProvider? _storage;
         private readonly IForensicsConfigurationService? _configurationService;
         private readonly IMediaPreviewService? _previewService;
-        private readonly IMediaItemRepository? _mediaItems;
+        private readonly IMediaItemWriteRepository? _mediaItems;
         private readonly ISyncProgressStore? _progress;
         private readonly IMediaPathResolver _mediaPaths;
 
@@ -66,7 +66,7 @@ namespace VideoForensics.Client.Hosting.Services
         // Why: events awaiting their ding id are retried this many passes; after that they are unavailable and stop holding the pull.
         private const int MaxRetryPasses = 3;
 
-        private readonly IEventRepository? _events;
+        private readonly IEventWriteRepository? _events;
         private readonly TimeSpan _progressPollInterval;
 
         // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
@@ -79,14 +79,14 @@ namespace VideoForensics.Client.Hosting.Services
         /// </summary>
         public EventPullService(
             IEventAndConfigService eventAndConfigService,
-            IDeviceRepository deviceRepository,
-            ILocationRepository locationRepository,
-            IProviderAccountRepository providerAccountRepository,
+            IDeviceWriteRepository deviceRepository,
+            ILocationWriteRepository locationRepository,
+            IProviderAccountWriteRepository providerAccountRepository,
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
             string? mediaRoot = null,
             IMediaPreviewService? previewService = null,
-            IMediaItemRepository? mediaItems = null,
+            IMediaItemWriteRepository? mediaItems = null,
             IStorageLocationProvider? storage = null,
             IForensicsConfigurationService? configurationService = null,
             ISyncProgressStore? progress = null,
@@ -94,7 +94,7 @@ namespace VideoForensics.Client.Hosting.Services
             IMediaPathResolver? mediaPaths = null,
             IReferenceDataCache? referenceCache = null,
             IProviderApiBudgetGuard? budgetGuard = null,
-            IEventRepository? events = null)
+            IEventWriteRepository? events = null)
         {
             _events = events;
             _budgetGuard = budgetGuard;

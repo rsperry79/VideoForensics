@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for Device entities.</summary>
-    public class DeviceRepository : IDeviceRepository
+    public class DeviceRepository : IDeviceWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DeviceRepository> _logger;

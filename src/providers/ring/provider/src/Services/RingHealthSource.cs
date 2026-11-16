@@ -19,7 +19,7 @@ namespace VideoForensics.Providers.Ring.Services
     {
         private readonly ILogger<RingHealthSource> _logger;
         private readonly ISessionProvider _sessionProvider;
-        private readonly IProviderAccountRepository? _providerAccountRepository;
+        private readonly IProviderAccountWriteRepository? _providerAccountRepository;
         private readonly IProviderAuthService? _ringAuthService;
 
         public RingHealthSource(ILogger<RingHealthSource> logger, ISessionProvider sessionProvider)
@@ -33,7 +33,7 @@ namespace VideoForensics.Providers.Ring.Services
         public RingHealthSource(
             ILogger<RingHealthSource> logger,
             ISessionProvider sessionProvider,
-            IProviderAccountRepository? providerAccountRepository = null,
+            IProviderAccountWriteRepository? providerAccountRepository = null,
             IProviderAuthService? ringAuthService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

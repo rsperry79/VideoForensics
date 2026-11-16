@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -10,7 +10,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUser_ContainsChangePassword()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         Assert.NotEmpty(items);
@@ -20,7 +20,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUser_ContainsMyPasskeys()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         Assert.NotEmpty(items);
@@ -30,7 +30,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUser_DoesNotContainDeviceSignIn()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         UserMenu.UserMenuItem? deviceSignInItem = items.FirstOrDefault(i => i.Path == "/device-signin");
@@ -50,7 +50,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUser_ContainsSignOut()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         // Sign out is a special item without a path (it's a handler)
@@ -71,7 +71,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_AllItemsHaveText()
     {
-        var signedInCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        var signedInCtx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
         var notSignedInCtx = new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false);
 
         IReadOnlyList<UserMenu.UserMenuItem> signedInItems = UserMenu.Items(signedInCtx);
@@ -91,7 +91,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUserNotLocked_ContainsUiModeToggle()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         Assert.NotEmpty(items);
@@ -103,7 +103,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUserInSimpleMode_ToggleToStandard()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Simple", UiModeLocked: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false, UiMode: "Simple", UiModeLocked: false);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         Assert.NotEmpty(items);
@@ -115,7 +115,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_SignedInUserLocked_NoUiModeToggle()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: true);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: true);
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
         var toggleItems = items.Where(i => i.Action != null && i.Action.StartsWith("set-ui-mode:")).ToList();
@@ -135,7 +135,7 @@ public class UserMenu_Tests
     [Fact]
     public void Items_UiModeToggleAfterMyPasskeys()
     {
-        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
         var items = UserMenu.Items(ctx).ToList();
 
         int passkeysIndex = items.FindIndex(i => i.Path == "/settings/passkeys");
@@ -153,7 +153,7 @@ public class UserMenu_Tests
     public void Items_AnyUser_OffersOneThemeLinkToTheThemePage(bool signedIn)
     {
         // The theme choices live in the Appearance section of Settings, so the menu holds a single link rather than three theme actions.
-        var ctx = new NavContext(IsSignedIn: signedIn, Role: signedIn ? OperatorRole.Admin : null, AppLockSupported: false);
+        var ctx = new NavContext(IsSignedIn: signedIn, Role: signedIn ? OperatorRoleDto.Admin : null, AppLockSupported: false);
 
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 

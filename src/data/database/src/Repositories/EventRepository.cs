@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for Event entities.</summary>
-    public class EventRepository : IEventRepository
+    public class EventRepository : IEventWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<EventRepository> _logger;

@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Tests.Services
     /// <summary>The per-second bitrate series is read from the clip when saved, otherwise computed from its packets and saved on the clip.</summary>
     public class MediaBitrateSeriesServiceTests
     {
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaPacketReader> _reader = new();
         private readonly Mock<IMediaPathResolver> _paths = new();
 

@@ -35,35 +35,35 @@ namespace VideoForensics.Client.Hosting.Services
         /// <summary>The loop's frames are each held at least this long; the builder rounds to whole seconds.</summary>
         private static readonly TimeSpan MinimumHold = TimeSpan.FromSeconds(1);
 
-        private readonly ILocationRepository _locations;
-        private readonly IDeviceRepository _devices;
-        private readonly IMediaItemRepository _mediaItems;
-        private readonly IProviderAccountRepository _accounts;
+        private readonly ILocationWriteRepository _locations;
+        private readonly IDeviceWriteRepository _devices;
+        private readonly IMediaItemWriteRepository _mediaItems;
+        private readonly IProviderAccountWriteRepository _accounts;
         private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
-        private readonly IEventRepository _events;
+        private readonly IEventWriteRepository _events;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITimelineVideoBuilder _builder;
         private readonly ILogger<SnapshotRollupService> _logger;
 
         // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
-        private readonly ISnapshotCaptureRepository? _captures;
+        private readonly ISnapshotCaptureWriteRepository? _captures;
         private readonly ISnapshotStillMapper? _stillMapper;
         private readonly IMediaPathResolver _mediaPaths;
         private readonly IForensicsConfigurationService? _configurationService;
 
         public SnapshotRollupService(
-            ILocationRepository locations,
-            IDeviceRepository devices,
-            IMediaItemRepository mediaItems,
-            IProviderAccountRepository accounts,
+            ILocationWriteRepository locations,
+            IDeviceWriteRepository devices,
+            IMediaItemWriteRepository mediaItems,
+            IProviderAccountWriteRepository accounts,
             IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
             ILogger<SnapshotRollupService> logger,
-            IEventRepository events,
+            IEventWriteRepository events,
             IUnitOfWork unitOfWork,
             IEvidenceChangeNotifier? evidenceChanges = null,
-            ISnapshotCaptureRepository? captures = null,
+            ISnapshotCaptureWriteRepository? captures = null,
             ISnapshotStillMapper? stillMapper = null,
             IForensicsConfigurationService? configurationService = null,
             IMediaPathResolver? mediaPaths = null)

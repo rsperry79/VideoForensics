@@ -1,8 +1,8 @@
 @page "/notices"
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts.Repositories
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Core.Providers.Common.Contracts
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
@@ -45,14 +45,14 @@ else
     }
     else
     {
-        <SfGrid TValue="Notice" DataSource="@_notices" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="NoticeDto" DataSource="@_notices" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn HeaderText="@L["ColumnSeverity"]" Width="100px" AllowSorting="true">
                     <Template>
                         @{
-                            var notice = (Notice)context;
+                            var notice = (NoticeDto)context;
                             <span class="@GetSeverityBadgeClass(notice.Severity)" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
                                 @GetSeverityLabel(notice.Severity)
                             </span>
@@ -63,7 +63,7 @@ else
                 <GridColumn HeaderText="@L["ColumnDetails"]" AllowSorting="false" MinWidth="100">
                     <Template>
                         @{
-                            var notice = (Notice)context;
+                            var notice = (NoticeDto)context;
                             <span title="@notice.Details">
                                 @(notice.Details?.Length > 100 ? notice.Details.Substring(0, 100) + "..." : notice.Details ?? "")
                             </span>
@@ -88,13 +88,13 @@ else
                 </GridColumn>
                 <GridColumn Field="TimestampUtc" HeaderText="@L["ColumnTimestamp"]" AllowSorting="true" MinWidth="100">
                     <Template>
-                        <LocalTimeText Value="@((context as Notice)!.TimestampUtc)" Format="yyyy-MM-dd HH:mm:ss" />
+                        <LocalTimeText Value="@((context as NoticeDto)!.TimestampUtc)" Format="yyyy-MM-dd HH:mm:ss" />
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="" Width="120px" AllowSorting="false" AllowFiltering="false">
                     <Template>
                         @{
-                            var notice = (Notice)context;
+                            var notice = (NoticeDto)context;
                             <SfButton Content="@L["Dismiss"]" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" />
                         }
                     </Template>
@@ -106,8 +106,8 @@ else
 
 @code {
     private List<(string Label, string? Url)> _breadcrumbItems = new();
-    private List<Notice> _notices = new();
-    private List<Notice> _allNotices = new();
+    private List<NoticeDto> _notices = new();
+    private List<NoticeDto> _allNotices = new();
     private bool _showDismissed = false;
     private IDisposable? _noticeSubscription;
 
@@ -131,7 +131,7 @@ else
 
     /// <summary>The Account filter's choices for one provider.</summary>
     private IEnumerable<KeyValuePair<string, string>> AccountsForProvider(string provider) =>
-        ScopeDeviceFilter.AccountsForProvider(_ownership?.Accounts ?? Array.Empty<ProviderAccount>(), provider)
+        ScopeDeviceFilter.AccountsForProvider(_ownership?.Accounts ?? Array.Empty<ProviderAccountDto>(), provider)
             .Select(a => new KeyValuePair<string, string>(a.Id.ToString(), _ownership!.AccountNames.GetValueOrDefault(a.Id, a.ProviderName)));
 
     protected override async Task OnInitializedAsync()
@@ -142,7 +142,7 @@ else
             .Subscribe(notice => { _ = InvokeAsync(ReloadOnNewNoticeAsync); });
         SharedFilter.OnChange += OnSharedFilterChanged;
         await SharedFilter.EnsureLoadedAsync();
-        _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Data.Common.Entities.Device>(), CancellationToken.None);
+        _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Core.Api.Contracts.DeviceDto>(), CancellationToken.None);
 
         await LoadNoticesAsync();
     }
@@ -158,7 +158,7 @@ else
         _notices = _allNotices.Where(Matches).ToList();
     }
 
-    private bool Matches(Notice notice)
+    private bool Matches(NoticeDto notice)
     {
         string[] providers = SharedFilter.Providers;
         Guid? accountId = Guid.TryParse(SharedFilter.Account, out var parsed) ? parsed : (Guid?)null;
@@ -207,7 +207,7 @@ else
         }
 
         _isLoading = true;
-        bool isAdmin = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Admin;
+        bool isAdmin = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) && role >= OperatorRoleDto.Admin;
         _allNotices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, isAdmin, _showDismissed, CancellationToken.None))
             .OrderByDescending(n => n.TimestampUtc)
             .ToList();

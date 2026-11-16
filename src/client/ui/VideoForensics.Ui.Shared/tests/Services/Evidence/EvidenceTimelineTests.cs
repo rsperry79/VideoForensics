@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -21,7 +21,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -31,7 +31,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item1 = new EvidenceItem
         {
@@ -81,7 +81,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -91,7 +91,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item1 = new EvidenceItem
         {
@@ -143,7 +143,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e1",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var event2 = new Event
         {
@@ -153,7 +153,7 @@ public class EvidenceTimeline_Group_Tests
             DiscoveredAtUtc = DateTime.UtcNow,
             ProviderEventId = "e2",
             MetadataJson = "{}"
-        };
+        }.ToDto();
 
         var item1 = new EvidenceItem
         {
@@ -244,7 +244,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     DiscoveredAtUtc = DateTime.UtcNow,
                     ProviderEventId = $"e{i}",
                     MetadataJson = "{}"
-                } : null,
+                }.ToDto() : null,
                 Media = null
             });
         }
@@ -318,7 +318,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash1",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             },
             new() {
                 Key = "media:2",
@@ -337,7 +337,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash2",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             },
             new() {
                 Key = "media:3",
@@ -356,7 +356,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash3",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             }
         };
 
@@ -392,7 +392,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash1",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             },
             new() {
                 Key = "event:nonviewable",
@@ -408,7 +408,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     DiscoveredAtUtc = DateTime.UtcNow,
                     ProviderEventId = "e1",
                     MetadataJson = "{}"
-                },
+                }.ToDto(),
                 Media = null // No media = not viewable
             },
             new() {
@@ -428,7 +428,7 @@ public class EvidenceTimeline_Neighbours_Tests
                     Sha256Hash = "hash3",
                     RecordedAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = DateTime.UtcNow
-                }
+                }.ToDto()
             }
         };
 

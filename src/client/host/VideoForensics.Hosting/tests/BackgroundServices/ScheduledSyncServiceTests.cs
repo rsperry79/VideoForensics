@@ -73,12 +73,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
         private sealed class Harness
         {
-            public Mock<ISyncScheduleRepository> Schedules { get; } = new();
-            public Mock<IProviderAccountRepository> Accounts { get; } = new();
-            public Mock<IDeviceRepository> Devices { get; } = new();
+            public Mock<ISyncScheduleWriteRepository> Schedules { get; } = new();
+            public Mock<IProviderAccountWriteRepository> Accounts { get; } = new();
+            public Mock<IDeviceWriteRepository> Devices { get; } = new();
 
             public Mock<IDeviceConfigRepository> DeviceConfigs { get; } = new();
-            public Mock<ILocationRepository> Locations { get; } = new();
+            public Mock<ILocationWriteRepository> Locations { get; } = new();
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
             public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
@@ -86,7 +86,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             public SnapshotCycle Cycle { get; }
             public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
             public Mock<ITimelapseGapQueries> TimelapseQueries { get; } = new();
-            public Mock<ISnapshotCaptureRepository> Captures { get; } = new();
+            public Mock<ISnapshotCaptureWriteRepository> Captures { get; } = new();
 
             /// <summary>The services-page settings. Defaults: 15-minute check, 60-minute segments.</summary>
             public Mock<IForensicsConfigurationService> Config { get; } = DefaultConfig();

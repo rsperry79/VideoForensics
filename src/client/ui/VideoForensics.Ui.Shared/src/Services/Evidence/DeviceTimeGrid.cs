@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
@@ -71,7 +71,7 @@ public static class DeviceTimeGrid
     public static DeviceTimeGridResult Build(
         DateTime fromUtc,
         DateTime toUtc,
-        IReadOnlyList<Device> devices,
+        IReadOnlyList<DeviceDto> devices,
         IReadOnlyList<EvidenceItem> items)
     {
         if (toUtc <= fromUtc)
@@ -94,7 +94,7 @@ public static class DeviceTimeGrid
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var rows = new List<DeviceTimeRow>(devices.Count);
-        foreach (Device device in devices)
+        foreach (DeviceDto device in devices)
         {
             List<EvidenceItem> deviceItems = itemsByDevice.TryGetValue(device.Id, out List<EvidenceItem>? list) ? list : [];
 

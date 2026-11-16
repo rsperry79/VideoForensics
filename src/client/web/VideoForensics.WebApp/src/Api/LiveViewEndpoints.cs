@@ -78,7 +78,7 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             if (string.IsNullOrEmpty(request.Reason)
-                || !Enum.TryParse(request.Reason, ignoreCase: true, out LiveViewTriggerReason reason)
+                || !Enum.TryParse(request.Reason, ignoreCase: true, out LiveViewTriggerReasonDto reason)
                 || !Enum.IsDefined(reason))
             {
                 return Results.Problem(statusCode: StatusCodes.Status400BadRequest);
@@ -86,8 +86,8 @@ namespace VideoForensics.Client.WebApp.Api
 
             try
             {
-                LiveViewSession session = await liveView.StartAsync(request.DeviceId, reason, operatorId, ct);
-                return Results.Ok(session.ToDto());
+                LiveViewSessionDto session = await liveView.StartAsync(request.DeviceId, reason, operatorId, ct);
+                return Results.Ok(session);
             }
             catch (Exception ex) when (TryMapFailure(ex) is { } failure)
             {
@@ -133,8 +133,8 @@ namespace VideoForensics.Client.WebApp.Api
 
             try
             {
-                LiveViewSession session = await liveView.PromoteToSustainedAsync(sessionId, reason, ct);
-                return Results.Ok(session.ToDto());
+                LiveViewSessionDto session = await liveView.PromoteToSustainedAsync(sessionId, reason, ct);
+                return Results.Ok(session);
             }
             catch (Exception ex) when (TryMapFailure(ex) is { } failure)
             {
@@ -156,8 +156,8 @@ namespace VideoForensics.Client.WebApp.Api
 
             try
             {
-                LiveViewSession session = await liveView.DemoteFromSustainedAsync(sessionId, ct);
-                return Results.Ok(session.ToDto());
+                LiveViewSessionDto session = await liveView.DemoteFromSustainedAsync(sessionId, ct);
+                return Results.Ok(session);
             }
             catch (Exception ex) when (TryMapFailure(ex) is { } failure)
             {
@@ -197,8 +197,8 @@ namespace VideoForensics.Client.WebApp.Api
         {
             try
             {
-                LiveViewSession? session = await liveView.GetActiveSessionAsync(deviceId, ct);
-                return session == null ? Results.NotFound() : Results.Ok(session.ToDto());
+                LiveViewSessionDto? session = await liveView.GetActiveSessionAsync(deviceId, ct);
+                return session == null ? Results.NotFound() : Results.Ok(session);
             }
             catch (Exception ex) when (TryMapFailure(ex) is { } failure)
             {

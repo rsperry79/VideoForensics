@@ -8,7 +8,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for Notice entities (persisted notification events).</summary>
-    public class NoticeRepository : INoticeRepository
+    public class NoticeRepository : INoticeWriteRepository
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<NoticeRepository> _logger;

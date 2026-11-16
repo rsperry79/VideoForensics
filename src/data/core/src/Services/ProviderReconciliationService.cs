@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Core.Services
     internal class ProviderReconciliationService : IProviderReconciliationService
     {
         private readonly IProviderReconciliationRepository _reconciliationRepository;
-        private readonly IEventRepository _eventRepository;
+        private readonly IEventWriteRepository _eventRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
         private readonly IActionLogRepository _actionLogRepository;
@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Core.Services
 
         public ProviderReconciliationService(
             IProviderReconciliationRepository reconciliationRepository,
-            IEventRepository eventRepository,
+            IEventWriteRepository eventRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<ProviderReconciliationService> logger,

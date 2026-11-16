@@ -2,8 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
@@ -26,13 +25,13 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<LegalHold> PlaceAsync(Guid mediaItemId, string reason, string createdBy, CancellationToken ct)
+        public async Task<LegalHoldDto> PlaceAsync(Guid mediaItemId, string reason, string createdBy, CancellationToken ct)
         {
             var request = new PlaceLegalHoldRequestDto(mediaItemId, reason);
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/legal-holds/", request, ct);
             _ = response.EnsureSuccessStatusCode();
             LegalHoldDto? dto = await response.Content.ReadFromJsonAsync<LegalHoldDto>(JsonOptions, ct);
-            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+            return dto ?? throw new InvalidOperationException("Server returned null response");
         }
 
         /// <inheritdoc />
@@ -44,14 +43,14 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<LegalHold>> GetActiveByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
+        public async Task<IReadOnlyList<LegalHoldDto>> GetActiveByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
             string ids = string.Join(',', mediaItemIds);
             string url = $"/api/v1/legal-holds/?mediaItemIds={Uri.EscapeDataString(ids)}";
             HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
             _ = response.EnsureSuccessStatusCode();
             List<LegalHoldDto>? dtos = await response.Content.ReadFromJsonAsync<List<LegalHoldDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return (dtos ?? []).ToList();
         }
     }
 }

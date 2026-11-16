@@ -17,10 +17,10 @@ namespace VideoForensics.Providers.Ring.Services
     public class RingDeviceSettingsPersister
     {
         private readonly IVideoForensicsDataClient _dataClient;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly ILogger _logger;
 
-        public RingDeviceSettingsPersister(IVideoForensicsDataClient dataClient, IDeviceRepository deviceRepository, ILogger logger)
+        public RingDeviceSettingsPersister(IVideoForensicsDataClient dataClient, IDeviceWriteRepository deviceRepository, ILogger logger)
         {
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
             _deviceRepository = deviceRepository ?? throw new ArgumentNullException(nameof(deviceRepository));

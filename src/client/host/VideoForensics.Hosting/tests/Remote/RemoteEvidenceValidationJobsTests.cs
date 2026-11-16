@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             IntegrityResults: null,
             Discrepancies:
             [
-                new(DiscrepancyType.MissingFromProvider, "event-456", null, null, null)
+                new(DiscrepancyTypeDto.MissingFromProvider, "event-456", null, null, null)
             ],
             ErrorMessage: "provider timeout");
         }

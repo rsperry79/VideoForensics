@@ -1,4 +1,5 @@
-using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
+using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -9,7 +10,7 @@ public class RingSettingsRoute_Tests
 {
     private static Device Dev(string? provider)
     {
-        return new() { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "1", Name = "Front", Type = "doorbot", ProviderName = provider };
+        return new VideoForensics.Data.Common.Entities.Device() { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "1", Name = "Front", Type = "doorbot", ProviderName = provider }.ToDto();
     }
 
     [Fact]

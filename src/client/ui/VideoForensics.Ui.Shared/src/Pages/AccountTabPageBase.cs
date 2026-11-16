@@ -5,10 +5,10 @@ using Microsoft.Extensions.Localization;
 using System.Net.Http.Json;
 
 using VideoForensics.Client.Ui.Shared.Services;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
-using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+using ProviderAccountEntity = VideoForensics.Core.Api.Contracts.ProviderAccountDto;
 
 namespace VideoForensics.Client.Ui.Shared.Pages;
 /// <summary>
@@ -73,7 +73,7 @@ public abstract class AccountTabPageBase : ComponentBase
                 try
                 {
                     // The provider login (email for Ring) is the account's name.
-                    User? user = await UserRepository.GetAsync(Account.UserId, CancellationToken.None);
+                    UserDto? user = await UserRepository.GetAsync(Account.UserId, CancellationToken.None);
                     AccountEmail = user?.ProviderUserKey;
                 }
                 catch

@@ -248,7 +248,7 @@ public abstract class ServerLogsPageTestBase : BunitContext
     }
 
     protected Mock<IForensicsConfiguration> ConfigMock { get; } = new();
-    protected Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator> ConfigToolsMock { get; } = new();
+    protected Mock<VideoForensics.Client.Common.Contracts.IConfigToolsOrchestrator> ConfigToolsMock { get; } = new();
 
     protected FakeLogViewerService Logs { get; } = new();
     protected ManualTimeProvider Time { get; } = new();

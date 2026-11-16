@@ -246,7 +246,7 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IFileDialogService, VideoForensics.Client.MauiApp.Services.MauiFileDialogService>();
 
             // Where the backup export is staged before the save dialog: the current user's documents folder.
-            builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
+            builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Platform.Windows.Services.UserDocumentsBackupStagingLocator>();
 
             // Local app-lock (plan §5.9) - overrides the no-op IAppLockPreferencesStore default that
             // AddVideoForensicsClientApi() would have registered for every host. Windows-only for now,

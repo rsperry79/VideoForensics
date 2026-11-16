@@ -622,7 +622,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(session2.Object);
 
-            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountWriteRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account1, account2]);
 
@@ -677,7 +677,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
                     return callCount == 1 ? null : session.Object;
                 });
 
-            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountWriteRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account]);
 
@@ -713,7 +713,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
 
-            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountWriteRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account]);
 
@@ -772,7 +772,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(session2.Object);
 
-            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountRepository>();
+            var providerAccountRepository = new Mock<Data.Common.Contracts.IProviderAccountWriteRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([account1, account2]);
 

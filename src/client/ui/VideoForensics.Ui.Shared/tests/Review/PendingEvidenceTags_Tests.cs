@@ -4,8 +4,8 @@ using Moq;
 
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using Xunit;
 
@@ -14,7 +14,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 /// <summary>The in-memory pending evidence tags: add and remove, change notices, concurrency, and attaching to an open case.</summary>
 public class PendingEvidenceTags_Tests
 {
-    private static PendingTag CreateTag(Guid? targetId = null, CaseItemKind kind = CaseItemKind.Media)
+    private static PendingTag CreateTag(Guid? targetId = null, CaseItemKindDto kind = CaseItemKindDto.Media)
     {
         return new PendingTag(
             kind,
@@ -68,10 +68,10 @@ public class PendingEvidenceTags_Tests
         // Arrange
         PendingEvidenceTags tags = CreateTags();
         var targetId = Guid.NewGuid();
-        _ = tags.Add(CreateTag(targetId, CaseItemKind.Media));
+        _ = tags.Add(CreateTag(targetId, CaseItemKindDto.Media));
 
         // Act
-        bool added = tags.Add(CreateTag(targetId, CaseItemKind.Event));
+        bool added = tags.Add(CreateTag(targetId, CaseItemKindDto.Event));
 
         // Assert
         Assert.True(added);
@@ -102,7 +102,7 @@ public class PendingEvidenceTags_Tests
         _ = tags.Add(CreateTag());
 
         // Act
-        bool removed = tags.Remove(CaseItemKind.Media, Guid.NewGuid());
+        bool removed = tags.Remove(CaseItemKindDto.Media, Guid.NewGuid());
 
         // Assert
         Assert.False(removed);
@@ -140,10 +140,10 @@ public class PendingEvidenceTags_Tests
         _ = tags.Add(CreateTag(targetId));
         Assert.Equal(1, changes);
 
-        _ = tags.Remove(CaseItemKind.Media, Guid.NewGuid());
+        _ = tags.Remove(CaseItemKindDto.Media, Guid.NewGuid());
         Assert.Equal(1, changes);
 
-        _ = tags.Remove(CaseItemKind.Media, targetId);
+        _ = tags.Remove(CaseItemKindDto.Media, targetId);
         Assert.Equal(2, changes);
     }
 
@@ -183,12 +183,12 @@ public class PendingEvidenceTags_Tests
         // Arrange
         PendingEvidenceTags tags = CreateTags();
         PendingTag first = CreateTag();
-        PendingTag second = CreateTag(kind: CaseItemKind.Event);
+        PendingTag second = CreateTag(kind: CaseItemKindDto.Event);
         PendingTag third = CreateTag();
         _ = tags.Add(first);
         _ = tags.Add(second);
         _ = tags.Add(third);
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var pinned = new List<Guid>();
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, pinnedTargets: pinned);
         CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
@@ -214,7 +214,7 @@ public class PendingEvidenceTags_Tests
         _ = tags.Add(ok);
         _ = tags.Add(refused);
         _ = tags.Add(alsoOk);
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { refused.TargetId });
         CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
 
@@ -235,16 +235,8 @@ public class PendingEvidenceTags_Tests
         PendingEvidenceTags tags = CreateTags();
         PendingTag tag = CreateTag();
         _ = tags.Add(tag);
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var existing = new CaseItem
-        {
-            Id = Guid.NewGuid(),
-            CaseId = openCase.Id,
-            Kind = CaseItemKind.Media,
-            MediaItemId = tag.TargetId,
-            Reason = "earlier",
-            AddedBy = "actor-0",
-        };
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
+        var existing = new CaseItemDto(Guid.NewGuid(), openCase.Id, CaseItemKindDto.Media.ToString(), tag.TargetId, "earlier", "actor-0", DateTime.UtcNow, null, null, null, null);
         Mock<ICaseRepository> repository = PendingTagFakes.CreateRepository(openCase, existingItems: [existing]);
         CaseState caseState = await PendingTagFakes.ActivateAsync(repository, openCase);
 
@@ -256,7 +248,7 @@ public class PendingEvidenceTags_Tests
         Assert.Equal(0, result.Failed);
         Assert.Empty(tags.Items);
         repository.Verify(r => r.AddItemAsync(
-            It.IsAny<Guid>(), It.IsAny<CaseItemKind>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<CaseItemKindDto>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -266,7 +258,7 @@ public class PendingEvidenceTags_Tests
         PendingEvidenceTags tags = CreateTags();
         _ = tags.Add(CreateTag());
         _ = tags.Add(CreateTag());
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         CaseState caseState = await PendingTagFakes.ActivateAsync(PendingTagFakes.CreateRepository(openCase), openCase);
         int changes = 0;
         var announced = new List<AttachResult>();
@@ -290,7 +282,7 @@ public class PendingEvidenceTags_Tests
         // Arrange
         PendingEvidenceTags tags = CreateTags();
         _ = tags.Add(CreateTag());
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         CaseState unactivated = PendingTagFakes.CreateUnactivated(PendingTagFakes.CreateRepository(openCase));
 
         // Act and Assert

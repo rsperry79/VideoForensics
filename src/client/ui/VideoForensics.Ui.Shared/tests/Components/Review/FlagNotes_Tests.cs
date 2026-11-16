@@ -6,6 +6,8 @@ using Moq;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -36,7 +38,7 @@ public class FlagNotes_Tests : BunitContext
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(_notes.Object);
-        _ = _notes.Setup(n => n.ListAsync(NoteTargetKind.MediaFlag, _flagId, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Note>());
+        _ = _notes.Setup(n => n.ListAsync(NoteTargetKindDto.MediaFlag, _flagId, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<NoteDto>());
 
         _ = JSInterop.Setup<NoteEntryCheck>("vfCaseNoteCheck", inv => inv.Arguments.Count > 0 && inv.Arguments[0] is string text && text.Trim().Length > 0)
             .SetResult(new NoteEntryCheck(true, 5, null));
@@ -50,9 +52,9 @@ public class FlagNotes_Tests : BunitContext
         _ = Services.AddScoped(_ => session);
     }
 
-    private static Note Note(Guid flagId, string author, string body)
+    private static NoteDto Note(Guid flagId, string author, string body)
     {
-        return new Note { Id = Guid.NewGuid(), TargetKind = NoteTargetKind.MediaFlag, TargetId = flagId, Body = body, AddedBy = author, AddedAtUtc = new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc) };
+        return new NoteDto(Guid.NewGuid(), NoteTargetKindDto.MediaFlag, flagId, body, author, new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc));
     }
 
     [Fact]
@@ -60,7 +62,7 @@ public class FlagNotes_Tests : BunitContext
     {
         // Arrange
         await SignInAsync();
-        _ = _notes.Setup(n => n.ListAsync(NoteTargetKind.MediaFlag, _flagId, It.IsAny<CancellationToken>()))
+        _ = _notes.Setup(n => n.ListAsync(NoteTargetKindDto.MediaFlag, _flagId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { Note(_flagId, "op-alpha", "flag remark") });
 
         // Act
@@ -78,7 +80,7 @@ public class FlagNotes_Tests : BunitContext
     {
         // Arrange
         await SignInAsync();
-        _ = _notes.Setup(n => n.AddAsync(NoteTargetKind.MediaFlag, _flagId, "hello", TestOperatorId.ToString(), It.IsAny<CancellationToken>()))
+        _ = _notes.Setup(n => n.AddAsync(NoteTargetKindDto.MediaFlag, _flagId, "hello", TestOperatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Note(_flagId, TestOperatorId.ToString(), "hello"));
         IRenderedComponent<FlagNotes> cut = Render<FlagNotes>(p => p
             .Add(c => c.FlagId, _flagId)
@@ -91,7 +93,7 @@ public class FlagNotes_Tests : BunitContext
 
         // Assert
         cut.WaitForAssertion(() =>
-            _notes.Verify(n => n.AddAsync(NoteTargetKind.MediaFlag, _flagId, "hello", TestOperatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once));
+            _notes.Verify(n => n.AddAsync(NoteTargetKindDto.MediaFlag, _flagId, "hello", TestOperatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once));
     }
 
     [Fact]

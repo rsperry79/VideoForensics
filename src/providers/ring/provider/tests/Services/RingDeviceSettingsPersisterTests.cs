@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         {
             // Arrange: the device row exists and the settings pull carries scalar detail fields.
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(ChimeVolume: 2));
 
@@ -44,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         {
             // Arrange: no device row for the provider id yet.
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(Array.Empty<Device>());
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(Array.Empty<Device>());
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(ChimeVolume: 2));
 
@@ -62,7 +62,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         {
             // Arrange: the settings pull carries no scalar detail fields; child rows are still written.
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(null);
 
@@ -80,7 +80,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         {
             // Arrange: a kind the catalog does not list must be recorded so the database knows about it.
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbot" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbot" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(RingKind: "doorbell_brand_new"));
 
@@ -95,7 +95,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         public async Task RingDeviceSettingsPersister_PersistAsync_UnknownChimeKind_UsesChimeFamily()
         {
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Hall", Type = "chime" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Hall", Type = "chime" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(RingKind: "chime_brand_new"));
 
@@ -108,7 +108,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         public async Task RingDeviceSettingsPersister_PersistAsync_KnownRingKind_DoesNotEnsureModel()
         {
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Hall", Type = "chime" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Hall", Type = "chime" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(RingKind: "chime_pro_v2"));
 
@@ -121,7 +121,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         public async Task RingDeviceSettingsPersister_PersistAsync_NoRingKind_DoesNotEnsureModel()
         {
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbot" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbot" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(ChimeVolume: 2));
 
@@ -135,7 +135,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
         {
             // Arrange: the details carry a features graph; both the scalar row and the state rows must reach the writer in the same call.
             Mock<IVideoForensicsDataClient> data = CreateDataClient();
-            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
+            Mock<IDeviceWriteRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbell" } });
             var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
             RingDeviceDetails details = CreateDetails(new DeviceDetailFields(ChimeVolume: 2)) with
             {
@@ -175,9 +175,9 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             return data;
         }
 
-        private static Mock<IDeviceRepository> CreateDeviceRepository(IReadOnlyList<Device> rows)
+        private static Mock<IDeviceWriteRepository> CreateDeviceRepository(IReadOnlyList<Device> rows)
         {
-            var devices = new Mock<IDeviceRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             _ = devices.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
             return devices;
         }

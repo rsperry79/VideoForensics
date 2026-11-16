@@ -8,7 +8,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 
 public class PageAccessRules_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false, bool signedIn = true)
+    private static NavContext Ctx(OperatorRoleDto? role, bool local = false, bool passkey = false, bool signedIn = true)
     {
         return new(signedIn, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
     }
@@ -16,63 +16,63 @@ public class PageAccessRules_Tests
     [Fact]
     public void IsAllowed_LocalOnlyPage_RemoteSuperAdmin_Denied()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRole.SuperAdmin)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRoleDto.SuperAdmin)));
     }
 
     [Fact]
     public void IsAllowed_LocalOnlyPage_LocalSuperAdmin_Allowed()
     {
-        Assert.True(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRole.SuperAdmin, local: true)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRoleDto.SuperAdmin, local: true)));
     }
 
     [Fact]
     public void IsAllowed_LocalOnlyPage_RemotePasskeySuperAdmin_Denied()
     {
         // A passkey satisfies SuperAdminLocalOrPasskey only; pages on SuperAdminLocal stay Local-tier-only.
-        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRole.SuperAdmin, passkey: true)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRoleDto.SuperAdmin, passkey: true)));
     }
 
     [Fact]
     public void IsAllowed_LocalOnlyPage_LocalAdmin_Denied()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRole.Admin, local: true)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRoleDto.Admin, local: true)));
     }
 
     [Fact]
     public void Allows_SuperAdminLocalOrPasskey_RemotePasskeySuperAdmin_Allowed()
     {
-        Assert.True(PageAccessRules.Allows(AccessPolicy.SuperAdminLocalOrPasskey, Ctx(OperatorRole.SuperAdmin, passkey: true)));
+        Assert.True(PageAccessRules.Allows(AccessPolicy.SuperAdminLocalOrPasskey, Ctx(OperatorRoleDto.SuperAdmin, passkey: true)));
     }
 
     [Fact]
     public void Allows_SuperAdminLocalOrPasskey_RemotePasswordAdmin_Denied()
     {
-        Assert.False(PageAccessRules.Allows(AccessPolicy.SuperAdminLocalOrPasskey, Ctx(OperatorRole.SuperAdmin)));
+        Assert.False(PageAccessRules.Allows(AccessPolicy.SuperAdminLocalOrPasskey, Ctx(OperatorRoleDto.SuperAdmin)));
     }
 
     [Fact]
     public void IsAllowed_AdminPage_ReadOnlyOperator_Denied()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.ReadOnly)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRoleDto.ReadOnly)));
     }
 
     [Fact]
     public void IsAllowed_NotificationSettingsPage_AdminOperator_DeniedUntilOpened()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin)));
-        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Notifications }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRole.SuperAdmin)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRoleDto.Admin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRoleDto.Admin) with { OpenToAdmin = RestrictedSettings.Notifications }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/notifications", Ctx(OperatorRoleDto.SuperAdmin)));
     }
 
     [Fact]
     public void IsAllowed_SettingsPages_AdminOperator_FollowTheirOwnOpenFlag()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Reports }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/integrations/email", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
-        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin) with { OpenToAdmin = RestrictedSettings.Llm }));
-        Assert.False(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.Admin)));
-        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRole.SuperAdmin)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRoleDto.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/reports", Ctx(OperatorRoleDto.Admin) with { OpenToAdmin = RestrictedSettings.Reports }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/integrations/email", Ctx(OperatorRoleDto.Admin) with { OpenToAdmin = RestrictedSettings.Email }));
+        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRoleDto.Admin) with { OpenToAdmin = RestrictedSettings.Llm }));
+        Assert.False(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRoleDto.Admin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/llm", Ctx(OperatorRoleDto.SuperAdmin)));
     }
 
     [Fact]
@@ -91,8 +91,8 @@ public class PageAccessRules_Tests
     [Fact]
     public void IsAllowed_PathWithQuery_UsesPathRule()
     {
-        Assert.False(PageAccessRules.IsAllowed("/settings/logs?level=error", Ctx(OperatorRole.SuperAdmin)));
-        Assert.True(PageAccessRules.IsAllowed("/settings/logs?level=error", Ctx(OperatorRole.SuperAdmin, local: true)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/logs?level=error", Ctx(OperatorRoleDto.SuperAdmin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/logs?level=error", Ctx(OperatorRoleDto.SuperAdmin, local: true)));
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class PageAccessRules_Tests
 
 public class NavGroupsSections_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false)
+    private static NavContext Ctx(OperatorRoleDto? role, bool local = false)
     {
         return new(IsSignedIn: role is not null, Role: role, AppLockSupported: false, IsLocalTier: local);
     }
@@ -126,7 +126,7 @@ public class NavGroupsSections_Tests
     [Fact]
     public void AdminTab_ReadOnlyOperator_IsVisible()
     {
-        Assert.True(Admin.IsVisible(Ctx(OperatorRole.ReadOnly)));
+        Assert.True(Admin.IsVisible(Ctx(OperatorRoleDto.ReadOnly)));
     }
 
     [Theory]
@@ -139,7 +139,7 @@ public class NavGroupsSections_Tests
     [InlineData("/settings/update-check")]
     public void AdminItems_RemoteSuperAdmin_HidesLocalOnlyPages(string path)
     {
-        Assert.DoesNotContain(path, VisibleAdminPaths(Ctx(OperatorRole.SuperAdmin)));
+        Assert.DoesNotContain(path, VisibleAdminPaths(Ctx(OperatorRoleDto.SuperAdmin)));
     }
 
     [Theory]
@@ -148,7 +148,7 @@ public class NavGroupsSections_Tests
     [InlineData("/settings/lockout-policy")]
     public void AdminItems_LocalSuperAdmin_ShowsLocalOnlyPages(string path)
     {
-        Assert.Contains(path, VisibleAdminPaths(Ctx(OperatorRole.SuperAdmin, local: true)));
+        Assert.Contains(path, VisibleAdminPaths(Ctx(OperatorRoleDto.SuperAdmin, local: true)));
     }
 
     [Theory]
@@ -160,13 +160,13 @@ public class NavGroupsSections_Tests
     [InlineData("/settings/llm")]
     public void AdminItems_ReadOnlyOperator_HidesAdminOnlyPages(string path)
     {
-        Assert.DoesNotContain(path, VisibleAdminPaths(Ctx(OperatorRole.ReadOnly)));
+        Assert.DoesNotContain(path, VisibleAdminPaths(Ctx(OperatorRoleDto.ReadOnly)));
     }
 
     [Fact]
     public void AdminItems_ReadOnlyOperator_ShowsSecurityEventsAndGeneral()
     {
-        IReadOnlyList<string> paths = VisibleAdminPaths(Ctx(OperatorRole.ReadOnly));
+        IReadOnlyList<string> paths = VisibleAdminPaths(Ctx(OperatorRoleDto.ReadOnly));
         Assert.Contains("/settings", paths);
         Assert.Contains("/settings/security-events", paths);
     }
@@ -174,7 +174,7 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_AdminGroup_LocalSuperAdmin_ReturnsTitledSectionsInOrder()
     {
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin, local: true));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRoleDto.SuperAdmin, local: true));
 
         Assert.Equal(
             new[] { "General", "Sources", "System & Network", "Storage & Data", "Integrations", "Security", "Diagnostics & Updates" },
@@ -184,7 +184,7 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_AdminGroup_ReadOnlyOperator_DropsEmptySections()
     {
-        var titles = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.ReadOnly)).Select(s => s.Title).ToList();
+        var titles = NavGroups.SectionsFor(Admin, Ctx(OperatorRoleDto.ReadOnly)).Select(s => s.Title).ToList();
 
         Assert.DoesNotContain("Integrations", titles);
         Assert.DoesNotContain("System & Network", titles);
@@ -195,7 +195,7 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_AdminGroup_RemoteSuperAdmin_DropsLocalOnlyItemsFromSections()
     {
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRoleDto.SuperAdmin));
         NavSection? diagnostics = sections.FirstOrDefault(s => s.Title == "Diagnostics & Updates");
 
         // Server Logs and App Update are Local-only, so the section has nothing to show off-Local.
@@ -207,7 +207,7 @@ public class NavGroupsSections_Tests
     {
         var group = new NavGroup("plain", "Plain", "/plain", [new("Only item", "/plain")]);
 
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, Ctx(OperatorRole.ReadOnly));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, Ctx(OperatorRoleDto.ReadOnly));
 
         _ = Assert.Single(sections);
         Assert.Null(sections[0].Title);

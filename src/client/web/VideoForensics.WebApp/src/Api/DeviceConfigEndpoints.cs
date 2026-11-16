@@ -57,8 +57,8 @@ namespace VideoForensics.Client.WebApp.Api
             .WithDescription("Returns all configuration snapshots for the specified device, ordered by capture time.")
             .RequireRateLimiting("media");
 
-            _ = group.MapGet("/typed/{deviceId:guid}", async (Guid deviceId, IDeviceTypedSettingsReader typed, CancellationToken ct) =>
-                Results.Ok((await typed.GetAsync(deviceId, ct)).ToDto(deviceId)))
+            _ = group.MapGet("/typed/{deviceId:guid}", async (Guid deviceId, VideoForensics.Core.Api.Contracts.Repositories.IDeviceTypedSettingsReader typed, CancellationToken ct) =>
+                Results.Ok(await typed.GetAsync(deviceId, ct)))
             .WithSummary("Get the typed settings stored for a device")
             .WithDescription("Returns the offline motion, detection type and threshold rows stored for the device.")
             .RequireRateLimiting("media");

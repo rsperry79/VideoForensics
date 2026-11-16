@@ -6,7 +6,7 @@
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Time
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @inject IStringLocalizer<SharedResources> L
 
 <div class="histogram-timeline" data-testid="histogram-timeline">
@@ -40,7 +40,7 @@
                 {
                     <span class="playback-timeline-mark" data-testid="timeline-mark" style="left: @MarkTimePercent(at).ToString(CultureInfo.InvariantCulture)%;"></span>
                 }
-                @foreach (MediaFlag flag in _markersInWindow)
+                @foreach (MediaFlagDto flag in _markersInWindow)
                 {
                     <button type="button"
                             class="playback-timeline-marker"
@@ -72,7 +72,7 @@
 
     /// <summary>Flags to draw on the scrub bar. Flags whose window starts outside the timeline window are not drawn.</summary>
     [Parameter]
-    public IReadOnlyCollection<MediaFlag> Markers { get; set; } = [];
+    public IReadOnlyCollection<MediaFlagDto> Markers { get; set; } = [];
 
     /// <summary>Moments to mark on the scrub bar, such as the seconds a bit rate dip starts. Times outside the window are not drawn.</summary>
     [Parameter]
@@ -80,7 +80,7 @@
 
     /// <summary>Raised when a flag marker is clicked.</summary>
     [Parameter]
-    public EventCallback<MediaFlag> OnMarkerClick { get; set; }
+    public EventCallback<MediaFlagDto> OnMarkerClick { get; set; }
 
     /// <summary>
     /// Raised when the speed button changes the playback rate (1, 2, 4 or 8). The host applies it to the player's
@@ -111,7 +111,7 @@
     private double _maxSeconds;
     private double _position;
     private double? _nowSeconds;
-    private List<MediaFlag> _markersInWindow = [];
+    private List<MediaFlagDto> _markersInWindow = [];
     private List<DateTime> _markTimesInWindow = [];
     private CancellationTokenSource? _pollCts;
     private Task? _pollTask;
@@ -170,16 +170,16 @@
         return span <= 0 ? 0 : (SecondsSinceEpoch(at) - _minSeconds) / span * 100;
     }
 
-    private double MarkerPercent(MediaFlag flag)
+    private double MarkerPercent(MediaFlagDto flag)
     {
         double span = _maxSeconds - _minSeconds;
         return span <= 0 ? 0 : (SecondsSinceEpoch(flag.WindowStartUtc) - _minSeconds) / span * 100;
     }
 
-    private string MarkerLabel(MediaFlag flag)
+    private string MarkerLabel(MediaFlagDto flag)
     {
         LocalizedString typeName = L[$"FlaggedMediaType_{flag.FlagType}"];
-        string name = typeName.ResourceNotFound ? flag.FlagType.ToString() : typeName.Value;
+        string name = typeName.ResourceNotFound ? flag.FlagType : typeName.Value;
         return L["PlaybackMarker", name, Zone.Format(flag.WindowStartUtc, "yyyy-MM-dd HH:mm:ss")].Value;
     }
 

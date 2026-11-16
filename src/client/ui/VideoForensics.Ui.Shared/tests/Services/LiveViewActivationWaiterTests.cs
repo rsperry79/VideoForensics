@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reactive.Subjects;
 
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Entities;
@@ -18,7 +19,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
         /// <summary>Source whose emissions the test drives. Can be told to fail on subscribe.</summary>
         private sealed class FakeSessionSource : ILiveViewSessionSource
         {
-            public Subject<LiveViewSession> Changes { get; } = new();
+            public Subject<LiveViewSessionDto> Changes { get; } = new();
 
             public bool IsConnected { get; set; } = true;
 
@@ -32,9 +33,9 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             /// <summary>Runs after a successful subscribe, so a test can emit the push the server would send.</summary>
             public Action<Guid>? OnSubscribed { get; set; }
 
-            public IObservable<LiveViewSession> SessionChanged => Changes;
+            public IObservable<LiveViewSessionDto> SessionChanged => Changes;
 
-            public IObservable<LiveViewTelemetrySample> Telemetry { get; } = new Subject<LiveViewTelemetrySample>();
+            public IObservable<LiveViewTelemetrySampleDto> Telemetry { get; } = new Subject<LiveViewTelemetrySampleDto>();
 
             public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
             {
@@ -58,33 +59,31 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
         /// <summary>Stand-in for GetActiveSessionAsync. Each call returns the result for its 1-based call number.</summary>
         private sealed class CountingPoll
         {
-            private readonly Func<int, LiveViewSession?> _result;
+            private readonly Func<int, LiveViewSessionDto?> _result;
 
-            public CountingPoll(Func<int, LiveViewSession?> result)
+            public CountingPoll(Func<int, LiveViewSessionDto?> result)
             {
                 _result = result;
             }
 
             public int Calls { get; private set; }
 
-            public Task<LiveViewSession?> InvokeAsync(CancellationToken cancellationToken)
+            public Task<LiveViewSessionDto?> InvokeAsync(CancellationToken cancellationToken)
             {
                 Calls++;
                 return Task.FromResult(_result(Calls));
             }
         }
 
-        private static LiveViewSession Session(Guid id, LiveViewSessionState state)
+        private static LiveViewSessionDto Session(Guid id, LiveViewSessionState state)
         {
-            return new()
-            {
-                Id = id,
-                DeviceId = Guid.NewGuid(),
-                TriggerReason = LiveViewTriggerReason.Manual,
-                State = state,
-                StartedAtUtc = DateTime.UtcNow,
-                LastExtendedAtUtc = DateTime.UtcNow,
-            };
+            return new(
+                Id: id,
+                DeviceId: Guid.NewGuid(),
+                TriggerReason: "Manual",
+                State: state.ToString(),
+                StartedAtUtc: DateTime.UtcNow,
+                LastExtendedAtUtc: DateTime.UtcNow);
         }
 
         [Fact]
@@ -96,11 +95,11 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var poll = new CountingPoll(_ => null);
             var waiter = new LiveViewActivationWaiter();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, ShortTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, ShortTimeout, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(sessionId, result.Id);
-            Assert.Equal(LiveViewSessionState.Active, result.State);
+            Assert.Equal("Active", result.State);
             // Only the one race-guard read happens; the push answered the wait, so the timeout poll never ran.
             Assert.Equal(1, poll.Calls);
         }
@@ -114,11 +113,11 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var waiter = new LiveViewActivationWaiter();
             var stopwatch = Stopwatch.StartNew();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, LongTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, LongTimeout, CancellationToken.None);
 
             stopwatch.Stop();
             Assert.NotNull(result);
-            Assert.Equal(LiveViewSessionState.Active, result.State);
+            Assert.Equal("Active", result.State);
             Assert.Equal(1, source.SubscribeCalls);
             Assert.Equal(1, poll.Calls);
             Assert.True(stopwatch.Elapsed < LongTimeout, "The wait should return on the race-guard read, not run to the timeout.");
@@ -133,13 +132,13 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var poll = new CountingPoll(_ => Session(sessionId, LiveViewSessionState.Active));
             var waiter = new LiveViewActivationWaiter();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, LongTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, LongTimeout, CancellationToken.None);
 
             Assert.Equal(1, source.SubscribeCalls);
             Assert.Equal(sessionId, source.LastSubscribedId);
             Assert.NotNull(result);
             Assert.Equal(sessionId, result.Id);
-            Assert.Equal(LiveViewSessionState.Active, result.State);
+            Assert.Equal("Active", result.State);
         }
 
         [Fact]
@@ -150,10 +149,10 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var poll = new CountingPoll(call => call == 2 ? Session(sessionId, LiveViewSessionState.Active) : null);
             var waiter = new LiveViewActivationWaiter();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, FallbackTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, FallbackTimeout, CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal(LiveViewSessionState.Active, result.State);
+            Assert.Equal("Active", result.State);
             Assert.Equal(0, source.SubscribeCalls);
             Assert.Equal(2, poll.Calls);
         }
@@ -166,10 +165,10 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var poll = new CountingPoll(_ => Session(sessionId, LiveViewSessionState.Active));
             var waiter = new LiveViewActivationWaiter();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, FallbackTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, FallbackTimeout, CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal(LiveViewSessionState.Active, result.State);
+            Assert.Equal("Active", result.State);
             Assert.Equal(1, source.SubscribeCalls);
             Assert.True(poll.Calls >= 1, "A failed subscribe must fall back to polling, not give up.");
         }
@@ -182,7 +181,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var poll = new CountingPoll(_ => null);
             var waiter = new LiveViewActivationWaiter();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, ShortTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, ShortTimeout, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -197,7 +196,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Services
             var poll = new CountingPoll(_ => null);
             var waiter = new LiveViewActivationWaiter();
 
-            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, ShortTimeout, CancellationToken.None);
+            LiveViewSessionDto? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, ShortTimeout, CancellationToken.None);
 
             Assert.Null(result);
         }
