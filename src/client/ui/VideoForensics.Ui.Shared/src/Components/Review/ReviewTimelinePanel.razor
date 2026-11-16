@@ -11,7 +11,6 @@
     <h6 class="review-timeline-panel-title" data-testid="review-timeline-panel-title">@L["TimelinePanelTitle"]</h6>
 
     <TimelineStrip Orientation="TimelineOrientation.Vertical"
-                   LengthPx="PanelLengthPx"
                    Clips="TimelineModel.Clips"
                    UnavailableClips="TimelineModel.UnavailableClips"
                    WindowStartUtc="Window.Start"
@@ -27,12 +26,6 @@
 </section>
 
 @code {
-    /// <summary>
-    /// Fixed strip length in pixels. The panel cannot measure its own height without JavaScript, so the strip is a fixed
-    /// length that reads well in the panel rather than filling it exactly.
-    /// </summary>
-    private const int PanelLengthPx = 600;
-
     /// <summary>
     /// The range the strip draws: the range the published clips were loaded for, or the page's range before anything is
     /// published (a model range is only valid once it has a non-empty span).

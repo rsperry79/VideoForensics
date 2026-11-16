@@ -1,0 +1,7 @@
+/* The panel fills the aside, which is sized to the viewport below the header, so the strip's height follows the window. */
+.review-timeline-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}

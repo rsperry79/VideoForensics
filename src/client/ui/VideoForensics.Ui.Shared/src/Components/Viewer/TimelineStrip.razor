@@ -1,11 +1,14 @@
 @using VideoForensics.Client.Common.Viewer
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime Js
 
 @if (Orientation == TimelineOrientation.Vertical)
 {
     double length = VerticalLength;
-    <div class="review-timeline review-timeline-vertical" data-testid="timeline-strip" role="group" aria-label="@Label" style="height:@(length)px" @onclick="HandleClick">
+    <div class="review-timeline review-timeline-vertical" data-testid="timeline-strip" role="slider" tabindex="0" aria-label="@Label" aria-valuetext="@ValueText" style="@RootStyle" @ref="_root" @onclick="HandleClick" @onkeydown="HandleKeyDown">
         @foreach (ClipWindow clip in Clips)
         {
             double top = VerticalY(clip.StartUtc.AddSeconds(clip.DurationSeconds), length);
@@ -30,7 +33,9 @@
         }
         @if (Cursor is DateTime cursorTime)
         {
-            <div class="review-timeline-cursor-line" data-testid="timeline-cursor" style="top:@(VerticalY(cursorTime, length))px"></div>
+            <div class="review-timeline-cursor-line" data-testid="timeline-cursor" style="top:@(VerticalY(cursorTime, length))px">
+                <span class="review-timeline-cursor-label">@ZoneOrLocal.Format(cursorTime, "HH:mm:ss")</span>
+            </div>
         }
     </div>
 }
@@ -102,7 +107,59 @@ else
     /// </summary>
     [CascadingParameter] public UserTimeZone? Zone { get; set; }
 
-    private double VerticalLength => LengthPx ?? DefaultLengthPx;
+    /// <summary>
+    /// The pixel length the vertical strip maps times with: the caller's fixed length, else the height measured in the
+    /// browser, else the default (tests and first render, before any measurement).
+    /// </summary>
+    private double VerticalLength => LengthPx ?? _measuredLength ?? DefaultLengthPx;
+
+    /// <summary>A fixed length when the caller gives one; otherwise the strip fills the height its container gives it.</summary>
+    private string RootStyle => LengthPx is int px ? $"height:{px}px" : "height:100%";
+
+    private ElementReference _root;
+    private double? _measuredLength;
+    private IJSObjectReference? _module;
+
+    private const string ElementSizeModule = "./_content/VideoForensics.Client.Ui.Shared/scripts/element-size.js";
+
+    private sealed record MeasuredBox(double Top, double Height);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Orientation != TimelineOrientation.Vertical || LengthPx.HasValue)
+        {
+            return;
+        }
+
+        MeasuredBox? box = await MeasureAsync();
+        if (box is { Height: > 0 } measured && measured.Height != _measuredLength)
+        {
+            _measuredLength = measured.Height;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Reads the strip's position and height. Null when the browser cannot answer, so callers fall back to the defaults.</summary>
+    private async Task<MeasuredBox?> MeasureAsync()
+    {
+        try
+        {
+            _module ??= await Js.InvokeAsync<IJSObjectReference>("import", ElementSizeModule);
+            return await _module.InvokeAsync<MeasuredBox?>("measure", _root);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            await _module.DisposeAsync();
+        }
+    }
 
     private UserTimeZone ZoneOrLocal => Zone ?? new UserTimeZone(TimeZoneInfo.Local);
 
@@ -121,6 +178,7 @@ else
     /// </summary>
     private IEnumerable<DateTime> HourTicks()
     {
+        int step = TickStepHours();
         int offsetMinutes = (int)Math.Round(ZoneOrLocal.Zone.GetUtcOffset(WindowStartUtc).TotalMinutes);
         int phase = ((-offsetMinutes) % 60 + 60) % 60;
         var first = new DateTime(WindowStartUtc.Year, WindowStartUtc.Month, WindowStartUtc.Day, WindowStartUtc.Hour, phase, 0, DateTimeKind.Utc);
@@ -132,11 +190,70 @@ else
         var ticks = new List<DateTime>();
         for (DateTime tick = first; tick <= WindowEndUtc; tick = tick.AddHours(1))
         {
-            ticks.Add(tick);
+            // Keep only the hours that fall on a multiple of the step in the user's zone (6, 12 or 24 hours apart, and so on).
+            int localHour = (tick.AddMinutes(Math.Round(ZoneOrLocal.Zone.GetUtcOffset(tick).TotalMinutes))).Hour;
+            if (localHour % step == 0)
+            {
+                ticks.Add(tick);
+            }
         }
 
         ticks.Reverse();
         return ticks;
+    }
+
+    /// <summary>
+    /// The smallest step, in hours, that keeps the window to at most 40 ticks. At 600px that spaces the labels at least 14px
+    /// apart for any window, so the 7-day window shows a tick every 6 hours and the 30-day window one a day.
+    /// </summary>
+    private int TickStepHours()
+    {
+        double hours = (WindowEndUtc - WindowStartUtc).TotalHours;
+        foreach (int step in new[] { 1, 2, 3, 6, 12, 24 })
+        {
+            if (hours / step <= 40)
+            {
+                return step;
+            }
+        }
+
+        return 24;
+    }
+
+    /// <summary>The cursor time as the strip announces it to assistive technology. Empty when there is no cursor.</summary>
+    private string ValueText => Cursor is DateTime cursor ? ZoneOrLocal.Format(cursor, "yyyy-MM-dd HH:mm:ss") : string.Empty;
+
+    /// <summary>
+    /// Arrow keys move the cursor one minute (Up is newer, Down is older); Page Up and Page Down move ten minutes. The seek is
+    /// clamped to the window.
+    /// </summary>
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        int seconds = e.Key switch
+        {
+            "ArrowUp" => 60,
+            "ArrowDown" => -60,
+            "PageUp" => 600,
+            "PageDown" => -600,
+            _ => 0,
+        };
+        if (seconds == 0)
+        {
+            return;
+        }
+
+        DateTime from = Cursor ?? WindowStartUtc;
+        DateTime next = from.AddSeconds(seconds);
+        if (next < WindowStartUtc)
+        {
+            next = WindowStartUtc;
+        }
+        else if (next > WindowEndUtc)
+        {
+            next = WindowEndUtc;
+        }
+
+        await OnSeek.InvokeAsync(next);
     }
 
     /// <summary>
@@ -164,9 +281,20 @@ else
 
     private async Task HandleClick(MouseEventArgs e)
     {
-        DateTime time = Orientation == TimelineOrientation.Vertical
-            ? ReviewTimeline.FromPixel(VerticalLength - e.OffsetY, WindowStartUtc, WindowEndUtc, VerticalLength)
-            : ReviewTimeline.FromPixel(e.OffsetX, WindowStartUtc, WindowEndUtc, WidthPx);
+        DateTime time;
+        if (Orientation == TimelineOrientation.Vertical)
+        {
+            // Measure on click: the strip may have been resized since the last render. Without a measurement, fall back to the offset.
+            MeasuredBox? box = LengthPx.HasValue ? (MeasuredBox?)null : await MeasureAsync();
+            time = box is { Height: > 0 } measured
+                ? ReviewTimeline.FromPixel(measured.Height - (e.ClientY - measured.Top), WindowStartUtc, WindowEndUtc, measured.Height)
+                : ReviewTimeline.FromPixel(VerticalLength - e.OffsetY, WindowStartUtc, WindowEndUtc, VerticalLength);
+        }
+        else
+        {
+            time = ReviewTimeline.FromPixel(e.OffsetX, WindowStartUtc, WindowEndUtc, WidthPx);
+        }
+
         await OnSeek.InvokeAsync(time);
     }
 }

@@ -9,4 +9,6 @@
     align-self: flex-start;
     flex-shrink: 0;
     width: 7rem;
+    height: calc(100vh - 8rem);
+    min-height: 0;
 }
