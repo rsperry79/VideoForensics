@@ -22,6 +22,8 @@ Pruned 2026-11-06. Resolved entries removed; history is in git. Rules that came 
 - 2026-11-04 | ring salt tests | salt tests skipped until the path is injectable; the pinner pins Keys to ProgramData | OPEN: fix the pinner and keys pointer
 - 2026-11-04 | database location | stale ProgramData database-location.json still on disk | OPEN: remove manually
 - 2026-11-05 | cleanup | rm of F:/flagactions-green.log denied (outside repo) | OPEN: user deletes F:\flagactions-green.log
+- 2026-11-16 | device provider name fix | `dotnet build` of Data.Database.Tests fails restore with NU1605 (Microsoft.CodeAnalysis 5.12.0 downgraded to 5.9.0) | commit ef7bc2c4 bumped 18 projects to 5.12.0 and left 65 on 5.9.0 | OPEN: finish or revert the bump; verified this fix with `-p:NoWarn=NU1605`
+- 2026-11-16 | device provider name fix | merged origin/dev into wip in the main checkout while it had an unrelated docs submodule change | followed the pre-work dev check without stopping for the dirty checkout | stop and ask when the main checkout is dirty, also for the pre-work merge
 
 Watch (flaky under full-run load; rerun alone before calling it a regression): ReviewFilterPanel debounce and provider-burst tests, FolderPicker_Cancel, GetSnapshotTimestampTest, ServerLogsPage_ManyEntries, MaintenanceHoldTimer ArmSafetyTimer_AfterReserve, CaseRepositoryNumberingTests concurrent create, StorageDefaultPath_Tests (Keys status), one unnamed src/data/database/tests failure (2026-11-05).
 

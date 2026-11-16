@@ -23,21 +23,38 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a device by ID.</summary>
         public Task<Device?> GetAsync(Guid deviceId, CancellationToken ct)
         {
-            return _unitOfWork.ReadAsync(context => context.Db().Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct), ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                await AssignProviderNameAsync(db, device, ct);
+                return device;
+            }, ct);
         }
 
         /// <summary>Gets all devices for a location.</summary>
         public async Task<IReadOnlyList<Device>> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
         {
-            return await _unitOfWork.ReadAsync(context => context.Db().Devices.Where(d => d.LocationId == locationId).ToListAsync(ct), ct);
+            return await _unitOfWork.ReadAsync<IReadOnlyList<Device>>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+                DeviceProviderNames.Assign(devices, await ProviderLinksAsync(db, locationId, ct));
+                return devices;
+            }, ct);
         }
 
         /// <summary>Gets a device by location ID and provider device ID.</summary>
         public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
         {
-            return _unitOfWork.ReadAsync(
-                context => context.Db().Devices.FirstOrDefaultAsync(
-                    d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId, ct), ct);
+            return _unitOfWork.ReadAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                Device? device = await db.Devices.FirstOrDefaultAsync(
+                    d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId, ct);
+                await AssignProviderNameAsync(db, device, ct);
+                return device;
+            }, ct);
         }
 
         /// <summary>Lists all devices.</summary>
@@ -49,15 +66,33 @@ namespace VideoForensics.Data.Database.Repositories
                 List<Device> devices = await db.Devices.ToListAsync(ct);
 
                 // One lookup for all locations rather than one per device.
-                var links = (await db.ProviderAccountLocations
-                    .AsNoTracking()
-                    .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
-                    .ToListAsync(ct))
-                    .Select(x => (x.LocationId, x.ProviderName))
-                    .ToList();
-                DeviceProviderNames.Assign(devices, links);
+                DeviceProviderNames.Assign(devices, await ProviderLinksAsync(db, null, ct));
                 return devices;
             }, ct);
+        }
+
+        /// <summary>
+        /// Sets ProviderName on one device. Why: the property is not a column, so every read has to fill it, or callers that
+        /// branch on the provider (the Ring online rule, the Ring settings link) see a device with no provider.
+        /// </summary>
+        private static async Task AssignProviderNameAsync(VideoForensicsDbContext db, Device? device, CancellationToken ct)
+        {
+            if (device is not null)
+            {
+                DeviceProviderNames.Assign([device], await ProviderLinksAsync(db, device.LocationId, ct));
+            }
+        }
+
+        /// <summary>The location-to-provider links for one location, or for every location when <paramref name="locationId"/> is null.</summary>
+        private static async Task<List<(Guid LocationId, string ProviderName)>> ProviderLinksAsync(VideoForensicsDbContext db, Guid? locationId, CancellationToken ct)
+        {
+            return (await db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => locationId == null || l.LocationId == locationId)
+                .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
+                .ToListAsync(ct))
+                .Select(x => (x.LocationId, x.ProviderName))
+                .ToList();
         }
 
         /// <summary>Adds a new device.</summary>
